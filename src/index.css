@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-dim: var(--color-surface-dim);
+  --color-surface-bright: var(--color-surface-bright);
+  --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-surface-container-low: var(--color-surface-container-low);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-highest: var(--color-surface-container-highest);
+  --color-on-surface: var(--color-on-surface);
+  --color-on-surface-variant: var(--color-on-surface-variant);
+  --color-inverse-surface: var(--color-inverse-surface);
+  --color-inverse-on-surface: var(--color-inverse-on-surface);
+  --color-outline: var(--color-outline);
+  --color-outline-variant: var(--color-outline-variant);
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-primary-container: var(--color-primary-container);
+  --color-on-primary-container: var(--color-on-primary-container);
+  --color-secondary: var(--color-secondary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-secondary-container: var(--color-secondary-container);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+  --color-tertiary: var(--color-tertiary);
+  --color-error: var(--color-error);
+  --color-error-container: var(--color-error-container);
+  --color-on-error-container: var(--color-on-error-container);
+  --color-primary-fixed-dim: var(--color-primary-fixed-dim);
+  --color-primary-fixed: var(--color-primary-fixed);
+
+  --font-family-display-md: "Hanken Grotesk", sans-serif;
+  --font-family-label-md: "Hanken Grotesk", sans-serif;
+  --font-family-headline-lg: "Hanken Grotesk", sans-serif;
+  --font-family-body-lg: "Hanken Grotesk", sans-serif;
+  --font-family-display-lg: "Hanken Grotesk", sans-serif;
+  --font-family-headline-md: "Hanken Grotesk", sans-serif;
+  --font-family-body-md: "Hanken Grotesk", sans-serif;
+  --font-family-label-sm: "Hanken Grotesk", sans-serif;
+  --font-family-title-md: "Hanken Grotesk", sans-serif;
+
+  --spacing-unit: 4px;
+  --spacing-container-padding: 32px;
+  --spacing-gutter: 24px;
+  --spacing-stack-md: 16px;
+  --spacing-stack-lg: 32px;
+  --spacing-stack-sm: 8px;
+}
+
+:root {
+  --color-background: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-dim: #F1F5F9;
+  --color-surface-bright: #FFFFFF;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #F8FAFC;
+  --color-surface-container: #FFFFFF;
+  --color-surface-container-high: #F1F5F9;
+  --color-surface-container-highest: #E2E8F0;
+  --color-on-surface: #0F172A;
+  --color-on-surface-variant: #64748B;
+  --color-primary: #2563EB;
+  --color-secondary: #0F172A;
+  --color-accent: #F97316;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+.dark {
+  --color-background: #090D16;
+  --color-surface: #0E1424;
+  --color-surface-dim: #090D16;
+  --color-surface-bright: #1A243B;
+  --color-surface-container-lowest: #060910;
+  --color-surface-container-low: #0D1322;
+  --color-surface-container: #12192C;
+  --color-surface-container-high: #172037;
+  --color-surface-container-highest: #1F2B48;
+  --color-on-surface: #F8FAFC;
+  --color-on-surface-variant: #94A3B8;
+  --color-primary: #3B82F6;
+  --color-secondary: #60A5FA;
+  --color-accent: #F97316;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+body {
+  font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+  color: var(--color-on-surface);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Stadium Backdrop System */
+.stadium-bg-overlay {
+  background-image: linear-gradient(to bottom, rgba(248, 250, 252, 0.88), rgba(241, 245, 249, 0.94)),
+                    url('/images/stadium-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  filter: saturate(0.6) opacity(0.35);
+  pointer-events: none;
+}
+
+.dark .stadium-bg-overlay {
+  background-image: linear-gradient(to bottom, rgba(9, 13, 22, 0.90), rgba(14, 20, 36, 0.94)),
+                    url('/images/stadium-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  filter: saturate(0.5) opacity(0.25);
+  pointer-events: none;
+}
+
+/* Glassmorphism Elevation System */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dark .glass-surface {
+  background: rgba(14, 20, 36, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Apple-style Soft Shadow System */
+.elevation-card {
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .elevation-card {
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.4), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
+}
+
+.elevation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -4px rgba(37, 99, 235, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+}
+
+.dark .elevation-card:hover {
+  box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.6), 0 0 20px 0 rgba(59, 130, 246, 0.15);
+}
