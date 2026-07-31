@@ -1,16 +1,10 @@
 // You are writing code for a system governed by our Master Architecture Contract.
 // Commandment C-03 (RLS), C-07 (Cache-Aside), C-11 (Pagination), C-16 (Automatic Retries), and C-17 (Fail-safe Default Displays) apply here.
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../../lib/supabase';
 import { DBPlayer, DBTeam, DBSquadConfiguration, SquadPosition } from '../types';
 
-// =========================================================================
-// SUPABASE CLIENT INITIALIZATION CONFIGURATION
-// =========================================================================
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByb2plY3QtcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MjY4OTM4MDAsImV4cCI6MTk0MjQ2OTgwMH0.placeholder';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };
 
 const SQUAD_CACHE_KEY = 'supabase-squad-coords-cache';
 
@@ -283,7 +277,7 @@ export async function fetchPlayersPaginated(
 // =========================================================================
 
 /**
- * Diagnostic suite to verify SQL connection and RLS policies on localhost.
+ * Diagnostic suite to verify SQL connection and RLS policies.
  * Can be imported and run in testing/dev pages.
  */
 export const diagnosticQueries = {

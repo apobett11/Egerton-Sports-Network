@@ -13,20 +13,9 @@ export interface AppConfig {
   allowedImageMimeTypes: string[];
 }
 
-function validateEnvVar(name: string, fallback: string): string {
-  const value = import.meta.env[name];
-  if (!value || value.trim() === '') {
-    if (import.meta.env.PROD) {
-      console.warn(`[CONFIG WARNING] Missing environment variable ${name}. Using fallback default.`);
-    }
-    return fallback;
-  }
-  return value.trim();
-}
-
 export const config: AppConfig = {
-  supabaseUrl: validateEnvVar('VITE_SUPABASE_URL', 'http://127.0.0.1:54321'),
-  supabaseAnonKey: validateEnvVar('VITE_SUPABASE_ANON_KEY', 'dummy_anon_key_for_development'),
+  supabaseUrl: (import.meta.env.VITE_SUPABASE_URL || '').trim(),
+  supabaseAnonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim(),
   isProduction: import.meta.env.PROD ?? false,
   isDevelopment: import.meta.env.DEV ?? true,
   enableAuditLogs: true,

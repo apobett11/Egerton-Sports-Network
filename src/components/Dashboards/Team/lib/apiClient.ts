@@ -3,7 +3,7 @@
 
 import { Player, Match, StandingEntry, User } from '../types';
 
-export const API_BASE_URL = 'http://localhost:3001/api';
+export const API_BASE_URL = '/api';
 
 interface RequestOptions extends RequestInit {
     token?: string;
