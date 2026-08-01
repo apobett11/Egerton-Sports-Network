@@ -1,7 +1,6 @@
 import React from 'react';
 import { UserCheck, Award, Zap, Activity, ShieldCheck, Check } from 'lucide-react';
-import type { Player, UserRole } from '../../types';
-import type { RoleAssignments } from '../../hooks/useTeamDashboard';
+import type { Player, UserRole, RoleAssignments } from '../../types';
 
 interface RoleAssignmentsViewProps {
   roleAssignments: RoleAssignments;
@@ -61,11 +60,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.captainId}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, captainId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, captainId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} ({p.position} - {p.rating} OVR)
                 </option>
@@ -83,11 +82,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.viceCaptainId || ''}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, viceCaptainId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, viceCaptainId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} ({p.position} - {p.rating} OVR)
                 </option>
@@ -105,11 +104,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.penaltyTakerId}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, penaltyTakerId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, penaltyTakerId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} (Shooting: {p.shooting})
                 </option>
@@ -127,11 +126,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.freeKickTakerId}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, freeKickTakerId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, freeKickTakerId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} (Passing: {p.passing})
                 </option>
@@ -149,11 +148,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.leftCornerTakerId}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, leftCornerTakerId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, leftCornerTakerId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} ({p.position})
                 </option>
@@ -171,11 +170,11 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
               disabled={!isCoach}
               value={roleAssignments.rightCornerTakerId}
               onChange={e => {
-                setRoleAssignments(prev => ({ ...prev, rightCornerTakerId: e.target.value }));
+                setRoleAssignments((prev: RoleAssignments) => ({ ...prev, rightCornerTakerId: e.target.value }));
               }}
               className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {roster.map(p => (
+              {roster.map((p: Player) => (
                 <option key={p.id} value={p.id}>
                   #{p.number} {p.name} ({p.position})
                 </option>
