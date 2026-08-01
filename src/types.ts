@@ -216,7 +216,7 @@ export interface Announcement {
   content: string;
   target_role: string;
   target_team_id?: string;
-  author_id: string;
+  author_id?: string;
   created_at: string;
 }
 

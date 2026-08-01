@@ -9,6 +9,7 @@ interface RefereePoolViewProps {
   handleUpdateRefStatus: (id: string, status: 'Active' | 'Suspended' | 'Deactivated') => Promise<void> | void;
   handleDeleteReferee: (id: string) => Promise<void> | void;
   showToast?: (msg: string) => void;
+  isScheduleLocked?: boolean;
 }
 
 export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
@@ -18,6 +19,7 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
   handleUpdateRefStatus,
   handleDeleteReferee,
   showToast,
+  isScheduleLocked = false,
 }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

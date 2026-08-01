@@ -318,6 +318,10 @@ export const usePresidentDashboard = () => {
   };
 
   const handleDeleteReferee = async (id: string) => {
+    if (isScheduleLocked) {
+      showToast('⚠️ Referees cannot be deleted during an active/confirmed season.');
+      return;
+    }
     await ApiService.deleteReferee(id);
     setReferees(referees.filter((r) => r.id !== id));
     showToast('Referee deleted from database.');
@@ -388,8 +392,7 @@ export const usePresidentDashboard = () => {
     const res = await ApiService.createAnnouncement({
       title: announcementTitle,
       content: announcementBody,
-      target_role: recipientGroup,
-      author_id: 'president-1'
+      target_role: recipientGroup
     });
     if (res.success && res.data) {
       setAnnouncements([res.data, ...announcements]);

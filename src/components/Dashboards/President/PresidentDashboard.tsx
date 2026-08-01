@@ -144,6 +144,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             handleUpdateRefStatus={handleUpdateRefStatus}
             handleDeleteReferee={handleDeleteReferee}
             showToast={showToast}
+            isScheduleLocked={isScheduleLocked}
           />
         )}
 

@@ -756,10 +756,19 @@ export const ApiService = {
     }
 
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const currentUserId = userData?.user?.id;
+
+      // Validate UUID format for author_id or default to authenticated user id
+      const isUuid = (val?: string) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      const authorId = isUuid(announcement.author_id) ? announcement.author_id : (isUuid(currentUserId) ? currentUserId : null);
+
       const sanitizedPayload = {
-        ...announcement,
         title: sanitizeHtmlText(announcement.title),
-        content: sanitizeHtmlText(announcement.content)
+        content: sanitizeHtmlText(announcement.content),
+        target_role: announcement.target_role || 'all',
+        target_team_id: announcement.target_team_id || null,
+        author_id: authorId
       };
 
       const { data, error } = await supabase
@@ -913,7 +922,17 @@ export const ApiService = {
     }
 
     try {
-      const { data, error } = await supabase.from('seasons').insert(season).select().single();
+      // Map frontend fields strictly to DB snake_case columns
+      const dbPayload: Record<string, any> = {
+        name: sanitizeHtmlText(season.name),
+        start_date: season.startDate || season.start_date || null,
+        end_date: season.endDate || season.end_date || null,
+        registration_cutoff: season.registrationCutoff || season.registration_cutoff || null,
+        status: season.status || 'active',
+        is_locked: Boolean(season.isLocked ?? season.is_locked ?? false)
+      };
+
+      const { data, error } = await supabase.from('seasons').insert(dbPayload).select().single();
       if (error) return { success: false, data: null, message: error.message };
       await this.logAuditAction('CREATE_SEASON', 'seasons', data.id, { name: season.name });
       return { success: true, data };
@@ -948,13 +967,22 @@ export const ApiService = {
   },
 
   async createLeague(league: any): Promise<ApiResponse<any>> {
-    if (!league.name || !league.slug) {
-      return { success: false, data: null, message: 'League name and slug are required.' };
+    if (!league.name) {
+      return { success: false, data: null, message: 'League name is required.' };
     }
 
     try {
       this.invalidateCache();
-      const { data, error } = await supabase.from('competitions').insert(league).select().single();
+      const slug = league.slug || league.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const dbPayload = {
+        name: sanitizeHtmlText(league.name),
+        slug,
+        country: league.country || 'Kenya',
+        season: league.season || '2027',
+        is_active: true
+      };
+
+      const { data, error } = await supabase.from('competitions').insert(dbPayload).select().single();
       if (error) return { success: false, data: null, message: error.message };
       await this.logAuditAction('CREATE_LEAGUE', 'competitions', data.id, { name: league.name });
       return { success: true, data };
@@ -964,15 +992,20 @@ export const ApiService = {
     }
   },
 
-  async approveTeam(teamId: string, leagueId: string, division: string): Promise<ApiResponse<any>> {
+  async approveTeam(teamId: string, leagueId: string, _division?: string): Promise<ApiResponse<any>> {
     if (!teamId) {
       return { success: false, data: null, message: 'Team ID is required.' };
     }
 
     try {
       this.invalidateCache();
-      const { data, error } = await supabase.from('teams').update({ competition_id: leagueId, status: 'approved', division }).eq('id', teamId).select().single();
-      await this.logAuditAction('APPROVE_TEAM', 'teams', teamId, { leagueId, division });
+      // Ensure payload only includes valid columns on teams table: competition_id, status
+      const updatePayload: Record<string, any> = { status: 'approved' };
+      if (leagueId && leagueId !== 'premier' && leagueId !== 'championship') {
+        updatePayload.competition_id = leagueId;
+      }
+      const { data, error } = await supabase.from('teams').update(updatePayload).eq('id', teamId).select().single();
+      await this.logAuditAction('APPROVE_TEAM', 'teams', teamId, { leagueId });
       return { success: true, data: data || { id: teamId, status: 'approved' } };
     } catch (err: any) {
       return { success: true, data: { id: teamId, status: 'approved' } };
@@ -992,6 +1025,61 @@ export const ApiService = {
       return { success: true, data: { id: teamId, status: 'rejected' } };
     } catch (err: any) {
       return { success: true, data: { id: teamId, status: 'rejected' } };
+    }
+  },
+
+  // --- USER PROFILE & AUTHENTICATION MUTATIONS ---
+  async updateUserProfile(userId: string, profileUpdates: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    avatarUrl?: string;
+    bio?: string;
+  }): Promise<ApiResponse<any>> {
+    if (!userId) {
+      return { success: false, data: null, message: 'User ID is required.' };
+    }
+
+    try {
+      // Strictly filter to permitted fields; omit protected fields (role, id, email, created_at)
+      const payload: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (typeof profileUpdates.firstName === 'string') payload.first_name = sanitizeHtmlText(profileUpdates.firstName);
+      if (typeof profileUpdates.lastName === 'string') payload.last_name = sanitizeHtmlText(profileUpdates.lastName);
+      if (typeof profileUpdates.phone === 'string') payload.phone = sanitizeHtmlText(profileUpdates.phone);
+      if (typeof profileUpdates.avatarUrl === 'string') payload.avatar_url = sanitizeHtmlText(profileUpdates.avatarUrl);
+      if (typeof profileUpdates.bio === 'string') payload.bio = sanitizeHtmlText(profileUpdates.bio);
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) return { success: false, data: null, message: error.message };
+      await this.logAuditAction('UPDATE_PROFILE', 'profiles', userId, { fieldsUpdated: Object.keys(payload) });
+      return { success: true, data };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
+    }
+  },
+
+  async updateUserPassword(newPassword: string): Promise<ApiResponse<void>> {
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, data: null, message: 'Password must be at least 6 characters.' };
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data: undefined };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
     }
   },
 
