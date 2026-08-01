@@ -1,5 +1,4 @@
-import React from 'react';
-import { Menu, Lock, Unlock, Bell, Sun, Moon, Activity, Calendar, Shield, UserCheck, Trophy, Megaphone, X, Users, Zap } from 'lucide-react';
+import { Menu, Lock, Unlock, Bell, Sun, Moon, Activity, Calendar, Shield, UserCheck, Trophy, Megaphone, X, Users, Zap, LogOut } from 'lucide-react';
 import type { PresidentTab } from '../../types';
 
 interface PresidentHeaderProps {
@@ -93,9 +92,15 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className={`text-xs font-bold px-2 py-1 rounded-lg ${isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-rose-400' : 'hover:bg-slate-100 text-slate-600 hover:text-rose-600'} transition-all`}
+                  title="Logout"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    isDark
+                      ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30'
+                      : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
+                  }`}
                 >
-                  Exit
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
                 </button>
               )}
             </div>

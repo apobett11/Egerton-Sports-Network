@@ -177,6 +177,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             isDark={isDark}
             toggleTheme={toggleTheme}
             showToast={showToast}
+            onLogout={onLogout}
           />
         )}
 

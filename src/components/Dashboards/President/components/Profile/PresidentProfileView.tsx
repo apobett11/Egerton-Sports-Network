@@ -1,18 +1,20 @@
-import React from 'react';
-import { User, Shield, Calendar, Mail, Phone, Sun, Moon, Bell, Lock, Info, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Shield, Calendar, Mail, Phone, Sun, Moon, Bell, Lock, Info, CheckCircle2, LogOut } from 'lucide-react';
 
 interface PresidentProfileViewProps {
   isDark: boolean;
   toggleTheme: () => void;
   showToast: (msg: string) => void;
+  onLogout?: () => void;
 }
 
 export const PresidentProfileView: React.FC<PresidentProfileViewProps> = ({
   isDark,
   toggleTheme,
   showToast,
+  onLogout,
 }) => {
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const toggleNotifications = () => {
     setNotificationsEnabled(!notificationsEnabled);
@@ -155,6 +157,25 @@ export const PresidentProfileView: React.FC<PresidentProfileViewProps> = ({
                 Change Password
               </button>
             </div>
+
+            {onLogout && (
+              <div className={`p-4 rounded-2xl border flex items-center justify-between ${isDark ? 'bg-rose-500/5 border-rose-500/20' : 'bg-rose-50/50 border-rose-200'}`}>
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4 h-4 text-rose-500" />
+                  <div>
+                    <span className={`font-bold block ${isDark ? 'text-white' : 'text-slate-900'}`}>Executive Logout</span>
+                    <span className="text-slate-400 text-[10px]">Sign out of your active session</span>
+                  </div>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ABOUT & SYSTEM VERSION */}
