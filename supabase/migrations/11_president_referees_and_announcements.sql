@@ -1,9 +1,6 @@
--- Migration 11: President Dashboard Referees and Announcements Support
--- Support for President Pre-Season referee management and announcement workflows
-
 -- 1. Create referees table
 CREATE TABLE IF NOT EXISTS public.referees (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   email TEXT,
   phone TEXT NOT NULL,

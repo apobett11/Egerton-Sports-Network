@@ -13,7 +13,7 @@ END $$;
 
 -- 2. Create article_gallery table for journalist media uploads
 CREATE TABLE IF NOT EXISTS public.article_gallery (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   journalist_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
   caption TEXT,

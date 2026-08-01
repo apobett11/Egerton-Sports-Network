@@ -63,7 +63,7 @@ CREATE TRIGGER trigger_news_updated_at BEFORE UPDATE ON public.news_articles FOR
 
 -- 4. Create Historical Standings table if not exists
 CREATE TABLE IF NOT EXISTS public.historical_standings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   season_id TEXT NOT NULL,
   position INT NOT NULL,
   team_id TEXT NOT NULL,

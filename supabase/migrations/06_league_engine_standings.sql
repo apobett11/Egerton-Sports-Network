@@ -1,9 +1,6 @@
--- Migration 06: League Engine Standings & Historical Archive
--- Automatic computed standings function, immutable archived season table, and strict RLS policies
-
 -- 1. Historical Standings Table for Archived Seasons
 CREATE TABLE IF NOT EXISTS public.historical_standings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   season_id TEXT NOT NULL,
   competition_id UUID REFERENCES public.competitions(id) ON DELETE CASCADE,
   team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
@@ -30,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_historical_standings_position ON public.historica
 -- Computes real-time standings directly from finalized fixtures (status = 'FT')
 CREATE OR REPLACE FUNCTION public.get_league_standings(p_competition_id UUID)
 RETURNS TABLE (
-  position INT,
+  "position" INT,
   team_id UUID,
   team_name TEXT,
   team_logo TEXT,

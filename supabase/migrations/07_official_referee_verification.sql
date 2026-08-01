@@ -36,7 +36,7 @@ CREATE POLICY "Only assigned referee or admin updates official match result"
 -- 4. Update get_league_standings RPC function to aggregate ONLY official referee-verified match results
 CREATE OR REPLACE FUNCTION public.get_league_standings(p_competition_id UUID)
 RETURNS TABLE (
-  position INT,
+  "position" INT,
   team_id UUID,
   team_name TEXT,
   team_logo TEXT,

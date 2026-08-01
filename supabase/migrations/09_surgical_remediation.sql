@@ -57,7 +57,7 @@ END $$;
 
 -- 3. Create seasons table for pre-season management
 CREATE TABLE IF NOT EXISTS public.seasons (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   start_date DATE,
   end_date DATE,
