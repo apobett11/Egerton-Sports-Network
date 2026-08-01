@@ -81,9 +81,15 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
             </button>
 
             <div className="flex items-center gap-2 pl-2 border-l border-slate-700/30">
-              <div className="w-8 h-8 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 font-extrabold text-xs flex items-center justify-center border border-blue-500/20">
+              <button
+                onClick={() => setActiveView('profile')}
+                title="Profile & Settings"
+                className={`w-8 h-8 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 font-extrabold text-xs flex items-center justify-center border border-blue-500/20 hover:scale-105 cursor-pointer transition-all ${
+                  activeView === 'profile' ? 'ring-2 ring-blue-500' : ''
+                }`}
+              >
                 P
-              </div>
+              </button>
               {onLogout && (
                 <button
                   onClick={onLogout}

@@ -71,7 +71,7 @@ export const usePresidentDashboard = () => {
   const [newRefExp, setNewRefExp] = useState('3 Seasons');
 
   // --- TAB 4: FIXTURE ENGINE & SCHEDULE LOCK STATE ---
-  const [draftFixtures, setDraftFixtures] = useState<DraftFixture[]>(INITIAL_DRAFT_FIXTURES);
+  const [draftFixtures, setDraftFixtures] = useState<DraftFixture[]>([]);
   const [isScheduleLocked, setIsScheduleLocked] = useState(false);
   const [showLockWarningModal, setShowLockWarningModal] = useState(false);
   const [editingFixture, setEditingFixture] = useState<DraftFixture | null>(null);
@@ -338,7 +338,7 @@ export const usePresidentDashboard = () => {
     ];
     setDraftFixtures(generated);
     setConflictsResolved(true);
-    showToast('⚡ Draft round-robin fixtures generated successfully!');
+    showToast('⚡ Leg 1 round-robin fixtures generated for review!');
   };
 
   const handleSwapTeams = (id: string) => {

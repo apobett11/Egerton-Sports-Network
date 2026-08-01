@@ -6,6 +6,7 @@ export type PresidentTab =
   | 'teams'
   | 'referees'
   | 'registration'
+  | 'profile'
   | 'wizard';
 
 export type LeagueTab = 'premier' | 'championship';

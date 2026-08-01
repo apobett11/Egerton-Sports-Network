@@ -8,6 +8,7 @@ import { TeamOnboardingView } from './components/Teams/TeamOnboardingView';
 import { RefereePoolView } from './components/Referees/RefereePoolView';
 import { FixtureEngineView } from './components/Fixtures/FixtureEngineView';
 import { BroadcastView } from './components/Megaphone/BroadcastView';
+import { PresidentProfileView } from './components/Profile/PresidentProfileView';
 
 export interface PresidentDashboardProps {
   onLogout?: () => void;
@@ -142,6 +143,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             handleAddReferee={handleAddReferee}
             handleUpdateRefStatus={handleUpdateRefStatus}
             handleDeleteReferee={handleDeleteReferee}
+            showToast={showToast}
           />
         )}
 
@@ -151,7 +153,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             draftFixtures={draftFixtures}
             isScheduleLocked={isScheduleLocked}
             handleGenerateFixtures={handleGenerateFixtures}
-            setShowLockWarningModal={setShowLockWarningModal}
+            handleLockSchedule={handleLockSchedule}
             handleSwapTeams={handleSwapTeams}
           />
         )}
@@ -167,6 +169,14 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             setRecipientGroup={setRecipientGroup}
             recentAnnouncements={announcements}
             handleBroadcastAnnouncement={handleBroadcastAnnouncement}
+          />
+        )}
+
+        {activeView === 'profile' && (
+          <PresidentProfileView
+            isDark={isDark}
+            toggleTheme={toggleTheme}
+            showToast={showToast}
           />
         )}
 
