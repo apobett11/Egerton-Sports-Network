@@ -61,6 +61,15 @@ export const AppLayout: React.FC<LayoutProps> = ({
     linesman: [
       { label: 'Assistant Reports', path: '/linesman', icon: <Award className="w-4 h-4" /> },
     ],
+    doctor: [
+      { label: 'Medical Clearances', path: '/doctor', icon: <Shield className="w-4 h-4" /> },
+    ],
+    team_doctor: [
+      { label: 'Medical Clearances', path: '/doctor', icon: <Shield className="w-4 h-4" /> },
+    ],
+    assistant_referee: [
+      { label: 'Assistant Reports', path: '/linesman', icon: <Award className="w-4 h-4" /> },
+    ],
     president: [
       { label: 'Club Management', path: '/president', icon: <Shield className="w-4 h-4" /> },
     ],

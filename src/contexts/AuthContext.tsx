@@ -3,12 +3,53 @@ import type { UserProfile, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+export const normalizeRole = (rawRole?: string): UserRole => {
+  const r = (rawRole || '').toLowerCase().trim();
+  if (r === 'admin' || r === 'super_admin' || r === 'administrator') return 'admin';
+  if (r === 'president') return 'president';
+  if (r === 'coach') return 'coach';
+  if (r === 'captain') return 'captain';
+  if (r === 'doctor' || r === 'team_doctor') return 'doctor';
+  if (r === 'player') return 'player';
+  if (r === 'referee') return 'referee';
+  if (r === 'linesman' || r === 'assistant_referee') return 'linesman';
+  if (r === 'journalist') return 'journalist';
+  return 'guest';
+};
+
+export const getRouteForRole = (role: UserRole): string => {
+  switch (role) {
+    case 'admin':
+      return '/admin';
+    case 'president':
+      return '/president';
+    case 'coach':
+      return '/coach';
+    case 'captain':
+      return '/captain';
+    case 'doctor':
+    case 'team_doctor':
+      return '/doctor';
+    case 'player':
+      return '/player';
+    case 'referee':
+      return '/referee';
+    case 'linesman':
+    case 'assistant_referee':
+      return '/linesman';
+    case 'journalist':
+      return '/journalist';
+    default:
+      return '/home';
+  }
+};
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   role: UserRole;
   isLoading: boolean;
-  login: (email: string, pass: string) => Promise<{ error: string | null }>;
+  login: (email: string, pass: string) => Promise<{ error: string | null; role: UserRole; profile: UserProfile | null }>;
   register: (email: string, pass: string, firstName: string, lastName: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   hasPermission: (requiredRoles: UserRole[]) => boolean;
@@ -49,26 +90,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, role, first_name, last_name, email, phone, country, avatar_url, bio, team_id, player_id')
         .eq('id', userId)
         .single();
 
       if (error || !data) {
         setProfile(null);
         setRole('guest');
+        return null;
       } else {
-        const userProf = data as UserProfile;
+        const resolvedRole = normalizeRole(data.role);
+        const userProf = { ...(data as UserProfile), role: resolvedRole };
         setProfile(userProf);
-        setRole(userProf.role || 'guest');
+        setRole(resolvedRole);
+        return userProf;
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
       setProfile(null);
       setRole('guest');
+      return null;
     }
   };
 
@@ -110,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!isMounted) return;
 
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' && !currentSession) {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !currentSession)) {
         setUser(null);
         setProfile(null);
         setRole('guest');
@@ -144,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string): Promise<{ error: string | null; role: UserRole; profile: UserProfile | null }> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -154,17 +199,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         setIsLoading(false);
-        return { error: error.message };
+        return { error: error.message, role: 'guest', profile: null };
       }
 
       if (data.user) {
-        await fetchProfile(data.user.id);
+        const fetchedProf = await fetchProfile(data.user.id);
+        setIsLoading(false);
+        return { error: null, role: fetchedProf?.role || 'guest', profile: fetchedProf };
       }
       setIsLoading(false);
-      return { error: null };
+      return { error: null, role: 'guest', profile: null };
     } catch (err: any) {
       setIsLoading(false);
-      return { error: err.message || 'Login failed' };
+      return { error: err.message || 'Login failed', role: 'guest', profile: null };
     }
   };
 

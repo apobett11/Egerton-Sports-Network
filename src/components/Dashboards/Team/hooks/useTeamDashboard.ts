@@ -3,6 +3,7 @@ import type { Player, UserRole, PlayerPosition } from '../types';
 import { initialRoster } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS';
 
@@ -15,13 +16,20 @@ export interface RoleAssignments {
 }
 
 export const useTeamDashboard = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem('team-session') === 'active';
+  const { user, role: authRole, logout: authLogout } = useAuth();
+
+  const isLoggedIn = Boolean(user && authRole !== 'guest');
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    return authRole === 'captain' ? 'CAPTAIN' : 'COACH';
   });
 
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    return (localStorage.getItem('team-role') as UserRole) || 'COACH';
-  });
+  useEffect(() => {
+    if (authRole === 'captain') {
+      setCurrentRole('CAPTAIN');
+    } else if (authRole === 'coach') {
+      setCurrentRole('COACH');
+    }
+  }, [authRole]);
 
   const [activeView, setActiveView] = useState<DashboardView>('DASHBOARD');
 
@@ -104,24 +112,18 @@ export const useTeamDashboard = () => {
 
   const handleLogin = (role: UserRole) => {
     setCurrentRole(role);
-    setIsLoggedIn(true);
-    localStorage.setItem('team-session', 'active');
-    localStorage.setItem('team-role', role);
     setActiveView('DASHBOARD');
-    showToast(`Logged in as ${role === 'COACH' ? 'Coach' : 'Captain'}`);
+    showToast(`Access active as ${role === 'COACH' ? 'Coach' : 'Captain'}`);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    localStorage.removeItem('team-session');
-    localStorage.removeItem('team-role');
-    showToast('Signed out of Egerton FC session.');
+  const handleLogout = async () => {
+    await authLogout();
+    window.location.hash = '/login';
   };
 
   const handleRoleToggle = () => {
     const nextRole: UserRole = currentRole === 'COACH' ? 'CAPTAIN' : 'COACH';
     setCurrentRole(nextRole);
-    localStorage.setItem('team-role', nextRole);
     showToast(`Switched access context to ${nextRole === 'COACH' ? 'Coach Mode' : 'Captain Mode'}`);
   };
 

@@ -1,25 +1,37 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFormResilience } from '../../hooks/useFormResilience';
 import { useToast } from '../../contexts/ToastContext';
-import { LogIn } from 'lucide-react';
+import { LogIn, Loader2 } from 'lucide-react';
 
-export type AllowedRole = 'ADMIN' | 'COACH' | 'CAPTAIN' | 'JOURNALIST' | 'PRESIDENT' | 'REFEREE' | 'LINESMAN' | 'PLAYER';
+export type AllowedRole = 'ADMIN' | 'COACH' | 'CAPTAIN' | 'JOURNALIST' | 'PRESIDENT' | 'REFEREE' | 'LINESMAN' | 'PLAYER' | 'DOCTOR';
 
 interface LoginPageProps {
-  onLoginSuccess: (role: AllowedRole) => void;
+  onLoginSuccess?: (role: AllowedRole) => void;
   onCancel?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }) => {
-  const { login, role, getRedirectRoute, clearRedirectRoute } = useAuth();
+  const { login, user, role, isLoading, getRedirectRoute, clearRedirectRoute } = useAuth();
   const { showSuccess, showError } = useToast();
   const { focusAndScrollToFirstError } = useFormResilience();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [redirectingMessage, setRedirectingMessage] = useState<string | null>(null);
+
+  // Auto-redirect if already authenticated with Supabase
+  useEffect(() => {
+    if (!isLoading && user && role !== 'guest') {
+      const savedRoute = getRedirectRoute();
+      clearRedirectRoute();
+      const targetHash = savedRoute || getRouteForRole(role);
+      setRedirectingMessage('Authenticating and redirecting...');
+      window.location.hash = targetHash;
+    }
+  }, [user, role, isLoading, getRedirectRoute, clearRedirectRoute]);
 
   const submitAction = async () => {
     if (!email || !password) {
@@ -39,13 +51,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
       return;
     }
 
+    setRedirectingMessage('Authenticating and redirecting...');
     showSuccess('Authentication successful. Redirecting...');
+
     const savedRoute = getRedirectRoute();
-    if (savedRoute) {
-      clearRedirectRoute();
-      window.location.hash = savedRoute;
+    const targetHash = savedRoute || getRouteForRole(res.role);
+    clearRedirectRoute();
+    
+    if (onLoginSuccess) {
+      onLoginSuccess((res.role || 'player').toUpperCase() as AllowedRole);
     } else {
-      onLoginSuccess((role || 'PLAYER').toUpperCase() as AllowedRole);
+      window.location.hash = targetHash;
     }
   };
 
@@ -56,6 +72,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
     executeSubmit();
   };
 
+  if (redirectingMessage) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-200 flex flex-col items-center justify-center p-4 font-sans">
+        <div className="flex items-center gap-3 bg-[#1E1E1E] border border-emerald-500/30 px-6 py-4 rounded-2xl shadow-2xl">
+          <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+          <span className="text-sm font-bold text-emerald-400 tracking-wide">{redirectingMessage}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#111111] text-gray-200 flex items-center justify-center p-4 font-sans">
       <div className="max-w-md w-full bg-[#1E1E1E] border border-gray-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6">
@@ -63,8 +90,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
           <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-extrabold text-xl mx-auto shadow-md">
             E
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">LiveScore Platform</h1>
-          <p className="text-xs text-gray-400">Authenticated Role-Based Access Portal</p>
+          <h1 className="text-2xl font-black text-white tracking-tight">Egerton Sports Network</h1>
+          <p className="text-xs text-gray-400">Production Supabase Authentication Portal</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs" noValidate>

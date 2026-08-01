@@ -3,9 +3,12 @@ export type UserRole =
   | 'player' 
   | 'captain' 
   | 'coach' 
+  | 'doctor'
+  | 'team_doctor'
   | 'journalist' 
   | 'referee' 
   | 'linesman' 
+  | 'assistant_referee'
   | 'president' 
   | 'admin';
 
@@ -19,6 +22,8 @@ export interface UserProfile {
   country?: string;
   avatar_url?: string;
   bio?: string;
+  team_id?: string;
+  player_id?: string;
   created_at?: string;
   updated_at?: string;
 }

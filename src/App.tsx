@@ -28,6 +28,7 @@ const PresidentDashboard = lazy(() => import('./components/Dashboards/President/
 const RefereeDashboard = lazy(() => import('./components/Dashboards/Referee/RefereeDashboard'));
 const LinesmanDashboard = lazy(() => import('./components/Dashboards/Linesman/LinesmanDashboard'));
 const PlayerDashboard = lazy(() => import('./components/Dashboards/Player/PlayerDashboard'));
+const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/DoctorDashboard'));
 const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
 
 const DashboardLoader: React.FC = () => (
@@ -169,11 +170,31 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'coach' || route === 'captain') {
+  if (route === 'coach') {
     return (
-      <ProtectedRoute allowedRoles={['coach', 'captain', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+      <ProtectedRoute allowedRoles={['coach', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
           <TeamDashboard />
+        </Suspense>
+      </ProtectedRoute>
+    );
+  }
+
+  if (route === 'captain') {
+    return (
+      <ProtectedRoute allowedRoles={['captain', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <TeamDashboard />
+        </Suspense>
+      </ProtectedRoute>
+    );
+  }
+
+  if (route === 'doctor' || route === 'team_doctor') {
+    return (
+      <ProtectedRoute allowedRoles={['doctor', 'team_doctor', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <DoctorDashboard onLogout={() => handleNavigateHash('/home')} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -209,9 +230,9 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'linesman') {
+  if (route === 'linesman' || route === 'assistant_referee') {
     return (
-      <ProtectedRoute allowedRoles={['linesman', 'referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+      <ProtectedRoute allowedRoles={['linesman', 'assistant_referee', 'referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
           <LinesmanDashboard />
         </Suspense>

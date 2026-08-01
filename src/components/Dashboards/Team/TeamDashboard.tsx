@@ -87,7 +87,8 @@ export const TeamDashboard: React.FC = () => {
   const selectedNodeCoord = selectedPitchSlot !== null ? activeCoordinates[selectedPitchSlot] : null;
 
   if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
+    window.location.hash = '/login';
+    return null;
   }
 
   return (
