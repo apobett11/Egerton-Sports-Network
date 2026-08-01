@@ -97,8 +97,8 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
         </div>
       </header>
 
-      {/* TOP TAB NAVIGATION BAR FOR 5 MANDATORY PRE-SEASON MODULES */}
-      <div className={`border-b ${isDark ? 'bg-[#0E1424]/80 border-slate-800' : 'bg-white/80 border-slate-200'} backdrop-blur-md sticky top-16 z-30 overflow-x-auto no-scrollbar`}>
+      {/* TOP TAB NAVIGATION BAR FOR MANDATORY PRE-SEASON MODULES (DESKTOP ONLY) */}
+      <div className={`hidden md:block border-b ${isDark ? 'bg-[#0E1424]/80 border-slate-800' : 'bg-white/80 border-slate-200'} backdrop-blur-md sticky top-16 z-30 overflow-x-auto no-scrollbar`}>
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center gap-2 py-2">
           {[
             { id: 'overview', label: 'Overview', icon: Activity },
@@ -106,7 +106,7 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
             { id: 'teams', label: '2. Team Approvals', icon: Shield },
             { id: 'referees', label: '3. Referee Setup', icon: UserCheck },
             { id: 'fixture_engine', label: '4. Fixture Engine', icon: Trophy },
-            { id: 'megaphone', label: '5. Megaphone', icon: Megaphone }
+            { id: 'megaphone', label: '5. Make Announcement', icon: Megaphone }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeView === tab.id;
@@ -130,14 +130,20 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
         </div>
       </div>
 
-      {/* SIDEBAR UTILITY DRAWER */}
+      {/* SIDEBAR UTILITY DRAWER WITH AUTO-CLOSE BACKDROP */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex">
-          <div className={`w-72 h-full ${isDark ? 'bg-[#090D16] border-slate-800' : 'bg-white border-slate-200'} border-r p-6 flex flex-col justify-between shadow-2xl transition-all`}>
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex transition-opacity animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-72 h-full ${isDark ? 'bg-[#090D16] border-slate-800' : 'bg-white border-slate-200'} border-r p-6 flex flex-col justify-between shadow-2xl transition-all`}
+          >
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-700/30">
                 <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Pre-Season Dashboard</span>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white">
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -145,11 +151,11 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
               <div className="space-y-1.5 text-xs font-bold">
                 {[
                   { id: 'overview', label: 'Overview', icon: Activity },
-                  { id: 'season_engine', label: 'Season & League Engine', icon: Calendar },
-                  { id: 'teams', label: 'Team Onboarding & Approvals', icon: Shield },
-                  { id: 'referees', label: 'Referee Pool Setup', icon: UserCheck },
-                  { id: 'fixture_engine', label: 'Fixture Engine & Schedule Lock', icon: Trophy },
-                  { id: 'megaphone', label: 'Pre-Season Megaphone', icon: Megaphone },
+                  { id: 'season_engine', label: 'League Registration', icon: Calendar },
+                  { id: 'teams', label: 'Team Approvals', icon: Shield },
+                  { id: 'referees', label: 'Referee Management', icon: UserCheck },
+                  { id: 'fixture_engine', label: 'Fixture Engine', icon: Trophy },
+                  { id: 'megaphone', label: 'Make Announcement', icon: Megaphone },
                   { id: 'registration', label: 'Registration Links', icon: Zap }
                 ].map((item) => {
                   const Icon = item.icon;

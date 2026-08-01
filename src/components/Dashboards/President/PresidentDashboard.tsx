@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, X, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, X, AlertTriangle, Activity, Calendar, UserCheck, Megaphone, Trophy } from 'lucide-react';
 import { usePresidentDashboard } from './hooks/usePresidentDashboard';
 import { PresidentHeader } from './components/Header/PresidentHeader';
 import { PresidentHomeOverview } from './components/Home/PresidentHomeOverview';
@@ -24,7 +24,6 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     toastMessage,
     showToast,
     seasons,
-    leagues,
     showCreateSeasonModal,
     setShowCreateSeasonModal,
     showCreateLeagueModal,
@@ -46,20 +45,12 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     pendingTeams,
     teams,
     referees,
-    linesmanRule,
-    setLinesmanRule,
-    neutralTeamRule,
-    setNeutralTeamRule,
-    maxRefCapacity,
-    setMaxRefCapacity,
     showAddRefModal,
     setShowAddRefModal,
     newRefName,
     setNewRefName,
     newRefPhone,
     setNewRefPhone,
-    newRefEmail: _newRefEmail,
-    setNewRefEmail: _setNewRefEmail,
     newRefBadge,
     setNewRefBadge,
     draftFixtures,
@@ -74,22 +65,20 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     setAnnouncementTitle,
     announcementBody,
     setAnnouncementBody,
-    selectedAudiences,
+    recipientGroup,
+    setRecipientGroup,
+    announcements,
     handleCreateSeason,
-    handleToggleSeasonStatus,
     handleCreateLeague,
-    handleToggleLeagueStatus,
-    handleArchiveLeague,
-    handleDeleteLeague,
     handleApproveTeam,
     handleRejectTeam,
     handleAddReferee,
-    handleToggleRefStatus,
+    handleUpdateRefStatus,
+    handleDeleteReferee,
     handleGenerateFixtures,
     handleSwapTeams,
     handleLockSchedule,
     handleBroadcastAnnouncement,
-    toggleAudience,
   } = usePresidentDashboard();
 
   return (
@@ -123,11 +112,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
           <PresidentHomeOverview
             isDark={isDark}
             seasons={seasons}
-            pendingTeams={pendingTeams}
             teams={teams}
             referees={referees}
-            draftFixtures={draftFixtures}
-            isScheduleLocked={isScheduleLocked}
+            announcementsCount={announcements.length}
             setActiveView={setActiveView}
           />
         )}
@@ -135,14 +122,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         {activeView === 'season_engine' && (
           <SeasonEngineView
             isDark={isDark}
-            seasons={seasons}
-            leagues={leagues}
-            setShowCreateSeasonModal={setShowCreateSeasonModal}
-            setShowCreateLeagueModal={setShowCreateLeagueModal}
-            handleToggleSeasonStatus={handleToggleSeasonStatus}
-            handleToggleLeagueStatus={handleToggleLeagueStatus}
-            handleArchiveLeague={handleArchiveLeague}
-            handleDeleteLeague={handleDeleteLeague}
+            teams={teams}
           />
         )}
 
@@ -159,14 +139,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
           <RefereePoolView
             isDark={isDark}
             referees={referees}
-            linesmanRule={linesmanRule}
-            setLinesmanRule={setLinesmanRule}
-            neutralTeamRule={neutralTeamRule}
-            setNeutralTeamRule={setNeutralTeamRule}
-            maxRefCapacity={maxRefCapacity}
-            setMaxRefCapacity={setMaxRefCapacity}
-            setShowAddRefModal={setShowAddRefModal}
-            handleToggleRefStatus={handleToggleRefStatus}
+            handleAddReferee={handleAddReferee}
+            handleUpdateRefStatus={handleUpdateRefStatus}
+            handleDeleteReferee={handleDeleteReferee}
           />
         )}
 
@@ -188,8 +163,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             setAnnouncementTitle={setAnnouncementTitle}
             announcementBody={announcementBody}
             setAnnouncementBody={setAnnouncementBody}
-            selectedAudiences={selectedAudiences}
-            toggleAudience={toggleAudience}
+            recipientGroup={recipientGroup}
+            setRecipientGroup={setRecipientGroup}
+            recentAnnouncements={announcements}
             handleBroadcastAnnouncement={handleBroadcastAnnouncement}
           />
         )}
@@ -325,7 +301,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleAddReferee} className="space-y-4 text-xs font-semibold">
+            <form onSubmit={(e) => { e.preventDefault(); handleAddReferee({ name: newRefName, email: '', phone: newRefPhone }); setShowAddRefModal(false); }} className="space-y-4 text-xs font-semibold">
               <div>
                 <label htmlFor="ref-name-input" className="block text-slate-400 uppercase font-bold mb-1">Referee Full Name</label>
                 <input id="ref-name-input" type="text" value={newRefName} onChange={(e) => setNewRefName(e.target.value)} placeholder="e.g. Ref. Peter Ndambuki" className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
@@ -377,6 +353,39 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
           </div>
         </div>
       )}
+
+      {/* MOBILE FIXED BOTTOM NAVIGATION BAR */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${isDark ? 'bg-[#090D16]/95 border-slate-800/80 text-slate-400' : 'bg-white/95 border-slate-200/80 text-slate-600'} backdrop-blur-xl border-t shadow-2xl safe-area-pb`}>
+        <div className="grid grid-cols-5 h-16 max-w-md mx-auto items-center px-1">
+          {[
+            { id: 'overview', label: 'Overview', icon: Activity },
+            { id: 'season_engine', label: 'Leagues', icon: Calendar },
+            { id: 'referees', label: 'Referees', icon: UserCheck },
+            { id: 'megaphone', label: 'Announce', icon: Megaphone },
+            { id: 'fixture_engine', label: 'Fixtures', icon: Trophy }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveView(item.id as any)}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer min-h-[48px] ${
+                  isActive
+                    ? 'text-blue-600 dark:text-blue-400 font-extrabold scale-105'
+                    : 'hover:text-slate-900 dark:hover:text-white font-medium'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 mt-0.5" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 };

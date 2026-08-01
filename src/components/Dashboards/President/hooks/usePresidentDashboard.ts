@@ -60,7 +60,6 @@ export const usePresidentDashboard = () => {
   const [editingRef, setEditingRef] = useState<RefereeItem | null>(null);
 
   // Ref Rules
-  const [linesmanRule, setLinesmanRule] = useState(2);
   const [neutralTeamRule, setNeutralTeamRule] = useState(true);
   const [maxRefCapacity, setMaxRefCapacity] = useState(3);
 
@@ -79,14 +78,60 @@ export const usePresidentDashboard = () => {
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [conflictsResolved, setConflictsResolved] = useState(false);
 
-  // --- TAB 5: PRE-SEASON MEGAPHONE STATE ---
+  // --- TAB 5: MAKE ANNOUNCEMENT STATE ---
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
-  const [selectedAudiences, setSelectedAudiences] = useState<string[]>(['All Dashboards']);
-  const [isScheduled, setIsScheduled] = useState(false);
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [recipientGroup, setRecipientGroup] = useState('all');
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const isDark = theme === 'dark';
+
+  // FETCH SUPABASE DATA ON MOUNT
+  useEffect(() => {
+    const fetchPresidentData = async () => {
+      // 1. Fetch Referees
+      const refRes = await ApiService.getReferees();
+      if (refRes.success && refRes.data && refRes.data.length > 0) {
+        const formatted: RefereeItem[] = refRes.data.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          phone: r.phone,
+          status: r.status || 'Active',
+          badgeLevel: r.badge_level
+        }));
+        setReferees(formatted);
+      }
+
+      // 2. Fetch Announcements
+      const ancRes = await ApiService.getAnnouncements();
+      if (ancRes.success && ancRes.data) {
+        setAnnouncements(ancRes.data);
+      }
+
+      // 3. Fetch Teams
+      const teamRes = await ApiService.getTeams();
+      if (teamRes.success && teamRes.data && teamRes.data.length > 0) {
+        const formattedTeams: TeamItem[] = teamRes.data.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          code: t.shortName || t.short_name || 'EGA',
+          league: t.division?.toLowerCase().includes('championship') ? 'championship' : 'premier',
+          coach: t.coach || 'Assigned Head Coach',
+          captain: t.captain || 'Team Captain',
+          playerCount: t.squadCount || t.playerCount || 16,
+          maxRoster: 25,
+          doctorStatus: 'Assigned',
+          doctorName: 'Dr. Official',
+          hasCoach: true,
+          hasCaptain: true
+        }));
+        setTeams(formattedTeams);
+      }
+    };
+
+    fetchPresidentData();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -248,33 +293,34 @@ export const usePresidentDashboard = () => {
     showToast('Team registration rejected.');
   };
 
-  // --- TAB 3 HANDLERS (REFEREE POOL) ---
-  const handleAddReferee = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRefName || !newRefPhone) return;
-    const newRef: RefereeItem = {
-      id: `r-${Date.now()}`,
-      name: newRefName,
-      phone: newRefPhone,
-      email: newRefEmail,
-      availability: 'Available',
-      status: 'Active',
-      experience: newRefExp,
-      badgeLevel: newRefBadge,
-      assignedMatchesCount: 0,
-      seasonAssigned: true
-    };
-    setReferees([...referees, newRef]);
-    setShowAddRefModal(false);
-    setNewRefName('');
-    setNewRefPhone('');
-    setNewRefEmail('');
-    showToast('✅ Referee added to pool.');
+  // --- REFEREE HANDLERS ---
+  const handleAddReferee = async (ref: { name: string; email: string; phone: string }) => {
+    const res = await ApiService.createReferee(ref);
+    if (res.success && res.data) {
+      const created: RefereeItem = {
+        id: res.data.id || `r-${Date.now()}`,
+        name: res.data.name || ref.name,
+        email: res.data.email || ref.email,
+        phone: res.data.phone || ref.phone,
+        status: 'Active'
+      };
+      setReferees([created, ...referees]);
+      showToast('✅ Referee saved to database.');
+    } else {
+      showToast(`⚠️ ${res.message || 'Failed to save referee'}`);
+    }
   };
 
-  const handleToggleRefStatus = (id: string) => {
-    setReferees(referees.map((r) => (r.id === id ? { ...r, status: r.status === 'Active' ? 'Deactivated' : 'Active' } : r)));
-    showToast('Referee status updated.');
+  const handleUpdateRefStatus = async (id: string, status: 'Active' | 'Suspended' | 'Deactivated') => {
+    await ApiService.updateRefereeStatus(id, status);
+    setReferees(referees.map((r) => (r.id === id ? { ...r, status } : r)));
+    showToast(`Referee status updated to ${status}.`);
+  };
+
+  const handleDeleteReferee = async (id: string) => {
+    await ApiService.deleteReferee(id);
+    setReferees(referees.filter((r) => r.id !== id));
+    showToast('Referee deleted from database.');
   };
 
   // --- TAB 4 HANDLERS (FIXTURE ENGINE & SCHEDULE LOCK) ---
@@ -332,36 +378,26 @@ export const usePresidentDashboard = () => {
     showToast('🔒 Season Fixtures Confirmed & Locked! Switch portal to active season view.');
   };
 
-  // --- TAB 5 HANDLERS (PRE-SEASON MEGAPHONE) ---
+  // --- TAB 5 HANDLERS (MAKE ANNOUNCEMENT) ---
   const handleBroadcastAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementTitle || !announcementBody) {
       showToast('⚠️ Title and Body are required.');
       return;
     }
-    const targetRole = selectedAudiences.join(', ').toLowerCase();
-    await ApiService.createAnnouncement({
+    const res = await ApiService.createAnnouncement({
       title: announcementTitle,
       content: announcementBody,
-      target_role: targetRole,
+      target_role: recipientGroup,
       author_id: 'president-1'
     });
-    setAnnouncementTitle('');
-    setAnnouncementBody('');
-    showToast('📢 Pre-Season Announcement Broadcasted to selected audiences!');
-  };
-
-  const toggleAudience = (aud: string) => {
-    if (aud === 'All Dashboards') {
-      setSelectedAudiences(['All Dashboards']);
-      return;
-    }
-    const filtered = selectedAudiences.filter((a) => a !== 'All Dashboards');
-    if (filtered.includes(aud)) {
-      const next = filtered.filter((a) => a !== aud);
-      setSelectedAudiences(next.length === 0 ? ['All Dashboards'] : next);
+    if (res.success && res.data) {
+      setAnnouncements([res.data, ...announcements]);
+      setAnnouncementTitle('');
+      setAnnouncementBody('');
+      showToast('📢 Announcement published to database!');
     } else {
-      setSelectedAudiences([...filtered, aud]);
+      showToast(`⚠️ ${res.message || 'Failed to publish announcement'}`);
     }
   };
 
@@ -418,8 +454,6 @@ export const usePresidentDashboard = () => {
     setShowAddRefModal,
     editingRef,
     setEditingRef,
-    linesmanRule,
-    setLinesmanRule,
     neutralTeamRule,
     setNeutralTeamRule,
     maxRefCapacity,
@@ -447,11 +481,9 @@ export const usePresidentDashboard = () => {
     setAnnouncementTitle,
     announcementBody,
     setAnnouncementBody,
-    selectedAudiences,
-    isScheduled,
-    setIsScheduled,
-    scheduledTime,
-    setScheduledTime,
+    recipientGroup,
+    setRecipientGroup,
+    announcements,
     handleCreateSeason,
     handleToggleSeasonStatus,
     handleCreateLeague,
@@ -461,12 +493,12 @@ export const usePresidentDashboard = () => {
     handleApproveTeam,
     handleRejectTeam,
     handleAddReferee,
-    handleToggleRefStatus,
+    handleUpdateRefStatus,
+    handleDeleteReferee,
     handleGenerateFixtures,
     handleSwapTeams,
     handleUpdateFixtureDetails,
     handleLockSchedule,
     handleBroadcastAnnouncement,
-    toggleAudience,
   };
 };

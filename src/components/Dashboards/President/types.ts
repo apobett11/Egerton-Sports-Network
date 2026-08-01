@@ -63,12 +63,22 @@ export interface RefereeItem {
   name: string;
   phone: string;
   email?: string;
-  availability: 'Available' | 'Assigned' | 'Unavailable';
-  status: 'Active' | 'Pending Verification' | 'Deactivated';
-  experience: string;
-  badgeLevel: string;
-  assignedMatchesCount: number;
-  seasonAssigned: boolean;
+  status: 'Active' | 'Suspended' | 'Deactivated' | 'Pending Verification';
+  badgeLevel?: string;
+  availability?: 'Available' | 'Assigned' | 'Unavailable';
+  experience?: string;
+  assignedMatchesCount?: number;
+  seasonAssigned?: boolean;
+}
+
+export interface AnnouncementItem {
+  id: string;
+  title: string;
+  content: string;
+  target_role: string;
+  author_id?: string;
+  created_at: string;
+  read_count?: number;
 }
 
 export interface DraftFixture {

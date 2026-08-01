@@ -995,6 +995,96 @@ export const ApiService = {
     }
   },
 
+  // --- REFEREE MANAGEMENT ---
+  async getReferees(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('referees')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        return { success: true, data: [] };
+      }
+      return { success: true, data };
+    } catch (e) {
+      return { success: true, data: [] };
+    }
+  },
+
+  async createReferee(referee: { name: string; email?: string; phone: string; badge_level?: string }): Promise<ApiResponse<any>> {
+    if (!referee.name || !referee.phone) {
+      return { success: false, data: null, message: 'Name and Phone are required.' };
+    }
+
+    try {
+      const payload = {
+        name: sanitizeHtmlText(referee.name),
+        email: referee.email ? sanitizeHtmlText(referee.email) : null,
+        phone: sanitizeHtmlText(referee.phone),
+        badge_level: referee.badge_level ? sanitizeHtmlText(referee.badge_level) : 'FKF National Level 2',
+        status: 'Active'
+      };
+
+      const { data, error } = await supabase
+        .from('referees')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) return { success: false, data: null, message: error.message };
+      await this.logAuditAction('CREATE_REFEREE', 'referees', data.id, { name: referee.name });
+      return { success: true, data };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
+    }
+  },
+
+  async updateRefereeStatus(id: string, status: 'Active' | 'Suspended' | 'Deactivated'): Promise<ApiResponse<any>> {
+    if (!id) return { success: false, data: null, message: 'Referee ID required.' };
+
+    try {
+      const { data, error } = await supabase
+        .from('referees')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) return { success: false, data: null, message: error.message };
+      await this.logAuditAction('UPDATE_REFEREE_STATUS', 'referees', id, { status });
+      return { success: true, data };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
+    }
+  },
+
+  async deleteReferee(id: string): Promise<ApiResponse<any>> {
+    if (!id) return { success: false, data: null, message: 'Referee ID required.' };
+
+    try {
+      const { data, error } = await supabase
+        .from('referees')
+        .update({ deleted_at: new Date().toISOString(), status: 'Deactivated' })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        // Fallback hard delete if soft delete fails
+        await supabase.from('referees').delete().eq('id', id);
+      }
+      await this.logAuditAction('DELETE_REFEREE', 'referees', id, {});
+      return { success: true, data: { id } };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
+    }
+  },
+
   // --- JOURNALIST MEDIA GALLERY SERVICES ---
   async getArticleGallery(): Promise<ApiResponse<any[]>> {
     try {

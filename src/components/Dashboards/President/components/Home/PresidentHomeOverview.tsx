@@ -1,81 +1,167 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
-import type { PresidentTab, SeasonItem, PendingTeam, TeamItem, RefereeItem, DraftFixture } from '../../types';
+import { ArrowRight, Trophy, Megaphone, UserCheck, Calendar } from 'lucide-react';
+import type { PresidentTab, SeasonItem, TeamItem, RefereeItem } from '../../types';
 
 interface PresidentHomeOverviewProps {
   isDark: boolean;
   seasons: SeasonItem[];
-  pendingTeams: PendingTeam[];
   teams: TeamItem[];
   referees: RefereeItem[];
-  draftFixtures: DraftFixture[];
-  isScheduleLocked: boolean;
+  announcementsCount?: number;
   setActiveView: (tab: PresidentTab) => void;
 }
 
 export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
   isDark,
-  seasons,
-  pendingTeams,
+  seasons: _seasons,
   teams,
   referees,
-  draftFixtures,
-  isScheduleLocked,
+  announcementsCount = 0,
   setActiveView,
 }) => {
   return (
     <div className="space-y-8">
-      <div className={`p-8 md:p-10 rounded-3xl border ${isDark ? 'bg-[#0E1424]/90 border-slate-800/80' : 'bg-white/90 border-slate-200/80'} backdrop-blur-2xl elevation-card space-y-6 relative overflow-hidden`}>
-        <div className="space-y-3 max-w-2xl">
-          <span className="inline-block px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-500/10 text-orange-500 border border-orange-500/20">
+      {/* QUICK ACTIONS BANNER */}
+      <div className={`p-6 md:p-10 rounded-3xl border ${isDark ? 'bg-[#0E1424]/90 border-slate-800/80' : 'bg-white/90 border-slate-200/80'} backdrop-blur-2xl space-y-6 relative overflow-hidden`}>
+        <div className="space-y-2 max-w-2xl">
+          <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-500/10 text-orange-500 border border-orange-500/20">
             PRE-SEASON PHASE
           </span>
-          <h1 className={`text-3xl md:text-5xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            Pre-Season President Dashboard
+          <h1 className={`text-2xl md:text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Pre-Season Executive Portal
           </h1>
-          <p className={`text-sm md:text-base font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Centralized executive portal for season initialization, team approvals, referee allocation, fixture engine, and megaphone broadcasts.
+          <p className={`text-xs md:text-sm font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            Manage referee registrations, broadcast announcements, review league registrations, and prepare match fixtures.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 pt-2">
-          <button
-            onClick={() => setActiveView('season_engine')}
-            className="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <span>Open Season Engine</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setActiveView('teams')}
-            className={`px-5 py-3 rounded-2xl font-bold text-xs border transition-all cursor-pointer ${isDark ? 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/60 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'}`}
-          >
-            Review Pending Approvals ({pendingTeams.length})
-          </button>
+        <div>
+          <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button
+              onClick={() => setActiveView('fixture_engine')}
+              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+            >
+              <span className="flex items-center gap-2">
+                <Trophy className="w-4 h-4" />
+                <span>Generate Fixtures</span>
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => setActiveView('megaphone')}
+              className="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+            >
+              <span className="flex items-center gap-2">
+                <Megaphone className="w-4 h-4" />
+                <span>Make Announcement</span>
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => setActiveView('referees')}
+              className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+            >
+              <span className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4" />
+                <span>Manage Referees</span>
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => setActiveView('season_engine')}
+              className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+            >
+              <span className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>View Leagues</span>
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[
-          { label: 'Active Season', val: seasons.find((s) => s.status === 'active')?.name || '2027 EPL', sub: 'Status: Active', action: () => setActiveView('season_engine') },
-          { label: 'Pending Teams', val: pendingTeams.length.toString(), sub: 'Requires Review', action: () => setActiveView('teams') },
-          { label: 'Approved Teams', val: teams.length.toString(), sub: 'Premier & Champ', action: () => setActiveView('teams') },
-          { label: 'Referee Pool', val: referees.length.toString(), sub: 'FKF & Campus', action: () => setActiveView('referees') },
-          { label: 'Draft Fixtures', val: draftFixtures.length.toString(), sub: isScheduleLocked ? 'Locked' : 'Drafting', action: () => setActiveView('fixture_engine') },
-          { label: 'Schedule Lock', val: isScheduleLocked ? 'LOCKED' : 'OPEN', sub: 'Pre-Season Rule', action: () => setActiveView('fixture_engine') }
-        ].map((stat, idx) => (
-          <div
-            key={idx}
-            onClick={stat.action}
-            className={`p-5 rounded-3xl border elevation-card transition-all cursor-pointer group ${isDark ? 'bg-[#0E1424] border-slate-800 hover:border-blue-500/40' : 'bg-white border-slate-200/90 hover:border-blue-500/40'}`}
-          >
-            <div className={`text-xl md:text-2xl font-black tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'} group-hover:text-blue-600 transition-colors`}>
-              {stat.val}
+      {/* DASHBOARD SUMMARY CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Referees Card */}
+        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-slate-400">Referees</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+              <UserCheck className="w-4 h-4" />
             </div>
-            <div className={`text-xs font-bold mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{stat.label}</div>
-            <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{stat.sub}</div>
           </div>
-        ))}
+          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {referees.length}
+          </div>
+          <button
+            onClick={() => setActiveView('referees')}
+            className="w-full py-2.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+          >
+            Register Referee
+          </button>
+        </div>
+
+        {/* Registered Teams Card */}
+        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-slate-400">Registered Teams</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {teams.length}
+          </div>
+          <button
+            onClick={() => setActiveView('season_engine')}
+            className="w-full py-2.5 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+          >
+            View Teams
+          </button>
+        </div>
+
+        {/* Leagues Overview Card */}
+        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-slate-400">Leagues</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+              <Trophy className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            2
+          </div>
+          <button
+            onClick={() => setActiveView('season_engine')}
+            className="w-full py-2.5 rounded-xl bg-amber-600/10 hover:bg-amber-600 text-amber-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+          >
+            View Leagues
+          </button>
+        </div>
+
+        {/* Announcements Card */}
+        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase text-slate-400">Announcements</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
+              <Megaphone className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {announcementsCount}
+          </div>
+          <button
+            onClick={() => setActiveView('megaphone')}
+            className="w-full py-2.5 rounded-xl bg-indigo-600/10 hover:bg-indigo-600 text-indigo-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+          >
+            Make Announcement
+          </button>
+        </div>
       </div>
     </div>
   );
