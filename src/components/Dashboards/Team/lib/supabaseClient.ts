@@ -294,10 +294,10 @@ export const diagnosticQueries = {
                 jersey_number,
                 position,
                 status,
-                card_details,
-                users (
+                profiles:profile_id (
                     id,
-                    full_name,
+                    first_name,
+                    last_name,
                     email,
                     role
                 )
@@ -332,9 +332,8 @@ export const diagnosticQueries = {
             .insert({
                 team_id: teamUuid,
                 formation: params.formation,
-                player_positions: params.positions.map(p => ({ ...p, player_id: toUuid(p.player_id) })),
-                is_starting_xi: false,
-                created_by: userUuid
+                coordinates: params.positions.map(p => ({ ...p, player_id: toUuid(p.player_id) })),
+                updated_by: userUuid
             });
 
         if (error) {
@@ -346,13 +345,13 @@ export const diagnosticQueries = {
     },
 
     /**
-     * Operation 3: Update lineup (Mark configuration as Starting XI status)
+     * Operation 3: Update lineup
      */
     async updateLineupStartingStatus(configId: string, isStarting: boolean) {
-        console.log(`[Diagnostic] Executing: Setting is_starting_xi = ${isStarting} on config ${configId}`);
+        console.log(`[Diagnostic] Executing: Updating squad configuration ${configId}`);
         const { data, error } = await supabase
             .from('squad_configurations')
-            .update({ is_starting_xi: isStarting })
+            .update({ updated_at: new Date().toISOString() })
             .eq('id', configId);
 
         if (error) {
@@ -365,18 +364,18 @@ export const diagnosticQueries = {
 
     /**
      * Operation 4: Role-based data fetching verification
-     * Attempts to read all matches or users table to verify role policies.
+     * Attempts to read profiles table to verify role policies.
      */
     async testRoleBasedAccessRight() {
-        console.log('[Diagnostic] Executing: Reading users table (requires same team ID)');
-        const { data: users, error: usersError } = await supabase
-            .from('users')
-            .select('email, role, full_name');
+        console.log('[Diagnostic] Executing: Reading profiles table');
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('email, role, first_name, last_name');
 
-        if (usersError) {
-            console.warn('[Diagnostic WARNING] users table read rejected (normal if unauthenticated or wrong role):', usersError.message);
+        if (profilesError) {
+            console.warn('[Diagnostic WARNING] profiles table read rejected:', profilesError.message);
         } else {
-            console.log('[Diagnostic SUCCESS] users table read allowed:', users);
+            console.log('[Diagnostic SUCCESS] profiles table read allowed:', profiles);
         }
 
         console.log('[Diagnostic] Executing: Reading teams table (public to authenticated)');
@@ -385,7 +384,7 @@ export const diagnosticQueries = {
             .select('id, name');
 
         return {
-            usersAccessible: !usersError,
+            usersAccessible: !profilesError,
             teamsAccessible: !teamsError,
             teamsCount: teams?.length || 0
         };

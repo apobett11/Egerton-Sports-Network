@@ -1,348 +1,488 @@
 import React, { useState, useEffect } from 'react';
-import { Match, StandingEntry } from '../types';
+import { UserRole, Player, PracticeSession, Match, StandingEntry } from '../types';
+import {
+  UserPlus,
+  Users,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Trophy,
+  Activity,
+  Shield,
+  AlertCircle,
+  ChevronRight,
+  Plus
+} from 'lucide-react';
+import type { DashboardView } from '../hooks/useTeamDashboard';
 
 interface HomepageProps {
-    onNavigateToMatchCenter: () => void;
-    matches: Match[];
-    standings: StandingEntry[];
+  currentRole: UserRole;
+  onNavigateView: (view: DashboardView) => void;
+  roster: Player[];
+  practiceSchedule: PracticeSession[];
+  onAssignActivity: (id: string, activity: string) => void;
+  onAddPracticeDay: (day: string, time: string, location: string) => void;
+  onOpenInviteModal: () => void;
+  matches: Match[];
+  standings: StandingEntry[];
 }
 
-export const Homepage: React.FC<HomepageProps> = ({ onNavigateToMatchCenter, matches: _matches, standings: _standings }) => {
-    // Current state for countdown timer
-    const [timeLeft, setTimeLeft] = useState({
-        days: 2,
-        hours: 14,
-        minutes: 35,
-        seconds: 12
-    });
+export const Homepage: React.FC<HomepageProps> = ({
+  currentRole,
+  onNavigateView,
+  roster,
+  practiceSchedule,
+  onAssignActivity,
+  onAddPracticeDay,
+  onOpenInviteModal,
+  matches,
+  standings,
+}) => {
+  // Countdown timer for next match
+  const [timeLeft, setTimeLeft] = useState({ days: 2, hours: 14, minutes: 35, seconds: 12 });
+  const [newDay, setNewDay] = useState('Tuesday');
+  const [newTime, setNewTime] = useState('16:00 - 18:00');
+  const [newLocation, setNewLocation] = useState('Pitch 1');
+  const [showAddDayModal, setShowAddDayModal] = useState(false);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev.seconds > 0) {
-                    return { ...prev, seconds: prev.seconds - 1 };
-                } else {
-                    if (prev.minutes > 0) {
-                        return { ...prev, minutes: 59, seconds: 59 };
-                    } else {
-                        if (prev.hours > 0) {
-                            return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-                        } else {
-                            if (prev.days > 0) {
-                                return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-                            }
-                            clearInterval(interval);
-                            return prev;
-                        }
-                    }
-                }
-            });
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
+        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const fd = (num: number) => String(num).padStart(2, '0');
+  const fd = (num: number) => String(num).padStart(2, '0');
 
-    return (
-        <div className="w-full space-y-stack-lg max-w-7xl mx-auto">
-            {/* Hero Section: Next Match */}
-            <section className="relative w-full rounded-xl overflow-hidden glass-panel luminous-shadow inner-glow p-6 md:p-8 transition-all duration-300 border border-outline-variant/20 min-h-[calc(100vh-7.5rem)] flex flex-col justify-between">
-                {/* Background image for hero under overlay */}
-                <div className="absolute inset-0 z-0">
-                    <img
-                        className="w-full h-full object-cover opacity-15"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpSmfYgTBJ8eklkvzo5yTlQWbShh3nfTgRxCJTkG1bYIlBaxPG-INMSQnJZmxKwXZvNt2R-yenM9aN7NF5RBYvP2_-FkEx1qx527cX5dI0qOA6kdfd9xSGePzDrN2h4Qzq_0F28ubLLbdlHO7WH9C-zKVI7pnbO8skHMzqP1oFnKdzrwzdFvfDCrbmcZFO0SmrqMlGoXRgnD5WPsSVyL7ngStY-ZzHEZ0JsZGExGAwCyVtwSUk5_p2wn53hU_TjqKGt5lSg75JbV0r"
-                        alt="Egerton Arena"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
-                </div>
+  // Next fixture data
+  const nextMatch = matches.find(m => m.status === 'UPCOMING') || {
+    id: 'next1',
+    opponentName: 'Kingsley United',
+    opponentLogo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAjrVJAFLRUKw0UshaimwuZwsBygOz6PdS-8EQMBzeHkB7ESvkZIWtsqf-QKtQGWNSoynki4sQq7EoPEsS7IO8-DVHJR6wfgt2p1dEVxZaeorjyhrHVcDUxkZOXW37LQAZRH5p4SpLWys5jOcNBdx331HV6tbHZDoft3Gl9PrL1Wqi16CJYlQTvJ9sJ3Z5NJBPC_bJVo0EZcgBMvXV04oAhxLc1Rv9eCsz8NDVgTU5LwJ0LjRRkjwJHhq2aZGGFWJJI1eSqhtMOgdBT',
+    date: 'Saturday, 24th Oct',
+    time: '15:00 GMT',
+    location: 'Egerton Arena, Main Pitch',
+    league: 'Premier League',
+    status: 'UPCOMING'
+  };
 
-                {/* The Next Game Card itself: Centered at the top, Clickable, Darker background, border, attention-grabbing */}
-                <div
-                    onClick={onNavigateToMatchCenter}
-                    className="relative z-10 w-full max-w-4xl mx-auto bg-black/60 hover:bg-black/75 rounded-2xl border border-primary/20 hover:border-rose-500/80 p-5 md:p-6 transition-all duration-300 cursor-pointer shadow-[0_0_25px_rgba(0,0,0,0.7)] hover:shadow-[0_0_35px_rgba(244,63,94,0.15)] group active:scale-[0.99] flex flex-col gap-5"
-                >
-                    {/* Attention Economy Badges / Info */}
-                    <div className="flex items-center justify-between gap-4 pb-3 border-b border-white/10 select-none">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                            <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-black flex items-center gap-1.5">
-                                🚨 CRITICAL SHOWDOWN
-                            </span>
-                        </div>
-                        <span className="text-[10px] text-on-surface-variant font-bold tracking-widest uppercase">
-                            West London Premier League
-                        </span>
-                    </div>
+  // Analytics computation
+  const egertonStanding = standings.find(s => s.isCurrent) || {
+    position: 2,
+    played: 23,
+    won: 14,
+    drawn: 6,
+    lost: 3,
+  };
 
-                    <div className="flex flex-col lg:flex-row justify-between items-center gap-6 w-full pb-2">
-                        <div className="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto">
-                            <div className="flex items-center gap-6">
-                                {/* Home Logo */}
-                                <div className="text-center">
-                                    <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center p-3 border border-outline-variant/30 shadow-lg">
-                                        <img
-                                            className="w-full h-full object-contain pointer-events-none"
-                                            alt="Egerton FC Crest"
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN"
-                                        />
-                                    </div>
-                                    <p className="mt-2 font-label-sm text-[9px] font-bold text-primary uppercase tracking-widest">Egerton FC</p>
-                                </div>
+  const totalPlayers = roster.length;
+  const activePlayers = roster.filter(
+    p => p.status === 'Fit' || p.status === 'Active' || (!p.isInjured && !p.isSuspended)
+  ).length;
+  const inactivePlayers = roster.filter(
+    p => p.status === 'Injured' || p.status === 'Suspended' || p.isInjured || p.isSuspended
+  ).length;
 
-                                {/* VS Indicator */}
-                                <div className="text-center px-2">
-                                    <span className="text-3xl font-black text-on-surface opacity-30 italic">VS</span>
-                                    <div className="mt-1 font-mono text-[9px] text-on-surface-variant font-bold tracking-[0.25em] uppercase">MATCHDAY 24</div>
-                                </div>
+  const activityOptions = [
+    'Gas drills',
+    'Football control',
+    'Passing',
+    'Footwork',
+    'Pitch positioning',
+    'Tactical drills'
+  ];
 
-                                {/* Away Logo */}
-                                <div className="text-center">
-                                    <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center p-3 border border-outline-variant/30 shadow-lg">
-                                        <img
-                                            className="w-full h-full object-contain pointer-events-none"
-                                            alt="Kingsley United Crest"
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFhXXRDKFY04YZjn56uxD6P9Xir8Bb1s-8o1zh1JY6WZDBReq2LfJ8yh2LONNrsWbfuVvyFmxm9j2LeQP6wnZSgkRH5XQdQkaVLoC9SWYJ1qTn3GEl5imBB34TuO_EeqtOZyKIy4NooG7A60DL0Ph39bqGKXv49KMMoR1jRd5p7AfRXCiW5XFREvezpvV4Rs0joXr6SN83wLsA-JincLbUw8KJAh-qjooeaRy1RQt9NCIibiL5JuNwDSkB0y11FMr8uzGZbbNppYhp"
-                                        />
-                                    </div>
-                                    <p className="mt-2 font-label-sm text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Kingsley Utd</p>
-                                </div>
-                            </div>
-
-                            <div className="hidden sm:block h-12 w-[1px] bg-outline-variant/20 mx-2"></div>
-
-                            {/* Smaller Details */}
-                            <div className="flex flex-col items-center sm:items-start gap-1.5 text-on-surface-variant text-[11px] font-medium">
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[13px] text-primary">calendar_today</span>
-                                    <span>Saturday, 24th Oct</span>
-                                    <span className="opacity-30">|</span>
-                                    <span className="material-symbols-outlined text-[13px] text-primary">schedule</span>
-                                    <span>15:00 GMT</span>
-                                </span>
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[13px] text-primary">location_on</span>
-                                    <span>Egerton Arena, Central Manchester</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Kick-off Countdown */}
-                        <div className="bg-background/40 backdrop-blur-md rounded-xl p-4 border border-outline-variant/20 flex flex-col items-center min-w-[200px] w-full lg:w-auto">
-                            <p className="font-label-sm text-[9px] font-bold text-on-surface-variant mb-1 uppercase tracking-wider">KICK-OFF COUNTDOWN</p>
-                            <div className="flex gap-2 text-primary font-mono font-black text-xl">
-                                <span>{fd(timeLeft.days)}</span>
-                                <span className="opacity-40 animate-pulse">:</span>
-                                <span>{fd(timeLeft.hours)}</span>
-                                <span className="opacity-40 animate-pulse">:</span>
-                                <span>{fd(timeLeft.minutes)}</span>
-                                <span className="opacity-40 animate-pulse">:</span>
-                                <span>{fd(timeLeft.seconds)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Centered actions at bottom of next match card */}
-                    <div className="flex justify-center pt-2 select-none border-t border-white/5">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onNavigateToMatchCenter();
-                            }}
-                            className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-10 rounded-full flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(225,29,72,0.35)] hover:shadow-[0_0_25px_rgba(225,29,72,0.55)] hover:scale-[1.02] active:scale-[0.98] transition-all text-[11px] uppercase tracking-widest cursor-pointer border border-rose-500/20"
-                        >
-                            <span className="material-symbols-outlined text-[16px] font-black">sports_soccer</span>
-                            Enter Tactical Match Plan Center
-                        </button>
-                    </div>
-                </div>
-
-                {/* Hello and team name in the middle of page */}
-                <div className="relative z-10 flex flex-col items-center justify-center py-8 my-auto select-none">
-                    <h1 className="text-4xl md:text-6xl font-black tracking-widest text-center uppercase text-transparent bg-clip-text bg-gradient-to-b from-white via-on-surface to-surface-variant drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] animate-fade-in">
-                        Hello Egerton FC
-                    </h1>
-                </div>
-
-                {/* Form & Squad Health Strip at the bottom of Hero Section */}
-                <div className="relative z-10 w-full border-t border-outline-variant/15 pt-6 mt-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-                        {/* League Info & Form */}
-                        <div className="col-span-1 md:col-span-2 glass-panel rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-6">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Current League</span>
-                                    <span className="font-headline-md text-headline-md font-bold text-on-surface">National Division One</span>
-                                </div>
-                                <div className="h-10 w-[1px] bg-outline-variant/30 hidden sm:block"></div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Position</span>
-                                    <span className="font-headline-md text-headline-md text-primary font-bold">2nd <span className="text-body-md text-on-surface-variant font-normal">/ 24</span></span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mr-2">Form</span>
-                                {/* Form Indicators */}
-                                <div className="flex gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center" title="Win">
-                                        <span className="material-symbols-outlined text-emerald-400 text-[18px] font-bold">check</span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center" title="Win">
-                                        <span className="material-symbols-outlined text-emerald-400 text-[18px] font-bold">check</span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center" title="Draw">
-                                        <span className="material-symbols-outlined text-amber-400 text-[18px] font-bold">remove</span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center" title="Win">
-                                        <span className="material-symbols-outlined text-emerald-400 text-[18px] font-bold">check</span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center" title="Loss">
-                                        <span className="material-symbols-outlined text-rose-400 text-[18px] font-bold">close</span>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center" title="Win">
-                                        <span className="material-symbols-outlined text-emerald-400 text-[18px] font-bold">check</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Squad Quick Action */}
-                        <div className="glass-panel rounded-xl p-6 flex items-center justify-between border-l-4 border-primary">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Squad Health</span>
-                                <span className="font-headline-md text-headline-md font-bold text-on-surface">94% Fit</span>
-                            </div>
-                            <div className="flex -space-x-3">
-                                <div className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-high overflow-hidden shadow">
-                                    <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8Li0adYRQcho3yviz-jXLtvSbm31HoDarilefD50f8XPmkVXetKyZB4Jn52o39kofJna9hEpmuWEQSCmxGtspztaz2fEIGhWObti73Lc0yt-c9fJ3BWu5o8_QU57yCqQ8bVzeKaGMryfKPXtpaL_zII0gqE5xjePxuEcNbY6ophh0kFN-IMHzH6jQ_tlAEvdlW4KXeDTbByvhPLDfSqskkpDVtE74oH9diEwgfVzmQMOy7fsNfMNDicwaoaf3CdCqZnwIxGnq_9VS" alt="Player 1" />
-                                </div>
-                                <div className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-high overflow-hidden shadow">
-                                    <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw4JhYTmfFfoqvb6Mb3bQqiJ8y5Q-CZAA5noRZgeKEwGyta-iFD-tL3AsWbC0F1AT3LiSLeZt1DzeFfcsjRQwLkE40R_9FFeBSC4OWmkKVDfRvPeLThIgJhMFSGWCYKhBdW3VdnuqY3m1RLnFqZTqDVkxO0ulvxSfCrP9rvalZLZIg8AjXG1xQLJJOg_p0bAhrPSeqW1l6ZHhFQhyXsJwFA-nAYo9jm309TilSelexiQNfFJZsaoU2jjfhQy-ocTd5bzyLKwk2fFxz" alt="Player 2" />
-                                </div>
-                                <div className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-high overflow-hidden shadow">
-                                    <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrr6SC9TgLfKChWdxfl02QcKBZXDk0vC-C2kCp-st0wVtxyCbm-_iU6z0dMIGslsy71YiftPwxrnbHurkG12ph1BULK2eo7yHTjFApHoVB0ZTxJdbp8BU8dDxvlT16TlQn9xvNDmuidIOpNma0lQYgYRatcc1j0dMO4W713lSPxtG_ivGHg0yBsMMxYZGmlO3dXhlKU9RjP1KLKvhnH-ASciX9Es7UNSb98P4_AWbummiEstPPk8VZuaIhkWT4Q2zxEZCAuwslqxKj" alt="Player 3" />
-                                </div>
-                                <div className="w-10 h-10 rounded-full border-2 border-surface bg-primary flex items-center justify-center text-on-primary text-[10px] font-bold">
-                                    +17
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Training & Stats Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-                {/* Training Schedule */}
-                <div className="lg:col-span-5 space-y-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Training Sessions</h2>
-                        <button className="text-primary hover:underline text-xs font-bold uppercase tracking-wider cursor-pointer">Full Schedule</button>
-                    </div>
-
-                    {/* Session Card 1 */}
-                    <div className="glass-panel rounded-xl p-5 hover:bg-white/5 transition-all cursor-pointer group border border-outline-variant/15">
-                        <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shrink-0">
-                                    <span className="material-symbols-outlined text-2xl">fitness_center</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Tactical Drills</h3>
-                                    <p className="text-on-surface-variant text-xs mt-1">Pitch 3 • 10:00 - 12:30</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[10px] text-primary font-bold block tracking-wider">TOMORROW</span>
-                            </div>
-                        </div>
-                        <div className="mt-4 flex items-center gap-4 text-xs text-on-surface-variant font-medium">
-                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-primary">groups</span> 24 Players</span>
-                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-primary">person</span> Coach Marcus</span>
-                        </div>
-                    </div>
-
-                    {/* Session Card 2 */}
-                    <div className="glass-panel rounded-xl p-5 hover:bg-white/5 transition-all cursor-pointer group border border-outline-variant/15">
-                        <div className="flex items-start justify-between">
-                            <div className="flex gap-4">
-                                <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20 shrink-0">
-                                    <span className="material-symbols-outlined text-2xl">analytics</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Video Strategy Analysis</h3>
-                                    <p className="text-on-surface-variant text-xs mt-1">Briefing Room • 14:00</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[10px] text-on-surface-variant font-bold block uppercase tracking-wider">Oct 26</span>
-                            </div>
-                        </div>
-                        <div className="mt-4 flex items-center gap-4 text-xs text-on-surface-variant font-medium">
-                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-secondary">groups</span> First XI Only</span>
-                            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-secondary">person</span> Analyst Team</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Performance Stats Bento widget */}
-                <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="col-span-2 md:col-span-4 flex items-center justify-between mb-2">
-                        <h2 className="font-headline-md text-headline-md font-bold text-on-surface">Quick Analytics</h2>
-                        <span className="text-xs text-on-surface-variant font-medium">Last 30 Days</span>
-                    </div>
-
-                    {/* Stat 1 */}
-                    <div className="bento-card rounded-xl p-6 flex flex-col justify-between aspect-square md:aspect-auto">
-                        <span className="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
-                        <div>
-                            <span className="text-display-md font-display-md block font-black text-on-surface">2.4</span>
-                            <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Goals / Match</span>
-                        </div>
-                    </div>
-
-                    {/* Stat 2 */}
-                    <div className="bento-card rounded-xl p-6 flex flex-col justify-between aspect-square md:aspect-auto">
-                        <span className="material-symbols-outlined text-primary text-3xl">shield</span>
-                        <div>
-                            <span className="text-display-md font-display-md block font-black text-on-surface">12</span>
-                            <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Clean Sheets</span>
-                        </div>
-                    </div>
-
-                    {/* Stat 3 */}
-                    <div className="bento-card rounded-xl p-6 flex flex-col justify-between col-span-2 md:col-span-2 relative overflow-hidden">
-                        <div className="absolute right-0 bottom-0 p-4 opacity-5 pointer-events-none">
-                            <span className="material-symbols-outlined text-[80px]">trending_up</span>
-                        </div>
-                        <div>
-                            <span className="material-symbols-outlined text-primary text-3xl mb-2">speed</span>
-                            <div className="flex items-end gap-2">
-                                <span className="text-display-md font-display-md block font-black text-on-surface">88%</span>
-                                <span className="text-emerald-400 text-xs font-bold mb-2">+4%</span>
-                            </div>
-                            <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider">Pass Accuracy</span>
-                        </div>
-                        <div className="mt-4 w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                            <div className="h-full bg-primary" style={{ width: '88%' }}></div>
-                        </div>
-                    </div>
-
-                    {/* Large Projections Card */}
-                    <div className="col-span-2 md:col-span-4 bento-card rounded-xl p-6 flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden">
-                        <div className="z-10 flex-1">
-                            <h4 className="font-headline-md text-sm font-bold text-on-surface mb-2">Season Projections & Predictions</h4>
-                            <p className="text-on-surface-variant text-xs mb-4 max-w-md leading-relaxed">
-                                Based on current trajectory, the squad is projected to finish with 84 points, securing an automatic promotion spot in the division league.
-                            </p>
-                            <button className="border border-primary text-primary hover:bg-primary hover:text-on-primary font-bold text-xs uppercase tracking-wider py-2 px-6 rounded-full transition-colors cursor-pointer">
-                                Detailed Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <div className="w-full space-y-6 max-w-7xl mx-auto pb-12">
+      {/* TASK 4: HERO SECTION (Mobile Slimmed, Rich Match Info, NO "Hello Team") */}
+      <section className="relative w-full rounded-2xl overflow-hidden bg-gradient-to-b from-[#1E1E1E] to-[#141414] border border-[#2A2A2A] p-4 sm:p-6 md:p-8 shadow-2xl">
+        <div className="flex flex-col gap-4">
+          {/* Header Badge */}
+          <div className="flex items-center justify-between gap-2 border-b border-[#2A2A2A] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-md border border-emerald-500/30">
+                NEXT MATCHDAY FOCUS
+              </span>
             </div>
+            <span className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider">
+              {nextMatch.league} • Matchweek 24
+            </span>
+          </div>
+
+          {/* Teams Showdown Card */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-[#111111]/80 p-4 sm:p-5 rounded-xl border border-[#2A2A2A]">
+            {/* Teams Logos & Names */}
+            <div className="md:col-span-7 flex items-center justify-around gap-2">
+              {/* Home Team (Egerton) */}
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#1F1F1F] p-2 border-2 border-emerald-500/50 shadow-md">
+                  <img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN"
+                    alt="Egerton FC"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-xs sm:text-sm font-extrabold text-white mt-1.5 uppercase tracking-wide">
+                  Egerton FC
+                </span>
+                <span className="text-[9px] text-emerald-400 font-bold">HOME</span>
+              </div>
+
+              {/* VS Indicator */}
+              <div className="flex flex-col items-center">
+                <span className="text-xl sm:text-2xl font-black text-gray-500 italic">VS</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase">MATCHDAY 24</span>
+              </div>
+
+              {/* Away Team */}
+              <div className="flex flex-col items-center text-center">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#1F1F1F] p-2 border-2 border-[#2A2A2A] shadow-md">
+                  <img
+                    src={nextMatch.opponentLogo}
+                    alt={nextMatch.opponentName}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-xs sm:text-sm font-extrabold text-gray-200 mt-1.5 uppercase tracking-wide">
+                  {nextMatch.opponentName}
+                </span>
+                <span className="text-[9px] text-gray-400 font-bold">AWAY</span>
+              </div>
+            </div>
+
+            {/* Match Details & Countdown */}
+            <div className="md:col-span-5 flex flex-col items-center md:items-end justify-center gap-2 border-t md:border-t-0 md:border-l border-[#2A2A2A] pt-3 md:pt-0 md:pl-4">
+              <div className="flex flex-col items-center md:items-end text-xs text-gray-300 gap-1 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{nextMatch.date}</span>
+                  <span className="text-gray-500">•</span>
+                  <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{nextMatch.time}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-gray-400 text-[11px]">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{nextMatch.location}</span>
+                </span>
+              </div>
+
+              {/* Kick-off Countdown */}
+              <div className="bg-[#1F1F1F] px-3.5 py-1.5 rounded-lg border border-[#2A2A2A] flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">KICK-OFF:</span>
+                <div className="flex items-center gap-1 font-mono text-xs font-bold text-emerald-400">
+                  <span>{fd(timeLeft.days)}d</span>:
+                  <span>{fd(timeLeft.hours)}h</span>:
+                  <span>{fd(timeLeft.minutes)}m</span>:
+                  <span>{fd(timeLeft.seconds)}s</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="flex justify-center pt-1">
+            <button
+              onClick={() => onNavigateView('TACTICS')}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 sm:px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all text-xs uppercase tracking-wider cursor-pointer"
+            >
+              <span>⚽ Open Tactical Pitch Center</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-    );
+      </section>
+
+      {/* TASK 5: TEAM ANALYTICS CARDS */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-emerald-400" />
+          <span>Team Season Analytics</span>
+        </h2>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          {/* Card 1: League Position */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Position</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">#{egertonStanding.position}</span>
+              <span className="text-[10px] text-gray-500 font-semibold block">In League</span>
+            </div>
+          </div>
+
+          {/* Card 2: Games Played */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Played</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-white">{egertonStanding.played}</span>
+              <span className="text-[10px] text-gray-500 font-semibold block">Matches</span>
+            </div>
+          </div>
+
+          {/* Card 3: Wins */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Wins</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">{egertonStanding.won}</span>
+              <span className="text-[10px] text-emerald-500/70 font-semibold block">Victories</span>
+            </div>
+          </div>
+
+          {/* Card 4: Draws */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Draws</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-amber-400">{egertonStanding.drawn}</span>
+              <span className="text-[10px] text-amber-500/70 font-semibold block">Points Shared</span>
+            </div>
+          </div>
+
+          {/* Card 5: Losses */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Losses</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-rose-400">{egertonStanding.lost}</span>
+              <span className="text-[10px] text-rose-500/70 font-semibold block">Defeats</span>
+            </div>
+          </div>
+
+          {/* Card 6: Total Players */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Players</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-white">{totalPlayers}</span>
+              <span className="text-[10px] text-gray-500 font-semibold block">Squad Size</span>
+            </div>
+          </div>
+
+          {/* Card 7: Active Players */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Active</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">{activePlayers}</span>
+              <span className="text-[10px] text-emerald-500/70 font-semibold block">Match Ready</span>
+            </div>
+          </div>
+
+          {/* Card 8: Inactive Players */}
+          <div className="bg-[#1F1F1F] p-3.5 rounded-xl border border-[#2A2A2A] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Inactive</span>
+            <div className="mt-2">
+              <span className="text-xl sm:text-2xl font-black text-rose-400">{inactivePlayers}</span>
+              <span className="text-[10px] text-rose-500/70 font-semibold block">Injured / Susp.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TASK 12: HOMEPAGE QUICK ACTIONS */}
+      <section className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-emerald-400" />
+          <span>Quick Actions ({currentRole === 'COACH' ? 'Coach' : 'Captain'})</span>
+        </h2>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {/* Action 1: Invite Player (Coach Only) */}
+          {currentRole === 'COACH' && (
+            <button
+              onClick={onOpenInviteModal}
+              className="p-3.5 rounded-xl bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+            >
+              <UserPlus className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Invite Player</span>
+            </button>
+          )}
+
+          {/* Action 2: View Squad */}
+          <button
+            onClick={() => onNavigateView('ROSTER')}
+            className="p-3.5 rounded-xl bg-[#1F1F1F] border border-[#2A2A2A] hover:bg-[#252525] transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+          >
+            <Users className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">View Squad</span>
+          </button>
+
+          {/* Action 3: Fixtures */}
+          <button
+            onClick={() => onNavigateView('FIXTURES')}
+            className="p-3.5 rounded-xl bg-[#1F1F1F] border border-[#2A2A2A] hover:bg-[#252525] transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+          >
+            <Calendar className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Fixtures</span>
+          </button>
+
+          {/* Action 4: Results */}
+          <button
+            onClick={() => onNavigateView('FIXTURES')}
+            className="p-3.5 rounded-xl bg-[#1F1F1F] border border-[#2A2A2A] hover:bg-[#252525] transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+          >
+            <Trophy className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Results</span>
+          </button>
+
+          {/* Action 5: Practice Schedule */}
+          <button
+            onClick={() => {
+              const el = document.getElementById('practice-schedule-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-3.5 rounded-xl bg-[#1F1F1F] border border-[#2A2A2A] hover:bg-[#252525] transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+          >
+            <Clock className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Practice Schedule</span>
+          </button>
+        </div>
+      </section>
+
+      {/* TASK 6: PRACTICE SCHEDULE */}
+      <section id="practice-schedule-section" className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-2xl p-5 md:p-6 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
+          <div>
+            <h2 className="text-sm md:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              <span>Practice Schedule & Drills</span>
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {currentRole === 'COACH'
+                ? 'Coach Responsibility: Manage & Select Practice Days'
+                : 'Captain Responsibility: Assign Activities to Practice Sessions'}
+            </p>
+          </div>
+
+          {currentRole === 'COACH' && (
+            <button
+              onClick={() => setShowAddDayModal(true)}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md cursor-pointer self-start sm:self-auto min-h-[44px]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Select Practice Day</span>
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {practiceSchedule.map(session => (
+            <div key={session.id} className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A] space-y-3">
+              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  {session.day}
+                </span>
+                <span className="text-[11px] text-gray-400 font-mono font-medium">{session.time}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-300">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{session.location}</span>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-semibold text-gray-400 block">Session Activity</label>
+
+                {currentRole === 'CAPTAIN' ? (
+                  <select
+                    value={session.activity}
+                    onChange={e => onAssignActivity(session.id, e.target.value)}
+                    className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-emerald-400 font-semibold focus:outline-none focus:border-emerald-500 min-h-[44px]"
+                  >
+                    <option value={session.activity}>{session.activity}</option>
+                    {activityOptions
+                      .filter(act => act !== session.activity)
+                      .map(act => (
+                        <option key={act} value={act}>
+                          {act}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <div className="p-2.5 bg-[#1F1F1F] rounded-lg border border-[#2A2A2A] text-xs font-semibold text-emerald-400 flex items-center justify-between">
+                    <span>{session.activity}</span>
+                    <span className="text-[10px] text-gray-500 font-normal">Assigned by Captain</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* COACH SELECT PRACTICE DAY MODAL */}
+      {showAddDayModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+            <h3 className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
+              Add New Practice Day
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-300 font-semibold block mb-1">Day of Week</label>
+                <select
+                  value={newDay}
+                  onChange={e => setNewDay(e.target.value)}
+                  className="w-full bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200 min-h-[44px]"
+                >
+                  <option value="Monday">Monday</option>
+                  <option value="Tuesday">Tuesday</option>
+                  <option value="Wednesday">Wednesday</option>
+                  <option value="Thursday">Thursday</option>
+                  <option value="Friday">Friday</option>
+                  <option value="Saturday">Saturday</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-300 font-semibold block mb-1">Time Slot</label>
+                <input
+                  type="text"
+                  value={newTime}
+                  onChange={e => setNewTime(e.target.value)}
+                  className="w-full bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200 min-h-[44px]"
+                  placeholder="e.g. 10:00 - 12:00"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-300 font-semibold block mb-1">Location / Pitch</label>
+                <input
+                  type="text"
+                  value={newLocation}
+                  onChange={e => setNewLocation(e.target.value)}
+                  className="w-full bg-[#111111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs text-gray-200 min-h-[44px]"
+                  placeholder="e.g. Pitch 3"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowAddDayModal(false)}
+                className="px-4 py-2 bg-[#111111] text-gray-300 text-xs font-semibold rounded-lg min-h-[44px] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onAddPracticeDay(newDay, newTime, newLocation);
+                  setShowAddDayModal(false);
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg min-h-[44px] cursor-pointer"
+              >
+                Save Practice Day
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
+
+export default Homepage;

@@ -2,7 +2,7 @@ export type UserRole = 'COACH' | 'CAPTAIN' | 'PLAYER' | 'GUEST';
 
 export type PlayerPosition = 'GK' | 'DF' | 'MD' | 'FW';
 
-export type AvailabilityStatus = 'Fit' | 'Recovering' | 'Suspended' | 'Injured' | 'Unavailable' | 'Reserve';
+export type AvailabilityStatus = 'Fit' | 'Active' | 'Recovering' | 'Suspended' | 'Injured' | 'Unavailable' | 'Reserve';
 
 export interface Player {
     id: string;
@@ -61,6 +61,15 @@ export interface RoleAssignments {
     kickoffPlayerId?: string;
     throwInPriorityId?: string;
     subPriorityId?: string;
+}
+
+export interface PracticeSession {
+    id: string;
+    day: string;
+    time: string;
+    location: string;
+    activity: string;
+    assignedBy?: string;
 }
 
 export type MatchStatus = 'FINISHED' | 'LIVE' | 'UPCOMING';

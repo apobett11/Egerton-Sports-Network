@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Player, UserRole, PlayerPosition } from '../types';
-import { initialRoster } from '../mockData';
+import type { Player, UserRole, PlayerPosition, PracticeSession } from '../types';
+import { initialRoster, initialPracticeSchedule } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
 
-export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS';
+export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
 
 export interface RoleAssignments {
   captainId: string;
+  viceCaptainId: string;
   penaltyTakerId: string;
   freeKickTakerId: string;
   leftCornerTakerId: string;
@@ -19,17 +20,7 @@ export const useTeamDashboard = () => {
   const { user, role: authRole, logout: authLogout } = useAuth();
 
   const isLoggedIn = Boolean(user && authRole !== 'guest');
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    return authRole === 'captain' ? 'CAPTAIN' : 'COACH';
-  });
-
-  useEffect(() => {
-    if (authRole === 'captain') {
-      setCurrentRole('CAPTAIN');
-    } else if (authRole === 'coach') {
-      setCurrentRole('COACH');
-    }
-  }, [authRole]);
+  const currentRole: UserRole = authRole === 'captain' ? 'CAPTAIN' : 'COACH';
 
   const [activeView, setActiveView] = useState<DashboardView>('DASHBOARD');
 
@@ -39,6 +30,7 @@ export const useTeamDashboard = () => {
   });
 
   const [roster, setRoster] = useState<Player[]>(initialRoster);
+  const [practiceSchedule, setPracticeSchedule] = useState<PracticeSession[]>(initialPracticeSchedule);
 
   // Auto-Save Lineup & Tactics Draft Recovery
   const {
@@ -60,6 +52,7 @@ export const useTeamDashboard = () => {
       },
       roleAssignments: {
         captainId: 'p1',
+        viceCaptainId: 'p2',
         penaltyTakerId: 'p5',
         freeKickTakerId: 'p6',
         leftCornerTakerId: 'p6',
@@ -76,17 +69,7 @@ export const useTeamDashboard = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
 
-  const [showAddPlayerModal, setShowAddPlayerModal] = useState<boolean>(false);
-  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
-
-  const [newPlayer, setNewPlayer] = useState({
-    name: '',
-    number: 10,
-    position: 'MD' as PlayerPosition,
-    rating: 80,
-    cardImage: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&auto=format&fit=crop&q=80',
-  });
-
+  const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Protect Unsaved Lineup Changes on Tactics tab
@@ -110,21 +93,9 @@ export const useTeamDashboard = () => {
     }, 3500);
   }, []);
 
-  const handleLogin = (role: UserRole) => {
-    setCurrentRole(role);
-    setActiveView('DASHBOARD');
-    showToast(`Access active as ${role === 'COACH' ? 'Coach' : 'Captain'}`);
-  };
-
   const handleLogout = async () => {
     await authLogout();
     window.location.hash = '/login';
-  };
-
-  const handleRoleToggle = () => {
-    const nextRole: UserRole = currentRole === 'COACH' ? 'CAPTAIN' : 'COACH';
-    setCurrentRole(nextRole);
-    showToast(`Switched access context to ${nextRole === 'COACH' ? 'Coach Mode' : 'Captain Mode'}`);
   };
 
   const collectiveRating = Math.round(
@@ -150,46 +121,33 @@ export const useTeamDashboard = () => {
         p.status === 'Unavailable' ||
         p.isInjured ||
         p.isSuspended ||
-        p.medicalClearance === false ||
-        (p.yellowCards && p.yellowCards >= 5) ||
-        (p.redCards && p.redCards >= 1)
+        p.medicalClearance === false
     );
     if (unavailable.length > 0) {
-      errors.push(`Starting XI includes restricted players (Injured/No Medical Clearance/Suspended): ${unavailable.map((p) => p.name).join(', ')}.`);
+      errors.push(`Starting XI includes restricted players: ${unavailable.map((p) => p.name).join(', ')}.`);
     }
     return { valid: errors.length === 0, errors };
   };
 
-  const handleSaveSquadDraft = () => {
-    if (currentRole !== 'COACH') {
-      showToast('Captain Suggestion Mode: Recommendation saved for Head Coach review.');
-      return;
-    }
-    if (isSubmittingSquad) return;
-    setIsSubmittingSquad(true);
-    setTimeout(() => {
-      setIsSubmittingSquad(false);
-      showToast('Saved Tactical Match Squad Draft locally & synced to server.');
-    }, 600);
+  const handleSaveRoles = () => {
+    showToast('Saved Tactical Match Roles successfully.');
   };
 
-  const handleSubmitMatchSquad = () => {
-    if (currentRole !== 'COACH') {
-      showToast('⚠️ Captain Authority Limit: Only the Head Coach can officially submit match day lineup and tactics.');
-      return;
-    }
+  const handleSaveFormation = () => {
+    showToast(`Saved Formation (${squadDraftState.formation}) successfully.`);
+  };
+
+  const handleSaveSquad = () => {
     if (isSubmittingSquad) return;
     const { valid, errors } = validateSquad();
     if (!valid) {
-      showToast(`Squad Validation Error: ${errors[0]}`);
-      return;
+      showToast(`Squad Warning: ${errors[0]}`);
     }
     setIsSubmittingSquad(true);
     setTimeout(() => {
       setIsSubmittingSquad(false);
-      clearSquadDraft();
-      showToast('Match Squad Official Submission Confirmed & Synced to League Server');
-    }, 800);
+      showToast('Saved Squad configuration successfully for current fixture.');
+    }, 500);
   };
 
   const handleSwapPlayer = (benchPlayerIdxInRoster: number) => {
@@ -207,58 +165,66 @@ export const useTeamDashboard = () => {
     showToast(`Substituted ${newPlayerName} in for ${oldPlayerName}`);
   };
 
-  const handleAddPlayer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPlayer.name.trim()) {
-      showToast('Please enter a valid athlete name');
-      return;
-    }
-    const created: Player = {
-      id: `p_${Date.now()}`,
-      name: newPlayer.name.trim(),
-      number: Number(newPlayer.number),
-      position: newPlayer.position,
-      rating: Number(newPlayer.rating),
-      cardImage: newPlayer.cardImage,
-      status: 'Fit',
-      stamina: 95,
-      speed: Math.floor(Math.random() * 20) + 75,
-      shooting: Math.floor(Math.random() * 20) + 70,
-      passing: Math.floor(Math.random() * 20) + 72,
-      dribbling: Math.floor(Math.random() * 20) + 74,
-      defense: Math.floor(Math.random() * 20) + 65,
-      physical: Math.floor(Math.random() * 20) + 72,
-    };
-
-    setRoster((prev) => [...prev, created]);
-    setShowAddPlayerModal(false);
-    setNewPlayer({
-      name: '',
-      number: 10,
-      position: 'MD',
-      rating: 80,
-      cardImage: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&auto=format&fit=crop&q=80',
-    });
-    showToast(`Registered ${created.name} (#${created.number}) to Squad`);
+  const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Active' | 'Injured' | 'Suspended') => {
+    setRoster((prev) =>
+      prev.map((p) => {
+        if (p.id === playerId) {
+          const updatedStatus = newStatus === 'Active' ? 'Fit' : newStatus;
+          return {
+            ...p,
+            status: updatedStatus as any,
+            isInjured: newStatus === 'Injured',
+            isSuspended: newStatus === 'Suspended',
+          };
+        }
+        return p;
+      })
+    );
+    showToast(`Player status updated to ${newStatus}`);
   };
 
-  const handleDeletePlayer = () => {
-    if (!playerToDelete) return;
-    const id = playerToDelete.id;
-    const idxInRoster = roster.findIndex((p) => p.id === id);
-    setRoster((prev) => prev.filter((p) => p.id !== id));
-    setSquadDraftState((prev) => ({
-      ...prev,
-      startingXI: prev.startingXI.filter((i) => i !== idxInRoster),
-    }));
-    setPlayerToDelete(null);
-    showToast(`Removed ${playerToDelete.name} from Squad Roster`);
+  const handleUploadPlayerImage = (playerId: string, imageUrl: string) => {
+    setRoster((prev) =>
+      prev.map((p) => (p.id === playerId ? { ...p, cardImage: imageUrl } : p))
+    );
+    showToast('Player profile image updated successfully');
+  };
+
+  const handleAssignPracticeActivity = (sessionId: string, activity: string) => {
+    setPracticeSchedule((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, activity, assignedBy: 'Captain' } : s))
+    );
+    showToast(`Assigned activity: "${activity}" to session`);
+  };
+
+  const handleAddPracticeDay = (day: string, time: string, location: string) => {
+    const newSession: PracticeSession = {
+      id: `ps_${Date.now()}`,
+      day,
+      time,
+      location,
+      activity: 'Pending Activity Assignment',
+      assignedBy: 'Coach',
+    };
+    setPracticeSchedule((prev) => [...prev, newSession]);
+    showToast(`Added practice day: ${day}`);
+  };
+
+  const inviteUrl = `${window.location.origin}/#/login?invite=team-egerton-fc`;
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(inviteUrl);
+    showToast('Invitation link copied to clipboard!');
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(`Join Egerton FC squad on Egerton Sports Network: ${inviteUrl}`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   return {
     isLoggedIn,
     currentRole,
-    setCurrentRole,
     activeView,
     setActiveView,
     darkMode,
@@ -285,33 +251,34 @@ export const useTeamDashboard = () => {
     setSearchTerm,
     positionFilter,
     setPositionFilter,
-    showAddPlayerModal,
-    setShowAddPlayerModal,
-    playerToDelete,
-    setPlayerToDelete,
-    newPlayer,
-    setNewPlayer,
+    showInviteModal,
+    setShowInviteModal,
+    inviteUrl,
+    handleCopyInviteLink,
+    handleShareWhatsApp,
     roleAssignments: squadDraftState.roleAssignments,
     setRoleAssignments: (action: React.SetStateAction<RoleAssignments>) =>
       setSquadDraftState((prev) => ({
         ...prev,
         roleAssignments: typeof action === 'function' ? action(prev.roleAssignments) : action,
       })),
+    practiceSchedule,
+    handleAssignPracticeActivity,
+    handleAddPracticeDay,
     toastMessage,
     showToast,
     isSubmittingSquad,
     hasRecoveredDraft,
-    handleLogin,
     handleLogout,
-    handleRoleToggle,
     collectiveRating,
     collectiveStrength,
     benchPlayers,
     validateSquad,
-    handleSaveSquadDraft,
-    handleSubmitMatchSquad,
+    handleSaveRoles,
+    handleSaveFormation,
+    handleSaveSquad,
     handleSwapPlayer,
-    handleAddPlayer,
-    handleDeletePlayer,
+    handleUpdatePlayerStatus,
+    handleUploadPlayerImage,
   };
 };

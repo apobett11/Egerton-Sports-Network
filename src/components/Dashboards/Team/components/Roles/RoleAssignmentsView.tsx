@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCheck, Award, Zap, Activity, Check, X } from 'lucide-react';
+import { UserCheck, Award, Zap, Activity, ShieldCheck, Check } from 'lucide-react';
 import type { Player, UserRole } from '../../types';
 import type { RoleAssignments } from '../../hooks/useTeamDashboard';
 
@@ -9,6 +9,7 @@ interface RoleAssignmentsViewProps {
   roster: Player[];
   currentRole: UserRole;
   showToast: (msg: string) => void;
+  onSaveRoles?: () => void;
 }
 
 export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
@@ -17,32 +18,52 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
   roster,
   currentRole,
   showToast,
+  onSaveRoles,
 }) => {
+  const isCoach = currentRole === 'COACH';
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 md:p-6 space-y-5 shadow-lg">
-        <div>
-          <h2 className="text-sm md:text-base font-semibold tracking-wide text-gray-100 flex items-center gap-2">
-            In-Match Role Assignments
-          </h2>
-          <p className="text-xs md:text-sm font-normal leading-relaxed text-gray-300 mt-1">
-            Designate match leaders, set-piece specialists, and penalty takers for official fixtures.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-4">
+          <div>
+            <h2 className="text-sm md:text-base font-bold tracking-wide text-gray-100 flex items-center gap-2 uppercase">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              <span>In-Match Tactical Roles</span>
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Designate match leaders, vice captains, set-piece specialists, and corner takers.
+            </p>
+          </div>
+
+          {isCoach && (
+            <button
+              onClick={() => {
+                if (onSaveRoles) onSaveRoles();
+                else showToast('Saved Roles successfully');
+              }}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer self-start sm:self-auto min-h-[44px]"
+            >
+              <Check className="w-4 h-4" />
+              <span>Save Roles</span>
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Captain */}
           <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
             <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Team Captain (On Pitch)</span>
+              <span>Team Captain</span>
             </label>
             <select
+              disabled={!isCoach}
               value={roleAssignments.captainId}
               onChange={e => {
                 setRoleAssignments(prev => ({ ...prev, captainId: e.target.value }));
-                showToast('Updated Team Captain assignment');
               }}
-              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px]"
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {roster.map(p => (
                 <option key={p.id} value={p.id}>
@@ -52,18 +73,41 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             </select>
           </div>
 
+          {/* Vice Captain */}
+          <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
+            <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <span>Vice Captain</span>
+            </label>
+            <select
+              disabled={!isCoach}
+              value={roleAssignments.viceCaptainId || ''}
+              onChange={e => {
+                setRoleAssignments(prev => ({ ...prev, viceCaptainId: e.target.value }));
+              }}
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {roster.map(p => (
+                <option key={p.id} value={p.id}>
+                  #{p.number} {p.name} ({p.position} - {p.rating} OVR)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Penalty Taker */}
           <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
             <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
               <Award className="w-4 h-4 text-emerald-400" />
               <span>Penalty Taker</span>
             </label>
             <select
+              disabled={!isCoach}
               value={roleAssignments.penaltyTakerId}
               onChange={e => {
                 setRoleAssignments(prev => ({ ...prev, penaltyTakerId: e.target.value }));
-                showToast('Updated Penalty Taker assignment');
               }}
-              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px]"
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {roster.map(p => (
                 <option key={p.id} value={p.id}>
@@ -73,18 +117,19 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             </select>
           </div>
 
+          {/* Free Kick Specialist */}
           <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
             <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
               <Zap className="w-4 h-4 text-emerald-400" />
               <span>Free Kick Specialist</span>
             </label>
             <select
+              disabled={!isCoach}
               value={roleAssignments.freeKickTakerId}
               onChange={e => {
                 setRoleAssignments(prev => ({ ...prev, freeKickTakerId: e.target.value }));
-                showToast('Updated Free Kick Specialist');
               }}
-              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px]"
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {roster.map(p => (
                 <option key={p.id} value={p.id}>
@@ -94,18 +139,41 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             </select>
           </div>
 
+          {/* Left Corner Taker */}
           <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
             <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-400" />
               <span>Left Corner Kick Taker</span>
             </label>
             <select
+              disabled={!isCoach}
               value={roleAssignments.leftCornerTakerId}
               onChange={e => {
                 setRoleAssignments(prev => ({ ...prev, leftCornerTakerId: e.target.value }));
-                showToast('Updated Left Corner Taker');
               }}
-              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px]"
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
+            >
+              {roster.map(p => (
+                <option key={p.id} value={p.id}>
+                  #{p.number} {p.name} ({p.position})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Right Corner Taker */}
+          <div className="bg-[#111111] p-4 rounded-xl border border-[#2A2A2A]">
+            <label className="text-xs md:text-sm font-semibold text-gray-200 block mb-2 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-400" />
+              <span>Right Corner Kick Taker</span>
+            </label>
+            <select
+              disabled={!isCoach}
+              value={roleAssignments.rightCornerTakerId}
+              onChange={e => {
+                setRoleAssignments(prev => ({ ...prev, rightCornerTakerId: e.target.value }));
+              }}
+              className="w-full bg-[#1F1F1F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-xs md:text-sm text-gray-200 focus:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {roster.map(p => (
                 <option key={p.id} value={p.id}>
@@ -116,45 +184,8 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
           </div>
         </div>
       </div>
-
-      <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 md:p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
-          <div>
-            <h3 className="text-sm md:text-base font-semibold tracking-wide text-gray-100">
-              Active Authority Rights
-            </h3>
-            <p className="text-[11px] md:text-xs font-medium text-gray-400">
-              Current user permissions ({currentRole})
-            </p>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-md border border-emerald-500/30">
-            {currentRole} ROLE
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs md:text-sm text-gray-300">
-          <div className="flex items-center gap-2 p-3 bg-[#111111] rounded-lg border border-[#2A2A2A]">
-            <Check className="w-4 h-4 text-emerald-400" />
-            <span>Modify Starting XI Formations</span>
-          </div>
-          <div className="flex items-center gap-2 p-3 bg-[#111111] rounded-lg border border-[#2A2A2A]">
-            <Check className="w-4 h-4 text-emerald-400" />
-            <span>Execute Match Substitutions</span>
-          </div>
-          <div className="flex items-center gap-2 p-3 bg-[#111111] rounded-lg border border-[#2A2A2A]">
-            <Check className="w-4 h-4 text-emerald-400" />
-            <span>Assign Corner & Penalty Takers</span>
-          </div>
-          <div className="flex items-center gap-2 p-3 bg-[#111111] rounded-lg border border-[#2A2A2A]">
-            {currentRole === 'COACH' ? (
-              <Check className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <X className="w-4 h-4 text-rose-400" />
-            )}
-            <span>Add/Drop Roster Athletes ({currentRole === 'COACH' ? 'Unlocked' : 'Coach Only'})</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
+
+export default RoleAssignmentsView;

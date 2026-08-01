@@ -3,7 +3,6 @@ import { UserRole } from '../types';
 
 interface SettingsPageProps {
     currentRole: UserRole;
-    setCurrentRole: (role: UserRole) => void;
     darkMode: boolean;
     setDarkMode: (dark: boolean) => void;
     showToast: (msg: string) => void;
@@ -12,7 +11,6 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
     currentRole,
-    setCurrentRole,
     darkMode,
     setDarkMode,
     showToast,
@@ -73,10 +71,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         showToast('Captain Authority: In-match roles and set-piece specialists saved successfully.');
     };
 
-    const handleUpdateRole = (newRole: UserRole) => {
-        setCurrentRole(newRole);
-        showToast(`Switched access role context to: ${newRole === 'COACH' ? 'Coach Mode' : 'Captain Mode'}`);
-    };
+
 
     return (
         <div className="space-y-stack-lg w-full select-none max-w-7xl mx-auto pb-16">
@@ -139,39 +134,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </span>
                                 </div>
                             </button>
-                        </div>
-
-                        {/* Access Role context switcher */}
-                        <div className="flex items-center justify-between py-2">
-                            <div>
-                                <p className="font-headline-md text-xs font-bold text-on-surface">Role Access Context</p>
-                                <p className="text-[10px] text-on-surface-variant mt-1">
-                                    Switch context to verify Coach vs Captain permission boundaries.
-                                </p>
-                            </div>
-
-                            <div className="flex gap-2 bg-surface-container-high/40 p-1.5 rounded-xl border border-outline-variant/20">
-                                <button
-                                    onClick={() => handleUpdateRole('COACH')}
-                                    className={`px-4 py-2 rounded-lg font-label-sm text-[10px] font-bold uppercase transition-all tracking-wider cursor-pointer ${
-                                        currentRole === 'COACH'
-                                            ? 'bg-primary text-on-primary shadow-md'
-                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
-                                    }`}
-                                >
-                                    Coach Mode
-                                </button>
-                                <button
-                                    onClick={() => handleUpdateRole('CAPTAIN')}
-                                    className={`px-4 py-2 rounded-lg font-label-sm text-[10px] font-bold uppercase transition-all tracking-wider cursor-pointer ${
-                                        currentRole === 'CAPTAIN'
-                                            ? 'bg-primary text-on-primary shadow-md'
-                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5'
-                                    }`}
-                                >
-                                    Captain Mode
-                                </button>
-                            </div>
                         </div>
                     </div>
 

@@ -352,3 +352,60 @@ export const formationCoordinates: {
         { roleLabel: 'CF', top: '10%', left: '50%' }
     ]
 };
+
+export const initialPracticeSchedule = [
+    {
+        id: 'ps1',
+        day: 'Monday',
+        time: '09:00 - 11:30',
+        location: 'Main Pitch',
+        activity: 'Gas drills & Footwork',
+        assignedBy: 'Captain Leo'
+    },
+    {
+        id: 'ps2',
+        day: 'Wednesday',
+        time: '10:00 - 12:30',
+        location: 'Pitch 2',
+        activity: 'Football control & Passing',
+        assignedBy: 'Captain Leo'
+    },
+    {
+        id: 'ps3',
+        day: 'Friday',
+        time: '15:00 - 17:00',
+        location: 'Egerton Arena',
+        activity: 'Pitch positioning & Tactical drills',
+        assignedBy: 'Captain Leo'
+    }
+];
+
+export const initialKits = [
+    {
+        id: 'away',
+        name: 'Gold Trim Away Kit',
+        description: 'Elegant white with vertical gold stripes and collar accent',
+        primaryBg: '#FFFFFF',
+        stripeColor: '#D4AF37',
+        accentColor: '#101415',
+        collarColor: '#D4AF37'
+    },
+    {
+        id: 'home',
+        name: 'Standard Home Kit',
+        description: 'Elite gold with high-contrast slate stripes and details',
+        primaryBg: '#D4AF37',
+        stripeColor: '#1E293B',
+        accentColor: '#FFFFFF',
+        collarColor: '#1E293B'
+    },
+    {
+        id: 'third',
+        name: 'Midnight Third Kit',
+        description: 'Stealth matte black with golden neon collar trim',
+        primaryBg: '#101415',
+        stripeColor: null,
+        accentColor: '#D4AF37',
+        collarColor: '#D4AF37'
+    }
+];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Shield } from 'lucide-react';
 import type { UserRole } from '../../types';
 import type { DashboardView } from '../../hooks/useTeamDashboard';
 
@@ -7,7 +7,6 @@ interface TeamHeaderProps {
   currentRole: UserRole;
   activeView: DashboardView;
   setActiveView: (view: DashboardView) => void;
-  handleRoleToggle: () => void;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -16,7 +15,6 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
   currentRole,
   activeView,
   setActiveView,
-  handleRoleToggle,
   darkMode,
   setDarkMode,
 }) => {
@@ -32,25 +30,15 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-              Authorized Session
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+              <Shield className="w-3 h-3 text-emerald-400" />
+              {currentRole === 'COACH' ? 'Coach Dashboard' : 'Captain Dashboard'}
             </span>
             <h1 className="text-sm md:text-base font-bold text-white tracking-tight">
-              {currentRole === 'COACH' ? 'COACH CONTROL MODE' : 'CAPTAIN CONTROL MODE'}
+              {currentRole === 'COACH' ? 'COACH CONTROL CENTER' : 'CAPTAIN DASHBOARD'}
             </h1>
           </div>
         </div>
-
-        <button
-          onClick={handleRoleToggle}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] hover:border-emerald-500/50 transition-colors min-h-[44px] cursor-pointer"
-          title="Click to toggle between Coach and Captain role permissions"
-        >
-          <Shield className={`w-3.5 h-3.5 ${currentRole === 'COACH' ? 'text-emerald-400' : 'text-amber-400'}`} />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-white">
-            SWITCH ROLE
-          </span>
-        </button>
       </div>
 
       {(activeView === 'TACTICS' || activeView === 'ROSTER' || activeView === 'ROLES') && (
@@ -64,7 +52,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
             }`}
           >
             <span>⚽</span>
-            <span>Tactics & Pitch</span>
+            <span>Pitch & Tactics</span>
           </button>
 
           <button
@@ -76,7 +64,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
             }`}
           >
             <span>📋</span>
-            <span>Roster & Subs</span>
+            <span>Squad Roster</span>
           </button>
 
           <button
@@ -103,3 +91,5 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
     </header>
   );
 };
+
+export default TeamHeader;
