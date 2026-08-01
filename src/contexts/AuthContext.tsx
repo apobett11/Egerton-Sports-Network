@@ -160,14 +160,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setRole('guest');
         localStorage.setItem('auth_logout_event', String(Date.now()));
+      } else if (currentSession?.user) {
+        setUser(currentSession.user);
+        // Avoid duplicate profile queries if profile is already loaded for this user
+        setProfile((prevProfile) => {
+          if (!prevProfile || prevProfile.id !== currentSession.user.id) {
+            fetchProfile(currentSession.user.id);
+          }
+          return prevProfile;
+        });
       } else {
-        setUser(currentSession?.user ?? null);
-        if (currentSession?.user) {
-          await fetchProfile(currentSession.user.id);
-        } else {
-          setRole('guest');
-          setProfile(null);
-        }
+        setUser(null);
+        setProfile(null);
+        setRole('guest');
       }
       setIsLoading(false);
     });
