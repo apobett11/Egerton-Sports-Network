@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, role, first_name, last_name, email, phone, country, avatar_url, bio, team_id, player_id')
+        .select('id, role, first_name, last_name, email, phone, country, avatar_url, bio')
         .eq('id', userId)
         .single();
 
@@ -204,11 +204,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data.user) {
         const fetchedProf = await fetchProfile(data.user.id);
+        if (!fetchedProf) {
+          setIsLoading(false);
+          return { error: 'Authentication succeeded, but user profile could not be loaded from the database.', role: 'guest', profile: null };
+        }
         setIsLoading(false);
-        return { error: null, role: fetchedProf?.role || 'guest', profile: fetchedProf };
+        return { error: null, role: fetchedProf.role, profile: fetchedProf };
       }
       setIsLoading(false);
-      return { error: null, role: 'guest', profile: null };
+      return { error: 'Authentication failed to return a valid user session.', role: 'guest', profile: null };
     } catch (err: any) {
       setIsLoading(false);
       return { error: err.message || 'Login failed', role: 'guest', profile: null };
