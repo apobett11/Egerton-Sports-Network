@@ -123,9 +123,9 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Center Column: Teams and Logos */}
-                                        <div className="flex-1 flex flex-col gap-3 px-4 justify-center">
-                                            <div className="flex items-center justify-between">
+                                        {/* Center Column: Teams, Logos, Squad Button and Scores */}
+                                        <div className="flex-1 flex items-center justify-between px-4">
+                                            <div className="flex flex-col gap-3 flex-1 pr-3">
                                                 <div className="flex items-center gap-3">
                                                     <img
                                                         src={match.teamA.logo}
@@ -137,14 +137,6 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                     </span>
                                                 </div>
 
-                                                {match.status !== 'UPCOMING' && (
-                                                    <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                        {match.scoreA}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
                                                     <img
                                                         src={match.teamB.logo}
@@ -155,12 +147,40 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                         {match.teamB.name}
                                                     </span>
                                                 </div>
+                                            </div>
 
-                                                {match.status !== 'UPCOMING' && (
-                                                    <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                        {match.scoreB}
+                                            {/* Button just to the left of the score */}
+                                            <div className="flex items-center gap-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onMatchClick(match);
+                                                    }}
+                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg shadow-xs transition-all cursor-pointer text-center flex flex-col items-center justify-center border border-emerald-500/40 active:scale-95"
+                                                    title="View squad, highlights, H2H"
+                                                >
+                                                    <span className="text-[11px] font-bold tracking-tight leading-none">See Squad Details</span>
+                                                    <span className="text-[8px] font-medium text-white/90 leading-tight mt-0.5">
+                                                        view the squad, highlights, H2H of both teams
                                                     </span>
-                                                )}
+                                                </button>
+
+                                                {/* Score Display */}
+                                                <div className="flex flex-col gap-3 items-end justify-center min-w-[24px]">
+                                                    {match.status !== 'UPCOMING' ? (
+                                                        <>
+                                                            <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                                {match.scoreA}
+                                                            </span>
+                                                            <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                                {match.scoreB}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-gray-400 font-mono">VS</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
