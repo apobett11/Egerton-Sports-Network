@@ -1,5 +1,6 @@
 import React from 'react';
 import { Player, UserRole } from '../types';
+import { KitsSection } from './Kits/KitsSection';
 import { RosterListView } from './Roster/RosterListView';
 import { Users } from 'lucide-react';
 
@@ -29,20 +30,16 @@ export const SquadPage: React.FC<SquadPageProps> = ({
   onUploadPlayerImage,
 }) => {
   return (
-    <div className="w-full space-y-6 max-w-7xl mx-auto pb-16">
-      {/* REGISTERED PLAYER DIRECTORY HEADER */}
-      <section className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-2xl p-5 md:p-6 shadow-xl space-y-2">
-        <h1 className="text-lg md:text-xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-          <Users className="w-6 h-6 text-emerald-400 shrink-0" />
-          <span>Official Egerton FC Player Directory</span>
-        </h1>
-        <p className="text-xs text-gray-400">
-          Registered team player list, medical availability, jersey numbers, and player profile records.
-        </p>
-      </section>
+    <div className="w-full space-y-8 max-w-7xl mx-auto pb-16">
+      {/* JERSEYS / KITS SECTION AT TOP */}
+      <KitsSection />
 
-      {/* PLAYER DIRECTORY LIST */}
+      {/* PLAYER DIRECTORY LIST SECTION WITH H2 */}
       <section className="space-y-4">
+        <h2 className="text-sm md:text-base font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span>Team Player List</span>
+        </h2>
         <RosterListView
           searchTerm=""
           setSearchTerm={() => {}}
