@@ -32,7 +32,7 @@ export const SquadPage: React.FC<SquadPageProps> = ({
   return (
     <div className="w-full space-y-8 max-w-7xl mx-auto pb-16">
       {/* JERSEYS / KITS SECTION AT TOP */}
-      <KitsSection />
+      <KitsSection currentRole={currentRole} />
 
       {/* PLAYER DIRECTORY LIST SECTION WITH H2 */}
       <section className="space-y-4">
