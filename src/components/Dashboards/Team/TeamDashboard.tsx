@@ -178,6 +178,11 @@ export const TeamDashboard: React.FC = () => {
                   onOpenRolesModal={() => setShowRolesModal(true)}
                   activeSquadType={activeSquadType}
                   setActiveSquadType={setActiveSquadType}
+                  roster={roster}
+                  startingXI={startingXI}
+                  selectedPitchSlot={selectedPitchSlot}
+                  onSwapPlayer={handleSwapPlayer}
+                  onOpenInviteModal={() => setShowInviteModal(true)}
                 />
               </div>
             </div>
