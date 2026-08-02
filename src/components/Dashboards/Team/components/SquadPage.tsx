@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Player, UserRole } from '../types';
-import { KitsSection } from './Kits/KitsSection';
 import { RosterListView } from './Roster/RosterListView';
-import { Save, Check, Lock, Users } from 'lucide-react';
+import { Save, Users, ShieldAlert, Check } from 'lucide-react';
 
 interface SquadPageProps {
   roster: Player[];
@@ -19,7 +18,7 @@ interface SquadPageProps {
   onUpdatePlayerStatus: (playerId: string, status: 'Active' | 'Injured' | 'Suspended') => void;
   onUploadPlayerImage: (playerId: string, imageUrl: string) => void;
   onSaveSquad: () => void;
-  onSaveFormation: () => void;
+  onSaveFormation?: () => void;
 }
 
 export const SquadPage: React.FC<SquadPageProps> = ({
@@ -37,66 +36,99 @@ export const SquadPage: React.FC<SquadPageProps> = ({
   onUpdatePlayerStatus,
   onUploadPlayerImage,
   onSaveSquad,
-  onSaveFormation,
 }) => {
   const isCoach = currentRole === 'COACH';
+  const [squadViewType, setSquadViewType] = useState<'DEFAULT' | 'NEXT_GAME'>('NEXT_GAME');
+
+  const defaultSquadHeading = "Egerton FC Default Squad";
+  const nextGameSquadHeading = "Egerton FC vs Engineering FC Squad";
+
+  const currentHeading = squadViewType === 'DEFAULT' ? defaultSquadHeading : nextGameSquadHeading;
 
   return (
-    <div className="w-full space-y-8 max-w-7xl mx-auto pb-16">
-      {/* TASK 9: KITS PAGE / SECTION AT TOP */}
-      <KitsSection />
-
-      {/* TASK 7: SQUAD MANAGEMENT (COACH ONLY EDITING, CAPTAIN VIEW ONLY) */}
+    <div className="w-full space-y-6 max-w-7xl mx-auto pb-16">
+      {/* SQUAD HEADER CARD */}
       <section className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-2xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
-          <div>
-            <h2 className="text-base md:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-400" />
-              <span>Squad & Lineup Management</span>
-            </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2A2A2A] pb-4">
+          <div className="space-y-1">
+            {/* SQUAD TYPE SELECTOR FOR COACH */}
+            {isCoach && (
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setSquadViewType('NEXT_GAME')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    squadViewType === 'NEXT_GAME'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
+                  }`}
+                >
+                  Next Game Squad
+                </button>
+                <button
+                  onClick={() => setSquadViewType('DEFAULT')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    squadViewType === 'DEFAULT'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
+                  }`}
+                >
+                  Default Squad
+                </button>
+              </div>
+            )}
+
+            {/* TASK 9 & TASK 10 HEADINGS */}
+            <h1 className="text-lg md:text-xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+              <Users className="w-6 h-6 text-emerald-400 shrink-0" />
+              <span>{currentHeading}</span>
+            </h1>
             <p className="text-xs text-gray-400">
               {isCoach
-                ? 'Coach Control: Manage First 11, Bench, Formations & Roles'
-                : 'Captain Mode: Squad Roster (View Only)'}
+                ? `Coach Control: Managing ${squadViewType === 'DEFAULT' ? 'Club Master Default Squad' : 'Upcoming Match Lineup & Substitutes'}`
+                : 'Captain Mode: Match Roster View (Read-Only Squad Selection)'}
             </p>
           </div>
 
-          {isCoach ? (
+          {/* TASK 2 & TASK 3: Coach Save Buttons vs Captain Read-Only (No Buttons Rendered) */}
+          {isCoach && (
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
-                onClick={onSaveFormation}
-                className="px-3.5 py-2 bg-[#111111] hover:bg-[#252525] text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 min-h-[44px] cursor-pointer"
+                onClick={() => {
+                  onSaveSquad();
+                  showToast(
+                    squadViewType === 'DEFAULT'
+                      ? 'Saved Egerton FC Default Squad successfully'
+                      : 'Saved Egerton FC vs Engineering FC Squad successfully'
+                  );
+                }}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 min-h-[44px] cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>Save Formation</span>
+                <span>{squadViewType === 'DEFAULT' ? 'Save Default Squad' : 'Save Next-Game Squad'}</span>
               </button>
-              <button
-                onClick={onSaveSquad}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-[44px] cursor-pointer"
-              >
-                <Check className="w-4 h-4" />
-                <span>Save Squad</span>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 text-xs text-amber-400 font-semibold bg-[#111111] px-3 py-2 rounded-xl border border-[#2A2A2A]">
-              <Lock className="w-4 h-4" />
-              <span>Squad View Only</span>
             </div>
           )}
         </div>
 
-        {/* TASK 7 REQUIREMENT DISPLAY NOTE */}
+        {/* Dynamic Context Banner */}
         <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-xs font-semibold text-emerald-400 leading-relaxed">
-          💡 This squad applies only to the current fixture and automatically reverts to the default squad before the next fixture.
+          {squadViewType === 'DEFAULT'
+            ? '📌 Egerton FC Default Squad serves as the baseline blueprint for all upcoming fixtures.'
+            : '💡 Egerton FC vs Engineering FC Squad applies exclusively to the next match fixture and automatically resets after match completion.'}
         </div>
       </section>
 
-      {/* TASK 10: PLAYER LIST BELOW KITS SECTION */}
+      {/* SQUAD PLAYER LIST SECTION */}
       <section className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
-          Team Player List
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">
+            {squadViewType === 'DEFAULT' ? 'Default Squad Roster' : 'Next Game Match Roster'}
+          </h2>
+          <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 px-3 py-1 rounded-lg border border-emerald-500/30">
+            {startingXI.length}/11 Starting XI Selected
+          </span>
+        </div>
+
         <RosterListView
           searchTerm=""
           setSearchTerm={() => {}}

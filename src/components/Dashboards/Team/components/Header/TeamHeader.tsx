@@ -41,45 +41,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
         </div>
       </div>
 
-      {(activeView === 'TACTICS' || activeView === 'ROSTER' || activeView === 'ROLES') && (
-        <div className="w-full sm:w-auto flex items-center bg-[#1F1F1F] p-1 rounded-xl border border-[#2A2A2A] justify-between">
-          <button
-            onClick={() => setActiveView('TACTICS')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'TACTICS'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span>⚽</span>
-            <span>Pitch & Tactics</span>
-          </button>
 
-          <button
-            onClick={() => setActiveView('ROSTER')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'ROSTER'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span>📋</span>
-            <span>Squad Roster</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('ROLES')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'ROLES'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span>⚙️</span>
-            <span>Match Roles</span>
-          </button>
-        </div>
-      )}
 
       <button
         onClick={() => setDarkMode(!darkMode)}

@@ -50,6 +50,8 @@ export const TeamDashboard: React.FC = () => {
     setSelectedPitchSlot,
     showSwapModal,
     setShowSwapModal,
+    showRolesModal,
+    setShowRolesModal,
     searchTerm,
     setSearchTerm,
     positionFilter,
@@ -169,6 +171,7 @@ export const TeamDashboard: React.FC = () => {
                   currentRole={currentRole}
                   onSaveFormation={handleSaveFormation}
                   onSaveSquad={handleSaveSquad}
+                  onOpenRolesModal={() => setShowRolesModal(true)}
                 />
               </div>
             </div>
@@ -195,8 +198,8 @@ export const TeamDashboard: React.FC = () => {
             />
           )}
 
-          {/* PAGE 4: MATCH ROLES */}
-          {activeView === 'ROLES' && (
+          {/* MATCH ROLES MODAL */}
+          {showRolesModal && (
             <RoleAssignmentsView
               roleAssignments={roleAssignments}
               setRoleAssignments={setRoleAssignments}
@@ -204,6 +207,7 @@ export const TeamDashboard: React.FC = () => {
               currentRole={currentRole}
               showToast={showToast}
               onSaveRoles={handleSaveRoles}
+              onClose={() => setShowRolesModal(false)}
             />
           )}
 

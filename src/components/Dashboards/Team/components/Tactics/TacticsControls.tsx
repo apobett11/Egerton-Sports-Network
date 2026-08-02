@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Sliders, ChevronDown, UserCheck, Check, Save } from 'lucide-react';
+import { Sparkles, Sliders, ChevronDown, UserCheck, Check, Save, ShieldCheck } from 'lucide-react';
 import type { UserRole } from '../../types';
 
 interface TacticsControlsProps {
@@ -30,6 +30,7 @@ interface TacticsControlsProps {
   currentRole?: UserRole;
   onSaveFormation?: () => void;
   onSaveSquad?: () => void;
+  onOpenRolesModal?: () => void;
 }
 
 export const TacticsControls: React.FC<TacticsControlsProps> = ({
@@ -48,8 +49,10 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
   currentRole = 'COACH',
   onSaveFormation,
   onSaveSquad,
+  onOpenRolesModal,
 }) => {
   const isCoach = currentRole === 'COACH';
+  const isCaptain = currentRole === 'CAPTAIN';
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,12 +77,14 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
           </div>
         </div>
 
+        {/* Formation Section */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs md:text-sm font-semibold text-gray-300">
               Starting Formation
             </label>
-            {isCoach && (
+            {/* TASK 4 & 5: Save Formation ONLY rendered for Captain */}
+            {isCaptain && (
               <button
                 onClick={() => {
                   if (onSaveFormation) onSaveFormation();
@@ -93,33 +98,43 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {['4-4-1-1', '4-3-3', '4-2-3-1'].map(f => (
-              <button
-                key={f}
-                disabled={!isCoach}
-                onClick={() => {
-                  setFormation(f);
-                  showToast(`Applied formation preset: ${f}`);
-                }}
-                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all min-h-[44px] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed ${
-                  formation === f
-                    ? 'bg-emerald-600 border-emerald-500 text-white shadow-md'
-                    : 'bg-[#111111] border-[#2A2A2A] text-gray-300 hover:border-gray-500'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          {/* TASK 5: Coach view is read-only badge; Captain can change presets */}
+          {isCaptain ? (
+            <div className="grid grid-cols-3 gap-2">
+              {['4-4-1-1', '4-3-3', '4-2-3-1'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => {
+                    setFormation(f);
+                    showToast(`Applied formation preset: ${f}`);
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all min-h-[44px] cursor-pointer ${
+                    formation === f
+                      ? 'bg-emerald-600 border-emerald-500 text-white shadow-md'
+                      : 'bg-[#111111] border-[#2A2A2A] text-gray-300 hover:border-gray-500'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#111111] p-3 rounded-lg border border-[#2A2A2A] flex items-center justify-between">
+              <span className="text-xs text-gray-400">Current Formation (Set by Captain):</span>
+              <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/30">
+                {formation}
+              </span>
+            </div>
+          )}
         </div>
 
+        {/* Tactical Philosophy */}
         <div>
           <label className="text-xs md:text-sm font-semibold text-gray-300 block mb-1.5">
             Primary Tactical Philosophy
           </label>
           <select
-            disabled={!isCoach}
+            disabled={!isCaptain}
             value={activePlaystyle}
             onChange={e => {
               setActivePlaystyle(e.target.value);
@@ -133,6 +148,17 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
             <option value="Long Ball Counter">🚀 Long Ball Counter</option>
           </select>
         </div>
+
+        {/* TASK 8: In Match Roles Modal Trigger Button */}
+        {onOpenRolesModal && (
+          <button
+            onClick={onOpenRolesModal}
+            className="w-full py-2.5 px-3 bg-[#111111] hover:bg-[#252525] text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 min-h-[44px] cursor-pointer shadow-sm"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>In-Match Roles ({isCaptain ? 'Edit' : 'View'})</span>
+          </button>
+        )}
       </div>
 
       <details className="group border border-[#2A2A2A] rounded-xl bg-[#1F1F1F] overflow-hidden">
@@ -154,7 +180,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               type="range"
               min="1"
               max="100"
-              disabled={!isCoach}
+              disabled={!isCaptain}
               value={playstyleSliders.attackingDepth}
               onChange={e =>
                 setPlaystyleSliders(prev => ({ ...prev, attackingDepth: Number(e.target.value) }))
@@ -172,7 +198,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               type="range"
               min="1"
               max="100"
-              disabled={!isCoach}
+              disabled={!isCaptain}
               value={playstyleSliders.defensiveLine}
               onChange={e =>
                 setPlaystyleSliders(prev => ({ ...prev, defensiveLine: Number(e.target.value) }))
@@ -190,7 +216,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               type="range"
               min="1"
               max="100"
-              disabled={!isCoach}
+              disabled={!isCaptain}
               value={playstyleSliders.teamWidth}
               onChange={e =>
                 setPlaystyleSliders(prev => ({ ...prev, teamWidth: Number(e.target.value) }))
@@ -208,7 +234,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               type="range"
               min="1"
               max="100"
-              disabled={!isCoach}
+              disabled={!isCaptain}
               value={playstyleSliders.pressingIntensity}
               onChange={e =>
                 setPlaystyleSliders(prev => ({ ...prev, pressingIntensity: Number(e.target.value) }))
@@ -219,24 +245,23 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
         </div>
       </details>
 
-      {/* Save Squad & Submission Card */}
-      <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-3">
-        <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
-          <h3 className="text-xs md:text-sm font-bold text-gray-100 uppercase tracking-wider flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-emerald-400" />
-            <span>Squad Management</span>
-          </h3>
-          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
-            {startingXILength}/11 STARTING XI
-          </span>
-        </div>
+      {/* TASK 2 & 3: Save Squad & Submission Card - ONLY RENDERED FOR COACH */}
+      {isCoach && (
+        <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-2">
+            <h3 className="text-xs md:text-sm font-bold text-gray-100 uppercase tracking-wider flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <span>Squad Selection Controls</span>
+            </h3>
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded">
+              {startingXILength}/11 STARTING XI
+            </span>
+          </div>
 
-        {/* TASK 7 REQUIREMENT: Note display */}
-        <p className="text-[11px] font-semibold text-emerald-400/90 bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/20 leading-relaxed">
-          💡 This squad applies only to the current fixture and automatically reverts to the default squad before the next fixture.
-        </p>
+          <p className="text-[11px] font-semibold text-emerald-400/90 bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/20 leading-relaxed">
+            💡 This match squad selection is managed exclusively by the Coach and applies to the next game fixture.
+          </p>
 
-        {isCoach && (
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={() => {
@@ -246,7 +271,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               className="flex-1 py-2.5 px-3 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
             >
               <Save className="w-4 h-4" />
-              <span>Save Squad</span>
+              <span>Save Next-Game Squad</span>
             </button>
 
             <button
@@ -257,8 +282,8 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
               <span>Submit Match Squad</span>
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -65,6 +65,7 @@ export const useTeamDashboard = () => {
   const [isSubmittingSquad, setIsSubmittingSquad] = useState<boolean>(false);
   const [selectedPitchSlot, setSelectedPitchSlot] = useState<number | null>(null);
   const [showSwapModal, setShowSwapModal] = useState<boolean>(false);
+  const [showRolesModal, setShowRolesModal] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
@@ -73,7 +74,7 @@ export const useTeamDashboard = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Protect Unsaved Lineup Changes on Tactics tab
-  const isLineupDirty = activeView === 'TACTICS' || activeView === 'ROLES';
+  const isLineupDirty = activeView === 'TACTICS' || showRolesModal;
   useUnsavedChanges(isLineupDirty);
 
   useEffect(() => {
@@ -247,6 +248,8 @@ export const useTeamDashboard = () => {
     setSelectedPitchSlot,
     showSwapModal,
     setShowSwapModal,
+    showRolesModal,
+    setShowRolesModal,
     searchTerm,
     setSearchTerm,
     positionFilter,
