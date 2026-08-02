@@ -456,3 +456,60 @@ export async function fetchPlayersPaginated(
         return { data: [], count: 0 };
     }
 }
+
+/**
+ * Publishes a team journal article directly into the 'news_articles' table.
+ */
+export async function publishTeamJournal(journal: {
+    title: string;
+    excerpt: string;
+    content: string;
+    category?: string;
+    imageUrl?: string;
+    authorId: string;
+}) {
+    const slug = `${journal.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now()}`;
+    const payload = {
+        title: journal.title.trim(),
+        slug,
+        excerpt: journal.excerpt.trim(),
+        content: journal.content.trim(),
+        image_url: journal.imageUrl?.trim() || null,
+        category: journal.category || 'general',
+        author_id: journal.authorId,
+        status: 'published',
+        published_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+        .from('news_articles')
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) {
+        console.error('[Supabase Client] Failed to publish team journal:', error);
+        throw error;
+    }
+    return data;
+}
+
+/**
+ * Fetches published news articles from 'news_articles' table.
+ */
+export async function fetchTeamNews() {
+    try {
+        const { data, error } = await supabase
+            .from('news_articles')
+            .select('*')
+            .eq('status', 'published')
+            .order('published_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch team news:', err);
+        return [];
+    }
+}
+

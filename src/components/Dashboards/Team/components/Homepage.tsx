@@ -12,12 +12,15 @@ import {
   Shield,
   AlertCircle,
   ChevronRight,
-  Plus
+  Plus,
+  PenTool
 } from 'lucide-react';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 
 interface HomepageProps {
   currentRole: UserRole;
+  canPublish?: boolean;
+  onOpenComposeModal?: () => void;
   onNavigateView: (view: DashboardView) => void;
   onOpenNextGameSquad?: () => void;
   roster: Player[];
@@ -31,6 +34,8 @@ interface HomepageProps {
 
 export const Homepage: React.FC<HomepageProps> = ({
   currentRole,
+  canPublish,
+  onOpenComposeModal,
   onNavigateView,
   onOpenNextGameSquad,
   roster,
@@ -333,17 +338,16 @@ export const Homepage: React.FC<HomepageProps> = ({
             <span className="text-xs font-bold text-white uppercase tracking-wider">Results</span>
           </button>
 
-          {/* Action 5: Practice Schedule */}
-          <button
-            onClick={() => {
-              const el = document.getElementById('practice-schedule-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="p-3.5 rounded-xl bg-[#1F1F1F] border border-[#2A2A2A] hover:bg-[#252525] transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
-          >
-            <Clock className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-bold text-white uppercase tracking-wider">Practice Schedule</span>
-          </button>
+          {/* Action 5: Compose Journal (Coach & Captain Only) */}
+          {canPublish && (
+            <button
+              onClick={onOpenComposeModal}
+              className="p-3.5 rounded-xl bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer group min-h-[44px]"
+            >
+              <PenTool className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Compose Journal</span>
+            </button>
+          )}
         </div>
       </section>
 

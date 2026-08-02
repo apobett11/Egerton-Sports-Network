@@ -12,7 +12,9 @@ import {
   saveSquadConfiguration,
   loadSquadConfiguration,
   saveMatchLineup,
-  DEFAULT_TEAM_UUID
+  DEFAULT_TEAM_UUID,
+  publishTeamJournal,
+  fetchTeamNews
 } from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
@@ -31,11 +33,15 @@ export const useTeamDashboard = () => {
 
   const isLoggedIn = Boolean(user && authRole !== 'guest');
   const currentRole: UserRole = authRole === 'captain' ? 'CAPTAIN' : 'COACH';
+  const canPublish = (authRole === 'coach' || authRole === 'captain') || (!authRole && (currentRole === 'COACH' || currentRole === 'CAPTAIN'));
 
   const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
   const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
   const [teamFixtures, setTeamFixtures] = useState<Match[]>(initialFixtures);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [publishedNews, setPublishedNews] = useState<any[]>([]);
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
+  const [isSubmittingJournal, setIsSubmittingJournal] = useState<boolean>(false);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   const [activeView, setActiveView] = useState<DashboardView>('DASHBOARD');
@@ -120,6 +126,11 @@ export const useTeamDashboard = () => {
         const dbAnnouncements = await fetchTeamAnnouncements(resolvedTeamId);
         if (isMounted && dbAnnouncements.length > 0) {
           setAnnouncements(dbAnnouncements);
+        }
+
+        const dbNews = await fetchTeamNews();
+        if (isMounted && dbNews.length > 0) {
+          setPublishedNews(dbNews);
         }
 
         const dbSquadConfig = await loadSquadConfiguration(resolvedTeamId);
@@ -358,13 +369,50 @@ export const useTeamDashboard = () => {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
+  const handlePublishJournal = async (journalData: {
+    title: string;
+    excerpt: string;
+    content: string;
+    category?: string;
+    imageUrl?: string;
+  }) => {
+    if (!canPublish) {
+      showToast('Permission denied: Only Coach and Captain may publish team journals.');
+      return;
+    }
+
+    setIsSubmittingJournal(true);
+    try {
+      await publishTeamJournal({
+        ...journalData,
+        authorId: user?.id || DEFAULT_TEAM_UUID,
+      });
+      showToast('🚀 Team Journal published live to the Egerton News Desk!');
+      setIsComposeModalOpen(false);
+      const updatedNews = await fetchTeamNews();
+      setPublishedNews(updatedNews);
+    } catch (err: any) {
+      console.error('Failed to publish journal:', err);
+      showToast(`Publishing failed: ${err.message || 'Database error'}`);
+      throw err;
+    } finally {
+      setIsSubmittingJournal(false);
+    }
+  };
+
   return {
     isLoggedIn,
     currentRole,
+    canPublish,
     teamId,
     teamInfo,
     teamFixtures,
     announcements,
+    publishedNews,
+    isComposeModalOpen,
+    setIsComposeModalOpen,
+    isSubmittingJournal,
+    handlePublishJournal,
     isLoadingData,
     activeView,
     setActiveView,

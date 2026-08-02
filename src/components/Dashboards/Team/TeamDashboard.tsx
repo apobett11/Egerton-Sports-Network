@@ -11,7 +11,8 @@ import {
   Copy,
   Share2,
   Calendar,
-  Shirt
+  Shirt,
+  PenTool
 } from 'lucide-react';
 import { initialFixtures, initialStandings, formationCoordinates } from './mockData';
 import { useTeamDashboard } from './hooks/useTeamDashboard';
@@ -27,6 +28,7 @@ import { RosterListView } from './components/Roster/RosterListView';
 import { RoleAssignmentsView } from './components/Roles/RoleAssignmentsView';
 import { FixturesResultsView } from './components/Fixtures/FixturesResultsView';
 import { KitsSection } from './components/Kits/KitsSection';
+import { ComposeJournalModal } from './components/ComposeJournalModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
 import { mockNews } from '../../../mockData';
 
@@ -34,9 +36,15 @@ export const TeamDashboard: React.FC = () => {
   const {
     isLoggedIn,
     currentRole,
+    canPublish,
     teamId,
     teamFixtures,
     announcements,
+    publishedNews,
+    isComposeModalOpen,
+    setIsComposeModalOpen,
+    isSubmittingJournal,
+    handlePublishJournal,
     activeView,
     setActiveView,
     darkMode,
@@ -136,6 +144,8 @@ export const TeamDashboard: React.FC = () => {
           {activeView === 'DASHBOARD' && (
             <Homepage
               currentRole={currentRole}
+              canPublish={canPublish}
+              onOpenComposeModal={() => setIsComposeModalOpen(true)}
               onNavigateView={setActiveView}
               onOpenNextGameSquad={handleOpenNextGameSquad}
               roster={roster}
@@ -239,18 +249,47 @@ export const TeamDashboard: React.FC = () => {
           {/* PAGE 8: TEAM NEWS */}
           {activeView === 'NEWS' && (
             <div className="space-y-4">
-              <div className="bg-[#1A1A1A] p-4 rounded-xl border border-[#2A2A2A]">
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Newspaper className="w-4 h-4 text-emerald-400" /> Egerton FC Team Bulletin & Announcements
-                </h2>
-                <p className="text-xs text-gray-400 mt-1">
-                  Official club announcements, match previews, squad injury reports, transfer updates, and tactical briefings.
-                </p>
+              <div className="bg-[#1A1A1A] p-4 rounded-xl border border-[#2A2A2A] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Newspaper className="w-4 h-4 text-emerald-400" /> Egerton FC Team Bulletin & Announcements
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Official club announcements, match previews, squad injury reports, transfer updates, and tactical briefings.
+                  </p>
+                </div>
+                {canPublish && (
+                  <button
+                    onClick={() => setIsComposeModalOpen(true)}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer shrink-0 self-start sm:self-auto min-h-[44px]"
+                  >
+                    <PenTool className="w-4 h-4" />
+                    <span>Compose Journal</span>
+                  </button>
+                )}
               </div>
               <NewsFeed
-                newsItems={
-                  announcements && announcements.length > 0
-                    ? announcements.map((ann: any) => ({
+                newsItems={(() => {
+                  const items: any[] = [];
+                  if (publishedNews && publishedNews.length > 0) {
+                    publishedNews.forEach((art: any) => {
+                      items.push({
+                        id: art.id,
+                        title: art.title,
+                        excerpt: art.excerpt || art.title,
+                        content: art.content,
+                        category: art.category || 'general',
+                        author: 'Team Official',
+                        authorRole: 'Official Team Representative',
+                        verified: true,
+                        publishedAt: new Date(art.published_at || art.created_at).toLocaleDateString(),
+                        imageUrl: art.image_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+                      });
+                    });
+                  }
+                  if (announcements && announcements.length > 0) {
+                    announcements.forEach((ann: any) => {
+                      items.push({
                         id: ann.id,
                         title: ann.title,
                         excerpt: ann.content,
@@ -262,11 +301,12 @@ export const TeamDashboard: React.FC = () => {
                         authorRole: ann.author?.role || 'Club Official',
                         verified: true,
                         publishedAt: new Date(ann.created_at).toLocaleDateString(),
-                        imageUrl:
-                          'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
-                      }))
-                    : mockNews
-                }
+                        imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+                      });
+                    });
+                  }
+                  return items.length > 0 ? items : mockNews;
+                })()}
               />
             </div>
           )}
@@ -556,6 +596,14 @@ export const TeamDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* COMPOSE JOURNAL MODAL */}
+      <ComposeJournalModal
+        isOpen={isComposeModalOpen}
+        onClose={() => setIsComposeModalOpen(false)}
+        onPublish={handlePublishJournal}
+        isSubmitting={isSubmittingJournal}
+      />
     </div>
   );
 };

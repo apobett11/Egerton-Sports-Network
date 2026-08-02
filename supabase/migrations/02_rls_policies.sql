@@ -156,7 +156,7 @@ CREATE POLICY "Published news readable by everyone"
 
 CREATE POLICY "Journalists insert/update own articles"
   ON public.news_articles FOR INSERT WITH CHECK (
-    author_id = auth.uid() AND public.get_auth_role() IN ('journalist', 'admin')
+    author_id = auth.uid() AND public.get_auth_role() IN ('journalist', 'coach', 'captain', 'admin')
   );
 
 CREATE POLICY "Journalists update own articles"
