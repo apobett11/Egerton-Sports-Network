@@ -59,6 +59,34 @@ export const Header: React.FC<HeaderProps> = ({
         setSelectedDate(newDate);
     };
 
+    // Calendar Popup Modal State
+    const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
+
+    const handlePrevYear = () => {
+        setViewDate(new Date(viewDate.getFullYear() - 1, viewDate.getMonth(), 1));
+    };
+    const handleNextYear = () => {
+        setViewDate(new Date(viewDate.getFullYear() + 1, viewDate.getMonth(), 1));
+    };
+    const handlePrevMonth = () => {
+        setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+    };
+    const handleNextMonth = () => {
+        setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+    };
+
+    // Days in month calculation
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
     return (
         <header className="sticky top-0 z-50 w-full shadow-lg backdrop-blur-xl select-none bg-white/90 dark:bg-[#101415]/90 text-gray-800 dark:text-gray-200 border-b border-gray-200/80 dark:border-gray-800/80 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
             {/* Row 1: Logo & Top controls */}
@@ -194,15 +222,125 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="w-px h-4 bg-gray-200 dark:bg-gray-800" />
                         <button
                             type="button"
-                            onClick={() => setSelectedDate(new Date())}
+                            onClick={() => {
+                                setViewDate(new Date(selectedDate));
+                                setShowCalendarModal(true);
+                            }}
                             className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 active:scale-85 transition-all cursor-pointer"
-                            title="Reset to Today"
+                            title="Select Date from Calendar"
                         >
                             <Calendar className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* FULL CALENDAR POPUP MODAL */}
+            {showCalendarModal && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                    onClick={() => setShowCalendarModal(false)}
+                >
+                    <div 
+                        className="bg-white dark:bg-[#15191B] border border-gray-200 dark:border-gray-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header: Controls for Year and Month */}
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handlePrevYear}
+                                    className="px-2 py-1 text-xs font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer"
+                                    title="Previous Year"
+                                >
+                                    &laquo;
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handlePrevMonth}
+                                    className="p-1 text-xs font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer"
+                                    title="Previous Month"
+                                >
+                                    &lt;
+                                </button>
+                            </div>
+
+                            <span className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
+                                {monthNames[month]} {year}
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handleNextMonth}
+                                    className="p-1 text-xs font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer"
+                                    title="Next Month"
+                                >
+                                    &gt;
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleNextYear}
+                                    className="px-2 py-1 text-xs font-bold rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 cursor-pointer"
+                                    title="Next Year"
+                                >
+                                    &raquo;
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Weekday Labels */}
+                        <div className="grid grid-cols-7 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                        </div>
+
+                        {/* Month Grid */}
+                        <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                                <div key={`empty-${i}`} />
+                            ))}
+                            {Array.from({ length: daysInMonth }).map((_, i) => {
+                                const dayNum = i + 1;
+                                const targetDate = new Date(year, month, dayNum);
+                                const isSelected = targetDate.toDateString() === selectedDate.toDateString();
+                                const isToday = targetDate.toDateString() === new Date().toDateString();
+
+                                return (
+                                    <button
+                                        key={dayNum}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedDate(targetDate);
+                                            setShowCalendarModal(false);
+                                        }}
+                                        className={`py-2 rounded-xl font-bold transition-all cursor-pointer ${
+                                            isSelected
+                                                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30'
+                                                : isToday
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200'
+                                        }`}
+                                    >
+                                        {dayNum}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Modal Footer / Close */}
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowCalendarModal(false)}
+                                className="px-4 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };

@@ -27,7 +27,9 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
     // Grouping logic
     const matchesByLeague = leagues.reduce<Record<string, Match[]>>((acc, league) => {
-        const list = matches.filter((m) => m.league === league);
+        const list = matches
+            .filter((m) => m.league === league)
+            .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         if (list.length > 0) {
             acc[league] = list;
         }

@@ -188,6 +188,112 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           ))}
         </div>
       )}
+
+      {/* CONTINUOUS DISCOVERY SECTIONS FOR FIXTURES PAGE */}
+      <div className="mt-8 space-y-8 select-none">
+        {/* 1. TOMORROW */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-[#D4AF37] mb-3">
+            Tomorrow's Schedule Preview
+          </h4>
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
+            <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts vs Egerton Sharklets</span>
+            <span className="text-[11px] font-semibold text-[#D4AF37]">16:00 (Egerton Pavilion Stadium)</span>
+          </div>
+        </div>
+
+        {/* 2. YESTERDAY */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">
+            Yesterday's Final Results
+          </h4>
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
+            <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Staff FC 1 - 1 Njoro FC</span>
+            <span className="text-[10px] font-bold text-slate-400">FT</span>
+          </div>
+        </div>
+
+        {/* 3. LIVE MATCHES */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <h4 className="text-xs font-black uppercase tracking-wider text-rose-500">
+              Ongoing Live Fixtures
+            </h4>
+          </div>
+          <div className="p-3 rounded-lg bg-rose-500/5 border border-rose-500/20 text-xs flex items-center justify-between">
+            <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts 2 - 1 Faculty of Science</span>
+            <span className="text-[10px] font-bold text-rose-500">LIVE (82')</span>
+          </div>
+        </div>
+
+        {/* 4. FINISHED MATCHES */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3">
+            Completed Match Results
+          </h4>
+          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs flex items-center justify-between">
+            <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets 3 - 0 Njoro FC</span>
+            <span className="text-[10px] font-bold text-emerald-500">Official Result</span>
+          </div>
+        </div>
+
+        {/* 5. MOST DRAMATIC RESULT */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 mb-3">
+            Most Dramatic Result
+          </h4>
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
+            <span className="text-[10px] font-bold text-amber-500 uppercase">Late Winner</span>
+            <div className="font-bold text-slate-900 dark:text-slate-100">
+              Faculty of Arts 2 - 1 Faculty of Science (88' Penalty Winner)
+            </div>
+          </div>
+        </div>
+
+        {/* 6. WEEKEND PREVIEW */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-[#D4AF37] mb-3">
+            Weekend Matchday Preview
+          </h4>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            Crucial top-of-the-table clash between Egerton Sharklets and Faculty of Arts set for Saturday at 16:00.
+          </p>
+        </div>
+
+        {/* 7. FIXTURE STATISTICS */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3">
+            Fixture Schedule Statistics
+          </h4>
+          <div className="grid grid-cols-3 gap-3 text-center text-xs">
+            <div className="p-2 bg-slate-50 dark:bg-slate-900/40 rounded-lg">
+              <div className="font-black text-slate-900 dark:text-slate-100">2.8</div>
+              <div className="text-[10px] text-slate-500">Avg Goals/Match</div>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-900/40 rounded-lg">
+              <div className="font-black text-emerald-500">65%</div>
+              <div className="text-[10px] text-slate-500">Home Wins</div>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-900/40 rounded-lg">
+              <div className="font-black text-amber-500">12</div>
+              <div className="text-[10px] text-slate-500">Matches Played</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 8. RELATED NEWS */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3">
+            Related Fixture Coverage
+          </h4>
+          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              Egerton Pavilion Pitch Upgraded with New Floodlights for Night Matches
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -313,6 +419,80 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* CONTINUOUS DISCOVERY SECTIONS FOR NEWS PAGE */}
+      <div className="mt-8 space-y-8 select-none">
+        {/* 1. BREAKING NEWS */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <h4 className="text-xs font-black uppercase tracking-wider text-rose-500">
+              Breaking News Flash
+            </h4>
+          </div>
+          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs">
+            <p className="font-bold text-slate-900 dark:text-slate-100">
+              Egerton Pavilion Stadium floodlights commissioned for upcoming night derby fixture!
+            </p>
+            <span className="text-[10px] text-slate-500">Published 30 mins ago</span>
+          </div>
+        </div>
+
+        {/* 2. MATCH REPORTS */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-[#D4AF37] mb-3">
+            Official Match Reports
+          </h4>
+          <div className="space-y-2 text-xs">
+            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts 2 - 1 Faculty of Science</span>
+              <span className="text-[10px] font-bold text-[#D4AF37]">Full Report</span>
+            </div>
+            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets 3 - 0 Njoro FC</span>
+              <span className="text-[10px] font-bold text-[#D4AF37]">Full Report</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. TRANSFERS */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3">
+            Mid-Season Transfer Wire
+          </h4>
+          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+            <span className="text-[10px] font-bold text-emerald-500 uppercase">Transfer Rumour</span>
+            <p className="font-bold text-slate-900 dark:text-slate-100">
+              Njoro FC preparing scholarship package to sign Faculty of Agriculture's top striker.
+            </p>
+          </div>
+        </div>
+
+        {/* 4. LEAGUE STORIES */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3">
+            Campus League Features
+          </h4>
+          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
+            <span className="text-[10px] font-bold text-amber-500 uppercase">Feature Story</span>
+            <p className="font-bold text-slate-900 dark:text-slate-100 mt-1">
+              How tactical discipline turned Egerton Sharklets into campus championship favorites.
+            </p>
+          </div>
+        </div>
+
+        {/* 5. ARCHIVE */}
+        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+            News Archive
+          </h4>
+          <div className="flex gap-2 text-xs text-slate-500 font-semibold">
+            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">August 2026</span>
+            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">July 2026</span>
+            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">June 2026</span>
+          </div>
+        </div>
       </div>
 
       {/* ARTICLE READER MODAL */}

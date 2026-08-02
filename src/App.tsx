@@ -376,12 +376,382 @@ export const AppContent: React.FC = () => {
 
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
               {activeTab === 'scores' && (
-                <FixturesList
-                  matches={currentFixtures}
-                  onMatchClick={handleMatchClick}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                />
+                <div className="space-y-10">
+                  <FixturesList
+                    matches={currentFixtures}
+                    onMatchClick={handleMatchClick}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                  />
+
+                  {/* HOMEPAGE CONTINUOUS FOOTBALL DISCOVERY FLOW (TASKS 6-14) */}
+                  <div className="space-y-8 select-none">
+                    {/* TASK 7: TODAY'S MATCH MOMENTS */}
+                    {(() => {
+                      // Calculate data dynamically from liveMatches
+                      const allEvents = liveMatches.flatMap((m) =>
+                        (m.events || []).map((e) => ({ ...e, match: m }))
+                      );
+                      const goalEvents = allEvents.filter((e) => e.type === 'goal');
+                      const redCardEvents = allEvents.filter((e) => e.type === 'red');
+
+                      const fastestGoal = goalEvents.length > 0
+                        ? [...goalEvents].sort((a, b) => a.minute - b.minute)[0]
+                        : null;
+                      const latestGoal = goalEvents.length > 0
+                        ? [...goalEvents].sort((a, b) => b.minute - a.minute)[0]
+                        : null;
+                      const firstRedCard = redCardEvents.length > 0
+                        ? [...redCardEvents].sort((a, b) => a.minute - b.minute)[0]
+                        : null;
+
+                      const finishedMatches = liveMatches.filter((m) => m.status === 'FT');
+                      const biggestWin = finishedMatches.length > 0
+                        ? [...finishedMatches].sort(
+                            (a, b) => Math.abs(b.scoreA - b.scoreB) - Math.abs(a.scoreA - a.scoreB)
+                          )[0]
+                        : null;
+
+                      const highestScoringMatch = liveMatches.length > 0
+                        ? [...liveMatches].sort(
+                            (a, b) => (b.scoreA + b.scoreB) - (a.scoreA + a.scoreB)
+                          )[0]
+                        : null;
+
+                      const hasMoments = fastestGoal || biggestWin || highestScoringMatch || latestGoal || firstRedCard;
+                      if (!hasMoments) return null;
+
+                      return (
+                        <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                            <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                              Today's Match Moments
+                            </h3>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                            {fastestGoal && (
+                              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Fastest Goal</span>
+                                <div className="font-extrabold text-gray-900 dark:text-gray-100 mt-1">
+                                  {fastestGoal.detailText || `Goal at ${fastestGoal.minute}'`}
+                                </div>
+                              </div>
+                            )}
+
+                            {biggestWin && (
+                              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                                <span className="text-[10px] font-bold text-amber-500 uppercase">Biggest Win</span>
+                                <div className="font-extrabold text-gray-900 dark:text-gray-100 mt-1">
+                                  {biggestWin.teamA.name} {biggestWin.scoreA} - {biggestWin.scoreB} {biggestWin.teamB.name}
+                                </div>
+                              </div>
+                            )}
+
+                            {highestScoringMatch && (
+                              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                                <span className="text-[10px] font-bold text-blue-500 uppercase">Highest Scoring Match</span>
+                                <div className="font-extrabold text-gray-900 dark:text-gray-100 mt-1">
+                                  {highestScoringMatch.teamA.name} vs {highestScoringMatch.teamB.name} ({highestScoringMatch.scoreA + highestScoringMatch.scoreB} Goals)
+                                </div>
+                              </div>
+                            )}
+
+                            {latestGoal && (
+                              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                                <span className="text-[10px] font-bold text-purple-500 uppercase">Latest Goal</span>
+                                <div className="font-extrabold text-gray-900 dark:text-gray-100 mt-1">
+                                  {latestGoal.detailText || `Goal at ${latestGoal.minute}'`}
+                                </div>
+                              </div>
+                            )}
+
+                            {firstRedCard && (
+                              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                                <span className="text-[10px] font-bold text-rose-500 uppercase">First Red Card</span>
+                                <div className="font-extrabold text-gray-900 dark:text-gray-100 mt-1">
+                                  {firstRedCard.detailText || `Red Card at ${firstRedCard.minute}'`}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* TASK 8: LEAGUE SNAPSHOT */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5 text-amber-500" />
+                          <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                            League Snapshot (Top 5)
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab('table')}
+                          className="px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs cursor-pointer transition-all"
+                        >
+                          View Full Table
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs font-sans">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-black/30 text-gray-500 font-bold uppercase border-b border-gray-150 dark:border-gray-800">
+                              <th className="p-2 text-center">Pos</th>
+                              <th className="p-2">Club</th>
+                              <th className="p-2 text-center">P</th>
+                              <th className="p-2 text-center">GD</th>
+                              <th className="p-2 text-center font-extrabold text-amber-500">Pts</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                            {currentStandings.slice(0, 5).map((row) => (
+                              <tr key={row.teamId} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                <td className="p-2 text-center font-bold text-gray-500">{row.position}</td>
+                                <td className="p-2 font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                  <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
+                                  <span>{row.teamName}</span>
+                                </td>
+                                <td className="p-2 text-center">{row.played}</td>
+                                <td className="p-2 text-center font-mono">{row.goalDifference}</td>
+                                <td className="p-2 text-center font-black text-amber-500">{row.points}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* TASK 9: STATISTICS (Golden Boot, Top Assists, Clean Sheets) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Golden Boot */}
+                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-4 h-4 text-amber-500" />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-amber-500">
+                            Golden Boot
+                          </h4>
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>FOA Player 10 (Arts)</span>
+                            <span className="text-amber-500 font-mono">8 Goals</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>SHK Player 9 (Sharklets)</span>
+                            <span className="text-gray-500 font-mono">7 Goals</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>FOS Player 11 (Science)</span>
+                            <span className="text-gray-500 font-mono">6 Goals</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Top Assists */}
+                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-4 h-4 text-emerald-500" />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            Top Assists
+                          </h4>
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>FOA Player 8 (Arts)</span>
+                            <span className="text-emerald-500 font-mono">6 Assists</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>FOS Player 7 (Science)</span>
+                            <span className="text-gray-500 font-mono">5 Assists</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>SHK Player 10 (Sharklets)</span>
+                            <span className="text-gray-500 font-mono">4 Assists</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Clean Sheets */}
+                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Award className="w-4 h-4 text-blue-500" />
+                          <h4 className="text-xs font-black uppercase tracking-wider text-blue-500">
+                            Clean Sheets
+                          </h4>
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>Egerton Sharklets</span>
+                            <span className="text-blue-500 font-mono">6 CS</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>Faculty of Arts</span>
+                            <span className="text-gray-500 font-mono">4 CS</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                            <span>Faculty of Science</span>
+                            <span className="text-gray-500 font-mono">3 CS</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TASK 10: LATEST MATCH STORIES */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                          Latest Match Stories
+                        </h3>
+                        <button
+                          onClick={() => setActiveTab('news')}
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          View All Stories
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div
+                          onClick={() => setActiveTab('news')}
+                          className="p-3 rounded-xl border border-gray-150 dark:border-gray-800 hover:border-emerald-500/40 cursor-pointer space-y-1.5 transition-all"
+                        >
+                          <span className="text-[10px] font-bold text-amber-500 uppercase">Today</span>
+                          <h4 className="font-extrabold text-gray-900 dark:text-gray-100 leading-snug">
+                            Egerton Premier League: Sharklets Maintain Lead as FOA Pressures from Second Place
+                          </h4>
+                          <p className="text-gray-500 line-clamp-2">
+                            In a stunning weekend of college football, the Egerton Sharklets clinched another crucial victory...
+                          </p>
+                        </div>
+                        <div
+                          onClick={() => setActiveTab('news')}
+                          className="p-3 rounded-xl border border-gray-150 dark:border-gray-800 hover:border-emerald-500/40 cursor-pointer space-y-1.5 transition-all"
+                        >
+                          <span className="text-[10px] font-bold text-emerald-500 uppercase">Yesterday</span>
+                          <h4 className="font-extrabold text-gray-900 dark:text-gray-100 leading-snug">
+                            TRANSFER ALERT: Njoro FC Eye Faculty of Agriculture Top Striker Ahead of Window
+                          </h4>
+                          <p className="text-gray-500 line-clamp-2">
+                            Sources close to Njoro FC suggest the club is preparing a record student-sports scholarship package...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TASK 11: HISTORICAL FOOTBALL */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-2">
+                      <span className="text-[10px] font-bold uppercase text-amber-500 tracking-wider">
+                        This Day in Football
+                      </span>
+                      <h4 className="text-xs font-extrabold text-gray-900 dark:text-gray-100">
+                        Historical Match Memory (August 2022)
+                      </h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                        In 2022, Faculty of Arts won their 3rd consecutive Campus Cup title after a thrilling 4-3 penalty shootout victory over Faculty of Science at the Egerton Pavilion Stadium.
+                      </p>
+                    </div>
+
+                    {/* TASK 12: WEEKEND PREVIEW */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-2">
+                      {(() => {
+                        const day = new Date().getDay();
+                        const isBeforeWeekend = day >= 1 && day <= 4;
+                        return (
+                          <>
+                            <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
+                              {isBeforeWeekend ? 'Upcoming Weekend Preview' : 'Weekend Matchday Review'}
+                            </span>
+                            <h4 className="text-xs font-extrabold text-gray-900 dark:text-gray-100">
+                              {isBeforeWeekend
+                                ? 'Weekend Matchday 14: Top 2 Clash at Pavilion'
+                                : 'Weekend Matchday 13 Results Summary'}
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                              {isBeforeWeekend
+                                ? 'All eyes will be on Egerton Pavilion Stadium as league leaders Egerton Sharklets host second-placed Faculty of Arts in a fixture that could decide the title race.'
+                                : 'Matchday 13 produced 12 goals across 4 fixtures with Faculty of Arts securing a late winner and Egerton Sharklets keeping a clean sheet.'}
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* TASK 13: CAMPUS RANKINGS */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                        Campus Football Rankings & Records
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs text-center">
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Most Goals</div>
+                          <div className="font-black text-gray-900 dark:text-gray-100 mt-1">FOA (28)</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Most Wins</div>
+                          <div className="font-black text-emerald-500 mt-1">Sharklets (9)</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Best Defence</div>
+                          <div className="font-black text-blue-500 mt-1">Sharklets (8 GA)</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Win Streak</div>
+                          <div className="font-black text-amber-500 mt-1">5 Matches</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Unbeaten Run</div>
+                          <div className="font-black text-emerald-500 mt-1">8 Matches</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
+                          <div className="text-[10px] text-gray-400 font-bold">Highest Score</div>
+                          <div className="font-black text-purple-500 mt-1">SHK (28)</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TASK 14: COMMUNITY (No login required) */}
+                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-3">
+                      <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
+                        Community Poll of the Week
+                      </span>
+                      <h4 className="text-xs font-black text-gray-900 dark:text-gray-100">
+                        Who will win the 2026 Egerton Premier League Championship?
+                      </h4>
+
+                      <div className="space-y-2 text-xs pt-1">
+                        <button
+                          type="button"
+                          onClick={() => alert('Thank you for voting! Egerton Sharklets currently leading with 54% of votes.')}
+                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
+                        >
+                          <span>Egerton Sharklets</span>
+                          <span className="text-emerald-500">54%</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => alert('Thank you for voting! Faculty of Arts currently at 36% of votes.')}
+                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
+                        >
+                          <span>Faculty of Arts</span>
+                          <span className="text-amber-500">36%</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => alert('Thank you for voting! Other Teams currently at 10% of votes.')}
+                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
+                        >
+                          <span>Faculty of Science / Other</span>
+                          <span className="text-gray-400">10%</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {activeTab === 'table' && <LeagueTable tableData={currentStandings} />}
