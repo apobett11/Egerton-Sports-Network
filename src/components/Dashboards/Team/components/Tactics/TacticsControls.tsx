@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Sliders, ChevronDown, UserCheck, Check, Save, ShieldCheck } from 'lucide-react';
+import { Sparkles, Sliders, ChevronDown, UserCheck, Check, Save, ShieldCheck, Users } from 'lucide-react';
 import type { UserRole } from '../../types';
 
 interface TacticsControlsProps {
@@ -31,6 +31,8 @@ interface TacticsControlsProps {
   onSaveFormation?: () => void;
   onSaveSquad?: () => void;
   onOpenRolesModal?: () => void;
+  activeSquadType?: 'NEXT_GAME' | 'DEFAULT';
+  setActiveSquadType?: (type: 'NEXT_GAME' | 'DEFAULT') => void;
 }
 
 export const TacticsControls: React.FC<TacticsControlsProps> = ({
@@ -50,12 +52,94 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
   onSaveFormation,
   onSaveSquad,
   onOpenRolesModal,
+  activeSquadType = 'NEXT_GAME',
+  setActiveSquadType,
 }) => {
   const isCoach = currentRole === 'COACH';
   const isCaptain = currentRole === 'CAPTAIN';
 
+  const defaultSquadHeading = "Egerton FC Default Squad";
+  const nextGameSquadHeading = "Egerton FC vs Engineering FC Squad";
+  const currentHeading = activeSquadType === 'DEFAULT' ? defaultSquadHeading : nextGameSquadHeading;
+
   return (
     <div className="flex flex-col gap-4">
+      {/* SQUAD CONTEXT & SELECTION HEADER CARD */}
+      <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-4 shadow-lg space-y-3">
+        <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+          <div className="space-y-1">
+            {isCoach && setActiveSquadType && (
+              <div className="flex items-center gap-2 mb-1.5">
+                <button
+                  onClick={() => setActiveSquadType('NEXT_GAME')}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    activeSquadType === 'NEXT_GAME'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
+                  }`}
+                >
+                  Next Game Squad
+                </button>
+                <button
+                  onClick={() => setActiveSquadType('DEFAULT')}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    activeSquadType === 'DEFAULT'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
+                  }`}
+                >
+                  Default Squad
+                </button>
+              </div>
+            )}
+
+            <h2 className="text-xs md:text-sm font-extrabold text-white tracking-tight flex items-center gap-2">
+              <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{currentHeading}</span>
+            </h2>
+            <p className="text-[11px] text-gray-400">
+              {isCoach
+                ? `Coach Mode: Managing ${activeSquadType === 'DEFAULT' ? 'Permanent Baseline Squad' : 'Match Fixture Lineup & Bench'}`
+                : 'Captain Mode: Tactical Layout & In-Match Execution'}
+            </p>
+          </div>
+
+          <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-1 rounded shrink-0">
+            {startingXILength}/11 XI
+          </span>
+        </div>
+
+        {/* Coach Squad Save Controls */}
+        {isCoach && (
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => {
+                if (onSaveSquad) onSaveSquad();
+                else handleSaveSquadDraft();
+                showToast(
+                  activeSquadType === 'DEFAULT'
+                    ? 'Saved Egerton FC Default Squad successfully'
+                    : 'Saved Egerton FC vs Engineering FC Squad successfully'
+                );
+              }}
+              className="flex-1 py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[40px] cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{activeSquadType === 'DEFAULT' ? 'Save Default Squad' : 'Save Next-Game Squad'}</span>
+            </button>
+
+            {activeSquadType === 'NEXT_GAME' && (
+              <button
+                onClick={handleSubmitMatchSquad}
+                className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors min-h-[40px] cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Submit Match Squad</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-4">
         <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
           <div>

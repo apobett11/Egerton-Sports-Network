@@ -66,12 +66,18 @@ export const useTeamDashboard = () => {
   const [selectedPitchSlot, setSelectedPitchSlot] = useState<number | null>(null);
   const [showSwapModal, setShowSwapModal] = useState<boolean>(false);
   const [showRolesModal, setShowRolesModal] = useState<boolean>(false);
+  const [activeSquadType, setActiveSquadType] = useState<'NEXT_GAME' | 'DEFAULT'>('NEXT_GAME');
 
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
 
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleOpenNextGameSquad = () => {
+    setActiveSquadType('NEXT_GAME');
+    setActiveView('TACTICS');
+  };
 
   // Protect Unsaved Lineup Changes on Tactics tab
   const isLineupDirty = activeView === 'TACTICS' || showRolesModal;
@@ -250,6 +256,9 @@ export const useTeamDashboard = () => {
     setShowSwapModal,
     showRolesModal,
     setShowRolesModal,
+    activeSquadType,
+    setActiveSquadType,
+    handleOpenNextGameSquad,
     searchTerm,
     setSearchTerm,
     positionFilter,

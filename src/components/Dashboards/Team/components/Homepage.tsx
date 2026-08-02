@@ -19,6 +19,7 @@ import type { DashboardView } from '../hooks/useTeamDashboard';
 interface HomepageProps {
   currentRole: UserRole;
   onNavigateView: (view: DashboardView) => void;
+  onOpenNextGameSquad?: () => void;
   roster: Player[];
   practiceSchedule: PracticeSession[];
   onAssignActivity: (id: string, activity: string) => void;
@@ -31,6 +32,7 @@ interface HomepageProps {
 export const Homepage: React.FC<HomepageProps> = ({
   currentRole,
   onNavigateView,
+  onOpenNextGameSquad,
   roster,
   practiceSchedule,
   onAssignActivity,
@@ -190,7 +192,10 @@ export const Homepage: React.FC<HomepageProps> = ({
           {/* Action Button */}
           <div className="flex justify-center pt-1">
             <button
-              onClick={() => onNavigateView('TACTICS')}
+              onClick={() => {
+                if (onOpenNextGameSquad) onOpenNextGameSquad();
+                else onNavigateView('TACTICS');
+              }}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 sm:px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all text-xs uppercase tracking-wider cursor-pointer"
             >
               <span>⚽ Open Tactical Pitch Center</span>

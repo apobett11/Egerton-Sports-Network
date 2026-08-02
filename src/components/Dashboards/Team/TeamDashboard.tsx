@@ -52,6 +52,9 @@ export const TeamDashboard: React.FC = () => {
     setShowSwapModal,
     showRolesModal,
     setShowRolesModal,
+    activeSquadType,
+    setActiveSquadType,
+    handleOpenNextGameSquad,
     searchTerm,
     setSearchTerm,
     positionFilter,
@@ -131,6 +134,7 @@ export const TeamDashboard: React.FC = () => {
             <Homepage
               currentRole={currentRole}
               onNavigateView={setActiveView}
+              onOpenNextGameSquad={handleOpenNextGameSquad}
               roster={roster}
               practiceSchedule={practiceSchedule}
               onAssignActivity={handleAssignPracticeActivity}
@@ -172,6 +176,8 @@ export const TeamDashboard: React.FC = () => {
                   onSaveFormation={handleSaveFormation}
                   onSaveSquad={handleSaveSquad}
                   onOpenRolesModal={() => setShowRolesModal(true)}
+                  activeSquadType={activeSquadType}
+                  setActiveSquadType={setActiveSquadType}
                 />
               </div>
             </div>
