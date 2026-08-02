@@ -1,5 +1,4 @@
 import React from 'react';
-import type { Player } from './types';
 import {
   Zap,
   X,
@@ -71,12 +70,6 @@ export const TeamDashboard: React.FC = () => {
     collectiveRating,
     collectiveStrength,
     benchPlayers,
-    isCoach,
-    isCaptain,
-    squadConfigType,
-    setSquadConfigType,
-    setRoster,
-    setStartingXI,
     handleSaveRoles,
     handleSaveFormation,
     handleSaveSquad,
@@ -87,7 +80,7 @@ export const TeamDashboard: React.FC = () => {
 
   const activeCoordinates = formationCoordinates[formation] || formationCoordinates['4-4-1-1'];
 
-  const filteredRoster = roster.filter((player: Player) => {
+  const filteredRoster = roster.filter(player => {
     const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) || player.number.toString().includes(searchTerm);
     const matchesPos = positionFilter === 'ALL' || player.position === positionFilter;
     return matchesSearch && matchesPos;
@@ -146,13 +139,48 @@ export const TeamDashboard: React.FC = () => {
             />
           )}
 
-          {/* PAGE 2 & 3: UNIFIED eFOOTBALL SQUAD & TACTICS PAGE */}
-          {(activeView === 'TACTICS' || activeView === 'ROSTER') && (
+          {/* PAGE 2: TACTICS & PITCH */}
+          {activeView === 'TACTICS' && (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <div className="md:col-span-7">
+                <PitchCanvas
+                  formation={formation}
+                  startingXI={startingXI}
+                  roster={roster}
+                  selectedPitchSlot={selectedPitchSlot}
+                  setSelectedPitchSlot={setSelectedPitchSlot}
+                />
+              </div>
+
+              <div className="md:col-span-5">
+                <TacticsControls
+                  collectiveRating={collectiveRating}
+                  collectiveStrength={collectiveStrength}
+                  formation={formation}
+                  setFormation={setFormation}
+                  activePlaystyle={activePlaystyle}
+                  setActivePlaystyle={setActivePlaystyle}
+                  playstyleSliders={playstyleSliders}
+                  setPlaystyleSliders={setPlaystyleSliders}
+                  startingXILength={startingXI.length}
+                  handleSaveSquadDraft={handleSaveSquad}
+                  handleSubmitMatchSquad={handleSaveSquad}
+                  showToast={showToast}
+                  currentRole={currentRole}
+                  onSaveFormation={handleSaveFormation}
+                  onSaveSquad={handleSaveSquad}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* PAGE 3: ROSTER & SQUAD MANAGEMENT */}
+          {activeView === 'ROSTER' && (
             <SquadPage
               roster={roster}
-              setRoster={setRoster}
+              setRoster={() => {}}
               startingXI={startingXI}
-              setStartingXI={setStartingXI}
+              setStartingXI={() => {}}
               currentRole={currentRole}
               showToast={showToast}
               formation={formation}
@@ -164,10 +192,6 @@ export const TeamDashboard: React.FC = () => {
               onUploadPlayerImage={handleUploadPlayerImage}
               onSaveSquad={handleSaveSquad}
               onSaveFormation={handleSaveFormation}
-              roleAssignments={roleAssignments}
-              setRoleAssignments={setRoleAssignments}
-              squadConfigType={squadConfigType}
-              setSquadConfigType={setSquadConfigType}
             />
           )}
 
@@ -400,8 +424,8 @@ export const TeamDashboard: React.FC = () => {
               {benchPlayers.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-6">No bench players available.</p>
               ) : (
-                benchPlayers.map((benchP: Player) => {
-                  const benchRosterIdx = roster.findIndex((p: Player) => p.id === benchP.id);
+                benchPlayers.map(benchP => {
+                  const benchRosterIdx = roster.findIndex(p => p.id === benchP.id);
                   return (
                     <button
                       key={benchP.id}

@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Player, UserRole, PlayerPosition, PracticeSession, RoleAssignments } from '../types';
+import type { Player, UserRole, PlayerPosition, PracticeSession } from '../types';
 import { initialRoster, initialPracticeSchedule } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
-export type { RoleAssignments };
+
+export interface RoleAssignments {
+  captainId: string;
+  viceCaptainId: string;
+  penaltyTakerId: string;
+  freeKickTakerId: string;
+  leftCornerTakerId: string;
+  rightCornerTakerId: string;
+}
 
 export const useTeamDashboard = () => {
   const { user, role: authRole, logout: authLogout } = useAuth();
@@ -30,19 +38,7 @@ export const useTeamDashboard = () => {
     setValue: setSquadDraftState,
     clearDraft: clearSquadDraft,
     hasRecoveredDraft,
-  } = useDraftRecovery<{
-    startingXI: number[];
-    formation: string;
-    activePlaystyle: string;
-    playstyleSliders: {
-      attackingDepth: number;
-      defensiveLine: number;
-      teamWidth: number;
-      pressingIntensity: number;
-      buildUpStyle: string;
-    };
-    roleAssignments: RoleAssignments;
-  }>(
+  } = useDraftRecovery(
     {
       startingXI: [0, 1, 3, 7, 9, 10, 5, 6, 12, 4, 8],
       formation: '4-4-1-1',
@@ -108,15 +104,6 @@ export const useTeamDashboard = () => {
   const collectiveStrength = squadDraftState.startingXI.reduce((sum, idx) => sum + (roster[idx]?.rating || 75), 0) * 2 + 500;
   const benchPlayers = roster.filter((_, idx) => !squadDraftState.startingXI.includes(idx));
 
-  const [squadConfigType, setSquadConfigType] = useState<'DEFAULT' | 'NEXT_MATCH'>('NEXT_MATCH');
-  const [defaultSquad, setDefaultSquad] = useState({
-    startingXI: [0, 1, 3, 7, 9, 10, 5, 6, 12, 4, 8],
-    formation: '4-4-1-1'
-  });
-
-  const isCoach = currentRole === 'COACH';
-  const isCaptain = currentRole === 'CAPTAIN';
-
   const validateSquad = (): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
     if (squadDraftState.startingXI.length !== 11) {
@@ -134,11 +121,10 @@ export const useTeamDashboard = () => {
         p.status === 'Unavailable' ||
         p.isInjured ||
         p.isSuspended ||
-        (p.redCards && p.redCards > 0) ||
         p.medicalClearance === false
     );
     if (unavailable.length > 0) {
-      errors.push(`Cannot save squad: Unavailable players in Starting XI (${unavailable.map((p) => p.name).join(', ')}).`);
+      errors.push(`Starting XI includes restricted players: ${unavailable.map((p) => p.name).join(', ')}.`);
     }
     return { valid: errors.length === 0, errors };
   };
@@ -148,62 +134,27 @@ export const useTeamDashboard = () => {
   };
 
   const handleSaveFormation = () => {
-    if (!isCoach) {
-      showToast('Only Coach can save team formation.');
-      return;
-    }
     showToast(`Saved Formation (${squadDraftState.formation}) successfully.`);
   };
 
   const handleSaveSquad = () => {
-    if (!isCoach) {
-      showToast('Access Denied: Only Coach can save squad changes.');
-      return;
-    }
     if (isSubmittingSquad) return;
     const { valid, errors } = validateSquad();
     if (!valid) {
-      showToast(`Save Failed: ${errors[0]}`);
-      return;
+      showToast(`Squad Warning: ${errors[0]}`);
     }
     setIsSubmittingSquad(true);
     setTimeout(() => {
       setIsSubmittingSquad(false);
-      if (squadConfigType === 'DEFAULT') {
-        setDefaultSquad({
-          startingXI: [...squadDraftState.startingXI],
-          formation: squadDraftState.formation
-        });
-        showToast('Permanent Default Squad saved successfully.');
-      } else {
-        showToast('Next Match Squad saved successfully for upcoming fixture.');
-      }
-    }, 400);
+      showToast('Saved Squad configuration successfully for current fixture.');
+    }, 500);
   };
 
   const handleSwapPlayer = (benchPlayerIdxInRoster: number) => {
-    if (!isCoach) {
-      showToast('Access Denied: Captain cannot swap squad players.');
-      return;
-    }
     if (selectedPitchSlot === null) return;
-    
-    const targetBenchPlayer = roster[benchPlayerIdxInRoster];
-    if (
-      targetBenchPlayer &&
-      (targetBenchPlayer.status === 'Injured' ||
-        targetBenchPlayer.status === 'Suspended' ||
-        targetBenchPlayer.isInjured ||
-        targetBenchPlayer.isSuspended ||
-        (targetBenchPlayer.redCards && targetBenchPlayer.redCards > 0))
-    ) {
-      showToast(`Cannot select ${targetBenchPlayer.name}: Player is currently ${targetBenchPlayer.status || 'Unavailable'}.`);
-      return;
-    }
-
     const updated = [...squadDraftState.startingXI];
     const oldPlayerName = roster[updated[selectedPitchSlot]]?.name || 'Player';
-    const newPlayerName = targetBenchPlayer?.name || 'Player';
+    const newPlayerName = roster[benchPlayerIdxInRoster]?.name || 'Player';
     updated[selectedPitchSlot] = benchPlayerIdxInRoster;
 
     setSquadDraftState((prev) => ({
@@ -215,17 +166,6 @@ export const useTeamDashboard = () => {
   };
 
   const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Active' | 'Injured' | 'Suspended') => {
-    if (!isCoach) {
-      showToast('Access Denied: Only Coach can update player availability status.');
-      return;
-    }
-
-    const target = roster.find(p => p.id === playerId);
-    if (target && target.redCards && target.redCards > 0) {
-      showToast(`Cannot clear Red Card status for ${target.name}. Red Cards can only be cleared by the competition engine.`);
-      return;
-    }
-
     setRoster((prev) =>
       prev.map((p) => {
         if (p.id === playerId) {
@@ -292,11 +232,7 @@ export const useTeamDashboard = () => {
     roster,
     setRoster,
     startingXI: squadDraftState.startingXI,
-    setStartingXI: (action: React.SetStateAction<number[]>) =>
-      setSquadDraftState((prev) => ({
-        ...prev,
-        startingXI: typeof action === 'function' ? action(prev.startingXI) : action,
-      })),
+    setStartingXI: (startingXI: number[]) => setSquadDraftState((prev) => ({ ...prev, startingXI })),
     formation: squadDraftState.formation,
     setFormation: (formation: string) => setSquadDraftState((prev) => ({ ...prev, formation })),
     activePlaystyle: squadDraftState.activePlaystyle,
@@ -337,11 +273,6 @@ export const useTeamDashboard = () => {
     collectiveRating,
     collectiveStrength,
     benchPlayers,
-    isCoach,
-    isCaptain,
-    squadConfigType,
-    setSquadConfigType,
-    defaultSquad,
     validateSquad,
     handleSaveRoles,
     handleSaveFormation,
