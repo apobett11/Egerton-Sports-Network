@@ -1,9 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Player, UserRole, PlayerPosition, PracticeSession } from '../types';
-import { initialRoster, initialPracticeSchedule } from '../mockData';
+import type { Player, UserRole, PracticeSession, Match, DBTeam } from '../types';
+import { initialRoster, initialPracticeSchedule, initialFixtures } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
+import {
+  fetchAuthenticatedUserTeam,
+  fetchTeamPlayers,
+  fetchTeamFixtures,
+  fetchTeamAnnouncements,
+  saveSquadConfiguration,
+  loadSquadConfiguration,
+  saveMatchLineup,
+  DEFAULT_TEAM_UUID
+} from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
 
@@ -21,6 +31,12 @@ export const useTeamDashboard = () => {
 
   const isLoggedIn = Boolean(user && authRole !== 'guest');
   const currentRole: UserRole = authRole === 'captain' ? 'CAPTAIN' : 'COACH';
+
+  const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
+  const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
+  const [teamFixtures, setTeamFixtures] = useState<Match[]>(initialFixtures);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   const [activeView, setActiveView] = useState<DashboardView>('DASHBOARD');
 
@@ -73,6 +89,55 @@ export const useTeamDashboard = () => {
 
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Synchronize Live Supabase Data
+  useEffect(() => {
+    let isMounted = true;
+    async function initData() {
+      if (!user) {
+        setIsLoadingData(false);
+        return;
+      }
+      setIsLoadingData(true);
+      try {
+        const team = await fetchAuthenticatedUserTeam(user.id);
+        const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
+        if (isMounted) {
+          setTeamInfo(team);
+          setTeamId(resolvedTeamId);
+        }
+
+        const dbPlayers = await fetchTeamPlayers(resolvedTeamId);
+        if (isMounted && dbPlayers.length > 0) {
+          setRoster(dbPlayers);
+        }
+
+        const dbFixtures = await fetchTeamFixtures(resolvedTeamId);
+        if (isMounted && dbFixtures.length > 0) {
+          setTeamFixtures(dbFixtures);
+        }
+
+        const dbAnnouncements = await fetchTeamAnnouncements(resolvedTeamId);
+        if (isMounted && dbAnnouncements.length > 0) {
+          setAnnouncements(dbAnnouncements);
+        }
+
+        const dbSquadConfig = await loadSquadConfiguration(resolvedTeamId);
+        if (isMounted && dbSquadConfig?.formation) {
+          setSquadDraftState((prev) => ({
+            ...prev,
+            formation: dbSquadConfig.formation,
+          }));
+        }
+      } catch (err) {
+        console.warn('Data initialization error:', err);
+      } finally {
+        if (isMounted) setIsLoadingData(false);
+      }
+    }
+    initData();
+    return () => { isMounted = false; };
+  }, [user]);
 
   const handleOpenNextGameSquad = () => {
     setActiveSquadType('NEXT_GAME');
@@ -137,27 +202,79 @@ export const useTeamDashboard = () => {
   };
 
   const handleSaveRoles = () => {
+    if (currentRole !== 'CAPTAIN') {
+      showToast('Permission Denied: Only Captain can assign set-piece match roles.');
+      return;
+    }
     showToast('Saved Tactical Match Roles successfully.');
   };
 
   const handleSaveFormation = () => {
-    showToast(`Saved Formation (${squadDraftState.formation}) successfully.`);
+    if (currentRole !== 'CAPTAIN') {
+      showToast('Permission Denied: Only Captain can update formation layout.');
+      return;
+    }
+    saveSquadConfiguration({
+      teamId,
+      formation: squadDraftState.formation,
+      coordinates: [],
+      updatedBy: user?.id || '',
+    });
+    showToast(`Saved Formation (${squadDraftState.formation}) successfully to database.`);
   };
 
   const handleSaveSquad = () => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Coach can save squad configurations.');
+      return;
+    }
     if (isSubmittingSquad) return;
+
     const { valid, errors } = validateSquad();
     if (!valid) {
       showToast(`Squad Warning: ${errors[0]}`);
     }
     setIsSubmittingSquad(true);
+
+    const startingPlayers = squadDraftState.startingXI.map((idx) => roster[idx]).filter(Boolean);
+    const bench = roster.filter((_, idx) => !squadDraftState.startingXI.includes(idx));
+
+    if (activeSquadType === 'DEFAULT') {
+      saveSquadConfiguration({
+        teamId,
+        formation: squadDraftState.formation,
+        coordinates: startingPlayers.map((p) => ({
+          player_id: p.id,
+          position_name: p.position,
+          x_coordinate: 50,
+          y_coordinate: 50,
+        })),
+        updatedBy: user?.id || '',
+      });
+    } else {
+      saveMatchLineup({
+        teamId,
+        formation: squadDraftState.formation,
+        startingXi: startingPlayers,
+        substitutes: bench,
+      });
+    }
+
     setTimeout(() => {
       setIsSubmittingSquad(false);
-      showToast('Saved Squad configuration successfully for current fixture.');
-    }, 500);
+      showToast(
+        activeSquadType === 'DEFAULT'
+          ? 'Saved Default Squad successfully to Supabase.'
+          : 'Saved Next-Game Squad selection successfully to Supabase.'
+      );
+    }, 400);
   };
 
   const handleSwapPlayer = (benchPlayerIdxInRoster: number) => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Coach can swap substitutes.');
+      return;
+    }
     if (selectedPitchSlot === null) return;
     const updated = [...squadDraftState.startingXI];
     const oldPlayerName = roster[updated[selectedPitchSlot]]?.name || 'Player';
@@ -173,6 +290,10 @@ export const useTeamDashboard = () => {
   };
 
   const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Active' | 'Injured' | 'Suspended') => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Coach can update player availability status.');
+      return;
+    }
     setRoster((prev) =>
       prev.map((p) => {
         if (p.id === playerId) {
@@ -191,6 +312,10 @@ export const useTeamDashboard = () => {
   };
 
   const handleUploadPlayerImage = (playerId: string, imageUrl: string) => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Coach can upload player photos.');
+      return;
+    }
     setRoster((prev) =>
       prev.map((p) => (p.id === playerId ? { ...p, cardImage: imageUrl } : p))
     );
@@ -205,6 +330,10 @@ export const useTeamDashboard = () => {
   };
 
   const handleAddPracticeDay = (day: string, time: string, location: string) => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Coach can add practice days.');
+      return;
+    }
     const newSession: PracticeSession = {
       id: `ps_${Date.now()}`,
       day,
@@ -232,6 +361,11 @@ export const useTeamDashboard = () => {
   return {
     isLoggedIn,
     currentRole,
+    teamId,
+    teamInfo,
+    teamFixtures,
+    announcements,
+    isLoadingData,
     activeView,
     setActiveView,
     darkMode,

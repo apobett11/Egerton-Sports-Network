@@ -42,7 +42,7 @@ export const GameDetailsPage: React.FC<GameDetailsPageProps> = ({
         async function fetchConfig() {
             try {
                 // Team is mocked as 't-egerton-fc'
-                const config = await loadSquadConfiguration('t-egerton-fc', formation);
+                const config = await loadSquadConfiguration('t-egerton-fc');
                 if (!isCurrent) return;
 
                 if (config && config.player_positions && config.player_positions.length === 11) {
@@ -110,8 +110,8 @@ export const GameDetailsPage: React.FC<GameDetailsPageProps> = ({
         const success = await saveSquadConfiguration({
             teamId: 't-egerton-fc',
             formation: formation,
-            playerPositions: playerPositions,
-            createdBy: 'u-user-current'
+            coordinates: playerPositions,
+            updatedBy: 'u-user-current'
         });
 
         if (success) {
@@ -140,8 +140,8 @@ export const GameDetailsPage: React.FC<GameDetailsPageProps> = ({
         const success = await saveSquadConfiguration({
             teamId: 't-egerton-fc',
             formation: formation,
-            playerPositions: playerPositions,
-            createdBy: 'u-user-current'
+            coordinates: playerPositions,
+            updatedBy: 'u-user-current'
         });
 
         if (success) {

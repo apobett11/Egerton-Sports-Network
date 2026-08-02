@@ -1,24 +1,27 @@
-// You are writing code for a system governed by our Master Architecture Contract.
-// Commandment C-03 (RLS), C-07 (Cache-Aside), C-11 (Pagination), C-16 (Automatic Retries), and C-17 (Fail-safe Default Displays) apply here.
-
 import { supabase } from '../../../../lib/supabase';
-import { DBPlayer, DBTeam, DBSquadConfiguration, SquadPosition } from '../types';
+import { DBPlayer, DBTeam, DBSquadConfiguration, SquadPosition, Player, Match } from '../types';
 
 export { supabase };
 
 const SQUAD_CACHE_KEY = 'supabase-squad-coords-cache';
+const LINEUP_CACHE_KEY = 'supabase-match-lineup-cache';
 
 // =========================================================================
 // DETERMINISTIC MOCK-TO-UUID MAPPING (POSTGRESQL COMPLIANCE BRIDGING)
 // =========================================================================
-const MOCK_TEAM_UUID = 'de307384-d113-4956-a5cc-96c20579e0fa';
-const MOCK_USER_COACH_UUID = 'db77e5ab-6195-4a06-bf7c-8e57ce7e370b';
-const MOCK_USER_CAPTAIN_UUID = 'eb77e5ab-6195-4a06-bf7c-8e57ce7e370d';
+export const DEFAULT_TEAM_UUID = 'de307384-d113-4956-a5cc-96c20579e0fa';
+export const DEFAULT_COACH_UUID = 'db77e5ab-6195-4a06-bf7c-8e57ce7e370b';
+export const DEFAULT_CAPTAIN_UUID = 'eb77e5ab-6195-4a06-bf7c-8e57ce7e370d';
+
+export function isValidUuid(id: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
 
 export function toUuid(id: string): string {
-    if (id === 't-egerton-fc') return MOCK_TEAM_UUID;
-    if (id === 'u-user-current') return MOCK_USER_COACH_UUID;
-    if (id === 'u-captain') return MOCK_USER_CAPTAIN_UUID;
+    if (!id) return DEFAULT_TEAM_UUID;
+    if (id === 't-egerton-fc' || id === 'team-egerton-fc') return DEFAULT_TEAM_UUID;
+    if (id === 'u-user-current') return DEFAULT_COACH_UUID;
+    if (id === 'u-captain') return DEFAULT_CAPTAIN_UUID;
 
     // Map mock player IDs (e.g., 'p1', 'p2'...) to valid UUID formats
     const playerMatch = id.match(/^p(\d+)$/);
@@ -28,21 +31,21 @@ export function toUuid(id: string): string {
         return `daf00000-0000-0000-0000-${hex}`;
     }
 
-    // Check if it's already a valid UUID
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    if (isValidUuid(id)) {
         return id;
     }
 
-    // Fallback deterministic formatting
-    return '00000000-0000-0000-0000-' + id.replace(/[^a-f0-9]/gi, '').padEnd(12, '0').slice(0, 12);
+    // Fallback deterministic UUID string generator
+    const clean = id.replace(/[^a-f0-9]/gi, '').padEnd(12, '0').slice(0, 12);
+    return `00000000-0000-0000-0000-${clean}`;
 }
 
 export function fromUuid(uuid: string): string {
-    if (uuid === MOCK_TEAM_UUID) return 't-egerton-fc';
-    if (uuid === MOCK_USER_COACH_UUID) return 'u-user-current';
-    if (uuid === MOCK_USER_CAPTAIN_UUID) return 'u-captain';
+    if (uuid === DEFAULT_TEAM_UUID) return 't-egerton-fc';
+    if (uuid === DEFAULT_COACH_UUID) return 'u-user-current';
+    if (uuid === DEFAULT_CAPTAIN_UUID) return 'u-captain';
 
-    if (uuid.startsWith('daf00000-0000-0000-0000-')) {
+    if (uuid && uuid.startsWith('daf00000-0000-0000-0000-')) {
         const hex = uuid.substring(24);
         const num = parseInt(hex, 16);
         return `p${num}`;
@@ -51,192 +54,384 @@ export function fromUuid(uuid: string): string {
 }
 
 // =========================================================================
-// PRODUCTION-GRADE SUPABASE CONNECTORS WITH BUILT-IN OFFLINE/FAIL-SAFE FALLBACK
+// PRODUCTION SUPABASE QUERIES & MUTATIONS (SCHEMA ALIGNED)
 // =========================================================================
 
 /**
- * Saves the current squad lineup configuration with x, y coordinate vectors
- * to squad_configurations table in Supabase.
- * Falls back to localStorage mapping for high availability/reliability (Commandment C-17).
+ * Resolves the authenticated user's assigned team record from Supabase 'teams' table.
+ */
+export async function fetchAuthenticatedUserTeam(userId: string): Promise<DBTeam | null> {
+    const userUuid = toUuid(userId);
+    try {
+        // First check if user is coach or captain of a team
+        const { data: teamData, error: teamError } = await supabase
+            .from('teams')
+            .select('*')
+            .or(`coach_id.eq.${userUuid},captain_id.eq.${userUuid}`)
+            .limit(1);
+
+        if (!teamError && teamData && teamData.length > 0) {
+            return teamData[0] as DBTeam;
+        }
+
+        // Fallback: Fetch primary active team from database
+        const { data: defaultTeams, error: defaultError } = await supabase
+            .from('teams')
+            .select('*')
+            .order('created_at', { ascending: true })
+            .limit(1);
+
+        if (!defaultError && defaultTeams && defaultTeams.length > 0) {
+            return defaultTeams[0] as DBTeam;
+        }
+        return null;
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch team profile from DB:', err);
+        return null;
+    }
+}
+
+/**
+ * Fetches players belonging to a team from Supabase 'players' table joining 'profiles'.
+ */
+export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data, error } = await supabase
+            .from('players')
+            .select(`
+                id,
+                jersey_number,
+                position,
+                height,
+                weight,
+                preferred_foot,
+                nationality,
+                profiles:profile_id (
+                    id,
+                    first_name,
+                    last_name,
+                    email,
+                    avatar_url,
+                    role
+                )
+            `)
+            .eq('team_id', teamUuid)
+            .order('jersey_number', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            return data.map((item: any, index: number) => {
+                const profile = item.profiles || {};
+                const fullName = profile.first_name || profile.last_name
+                    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+                    : `Player #${item.jersey_number || index + 1}`;
+
+                let uiPos: 'GK' | 'DF' | 'MD' | 'FW' = 'MD';
+                if (item.position === 'GK') uiPos = 'GK';
+                else if (item.position === 'DEF' || item.position === 'DF') uiPos = 'DF';
+                else if (item.position === 'FWD' || item.position === 'FW') uiPos = 'FW';
+
+                return {
+                    id: item.id || toUuid(`p${index + 1}`),
+                    name: fullName,
+                    number: item.jersey_number || index + 1,
+                    position: uiPos,
+                    rating: 75 + ((index * 3) % 15),
+                    cardImage: profile.avatar_url || `https://images.unsplash.com/photo-${1534528741775 + index}?w=400&auto=format&fit=crop&q=80`,
+                    status: 'Fit',
+                    goals: (index * 2) % 8,
+                    speed: 70 + (index % 20),
+                    shooting: 65 + (index % 25),
+                    passing: 72 + (index % 18),
+                    dribbling: 70 + (index % 22),
+                    defense: 68 + (index % 24),
+                    physical: 74 + (index % 15),
+                    stamina: 85 + (index % 12),
+                    nationality: item.nationality || 'Kenya',
+                    preferredFoot: item.preferred_foot || 'right',
+                    medicalClearance: true,
+                    isInjured: false,
+                    isSuspended: false
+                };
+            });
+        }
+        return [];
+    } catch (err) {
+        console.warn('[Supabase Client] Error reading players table:', err);
+        return [];
+    }
+}
+
+/**
+ * Saves default squad tactical layout to 'squad_configurations' table in Supabase.
+ * Exact Schema: team_id, formation, coordinates (JSONB), updated_by, updated_at
  */
 export async function saveSquadConfiguration(params: {
     teamId: string;
-    matchId?: string;
     formation: string;
-    playerPositions: SquadPosition[];
-    createdBy: string;
+    coordinates: SquadPosition[];
+    updatedBy: string;
 }): Promise<boolean> {
     const teamUuid = toUuid(params.teamId);
-    const creatorUuid = toUuid(params.createdBy);
+    const updatedByUuid = toUuid(params.updatedBy);
 
-    // Map player IDs to UUIDs to maintain DB schema integrity
-    const mappedPositions = params.playerPositions.map(pos => ({
+    const mappedCoordinates = params.coordinates.map(pos => ({
         ...pos,
         player_id: toUuid(pos.player_id)
     }));
 
     try {
-        console.log('[Supabase Client] Attempting to upsert squad_configurations with positions:', {
-            teamUuid,
-            formation: params.formation,
-            positionsCount: mappedPositions.length
-        });
+        console.log('[Supabase Client] Upserting squad_configurations for team:', teamUuid);
 
-        // Check if configuration exists
         const { data: existing, error: checkError } = await supabase
             .from('squad_configurations')
             .select('id')
             .eq('team_id', teamUuid)
-            .eq('formation', params.formation)
-            .eq('is_starting_xi', true)
             .limit(1);
 
         if (checkError) throw checkError;
 
         let dbError;
         if (existing && existing.length > 0) {
-            // Update
             const { error: updateError } = await supabase
                 .from('squad_configurations')
                 .update({
-                    player_positions: mappedPositions,
-                    created_by: creatorUuid,
+                    formation: params.formation,
+                    coordinates: mappedCoordinates,
+                    updated_by: updatedByUuid,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', existing[0].id);
             dbError = updateError;
         } else {
-            // Insert
             const { error: insertError } = await supabase
                 .from('squad_configurations')
                 .insert({
                     team_id: teamUuid,
-                    match_id: params.matchId ? toUuid(params.matchId) : null,
                     formation: params.formation,
-                    player_positions: mappedPositions,
-                    is_starting_xi: true,
-                    created_by: creatorUuid
+                    coordinates: mappedCoordinates,
+                    updated_by: updatedByUuid
                 });
             dbError = insertError;
         }
 
         if (dbError) throw dbError;
 
-        // Fail-safe cache-aside strategy: Sync into localStorage (Commandment C-07 / C-17)
-        const cachedConfigs = localStorage.getItem(SQUAD_CACHE_KEY);
-        const configs = cachedConfigs ? JSON.parse(cachedConfigs) : {};
-        configs[`${params.teamId}::${params.formation}`] = {
+        localStorage.setItem(`${SQUAD_CACHE_KEY}::${params.teamId}`, JSON.stringify({
             team_id: params.teamId,
-            match_id: params.matchId,
             formation: params.formation,
-            player_positions: params.playerPositions, // Keep mock IDs in UI Cache
-            is_starting_xi: true,
+            coordinates: params.coordinates,
             updated_at: new Date().toISOString()
-        };
-        localStorage.setItem(SQUAD_CACHE_KEY, JSON.stringify(configs));
+        }));
 
         return true;
     } catch (error) {
-        console.error('[Supabase Client] Save failed. Triggering recovery fallback.', error);
-
-        // Commandment C-17: Fall safe local storage cache write
-        try {
-            const cachedConfigs = localStorage.getItem(SQUAD_CACHE_KEY);
-            const configs = cachedConfigs ? JSON.parse(cachedConfigs) : {};
-            configs[`${params.teamId}::${params.formation}`] = {
-                team_id: params.teamId,
-                match_id: params.matchId,
-                formation: params.formation,
-                player_positions: params.playerPositions,
-                is_starting_xi: true,
-                updated_at: new Date().toISOString()
-            };
-            localStorage.setItem(SQUAD_CACHE_KEY, JSON.stringify(configs));
-            return true;
-        } catch (e) {
-            console.error('LocalStorage write failed:', e);
-            return false;
-        }
+        console.error('[Supabase Client] Save squad_configurations failed:', error);
+        return false;
     }
 }
 
 /**
- * Loads the saved squad lineup configuration from Supabase 'squad_configurations' table.
- * Defaults back to local storage cache if no records found or database is offline.
+ * Loads saved squad tactical configuration from Supabase 'squad_configurations'.
  */
-export async function loadSquadConfiguration(
-    teamId: string,
-    formation: string,
-    page: number = 1,
-    limit: number = 10
-): Promise<DBSquadConfiguration | null> {
+export async function loadSquadConfiguration(teamId: string): Promise<DBSquadConfiguration | null> {
     const teamUuid = toUuid(teamId);
-    const offset = (page - 1) * limit;
-
     try {
-        console.log(`[Supabase Client] Fetching squad_configurations for teamId ${teamId} (${teamUuid}), formation ${formation}. Page = ${page}`);
-
         const { data, error } = await supabase
             .from('squad_configurations')
             .select('*')
             .eq('team_id', teamUuid)
-            .eq('formation', formation)
-            .eq('is_starting_xi', true)
             .order('updated_at', { ascending: false })
-            .range(offset, offset + limit - 1);
+            .limit(1);
 
         if (error) throw error;
 
         if (data && data.length > 0) {
-            const dbConfig = data[0] as DBSquadConfiguration;
-            // Map player IDs in the positions array back to mock format ('p1', 'p2'...)
-            const mappedPositions = (dbConfig.player_positions || []).map(pos => ({
-                ...pos,
-                player_id: fromUuid(pos.player_id)
-            }));
-
-            const finalConfig = {
-                ...dbConfig,
-                team_id: teamId,
-                player_positions: mappedPositions
-            };
-
-            // Commandment C-07: Cache-Aside sync into local cache
-            const cachedConfigs = localStorage.getItem(SQUAD_CACHE_KEY);
-            const configs = cachedConfigs ? JSON.parse(cachedConfigs) : {};
-            configs[`${teamId}::${formation}`] = finalConfig;
-            localStorage.setItem(SQUAD_CACHE_KEY, JSON.stringify(configs));
-
-            return finalConfig;
+            return data[0] as DBSquadConfiguration;
         }
-
-        // Fallback: Read from LocalStorage Cache (Commandment C-17)
-        const cachedConfigs = localStorage.getItem(SQUAD_CACHE_KEY);
-        if (cachedConfigs) {
-            const configs = JSON.parse(cachedConfigs);
-            const key = `${teamId}::${formation}`;
-            if (configs[key]) {
-                console.log('[Supabase Client] Resolved squad configuration from local Cache-Aside database.');
-                return configs[key] as DBSquadConfiguration;
-            }
-        }
-
         return null;
     } catch (error) {
-        console.warn('[Supabase Client] Read error. Querying fail-safe local cache.', error);
-
-        const cachedConfigs = localStorage.getItem(SQUAD_CACHE_KEY);
-        if (cachedConfigs) {
-            const configs = JSON.parse(cachedConfigs);
-            const key = `${teamId}::${formation}`;
-            if (configs[key]) return configs[key] as DBSquadConfiguration;
-        }
+        console.warn('[Supabase Client] Read squad_configurations failed:', error);
         return null;
     }
 }
 
 /**
- * Fetches players from the players table with Server-Side Pagination (Commandment C-11)
+ * Saves match-specific lineup (Next Game Squad) to 'match_lineups' table in Supabase.
+ * Exact Schema: fixture_id, team_id, formation, starting_xi (JSONB), substitutes (JSONB)
+ */
+export async function saveMatchLineup(params: {
+    fixtureId?: string;
+    teamId: string;
+    formation: string;
+    startingXi: any[];
+    substitutes: any[];
+}): Promise<boolean> {
+    const teamUuid = toUuid(params.teamId);
+
+    try {
+        console.log('[Supabase Client] Upserting match_lineups for team:', teamUuid);
+
+        const payload: any = {
+            team_id: teamUuid,
+            formation: params.formation,
+            starting_xi: params.startingXi,
+            substitutes: params.substitutes
+        };
+        if (params.fixtureId && isValidUuid(params.fixtureId)) {
+            payload.fixture_id = params.fixtureId;
+        }
+
+        const { error } = await supabase
+            .from('match_lineups')
+            .upsert(payload, { onConflict: 'fixture_id,team_id' });
+
+        if (error) {
+            const { error: insertError } = await supabase
+                .from('match_lineups')
+                .insert(payload);
+            if (insertError) throw insertError;
+        }
+
+        localStorage.setItem(`${LINEUP_CACHE_KEY}::${params.teamId}`, JSON.stringify({
+            team_id: params.teamId,
+            formation: params.formation,
+            starting_xi: params.startingXi,
+            substitutes: params.substitutes,
+            updated_at: new Date().toISOString()
+        }));
+
+        return true;
+    } catch (error) {
+        console.error('[Supabase Client] Save match_lineups failed:', error);
+        return false;
+    }
+}
+
+/**
+ * Fetches team-scoped fixtures from Supabase 'fixtures' table.
+ */
+export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data, error } = await supabase
+            .from('fixtures')
+            .select(`
+                id,
+                scheduled_time,
+                status,
+                score_home,
+                score_away,
+                venue,
+                matchday,
+                home_team:home_team_id(id, name, logo_url),
+                away_team:away_team_id(id, name, logo_url)
+            `)
+            .or(`home_team_id.eq.${teamUuid},away_team_id.eq.${teamUuid}`)
+            .order('scheduled_time', { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            return data.map((f: any) => {
+                const isHome = f.home_team?.id === teamUuid;
+                const opponent = isHome ? f.away_team : f.home_team;
+                const oppName = opponent?.name || 'Opponent FC';
+                const oppLogo = opponent?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
+
+                const scheduledDate = new Date(f.scheduled_time);
+                const dateStr = scheduledDate.toLocaleDateString('en-GB', {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short'
+                });
+                const timeStr = scheduledDate.toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                let uiStatus: 'UPCOMING' | 'FINISHED' | 'LIVE' = 'UPCOMING';
+                if (f.status === 'FT' || f.status === 'FINISHED') uiStatus = 'FINISHED';
+                else if (f.status === 'LIVE' || f.status === 'HT') uiStatus = 'LIVE';
+
+                const scoreStr = f.score_home !== null && f.score_away !== null
+                    ? `${f.score_home} - ${f.score_away}`
+                    : undefined;
+
+                return {
+                    id: f.id,
+                    opponentName: oppName,
+                    opponentLogo: oppLogo,
+                    date: dateStr,
+                    time: timeStr,
+                    location: f.venue || 'Egerton Main Arena',
+                    league: 'Premier League',
+                    status: uiStatus,
+                    score: scoreStr
+                };
+            });
+        }
+        return [];
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch team fixtures:', err);
+        return [];
+    }
+}
+
+/**
+ * Fetches team announcements from Supabase 'announcements' table.
+ */
+export async function fetchTeamAnnouncements(teamId: string) {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data, error } = await supabase
+            .from('announcements')
+            .select(`
+                id,
+                title,
+                content,
+                target_role,
+                target_team_id,
+                created_at,
+                author:author_id(first_name, last_name, role)
+            `)
+            .or(`target_team_id.eq.${teamUuid},target_role.eq.all,target_team_id.is.null`)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch announcements:', err);
+        return [];
+    }
+}
+
+/**
+ * Updates team settings in Supabase 'teams' table.
+ */
+export async function updateTeamSettings(teamId: string, updates: Partial<DBTeam>): Promise<boolean> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                ...updates,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', teamUuid);
+
+        if (error) throw error;
+        return true;
+    } catch (err) {
+        console.error('[Supabase Client] Failed to update team settings:', err);
+        return false;
+    }
+}
+
+/**
+ * Paginated player query helper
  */
 export async function fetchPlayersPaginated(
     teamId: string,
@@ -247,7 +442,6 @@ export async function fetchPlayersPaginated(
     const offset = (page - 1) * limit;
 
     try {
-        console.log(`[Supabase Client] Fetching paginated players for ${teamId}. Page = ${page}`);
         const { data, error, count } = await supabase
             .from('players')
             .select('*', { count: 'exact' })
@@ -256,137 +450,9 @@ export async function fetchPlayersPaginated(
             .range(offset, offset + limit - 1);
 
         if (error) throw error;
-
-        // Map database entity IDs back to UI mock standard where appropriate
-        const mappedData = (data || []).map((player: any) => ({
-            ...player,
-            id: fromUuid(player.id),
-            user_id: fromUuid(player.user_id),
-            team_id: fromUuid(player.team_id)
-        }));
-
-        return { data: mappedData as DBPlayer[], count: count || 0 };
+        return { data: (data || []) as DBPlayer[], count: count || 0 };
     } catch (error) {
-        console.error('Failed fetching players from db', error);
+        console.error('Failed fetching paginated players:', error);
         return { data: [], count: 0 };
     }
 }
-
-// =========================================================================
-// TEST QUERIES FOR KEY OPERATIONS (DIAGNOSTIC SCRIPTS MODULE)
-// =========================================================================
-
-/**
- * Diagnostic suite to verify SQL connection and RLS policies.
- * Can be imported and run in testing/dev pages.
- */
-export const diagnosticQueries = {
-    /**
-     * Operation 1: Fetch complete team squad roster details
-     */
-    async fetchTeamSquad(teamId: string = 't-egerton-fc') {
-        const teamUuid = toUuid(teamId);
-        console.log(`[Diagnostic] Executing: Fetching squad roster for team ${teamId} -> ${teamUuid}`);
-        const { data, error } = await supabase
-            .from('players')
-            .select(`
-                id,
-                jersey_number,
-                position,
-                status,
-                profiles:profile_id (
-                    id,
-                    first_name,
-                    last_name,
-                    email,
-                    role
-                )
-            `)
-            .eq('team_id', teamUuid);
-
-        if (error) {
-            console.error('[Diagnostic ERROR] fetchTeamSquad failed:', error);
-            throw error;
-        }
-        console.log('[Diagnostic SUCCESS] fetchTeamSquad returned:', data);
-        return data;
-    },
-
-    /**
-     * Operation 2: Save squad formation coordinates manually
-     */
-    async saveSquadCoordinates(params: {
-        teamId: string;
-        formation: string;
-        positions: SquadPosition[];
-        userId: string;
-    }) {
-        const teamUuid = toUuid(params.teamId);
-        const userUuid = toUuid(params.userId);
-
-        console.log('[Diagnostic] Executing: Saving positions for', params.formation);
-
-        // Execute database upsert/insert directly to bypass helper caches
-        const { data, error } = await supabase
-            .from('squad_configurations')
-            .insert({
-                team_id: teamUuid,
-                formation: params.formation,
-                coordinates: params.positions.map(p => ({ ...p, player_id: toUuid(p.player_id) })),
-                updated_by: userUuid
-            });
-
-        if (error) {
-            console.error('[Diagnostic ERROR] saveSquadCoordinates failed:', error);
-            throw error;
-        }
-        console.log('[Diagnostic SUCCESS] saveSquadCoordinates added:', data);
-        return data;
-    },
-
-    /**
-     * Operation 3: Update lineup
-     */
-    async updateLineupStartingStatus(configId: string, isStarting: boolean) {
-        console.log(`[Diagnostic] Executing: Updating squad configuration ${configId}`);
-        const { data, error } = await supabase
-            .from('squad_configurations')
-            .update({ updated_at: new Date().toISOString() })
-            .eq('id', configId);
-
-        if (error) {
-            console.error('[Diagnostic ERROR] updateLineupStartingStatus failed:', error);
-            throw error;
-        }
-        console.log('[Diagnostic SUCCESS] updateLineupStartingStatus success:', data);
-        return data;
-    },
-
-    /**
-     * Operation 4: Role-based data fetching verification
-     * Attempts to read profiles table to verify role policies.
-     */
-    async testRoleBasedAccessRight() {
-        console.log('[Diagnostic] Executing: Reading profiles table');
-        const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('email, role, first_name, last_name');
-
-        if (profilesError) {
-            console.warn('[Diagnostic WARNING] profiles table read rejected:', profilesError.message);
-        } else {
-            console.log('[Diagnostic SUCCESS] profiles table read allowed:', profiles);
-        }
-
-        console.log('[Diagnostic] Executing: Reading teams table (public to authenticated)');
-        const { data: teams, error: teamsError } = await supabase
-            .from('teams')
-            .select('id, name');
-
-        return {
-            usersAccessible: !profilesError,
-            teamsAccessible: !teamsError,
-            teamsCount: teams?.length || 0
-        };
-    }
-};

@@ -113,6 +113,8 @@ export interface User {
 export interface DBTeam {
     id: string;
     name: string;
+    short_name?: string;
+    color_code?: string;
     league?: string;
     logo_url?: string;
     description?: string;

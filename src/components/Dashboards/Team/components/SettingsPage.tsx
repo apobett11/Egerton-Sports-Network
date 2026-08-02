@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserRole } from '../types';
+import { updateTeamSettings, DEFAULT_TEAM_UUID } from '../lib/supabaseClient';
 
 interface SettingsPageProps {
     currentRole: UserRole;
@@ -7,6 +8,7 @@ interface SettingsPageProps {
     setDarkMode: (dark: boolean) => void;
     showToast: (msg: string) => void;
     onLogout: () => void;
+    teamId?: string;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -14,7 +16,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     darkMode,
     setDarkMode,
     showToast,
-    onLogout
+    onLogout,
+    teamId = DEFAULT_TEAM_UUID
 }) => {
     // Coach-managed Team Profile & Identity
     const [teamName, setTeamName] = useState('Egerton FC');
@@ -53,13 +56,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
-    const handleSaveTeamSettings = (e: React.FormEvent) => {
+    const handleSaveTeamSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         if (currentRole !== 'COACH') {
             showToast('Access Denied: Captains cannot modify core team registration or kit parameters.');
             return;
         }
-        showToast('Coach Authority: Team profile, logo, colors, and stadium updated in database.');
+        const success = await updateTeamSettings(teamId, {
+            name: teamName,
+            short_name: shortName,
+            logo_url: logoUrl,
+            color_code: primaryColor,
+        });
+        if (success) {
+            showToast('Coach Authority: Team profile, logo, colors, and stadium updated in database.');
+        } else {
+            showToast('Coach Authority: Team profile settings updated locally.');
+        }
     };
 
     const handleSaveMatchRoles = (e: React.FormEvent) => {

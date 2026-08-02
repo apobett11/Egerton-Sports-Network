@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Trophy, Shield } from 'lucide-react';
+import { Calendar, MapPin, Trophy } from 'lucide-react';
 import { initialFixtures } from '../../mockData';
+import type { Match } from '../../types';
 
-export const FixturesResultsView: React.FC = () => {
+interface FixturesResultsViewProps {
+  fixtures?: Match[];
+}
+
+export const FixturesResultsView: React.FC<FixturesResultsViewProps> = ({ fixtures }) => {
   const [activeTab, setActiveTab] = useState<'FIXTURES' | 'RESULTS'>('FIXTURES');
 
-  // Filter Egerton FC fixtures
-  const upcomingFixtures = initialFixtures.filter(f => f.status === 'UPCOMING');
-  const pastResults = initialFixtures.filter(f => f.status === 'FINISHED');
+  const matchSource = fixtures && fixtures.length > 0 ? fixtures : initialFixtures;
+
+  // Filter team fixtures
+  const upcomingFixtures = matchSource.filter(f => f.status === 'UPCOMING');
+  const pastResults = matchSource.filter(f => f.status === 'FINISHED');
 
   const displayedList = activeTab === 'FIXTURES' ? upcomingFixtures : pastResults;
 
@@ -51,10 +58,11 @@ export const FixturesResultsView: React.FC = () => {
         {/* Fixtures / Results List */}
         <div className="space-y-3 pt-2">
           {displayedList.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8">No match records found.</p>
+            <div className="bg-[#111111] p-8 rounded-xl border border-[#2A2A2A] text-center">
+              <p className="text-xs text-gray-400">No match records found for this view.</p>
+            </div>
           ) : (
             displayedList.map((match, idx) => {
-              // Alternate Home vs Away for visual variation
               const isHome = idx % 2 === 0;
               const homeTeamName = isHome ? 'Egerton FC' : match.opponentName;
               const awayTeamName = isHome ? match.opponentName : 'Egerton FC';

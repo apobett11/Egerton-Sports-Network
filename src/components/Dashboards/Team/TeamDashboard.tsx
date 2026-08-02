@@ -34,6 +34,9 @@ export const TeamDashboard: React.FC = () => {
   const {
     isLoggedIn,
     currentRole,
+    teamId,
+    teamFixtures,
+    announcements,
     activeView,
     setActiveView,
     darkMode,
@@ -140,7 +143,7 @@ export const TeamDashboard: React.FC = () => {
               onAssignActivity={handleAssignPracticeActivity}
               onAddPracticeDay={handleAddPracticeDay}
               onOpenInviteModal={() => setShowInviteModal(true)}
-              matches={initialFixtures}
+              matches={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
               standings={initialStandings}
             />
           )}
@@ -223,7 +226,7 @@ export const TeamDashboard: React.FC = () => {
           )}
 
           {/* PAGE 5: FIXTURES & RESULTS (TASK 8) */}
-          {activeView === 'FIXTURES' && <FixturesResultsView />}
+          {activeView === 'FIXTURES' && <FixturesResultsView fixtures={teamFixtures} />}
 
           {/* PAGE 6: KITS (TASK 9) */}
           {activeView === 'KITS' && <KitsSection />}
@@ -244,7 +247,27 @@ export const TeamDashboard: React.FC = () => {
                   Official club announcements, match previews, squad injury reports, transfer updates, and tactical briefings.
                 </p>
               </div>
-              <NewsFeed newsItems={mockNews} />
+              <NewsFeed
+                newsItems={
+                  announcements && announcements.length > 0
+                    ? announcements.map((ann: any) => ({
+                        id: ann.id,
+                        title: ann.title,
+                        excerpt: ann.content,
+                        content: ann.content,
+                        category: 'announcement' as const,
+                        author: ann.author
+                          ? `${ann.author.first_name || ''} ${ann.author.last_name || ''}`.trim() || 'Club Desk'
+                          : 'Club Official',
+                        authorRole: ann.author?.role || 'Club Official',
+                        verified: true,
+                        publishedAt: new Date(ann.created_at).toLocaleDateString(),
+                        imageUrl:
+                          'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+                      }))
+                    : mockNews
+                }
+              />
             </div>
           )}
 
@@ -252,6 +275,7 @@ export const TeamDashboard: React.FC = () => {
           {activeView === 'SETTINGS' && (
             <SettingsPage
               currentRole={currentRole}
+              teamId={teamId}
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               showToast={showToast}
