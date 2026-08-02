@@ -232,126 +232,93 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       {/* TABLE 2: EGERTON CHAMPIONSHIPS */}
       {renderTable('Egerton Championships Standings', championshipsData, 'text-amber-500')}
 
-      {/* GOLDEN BOOT LEADERBOARD (NOT ATTACHED - BREATHING SPACE) */}
-      <div className="pt-6">
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-150 dark:border-gray-800">
-            <div className="flex items-center gap-2.5">
-              <Trophy className="w-5 h-5 text-amber-500" />
-              <h3 className="text-sm font-black uppercase tracking-wider text-amber-500">
-                Official Golden Boot Leaderboard
-              </h3>
+      {/* SECTIONS BELOW TABLE (Natural Extension of League Table) */}
+      <div className="pt-8 space-y-12 select-none">
+        {/* 1. LEADERBOARD (Golden Boot & Top Assists) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Golden Boot */}
+          <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+                <span>⚽</span>
+                <span className="uppercase tracking-wider">Golden Boot Leaderboard</span>
+              </div>
+              <span className="text-[11px] font-mono text-gray-400">Goals</span>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-              TOP GOALSCORERS
-            </span>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-gray-900 dark:text-gray-100">1. FOA Player 10 (Arts)</span>
+                <span className="text-lg font-black font-mono text-amber-500">8</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-500">
+                <span>2. SHK Player 9 (Sharklets)</span>
+                <span className="font-mono font-bold text-gray-400">7</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-500">
+                <span>3. FOS Player 11 (Science)</span>
+                <span className="font-mono font-bold text-gray-400">6</span>
+              </div>
+            </div>
           </div>
 
-          <div className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
-            <div className="py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-black/20 px-2 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="w-6 font-black text-amber-500 text-sm">1</span>
-                <div>
-                  <div className="font-extrabold text-gray-900 dark:text-gray-100">FOA Player 10</div>
-                  <div className="text-[10px] text-gray-400">Faculty of Arts</div>
-                </div>
+          {/* Top Assists */}
+          <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+                <span>🎯</span>
+                <span className="uppercase tracking-wider">Top Assists Leaderboard</span>
               </div>
-              <span className="font-mono font-black text-amber-500 text-sm">8 Goals</span>
+              <span className="text-[11px] font-mono text-gray-400">Assists</span>
             </div>
-
-            <div className="py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-black/20 px-2 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="w-6 font-black text-gray-400 text-sm">2</span>
-                <div>
-                  <div className="font-extrabold text-gray-900 dark:text-gray-100">SHK Player 9</div>
-                  <div className="text-[10px] text-gray-400">Egerton Sharklets</div>
-                </div>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-gray-900 dark:text-gray-100">1. FOA Player 8 (Arts)</span>
+                <span className="text-lg font-black font-mono text-emerald-500">6</span>
               </div>
-              <span className="font-mono font-black text-gray-700 dark:text-gray-300 text-sm">7 Goals</span>
-            </div>
-
-            <div className="py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-black/20 px-2 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="w-6 font-black text-gray-400 text-sm">3</span>
-                <div>
-                  <div className="font-extrabold text-gray-900 dark:text-gray-100">FOS Player 11</div>
-                  <div className="text-[10px] text-gray-400">Faculty of Science</div>
-                </div>
+              <div className="flex items-center justify-between text-gray-500">
+                <span>2. FOS Player 7 (Science)</span>
+                <span className="font-mono font-bold text-gray-400">5</span>
               </div>
-              <span className="font-mono font-black text-gray-700 dark:text-gray-300 text-sm">6 Goals</span>
-            </div>
-
-            <div className="py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-black/20 px-2 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="w-6 font-black text-gray-400 text-sm">4</span>
-                <div>
-                  <div className="font-extrabold text-gray-900 dark:text-gray-100">EST Player 10</div>
-                  <div className="text-[10px] text-gray-400">Egerton Staff FC</div>
-                </div>
+              <div className="flex items-center justify-between text-gray-500">
+                <span>3. SHK Player 10 (Sharklets)</span>
+                <span className="font-mono font-bold text-gray-400">4</span>
               </div>
-              <span className="font-mono font-black text-gray-700 dark:text-gray-300 text-sm">5 Goals</span>
             </div>
           </div>
         </div>
 
-        {/* REMAINING DISCOVERY FLOW SECTIONS BELOW GOLDEN BOOT */}
-        <div className="mt-8 space-y-8">
-          {/* TOP ASSISTS */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Top Assists Leaderboard
-            </h4>
-            <div className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
-              <div className="py-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 font-black text-emerald-500">1</span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">FOA Player 8</span>
-                  <span className="text-[10px] text-gray-400">(Faculty of Arts)</span>
-                </div>
-                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">6 Assists</span>
+        {/* 2. MINI CARDS (Best Defence & Team Form) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Best Defence */}
+          <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
+              <span>🧤</span>
+              <span className="uppercase tracking-wider">Defensive Records</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800">
+                <div className="text-[10px] text-gray-400 font-bold">Sharklets</div>
+                <div className="text-xl font-black text-emerald-500 mt-1">8 GA</div>
               </div>
-              <div className="py-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 font-black text-gray-400">2</span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">FOS Player 7</span>
-                  <span className="text-[10px] text-gray-400">(Faculty of Science)</span>
-                </div>
-                <span className="font-mono font-black text-gray-700 dark:text-gray-300">5 Assists</span>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800">
+                <div className="text-[10px] text-gray-400 font-bold">Arts</div>
+                <div className="text-xl font-black text-blue-500 mt-1">12 GA</div>
+              </div>
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800">
+                <div className="text-[10px] text-gray-400 font-bold">Science</div>
+                <div className="text-xl font-black text-gray-400 mt-1">14 GA</div>
               </div>
             </div>
           </div>
 
-          {/* BEST DEFENCE */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-blue-500">
-              Best Defensive Records
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 text-center">
-                <div className="font-bold text-gray-900 dark:text-gray-100">Egerton Sharklets</div>
-                <div className="text-lg font-black text-emerald-500 mt-1">8 GA</div>
-                <div className="text-[10px] text-gray-400">0.66 goals/match</div>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 text-center">
-                <div className="font-bold text-gray-900 dark:text-gray-100">Faculty of Arts</div>
-                <div className="text-lg font-black text-blue-500 mt-1">12 GA</div>
-                <div className="text-[10px] text-gray-400">1.00 goals/match</div>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 text-center">
-                <div className="font-bold text-gray-900 dark:text-gray-100">Faculty of Science</div>
-                <div className="text-lg font-black text-gray-400 mt-1">14 GA</div>
-                <div className="text-[10px] text-gray-400">1.16 goals/match</div>
-              </div>
+          {/* Recent Form */}
+          <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+              <span>📈</span>
+              <span className="uppercase tracking-wider">Recent Form</span>
             </div>
-          </div>
-
-          {/* RECENT FORM */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">
-              Recent Team Form
-            </h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-black/30">
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-black/30">
                 <span className="font-bold text-gray-900 dark:text-gray-100">Egerton Sharklets</span>
                 <div className="flex gap-1 font-mono text-[10px] font-bold">
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white">W</span>
@@ -361,7 +328,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white">W</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 dark:bg-black/30">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-black/30">
                 <span className="font-bold text-gray-900 dark:text-gray-100">Faculty of Arts</span>
                 <div className="flex gap-1 font-mono text-[10px] font-bold">
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500 text-white">W</span>
@@ -373,45 +340,41 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </div>
             </div>
           </div>
+        </div>
 
-          {/* UPCOMING KEY FIXTURES */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Upcoming Key Fixtures
-            </h4>
-            <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                <span className="font-bold text-gray-800 dark:text-gray-200">Faculty of Education vs Faculty of Agriculture</span>
-                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">18:00 Today</span>
-              </div>
-              <div className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                <span className="font-bold text-gray-800 dark:text-gray-200">Faculty of Arts vs Egerton Sharklets</span>
-                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Tomorrow</span>
-              </div>
+        {/* 3. WIDE STORY (Key Upcoming Matchday Focus) */}
+        <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+              <span>📅</span>
+              <span className="uppercase tracking-wider">Key Fixture Focus</span>
             </div>
-          </div>
-
-          {/* RELATED NEWS */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">
-              Related League News
+            <h4 className="text-sm font-black text-gray-900 dark:text-gray-100">
+              Faculty of Arts vs Egerton Sharklets
             </h4>
-            <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 space-y-1 text-xs">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase">Match Report</span>
-              <div className="font-bold text-gray-900 dark:text-gray-100">
-                Egerton Premier League: Sharklets Maintain Lead as FOA Pressures from Second Place
-              </div>
+            <p className="text-xs text-gray-500">
+              Title Decider • Saturday 16:00 • Egerton Pavilion Stadium
+            </p>
+          </div>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl self-start md:self-auto">
+            Matchday 14
+          </span>
+        </div>
+
+        {/* 4. HISTORICAL CARD (League Champions Roll of Honor) */}
+        <div className="p-6 md:p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+            <span>🏆</span>
+            <span className="uppercase tracking-wider">Historical Champions Roll of Honor</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 flex items-center justify-between font-bold">
+              <span>2024 / 2025: Egerton Sharklets</span>
+              <span className="text-amber-500 font-mono">31 Pts</span>
             </div>
-          </div>
-
-          {/* HISTORICAL STANDINGS */}
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-sm space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-amber-500">
-              Historical League Champions
-            </h4>
-            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <div><strong className="text-gray-900 dark:text-gray-100">2024/2025:</strong> Egerton Sharklets (31 pts)</div>
-              <div><strong className="text-gray-900 dark:text-gray-100">2023/2024:</strong> Faculty of Arts (28 pts)</div>
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800 flex items-center justify-between font-bold">
+              <span>2023 / 2024: Faculty of Arts</span>
+              <span className="text-amber-500 font-mono">28 Pts</span>
             </div>
           </div>
         </div>

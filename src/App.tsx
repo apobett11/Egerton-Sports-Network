@@ -385,46 +385,72 @@ export const AppContent: React.FC = () => {
                   />
 
                   {/* HOMEPAGE CONTINUOUS FOOTBALL DISCOVERY FLOW */}
-                  <div className="space-y-8 select-none">
-                    {/* TASK 8: LEAGUE SNAPSHOT */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
+                  <div className="space-y-12 select-none pt-4">
+                    {/* 1. STATISTIC (Hero League Counters) */}
+                    <div className="grid grid-cols-3 gap-4 p-6 rounded-2xl bg-slate-50/60 dark:bg-[#121618] border border-slate-200/70 dark:border-slate-800/70">
+                      <div className="flex flex-col items-center justify-center text-center space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                          <span>⚽</span>
+                          <span>Goals / Game</span>
+                        </div>
+                        <span className="text-2xl md:text-3xl font-black font-mono text-slate-900 dark:text-slate-100">2.8</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center text-center space-y-1 border-x border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                          <span>🏆</span>
+                          <span>Played</span>
+                        </div>
+                        <span className="text-2xl md:text-3xl font-black font-mono text-amber-500">12</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center text-center space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                          <span>🔥</span>
+                          <span>Best Streak</span>
+                        </div>
+                        <span className="text-2xl md:text-3xl font-black font-mono text-emerald-500">8</span>
+                      </div>
+                    </div>
+
+                    {/* 2. LEADERBOARD (Top 5 League Snapshot) */}
+                    <div className="p-6 md:p-8 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <Trophy className="w-5 h-5 text-amber-500" />
-                          <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                            League Snapshot (Top 5)
+                          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+                            League Snapshot
                           </h3>
                         </div>
                         <button
                           onClick={() => setActiveTab('table')}
-                          className="px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs cursor-pointer transition-all"
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
                         >
-                          View Full Table
+                          <span>Full Standings</span>
+                          <span>→</span>
                         </button>
                       </div>
 
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs font-sans">
                           <thead>
-                            <tr className="bg-gray-50 dark:bg-black/30 text-gray-500 font-bold uppercase border-b border-gray-150 dark:border-gray-800">
-                              <th className="p-2 text-center">Pos</th>
-                              <th className="p-2">Club</th>
-                              <th className="p-2 text-center">P</th>
-                              <th className="p-2 text-center">GD</th>
-                              <th className="p-2 text-center font-extrabold text-amber-500">Pts</th>
+                            <tr className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                              <th className="pb-3 text-center w-8">#</th>
+                              <th className="pb-3">Club</th>
+                              <th className="pb-3 text-center">P</th>
+                              <th className="pb-3 text-center">GD</th>
+                              <th className="pb-3 text-right font-extrabold text-amber-500">Pts</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                             {currentStandings.slice(0, 5).map((row) => (
-                              <tr key={row.teamId} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                                <td className="p-2 text-center font-bold text-gray-500">{row.position}</td>
-                                <td className="p-2 font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                  <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
+                              <tr key={row.teamId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="py-3 text-center font-black text-slate-400">{row.position}</td>
+                                <td className="py-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+                                  <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
                                   <span>{row.teamName}</span>
                                 </td>
-                                <td className="p-2 text-center">{row.played}</td>
-                                <td className="p-2 text-center font-mono">{row.goalDifference}</td>
-                                <td className="p-2 text-center font-black text-amber-500">{row.points}</td>
+                                <td className="py-3 text-center text-slate-500">{row.played}</td>
+                                <td className="py-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
+                                <td className="py-3 text-right font-black text-base text-amber-500 font-mono">{row.points}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -432,229 +458,182 @@ export const AppContent: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* TASK 9: STATISTICS (Golden Boot, Top Assists, Clean Sheets) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Golden Boot */}
-                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-amber-500" />
-                          <h4 className="text-xs font-black uppercase tracking-wider text-amber-500">
-                            Golden Boot
-                          </h4>
+                    {/* 3. WIDE STORY (Featured Match Story) */}
+                    <div
+                      onClick={() => setActiveTab('news')}
+                      className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-slate-900 via-[#141819] to-slate-950 border border-slate-800 text-white cursor-pointer hover:border-amber-500/40 transition-all space-y-3"
+                    >
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                        <span>🔥</span>
+                        <span>FEATURED STORY</span>
+                        <span className="text-slate-500">•</span>
+                        <span className="text-slate-400">Today</span>
+                      </div>
+                      <h4 className="text-base md:text-lg font-black leading-snug tracking-tight">
+                        Egerton Premier League: Sharklets Maintain Lead as FOA Pressures from Second Place
+                      </h4>
+                      <p className="text-xs text-slate-400 line-clamp-1">
+                        Title race intensifies after crucial weekend matchday results across campus pitches.
+                      </p>
+                    </div>
+
+                    {/* 4. MINI CARDS (Key Player Leaders: Goals, Assists, Clean Sheets) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Goals */}
+                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="flex items-center gap-1.5 text-amber-500 uppercase tracking-wider">
+                            <span>⚽</span> Goals
+                          </span>
+                          <span className="text-slate-400 font-mono text-[11px]">Rank</span>
                         </div>
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>FOA Player 10 (Arts)</span>
-                            <span className="text-amber-500 font-mono">8 Goals</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 10</span>
+                            <span className="text-xl font-black font-mono text-amber-500">8</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>SHK Player 9 (Sharklets)</span>
-                            <span className="text-gray-500 font-mono">7 Goals</span>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span>SHK Player 9</span>
+                            <span className="font-mono font-bold text-slate-400">7</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>FOS Player 11 (Science)</span>
-                            <span className="text-gray-500 font-mono">6 Goals</span>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span>FOS Player 11</span>
+                            <span className="font-mono font-bold text-slate-400">6</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Top Assists */}
-                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-emerald-500" />
-                          <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            Top Assists
-                          </h4>
+                      {/* Assists */}
+                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="flex items-center gap-1.5 text-emerald-500 uppercase tracking-wider">
+                            <span>🎯</span> Assists
+                          </span>
+                          <span className="text-slate-400 font-mono text-[11px]">Rank</span>
                         </div>
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>FOA Player 8 (Arts)</span>
-                            <span className="text-emerald-500 font-mono">6 Assists</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 8</span>
+                            <span className="text-xl font-black font-mono text-emerald-500">6</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>FOS Player 7 (Science)</span>
-                            <span className="text-gray-500 font-mono">5 Assists</span>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span>FOS Player 7</span>
+                            <span className="font-mono font-bold text-slate-400">5</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>SHK Player 10 (Sharklets)</span>
-                            <span className="text-gray-500 font-mono">4 Assists</span>
+                          <div className="flex items-center justify-between text-xs text-slate-500">
+                            <span>SHK Player 10</span>
+                            <span className="font-mono font-bold text-slate-400">4</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Clean Sheets */}
-                      <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-4 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Award className="w-4 h-4 text-blue-500" />
-                          <h4 className="text-xs font-black uppercase tracking-wider text-blue-500">
-                            Clean Sheets
-                          </h4>
+                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="flex items-center gap-1.5 text-blue-500 uppercase tracking-wider">
+                            <span>🧤</span> Clean Sheets
+                          </span>
+                          <span className="text-slate-400 font-mono text-[11px]">CS</span>
                         </div>
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
-                            <span>Egerton Sharklets</span>
-                            <span className="text-blue-500 font-mono">6 CS</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets</span>
+                            <span className="text-xl font-black font-mono text-blue-500">6</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                          <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>Faculty of Arts</span>
-                            <span className="text-gray-500 font-mono">4 CS</span>
+                            <span className="font-mono font-bold text-slate-400">4</span>
                           </div>
-                          <div className="flex justify-between p-2 rounded-lg bg-gray-50 dark:bg-black/30 font-bold">
+                          <div className="flex items-center justify-between text-xs text-slate-500">
                             <span>Faculty of Science</span>
-                            <span className="text-gray-500 font-mono">3 CS</span>
+                            <span className="font-mono font-bold text-slate-400">3</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* TASK 10: LATEST MATCH STORIES */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                          Latest Match Stories
+                    {/* 5. STATISTIC (Campus Football Rankings & Records) */}
+                    <div className="p-6 md:p-8 rounded-2xl bg-slate-50/70 dark:bg-[#121618] border border-slate-200/70 dark:border-slate-800/70 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">📈</span>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                          Campus League Records
                         </h3>
-                        <button
-                          onClick={() => setActiveTab('news')}
-                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                        >
-                          View All Stories
-                        </button>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                        <div
-                          onClick={() => setActiveTab('news')}
-                          className="p-3 rounded-xl border border-gray-150 dark:border-gray-800 hover:border-emerald-500/40 cursor-pointer space-y-1.5 transition-all"
-                        >
-                          <span className="text-[10px] font-bold text-amber-500 uppercase">Today</span>
-                          <h4 className="font-extrabold text-gray-900 dark:text-gray-100 leading-snug">
-                            Egerton Premier League: Sharklets Maintain Lead as FOA Pressures from Second Place
-                          </h4>
-                          <p className="text-gray-500 line-clamp-2">
-                            In a stunning weekend of college football, the Egerton Sharklets clinched another crucial victory...
-                          </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-center">
+                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
+                          <div className="text-[11px] text-slate-400 font-bold">Most Goals</div>
+                          <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">28</div>
+                          <div className="text-[10px] text-slate-500 font-semibold">Faculty of Arts</div>
                         </div>
-                        <div
-                          onClick={() => setActiveTab('news')}
-                          className="p-3 rounded-xl border border-gray-150 dark:border-gray-800 hover:border-emerald-500/40 cursor-pointer space-y-1.5 transition-all"
-                        >
-                          <span className="text-[10px] font-bold text-emerald-500 uppercase">Yesterday</span>
-                          <h4 className="font-extrabold text-gray-900 dark:text-gray-100 leading-snug">
-                            TRANSFER ALERT: Njoro FC Eye Faculty of Agriculture Top Striker Ahead of Window
-                          </h4>
-                          <p className="text-gray-500 line-clamp-2">
-                            Sources close to Njoro FC suggest the club is preparing a record student-sports scholarship package...
-                          </p>
+                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
+                          <div className="text-[11px] text-slate-400 font-bold">Most Wins</div>
+                          <div className="text-xl font-black text-emerald-500 mt-1">9</div>
+                          <div className="text-[10px] text-slate-500 font-semibold">Sharklets</div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
+                          <div className="text-[11px] text-slate-400 font-bold">Best Defence</div>
+                          <div className="text-xl font-black text-blue-500 mt-1">8 GA</div>
+                          <div className="text-[10px] text-slate-500 font-semibold">Sharklets</div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
+                          <div className="text-[11px] text-slate-400 font-bold">Win Streak</div>
+                          <div className="text-xl font-black text-amber-500 mt-1">5</div>
+                          <div className="text-[10px] text-slate-500 font-semibold">Matches</div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60 col-span-2 sm:col-span-1">
+                          <div className="text-[11px] text-slate-400 font-bold">Unbeaten</div>
+                          <div className="text-xl font-black text-emerald-500 mt-1">8</div>
+                          <div className="text-[10px] text-slate-500 font-semibold">Matches</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* TASK 11: HISTORICAL FOOTBALL */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-2">
-                      <span className="text-[10px] font-bold uppercase text-amber-500 tracking-wider">
-                        This Day in Football
-                      </span>
-                      <h4 className="text-xs font-extrabold text-gray-900 dark:text-gray-100">
-                        Historical Match Memory (August 2022)
-                      </h4>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                        In 2022, Faculty of Arts won their 3rd consecutive Campus Cup title after a thrilling 4-3 penalty shootout victory over Faculty of Science at the Egerton Pavilion Stadium.
-                      </p>
-                    </div>
-
-                    {/* TASK 12: WEEKEND PREVIEW */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-2">
-                      {(() => {
-                        const day = new Date().getDay();
-                        const isBeforeWeekend = day >= 1 && day <= 4;
-                        return (
-                          <>
-                            <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
-                              {isBeforeWeekend ? 'Upcoming Weekend Preview' : 'Weekend Matchday Review'}
-                            </span>
-                            <h4 className="text-xs font-extrabold text-gray-900 dark:text-gray-100">
-                              {isBeforeWeekend
-                                ? 'Weekend Matchday 14: Top 2 Clash at Pavilion'
-                                : 'Weekend Matchday 13 Results Summary'}
-                            </h4>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                              {isBeforeWeekend
-                                ? 'All eyes will be on Egerton Pavilion Stadium as league leaders Egerton Sharklets host second-placed Faculty of Arts in a fixture that could decide the title race.'
-                                : 'Matchday 13 produced 12 goals across 4 fixtures with Faculty of Arts securing a late winner and Egerton Sharklets keeping a clean sheet.'}
-                            </p>
-                          </>
-                        );
-                      })()}
-                    </div>
-
-                    {/* TASK 13: CAMPUS RANKINGS */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-4">
-                      <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                        Campus Football Rankings & Records
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs text-center">
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Most Goals</div>
-                          <div className="font-black text-gray-900 dark:text-gray-100 mt-1">FOA (28)</div>
+                    {/* 6. NEWS & POLL (Weekend Preview & Title Poll) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Weekend Preview */}
+                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
+                          <span>📅</span>
+                          <span className="uppercase tracking-wider">Weekend Preview</span>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Most Wins</div>
-                          <div className="font-black text-emerald-500 mt-1">Sharklets (9)</div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Best Defence</div>
-                          <div className="font-black text-blue-500 mt-1">Sharklets (8 GA)</div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Win Streak</div>
-                          <div className="font-black text-amber-500 mt-1">5 Matches</div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Unbeaten Run</div>
-                          <div className="font-black text-emerald-500 mt-1">8 Matches</div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-150 dark:border-gray-800">
-                          <div className="text-[10px] text-gray-400 font-bold">Highest Score</div>
-                          <div className="font-black text-purple-500 mt-1">SHK (28)</div>
-                        </div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                          Top 2 Title Clash: Sharklets vs FOA
+                        </h4>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Egerton Pavilion Stadium • Saturday 16:00
+                        </p>
                       </div>
-                    </div>
 
-                    {/* TASK 14: COMMUNITY (No login required) */}
-                    <div className="bg-white dark:bg-[#15191B] rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-5 shadow-sm space-y-3">
-                      <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
-                        Community Poll of the Week
-                      </span>
-                      <h4 className="text-xs font-black text-gray-900 dark:text-gray-100">
-                        Who will win the 2026 Egerton Premier League Championship?
-                      </h4>
-
-                      <div className="space-y-2 text-xs pt-1">
-                        <button
-                          type="button"
-                          onClick={() => alert('Thank you for voting! Egerton Sharklets currently leading with 54% of votes.')}
-                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
-                        >
+                      {/* Title Poll */}
+                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+                          <span>🔥</span>
+                          <span className="uppercase tracking-wider">Title Poll</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-slate-100">
                           <span>Egerton Sharklets</span>
-                          <span className="text-emerald-500">54%</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => alert('Thank you for voting! Faculty of Arts currently at 36% of votes.')}
-                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
-                        >
+                          <span className="text-emerald-500 font-mono">54%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-slate-100">
                           <span>Faculty of Arts</span>
-                          <span className="text-amber-500">36%</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => alert('Thank you for voting! Other Teams currently at 10% of votes.')}
-                          className="w-full p-2.5 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-emerald-500/10 border border-gray-150 dark:border-gray-800 flex items-center justify-between font-bold text-gray-800 dark:text-gray-200 cursor-pointer transition-all"
-                        >
-                          <span>Faculty of Science / Other</span>
-                          <span className="text-gray-400">10%</span>
-                        </button>
+                          <span className="text-amber-500 font-mono">36%</span>
+                        </div>
                       </div>
+                    </div>
+
+                    {/* 7. HISTORICAL CARD (This Day in Football) */}
+                    <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">⏱</span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">This Day in Football</span>
+                          <h4 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
+                            August 2022 • FOA 4-3 FOS (Penalties)
+                          </h4>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-400">Campus Cup Final</span>
                     </div>
                   </div>
                 </div>

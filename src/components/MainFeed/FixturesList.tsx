@@ -72,10 +72,9 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
                     {/* Match Rows */}
                     <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-                        {leagueMatches.map((match, idx) => {
+                        {leagueMatches.map((match) => {
                             const isMatchLive = match.status === 'LIVE';
                             const isFav = isFavorite(match.id);
-                            const isFirstGameOverall = Object.keys(matchesByLeague)[0] === leagueName && idx === 0;
 
                             return (
                                 <div
@@ -83,15 +82,6 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                     onClick={() => onMatchClick(match)}
                                     className="flex flex-col gap-2.5 px-4 py-4 hover:bg-emerald-500/[0.03] dark:hover:bg-emerald-500/[0.05] transition-all duration-200 cursor-pointer relative group active:scale-[0.99]"
                                 >
-                                    {/* Tooltip on ONLY the first game */}
-                                    {isFirstGameOverall && (
-                                        <div className="flex items-center gap-1.5 pb-1">
-                                            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                (click to see the squad and the team specifics)
-                                            </span>
-                                        </div>
-                                    )}
-
                                     <div className="flex items-center justify-between">
                                         {/* Left Column: Match Status & Time */}
                                         <div className="w-[68px] flex flex-col items-start justify-center pr-3 border-r border-gray-100 dark:border-gray-800/80">
@@ -123,8 +113,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                             )}
                                         </div>
 
-                                        {/* Center Column: Teams, Logos, Squad Button and Scores */}
-                                        <div className="flex-1 flex items-center justify-between px-4">
+                                        {/* Center Column: Teams, Logos, and Scores */}
+                                        <div className="flex-1 flex items-center justify-between px-4" title="Click to view squad details, line-ups & H2H stats">
                                             <div className="flex flex-col gap-3 flex-1 pr-3">
                                                 <div className="flex items-center gap-3">
                                                     <img
@@ -149,24 +139,13 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                 </div>
                                             </div>
 
-                                            {/* Button just to the left of the score */}
-                                            <div className="flex items-center gap-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onMatchClick(match);
-                                                    }}
-                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg shadow-xs transition-all cursor-pointer text-center flex flex-col items-center justify-center border border-emerald-500/40 active:scale-95"
-                                                    title="View squad, highlights, H2H"
-                                                >
-                                                    <span className="text-[11px] font-bold tracking-tight leading-none">See Squad Details</span>
-                                                    <span className="text-[8px] font-medium text-white/90 leading-tight mt-0.5">
-                                                        view the squad, highlights, H2H of both teams
-                                                    </span>
-                                                </button>
+                                            {/* Score Display & Subtle Hover Tooltip */}
+                                            <div className="relative flex items-center gap-2">
+                                                {/* Lightweight Tooltip */}
+                                                <div className="hidden group-hover:flex absolute right-full mr-3 top-1/2 -translate-y-1/2 items-center gap-1 bg-slate-900/90 text-white dark:bg-slate-800 dark:text-slate-200 text-[10px] font-semibold px-2 py-1 rounded-md shadow-sm whitespace-nowrap pointer-events-none transition-opacity duration-200 z-20">
+                                                    <span>View Squad & Details</span>
+                                                </div>
 
-                                                {/* Score Display */}
                                                 <div className="flex flex-col gap-3 items-end justify-center min-w-[24px]">
                                                     {match.status !== 'UPCOMING' ? (
                                                         <>
