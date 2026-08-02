@@ -72,104 +72,124 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
                     {/* Match Rows */}
                     <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-                        {leagueMatches.map((match) => {
+                        {leagueMatches.map((match, idx) => {
                             const isMatchLive = match.status === 'LIVE';
                             const isFav = isFavorite(match.id);
+                            const isFirstGameOverall = Object.keys(matchesByLeague)[0] === leagueName && idx === 0;
 
                             return (
                                 <div
                                     key={match.id}
                                     onClick={() => onMatchClick(match)}
-                                    className="flex items-center justify-between px-4 py-4 hover:bg-emerald-500/[0.03] dark:hover:bg-emerald-500/[0.05] transition-all duration-200 cursor-pointer relative group active:scale-[0.99]"
+                                    className="flex flex-col gap-2.5 px-4 py-4 hover:bg-emerald-500/[0.03] dark:hover:bg-emerald-500/[0.05] transition-all duration-200 cursor-pointer relative group active:scale-[0.99]"
                                 >
-                                    {/* Left Column: Match Status & Time */}
-                                    <div className="w-[68px] flex flex-col items-start justify-center pr-3 border-r border-gray-100 dark:border-gray-800/80">
-                                        {isMatchLive ? (
-                                            <div className="flex flex-col items-start gap-1">
-                                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10 ring-1 ring-amber-500/30 animate-pulse">
-                                                    LIVE
-                                                </span>
-                                                <span className="text-xs font-black text-amber-500">
-                                                    {match.minute}
-                                                </span>
-                                            </div>
-                                        ) : match.status === 'HT' ? (
-                                            <div className="flex flex-col items-start">
-                                                <span className="text-[9px] font-black text-amber-500 tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10">
-                                                    HT
-                                                </span>
-                                                <span className="text-[10px] text-gray-400 font-bold">Half Time</span>
-                                            </div>
-                                        ) : match.status === 'FT' ? (
-                                            <span className="text-xs font-black text-gray-400 dark:text-gray-500">
-                                                FT
+                                    {/* Tooltip on ONLY the first game */}
+                                    {isFirstGameOverall && (
+                                        <div className="flex items-center gap-1.5 pb-1">
+                                            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                (click to see the squad and the team specifics)
                                             </span>
-                                        ) : (
-                                            // UPCOMING
-                                            <span className="text-xs font-extrabold text-gray-600 dark:text-gray-400">
-                                                {match.time}
-                                            </span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between">
+                                        {/* Left Column: Match Status & Time */}
+                                        <div className="w-[68px] flex flex-col items-start justify-center pr-3 border-r border-gray-100 dark:border-gray-800/80">
+                                            {isMatchLive ? (
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10 ring-1 ring-amber-500/30 animate-pulse">
+                                                        LIVE
+                                                    </span>
+                                                    <span className="text-xs font-black text-amber-500">
+                                                        {match.minute}
+                                                    </span>
+                                                </div>
+                                            ) : match.status === 'HT' ? (
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-[9px] font-black text-amber-500 tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10">
+                                                        HT
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-bold">Half Time</span>
+                                                </div>
+                                            ) : match.status === 'FT' ? (
+                                                <span className="text-xs font-black text-gray-400 dark:text-gray-500">
+                                                    FT
+                                                </span>
+                                            ) : (
+                                                // UPCOMING
+                                                <span className="text-xs font-extrabold text-gray-600 dark:text-gray-400">
+                                                    {match.time}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Center Column: Teams and Logos */}
+                                        <div className="flex-1 flex flex-col gap-3 px-4 justify-center">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={match.teamA.logo}
+                                                        alt={match.teamA.name}
+                                                        className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
+                                                    />
+                                                    <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                                        {match.teamA.name}
+                                                    </span>
+                                                </div>
+
+                                                {match.status !== 'UPCOMING' && (
+                                                    <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                        {match.scoreA}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={match.teamB.logo}
+                                                        alt={match.teamB.name}
+                                                        className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
+                                                    />
+                                                    <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                                        {match.teamB.name}
+                                                    </span>
+                                                </div>
+
+                                                {match.status !== 'UPCOMING' && (
+                                                    <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                                                        {match.scoreB}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column: Actions (Favorite Star) */}
+                                        <div className="pl-3 border-l border-gray-100 dark:border-gray-800/80">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleFavorite(match.id);
+                                                }}
+                                                className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-80 cursor-pointer"
+                                            >
+                                                <Star
+                                                    className={`w-5 h-5 transition-all duration-300 ${isFav
+                                                        ? 'fill-amber-400 text-amber-400 scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                                                        : 'hover:text-amber-400 hover:scale-110'
+                                                        }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Inline Details: Pitch & Referee */}
+                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800/60 px-1 font-medium">
+                                        <span>Pitch: <strong className="text-gray-700 dark:text-gray-300">{match.venue}</strong></span>
+                                        {match.referee && (
+                                            <span>Referee: <strong className="text-gray-700 dark:text-gray-300">{match.referee}</strong></span>
                                         )}
-                                    </div>
-
-                                    {/* Center Column: Teams and Logos */}
-                                    <div className="flex-1 flex flex-col gap-3 px-4 justify-center">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <img
-                                                    src={match.teamA.logo}
-                                                    alt={match.teamA.name}
-                                                    className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
-                                                />
-                                                <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                                    {match.teamA.name}
-                                                </span>
-                                            </div>
-
-                                            {match.status !== 'UPCOMING' && (
-                                                <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                    {match.scoreA}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <img
-                                                    src={match.teamB.logo}
-                                                    alt={match.teamB.name}
-                                                    className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
-                                                />
-                                                <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                                    {match.teamB.name}
-                                                </span>
-                                            </div>
-
-                                            {match.status !== 'UPCOMING' && (
-                                                <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                    {match.scoreB}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Right Column: Actions (Favorite Star) */}
-                                    <div className="pl-3 border-l border-gray-100 dark:border-gray-800/80">
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleFavorite(match.id);
-                                            }}
-                                            className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-80 cursor-pointer"
-                                        >
-                                            <Star
-                                                className={`w-5 h-5 transition-all duration-300 ${isFav
-                                                    ? 'fill-amber-400 text-amber-400 scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-                                                    : 'hover:text-amber-400 hover:scale-110'
-                                                    }`}
-                                            />
-                                        </button>
                                     </div>
                                 </div>
                             );
