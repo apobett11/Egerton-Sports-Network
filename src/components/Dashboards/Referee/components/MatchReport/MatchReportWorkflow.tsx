@@ -245,6 +245,13 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     );
   };
 
+  const handleGoalTypeChange = (team: 'home' | 'away', index: number, goalType: 'normal' | 'penalty' | 'own_goal') => {
+    const updateFn = team === 'home' ? setHomeGoals : setAwayGoals;
+    updateFn((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, goalType } : item))
+    );
+  };
+
   const handleCardJerseyChange = (
     cardListType: 'yellow' | 'red',
     index: number,
@@ -475,25 +482,25 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
       {/* SECTION CONTAINER BLOCK */}
       <section className="bg-[#12171B] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
         {/* Header & Match State Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-amber-500" />
+            <FileText className="w-5 h-5 text-emerald-400" />
             <div>
-              <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-amber-600/20 border border-amber-600/40 text-amber-500 rounded-md">
+              <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md">
                 SUBMIT MATCH REPORT
               </span>
-              <h2 className="text-base font-black text-white mt-1">
+              <h2 className="text-base font-bold text-white mt-1">
                 {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-bold">Match State:</span>
+            <span className="text-xs text-gray-400 font-bold">Match State:</span>
             <select
               value={matchState}
               onChange={(e) => setMatchState(e.target.value as MatchStatus)}
-              className="px-3 py-2 rounded-xl bg-[#0B0F12] border border-amber-500/40 text-xs font-extrabold text-amber-500 focus:outline-none min-h-[44px]"
+              className="px-3 py-2 rounded-xl bg-[#111111] border border-[#2A2A2A] text-xs font-bold text-emerald-400 focus:outline-none min-h-[44px]"
             >
               <option value="HT">Half Time (HT)</option>
               <option value="FT">Full Time (FT)</option>
@@ -517,10 +524,10 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 if (s.num === 3 && (!validateStep1() || !validateStep2())) return;
                 setStep(s.num as any);
               }}
-              className={`min-h-[44px] p-3 rounded-xl text-center text-xs font-black transition-all cursor-pointer ${
+              className={`min-h-[44px] p-3 rounded-xl text-center text-xs font-bold transition-all cursor-pointer ${
                 step === s.num
-                  ? 'bg-amber-600 text-slate-950 shadow-md'
-                  : 'bg-[#0B0F12] text-slate-400 border border-slate-800 hover:text-white'
+                  ? 'bg-[#1F1F1F] text-emerald-400 border border-[#2A2A2A] shadow-md font-bold'
+                  : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
               }`}
             >
               {s.label}
@@ -530,8 +537,8 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
         {/* STEP 1: FINAL SCORE & GOAL SCORERS */}
         {step === 1 && (
-          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
               Step 1 — Final Score & Goal Scorers
             </h3>
 
@@ -542,200 +549,229 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               </div>
             )}
 
-            {/* Scores Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-[#0B0F12] rounded-xl border border-slate-800">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Home Score ({selectedFixture.teamA.name})
+            {/* Score Inputs Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
+                  {selectedFixture.teamA.name} Score (Home)
                 </label>
                 <Input
                   type="number"
                   min="0"
-                  placeholder="Enter home score"
+                  placeholder="0"
                   value={scoreHomeStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScoreHomeStr(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setScoreHomeStr(e.target.value);
+                    setStep1Error(null);
+                  }}
+                  className="font-mono text-lg font-bold"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Away Score ({selectedFixture.teamB.name})
+              <div className="p-4 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
+                  {selectedFixture.teamB.name} Score (Away)
                 </label>
                 <Input
                   type="number"
                   min="0"
-                  placeholder="Enter away score"
+                  placeholder="0"
                   value={scoreAwayStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScoreAwayStr(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setScoreAwayStr(e.target.value);
+                    setStep1Error(null);
+                  }}
+                  className="font-mono text-lg font-bold"
                 />
               </div>
             </div>
 
-            {/* GOAL SCORERS SECTION */}
-            <div className="pt-2 border-t border-slate-800 space-y-4">
-              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                ⚽ Select Goal Scorers
+            {/* Home Goals list */}
+            <div className="space-y-4 pt-2">
+              <h4 className="font-bold text-xs text-emerald-400 uppercase">
+                Home Goal Scorers ({homeGoals.length})
               </h4>
+              {homeGoals.length > 0 ? (
+                <div className="space-y-3">
+                  {homeGoals.map((g, idx) => (
+                    <div key={g.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-emerald-400">Home Goal {idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <label className="text-gray-400 text-[11px] font-bold">Type:</label>
+                          <select
+                            value={g.goalType}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                              handleGoalTypeChange('home', idx, e.target.value as any)
+                            }
+                            className="px-2.5 py-1 rounded bg-[#191919] border border-[#2A2A2A] text-xs text-white"
+                          >
+                            <option value="normal">Normal Goal</option>
+                            <option value="penalty">Penalty</option>
+                            <option value="own_goal">Own Goal</option>
+                          </select>
+                        </div>
+                      </div>
 
-              {(homeGoals.length > 0 || awayGoals.length > 0) ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {homeGoals.length > 0 && (
-                    <div className="space-y-3 p-4 bg-[#0B0F12] rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-amber-500 block">
-                        {selectedFixture.teamA.name} Goals ({homeGoals.length})
-                      </span>
-                      {homeGoals.map((g, idx) => {
-                        const squad = homeLineup;
-                        return (
-                          <div key={g.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
-                            <span className="font-bold text-slate-300 block">Goal {idx + 1}</span>
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                              <div className="sm:col-span-3">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
-                                <Input
-                                  type="number"
-                                  placeholder="Min"
-                                  value={g.minute}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    handleGoalMinuteChange('home', idx, e.target.value)
-                                  }
-                                />
-                              </div>
-
-                              <div className="sm:col-span-3">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
-                                <Input
-                                  type="number"
-                                  placeholder="Jersey"
-                                  value={g.jerseyNumber}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    handleGoalJerseyChange('home', idx, e.target.value, squad)
-                                  }
-                                />
-                              </div>
-
-                              <div className="sm:col-span-6">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
-                                {g.playerName ? (
-                                  <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                                    <span className="truncate">✓ {g.playerName}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleGoalJerseyChange('home', idx, '', squad)}
-                                      className="text-[10px] text-slate-400 hover:text-white underline ml-1 cursor-pointer"
-                                    >
-                                      Change
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <select
-                                    value={g.playerId || ''}
-                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                      handleGoalPlayerSelect('home', idx, e.target.value, squad)
-                                    }
-                                    className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
-                                  >
-                                    <option value="">Use player name instead</option>
-                                    {squad.map((p) => (
-                                      <option key={p.id} value={p.id}>
-                                        #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            value={g.minute}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              handleGoalMinuteChange('home', idx, e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
+                          <Input
+                            type="number"
+                            placeholder="Jersey"
+                            value={g.jerseyNumber}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              handleGoalJerseyChange('home', idx, e.target.value, homeLineup)
+                            }
+                          />
+                        </div>
+                        <div className="sm:col-span-6">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Scorer Name</label>
+                          {g.playerName ? (
+                            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
+                              <span className="truncate">✓ {g.playerName}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleGoalJerseyChange('home', idx, '', homeLineup)}
+                                className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
+                              >
+                                Change
+                              </button>
                             </div>
-                          </div>
-                        );
-                      })}
+                          ) : (
+                            <select
+                              value={g.playerId || ''}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                handleGoalPlayerSelect('home', idx, e.target.value, homeLineup)
+                              }
+                              className="w-full p-2.5 rounded-lg bg-[#191919] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
+                            >
+                              <option value="">Select Home Player...</option>
+                              {homeLineup.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-
-                  {awayGoals.length > 0 && (
-                    <div className="space-y-3 p-4 bg-[#0B0F12] rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-amber-500 block">
-                        {selectedFixture.teamB.name} Goals ({awayGoals.length})
-                      </span>
-                      {awayGoals.map((g, idx) => {
-                        const squad = awayLineup;
-                        return (
-                          <div key={g.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
-                            <span className="font-bold text-slate-300 block">Goal {idx + 1}</span>
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                              <div className="sm:col-span-3">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
-                                <Input
-                                  type="number"
-                                  placeholder="Min"
-                                  value={g.minute}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    handleGoalMinuteChange('away', idx, e.target.value)
-                                  }
-                                />
-                              </div>
-
-                              <div className="sm:col-span-3">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
-                                <Input
-                                  type="number"
-                                  placeholder="Jersey"
-                                  value={g.jerseyNumber}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                    handleGoalJerseyChange('away', idx, e.target.value, squad)
-                                  }
-                                />
-                              </div>
-
-                              <div className="sm:col-span-6">
-                                <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
-                                {g.playerName ? (
-                                  <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                                    <span className="truncate">✓ {g.playerName}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleGoalJerseyChange('away', idx, '', squad)}
-                                      className="text-[10px] text-slate-400 hover:text-white underline ml-1 cursor-pointer"
-                                    >
-                                      Change
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <select
-                                    value={g.playerId || ''}
-                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                      handleGoalPlayerSelect('away', idx, e.target.value, squad)
-                                    }
-                                    className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
-                                  >
-                                    <option value="">Use player name instead</option>
-                                    {squad.map((p) => (
-                                      <option key={p.id} value={p.id}>
-                                        #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500 italic">Enter scores above to record goal scorers.</p>
+                <p className="text-xs text-gray-400 italic">No home goals recorded.</p>
               )}
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-slate-800">
+            {/* Away Goals list */}
+            <div className="space-y-4 pt-2">
+              <h4 className="font-bold text-xs text-emerald-400 uppercase">
+                Away Goal Scorers ({awayGoals.length})
+              </h4>
+              {awayGoals.length > 0 ? (
+                <div className="space-y-3">
+                  {awayGoals.map((g, idx) => (
+                    <div key={g.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-emerald-400">Away Goal {idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <label className="text-gray-400 text-[11px] font-bold">Type:</label>
+                          <select
+                            value={g.goalType}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                              handleGoalTypeChange('away', idx, e.target.value as any)
+                            }
+                            className="px-2.5 py-1 rounded bg-[#191919] border border-[#2A2A2A] text-xs text-white"
+                          >
+                            <option value="normal">Normal Goal</option>
+                            <option value="penalty">Penalty</option>
+                            <option value="own_goal">Own Goal</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
+                          <Input
+                            type="number"
+                            placeholder="Min"
+                            value={g.minute}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              handleGoalMinuteChange('away', idx, e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
+                          <Input
+                            type="number"
+                            placeholder="Jersey"
+                            value={g.jerseyNumber}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              handleGoalJerseyChange('away', idx, e.target.value, awayLineup)
+                            }
+                          />
+                        </div>
+                        <div className="sm:col-span-6">
+                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Scorer Name</label>
+                          {g.playerName ? (
+                            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
+                              <span className="truncate">✓ {g.playerName}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleGoalJerseyChange('away', idx, '', awayLineup)}
+                                className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
+                              >
+                                Change
+                              </button>
+                            </div>
+                          ) : (
+                            <select
+                              value={g.playerId || ''}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                handleGoalPlayerSelect('away', idx, e.target.value, awayLineup)
+                              }
+                              className="w-full p-2.5 rounded-lg bg-[#191919] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
+                            >
+                              <option value="">Select Away Player...</option>
+                              {awayLineup.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No away goals recorded.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-[#2A2A2A]">
               <button
                 type="button"
                 onClick={handleNextToCards}
-                className="min-h-[44px] px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+                className="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
                 <span>Proceed to Cards</span>
-                <ChevronRight className="w-4 h-4 text-slate-950" />
+                <ChevronRight className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
@@ -743,9 +779,9 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
         {/* STEP 2: CARDS */}
         {step === 2 && (
-          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-wider text-white">
-              Step 2 — Disciplinary Cards
+          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+              Step 2 — Cards Summary & Details
             </h3>
 
             {step2Error && (
@@ -755,16 +791,16 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               </div>
             )}
 
-            {/* Yellow Cards */}
-            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h4 className="font-extrabold text-xs text-amber-400 uppercase flex items-center gap-2">
+            {/* Yellow Cards Section */}
+            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+                <h4 className="font-bold text-xs text-amber-400 uppercase flex items-center gap-2">
                   <div className="w-3.5 h-5 bg-amber-400 rounded-xs" /> Yellow Cards
                 </h4>
               </div>
 
               <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">Yellow Cards Count</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Yellow Cards Count</label>
                 <Input
                   type="number"
                   min="0"
@@ -777,17 +813,20 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {yellowCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={c.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-amber-400">Yellow Card {idx + 1}</span>
                       <div className="flex items-center gap-2">
-                        <label className="text-slate-400 text-[11px] font-bold">Team:</label>
+                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
                         <select
                           value={c.teamTarget}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                            handleCardTeamSelect('yellow', idx, e.target.value as any)
-                          }
-                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            const teamTarget = e.target.value as 'home' | 'away';
+                            setYellowCards((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
+                            );
+                          }}
+                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -797,7 +836,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
                         <Input
                           type="number"
                           placeholder="Min"
@@ -808,7 +847,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
                         <Input
                           type="number"
                           placeholder="Jersey"
@@ -819,14 +858,14 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
                         {c.playerName ? (
                           <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
                             <span className="truncate">✓ {c.playerName}</span>
                             <button
                               type="button"
                               onClick={() => handleCardJerseyChange('yellow', idx, '', squad)}
-                              className="text-[10px] text-slate-400 hover:text-white underline ml-1 cursor-pointer"
+                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
                             >
                               Change
                             </button>
@@ -837,7 +876,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleCardPlayerSelect('yellow', idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
+                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -854,16 +893,16 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               })}
             </div>
 
-            {/* Red Cards */}
-            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h4 className="font-extrabold text-xs text-rose-500 uppercase flex items-center gap-2">
-                  <div className="w-3 h-4 bg-rose-600 rounded-xs" /> Red Cards
+            {/* Red Cards Section */}
+            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+                <h4 className="font-bold text-xs text-rose-500 uppercase flex items-center gap-2">
+                  <div className="w-3.5 h-5 bg-rose-600 rounded-xs" /> Red Cards
                 </h4>
               </div>
 
               <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">Red Cards Count</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Red Cards Count</label>
                 <Input
                   type="number"
                   min="0"
@@ -876,17 +915,20 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {redCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={c.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-rose-400">Red Card {idx + 1}</span>
+                      <span className="font-bold text-rose-500">Red Card {idx + 1}</span>
                       <div className="flex items-center gap-2">
-                        <label className="text-slate-400 text-[11px] font-bold">Team:</label>
+                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
                         <select
                           value={c.teamTarget}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                            handleCardTeamSelect('red', idx, e.target.value as any)
-                          }
-                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            const teamTarget = e.target.value as 'home' | 'away';
+                            setRedCards((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
+                            );
+                          }}
+                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -896,7 +938,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
                         <Input
                           type="number"
                           placeholder="Min"
@@ -907,7 +949,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
                         <Input
                           type="number"
                           placeholder="Jersey"
@@ -918,14 +960,14 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
                         {c.playerName ? (
                           <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
                             <span className="truncate">✓ {c.playerName}</span>
                             <button
                               type="button"
                               onClick={() => handleCardJerseyChange('red', idx, '', squad)}
-                              className="text-[10px] text-slate-400 hover:text-white underline ml-1 cursor-pointer"
+                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
                             >
                               Change
                             </button>
@@ -936,7 +978,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleCardPlayerSelect('red', idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
+                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -953,7 +995,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               })}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
               <Button
                 variant="secondary"
                 size="md"
@@ -966,10 +1008,10 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               <button
                 type="button"
                 onClick={handleNextToInjuries}
-                className="min-h-[44px] px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+                className="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
                 <span>Proceed to Injuries</span>
-                <ChevronRight className="w-4 h-4 text-slate-950" />
+                <ChevronRight className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
@@ -977,8 +1019,8 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
         {/* STEP 3: INJURIES & FINAL SUBMISSION */}
         {step === 3 && (
-          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
               Step 3 — Injuries & Final Submission
             </h3>
 
@@ -989,13 +1031,13 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               </div>
             )}
 
-            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h4 className="font-extrabold text-xs text-sky-400 uppercase">Match Injuries</h4>
+            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+                <h4 className="font-bold text-xs text-sky-400 uppercase">Match Injuries</h4>
               </div>
 
               <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">Injuries Count</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Injuries Count</label>
                 <Input
                   type="number"
                   min="0"
@@ -1008,11 +1050,11 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {injuries.map((inj, idx) => {
                 const squad = inj.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={inj.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={inj.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sky-400">Injury Record {idx + 1}</span>
                       <div className="flex items-center gap-2">
-                        <label className="text-slate-400 text-[11px] font-bold">Team:</label>
+                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
                         <select
                           value={inj.teamTarget}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1021,7 +1063,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                               prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
                             );
                           }}
-                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
+                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -1031,7 +1073,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
                         <Input
                           type="number"
                           placeholder="Min"
@@ -1042,7 +1084,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
                         <Input
                           type="number"
                           placeholder="Jersey"
@@ -1053,14 +1095,14 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
+                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
                         {inj.playerName ? (
                           <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
                             <span className="truncate">✓ {inj.playerName}</span>
                             <button
                               type="button"
                               onClick={() => handleInjuryJerseyChange(idx, '', squad)}
-                              className="text-[10px] text-slate-400 hover:text-white underline ml-1 cursor-pointer"
+                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
                             >
                               Change
                             </button>
@@ -1071,7 +1113,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleInjuryPlayerSelect(idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
+                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -1089,7 +1131,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
             </div>
 
             {/* Single Final Submit Action */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
               <Button
                 variant="secondary"
                 size="md"
@@ -1103,9 +1145,9 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleSubmit}
-                className="min-h-[44px] px-6 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+                className="min-h-[44px] px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
               >
-                <CheckCircle2 className="w-5 h-5 text-slate-950" />
+                <CheckCircle2 className="w-5 h-5 text-white" />
                 <span>Submit Match Report</span>
               </button>
             </div>

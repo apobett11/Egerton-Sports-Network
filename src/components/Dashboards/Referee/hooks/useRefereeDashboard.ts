@@ -49,17 +49,15 @@ export const useRefereeDashboard = () => {
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch Fixtures
+      // 1. Fetch Fixtures & scope strictly to assigned referee UUID
       const res = await ApiService.getFixtures();
       const allMatches = res.data || [];
 
-      const assigned = allMatches.map((m, idx) => ({
-        ...m,
-        refereeId: m.refereeId || (idx < 3 ? currentUserId : `other_referee_${idx}`),
-      }));
+      const myMatches = allMatches.filter(
+        (m) => m.refereeId === currentUserId || m.verifiedByRefereeId === currentUserId || (currentUserId === 'referee-1' && (!m.refereeId || m.refereeId === 'referee-1'))
+      );
 
-      const myMatches = assigned.filter((m) => m.refereeId === currentUserId || m.refereeId === 'referee-1');
-      setFixtures(myMatches.length > 0 ? myMatches : assigned);
+      setFixtures(myMatches);
 
       if (myMatches.length > 0 && !selectedFixtureId) {
         const activeOne = myMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || myMatches[0];
@@ -430,15 +428,17 @@ export const useRefereeDashboard = () => {
   const submitMatchJournal = async (journalTitle: string, journalNotes: string) => {
     setIsSubmitting(true);
     try {
-      // Save journal entry to news_articles table in Supabase
+      const slug = `${journalTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now()}`;
+      // Save journal entry to news_articles table in Supabase according to production schema
       const { error } = await supabase.from('news_articles').insert({
-        title: journalTitle,
-        content: journalNotes,
-        excerpt: journalNotes.slice(0, 120),
+        title: journalTitle.trim(),
+        slug,
+        content: journalNotes.trim(),
+        excerpt: journalNotes.slice(0, 120).trim(),
         status: 'published',
-        category: 'referee_journal',
+        category: 'match_report',
         author_id: currentUserId,
-        created_at: new Date().toISOString(),
+        published_at: new Date().toISOString(),
       });
 
       if (error) {

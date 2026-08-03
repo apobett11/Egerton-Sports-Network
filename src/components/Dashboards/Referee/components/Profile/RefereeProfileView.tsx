@@ -31,10 +31,10 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Profile Banner Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-6 md:p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-[#1E1E1E] to-[#141414] border border-[#2A2A2A] p-6 md:p-8 shadow-2xl">
         <div className="flex flex-col md:flex-row items-center gap-6">
           {/* Photo */}
-          <div className="w-24 h-24 rounded-2xl bg-slate-950 border-2 border-[#D4AF37] p-1 shadow-lg flex-shrink-0 relative">
+          <div className="w-24 h-24 rounded-2xl bg-[#111111] border-2 border-emerald-500/50 p-1 shadow-lg flex-shrink-0 relative">
             <img
               src={
                 profileData.avatarUrl ||
@@ -43,20 +43,22 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
               alt={profileData.name}
               className="w-full h-full object-cover rounded-xl"
             />
-            <div className="absolute -bottom-1 -right-1 bg-[#D4AF37] text-slate-950 p-1 rounded-md shadow">
-              <ShieldCheck className="w-4 h-4" />
+            <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-black p-1 rounded-md shadow">
+              <ShieldCheck className="w-4 h-4 text-black" />
             </div>
           </div>
 
           {/* Core Info */}
           <div className="space-y-2 text-center md:text-left flex-1">
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-              <Badge variant="gold">{profileData.role}</Badge>
-              <span className="text-xs text-slate-400 font-mono">FKF Registered Official</span>
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30">
+                {profileData.role}
+              </span>
+              <span className="text-xs text-gray-400 font-mono">FKF Registered Official</span>
             </div>
-            <h1 className="text-2xl font-black text-white">{profileData.name}</h1>
-            <p className="text-xs text-slate-400 flex items-center justify-center md:justify-start gap-3">
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-[#D4AF37]" /> {profileData.association}</span>
+            <h1 className="text-2xl font-bold text-white">{profileData.name}</h1>
+            <p className="text-xs text-gray-400 flex items-center justify-center md:justify-start gap-3">
+              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-emerald-400" /> {profileData.association}</span>
               <span>•</span>
               <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-emerald-400" /> {profileData.yearsActive} Years Active</span>
             </p>
@@ -91,22 +93,22 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
               </div>
             ) : (
               <div className="space-y-3 text-xs">
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-[#D4AF37]" /> Phone Contact:
+                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
+                  <span className="text-gray-400 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-emerald-400" /> Phone Contact:
                   </span>
                   <span className="font-bold text-white font-mono">{profileData.phone}</span>
                 </div>
 
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-2">
+                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
+                  <span className="text-gray-400 flex items-center gap-2">
                     <Mail className="w-4 h-4 text-emerald-400" /> Email Address:
                   </span>
                   <span className="font-bold text-white font-mono">{profileData.email}</span>
                 </div>
 
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-2">
+                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
+                  <span className="text-gray-400 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-rose-400" /> Association:
                   </span>
                   <span className="font-bold text-white">{profileData.association}</span>
@@ -120,30 +122,32 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
         <div className="lg:col-span-6 space-y-6">
           <Card title="Official Officiating Statistics" subtitle="Read-only official career records">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Matches Officiated</div>
-                <div className="text-2xl font-black text-emerald-400">{profileData.statistics.matchesRefereed}</div>
+              <div className="p-4 bg-[#111111] border border-[#2A2A2A] rounded-xl space-y-1">
+                <div className="text-[10px] text-gray-400 font-bold uppercase">Matches Officiated</div>
+                <div className="text-2xl font-bold text-emerald-400">{profileData.statistics.matchesRefereed}</div>
               </div>
 
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Assigned Fixtures</div>
-                <div className="text-2xl font-black text-[#D4AF37]">{profileData.assignedMatchesCount}</div>
+              <div className="p-4 bg-[#111111] border border-[#2A2A2A] rounded-xl space-y-1">
+                <div className="text-[10px] text-gray-400 font-bold uppercase">Assigned Fixtures</div>
+                <div className="text-2xl font-bold text-white">{profileData.assignedMatchesCount}</div>
               </div>
 
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Yellow Cards Issued</div>
-                <div className="text-2xl font-black text-amber-400">{profileData.statistics.yellowCards}</div>
+              <div className="p-4 bg-[#111111] border border-[#2A2A2A] rounded-xl space-y-1">
+                <div className="text-[10px] text-gray-400 font-bold uppercase">Yellow Cards Issued</div>
+                <div className="text-2xl font-bold text-amber-400">{profileData.statistics.yellowCards}</div>
               </div>
 
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                <div className="text-[10px] text-slate-400 font-bold uppercase">Red Cards Issued</div>
-                <div className="text-2xl font-black text-rose-500">{profileData.statistics.redCards}</div>
+              <div className="p-4 bg-[#111111] border border-[#2A2A2A] rounded-xl space-y-1">
+                <div className="text-[10px] text-gray-400 font-bold uppercase">Red Cards Issued</div>
+                <div className="text-2xl font-bold text-rose-500">{profileData.statistics.redCards}</div>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 mt-4 flex items-center justify-between">
+            <div className="p-4 bg-[#111111] rounded-xl border border-[#2A2A2A] text-xs text-gray-400 mt-4 flex items-center justify-between">
               <span>Official Status & Role:</span>
-              <Badge variant="gold">READ-ONLY AUTHORIZED</Badge>
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-500/30">
+                READ-ONLY AUTHORIZED
+              </span>
             </div>
           </Card>
         </div>
