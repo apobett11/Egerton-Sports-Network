@@ -17,8 +17,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     activeTab,
     setActiveTab,
     fixtures,
+    upcomingMatches,
+    pastMatches,
+    announcements,
     isLoading,
-    selectedFixtureId,
     setSelectedFixtureId,
     selectedFixture,
     upcomingAssignment,
@@ -29,8 +31,12 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     authError,
     successMsg,
     isSubmitting,
+    isComposeVisible,
+    isJournalModalOpen,
+    setIsJournalModalOpen,
     cancelMatch,
     submitMatchReport,
+    submitMatchJournal,
     handleUpdateProfile,
   } = useRefereeDashboard();
 
@@ -86,15 +92,18 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           currentUserName={currentUserName}
           authError={authError}
           successMsg={successMsg}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          myMatchesCount={fixtures.length}
         />
 
         {activeTab === 'home' && (
           <RefereeHomeOverview
             upcomingAssignment={upcomingAssignment}
             countdownStr={countdownStr}
+            announcements={announcements}
+            profileData={profileData}
+            isComposeVisible={isComposeVisible}
+            isJournalModalOpen={isJournalModalOpen}
+            setIsJournalModalOpen={setIsJournalModalOpen}
+            onSubmitJournal={submitMatchJournal}
             setSelectedFixtureId={setSelectedFixtureId}
             setActiveTab={setActiveTab}
           />
@@ -102,7 +111,8 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
 
         {activeTab === 'my_matches' && (
           <MyMatchesView
-            fixtures={fixtures}
+            upcomingMatches={upcomingMatches}
+            pastMatches={pastMatches}
             setSelectedFixtureId={setSelectedFixtureId}
             setActiveTab={setActiveTab}
           />

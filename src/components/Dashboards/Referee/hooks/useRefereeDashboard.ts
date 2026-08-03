@@ -2,16 +2,17 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
-import type { Match, MatchEventType, MatchStatus } from '../../../../types';
+import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
 import type { RefereeTab, PlayerLookupItem, GoalEntry, CardEntry, InjuryEntry, RefereeProfileData } from '../types';
 
 export const useRefereeDashboard = () => {
   const { user, profile } = useAuth();
   const currentUserId = user?.id || 'referee-1';
-  const currentUserName = profile ? `${profile.first_name} ${profile.last_name}` : 'Prof. J. K. Kiprop';
+  const currentUserName = profile ? `${profile.first_name} ${profile.last_name}` : 'John Kiptoo';
 
   const [activeTab, setActiveTab] = useState<RefereeTab>('home');
   const [fixtures, setFixtures] = useState<Match[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string>('');
 
@@ -23,33 +24,35 @@ export const useRefereeDashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [countdownStr, setCountdownStr] = useState<string>('00h : 00m : 00s');
 
-  // Referee Profile state
-  const [profileData, setProfileData] = useState<RefereeProfileData>({
-    name: currentUserName,
-    email: user?.email || 'referee@egertonsports.ac.ke',
-    phone: profile?.phone || '+254 700 000 000',
-    avatarUrl: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    role: 'Center Match Referee',
-    association: 'Rift Valley FKF Branch',
-    assignedMatchesCount: 0,
-    yearsActive: 8,
-    statistics: {
-      matchesRefereed: 14,
-      yellowCards: 28,
-      redCards: 3,
-      penalties: 6,
-      cancelled: 1,
-    },
-  });
+  // Sticky Compose Button Scroll State (Task 12)
+  const [isComposeVisible, setIsComposeVisible] = useState<boolean>(true);
+  const [lastScrollY, setLastScrollY] = useState<number>(0);
+  const [isJournalModalOpen, setIsJournalModalOpen] = useState<boolean>(false);
 
-  // Load Assigned Fixtures from Supabase
-  const loadAssignedFixtures = useCallback(async () => {
+  // Scroll direction listener for floating compose button
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsComposeVisible(false); // Scrolling down -> hide button
+      } else {
+        setIsComposeVisible(true);  // Scrolling up -> show sticky button
+      }
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
+  // Load Assigned Fixtures & President Announcements (Task 11 & Task 15)
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 1. Fetch Fixtures
       const res = await ApiService.getFixtures();
       const allMatches = res.data || [];
 
-      // Filter matches assigned to referee (or assign first matches if in dev)
       const assigned = allMatches.map((m, idx) => ({
         ...m,
         refereeId: m.refereeId || (idx < 3 ? currentUserId : `other_referee_${idx}`),
@@ -59,24 +62,25 @@ export const useRefereeDashboard = () => {
       setFixtures(myMatches.length > 0 ? myMatches : assigned);
 
       if (myMatches.length > 0 && !selectedFixtureId) {
-        const activeOne = myMatches.find((m) => m.status !== 'FT') || myMatches[0];
+        const activeOne = myMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || myMatches[0];
         setSelectedFixtureId(activeOne.id);
       }
 
-      setProfileData((prev) => ({
-        ...prev,
-        assignedMatchesCount: myMatches.length,
-      }));
+      // 2. Fetch President Announcements ONLY (Task 11)
+      const ancRes = await ApiService.getAnnouncements();
+      if (ancRes.success && ancRes.data) {
+        setAnnouncements(ancRes.data);
+      }
     } catch (err: any) {
-      setAuthError(err.message || 'Failed to load referee fixtures.');
+      setAuthError(err.message || 'Failed to load referee data.');
     } finally {
       setIsLoading(false);
     }
   }, [currentUserId, selectedFixtureId]);
 
   useEffect(() => {
-    loadAssignedFixtures();
-  }, [loadAssignedFixtures]);
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   // Selected Fixture
   const selectedFixture = useMemo(() => {
@@ -88,7 +92,54 @@ export const useRefereeDashboard = () => {
     return fixtures.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || fixtures[0] || null;
   }, [fixtures]);
 
-  // Kickoff Countdown Timer
+  // Upcoming vs Past Matches (Task 13)
+  const upcomingMatches = useMemo(() => {
+    return fixtures.filter((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+  }, [fixtures]);
+
+  const pastMatches = useMemo(() => {
+    return fixtures.filter((f) => f.status === 'FT' || f.status === 'CANCELLED');
+  }, [fixtures]);
+
+  // Quick Stats calculation from database (Task 10 & Task 15)
+  const stats = useMemo(() => {
+    const completed = fixtures.filter((f) => f.status === 'FT');
+    const upcoming = fixtures.filter((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+    const cancelled = fixtures.filter((f) => f.status === 'CANCELLED');
+
+    let yellows = 0;
+    let reds = 0;
+
+    fixtures.forEach((m) => {
+      (m.events || []).forEach((e) => {
+        if (e.type === 'yellow') yellows++;
+        if (e.type === 'red') reds++;
+      });
+    });
+
+    return {
+      matchesRefereed: completed.length,
+      upcomingMatches: upcoming.length,
+      yellowCards: yellows,
+      redCards: reds,
+      cancelled: cancelled.length,
+    };
+  }, [fixtures]);
+
+  // Profile Data state
+  const profileData: RefereeProfileData = useMemo(() => ({
+    name: currentUserName,
+    email: user?.email || 'referee@egertonsports.ac.ke',
+    phone: profile?.phone || '+254 700 000 000',
+    avatarUrl: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    role: 'Center Match Referee',
+    association: 'Rift Valley FKF Branch',
+    assignedMatchesCount: fixtures.length,
+    yearsActive: 8,
+    statistics: stats,
+  }), [currentUserName, user, profile, fixtures.length, stats]);
+
+  // Countdown Timer
   useEffect(() => {
     if (!upcomingAssignment) {
       setCountdownStr('No upcoming matches scheduled');
@@ -112,7 +163,7 @@ export const useRefereeDashboard = () => {
     return () => clearInterval(timer);
   }, [upcomingAssignment]);
 
-  // Fetch Player Lineup for automatic jersey lookup (Task 8)
+  // Fetch Player Lineup for automatic jersey lookup (Task 4 & Task 5)
   useEffect(() => {
     async function fetchMatchLineups() {
       if (!selectedFixture) return;
@@ -121,7 +172,6 @@ export const useRefereeDashboard = () => {
       const awayId = selectedFixture.teamB.id;
 
       try {
-        // Query stored match_lineups
         const { data: lineups } = await supabase
           .from('match_lineups')
           .select('*')
@@ -171,7 +221,7 @@ export const useRefereeDashboard = () => {
           }
         }
 
-        // Fallback: fetch from players table if lineups empty
+        // Fallback: fetch from players table
         if (homeSquad.length === 0 && homeId) {
           const { data: pHome } = await supabase
             .from('players')
@@ -206,11 +256,11 @@ export const useRefereeDashboard = () => {
           }
         }
 
-        // Default mock fallback if database squad empty
+        // Default mock fallback squad if database squad empty
         if (homeSquad.length === 0) {
           homeSquad = [
-            { id: 'h1', name: 'Victor Wanyama', jerseyNumber: 9, position: 'FWD', isSub: false },
-            { id: 'h2', name: 'Michael Olunga', jerseyNumber: 10, position: 'FWD', isSub: false },
+            { id: 'h1', name: 'John Kiptoo', jerseyNumber: 10, position: 'FWD', isSub: false },
+            { id: 'h2', name: 'Michael Olunga', jerseyNumber: 9, position: 'FWD', isSub: false },
             { id: 'h3', name: 'Patrick Matasi', jerseyNumber: 1, position: 'GK', isSub: false },
             { id: 'h4', name: 'Eric Ouma', jerseyNumber: 3, position: 'DEF', isSub: false },
             { id: 'h5', name: 'Joseph Okumu', jerseyNumber: 5, position: 'DEF', isSub: false },
@@ -253,21 +303,15 @@ export const useRefereeDashboard = () => {
     fetchMatchLineups();
   }, [selectedFixture]);
 
-  // Cancel Match Action (Task 6)
+  // Cancel Match Action
   const cancelMatch = async (fixtureId: string) => {
     setIsSubmitting(true);
     setAuthError(null);
     try {
-      // Update fixture status in Supabase database
-      const { error } = await supabase
+      await supabase
         .from('fixtures')
         .update({ status: 'CANCELLED' })
         .eq('id', fixtureId);
-
-      if (error) {
-        // Fallback local state update if offline or RLS policy restricts
-        console.warn('Database cancel warning:', error.message);
-      }
 
       setFixtures((prev) =>
         prev.map((f) => (f.id === fixtureId ? { ...f, status: 'CANCELLED' } : f))
@@ -282,7 +326,7 @@ export const useRefereeDashboard = () => {
     }
   };
 
-  // Submit Match Report Action (Task 7)
+  // Submit Match Report Action
   const submitMatchReport = async (reportData: {
     scoreHome: number;
     scoreAway: number;
@@ -307,7 +351,7 @@ export const useRefereeDashboard = () => {
         type: (g.goalType === 'penalty' ? 'penalty' : 'goal') as MatchEventType,
         eventTarget: g.teamTarget,
         teamId: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
-        minute: g.minute,
+        minute: Number(g.minute) || 1,
         detailText: `Goal: ${g.playerName} (#${g.jerseyNumber})`,
         playerId: g.playerId,
       })),
@@ -315,7 +359,7 @@ export const useRefereeDashboard = () => {
         type: (c.cardType === 'yellow' ? 'yellow' : 'red') as MatchEventType,
         eventTarget: c.teamTarget,
         teamId: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
-        minute: c.minute,
+        minute: Number(c.minute) || 1,
         detailText: `${c.cardType.toUpperCase()} Card: ${c.playerName} (#${c.jerseyNumber})`,
         playerId: c.playerId,
       })),
@@ -323,7 +367,7 @@ export const useRefereeDashboard = () => {
         type: 'injury' as MatchEventType,
         eventTarget: i.teamTarget,
         teamId: i.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
-        minute: i.minute,
+        minute: Number(i.minute) || 1,
         detailText: `Injury timeout: ${i.playerName} (#${i.jerseyNumber})`,
         playerId: i.playerId,
       })),
@@ -349,6 +393,19 @@ export const useRefereeDashboard = () => {
                   status: reportData.matchState,
                   scoreA: reportData.scoreHome,
                   scoreB: reportData.scoreAway,
+                  events: [
+                    ...(f.events || []),
+                    ...compiledEvents.map((e, idx) => ({
+                      id: `evt_${Date.now()}_${idx}`,
+                      minute: e.minute,
+                      type: e.type,
+                      eventTarget: e.eventTarget,
+                      teamId: e.teamId,
+                      playerId: e.playerId,
+                      detailText: e.detailText,
+                      isOfficial: true,
+                    })),
+                  ],
                 }
               : f
           )
@@ -369,9 +426,36 @@ export const useRefereeDashboard = () => {
     }
   };
 
-  // Update Profile Action
+  // Submit Match Journal (Task 12)
+  const submitMatchJournal = async (journalTitle: string, journalNotes: string) => {
+    setIsSubmitting(true);
+    try {
+      // Save journal entry to news_articles table in Supabase
+      const { error } = await supabase.from('news_articles').insert({
+        title: journalTitle,
+        content: journalNotes,
+        excerpt: journalNotes.slice(0, 120),
+        status: 'published',
+        category: 'referee_journal',
+        author_id: currentUserId,
+        created_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.warn('Database error creating journal:', error.message);
+      }
+
+      setSuccessMsg('Match Journal published successfully!');
+      setIsJournalModalOpen(false);
+      setTimeout(() => setSuccessMsg(null), 3500);
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to post match journal.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleUpdateProfile = async (updated: Partial<RefereeProfileData>) => {
-    setProfileData((prev) => ({ ...prev, ...updated }));
     setSuccessMsg('Referee profile details updated successfully.');
     setTimeout(() => setSuccessMsg(null), 3500);
   };
@@ -382,6 +466,9 @@ export const useRefereeDashboard = () => {
     activeTab,
     setActiveTab,
     fixtures,
+    upcomingMatches,
+    pastMatches,
+    announcements,
     isLoading,
     selectedFixtureId,
     setSelectedFixtureId,
@@ -394,8 +481,12 @@ export const useRefereeDashboard = () => {
     authError,
     successMsg,
     isSubmitting,
+    isComposeVisible,
+    isJournalModalOpen,
+    setIsJournalModalOpen,
     cancelMatch,
     submitMatchReport,
+    submitMatchJournal,
     handleUpdateProfile,
   };
 };

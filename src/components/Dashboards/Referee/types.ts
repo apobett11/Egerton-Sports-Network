@@ -14,7 +14,7 @@ export interface GoalEntry {
   playerName: string;
   playerId?: string;
   jerseyNumber: number | '';
-  minute: number;
+  minute: number | '';
   goalType: 'normal' | 'penalty' | 'own_goal';
 }
 
@@ -24,7 +24,7 @@ export interface CardEntry {
   playerName: string;
   playerId?: string;
   jerseyNumber: number | '';
-  minute: number;
+  minute: number | '';
   cardType: 'yellow' | 'red';
 }
 
@@ -34,7 +34,7 @@ export interface InjuryEntry {
   playerName: string;
   playerId?: string;
   jerseyNumber: number | '';
-  minute: number;
+  minute: number | '';
 }
 
 export interface RefereeProfileData {
@@ -48,9 +48,15 @@ export interface RefereeProfileData {
   yearsActive: number;
   statistics: {
     matchesRefereed: number;
+    upcomingMatches: number;
     yellowCards: number;
     redCards: number;
-    penalties: number;
     cancelled: number;
   };
+}
+
+export interface MatchJournalData {
+  title: string;
+  fixtureId?: string;
+  notes: string;
 }
