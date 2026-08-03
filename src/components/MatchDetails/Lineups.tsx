@@ -196,56 +196,66 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
 
             </div>
 
-            {/* Substitutes Section */}
-            <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors">
-                <h4 className="text-xs font-extrabold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 border-b border-gray-100 dark:border-gray-800 pb-1.5 flex items-center gap-1.5">
+            {/* Substitutes Section with Advertisement Divider */}
+            <div className="space-y-4">
+                <h4 className="text-xs font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 flex items-center gap-1.5 px-1">
                     <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
-                    Substitutes / Reserves
+                    Bench & Substitutes
                 </h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Team A Subs */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
-                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{teamA.name} Subs</span>
-                        </div>
-
-                        <div className="divide-y divide-gray-50 dark:divide-gray-850">
-                            {subsA.map(player => (
-                                <div key={player.id} className="flex items-center justify-between py-2 text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-5 text-gray-400 font-bold text-right">{player.number}</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-300">{player.name}</span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-400 border border-gray-200 dark:border-gray-750 px-1.5 py-0.2 rounded uppercase">
-                                        {player.position}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                {/* Team A Bench */}
+                <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
+                        <span className="text-xs font-extrabold text-gray-900 dark:text-gray-100">{teamA.name} Bench</span>
                     </div>
 
-                    {/* Team B Subs */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
-                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{teamB.name} Subs</span>
-                        </div>
-
-                        <div className="divide-y divide-gray-50 dark:divide-gray-850">
-                            {subsB.map(player => (
-                                <div key={player.id} className="flex items-center justify-between py-2 text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-5 text-gray-400 font-bold text-right">{player.number}</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-300">{player.name}</span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-400 border border-gray-200 dark:border-gray-750 px-1.5 py-0.2 rounded uppercase">
-                                        {player.position}
-                                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 divide-y sm:divide-y-0 divide-gray-50 dark:divide-gray-850">
+                        {subsA.map(player => (
+                            <div key={player.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-gray-50/50 dark:bg-gray-800/30 text-xs">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-5 text-gray-400 font-bold text-right">{player.number}</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-300">{player.name}</span>
                                 </div>
-                            ))}
-                        </div>
+                                <span className="text-[10px] font-bold text-gray-400 border border-gray-200 dark:border-gray-750 px-1.5 py-0.2 rounded uppercase">
+                                    {player.position}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Advertisement Card */}
+                <div className="bg-linear-to-r from-emerald-900 to-teal-900 text-white p-4 rounded-xl shadow-sm flex items-center justify-between gap-4 border border-emerald-700/50">
+                    <div className="space-y-0.5">
+                        <span className="text-[9px] uppercase font-black tracking-widest text-emerald-300 block">Official Campus Sponsor</span>
+                        <p className="text-xs font-black">Egerton Sports Network • Live HD Match Streams</p>
+                        <p className="text-[10px] text-emerald-100 font-medium">Download the app for exclusive tactical camera feeds.</p>
+                    </div>
+                    <span className="bg-emerald-400 text-emerald-950 font-black text-[10px] uppercase px-3 py-1 rounded-lg shrink-0 shadow-xs">
+                        Ad
+                    </span>
+                </div>
+
+                {/* Team B Bench */}
+                <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
+                        <span className="text-xs font-extrabold text-gray-900 dark:text-gray-100">{teamB.name} Bench</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 divide-y sm:divide-y-0 divide-gray-50 dark:divide-gray-850">
+                        {subsB.map(player => (
+                            <div key={player.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-gray-50/50 dark:bg-gray-800/30 text-xs">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-5 text-gray-400 font-bold text-right">{player.number}</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-300">{player.name}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-gray-400 border border-gray-200 dark:border-gray-750 px-1.5 py-0.2 rounded uppercase">
+                                    {player.position}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

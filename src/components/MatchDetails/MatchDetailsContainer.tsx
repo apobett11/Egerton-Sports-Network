@@ -8,7 +8,11 @@ import type { MatchDetailTabType } from './TabBar';
 import { Summary } from './Summary';
 import { Stats } from './Stats';
 import { Lineups } from './Lineups';
-import { Highlights } from './Highlights';
+import { MatchDetailsCard } from './MatchDetailsCard';
+import { MatchContext } from './MatchContext';
+import { CaptainsNotes } from './CaptainsNotes';
+import { FormTab } from './FormTab';
+import { PlayerRatings } from './PlayerRatings';
 
 interface MatchDetailsContainerProps {
     match: Match;
@@ -24,10 +28,15 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     toggleFavorite
 }) => {
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
-    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('summary');
+    
+    // Determine default tab based on match lifecycle state
+    const isPreMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
+    const [activeTab, setActiveTab] = useState<MatchDetailTabType>(isPreMatch ? 'squads' : 'overview');
 
     useEffect(() => {
         setCurrentMatch(match);
+        const preMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
+        setActiveTab(preMatch ? 'squads' : 'overview');
     }, [match]);
 
     useEffect(() => {
@@ -82,62 +91,44 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     }, [match.id]);
 
     const isFavorite = favorites.includes(currentMatch.id);
-    const isUpcoming = currentMatch.status === 'UPCOMING';
 
     const renderTabContent = () => {
         switch (activeTab) {
-            case 'info':
+            case 'overview':
                 return (
-                    <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-6">
-                        <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm space-y-3 transition-colors">
-                            <h4 className="text-xs font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 pb-1.5 border-b border-gray-100 dark:border-gray-800">
-                                Match Information
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                                <div>
-                                    <span className="text-gray-400 block text-[10px] uppercase">Venue</span>
-                                    <span className="text-gray-700 dark:text-gray-200">{currentMatch.venue}</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 block text-[10px] uppercase">Referee</span>
-                                    <span className="text-gray-700 dark:text-gray-200">{currentMatch.referee}</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 block text-[10px] uppercase">Weather</span>
-                                    <span className="text-gray-700 dark:text-gray-200">21°C, Clean Sky</span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 block text-[10px] uppercase">Attendance</span>
-                                    <span className="text-gray-700 dark:text-gray-200">1,500 students</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm space-y-2 transition-colors">
-                            <h4 className="text-xs font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 pb-1.5 border-b border-gray-100 dark:border-gray-800">
-                                Team Standings Summary
-                            </h4>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-semibold">
-                                Current form shows <span className="text-emerald-600 dark:text-emerald-500">{currentMatch.teamA.name}</span> entering the competition as favorites based on recent derby matches, with <span className="text-gray-650 dark:text-gray-300">{currentMatch.teamB.name}</span> fighting to exit the lower division brackets.
-                            </div>
-                        </div>
+                    <div className="space-y-4">
+                        <MatchContext match={currentMatch} />
+                        <Summary match={currentMatch} />
                     </div>
                 );
 
-            case 'summary':
+            case 'squads':
+            case 'lineups':
+                return <Lineups match={currentMatch} />;
+
+            case 'timeline':
                 return <Summary match={currentMatch} />;
 
             case 'stats':
                 return <Stats match={currentMatch} />;
 
-            case 'lineups':
-                return <Lineups match={currentMatch} />;
+            case 'ratings':
+                return <PlayerRatings match={currentMatch} />;
 
-            case 'highlights':
-                return <Highlights match={currentMatch} />;
+            case 'captains_notes':
+                return <CaptainsNotes match={currentMatch} />;
+
+            case 'form':
+                return <FormTab match={currentMatch} />;
+
+            case 'context':
+                return <MatchContext match={currentMatch} />;
+
+            case 'details':
+                return <MatchDetailsCard match={currentMatch} />;
 
             case 'h2h':
-                // Head-to-Head mock summary
+                // Head-to-Head mock summary - exact original implementation preserved
                 return (
                     <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
                         <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors text-center">
@@ -197,7 +188,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
             <TabBar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                isUpcoming={isUpcoming}
+                status={currentMatch.status}
             />
 
             <main className="max-w-2xl mx-auto py-2">
