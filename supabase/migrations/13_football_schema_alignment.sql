@@ -161,7 +161,7 @@ RETURNS TABLE (
   player_id UUID,
   player_name TEXT,
   jersey_number INT,
-  position TEXT,
+  "position" TEXT,
   team_id UUID,
   team_name TEXT,
   team_logo TEXT,
