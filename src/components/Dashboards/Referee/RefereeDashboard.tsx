@@ -50,10 +50,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row pb-20 md:pb-8">
-      {/* TASK 5 — DE-EMPHASIZED DESKTOP SIDEBAR NAVIGATION */}
-      <aside className="hidden md:flex flex-col w-60 border-r border-slate-800/60 bg-slate-950/40 p-4 space-y-6 flex-shrink-0">
-        <div className="flex items-center gap-3 px-2 py-2.5 border-b border-slate-800/60">
+    <div className="min-h-screen bg-[#0B0F12] text-slate-100 flex flex-col md:flex-row pb-20 md:pb-8">
+      {/* DESKTOP SIDEBAR NAVIGATION */}
+      <aside className="hidden md:flex flex-col w-60 border-r border-slate-800/60 bg-[#0B0F12] p-4 space-y-6 flex-shrink-0">
+        <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-800/60">
           <div className="w-8 h-8 rounded-lg bg-amber-600 text-slate-950 flex items-center justify-center font-black shadow">
             <ShieldCheck className="w-4 h-4 text-slate-950" />
           </div>
@@ -64,7 +64,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         </div>
 
         <nav className="space-y-1 flex-1">
-          <p className="px-3 text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1">Navigation</p>
+          <p className="px-3 text-[10px] uppercase font-extrabold text-slate-500 tracking-wider mb-1">Navigation</p>
           {navItems.map((item) => {
             const isActive = activeTab === item.id || (item.id === 'my_matches' && (activeTab === 'match_details' || activeTab === 'report'));
             return (
@@ -72,10 +72,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full min-h-[44px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-amber-600 text-slate-950 font-extrabold shadow-md shadow-amber-600/20'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900/40'
+                    ? 'bg-amber-600 text-slate-950 shadow-md shadow-amber-600/20'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-[#12171B]'
                 }`}
               >
                 {item.icon}
@@ -87,7 +87,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto">
         <RefereeHeader
           currentUserName={currentUserName}
           authError={authError}
@@ -155,8 +155,8 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         )}
       </main>
 
-      {/* TASK 5 — DE-EMPHASIZED MOBILE BOTTOM NAVIGATION (>=48PX TOUCH TARGETS) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/80 px-4 py-1.5 flex items-center justify-around">
+      {/* MOBILE BOTTOM NAVIGATION (>=48PX TOUCH TARGETS) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F12]/95 backdrop-blur-md border-t border-slate-800/80 px-4 py-1.5 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = activeTab === item.id || (item.id === 'my_matches' && (activeTab === 'match_details' || activeTab === 'report'));
           return (
@@ -165,7 +165,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
               type="button"
               onClick={() => setActiveTab(item.id)}
               className={`flex flex-col items-center justify-center min-h-[48px] min-w-[48px] px-3 py-1 rounded-xl text-[10px] transition-all cursor-pointer ${
-                isActive ? 'text-amber-500 font-extrabold' : 'text-slate-500 hover:text-slate-300'
+                isActive ? 'text-amber-500 font-black' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               {item.icon}

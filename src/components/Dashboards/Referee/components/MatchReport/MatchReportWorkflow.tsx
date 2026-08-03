@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Badge, Button, Input } from '../../../../common/UIComponents';
-import { CheckCircle2, ChevronRight, ChevronLeft, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Button, Input } from '../../../../common/UIComponents';
+import { CheckCircle2, ChevronRight, ChevronLeft, ArrowLeft, AlertCircle, FileText } from 'lucide-react';
 import type { Match, MatchStatus } from '../../../../../types';
 import type { GoalEntry, CardEntry, InjuryEntry, PlayerLookupItem, RefereeTab } from '../../types';
 
@@ -30,32 +30,26 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Match State (Task 9)
   const [matchState, setMatchState] = useState<MatchStatus>('FT');
 
-  // TASK 1 — Empty initial numeric values with placeholders
   const [scoreHomeStr, setScoreHomeStr] = useState<string>(selectedFixture?.scoreA !== undefined ? String(selectedFixture.scoreA) : '');
   const [scoreAwayStr, setScoreAwayStr] = useState<string>(selectedFixture?.scoreB !== undefined ? String(selectedFixture.scoreB) : '');
 
   const [homeGoals, setHomeGoals] = useState<GoalEntry[]>([]);
   const [awayGoals, setAwayGoals] = useState<GoalEntry[]>([]);
 
-  // Step 2: Cards
   const [yellowCountStr, setYellowCountStr] = useState<string>('');
   const [yellowCards, setYellowCards] = useState<CardEntry[]>([]);
   const [redCountStr, setRedCountStr] = useState<string>('');
   const [redCards, setRedCards] = useState<CardEntry[]>([]);
 
-  // Step 3: Injuries
   const [injuryCountStr, setInjuryCountStr] = useState<string>('');
   const [injuries, setInjuries] = useState<InjuryEntry[]>([]);
 
-  // Inline Validation Errors State (Task 6)
   const [step1Error, setStep1Error] = useState<string | null>(null);
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [step3Error, setStep3Error] = useState<string | null>(null);
 
-  // Sync Goal rows when Home Score input changes
   useEffect(() => {
     const num = parseInt(scoreHomeStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -81,7 +75,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [scoreHomeStr]);
 
-  // Sync Goal rows when Away Score input changes
   useEffect(() => {
     const num = parseInt(scoreAwayStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -107,7 +100,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [scoreAwayStr]);
 
-  // Sync Yellow Cards when yellowCountStr changes
   useEffect(() => {
     const num = parseInt(yellowCountStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -133,7 +125,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [yellowCountStr]);
 
-  // Sync Red Cards when redCountStr changes
   useEffect(() => {
     const num = parseInt(redCountStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -159,7 +150,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [redCountStr]);
 
-  // Sync Injuries when injuryCountStr changes
   useEffect(() => {
     const num = parseInt(injuryCountStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -186,13 +176,12 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
   if (!selectedFixture) {
     return (
-      <Card className="p-8 text-center">
+      <section className="bg-[#12171B] border border-slate-800/80 rounded-2xl p-6 shadow-xl text-center">
         <p className="text-slate-400">Please select a fixture from My Matches to begin match report.</p>
-      </Card>
+      </section>
     );
   }
 
-  // TASK 4 — Automatic Jersey Lookup against Starting XI
   const handleJerseyLookup = (
     numStr: string,
     squad: PlayerLookupItem[]
@@ -362,7 +351,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     );
   };
 
-  // TASK 6 — INLINE VALIDATION FOR STEP 1
   const validateStep1 = (): boolean => {
     setStep1Error(null);
     if (scoreHomeStr === '') {
@@ -386,7 +374,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
       return false;
     }
 
-    // Validate Home Goals entries
     for (let i = 0; i < homeNum; i++) {
       const g = homeGoals[i];
       if (!g || g.minute === '' || !g.playerName.trim()) {
@@ -395,7 +382,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
       }
     }
 
-    // Validate Away Goals entries
     for (let i = 0; i < awayNum; i++) {
       const g = awayGoals[i];
       if (!g || g.minute === '' || !g.playerName.trim()) {
@@ -407,7 +393,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     return true;
   };
 
-  // TASK 6 — INLINE VALIDATION FOR STEP 2
   const validateStep2 = (): boolean => {
     setStep2Error(null);
     for (let i = 0; i < yellowCards.length; i++) {
@@ -427,7 +412,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     return true;
   };
 
-  // TASK 6 — INLINE VALIDATION FOR STEP 3 & FINAL SUBMIT
   const validateStep3 = (): boolean => {
     setStep3Error(null);
     for (let i = 0; i < injuries.length; i++) {
@@ -483,28 +467,33 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
       {/* Back button */}
       <button
         onClick={() => setActiveTab('match_details')}
-        className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+        className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer min-h-[44px]"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Match Details
       </button>
 
-      {/* Header & Match State Selector */}
-      <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div>
-            <Badge variant="gold">SUBMIT MATCH REPORT</Badge>
-            <h2 className="text-lg font-black text-white mt-1">
-              {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
-            </h2>
+      {/* SECTION CONTAINER BLOCK */}
+      <section className="bg-[#12171B] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
+        {/* Header & Match State Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-amber-500" />
+            <div>
+              <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-amber-600/20 border border-amber-600/40 text-amber-500 rounded-md">
+                SUBMIT MATCH REPORT
+              </span>
+              <h2 className="text-base font-black text-white mt-1">
+                {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
+              </h2>
+            </div>
           </div>
 
-          {/* TASK 9 — MATCH STATE SELECTION */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 font-bold">Match State:</span>
             <select
               value={matchState}
               onChange={(e) => setMatchState(e.target.value as MatchStatus)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-amber-500/40 text-xs font-extrabold text-[#D4AF37] focus:outline-none"
+              className="px-3 py-2 rounded-xl bg-[#0B0F12] border border-amber-500/40 text-xs font-extrabold text-amber-500 focus:outline-none min-h-[44px]"
             >
               <option value="HT">Half Time (HT)</option>
               <option value="FT">Full Time (FT)</option>
@@ -514,7 +503,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
         </div>
 
         {/* 3 Steps Navigation Indicator */}
-        <div className="grid grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { num: 1, label: '1. Final Score & Goals' },
             { num: 2, label: '2. Cards' },
@@ -528,33 +517,33 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 if (s.num === 3 && (!validateStep1() || !validateStep2())) return;
                 setStep(s.num as any);
               }}
-              className={`p-3 rounded-xl text-center text-xs font-black transition-all cursor-pointer ${
+              className={`min-h-[44px] p-3 rounded-xl text-center text-xs font-black transition-all cursor-pointer ${
                 step === s.num
-                  ? 'bg-[#D4AF37] text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                  ? 'bg-amber-600 text-slate-950 shadow-md'
+                  : 'bg-[#0B0F12] text-slate-400 border border-slate-800 hover:text-white'
               }`}
             >
               {s.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* STEP 1: FINAL SCORE & GOAL SCORERS */}
-      {step === 1 && (
-        <Card title="Step 1 — Final Score & Goal Scorers">
-          <div className="space-y-6">
-            {/* Inline Error Message */}
+        {/* STEP 1: FINAL SCORE & GOAL SCORERS */}
+        {step === 1 && (
+          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              Step 1 — Final Score & Goal Scorers
+            </h3>
+
             {step1Error && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{step1Error}</span>
               </div>
             )}
 
             {/* Scores Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-slate-950 rounded-2xl border border-slate-800">
-              {/* TASK 2 — Better Labels & TASK 1 — Empty Placeholders */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 bg-[#0B0F12] rounded-xl border border-slate-800">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
                   Home Score ({selectedFixture.teamA.name})
@@ -582,27 +571,25 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               </div>
             </div>
 
-            {/* TASK 3 — GOAL SCORERS SECTION HEADING */}
+            {/* GOAL SCORERS SECTION */}
             <div className="pt-2 border-t border-slate-800 space-y-4">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
                 ⚽ Select Goal Scorers
-              </h3>
+              </h4>
 
               {(homeGoals.length > 0 || awayGoals.length > 0) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Home Goals */}
                   {homeGoals.length > 0 && (
-                    <div className="space-y-3 p-4 bg-slate-950/80 rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-[#D4AF37] block">
+                    <div className="space-y-3 p-4 bg-[#0B0F12] rounded-xl border border-slate-800">
+                      <span className="text-xs font-bold text-amber-500 block">
                         {selectedFixture.teamA.name} Goals ({homeGoals.length})
                       </span>
                       {homeGoals.map((g, idx) => {
                         const squad = homeLineup;
                         return (
-                          <div key={g.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs">
+                          <div key={g.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
                             <span className="font-bold text-slate-300 block">Goal {idx + 1}</span>
                             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                              {/* Minute */}
                               <div className="sm:col-span-3">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
                                 <Input
@@ -615,7 +602,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                 />
                               </div>
 
-                              {/* Jersey # */}
                               <div className="sm:col-span-3">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
                                 <Input
@@ -628,7 +614,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                 />
                               </div>
 
-                              {/* Player Name / Fallback Selector */}
                               <div className="sm:col-span-6">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
                                 {g.playerName ? (
@@ -643,13 +628,12 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                     </button>
                                   </div>
                                 ) : (
-                                  /* TASK 5 — Fallback Player Selector */
                                   <select
                                     value={g.playerId || ''}
                                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                                       handleGoalPlayerSelect('home', idx, e.target.value, squad)
                                     }
-                                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                                    className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
                                   >
                                     <option value="">Use player name instead</option>
                                     {squad.map((p) => (
@@ -667,19 +651,17 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                     </div>
                   )}
 
-                  {/* Away Goals */}
                   {awayGoals.length > 0 && (
-                    <div className="space-y-3 p-4 bg-slate-950/80 rounded-xl border border-slate-800">
-                      <span className="text-xs font-bold text-[#D4AF37] block">
+                    <div className="space-y-3 p-4 bg-[#0B0F12] rounded-xl border border-slate-800">
+                      <span className="text-xs font-bold text-amber-500 block">
                         {selectedFixture.teamB.name} Goals ({awayGoals.length})
                       </span>
                       {awayGoals.map((g, idx) => {
                         const squad = awayLineup;
                         return (
-                          <div key={g.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs">
+                          <div key={g.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
                             <span className="font-bold text-slate-300 block">Goal {idx + 1}</span>
                             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                              {/* Minute */}
                               <div className="sm:col-span-3">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Minute</label>
                                 <Input
@@ -692,7 +674,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                 />
                               </div>
 
-                              {/* Jersey # */}
                               <div className="sm:col-span-3">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jersey #</label>
                                 <Input
@@ -705,7 +686,6 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                 />
                               </div>
 
-                              {/* Player Name / Fallback Selector */}
                               <div className="sm:col-span-6">
                                 <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Player Name</label>
                                 {g.playerName ? (
@@ -725,7 +705,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                                       handleGoalPlayerSelect('away', idx, e.target.value, squad)
                                     }
-                                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                                    className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
                                   >
                                     <option value="">Use player name instead</option>
                                     {squad.map((p) => (
@@ -749,36 +729,38 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
             </div>
 
             <div className="flex justify-end pt-4 border-t border-slate-800">
-              <Button
-                variant="primary"
-                size="md"
+              <button
+                type="button"
                 onClick={handleNextToCards}
-                icon={<ChevronRight className="w-4 h-4 text-slate-950" />}
+                className="min-h-[44px] px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               >
-                Proceed to Cards
-              </Button>
+                <span>Proceed to Cards</span>
+                <ChevronRight className="w-4 h-4 text-slate-950" />
+              </button>
             </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* STEP 2: DISCIPLINARY CARDS */}
-      {step === 2 && (
-        <Card title="Step 2 — Disciplinary Cards">
-          <div className="space-y-6">
+        {/* STEP 2: CARDS */}
+        {step === 2 && (
+          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              Step 2 — Disciplinary Cards
+            </h3>
+
             {step2Error && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{step2Error}</span>
               </div>
             )}
 
             {/* Yellow Cards */}
-            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
+            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-extrabold text-sm text-amber-400 flex items-center gap-2">
+                <h4 className="font-extrabold text-xs text-amber-400 uppercase flex items-center gap-2">
                   <div className="w-3.5 h-5 bg-amber-400 rounded-xs" /> Yellow Cards
-                </h3>
+                </h4>
               </div>
 
               <div className="max-w-xs space-y-1">
@@ -795,7 +777,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {yellowCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={c.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-amber-400">Yellow Card {idx + 1}</span>
                       <div className="flex items-center gap-2">
@@ -805,7 +787,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             handleCardTeamSelect('yellow', idx, e.target.value as any)
                           }
-                          className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-white"
+                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -855,7 +837,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleCardPlayerSelect('yellow', idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -873,11 +855,11 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
             </div>
 
             {/* Red Cards */}
-            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
+            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-extrabold text-sm text-rose-500 flex items-center gap-2">
-                  <div className="w-3.5 h-5 bg-rose-600 rounded-xs" /> Red Cards
-                </h3>
+                <h4 className="font-extrabold text-xs text-rose-500 uppercase flex items-center gap-2">
+                  <div className="w-3 h-4 bg-rose-600 rounded-xs" /> Red Cards
+                </h4>
               </div>
 
               <div className="max-w-xs space-y-1">
@@ -894,7 +876,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {redCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={c.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-rose-400">Red Card {idx + 1}</span>
                       <div className="flex items-center gap-2">
@@ -904,7 +886,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             handleCardTeamSelect('red', idx, e.target.value as any)
                           }
-                          className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-white"
+                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -954,7 +936,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleCardPlayerSelect('red', idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -981,33 +963,35 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 Back to Goals
               </Button>
 
-              <Button
-                variant="primary"
-                size="md"
+              <button
+                type="button"
                 onClick={handleNextToInjuries}
-                icon={<ChevronRight className="w-4 h-4 text-slate-950" />}
+                className="min-h-[44px] px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               >
-                Proceed to Injuries
-              </Button>
+                <span>Proceed to Injuries</span>
+                <ChevronRight className="w-4 h-4 text-slate-950" />
+              </button>
             </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* STEP 3: INJURIES & FINAL SUBMISSION */}
-      {step === 3 && (
-        <Card title="Step 3 — Injuries & Final Submission">
-          <div className="space-y-6">
+        {/* STEP 3: INJURIES & FINAL SUBMISSION */}
+        {step === 3 && (
+          <div className="bg-[#171D22] border border-slate-800/90 rounded-xl p-5 shadow-md space-y-6">
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              Step 3 — Injuries & Final Submission
+            </h3>
+
             {step3Error && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
+              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{step3Error}</span>
               </div>
             )}
 
-            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
+            <div className="p-5 bg-[#0B0F12] rounded-xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-extrabold text-sm text-sky-400">Match Injuries</h3>
+                <h4 className="font-extrabold text-xs text-sky-400 uppercase">Match Injuries</h4>
               </div>
 
               <div className="max-w-xs space-y-1">
@@ -1024,7 +1008,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               {injuries.map((inj, idx) => {
                 const squad = inj.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={inj.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2 text-xs">
+                  <div key={inj.id} className="p-3 bg-[#171D22] rounded-xl border border-slate-800 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sky-400">Injury Record {idx + 1}</span>
                       <div className="flex items-center gap-2">
@@ -1037,7 +1021,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                               prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
                             );
                           }}
-                          className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-white"
+                          className="px-2.5 py-1 rounded bg-[#0B0F12] border border-slate-800 text-xs text-white"
                         >
                           <option value="home">{selectedFixture.teamA.name}</option>
                           <option value="away">{selectedFixture.teamB.name}</option>
@@ -1087,7 +1071,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                               handleInjuryPlayerSelect(idx, e.target.value, squad)
                             }
-                            className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                            className="w-full p-2.5 rounded-lg bg-[#0B0F12] border border-slate-800 text-xs text-white min-h-[44px]"
                           >
                             <option value="">Use player name instead</option>
                             {squad.map((p) => (
@@ -1115,19 +1099,19 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 Back to Cards
               </Button>
 
-              <Button
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
+              <button
+                type="button"
+                disabled={isSubmitting}
                 onClick={handleSubmit}
-                icon={<CheckCircle2 className="w-5 h-5 text-slate-950" />}
+                className="min-h-[44px] px-6 py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-600/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               >
-                Submit Match Report
-              </Button>
+                <CheckCircle2 className="w-5 h-5 text-slate-950" />
+                <span>Submit Match Report</span>
+              </button>
             </div>
           </div>
-        </Card>
-      )}
+        )}
+      </section>
     </div>
   );
 };
