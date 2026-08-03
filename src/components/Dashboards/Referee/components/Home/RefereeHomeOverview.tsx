@@ -1,182 +1,184 @@
 import React from 'react';
 import { Card, Button, Badge, EmptyState } from '../../../../common/UIComponents';
-import { Clock, MapPin, Calendar, Eye, Sparkles, Award, Flame, UserX, AlertOctagon, ChevronRight, Trophy } from 'lucide-react';
+import { Clock, MapPin, Calendar, Eye, ChevronRight, Trophy, User, Settings, Award } from 'lucide-react';
 import type { Match } from '../../../../../types';
 import type { RefereeTab } from '../../types';
-
-interface StatCardProps {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon }) => (
-  <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
-    <div>
-      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</div>
-      <div className="text-xl font-extrabold text-white mt-0.5">{value}</div>
-    </div>
-    <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center">
-      {icon}
-    </div>
-  </div>
-);
 
 interface RefereeHomeOverviewProps {
   upcomingAssignment: Match | null;
   countdownStr: string;
-  refereeStats: {
-    matchesRefereed: number;
-    yellowCards: number;
-    redCards: number;
-    penalties: number;
-    cancelled: number;
-    suspended: number;
-  };
   setSelectedFixtureId: (id: string) => void;
   setActiveTab: (tab: RefereeTab) => void;
-  setWizardStep: (step: number) => void;
 }
 
 export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   upcomingAssignment,
   countdownStr,
-  refereeStats,
   setSelectedFixtureId,
   setActiveTab,
-  setWizardStep,
 }) => {
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* UPCOMING ASSIGNMENT CARD */}
-      <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-lg space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Badge variant="gold">NEXT ASSIGNED FIXTURE</Badge>
-            <span className="text-xs text-slate-400">Official Center Referee</span>
+      {/* HERO CARD (MATCHING TEAM DASHBOARD HERO CARD DESIGN) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-6 md:p-8 shadow-2xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4 mb-6">
+          <div className="flex items-center gap-2.5">
+            <Badge variant="gold">NEXT MATCH</Badge>
+            <span className="text-xs text-slate-400 font-mono">Center Referee Assignment</span>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#D4AF37] bg-slate-950 px-3 py-1.5 rounded-lg border border-amber-500/30">
+
+          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[#D4AF37] bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-amber-500/30">
             <Clock className="w-4 h-4" />
             <span>Kickoff Countdown: {countdownStr}</span>
           </div>
         </div>
 
         {upcomingAssignment ? (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            <div className="md:col-span-8 space-y-3">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-emerald-400" /> {upcomingAssignment.league} • Gameweek 12
-              </div>
-              <div className="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-slate-800">
-                <div className="flex items-center gap-3">
-                  <img src={upcomingAssignment.teamA.logo} alt="" className="w-10 h-10 object-contain" />
-                  <div>
-                    <div className="font-extrabold text-base text-white">{upcomingAssignment.teamA.name}</div>
-                    <div className="text-xs text-slate-400">(Home Team)</div>
-                  </div>
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <Trophy className="w-4 h-4 text-[#D4AF37]" />
+              <span>{upcomingAssignment.league || 'League Competition'}</span>
+              <span className="text-slate-600">•</span>
+              <span>Matchday {upcomingAssignment.matchday || 1}</span>
+            </div>
+
+            {/* Teams Display */}
+            <div className="grid grid-cols-1 md:grid-cols-11 items-center gap-4 bg-slate-900/70 p-6 rounded-2xl border border-slate-800/80">
+              {/* Home Team */}
+              <div className="md:col-span-5 flex items-center justify-start md:justify-end gap-4 text-left md:text-right">
+                <div>
+                  <h3 className="text-lg font-black text-white tracking-tight">{upcomingAssignment.teamA.name}</h3>
+                  <span className="text-xs text-slate-400 font-medium">Home Team</span>
                 </div>
-                <div className="text-center font-mono font-black text-xl text-[#D4AF37] px-4">VS</div>
-                <div className="flex items-center gap-3 text-right">
-                  <div>
-                    <div className="font-extrabold text-base text-white">{upcomingAssignment.teamB.name}</div>
-                    <div className="text-xs text-slate-400">(Away Team)</div>
-                  </div>
-                  <img src={upcomingAssignment.teamB.logo} alt="" className="w-10 h-10 object-contain" />
+                <div className="w-12 h-12 rounded-xl bg-slate-950 p-2 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                  <img src={upcomingAssignment.teamA.logo} alt={upcomingAssignment.teamA.name} className="w-full h-full object-contain" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-[#D4AF37]" /> Venue: {upcomingAssignment.venue}
+              {/* VS Divider */}
+              <div className="md:col-span-1 text-center py-2 md:py-0">
+                <span className="inline-block px-3 py-1 bg-slate-950 border border-amber-500/30 text-[#D4AF37] font-mono font-black text-sm rounded-lg shadow-inner">
+                  VS
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-400" /> Kickoff: {upcomingAssignment.time}
-                </span>
+              </div>
+
+              {/* Away Team */}
+              <div className="md:col-span-5 flex items-center justify-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-950 p-2 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                  <img src={upcomingAssignment.teamB.logo} alt={upcomingAssignment.teamB.name} className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white tracking-tight">{upcomingAssignment.teamB.name}</h3>
+                  <span className="text-xs text-slate-400 font-medium">Away Team</span>
+                </div>
               </div>
             </div>
 
-            <div className="md:col-span-4 flex flex-col gap-2">
+            {/* Match Metadata Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs bg-slate-950/60 p-4 rounded-xl border border-slate-800/50">
+              <div className="flex items-center gap-2 text-slate-300">
+                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span>Date: <strong className="text-white">Scheduled</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <Clock className="w-4 h-4 text-[#D4AF37]" />
+                <span>Kickoff: <strong className="text-white">{upcomingAssignment.time || '16:00'}</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-300">
+                <MapPin className="w-4 h-4 text-rose-400" />
+                <span>Venue: <strong className="text-white">{upcomingAssignment.venue}</strong></span>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Match Status:</span>
+                <Badge variant={upcomingAssignment.status === 'LIVE' ? 'danger' : 'warning'}>
+                  {upcomingAssignment.status}
+                </Badge>
+              </div>
+
               <Button
                 variant="primary"
                 size="md"
                 onClick={() => {
                   setSelectedFixtureId(upcomingAssignment.id);
-                  setActiveTab('control');
+                  setActiveTab('match_details');
                 }}
                 icon={<Eye className="w-4 h-4" />}
               >
-                Open Match Control Center
-              </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => {
-                  setSelectedFixtureId(upcomingAssignment.id);
-                  setWizardStep(1);
-                  setActiveTab('wizard');
-                }}
-                icon={<Sparkles className="w-4 h-4 text-[#D4AF37]" />}
-              >
-                Launch Match Update Wizard
+                View Match Details
               </Button>
             </div>
           </div>
         ) : (
           <EmptyState
             title="No Upcoming Assignments"
-            message="You currently have no pending match assignments assigned to your referee account."
+            message="There are currently no upcoming matches scheduled for your referee account."
           />
         )}
       </div>
 
-      {/* STATISTICS CARDS (6 STATS) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard label="Matches Refereed" value={refereeStats.matchesRefereed} icon={<Award className="w-5 h-5 text-emerald-400" />} color="emerald" />
-        <StatCard label="Yellow Cards" value={refereeStats.yellowCards} icon={<div className="w-4 h-5 bg-amber-400 rounded-xs" />} color="amber" />
-        <StatCard label="Red Cards" value={refereeStats.redCards} icon={<div className="w-4 h-5 bg-rose-600 rounded-xs" />} color="rose" />
-        <StatCard label="Penalties Awarded" value={refereeStats.penalties} icon={<Flame className="w-5 h-5 text-amber-500" />} color="gold" />
-        <StatCard label="Cancelled Matches" value={refereeStats.cancelled} icon={<UserX className="w-5 h-5 text-slate-400" />} color="slate" />
-        <StatCard label="Suspended Matches" value={refereeStats.suspended} icon={<AlertOctagon className="w-5 h-5 text-indigo-400" />} color="indigo" />
-      </div>
-
-      {/* QUICK ACTIONS */}
-      <Card title="Referee Quick Operations" subtitle="Fast navigation shortcuts">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* TASK 3 — QUICK ACTIONS */}
+      <Card title="Quick Actions" subtitle="Fast navigation for match management">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => {
               if (upcomingAssignment) setSelectedFixtureId(upcomingAssignment.id);
-              setActiveTab('control');
+              setActiveTab('match_details');
             }}
-            className="p-4 bg-slate-900 border border-slate-800 hover:border-[#D4AF37] rounded-xl text-left transition-all cursor-pointer group"
+            disabled={!upcomingAssignment}
+            className="p-4 bg-slate-900 border border-slate-800 hover:border-[#D4AF37] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-left transition-all cursor-pointer group"
           >
             <div className="font-bold text-sm text-white group-hover:text-[#D4AF37] flex items-center justify-between">
-              <span>View Next Match</span>
+              <span className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-[#D4AF37]" /> View Match Details
+              </span>
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">Jump directly to official match control center</p>
+            <p className="text-xs text-slate-400 mt-1">Open upcoming match page & controls</p>
           </button>
 
           <button
-            onClick={() => setActiveTab('assignments')}
+            onClick={() => setActiveTab('my_matches')}
             className="p-4 bg-slate-900 border border-slate-800 hover:border-[#D4AF37] rounded-xl text-left transition-all cursor-pointer group"
           >
             <div className="font-bold text-sm text-white group-hover:text-[#D4AF37] flex items-center justify-between">
-              <span>View Assignments</span>
+              <span className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-emerald-400" /> My Matches
+              </span>
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">Accept or reject assigned fixtures schedule</p>
+            <p className="text-xs text-slate-400 mt-1">View all assigned & officiated fixtures</p>
           </button>
 
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={() => setActiveTab('settings')}
             className="p-4 bg-slate-900 border border-slate-800 hover:border-[#D4AF37] rounded-xl text-left transition-all cursor-pointer group"
           >
             <div className="font-bold text-sm text-white group-hover:text-[#D4AF37] flex items-center justify-between">
-              <span>Previous Reports</span>
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-blue-400" /> Settings
+              </span>
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">Review read-only archived referee reports</p>
+            <p className="text-xs text-slate-400 mt-1">Manage profile, account & preferences</p>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className="p-4 bg-slate-900 border border-slate-800 hover:border-[#D4AF37] rounded-xl text-left transition-all cursor-pointer group"
+          >
+            <div className="font-bold text-sm text-white group-hover:text-[#D4AF37] flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <User className="w-4 h-4 text-purple-400" /> Profile
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">View official referee details & stats</p>
           </button>
         </div>
       </Card>
