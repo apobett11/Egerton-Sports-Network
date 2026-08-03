@@ -14,8 +14,7 @@ import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { HerdMentalityProvider } from './project_stark';
-import { mockMatches, teams as mockTeamsDict } from './mockData';
-import type { Match } from './types';
+import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -129,31 +128,21 @@ export const AppContent: React.FC = () => {
     setSelectedMatch(null);
   };
 
-  const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime(mockMatches);
+  const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
 
   // Dynamically computed standings derived strictly from finalized matches in liveMatches
   const currentStandings = useMemo(() => {
-    const teamsList = Object.values(mockTeamsDict).map((t) => ({ id: t.id, name: t.name, logo: t.logo }));
-    return calculateLeagueStandings(liveMatches, teamsList);
+    const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
+    liveMatches.forEach((m) => {
+      if (m.teamA?.id) teamsMap.set(m.teamA.id, { id: m.teamA.id, name: m.teamA.name, logo: m.teamA.logo });
+      if (m.teamB?.id) teamsMap.set(m.teamB.id, { id: m.teamB.id, name: m.teamB.name, logo: m.teamB.logo });
+    });
+    return calculateLeagueStandings(liveMatches, Array.from(teamsMap.values()));
   }, [liveMatches]);
 
   const getFilteredMatches = () => {
-    const today = new Date();
-    const isTodaySelected = selectedDate.toDateString() === today.toDateString();
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const isTomorrowSelected = selectedDate.toDateString() === tomorrow.toDateString();
-
     if (activeSport !== 'football') return [];
-
-    if (isTodaySelected) {
-      return liveMatches.filter((m) => m.id !== 'm5');
-    } else if (isTomorrowSelected) {
-      return liveMatches.filter((m) => m.id === 'm5');
-    } else {
-      return [];
-    }
+    return liveMatches;
   };
 
   const currentFixtures = getFilteredMatches();

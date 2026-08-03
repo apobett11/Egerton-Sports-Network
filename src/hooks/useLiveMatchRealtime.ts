@@ -4,6 +4,8 @@ import type { Match, MatchEvent, MatchStatus } from '../types';
 import type { ToastItem } from '../components/common/ToastContainer';
 import { logger } from '../lib/logger';
 
+import { ApiService } from '../services/api';
+
 // Global Event Emitter for Client Realtime Broadcast Fallback
 type EventCallback = (data: { event: MatchEvent; updatedMatch?: Partial<Match> }) => void;
 const subscribers = new Set<EventCallback>();
@@ -13,7 +15,7 @@ export const broadcastLocalRealtimeEvent = (event: MatchEvent, updatedMatch?: Pa
 };
 
 export const useLiveMatchRealtime = (
-  initialMatches: Match[],
+  initialMatches: Match[] = [],
   onMatchUpdated?: (matches: Match[]) => void
 ) => {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
@@ -21,8 +23,17 @@ export const useLiveMatchRealtime = (
   const matchesRef = useRef<Match[]>(initialMatches);
 
   useEffect(() => {
-    setMatches(initialMatches);
-    matchesRef.current = initialMatches;
+    if (initialMatches && initialMatches.length > 0) {
+      setMatches(initialMatches);
+      matchesRef.current = initialMatches;
+    } else {
+      ApiService.getFixtures().then((res) => {
+        if (res.data) {
+          setMatches(res.data);
+          matchesRef.current = res.data;
+        }
+      });
+    }
   }, [initialMatches]);
 
   const addToast = useCallback((toast: Omit<ToastItem, 'id'>) => {

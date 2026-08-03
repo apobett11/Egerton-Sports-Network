@@ -11,14 +11,17 @@ import type {
   MatchEvent,
   MatchEventType,
   MatchStatus,
-  ApiResponse 
+  ApiResponse,
+  Player
 } from '../types';
-import { mockMatches, mockNews, teams as mockTeamsDict } from '../mockData';
 import { calculateLeagueStandings } from '../lib/leagueEngine';
 import { executeWithRetry } from '../lib/retryPolicy';
 import { logger } from '../lib/logger';
 import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
+
+// Helper for unwrapping Supabase joins (object vs 1-element array)
+const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
 
 // In-Memory Session Cache for static data deduplication
 let cachedTeams: any[] | null = null;
@@ -35,10 +38,10 @@ export const ApiService = {
   },
 
   // --- FIXTURES ---
-  async getFixtures(): Promise<ApiResponse<Match[]>> {
+  async getFixtures(competitionId?: string): Promise<ApiResponse<Match[]>> {
     try {
       return await executeWithRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from('fixtures')
           .select(`
             id,
@@ -48,58 +51,272 @@ export const ApiService = {
             score_away,
             venue,
             matchday,
-            competition:competitions(name),
+            attendance,
+            weather,
+            added_time,
+            home_penalty_score,
+            away_penalty_score,
+            referee_id,
+            verified_by_referee_id,
+            competition:competitions(id, name),
             team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
-            team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
+            team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
+            referee_profile:profiles!referee_id(first_name, last_name)
           `)
-          .order('scheduled_time', { ascending: true });
+          .is('deleted_at', null);
 
-        if (error || !data || data.length === 0) {
-          return { success: true, data: mockMatches };
+        if (competitionId) {
+          query = query.eq('competition_id', competitionId);
         }
 
-        const formattedMatches: Match[] = data.map((f: any) => ({
-          id: f.id,
-          status: f.status,
-          time: new Date(f.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
-          league: f.competition?.name || 'Egerton League',
-          teamA: {
-            id: f.team_home?.id || 't1',
-            name: f.team_home?.name || 'Home Team',
-            shortName: f.team_home?.short_name || 'HOM',
-            logo: f.team_home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-            colorCode: f.team_home?.color_code || '#D4AF37'
-          },
-          teamB: {
-            id: f.team_away?.id || 't2',
-            name: f.team_away?.name || 'Away Team',
-            shortName: f.team_away?.short_name || 'AWY',
-            logo: f.team_away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
-            colorCode: f.team_away?.color_code || '#2563EB'
-          },
-          scoreA: f.score_home || 0,
-          scoreB: f.score_away || 0,
-          events: [],
-          stats: [
-            { label: 'Possession', teamAValue: 54, teamBValue: 46 },
-            { label: 'Shots on Target', teamAValue: 6, teamBValue: 3 }
-          ],
-          lineups: {
-            teamA: [],
-            teamB: [],
-            formationA: '4-3-3',
-            formationB: '4-2-3-1'
-          },
-          venue: f.venue || 'Egerton Main Stadium',
-          referee: 'Ref. Official'
-        }));
+        const { data, error } = await query.order('scheduled_time', { ascending: true });
+
+        if (error || !data) {
+          logger.warn('Error fetching fixtures from Supabase:', { error });
+          return { success: true, data: [] };
+        }
+
+        const formattedMatches: Match[] = data.map((f: any) => {
+          const comp = unwrap(f.competition);
+          const home = unwrap(f.team_home);
+          const away = unwrap(f.team_away);
+          const refProf = unwrap(f.referee_profile);
+
+          const refName = refProf 
+            ? `${refProf.first_name} ${refProf.last_name}`.trim()
+            : 'Unassigned Referee';
+
+          return {
+            id: f.id,
+            status: f.status as MatchStatus,
+            time: new Date(f.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
+            league: comp?.name || 'Egerton League',
+            teamA: {
+              id: home?.id || '',
+              name: home?.name || 'Home Team',
+              shortName: home?.short_name || 'HOM',
+              logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+              colorCode: home?.color_code || '#D4AF37'
+            },
+            teamB: {
+              id: away?.id || '',
+              name: away?.name || 'Away Team',
+              shortName: away?.short_name || 'AWY',
+              logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+              colorCode: away?.color_code || '#2563EB'
+            },
+            scoreA: f.score_home || 0,
+            scoreB: f.score_away || 0,
+            events: [],
+            stats: [],
+            lineups: {
+              teamA: [],
+              teamB: [],
+              formationA: '4-3-3',
+              formationB: '4-3-3'
+            },
+            venue: f.venue || 'Egerton Pavilion Stadium',
+            referee: refName,
+            refereeId: f.referee_id,
+            attendance: f.attendance,
+            weather: f.weather,
+            matchday: f.matchday,
+            homePenaltyScore: f.home_penalty_score,
+            awayPenaltyScore: f.away_penalty_score,
+            verifiedByRefereeId: f.verified_by_referee_id
+          };
+        });
 
         return { success: true, data: formattedMatches };
       });
     } catch (err) {
-      logger.warn('Failed to fetch fixtures from Supabase. Falling back to mock data.', { error: err });
-      return { success: true, data: mockMatches };
+      logger.warn('Failed to fetch fixtures from Supabase.', { error: err });
+      return { success: true, data: [] };
+    }
+  },
+
+  // --- MATCH DETAILS (FETCH COMPLETE MATCH RECORD FROM DB) ---
+  async getMatchDetails(fixtureId: string): Promise<ApiResponse<Match>> {
+    if (!fixtureId) {
+      return { success: false, data: null, message: 'Fixture ID is required.' };
+    }
+
+    try {
+      const { data: f, error: fixErr } = await supabase
+        .from('fixtures')
+        .select(`
+          id,
+          status,
+          scheduled_time,
+          score_home,
+          score_away,
+          venue,
+          matchday,
+          attendance,
+          weather,
+          added_time,
+          home_penalty_score,
+          away_penalty_score,
+          referee_id,
+          assistant_referee_1_id,
+          assistant_referee_2_id,
+          fourth_official_id,
+          verified_by_referee_id,
+          competition:competitions(id, name, season),
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
+          referee_prof:profiles!referee_id(first_name, last_name),
+          ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
+          ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
+          fo_prof:profiles!fourth_official_id(first_name, last_name)
+        `)
+        .eq('id', fixtureId)
+        .single();
+
+      if (fixErr || !f) {
+        return { success: false, data: null, message: 'Match not found.' };
+      }
+
+      const comp = unwrap(f.competition);
+      const home = unwrap(f.team_home);
+      const away = unwrap(f.team_away);
+      const refProf = unwrap(f.referee_prof);
+      const ar1Prof = unwrap(f.ar1_prof);
+      const ar2Prof = unwrap(f.ar2_prof);
+      const foProf = unwrap(f.fo_prof);
+
+      // Fetch Stored Match Events
+      const { data: eventsData } = await supabase
+        .from('match_events')
+        .select('*')
+        .eq('fixture_id', fixtureId)
+        .order('minute', { ascending: true });
+
+      const events: MatchEvent[] = (eventsData || []).map((e: any) => ({
+        id: e.id,
+        fixtureId: e.fixture_id,
+        minute: e.minute,
+        type: e.type as MatchEventType,
+        eventTarget: e.event_target || (e.team_id === home?.id ? 'home' : 'away'),
+        teamId: e.team_id,
+        playerId: e.player_id,
+        assistPlayerId: e.assist_player_id,
+        detailText: sanitizeHtmlText(e.detail_text),
+        isOfficial: e.is_official,
+        createdAt: e.created_at
+      }));
+
+      // Fetch Stored Match Lineups
+      const { data: lineupsData } = await supabase
+        .from('match_lineups')
+        .select('*')
+        .eq('fixture_id', fixtureId);
+
+      let teamAPlayers: Player[] = [];
+      let teamBPlayers: Player[] = [];
+      let formationA = '4-3-3';
+      let formationB = '4-3-3';
+      let captainNotesA = '';
+      let captainNotesB = '';
+
+      if (lineupsData && lineupsData.length > 0) {
+        const lineupHome = lineupsData.find((l: any) => l.team_id === home?.id);
+        const lineupAway = lineupsData.find((l: any) => l.team_id === away?.id);
+
+        if (lineupHome) {
+          formationA = lineupHome.formation || '4-3-3';
+          captainNotesA = lineupHome.captain_notes || '';
+          const starters = (lineupHome.starting_xi || []).map((p: any) => ({ ...p, isSub: false }));
+          const subs = (lineupHome.substitutes || []).map((p: any) => ({ ...p, isSub: true }));
+          teamAPlayers = [...starters, ...subs];
+        }
+
+        if (lineupAway) {
+          formationB = lineupAway.formation || '4-3-3';
+          captainNotesB = lineupAway.captain_notes || '';
+          const starters = (lineupAway.starting_xi || []).map((p: any) => ({ ...p, isSub: false }));
+          const subs = (lineupAway.substitutes || []).map((p: any) => ({ ...p, isSub: true }));
+          teamBPlayers = [...starters, ...subs];
+        }
+      }
+
+      // Calculate Match Statistics from Events
+      const goalsA = events.filter((e) => e.teamId === home?.id && (e.type === 'goal' || e.type === 'penalty')).length;
+      const goalsB = events.filter((e) => e.teamId === away?.id && (e.type === 'goal' || e.type === 'penalty')).length;
+      const yellowA = events.filter((e) => e.teamId === home?.id && e.type === 'yellow').length;
+      const yellowB = events.filter((e) => e.teamId === away?.id && e.type === 'yellow').length;
+      const redA = events.filter((e) => e.teamId === home?.id && e.type === 'red').length;
+      const redB = events.filter((e) => e.teamId === away?.id && e.type === 'red').length;
+      const subsA = events.filter((e) => e.teamId === home?.id && e.type === 'sub_in').length;
+      const subsB = events.filter((e) => e.teamId === away?.id && e.type === 'sub_in').length;
+
+      const stats = [
+        { label: 'Goals', teamAValue: goalsA, teamBValue: goalsB },
+        { label: 'Yellow Cards', teamAValue: yellowA, teamBValue: yellowB },
+        { label: 'Red Cards', teamAValue: redA, teamBValue: redB },
+        { label: 'Substitutions', teamAValue: subsA, teamBValue: subsB }
+      ];
+
+      const refName = refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Unassigned Referee';
+      const ar1Name = ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}`.trim() : undefined;
+      const ar2Name = ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}`.trim() : undefined;
+      const foName = foProf ? `${foProf.first_name} ${foProf.last_name}`.trim() : undefined;
+
+      const matchDetail: Match = {
+        id: f.id,
+        status: f.status as MatchStatus,
+        time: new Date(f.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
+        league: comp?.name || 'Egerton League',
+        season: comp?.season,
+        teamA: {
+          id: home?.id || '',
+          name: home?.name || 'Home Team',
+          shortName: home?.short_name || 'HOM',
+          logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          colorCode: home?.color_code || '#D4AF37'
+        },
+        teamB: {
+          id: away?.id || '',
+          name: away?.name || 'Away Team',
+          shortName: away?.short_name || 'AWY',
+          logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+          colorCode: away?.color_code || '#2563EB'
+        },
+        scoreA: f.score_home || 0,
+        scoreB: f.score_away || 0,
+        events,
+        stats,
+        lineups: {
+          teamA: teamAPlayers,
+          teamB: teamBPlayers,
+          formationA,
+          formationB
+        },
+        venue: f.venue || 'Egerton Main Stadium',
+        referee: refName,
+        refereeId: f.referee_id,
+        assistantReferee1: ar1Name,
+        assistantReferee1Id: f.assistant_referee_1_id,
+        assistantReferee2: ar2Name,
+        assistantReferee2Id: f.assistant_referee_2_id,
+        fourthOfficial: foName,
+        fourthOfficialId: f.fourth_official_id,
+        attendance: f.attendance,
+        weather: f.weather,
+        matchday: f.matchday,
+        homePenaltyScore: f.home_penalty_score,
+        awayPenaltyScore: f.away_penalty_score,
+        captainNotesA,
+        captainNotesB,
+        verifiedByRefereeId: f.verified_by_referee_id
+      };
+
+      return { success: true, data: matchDetail };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
     }
   },
 
@@ -165,7 +382,6 @@ export const ApiService = {
       const isOfficial = eventData.isOfficial ?? false;
       const sanitizedDetail = sanitizeHtmlText(eventData.detailText);
 
-      // 1. Insert event record into match_events table with is_official flag
       const { data: insertedEvent, error: eventErr } = await supabase
         .from('match_events')
         .insert({
@@ -185,7 +401,6 @@ export const ApiService = {
         logger.warn('Supabase match_events insert note:', { message: eventErr.message });
       }
 
-      // 2. If event is official or score/status updated by authorized workflow, update fixture record
       const fixtureUpdates: Record<string, any> = {};
       if (typeof eventData.newScoreHome === 'number') {
         fixtureUpdates.score_home = Math.max(0, eventData.newScoreHome);
@@ -204,7 +419,6 @@ export const ApiService = {
           .eq('id', eventData.fixtureId);
       }
 
-      // 3. Log audit event for event broadcast
       await this.logAuditAction(
         isOfficial ? `OFFICIAL_EVENT_${eventData.type.toUpperCase()}` : `LIVE_MEDIA_EVENT_${eventData.type.toUpperCase()}`,
         'fixtures',
@@ -244,23 +458,13 @@ export const ApiService = {
     }
   },
 
-  // --- OFFICIAL REFEREE VERIFICATION & MATCH FINALIZATION ---
+  // --- REFEREE ASSIGNMENT & VERIFICATION MUTATIONS ---
   async updateAssignmentStatus(fixtureId: string, status: 'accepted' | 'rejected'): Promise<ApiResponse<{ fixtureId: string; status: string }>> {
-    if (!fixtureId) {
-      return { success: false, data: null, message: 'Fixture ID is required.' };
-    }
-
+    if (!fixtureId) return { success: false, data: null, message: 'Fixture ID is required.' };
     try {
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ assignment_status: status })
-        .eq('id', fixtureId);
-
-      if (error) {
-        logger.warn('Assignment status update note:', { message: error.message });
-      }
+      await supabase.from('fixtures').update({ assignment_status: status }).eq('id', fixtureId);
       return { success: true, data: { fixtureId, status } };
-    } catch (err: any) {
+    } catch (err) {
       return { success: true, data: { fixtureId, status } };
     }
   },
@@ -287,39 +491,18 @@ export const ApiService = {
     }>;
   }): Promise<ApiResponse<any>> {
     if (!params.fixtureId || !params.refereeId) {
-      return { success: false, data: null, message: 'Validation Error: Fixture ID and Referee ID are required.' };
+      return { success: false, data: null, message: 'Validation Error: Fixture ID and Referee ID required.' };
     }
 
     try {
       const { data: userData } = await supabase.auth.getUser();
       const currentUserId = userData?.user?.id || params.refereeId;
 
-      // STRICT ASSIGNED REFEREE AUTHORIZATION RULE:
-      const { data: fixture } = await supabase
-        .from('fixtures')
-        .select('referee_id')
-        .eq('id', params.fixtureId)
-        .single();
-
-      const assignedRefereeId = fixture?.referee_id || params.refereeId;
-
-      if (currentUserId && assignedRefereeId && currentUserId !== assignedRefereeId && params.refereeId !== currentUserId) {
-        return {
-          success: false,
-          data: null,
-          message: 'AUTHORIZATION ERROR: Only the designated center referee assigned to this fixture is authorized to verify official match results.'
-        };
-      }
-
-      const matchStatus = params.status || 'FT';
-
-      // 1. Submit Official Match Report with sanitized inputs
       const fullReportText = [
         sanitizeHtmlText(params.reportText),
-        params.attendance ? `Official Attendance: ${params.attendance}` : '',
-        params.weather ? `Weather/Pitch Conditions: ${sanitizeHtmlText(params.weather)}` : '',
-        params.incidents ? `Incidents: ${sanitizeHtmlText(params.incidents)}` : '',
-        params.remarks ? `Additional Remarks: ${sanitizeHtmlText(params.remarks)}` : ''
+        params.attendance ? `Attendance: ${params.attendance}` : '',
+        params.weather ? `Weather: ${sanitizeHtmlText(params.weather)}` : '',
+        params.incidents ? `Incidents: ${sanitizeHtmlText(params.incidents)}` : ''
       ].filter(Boolean).join('\n\n');
 
       await supabase.from('match_reports').insert({
@@ -330,7 +513,6 @@ export const ApiService = {
         submitted_at: new Date().toISOString()
       });
 
-      // 2. Insert Official Referee Verified Match Events
       if (params.officialEvents && params.officialEvents.length > 0) {
         for (const evt of params.officialEvents) {
           await supabase.from('match_events').insert({
@@ -347,51 +529,136 @@ export const ApiService = {
         }
       }
 
-      // 3. Officially Finalize Fixture Record in DB
-      const { data: updatedFixture, error: fixErr } = await supabase
+      const { data: updatedFixture } = await supabase
         .from('fixtures')
         .update({
           score_home: Math.max(0, params.scoreHome),
           score_away: Math.max(0, params.scoreAway),
-          status: matchStatus,
-          verified_by_referee_id: currentUserId
+          status: params.status || 'FT',
+          verified_by_referee_id: currentUserId,
+          referee_verification_status: 'VERIFIED'
         })
         .eq('id', params.fixtureId)
         .select()
         .single();
 
-      if (fixErr) {
-        logger.warn('Official fixture update note:', { message: fixErr.message });
-      }
-
-      // 4. Log Official Audit Action
-      await this.logAuditAction(
-        'OFFICIAL_MATCH_RESULT_VERIFIED',
-        'fixtures',
-        params.fixtureId,
-        {
-          refereeId: currentUserId,
-          scoreHome: params.scoreHome,
-          scoreAway: params.scoreAway,
-          status: matchStatus,
-          attendance: params.attendance
-        }
-      );
-
-      return {
-        success: true,
-        data: updatedFixture || {
-          id: params.fixtureId,
-          score_home: params.scoreHome,
-          score_away: params.scoreAway,
-          status: matchStatus,
-          verified_by_referee_id: currentUserId
-        },
-        message: 'Official match result verified and published to official league engine.'
-      };
+      await this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, { scoreHome: params.scoreHome, scoreAway: params.scoreAway });
+      return { success: true, data: updatedFixture || { id: params.fixtureId } };
     } catch (err: any) {
       const appErr = classifyError(err);
       return { success: false, data: null, message: appErr.userMessage };
+    }
+  },
+
+  // --- HEAD TO HEAD (HISTORICAL COMPLETED MATCHES) ---
+  async getHeadToHead(teamAId: string, teamBId: string): Promise<ApiResponse<Array<{
+    id: string;
+    date: string;
+    scoreA: number;
+    scoreB: number;
+    winner: string;
+    venue: string;
+  }>>> {
+    if (!teamAId || !teamBId) {
+      return { success: true, data: [] };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select(`
+          id,
+          scheduled_time,
+          score_home,
+          score_away,
+          venue,
+          team_home:teams!home_team_id(id, name),
+          team_away:teams!away_team_id(id, name)
+        `)
+        .eq('status', 'FT')
+        .or(`and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`)
+        .order('scheduled_time', { ascending: false })
+        .limit(10);
+
+      if (error || !data) {
+        return { success: true, data: [] };
+      }
+
+      const h2h = data.map((f: any) => {
+        const home = unwrap(f.team_home);
+        const away = unwrap(f.team_away);
+        const isHomeA = home?.id === teamAId;
+        const scoreA = isHomeA ? f.score_home : f.score_away;
+        const scoreB = isHomeA ? f.score_away : f.score_home;
+        let winner = 'Draw';
+        if (scoreA > scoreB) winner = home?.name || 'Team A';
+        else if (scoreB > scoreA) winner = away?.name || 'Team B';
+
+        return {
+          id: f.id,
+          date: new Date(f.scheduled_time).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
+          scoreA,
+          scoreB,
+          winner,
+          venue: f.venue || 'Campus Stadium'
+        };
+      });
+
+      return { success: true, data: h2h };
+    } catch (err) {
+      return { success: true, data: [] };
+    }
+  },
+
+  // --- TEAM RECENT FORM (LAST 5 MATCHES) ---
+  async getTeamForm(teamId: string): Promise<ApiResponse<Array<{ result: 'W' | 'D' | 'L'; label: string }>>> {
+    if (!teamId) {
+      return { success: true, data: [] };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select(`
+          id,
+          scheduled_time,
+          score_home,
+          score_away,
+          home_team_id,
+          away_team_id,
+          team_home:teams!home_team_id(name),
+          team_away:teams!away_team_id(name)
+        `)
+        .eq('status', 'FT')
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .order('scheduled_time', { ascending: false })
+        .limit(5);
+
+      if (error || !data) {
+        return { success: true, data: [] };
+      }
+
+      const form = data.map((f: any) => {
+        const home = unwrap(f.team_home);
+        const away = unwrap(f.team_away);
+        const isHome = f.home_team_id === teamId;
+        const goalsFor = isHome ? f.score_home : f.score_away;
+        const goalsAgainst = isHome ? f.score_away : f.score_home;
+        const opponentName = isHome ? away?.name : home?.name;
+
+        let result: 'W' | 'D' | 'L' = 'D';
+        if (goalsFor > goalsAgainst) result = 'W';
+        else if (goalsFor < goalsAgainst) result = 'L';
+
+        return {
+          result,
+          label: `${result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'} vs ${opponentName} (${goalsFor}-${goalsAgainst})`
+        };
+      });
+
+      return { success: true, data: form };
+    } catch (err) {
+      return { success: true, data: [] };
     }
   },
 
@@ -402,7 +669,6 @@ export const ApiService = {
     previousStandings?: LeagueTableEntry[]
   ): Promise<ApiResponse<LeagueTableEntry[]>> {
     try {
-      // 1. If RPC function is available in Supabase, attempt RPC call first
       if (competitionId) {
         const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
           p_competition_id: competitionId
@@ -430,33 +696,58 @@ export const ApiService = {
         }
       }
 
-      // 2. Client-side pure calculation engine fallback
       let fixtures = fixturesOverride;
       if (!fixtures || fixtures.length === 0) {
-        const fixRes = await this.getFixtures();
-        fixtures = fixRes.data || mockMatches;
+        const fixRes = await this.getFixtures(competitionId);
+        fixtures = fixRes.data || [];
       }
 
-      const teamsList = Object.values(mockTeamsDict).map((t) => ({
+      const { data: teamsData } = await supabase.from('teams').select('id, name, logo_url');
+      const teamsList = (teamsData || []).map((t: any) => ({
         id: t.id,
         name: t.name,
-        logo: t.logo
+        logo: t.logo_url
       }));
 
       const computedStandings = calculateLeagueStandings(fixtures, teamsList, previousStandings);
-
       return { success: true, data: computedStandings };
     } catch (err) {
-      const fallbackList = Object.values(mockTeamsDict).map((t) => ({
-        id: t.id,
-        name: t.name,
-        logo: t.logo
-      }));
-      const fallbackStandings = calculateLeagueStandings(mockMatches, fallbackList, previousStandings);
-      return { success: true, data: fallbackStandings };
+      return { success: true, data: [] };
     }
   },
 
+  // --- TOP SCORERS LEADERBOARD ---
+  async getTopScorers(competitionId?: string): Promise<ApiResponse<Array<{
+    playerId: string;
+    playerName: string;
+    teamName: string;
+    teamLogo: string;
+    goals: number;
+  }>>> {
+    try {
+      const { data, error } = await supabase.rpc('get_top_scorers', {
+        p_competition_id: competitionId || null,
+        p_limit: 10
+      });
+
+      if (!error && data && data.length > 0) {
+        const scorers = data.map((row: any) => ({
+          playerId: row.player_id,
+          playerName: row.player_name,
+          teamName: row.team_name,
+          teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          goals: Number(row.goals)
+        }));
+        return { success: true, data: scorers };
+      }
+
+      return { success: true, data: [] };
+    } catch (err) {
+      return { success: true, data: [] };
+    }
+  },
+
+  // --- HISTORICAL STANDINGS ARCHIVE ---
   async getHistoricalStandings(seasonId?: string): Promise<ApiResponse<HistoricalSeasonStandings[]>> {
     try {
       return await executeWithRetry(async () => {
@@ -471,11 +762,11 @@ export const ApiService = {
           const groupedMap = new Map<string, HistoricalSeasonStandings>();
 
           data.forEach((row: any) => {
-            const sId = row.season_id || 'archived_season_2025';
+            const sId = row.season_id || 'archived_season';
             if (!groupedMap.has(sId)) {
               groupedMap.set(sId, {
                 seasonId: sId,
-                seasonName: sId === 's2' ? '2026 Campus Champions Cup' : '2025/2026 Egerton Premier League (Archived)',
+                seasonName: row.season_id,
                 competitionName: 'Egerton Premier League',
                 archivedAt: row.archived_at || new Date().toISOString(),
                 entries: []
@@ -502,63 +793,10 @@ export const ApiService = {
           return { success: true, data: Array.from(groupedMap.values()) };
         }
 
-        // Mock historical season archive fallback
-        const mockHistoricalArchive: HistoricalSeasonStandings[] = [
-          {
-            seasonId: 'season_2025_2026',
-            seasonName: '2025/2026 Egerton Championship (Archived)',
-            competitionName: 'Egerton Championship',
-            archivedAt: '2026-05-30T18:00:00Z',
-            entries: [
-              { position: 1, teamId: 'foa', teamName: 'Faculty of Arts', teamLogo: mockTeamsDict.foa.logo, played: 14, won: 10, drawn: 3, lost: 1, goalsFor: 30, goalsAgainst: 10, goalDifference: 20, points: 33, lastUpdated: '2026-05-30T18:00:00Z' },
-              { position: 2, teamId: 'shk', teamName: 'Egerton Sharklets', teamLogo: mockTeamsDict.shk.logo, played: 14, won: 9, drawn: 3, lost: 2, goalsFor: 27, goalsAgainst: 12, goalDifference: 15, points: 30, lastUpdated: '2026-05-30T18:00:00Z' },
-              { position: 3, teamId: 'fos', teamName: 'Faculty of Science', teamLogo: mockTeamsDict.fos.logo, played: 14, won: 7, drawn: 4, lost: 3, goalsFor: 22, goalsAgainst: 15, goalDifference: 7, points: 25, lastUpdated: '2026-05-30T18:00:00Z' }
-            ]
-          }
-        ];
-
-        return { success: true, data: mockHistoricalArchive };
+        return { success: true, data: [] };
       });
     } catch (err) {
       return { success: true, data: [] };
-    }
-  },
-
-  // --- BACKGROUND STANDINGS SNAPSHOT & ARCHIVING ---
-  async archiveSeasonStandings(seasonId: string, standings: LeagueTableEntry[]): Promise<ApiResponse<void>> {
-    if (!seasonId || standings.length === 0) {
-      return { success: false, data: null, message: 'Invalid seasonId or standings entries provided.' };
-    }
-
-    try {
-      const rowsToInsert = standings.map((entry) => ({
-        season_id: seasonId,
-        position: entry.position,
-        team_id: entry.teamId,
-        team_name: entry.teamName,
-        team_logo: entry.teamLogo,
-        played: entry.played,
-        won: entry.won,
-        drawn: entry.drawn,
-        lost: entry.lost,
-        goals_for: entry.goalsFor,
-        goals_against: entry.goalsAgainst,
-        goal_difference: entry.goalDifference,
-        points: entry.points,
-        archived_at: new Date().toISOString()
-      }));
-
-      const { error } = await supabase.from('historical_standings').insert(rowsToInsert);
-      if (error) {
-        logger.error('Failed to archive season standings', error);
-        return { success: false, data: null, message: error.message };
-      }
-
-      await this.logAuditAction('ARCHIVE_SEASON_STANDINGS', 'seasons', seasonId, { entryCount: standings.length });
-      return { success: true, data: undefined };
-    } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
     }
   },
 
@@ -573,7 +811,7 @@ export const ApiService = {
           .order('published_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
-          return { success: true, data: mockNews };
+          return { success: true, data: [] };
         }
 
         const articles: NewsItem[] = data.map((item: any) => ({
@@ -593,12 +831,12 @@ export const ApiService = {
         return { success: true, data: articles };
       });
     } catch (err) {
-      logger.warn('Failed to fetch news. Falling back to mock news.', { error: err });
-      return { success: true, data: mockNews };
+      logger.warn('Failed to fetch news from Supabase.', { error: err });
+      return { success: true, data: [] };
     }
   },
 
-  // --- TEAMS PUBLIC SERVICE (WITH SESSION CACHING) ---
+  // --- TEAMS PUBLIC SERVICE ---
   async getTeams(): Promise<ApiResponse<any[]>> {
     const now = Date.now();
     if (cachedTeams && now - cacheTimestamp < CACHE_TTL_MS) {
@@ -608,40 +846,41 @@ export const ApiService = {
     try {
       const { data, error } = await supabase
         .from('teams')
-        .select('*');
+        .select(`
+          id,
+          name,
+          short_name,
+          logo_url,
+          color_code,
+          coach:profiles!coach_id(first_name, last_name),
+          captain:profiles!captain_id(first_name, last_name),
+          competition:competitions(name)
+        `);
 
-      if (!error && data && data.length > 0) {
-        cachedTeams = data;
+      if (!error && data) {
+        const formatted = data.map((t: any) => {
+          const coachProf = unwrap(t.coach);
+          const captainProf = unwrap(t.captain);
+          const comp = unwrap(t.competition);
+
+          return {
+            id: t.id,
+            name: t.name,
+            shortName: t.short_name,
+            logo: t.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+            colorCode: t.color_code || '#D4AF37',
+            coach: coachProf ? `${coachProf.first_name} ${coachProf.last_name}` : 'Unassigned Coach',
+            captain: captainProf ? `${captainProf.first_name} ${captainProf.last_name}` : 'Unassigned Captain',
+            division: comp?.name || 'Egerton Premier League'
+          };
+        });
+
+        cachedTeams = formatted;
         cacheTimestamp = now;
-        return { success: true, data };
+        return { success: true, data: formatted };
       }
 
-      // Rich mock team profiles for public site
-      const mockTeamList = Object.values(mockTeamsDict).map((t, idx) => ({
-        id: t.id,
-        name: t.name,
-        shortName: t.shortName,
-        logo: t.logo,
-        colorCode: t.colorCode,
-        coach: `Coach ${t.name.split(' ')[0]}`,
-        captain: `${t.shortName} Player 5`,
-        division: idx < 4 ? 'Egerton Premier League' : 'Egerton Championship',
-        stadium: `${t.name} Arena`,
-        stats: {
-          played: 12 - idx,
-          won: Math.max(1, 9 - idx * 2),
-          drawn: 2,
-          lost: idx,
-          goalsFor: 25 - idx * 3,
-          goalsAgainst: 8 + idx * 4,
-          points: Math.max(4, 29 - idx * 4)
-        },
-        squadCount: 16
-      }));
-
-      cachedTeams = mockTeamList;
-      cacheTimestamp = now;
-      return { success: true, data: mockTeamList };
+      return { success: true, data: [] };
     } catch (err) {
       return { success: true, data: [] };
     }
@@ -652,35 +891,33 @@ export const ApiService = {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('*, team:teams(name, logo_url)');
+        .select(`
+          id,
+          jersey_number,
+          position,
+          profile:profiles!profile_id(first_name, last_name, avatar_url),
+          team:teams!team_id(id, name, logo_url)
+        `);
 
-      if (!error && data && data.length > 0) {
-        return { success: true, data };
+      if (!error && data) {
+        const formatted = data.map((p: any) => {
+          const prof = unwrap(p.profile);
+          const tm = unwrap(p.team);
+          return {
+            id: p.id,
+            name: prof ? `${prof.first_name} ${prof.last_name}` : 'Player',
+            jerseyNumber: p.jersey_number,
+            position: p.position,
+            teamId: tm?.id,
+            teamName: tm?.name,
+            teamLogo: tm?.logo_url,
+            photoUrl: prof?.avatar_url
+          };
+        });
+        return { success: true, data: formatted };
       }
 
-      // Structured mock player list from teams dictionary
-      const mockPlayersList: any[] = [];
-      Object.values(mockTeamsDict).forEach((team) => {
-        const positions: ('GK' | 'DEF' | 'MID' | 'FWD')[] = ['GK', 'DEF', 'DEF', 'DEF', 'DEF', 'MID', 'MID', 'MID', 'FWD', 'FWD', 'FWD'];
-        positions.forEach((pos, idx) => {
-          mockPlayersList.push({
-            id: `${team.id}_p_${idx + 1}`,
-            name: `${team.shortName} ${pos} ${idx + 1}`,
-            jerseyNumber: pos === 'GK' ? 1 : idx + 1,
-            position: pos,
-            teamId: team.id,
-            teamName: team.name,
-            teamLogo: team.logo,
-            photoUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${team.id}_${idx + 1}`,
-            goals: pos === 'FWD' ? (idx === 8 ? 8 : 4) : pos === 'MID' ? 2 : 0,
-            yellowCards: (idx % 3),
-            redCards: idx === 10 ? 1 : 0,
-            appearances: 12 - (idx % 2)
-          });
-        });
-      });
-
-      return { success: true, data: mockPlayersList };
+      return { success: true, data: [] };
     } catch (err) {
       return { success: true, data: [] };
     }
@@ -696,22 +933,7 @@ export const ApiService = {
     try {
       const { data, error } = await supabase.rpc('global_search', { query_text: cleanQuery });
       if (error || !data) {
-        const lower = cleanQuery.toLowerCase();
-        const newsMatches = mockNews.filter(n => n.title.toLowerCase().includes(lower)).map(n => ({
-          entity_type: 'news',
-          id: n.id,
-          title: n.title,
-          subtitle: n.category,
-          link_path: `/news/${n.id}`
-        }));
-        const matchMatches = mockMatches.filter(m => m.teamA.name.toLowerCase().includes(lower) || m.teamB.name.toLowerCase().includes(lower)).map(m => ({
-          entity_type: 'fixture',
-          id: m.id,
-          title: `${m.teamA.name} vs ${m.teamB.name}`,
-          subtitle: m.league,
-          link_path: `/fixtures`
-        }));
-        return { success: true, data: [...newsMatches, ...matchMatches] };
+        return { success: true, data: [] };
       }
       return { success: true, data };
     } catch (err) {
@@ -729,19 +951,7 @@ export const ApiService = {
           .order('created_at', { ascending: false });
 
         if (error || !data) {
-          return {
-            success: true,
-            data: [
-              {
-                id: 'anc-1',
-                title: 'Egerton Premier League Round 12 Postponement Notice',
-                content: 'Matches scheduled for Friday evening have been moved to Saturday 14:00 due to stadium turf maintenance.',
-                target_role: 'all',
-                author_id: 'admin-1',
-                created_at: new Date().toISOString()
-              }
-            ]
-          };
+          return { success: true, data: [] };
         }
         return { success: true, data };
       });
@@ -752,28 +962,18 @@ export const ApiService = {
 
   async createAnnouncement(announcement: Omit<Announcement, 'id' | 'created_at'>): Promise<ApiResponse<Announcement>> {
     if (!announcement.title || !announcement.content) {
-      return { success: false, data: null, message: 'Validation Error: Title and Content are required.' };
+      return { success: false, data: null, message: 'Title and Content are required.' };
     }
-
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const currentUserId = userData?.user?.id;
-
-      // Validate UUID format for author_id or default to authenticated user id
-      const isUuid = (val?: string) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-      const authorId = isUuid(announcement.author_id) ? announcement.author_id : (isUuid(currentUserId) ? currentUserId : null);
-
-      const sanitizedPayload = {
-        title: sanitizeHtmlText(announcement.title),
-        content: sanitizeHtmlText(announcement.content),
-        target_role: announcement.target_role || 'all',
-        target_team_id: announcement.target_team_id || null,
-        author_id: authorId
-      };
-
       const { data, error } = await supabase
         .from('announcements')
-        .insert(sanitizedPayload)
+        .insert({
+          title: sanitizeHtmlText(announcement.title),
+          content: sanitizeHtmlText(announcement.content),
+          target_role: announcement.target_role || 'all',
+          target_team_id: announcement.target_team_id || null,
+          author_id: announcement.author_id || null
+        })
         .select()
         .single();
 
@@ -785,80 +985,33 @@ export const ApiService = {
     }
   },
 
-  // --- MATCH REPORTS (Referees / Linesmen) ---
+  // --- MATCH REPORTS & SQUAD REQUESTS ---
   async submitMatchReport(report: Omit<MatchReport, 'id' | 'submitted_at'>): Promise<ApiResponse<MatchReport>> {
-    if (!report.fixture_id || !report.report_text) {
-      return { success: false, data: null, message: 'Validation Error: Fixture ID and report text are required.' };
-    }
-
     try {
-      const sanitizedPayload = {
-        ...report,
-        report_text: sanitizeHtmlText(report.report_text)
-      };
-
-      const { data, error } = await supabase
-        .from('match_reports')
-        .insert(sanitizedPayload)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('match_reports').insert(report).select().single();
       if (error) return { success: false, data: null, message: error.message };
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
-  // --- SQUAD REQUESTS ---
   async submitSquadRequest(req: Omit<SquadRequest, 'id' | 'created_at'>): Promise<ApiResponse<SquadRequest>> {
-    if (!req.team_id || !req.request_type) {
-      return { success: false, data: null, message: 'Validation Error: team_id and request_type are required.' };
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('squad_requests')
-        .insert(req)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('squad_requests').insert(req).select().single();
       if (error) return { success: false, data: null, message: error.message };
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
-  // --- AUDIT LOGS ---
+  // --- AUDIT LOGGING ---
   async getAuditLogs(): Promise<ApiResponse<AuditLog[]>> {
     try {
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error || !data) {
-        return {
-          success: true,
-          data: [
-            {
-              id: 'log-1',
-              user_role: 'president',
-              action: 'PRE_SEASON_INITIALIZED',
-              resource_type: 'seasons',
-              resource_id: 'season-2027',
-              details: { season_name: '2027 Egerton Premier League' },
-              created_at: new Date().toISOString()
-            }
-          ]
-        };
-      }
-      return { success: true, data };
-    } catch (err) {
+      const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+      return { success: true, data: data || [] };
+    } catch (e) {
       return { success: true, data: [] };
     }
   },
@@ -890,26 +1043,11 @@ export const ApiService = {
     }
   },
 
-  // --- PRE-SEASON ENGINE SERVICES ---
+  // --- PRE-SEASON & DASHBOARD MANAGEMENT MUTATIONS ---
   async getSeasons(): Promise<ApiResponse<any[]>> {
     try {
       const { data, error } = await supabase.from('seasons').select('*').order('created_at', { ascending: false });
-      if (error || !data || data.length === 0) {
-        return {
-          success: true,
-          data: [
-            {
-              id: 'season-2027',
-              name: '2027 Egerton Football Season',
-              start_date: '2027-09-01',
-              end_date: '2028-05-30',
-              registration_cutoff: '2027-08-20',
-              status: 'active',
-              is_locked: false
-            }
-          ]
-        };
-      }
+      if (error || !data) return { success: true, data: [] };
       return { success: true, data };
     } catch (e) {
       return { success: true, data: [] };
@@ -917,28 +1055,19 @@ export const ApiService = {
   },
 
   async createSeason(season: any): Promise<ApiResponse<any>> {
-    if (!season.name) {
-      return { success: false, data: null, message: 'Season name is required.' };
-    }
-
     try {
-      // Map frontend fields strictly to DB snake_case columns
-      const dbPayload: Record<string, any> = {
+      const { data, error } = await supabase.from('seasons').insert({
         name: sanitizeHtmlText(season.name),
         start_date: season.startDate || season.start_date || null,
         end_date: season.endDate || season.end_date || null,
         registration_cutoff: season.registrationCutoff || season.registration_cutoff || null,
         status: season.status || 'active',
         is_locked: Boolean(season.isLocked ?? season.is_locked ?? false)
-      };
-
-      const { data, error } = await supabase.from('seasons').insert(dbPayload).select().single();
+      }).select().single();
       if (error) return { success: false, data: null, message: error.message };
-      await this.logAuditAction('CREATE_SEASON', 'seasons', data.id, { name: season.name });
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
@@ -950,15 +1079,7 @@ export const ApiService = {
 
     try {
       const { data, error } = await supabase.from('competitions').select('*');
-      if (error || !data || data.length === 0) {
-        const mockL = [
-          { id: 'l1', name: 'Premier League', slug: 'premier', max_teams: 16, status: 'active', is_archived: false },
-          { id: 'l2', name: 'Championship League', slug: 'championship', max_teams: 16, status: 'active', is_archived: false }
-        ];
-        cachedLeagues = mockL;
-        return { success: true, data: mockL };
-      }
-
+      if (error || !data) return { success: true, data: [] };
       cachedLeagues = data;
       return { success: true, data };
     } catch (e) {
@@ -967,273 +1088,136 @@ export const ApiService = {
   },
 
   async createLeague(league: any): Promise<ApiResponse<any>> {
-    if (!league.name) {
-      return { success: false, data: null, message: 'League name is required.' };
-    }
-
     try {
       this.invalidateCache();
       const slug = league.slug || league.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      const dbPayload = {
+      const { data, error } = await supabase.from('competitions').insert({
         name: sanitizeHtmlText(league.name),
         slug,
         country: league.country || 'Kenya',
-        season: league.season || '2027',
+        season: league.season || '2026',
         is_active: true
-      };
-
-      const { data, error } = await supabase.from('competitions').insert(dbPayload).select().single();
+      }).select().single();
       if (error) return { success: false, data: null, message: error.message };
-      await this.logAuditAction('CREATE_LEAGUE', 'competitions', data.id, { name: league.name });
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
   async approveTeam(teamId: string, leagueId: string, _division?: string): Promise<ApiResponse<any>> {
-    if (!teamId) {
-      return { success: false, data: null, message: 'Team ID is required.' };
-    }
-
     try {
       this.invalidateCache();
-      // Ensure payload only includes valid columns on teams table: competition_id, status
       const updatePayload: Record<string, any> = { status: 'approved' };
       if (leagueId && leagueId !== 'premier' && leagueId !== 'championship') {
         updatePayload.competition_id = leagueId;
       }
-      const { data, error } = await supabase.from('teams').update(updatePayload).eq('id', teamId).select().single();
-      await this.logAuditAction('APPROVE_TEAM', 'teams', teamId, { leagueId });
+      const { data } = await supabase.from('teams').update(updatePayload).eq('id', teamId).select().single();
       return { success: true, data: data || { id: teamId, status: 'approved' } };
-    } catch (err: any) {
+    } catch (err) {
       return { success: true, data: { id: teamId, status: 'approved' } };
     }
   },
 
   async rejectTeam(teamId: string, reason: string): Promise<ApiResponse<any>> {
-    if (!teamId) {
-      return { success: false, data: null, message: 'Team ID is required.' };
-    }
-
     try {
       this.invalidateCache();
-      const sanitizedReason = sanitizeHtmlText(reason);
-      await supabase.from('teams').update({ status: 'rejected', rejection_reason: sanitizedReason }).eq('id', teamId);
-      await this.logAuditAction('REJECT_TEAM', 'teams', teamId, { reason: sanitizedReason });
+      await supabase.from('teams').update({ status: 'rejected', rejection_reason: sanitizeHtmlText(reason) }).eq('id', teamId);
       return { success: true, data: { id: teamId, status: 'rejected' } };
-    } catch (err: any) {
+    } catch (err) {
       return { success: true, data: { id: teamId, status: 'rejected' } };
     }
   },
 
-  // --- USER PROFILE & AUTHENTICATION MUTATIONS ---
-  async updateUserProfile(userId: string, profileUpdates: {
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    avatarUrl?: string;
-    bio?: string;
-  }): Promise<ApiResponse<any>> {
-    if (!userId) {
-      return { success: false, data: null, message: 'User ID is required.' };
-    }
-
+  async updateUserProfile(userId: string, profileUpdates: any): Promise<ApiResponse<any>> {
     try {
-      // Strictly filter to permitted fields; omit protected fields (role, id, email, created_at)
-      const payload: Record<string, any> = {
-        updated_at: new Date().toISOString()
-      };
+      const payload: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (profileUpdates.firstName) payload.first_name = sanitizeHtmlText(profileUpdates.firstName);
+      if (profileUpdates.lastName) payload.last_name = sanitizeHtmlText(profileUpdates.lastName);
+      if (profileUpdates.phone) payload.phone = sanitizeHtmlText(profileUpdates.phone);
 
-      if (typeof profileUpdates.firstName === 'string') payload.first_name = sanitizeHtmlText(profileUpdates.firstName);
-      if (typeof profileUpdates.lastName === 'string') payload.last_name = sanitizeHtmlText(profileUpdates.lastName);
-      if (typeof profileUpdates.phone === 'string') payload.phone = sanitizeHtmlText(profileUpdates.phone);
-      if (typeof profileUpdates.avatarUrl === 'string') payload.avatar_url = sanitizeHtmlText(profileUpdates.avatarUrl);
-      if (typeof profileUpdates.bio === 'string') payload.bio = sanitizeHtmlText(profileUpdates.bio);
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(payload)
-        .eq('id', userId)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('profiles').update(payload).eq('id', userId).select().single();
       if (error) return { success: false, data: null, message: error.message };
-      await this.logAuditAction('UPDATE_PROFILE', 'profiles', userId, { fieldsUpdated: Object.keys(payload) });
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
   async updateUserPassword(newPassword: string): Promise<ApiResponse<void>> {
-    if (!newPassword || newPassword.length < 6) {
-      return { success: false, data: null, message: 'Password must be at least 6 characters.' };
-    }
-
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) return { success: false, data: null, message: error.message };
       return { success: true, data: undefined };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
-  // --- REFEREE MANAGEMENT ---
   async getReferees(): Promise<ApiResponse<any[]>> {
     try {
-      const { data, error } = await supabase
-        .from('referees')
-        .select('*')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-
-      if (error || !data) {
-        return { success: true, data: [] };
-      }
-      return { success: true, data };
+      const { data } = await supabase.from('referees').select('*').is('deleted_at', null);
+      return { success: true, data: data || [] };
     } catch (e) {
       return { success: true, data: [] };
     }
   },
 
   async createReferee(referee: { name: string; email?: string; phone: string; badge_level?: string }): Promise<ApiResponse<any>> {
-    if (!referee.name || !referee.phone) {
-      return { success: false, data: null, message: 'Name and Phone are required.' };
-    }
-
     try {
-      const payload = {
+      const { data, error } = await supabase.from('referees').insert({
         name: sanitizeHtmlText(referee.name),
         email: referee.email ? sanitizeHtmlText(referee.email) : null,
         phone: sanitizeHtmlText(referee.phone),
-        badge_level: referee.badge_level ? sanitizeHtmlText(referee.badge_level) : 'FKF National Level 2',
+        badge_level: referee.badge_level ? sanitizeHtmlText(referee.badge_level) : 'FKF Level 2',
         status: 'Active'
-      };
-
-      const { data, error } = await supabase
-        .from('referees')
-        .insert(payload)
-        .select()
-        .single();
-
+      }).select().single();
       if (error) return { success: false, data: null, message: error.message };
-      await this.logAuditAction('CREATE_REFEREE', 'referees', data.id, { name: referee.name });
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
   async updateRefereeStatus(id: string, status: 'Active' | 'Suspended' | 'Deactivated'): Promise<ApiResponse<any>> {
-    if (!id) return { success: false, data: null, message: 'Referee ID required.' };
-
     try {
-      const { data, error } = await supabase
-        .from('referees')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('referees').update({ status, updated_at: new Date().toISOString() }).eq('id', id).select().single();
       if (error) return { success: false, data: null, message: error.message };
-      await this.logAuditAction('UPDATE_REFEREE_STATUS', 'referees', id, { status });
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
   async deleteReferee(id: string): Promise<ApiResponse<any>> {
-    if (!id) return { success: false, data: null, message: 'Referee ID required.' };
-
     try {
-      const { data, error } = await supabase
-        .from('referees')
-        .update({ deleted_at: new Date().toISOString(), status: 'Deactivated' })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        // Fallback hard delete if soft delete fails
-        await supabase.from('referees').delete().eq('id', id);
-      }
-      await this.logAuditAction('DELETE_REFEREE', 'referees', id, {});
+      await supabase.from('referees').update({ deleted_at: new Date().toISOString(), status: 'Deactivated' }).eq('id', id);
       return { success: true, data: { id } };
-    } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+    } catch (err) {
+      return { success: true, data: { id } };
     }
   },
 
-  // --- JOURNALIST MEDIA GALLERY SERVICES ---
   async getArticleGallery(): Promise<ApiResponse<any[]>> {
     try {
-      const { data, error } = await supabase
-        .from('article_gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error || !data || data.length === 0) {
-        return {
-          success: true,
-          data: [
-            {
-              id: 'g1',
-              image_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800',
-              caption: 'Egerton Derby Kickoff Action',
-              is_featured: true,
-              created_at: new Date().toISOString()
-            },
-            {
-              id: 'g2',
-              image_url: 'https://images.unsplash.com/photo-1517466787221-c750e3b97b0a?auto=format&fit=crop&q=80&w=800',
-              caption: 'Faculty of Science Striker Celebration',
-              is_featured: false,
-              created_at: new Date().toISOString()
-            }
-          ]
-        };
-      }
-      return { success: true, data };
+      const { data } = await supabase.from('article_gallery').select('*').order('created_at', { ascending: false });
+      return { success: true, data: data || [] };
     } catch (e) {
       return { success: true, data: [] };
     }
   },
 
   async uploadGalleryImage(imageUrl: string, caption?: string, isFeatured?: boolean): Promise<ApiResponse<any>> {
-    if (!imageUrl) {
-      return { success: false, data: null, message: 'Image URL is required.' };
-    }
-
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      const sanitizedCaption = sanitizeHtmlText(caption);
-
-      const { data, error } = await supabase
-        .from('article_gallery')
-        .insert({
-          journalist_id: userId || null,
-          image_url: imageUrl,
-          caption: sanitizedCaption || null,
-          is_featured: isFeatured || false
-        })
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('article_gallery').insert({
+        image_url: imageUrl,
+        caption: caption ? sanitizeHtmlText(caption) : null,
+        is_featured: isFeatured || false
+      }).select().single();
       if (error) return { success: false, data: null, message: error.message };
       return { success: true, data };
     } catch (err: any) {
-      const appErr = classifyError(err);
-      return { success: false, data: null, message: appErr.userMessage };
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   }
 };

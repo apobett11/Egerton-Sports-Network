@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Match } from '../../types';
+import { ApiService } from '../../services/api';
 
 interface FormTabProps {
     match: Match;
@@ -8,21 +9,21 @@ interface FormTabProps {
 export const FormTab: React.FC<FormTabProps> = ({ match }) => {
     const { teamA, teamB } = match;
 
-    const formA = [
-        { result: 'W', label: 'Win vs Science (2-0)' },
-        { result: 'W', label: 'Win vs Arts (3-1)' },
-        { result: 'D', label: 'Draw vs Tech (1-1)' },
-        { result: 'L', label: 'Loss vs Vet (0-1)' },
-        { result: 'W', label: 'Win vs Edu (4-2)' }
-    ];
+    const [formA, setFormA] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
+    const [formB, setFormB] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
 
-    const formB = [
-        { result: 'W', label: 'Win vs Edu (1-0)' },
-        { result: 'L', label: 'Loss vs Tech (0-2)' },
-        { result: 'L', label: 'Loss vs Engineering (1-3)' },
-        { result: 'W', label: 'Win vs Law (2-1)' },
-        { result: 'D', label: 'Draw vs Med (0-0)' }
-    ];
+    useEffect(() => {
+        if (teamA?.id) {
+            ApiService.getTeamForm(teamA.id).then((res) => {
+                if (res.data) setFormA(res.data);
+            });
+        }
+        if (teamB?.id) {
+            ApiService.getTeamForm(teamB.id).then((res) => {
+                if (res.data) setFormB(res.data);
+            });
+        }
+    }, [teamA?.id, teamB?.id]);
 
     const renderBadge = (res: string) => {
         switch (res) {
@@ -57,7 +58,7 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                     Recent Form
                 </span>
                 <h3 className="text-base font-black text-gray-900 dark:text-white">
-                    Team Form Guide
+                    Team Form Guide (DB Records)
                 </h3>
             </div>
 
@@ -74,17 +75,21 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                             </h4>
                         </div>
                         <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                            Last Five
+                            Last Five Matches
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                        {formA.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                                {renderBadge(item.result)}
-                            </div>
-                        ))}
-                    </div>
+                    {formA.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-1">No prior match results in database.</p>
+                    ) : (
+                        <div className="flex items-center gap-2 pt-1">
+                            {formA.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2" title={item.label}>
+                                    {renderBadge(item.result)}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Team B Form */}
@@ -97,17 +102,21 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                             </h4>
                         </div>
                         <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
-                            Last Five
+                            Last Five Matches
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                        {formB.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                                {renderBadge(item.result)}
-                            </div>
-                        ))}
-                    </div>
+                    {formB.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-1">No prior match results in database.</p>
+                    ) : (
+                        <div className="flex items-center gap-2 pt-1">
+                            {formB.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2" title={item.label}>
+                                    {renderBadge(item.result)}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
             </div>

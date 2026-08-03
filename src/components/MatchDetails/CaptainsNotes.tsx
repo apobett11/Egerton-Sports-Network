@@ -1,5 +1,4 @@
 import React from 'react';
-import { MessageSquare, Shield } from 'lucide-react';
 import type { Match } from '../../types';
 
 interface CaptainsNotesProps {
@@ -7,11 +6,10 @@ interface CaptainsNotesProps {
 }
 
 export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
-    const { teamA, teamB, lineups } = match;
+    const { teamA, teamB, lineups, captainNotesA, captainNotesB } = match;
 
-    // Find captain names if defined or fallback
-    const captainA = lineups?.teamA?.find(p => p.isCaptain)?.name || `${teamA.name} Captain`;
-    const captainB = lineups?.teamB?.find(p => p.isCaptain)?.name || `${teamB.name} Captain`;
+    const captainA = lineups?.teamA?.find(p => p.isCaptain)?.name || 'Team Captain';
+    const captainB = lineups?.teamB?.find(p => p.isCaptain)?.name || 'Team Captain';
 
     return (
         <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
@@ -21,11 +19,10 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                     Pre-Match Thoughts
                 </span>
                 <h3 className="text-base font-black text-gray-900 dark:text-white">
-                    Captain's Notes
+                    Captain's Notes (Stored Records)
                 </h3>
             </div>
 
-            {/* Single Card Split Vertically */}
             <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-150 dark:border-gray-800 shadow-md p-6 divide-y divide-gray-100 dark:divide-gray-800 space-y-6 transition-colors">
                 
                 {/* Captain A Note */}
@@ -45,7 +42,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                     </div>
 
                     <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 leading-relaxed italic bg-gray-50/60 dark:bg-gray-800/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                        "We've prepared rigorously throughout the week for this fixture. The squad is completely focused, hungry, and determined to perform at our absolute highest standard in front of our supporters."
+                        {captainNotesA ? `"${captainNotesA}"` : "No official captain's notes published in database for this fixture."}
                     </p>
                 </div>
 
@@ -66,7 +63,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                     </div>
 
                     <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 leading-relaxed italic bg-gray-50/60 dark:bg-gray-800/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                        "Derby matches always come down to tactical discipline and desire. We respect our opponents, but we are entering this contest with full confidence in our tactical game plan."
+                        {captainNotesB ? `"${captainNotesB}"` : "No official captain's notes published in database for this fixture."}
                     </p>
                 </div>
 

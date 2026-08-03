@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, HelpCircle } from 'lucide-react';
 import type { Match } from '../../types';
+import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 import { MatchHeader } from './MatchHeader';
 import { TabBar } from './TabBar';
@@ -28,8 +29,8 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     toggleFavorite
 }) => {
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
+    const [h2hRecords, setH2hRecords] = useState<Array<{ id: string; date: string; scoreA: number; scoreB: number; winner: string; venue: string }>>([]);
     
-    // Determine default tab based on match lifecycle state
     const isPreMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
     const [activeTab, setActiveTab] = useState<MatchDetailTabType>(isPreMatch ? 'squads' : 'overview');
 
@@ -37,6 +38,22 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
         setCurrentMatch(match);
         const preMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
         setActiveTab(preMatch ? 'squads' : 'overview');
+
+        // Fetch deep match details from database
+        ApiService.getMatchDetails(match.id).then((res) => {
+            if (res.data) {
+                setCurrentMatch(res.data);
+            }
+        });
+
+        // Fetch stored Head-to-Head records from database
+        if (match.teamA?.id && match.teamB?.id) {
+            ApiService.getHeadToHead(match.teamA.id, match.teamB.id).then((res) => {
+                if (res.data) {
+                    setH2hRecords(res.data);
+                }
+            });
+        }
     }, [match]);
 
     useEffect(() => {
@@ -128,42 +145,43 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                 return <MatchDetailsCard match={currentMatch} />;
 
             case 'h2h':
-                // Head-to-Head mock summary - exact original implementation preserved
                 return (
                     <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
                         <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors text-center">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">History</span>
                             <h4 className="text-xs font-extrabold text-gray-850 dark:text-gray-200 mt-1">
-                                Recent head-to-head records
+                                Historical Head-to-Head Matches
                             </h4>
                         </div>
 
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-[#1E1E1E] rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden transition-colors">
-                            {[
-                                { date: '12 Jan 2026', scoreA: 2, scoreB: 0, winner: match.teamA.name },
-                                { date: '19 Oct 2025', scoreA: 1, scoreB: 1, winner: 'Draw' },
-                                { date: '14 May 2025', scoreA: 0, scoreB: 2, winner: match.teamB.name },
-                            ].map((h2h, idx) => (
-                                <div key={idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold">
-                                    <div className="flex items-center gap-2 text-gray-400">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        <span>{h2h.date}</span>
-                                    </div>
+                        {h2hRecords.length === 0 ? (
+                            <div className="bg-white dark:bg-[#1E1E1E] p-8 rounded-xl border border-gray-150 dark:border-gray-800 text-center text-xs text-gray-400">
+                                No prior completed head-to-head fixtures recorded in the database between these two teams.
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-[#1E1E1E] rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden transition-colors">
+                                {h2hRecords.map((h2h) => (
+                                    <div key={h2h.id} className="flex items-center justify-between px-4 py-3 text-xs font-semibold">
+                                        <div className="flex items-center gap-2 text-gray-400">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>{h2h.date}</span>
+                                        </div>
 
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-gray-500 dark:text-gray-400">{match.teamA.shortName}</span>
-                                        <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-bold text-gray-800 dark:text-white">
-                                            {h2h.scoreA} - {h2h.scoreB}
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-gray-500 dark:text-gray-400">{currentMatch.teamA.shortName}</span>
+                                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-bold text-gray-800 dark:text-white">
+                                                {h2h.scoreA} - {h2h.scoreB}
+                                            </span>
+                                            <span className="text-gray-500 dark:text-gray-400">{currentMatch.teamB.shortName}</span>
+                                        </div>
+
+                                        <span className={`text-[10px] font-bold uppercase ${h2h.winner === 'Draw' ? 'text-gray-400' : 'text-emerald-600 dark:text-emerald-500'}`}>
+                                            {h2h.winner === 'Draw' ? 'Draw' : `${h2h.winner} Win`}
                                         </span>
-                                        <span className="text-gray-500 dark:text-gray-400">{match.teamB.shortName}</span>
                                     </div>
-
-                                    <span className={`text-[10px] font-bold uppercase ${h2h.winner === 'Draw' ? 'text-gray-400' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                                        {h2h.winner === 'Draw' ? 'Draw' : `${h2h.winner.split(' ').pop()} Win`}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
 
@@ -179,10 +197,10 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black/45 pb-10 transition-colors">
             <MatchHeader
-                match={match}
+                match={currentMatch}
                 onBack={onBack}
                 isFavorite={isFavorite}
-                onToggleFavorite={() => toggleFavorite(match.id)}
+                onToggleFavorite={() => toggleFavorite(currentMatch.id)}
             />
 
             <TabBar

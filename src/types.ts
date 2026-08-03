@@ -137,6 +137,20 @@ export interface Match {
   venue: string;
   referee: string;
   refereeId?: string;
+  assistantReferee1?: string;
+  assistantReferee1Id?: string;
+  assistantReferee2?: string;
+  assistantReferee2Id?: string;
+  fourthOfficial?: string;
+  fourthOfficialId?: string;
+  attendance?: number;
+  weather?: string;
+  matchday?: number;
+  season?: string;
+  homePenaltyScore?: number;
+  awayPenaltyScore?: number;
+  captainNotesA?: string;
+  captainNotesB?: string;
   verifiedByRefereeId?: string;
 }
 
