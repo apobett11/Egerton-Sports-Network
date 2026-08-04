@@ -49,44 +49,48 @@ export interface PostInteraction {
 }
 
 export interface ArticlePost {
-  id: string;
+  id: string; // UUID
   headline: string;
   subtitle?: string;
   body: string;
   category: ArticleCategory;
   timestamp: string;
   publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   isToday?: boolean;
   isYesterday?: boolean;
   isThisWeek?: boolean;
   isThisMonth?: boolean;
+  authorId?: string; // UUID references profiles(id)
   authorName: string;
   authorHandle?: string;
   authorAvatar?: string;
   isVerified?: boolean;
   roleBadge?: string;
   images?: string[];
+  imageStoragePath?: string;
   status: PostStatus;
   viewsCount: number;
-  matchId?: string;
+  matchId?: string; // UUID references fixtures(id)
   matchTitle?: string;
-  teamId?: string;
+  teamId?: string; // UUID references teams(id)
   teamName?: string;
-  competitionId?: string;
+  competitionId?: string; // UUID references competitions(id)
   competitionName?: string;
   disputeReason?: string;
   interactions?: PostInteraction;
 }
 
 export interface CurrentMatchEvent {
-  id: string;
+  id: string; // UUID
   competition: string;
-  competitionId?: string;
+  competitionId?: string; // UUID
   homeTeam: string;
-  homeTeamId?: string;
+  homeTeamId?: string; // UUID
   homeLogo?: string;
   awayTeam: string;
-  awayTeamId?: string;
+  awayTeamId?: string; // UUID
   awayLogo?: string;
   scoreHome: number;
   scoreAway: number;
@@ -136,6 +140,15 @@ export interface PerformanceMetrics {
 }
 
 export interface OptionItem {
-  id: string;
+  id: string; // UUID
   name: string;
+}
+
+export interface ProfileUser {
+  id: string; // UUID
+  firstName: string;
+  lastName: string;
+  email?: string;
+  role: string;
+  avatarUrl?: string;
 }

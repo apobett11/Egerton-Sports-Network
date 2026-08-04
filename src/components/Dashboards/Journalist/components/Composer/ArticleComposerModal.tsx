@@ -1,11 +1,12 @@
-import React from 'react';
-import { X, Send, Save, Image as ImageIcon, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Send, Save, Upload, CheckCircle2 } from 'lucide-react';
 import {
   ArticleCategory,
   ARTICLE_CATEGORY_LABELS,
   CurrentMatchEvent,
   OptionItem,
 } from '../../JournalistTypes';
+import { validateMediaFile } from '../../../../../lib/storageUtils';
 
 interface ArticleComposerModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ interface ArticleComposerModalProps {
   currentEvent: CurrentMatchEvent;
   editingArticleId: string | null;
   isSavingArticle: boolean;
-  handleSaveArticle: (isDraft: boolean) => void;
+  handleSaveArticle: (isDraft: boolean, imageFile?: File | null) => void;
   cardBg: string;
 }
 
@@ -54,7 +55,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
   composeCompetitionId,
   setComposeCompetitionId,
   composeImageUrl,
-  setComposeImageUrl,
+  setComposeImageUrl: _setComposeImageUrl,
   matches,
   competitions,
   teams,
@@ -64,10 +65,39 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
   handleSaveArticle,
   cardBg,
 }) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [fileValidationError, setFileValidationError] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const MAX_HEADLINE_LENGTH = 140;
   const headlineLength = composeHeadline.length;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileValidationError(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validation = validateMediaFile(file);
+      if (!validation.valid) {
+        setFileValidationError(validation.error || 'Invalid image file.');
+        setSelectedFile(null);
+        setFilePreview(null);
+        return;
+      }
+
+      setSelectedFile(file);
+      setFilePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFormSubmit = (isDraft: boolean) => {
+    if (!editingArticleId && !selectedFile && !composeImageUrl) {
+      setFileValidationError('An image upload to Supabase Storage is required to publish/draft an article.');
+      return;
+    }
+    handleSaveArticle(isDraft, selectedFile);
+  };
 
   return (
     <div
@@ -81,14 +111,14 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-black">
-              <Sparkles className="w-4 h-4" />
+              <Upload className="w-4 h-4" />
             </div>
             <div>
               <h3 id="compose-modal-title" className="font-extrabold text-base tracking-tight leading-none">
                 {editingArticleId ? 'Edit News Article' : 'Compose News Article'}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Publish live match reports, interviews, and campus breaking news.
+                Publish database-backed news stories with Supabase Storage image upload.
               </p>
             </div>
           </div>
@@ -169,7 +199,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
             {/* MATCH DROPDOWN */}
             <div>
               <label htmlFor="article-match-select" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
-                Associated Match
+                Associated Match (Fixture UUID)
               </label>
               <select
                 id="article-match-select"
@@ -189,7 +219,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
             {/* TEAM DROPDOWN */}
             <div>
               <label htmlFor="article-team-select" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
-                Associated Team
+                Associated Team (Team UUID)
               </label>
               <select
                 id="article-team-select"
@@ -210,7 +240,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
             {/* COMPETITION DROPDOWN */}
             <div>
               <label htmlFor="article-comp-select" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
-                Competition
+                Competition (Competition UUID)
               </label>
               <select
                 id="article-comp-select"
@@ -229,25 +259,58 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
             </div>
           </div>
 
-          {/* FEATURED IMAGE */}
-          <div>
-            <label htmlFor="article-image-input" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
-              Featured Image URL
+          {/* SUPABASE STORAGE FEATURED IMAGE UPLOAD (REQUIRED) */}
+          <div className="space-y-1.5">
+            <label htmlFor="article-file-upload" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px]">
+              Upload Featured Image to Supabase Storage <span className="text-rose-500">*</span>
             </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <ImageIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  id="article-image-input"
-                  type="url"
-                  value={composeImageUrl}
-                  onChange={(e) => setComposeImageUrl(e.target.value)}
-                  disabled={isSavingArticle}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+
+            <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-center space-y-2">
+              <input
+                id="article-file-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                disabled={isSavingArticle}
+                className="hidden"
+              />
+
+              <label
+                htmlFor="article-file-upload"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-extrabold text-xs cursor-pointer transition-colors border border-emerald-500/30"
+              >
+                <Upload className="w-4 h-4" />
+                <span>{selectedFile ? 'Change Image File' : 'Choose Image File'}</span>
+              </label>
+
+              {(filePreview || composeImageUrl) && (
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <img
+                    src={filePreview || composeImageUrl}
+                    alt="Preview"
+                    className="w-16 h-16 rounded-xl object-cover border border-emerald-500 shadow-sm"
+                  />
+                  <div className="text-left text-xs font-semibold">
+                    <p className="text-emerald-500 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> File Selected
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-mono truncate max-w-[200px]">
+                      {selectedFile?.name || composeImageUrl.split('/').pop()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!selectedFile && !composeImageUrl && (
+                <p className="text-[11px] text-slate-400">
+                  Must select a JPG, PNG or WEBP image file to upload into <code className="text-emerald-500 font-mono">news</code> Storage bucket.
+                </p>
+              )}
             </div>
+
+            {fileValidationError && (
+              <p className="text-xs text-rose-500 font-bold px-1">{fileValidationError}</p>
+            )}
           </div>
 
           {/* BODY CONTENT */}
@@ -261,7 +324,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
               disabled={isSavingArticle}
-              placeholder="Write the complete article content here..."
+              placeholder="Write full article body content..."
               className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
             />
           </div>
@@ -279,7 +342,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
 
             <button
               type="button"
-              onClick={() => handleSaveArticle(true)}
+              onClick={() => handleFormSubmit(true)}
               disabled={isSavingArticle}
               className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
@@ -289,7 +352,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
 
             <button
               type="button"
-              onClick={() => handleSaveArticle(false)}
+              onClick={() => handleFormSubmit(false)}
               disabled={isSavingArticle}
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-lg shadow-emerald-900/30 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../../../lib/supabase';
 import { ApiService } from '../../../../services/api';
 import {
   TabType,
@@ -9,15 +8,24 @@ import {
   PerformanceMetrics,
   OptionItem,
   NotificationItem,
+  ProfileUser,
 } from '../JournalistTypes';
 import {
+  INITIAL_PERFORMANCE,
+  INITIAL_NOTIFICATIONS,
   MOCK_MATCHES,
   MOCK_COMPETITIONS,
   MOCK_TEAMS,
-  INITIAL_ARTICLES,
-  INITIAL_PERFORMANCE,
-  INITIAL_NOTIFICATIONS,
 } from '../JournalistMockData';
+import {
+  getAuthenticatedProfile,
+  fetchNewsArticlesFromDB,
+  uploadImageToStorage,
+  createNewsArticleDB,
+  updateNewsArticleDB,
+  deleteNewsArticleDB,
+  calculateAnalyticsFromDB,
+} from '../lib/supabaseClient';
 
 export const useJournalistDashboard = () => {
   // Navigation & Theme State
@@ -27,16 +35,23 @@ export const useJournalistDashboard = () => {
     return saved ? saved === 'dark' : true;
   });
 
+  // Database Loading & Error States
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Authenticated Profile
+  const [currentUserProfile, setCurrentUserProfile] = useState<ProfileUser | null>(null);
+
   // Current Event State (The match the journalist is actively covering)
   const [matches, setMatches] = useState<CurrentMatchEvent[]>(MOCK_MATCHES);
   const [currentEvent, setCurrentEvent] = useState<CurrentMatchEvent>(MOCK_MATCHES[0]);
 
-  // Data Collections
+  // Data Collections (Database Driven)
   const [competitions, setCompetitions] = useState<OptionItem[]>(MOCK_COMPETITIONS);
   const [teams, setTeams] = useState<OptionItem[]>(MOCK_TEAMS);
-  const [articles, setArticles] = useState<ArticlePost[]>(INITIAL_ARTICLES);
+  const [articles, setArticles] = useState<ArticlePost[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [performanceMetrics] = useState<PerformanceMetrics>(INITIAL_PERFORMANCE);
+  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>(INITIAL_PERFORMANCE);
 
   // Modals & Drawers
   const [isMatchSelectorOpen, setIsMatchSelectorOpen] = useState<boolean>(false);
@@ -54,9 +69,9 @@ export const useJournalistDashboard = () => {
   const [composeHeadline, setComposeHeadline] = useState<string>('');
   const [composeSubtitle, setComposeSubtitle] = useState<string>('');
   const [composeBody, setComposeBody] = useState<string>('');
-  const [composeMatchId, setComposeMatchId] = useState<string>(currentEvent.id);
-  const [composeTeamId, setComposeTeamId] = useState<string>(currentEvent.homeTeamId || '');
-  const [composeCompetitionId, setComposeCompetitionId] = useState<string>(currentEvent.competitionId || '');
+  const [composeMatchId, setComposeMatchId] = useState<string>('');
+  const [composeTeamId, setComposeTeamId] = useState<string>('');
+  const [composeCompetitionId, setComposeCompetitionId] = useState<string>('');
   const [composeImageUrl, setComposeImageUrl] = useState<string>('');
   const [isSavingArticle, setIsSavingArticle] = useState<boolean>(false);
 
@@ -87,120 +102,90 @@ export const useJournalistDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch real database records from Supabase
-  useEffect(() => {
-    let isMounted = true;
-    const fetchDatabaseData = async () => {
-      try {
-        // Fetch Fixtures
-        const fixRes = await ApiService.getFixtures();
-        if (isMounted && fixRes.success && fixRes.data && fixRes.data.length > 0) {
-          const dbMatches: CurrentMatchEvent[] = fixRes.data.map((f) => ({
-            id: f.id,
-            competition: f.league || 'Egerton League',
-            competitionId: f.league,
-            homeTeam: f.teamA?.name || 'Home Team',
-            homeTeamId: f.teamA?.id,
-            homeLogo: f.teamA?.logo,
-            awayTeam: f.teamB?.name || 'Away Team',
-            awayTeamId: f.teamB?.id,
-            awayLogo: f.teamB?.logo,
-            scoreHome: f.scoreA ?? 0,
-            scoreAway: f.scoreB ?? 0,
-            status: (f.status as any) || 'UPCOMING',
-            minute: f.minute,
-            kickoff: f.time || '16:00',
-            time: f.time || 'Today',
-            venue: f.venue || 'Pavilion Grounds',
-          }));
-          setMatches(dbMatches);
-          if (dbMatches.length > 0) {
-            setCurrentEvent(dbMatches[0]);
-          }
-        }
-
-        // Fetch Leagues/Competitions
-        const leaguesRes = await ApiService.getLeagues();
-        if (isMounted && leaguesRes.success && leaguesRes.data && leaguesRes.data.length > 0) {
-          const dbComps: OptionItem[] = leaguesRes.data.map((l: any) => ({
-            id: l.id,
-            name: l.name,
-          }));
-          setCompetitions(dbComps);
-        }
-
-        // Fetch Teams
-        const teamsRes = await ApiService.getTeams();
-        if (isMounted && teamsRes.success && teamsRes.data && teamsRes.data.length > 0) {
-          const dbTeams: OptionItem[] = teamsRes.data.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-          }));
-          setTeams(dbTeams);
-        }
-
-        // Fetch News / Articles from Supabase
-        const { data: dbArticles, error: artErr } = await supabase
-          .from('news_articles')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (isMounted && !artErr && dbArticles && dbArticles.length > 0) {
-          const mappedArticles: ArticlePost[] = dbArticles.map((item: any) => ({
-            id: item.id,
-            headline: item.title,
-            subtitle: item.excerpt || '',
-            body: item.content || '',
-            category: (item.category as ArticleCategory) || 'match_report',
-            timestamp: item.published_at
-              ? new Date(item.published_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : 'Draft',
-            publishedAt: item.published_at || item.created_at,
-            isToday: true,
-            authorName: 'Alex Mercer',
-            authorHandle: '@alexmercer',
-            authorAvatar:
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-            isVerified: true,
-            roleBadge: 'Lead Sports Correspondent',
-            images: item.image_url ? [item.image_url] : [],
-            status: item.status === 'draft' ? 'draft' : item.status === 'disputed' ? 'disputed' : 'published',
-            viewsCount: item.views_count || 120,
-            matchId: item.fixture_id,
-            teamId: item.team_id,
-            competitionId: item.competition_id,
-            interactions: {
-              likesCount: 15,
-              repostsCount: 4,
-              commentsCount: 2,
-              viewsCount: item.views_count || 120,
-              bookmarksCount: 3,
-            },
-          }));
-
-          setArticles((prev) => {
-            const existingIds = new Set(mappedArticles.map((a) => a.id));
-            const uniqueMock = prev.filter((a) => !existingIds.has(a.id));
-            return [...mappedArticles, ...uniqueMock];
-          });
-        }
-      } catch (err) {
-        console.warn('Failed to load database records for Journalist dashboard:', err);
-      }
-    };
-
-    fetchDatabaseData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
   }, []);
+
+  // CENTRALIZED DATABASE FETCH (production single source of truth)
+  const loadDatabaseData = useCallback(async () => {
+    setIsLoadingData(true);
+    setLoadError(null);
+
+    try {
+      // 1. Resolve Authenticated User Profile
+      const prof = await getAuthenticatedProfile();
+      if (prof) {
+        setCurrentUserProfile(prof);
+      }
+
+      // 2. Fetch Fixtures
+      const fixRes = await ApiService.getFixtures();
+      if (fixRes.success && fixRes.data && fixRes.data.length > 0) {
+        const dbMatches: CurrentMatchEvent[] = fixRes.data.map((f) => ({
+          id: f.id,
+          competition: f.league || 'Egerton League',
+          competitionId: f.league,
+          homeTeam: f.teamA?.name || 'Home Team',
+          homeTeamId: f.teamA?.id,
+          homeLogo: f.teamA?.logo,
+          awayTeam: f.teamB?.name || 'Away Team',
+          awayTeamId: f.teamB?.id,
+          awayLogo: f.teamB?.logo,
+          scoreHome: f.scoreA ?? 0,
+          scoreAway: f.scoreB ?? 0,
+          status: (f.status as any) || 'UPCOMING',
+          minute: f.minute,
+          kickoff: f.time || '16:00',
+          time: f.time || 'Today',
+          venue: f.venue || 'Pavilion Grounds',
+        }));
+        setMatches(dbMatches);
+        if (dbMatches.length > 0) {
+          setCurrentEvent(dbMatches[0]);
+        }
+      }
+
+      // 3. Fetch Competitions
+      const leaguesRes = await ApiService.getLeagues();
+      if (leaguesRes.success && leaguesRes.data && leaguesRes.data.length > 0) {
+        const dbComps: OptionItem[] = leaguesRes.data.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+        }));
+        setCompetitions(dbComps);
+      }
+
+      // 4. Fetch Teams
+      const teamsRes = await ApiService.getTeams();
+      if (teamsRes.success && teamsRes.data && teamsRes.data.length > 0) {
+        const dbTeams: OptionItem[] = teamsRes.data.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+        }));
+        setTeams(dbTeams);
+      }
+
+      // 5. Fetch News Articles from production Database
+      const dbArticles = await fetchNewsArticlesFromDB();
+      setArticles(dbArticles);
+
+      // 6. Calculate Performance Analytics from production data
+      const analytics = await calculateAnalyticsFromDB(dbArticles);
+      setPerformanceMetrics(analytics);
+    } catch (err: any) {
+      console.error('Error loading Journalist Dashboard production data:', err);
+      setLoadError(err.message || 'Failed to connect to production database.');
+    } finally {
+      setIsLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDatabaseData();
+  }, [loadDatabaseData]);
 
   // Update current selected event (without page reload)
   const selectCurrentEvent = (match: CurrentMatchEvent) => {
@@ -212,7 +197,7 @@ export const useJournalistDashboard = () => {
     triggerToast(`Current Event updated to: ${match.homeTeam} vs ${match.awayTeam}`);
   };
 
-  // Open Compose Modal (either fresh or editing)
+  // Open Compose Modal (fresh or edit)
   const openComposeModal = (articleToEdit?: ArticlePost) => {
     if (articleToEdit) {
       setEditingArticleId(articleToEdit.id);
@@ -243,8 +228,8 @@ export const useJournalistDashboard = () => {
     setEditingArticleId(null);
   };
 
-  // Save Article (Draft or Published)
-  const handleSaveArticle = async (isDraftStatus: boolean) => {
+  // TRANSACTIONAL ARTICLE CREATION / EDITING WITH SUPABASE STORAGE
+  const handleSaveArticle = async (isDraftStatus: boolean, imageFile?: File | null) => {
     if (isSavingArticle) return;
     if (!composeHeadline.trim()) {
       triggerToast('Please enter an article headline.');
@@ -256,141 +241,92 @@ export const useJournalistDashboard = () => {
     }
 
     setIsSavingArticle(true);
+    let uploadedPublicUrl = composeImageUrl;
+    let uploadedPath = '';
 
-    const selectedMatch = matches.find((m) => m.id === composeMatchId) || currentEvent;
-    const selectedComp = competitions.find((c) => c.id === composeCompetitionId);
-    const selectedTeam = teams.find((t) => t.id === composeTeamId);
-
-    const articleStatus = isDraftStatus ? 'draft' : 'published';
-    const timestampText = isDraftStatus ? 'Draft' : 'Just now';
-    const slug = `${composeHeadline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now()}`;
-
-    // Attempt Supabase insert/update
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-
-      if (editingArticleId && !editingArticleId.startsWith('art-')) {
-        await supabase
-          .from('news_articles')
-          .update({
-            title: composeHeadline.trim(),
-            content: composeBody.trim(),
-            excerpt: composeSubtitle.trim() || composeBody.slice(0, 120).trim(),
-            status: articleStatus,
-            category: composeType,
-            image_url: composeImageUrl.trim() || null,
-            fixture_id: composeMatchId || null,
-            team_id: composeTeamId || null,
-            competition_id: composeCompetitionId || null,
-            published_at: isDraftStatus ? null : new Date().toISOString(),
-          })
-          .eq('id', editingArticleId);
-      } else {
-        await supabase.from('news_articles').insert({
-          title: composeHeadline.trim(),
-          slug,
-          content: composeBody.trim(),
-          excerpt: composeSubtitle.trim() || composeBody.slice(0, 120).trim(),
-          status: articleStatus,
-          category: composeType,
-          author_id: userId || null,
-          image_url: composeImageUrl.trim() || null,
-          fixture_id: composeMatchId || null,
-          team_id: composeTeamId || null,
-          competition_id: composeCompetitionId || null,
-          published_at: isDraftStatus ? null : new Date().toISOString(),
-        });
+      // Step 1: Upload image into Supabase Storage 'news' bucket if image file is selected
+      if (imageFile) {
+        triggerToast('Uploading featured image to Supabase Storage...');
+        const uploadRes = await uploadImageToStorage(imageFile);
+        uploadedPublicUrl = uploadRes.publicUrl;
+        uploadedPath = uploadRes.path;
       }
-    } catch (err) {
-      console.warn('Supabase database sync note:', err);
+
+      const articleStatus = isDraftStatus ? 'draft' : 'published';
+
+      // Step 2: Insert or Update in Database
+      if (editingArticleId) {
+        await updateNewsArticleDB(editingArticleId, {
+          title: composeHeadline,
+          excerpt: composeSubtitle,
+          content: composeBody,
+          category: composeType,
+          status: articleStatus,
+          imageUrl: uploadedPublicUrl,
+          fixtureId: composeMatchId || null,
+          teamId: composeTeamId || null,
+          competitionId: composeCompetitionId || null,
+        });
+        triggerToast(isDraftStatus ? 'Draft article updated in database.' : '🚀 Article published live!');
+      } else {
+        // Transactional insert: if insert fails, orphan image is deleted automatically inside createNewsArticleDB
+        await createNewsArticleDB({
+          title: composeHeadline,
+          excerpt: composeSubtitle,
+          content: composeBody,
+          category: composeType,
+          status: articleStatus,
+          authorId: currentUserProfile?.id || null,
+          imageUrl: uploadedPublicUrl,
+          imageStoragePath: uploadedPath,
+          fixtureId: composeMatchId || null,
+          teamId: composeTeamId || null,
+          competitionId: composeCompetitionId || null,
+        });
+        triggerToast(
+          isDraftStatus
+            ? 'Saved working draft to production database.'
+            : '🚀 Article published live to ESN Newsroom!'
+        );
+      }
+
+      // Step 3: Refresh centralized article list and analytics
+      const updatedArticles = await fetchNewsArticlesFromDB();
+      setArticles(updatedArticles);
+      const updatedAnalytics = await calculateAnalyticsFromDB(updatedArticles);
+      setPerformanceMetrics(updatedAnalytics);
+
+      closeComposeModal();
+      setActiveTab('articles');
+    } catch (err: any) {
+      console.error('Transactional article operation failed:', err);
+      triggerToast(`Operation Failed: ${err.message || 'Could not complete request.'}`);
+    } finally {
+      setIsSavingArticle(false);
     }
-
-    if (editingArticleId) {
-      setArticles((prev) =>
-        prev.map((art) =>
-          art.id === editingArticleId
-            ? {
-                ...art,
-                headline: composeHeadline.trim(),
-                subtitle: composeSubtitle.trim(),
-                body: composeBody.trim(),
-                category: composeType,
-                images: composeImageUrl.trim() ? [composeImageUrl.trim()] : art.images,
-                status: articleStatus,
-                matchId: composeMatchId,
-                matchTitle: `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`,
-                teamId: composeTeamId,
-                teamName: selectedTeam?.name || selectedMatch.homeTeam,
-                competitionId: composeCompetitionId,
-                competitionName: selectedComp?.name || selectedMatch.competition,
-                timestamp: timestampText,
-              }
-            : art
-        )
-      );
-      triggerToast(isDraftStatus ? 'Draft updated successfully.' : 'Article updated and published live!');
-    } else {
-      const newArticle: ArticlePost = {
-        id: `art_${Date.now()}`,
-        headline: composeHeadline.trim(),
-        subtitle: composeSubtitle.trim(),
-        body: composeBody.trim(),
-        category: composeType,
-        timestamp: timestampText,
-        publishedAt: new Date().toISOString(),
-        isToday: true,
-        authorName: 'Alex Mercer',
-        authorHandle: '@alexmercer',
-        authorAvatar:
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        isVerified: true,
-        roleBadge: 'Lead Sports Correspondent',
-        images: composeImageUrl.trim()
-          ? [composeImageUrl.trim()]
-          : ['https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80'],
-        status: articleStatus,
-        viewsCount: isDraftStatus ? 0 : 1,
-        matchId: composeMatchId,
-        matchTitle: `${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`,
-        teamId: composeTeamId,
-        teamName: selectedTeam?.name || selectedMatch.homeTeam,
-        competitionId: composeCompetitionId,
-        competitionName: selectedComp?.name || selectedMatch.competition,
-        interactions: {
-          likesCount: 0,
-          repostsCount: 0,
-          commentsCount: 0,
-          viewsCount: isDraftStatus ? 0 : 1,
-          bookmarksCount: 0,
-        },
-      };
-
-      setArticles((prev) => [newArticle, ...prev]);
-      triggerToast(
-        isDraftStatus
-          ? 'Saved article as working draft.'
-          : '🚀 Article published live to the ESN Newsroom!'
-      );
-    }
-
-    setIsSavingArticle(false);
-    closeComposeModal();
-    setActiveTab('articles');
   };
 
-  // Delete Draft Article
+  // TRANSACTIONAL ARTICLE DELETION
   const handleDeleteArticle = async (id: string) => {
+    const targetArticle = articles.find((a) => a.id === id);
+    if (!targetArticle) return;
+
     try {
-      await supabase.from('news_articles').delete().eq('id', id);
-    } catch (err) {
-      console.warn('Supabase delete error note:', err);
+      // Deletes database record first, then removes image from Storage bucket
+      await deleteNewsArticleDB(id, targetArticle.imageStoragePath);
+      triggerToast('Article deleted from database and Storage.');
+
+      const updatedArticles = await fetchNewsArticlesFromDB();
+      setArticles(updatedArticles);
+      const updatedAnalytics = await calculateAnalyticsFromDB(updatedArticles);
+      setPerformanceMetrics(updatedAnalytics);
+    } catch (err: any) {
+      console.error('Delete article failed:', err);
+      triggerToast(`Deletion failed: ${err.message}`);
     }
-    setArticles((prev) => prev.filter((a) => a.id !== id));
-    triggerToast('Draft article deleted.');
   };
 
-  // Open View Modal
   const handleViewArticle = (article: ArticlePost) => {
     setViewingArticle(article);
     setIsViewArticleModalOpen(true);
@@ -405,6 +341,10 @@ export const useJournalistDashboard = () => {
     setActiveTab,
     darkMode,
     setDarkMode,
+    isLoadingData,
+    loadError,
+    retryLoad: loadDatabaseData,
+    currentUserProfile,
     matches,
     currentEvent,
     selectCurrentEvent,

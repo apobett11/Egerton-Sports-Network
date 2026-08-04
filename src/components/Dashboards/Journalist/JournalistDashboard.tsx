@@ -7,6 +7,8 @@ import {
   Settings,
   Plus,
   CheckCircle2,
+  AlertTriangle,
+  RotateCw,
 } from 'lucide-react';
 import { useJournalistDashboard } from './hooks/useJournalistDashboard';
 import { JournalistHeader } from './components/Header/JournalistHeader';
@@ -26,6 +28,9 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     setActiveTab,
     darkMode,
     setDarkMode,
+    isLoadingData,
+    loadError,
+    retryLoad,
     matches,
     currentEvent,
     selectCurrentEvent,
@@ -83,6 +88,16 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
 
   return (
     <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 pb-24 md:pb-12`}>
+      {/* DATABASE LOADING OVERLAY */}
+      {isLoadingData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-3 shadow-2xl">
+            <div className="w-8 h-8 mx-auto border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-extrabold text-slate-200">Connecting to production Supabase database...</p>
+          </div>
+        </div>
+      )}
+
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 px-4 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-400/30">
@@ -90,7 +105,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         </div>
       )}
 
-      {/* HEADER (Profile, Notifications, Settings, Logout — No search) */}
+      {/* HEADER */}
       <JournalistHeader
         darkMode={darkMode}
         setDarkMode={setDarkMode}
@@ -101,9 +116,27 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         onLogout={onLogout}
       />
 
+      {/* DATABASE ERROR BANNER WITH RETRY */}
+      {loadError && (
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs font-bold text-rose-400">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>Database Query Notice: {loadError}</span>
+            </span>
+            <button
+              onClick={retryLoad}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold cursor-pointer transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <RotateCw className="w-3.5 h-3.5" /> Retry DB Fetch
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* MAIN CONTAINER (DESKTOP SIDEBAR + CONTENT) */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* DESKTOP SIDEBAR NAVIGATION (TASK 10) */}
+        {/* DESKTOP SIDEBAR NAVIGATION */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-20 space-y-4">
           <div className={`p-4 rounded-3xl border ${cardBg} space-y-2 shadow-xs`}>
             <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-500">
@@ -220,7 +253,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         </main>
       </div>
 
-      {/* TASK 7 — TWITTER/X STYLE FLOATING ACTION BUTTON (FAB) FOR COMPOSE */}
+      {/* FLOATING ACTION BUTTON (FAB) FOR COMPOSE */}
       <button
         onClick={() => openComposeModal()}
         aria-label="Compose Article"
@@ -231,7 +264,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         <span className="hidden md:inline font-extrabold tracking-tight">Compose</span>
       </button>
 
-      {/* TASK 10 — MOBILE BOTTOM NAVIGATION */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex items-center justify-around text-slate-400">
         <button
           onClick={() => setActiveTab('home')}
@@ -273,7 +306,6 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       </div>
 
       {/* MODALS */}
-      {/* 1. MATCH SELECTOR MODAL (Task 2 "See Other Games" popup) */}
       <MatchSelectorModal
         isOpen={isMatchSelectorOpen}
         onClose={() => setIsMatchSelectorOpen(false)}
@@ -283,7 +315,6 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         cardBg={cardBg}
       />
 
-      {/* 2. COMPOSE ARTICLE FLOATING POPUP MODAL (Task 7 & Task 8) */}
       <ArticleComposerModal
         isOpen={isComposeModalOpen}
         onClose={closeComposeModal}
@@ -313,7 +344,6 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         cardBg={cardBg}
       />
 
-      {/* 3. VIEW ARTICLE MODAL */}
       <ViewArticleModal
         isOpen={isViewArticleModalOpen}
         onClose={() => setIsViewArticleModalOpen(false)}
@@ -323,14 +353,12 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         cardBg={cardBg}
       />
 
-      {/* 4. PROFILE OVERLAY */}
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         cardBg={cardBg}
       />
 
-      {/* 5. SETTINGS OVERLAY */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -339,7 +367,6 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         cardBg={cardBg}
       />
 
-      {/* 6. NOTIFICATIONS OVERLAY */}
       <NotificationsModal
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
