@@ -62,16 +62,8 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     setComposeType,
     composeHeadline,
     setComposeHeadline,
-    composeSubtitle,
-    setComposeSubtitle,
     composeBody,
     setComposeBody,
-    composeMatchId,
-    setComposeMatchId,
-    composeTeamId,
-    setComposeTeamId,
-    composeCompetitionId,
-    setComposeCompetitionId,
     composeImageUrl,
     setComposeImageUrl,
     isSavingArticle,
@@ -225,7 +217,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
               performanceMetrics={performanceMetrics}
               articles={articles}
               onViewArticle={handleViewArticle}
-              triggerToast={triggerToast}
+              triggerToast={(msg) => triggerToast(msg)}
               cardBg={cardBg}
               hoverBg={hoverBg}
             />
@@ -322,22 +314,10 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         setComposeType={setComposeType}
         composeHeadline={composeHeadline}
         setComposeHeadline={setComposeHeadline}
-        composeSubtitle={composeSubtitle}
-        setComposeSubtitle={setComposeSubtitle}
         composeBody={composeBody}
         setComposeBody={setComposeBody}
-        composeMatchId={composeMatchId}
-        setComposeMatchId={setComposeMatchId}
-        composeTeamId={composeTeamId}
-        setComposeTeamId={setComposeTeamId}
-        composeCompetitionId={composeCompetitionId}
-        setComposeCompetitionId={setComposeCompetitionId}
         composeImageUrl={composeImageUrl}
         setComposeImageUrl={setComposeImageUrl}
-        matches={matches}
-        competitions={competitions}
-        teams={teams}
-        currentEvent={currentEvent}
         editingArticleId={editingArticleId}
         isSavingArticle={isSavingArticle}
         handleSaveArticle={handleSaveArticle}

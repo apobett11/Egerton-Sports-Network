@@ -175,7 +175,7 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
                 Compose Article
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pt-0.5">
-                Draft or publish news stories, match reports, and transfer rumours.
+                Draft or publish news stories, match previews, and transfer news.
               </p>
             </div>
           </div>
@@ -333,8 +333,9 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
                       {art.headline}
                     </h3>
 
+                    {/* AUTOMATICALLY GENERATED SHORT PREVIEW FROM ARTICLE BODY */}
                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                      {art.subtitle || art.body}
+                      {art.body.length > 140 ? `${art.body.slice(0, 140)}...` : art.body}
                     </p>
                   </div>
 
@@ -349,7 +350,7 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold">
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                    {art.competitionName || 'Egerton Sports'}
+                    By {art.authorName || 'Journalist'}
                   </span>
                   <span className="flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5 text-slate-400" /> {art.viewsCount || 0} views

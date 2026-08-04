@@ -1,39 +1,37 @@
 export type TabType = 'home' | 'articles' | 'analytics' | 'profile' | 'settings';
 
 export type ArticleCategory =
-  | 'match_report'
-  | 'transfer_rumour'
   | 'breaking_news'
+  | 'transfer_news'
+  | 'club_news'
+  | 'league_news'
+  | 'official_statement'
   | 'press_conference'
   | 'coach_interview'
   | 'player_interview'
   | 'injury_update'
   | 'match_preview'
   | 'match_review'
-  | 'opinion'
   | 'feature_story'
-  | 'league_news'
-  | 'club_news'
-  | 'official_statement'
+  | 'opinion'
   | 'other';
 
 export type PostStatus = 'published' | 'draft' | 'disputed';
 
 export const ARTICLE_CATEGORY_LABELS: Record<ArticleCategory, string> = {
-  match_report: 'Match Report',
-  transfer_rumour: 'Transfer Rumour',
   breaking_news: 'Breaking News',
+  transfer_news: 'Transfer News',
+  club_news: 'Club News',
+  league_news: 'League News',
+  official_statement: 'Official Statement',
   press_conference: 'Press Conference',
   coach_interview: 'Coach Interview',
   player_interview: 'Player Interview',
   injury_update: 'Injury Update',
   match_preview: 'Match Preview',
   match_review: 'Match Review',
-  opinion: 'Opinion',
   feature_story: 'Feature Story',
-  league_news: 'League News',
-  club_news: 'Club News',
-  official_statement: 'Official Statement',
+  opinion: 'Opinion',
   other: 'Other',
 };
 

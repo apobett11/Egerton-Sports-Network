@@ -85,7 +85,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
             <BookOpen className="w-6 h-6 text-emerald-500" /> Newsroom Articles Archive
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Manage your published press releases, working drafts, and match coverage.
+            Manage your published press releases, working drafts, and news stories.
           </p>
         </div>
 
@@ -245,8 +245,9 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
                     {post.headline}
                   </h3>
 
+                  {/* AUTOMATICALLY GENERATED PREVIEW FROM ARTICLE BODY */}
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                    {post.subtitle || post.body}
+                    {post.body.length > 140 ? `${post.body.slice(0, 140)}...` : post.body}
                   </p>
                 </div>
 
@@ -263,7 +264,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
               <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold">
                 <div className="flex items-center gap-4">
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    {post.competitionName || 'Egerton Sports'}
+                    By {post.authorName || 'Journalist'}
                   </span>
                   <span className="flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5 text-blue-500" /> {post.viewsCount || 0} views

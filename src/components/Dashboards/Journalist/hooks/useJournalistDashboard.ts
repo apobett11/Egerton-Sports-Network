@@ -42,7 +42,7 @@ export const useJournalistDashboard = () => {
   // Authenticated Profile
   const [currentUserProfile, setCurrentUserProfile] = useState<ProfileUser | null>(null);
 
-  // Current Event State (The match the journalist is actively covering)
+  // Current Event State
   const [matches, setMatches] = useState<CurrentMatchEvent[]>(MOCK_MATCHES);
   const [currentEvent, setCurrentEvent] = useState<CurrentMatchEvent>(MOCK_MATCHES[0]);
 
@@ -63,15 +63,11 @@ export const useJournalistDashboard = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Article Composer Form State
+  // Simplified Article Composer Form State
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
-  const [composeType, setComposeType] = useState<ArticleCategory>('match_report');
+  const [composeType, setComposeType] = useState<ArticleCategory>('breaking_news');
   const [composeHeadline, setComposeHeadline] = useState<string>('');
-  const [composeSubtitle, setComposeSubtitle] = useState<string>('');
   const [composeBody, setComposeBody] = useState<string>('');
-  const [composeMatchId, setComposeMatchId] = useState<string>('');
-  const [composeTeamId, setComposeTeamId] = useState<string>('');
-  const [composeCompetitionId, setComposeCompetitionId] = useState<string>('');
   const [composeImageUrl, setComposeImageUrl] = useState<string>('');
   const [isSavingArticle, setIsSavingArticle] = useState<boolean>(false);
 
@@ -109,7 +105,7 @@ export const useJournalistDashboard = () => {
     }, 4000);
   }, []);
 
-  // CENTRALIZED DATABASE FETCH (production single source of truth)
+  // CENTRALIZED DATABASE FETCH
   const loadDatabaseData = useCallback(async () => {
     setIsLoadingData(true);
     setLoadError(null);
@@ -190,9 +186,6 @@ export const useJournalistDashboard = () => {
   // Update current selected event (without page reload)
   const selectCurrentEvent = (match: CurrentMatchEvent) => {
     setCurrentEvent(match);
-    setComposeMatchId(match.id);
-    if (match.competitionId) setComposeCompetitionId(match.competitionId);
-    if (match.homeTeamId) setComposeTeamId(match.homeTeamId);
     setIsMatchSelectorOpen(false);
     triggerToast(`Current Event updated to: ${match.homeTeam} vs ${match.awayTeam}`);
   };
@@ -203,21 +196,13 @@ export const useJournalistDashboard = () => {
       setEditingArticleId(articleToEdit.id);
       setComposeType(articleToEdit.category);
       setComposeHeadline(articleToEdit.headline);
-      setComposeSubtitle(articleToEdit.subtitle || '');
       setComposeBody(articleToEdit.body);
-      setComposeMatchId(articleToEdit.matchId || currentEvent.id);
-      setComposeTeamId(articleToEdit.teamId || currentEvent.homeTeamId || '');
-      setComposeCompetitionId(articleToEdit.competitionId || currentEvent.competitionId || '');
       setComposeImageUrl(articleToEdit.images?.[0] || '');
     } else {
       setEditingArticleId(null);
-      setComposeType('match_report');
+      setComposeType('breaking_news');
       setComposeHeadline('');
-      setComposeSubtitle('');
       setComposeBody('');
-      setComposeMatchId(currentEvent.id);
-      setComposeTeamId(currentEvent.homeTeamId || '');
-      setComposeCompetitionId(currentEvent.competitionId || '');
       setComposeImageUrl('');
     }
     setIsComposeModalOpen(true);
@@ -245,7 +230,7 @@ export const useJournalistDashboard = () => {
     let uploadedPath = '';
 
     try {
-      // Step 1: Upload image into Supabase Storage 'news' bucket if image file is selected
+      // Step 1: Upload image into Supabase Storage 'news' bucket IF image file is selected (OPTIONAL)
       if (imageFile) {
         triggerToast('Uploading featured image to Supabase Storage...');
         const uploadRes = await uploadImageToStorage(imageFile);
@@ -254,35 +239,30 @@ export const useJournalistDashboard = () => {
       }
 
       const articleStatus = isDraftStatus ? 'draft' : 'published';
+      const autoExcerpt = composeBody.trim().slice(0, 140);
 
       // Step 2: Insert or Update in Database
       if (editingArticleId) {
         await updateNewsArticleDB(editingArticleId, {
           title: composeHeadline,
-          excerpt: composeSubtitle,
+          excerpt: autoExcerpt,
           content: composeBody,
           category: composeType,
           status: articleStatus,
           imageUrl: uploadedPublicUrl,
-          fixtureId: composeMatchId || null,
-          teamId: composeTeamId || null,
-          competitionId: composeCompetitionId || null,
         });
         triggerToast(isDraftStatus ? 'Draft article updated in database.' : '🚀 Article published live!');
       } else {
         // Transactional insert: if insert fails, orphan image is deleted automatically inside createNewsArticleDB
         await createNewsArticleDB({
           title: composeHeadline,
-          excerpt: composeSubtitle,
+          excerpt: autoExcerpt,
           content: composeBody,
           category: composeType,
           status: articleStatus,
           authorId: currentUserProfile?.id || null,
           imageUrl: uploadedPublicUrl,
           imageStoragePath: uploadedPath,
-          fixtureId: composeMatchId || null,
-          teamId: composeTeamId || null,
-          competitionId: composeCompetitionId || null,
         });
         triggerToast(
           isDraftStatus
@@ -313,7 +293,6 @@ export const useJournalistDashboard = () => {
     if (!targetArticle) return;
 
     try {
-      // Deletes database record first, then removes image from Storage bucket
       await deleteNewsArticleDB(id, targetArticle.imageStoragePath);
       triggerToast('Article deleted from database and Storage.');
 
@@ -377,16 +356,8 @@ export const useJournalistDashboard = () => {
     setComposeType,
     composeHeadline,
     setComposeHeadline,
-    composeSubtitle,
-    setComposeSubtitle,
     composeBody,
     setComposeBody,
-    composeMatchId,
-    setComposeMatchId,
-    composeTeamId,
-    setComposeTeamId,
-    composeCompetitionId,
-    setComposeCompetitionId,
     composeImageUrl,
     setComposeImageUrl,
     isSavingArticle,
