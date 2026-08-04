@@ -1,294 +1,315 @@
 import {
   ArticlePost,
-  AnonymousTip,
+  CurrentMatchEvent,
+  PerformanceMetrics,
+  OptionItem,
   NotificationItem,
-  JournalistAnalytics,
-  MatchHeroData,
-  JournalistRatingInfo
 } from './JournalistTypes';
 
-export const HERO_MATCH_LIVE: MatchHeroData = {
-  isLive: true,
-  homeTeam: 'Engineering FC',
-  awayTeam: 'Agriculture FC',
-  score: '2 – 1',
-  minute: "56'",
-  venue: 'Pavilion Main Pitch',
-  league: 'Egerton Premier League'
-};
+export const MOCK_MATCHES: CurrentMatchEvent[] = [
+  {
+    id: 'match-1',
+    competition: 'Egerton Premier League',
+    competitionId: 'comp-1',
+    homeTeam: 'Tatton FC',
+    homeTeamId: 'team-1',
+    homeLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+    awayTeam: 'Njoro City FC',
+    awayTeamId: 'team-2',
+    awayLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+    scoreHome: 2,
+    scoreAway: 1,
+    status: 'LIVE',
+    minute: "78'",
+    kickoff: '16:00 EAT',
+    time: 'Today, 4:00 PM',
+    venue: 'Pavilion Main Stadium',
+    countdown: '12m remaining',
+  },
+  {
+    id: 'match-2',
+    competition: 'Inter-Faculty Cup',
+    competitionId: 'comp-2',
+    homeTeam: 'Engineering XI',
+    homeTeamId: 'team-3',
+    homeLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+    awayTeam: 'Agriculture FC',
+    awayTeamId: 'team-4',
+    awayLogo: 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=100&auto=format&fit=crop&q=80',
+    scoreHome: 0,
+    scoreAway: 0,
+    status: 'LIVE',
+    minute: "34'",
+    kickoff: '16:30 EAT',
+    time: 'Today, 4:30 PM',
+    venue: 'Kilimo Grounds',
+    countdown: '11m to HT',
+  },
+  {
+    id: 'match-3',
+    competition: 'Egerton Premier League',
+    competitionId: 'comp-1',
+    homeTeam: 'Maragoli Strikers',
+    homeTeamId: 'team-5',
+    awayTeam: 'Medical Stars',
+    awayTeamId: 'team-6',
+    scoreHome: 0,
+    scoreAway: 0,
+    status: 'UPCOMING',
+    kickoff: '18:00 EAT',
+    time: 'Today, 6:00 PM',
+    venue: 'Pavilion Turf B',
+    countdown: 'Starts in 1h 45m',
+  },
+  {
+    id: 'match-4',
+    competition: 'Campus Championship',
+    competitionId: 'comp-3',
+    homeTeam: 'Computer Science FC',
+    homeTeamId: 'team-7',
+    awayTeam: 'Environmental Warriors',
+    awayTeamId: 'team-8',
+    scoreHome: 0,
+    scoreAway: 0,
+    status: 'UPCOMING',
+    kickoff: 'Tomorrow, 15:00',
+    time: 'Tomorrow, 3:00 PM',
+    venue: 'Njoro Grounds',
+    countdown: 'Tomorrow',
+  },
+  {
+    id: 'match-5',
+    competition: 'Egerton Premier League',
+    competitionId: 'comp-1',
+    homeTeam: 'Veterinary Lions',
+    homeTeamId: 'team-9',
+    awayTeam: 'Education Heroes',
+    awayTeamId: 'team-10',
+    scoreHome: 3,
+    scoreAway: 1,
+    status: 'FT',
+    kickoff: 'Yesterday',
+    time: 'Yesterday, 4:00 PM',
+    venue: 'Pavilion Main Stadium',
+  },
+];
 
-export const HERO_MATCH_NEXT: MatchHeroData = {
-  isLive: false,
-  homeTeam: 'Engineering FC',
-  awayTeam: 'Computer Science FC',
-  time: 'Tomorrow, 3:00 PM',
-  venue: 'Njoro Grounds',
-  league: 'Egerton Premier League'
-};
+export const MOCK_COMPETITIONS: OptionItem[] = [
+  { id: 'comp-1', name: 'Egerton Premier League' },
+  { id: 'comp-2', name: 'Inter-Faculty Cup' },
+  { id: 'comp-3', name: 'Campus Championship' },
+  { id: 'comp-4', name: 'East Africa Varsity Games' },
+];
 
-export const JOURNALIST_RATING_DATA: JournalistRatingInfo = {
-  rating: 4.8,
-  starCount: 5,
-  badgeText: 'Top 5% this month',
-  rankText: 'Lead Sports Correspondent #1'
-};
-
-export const TRENDING_TEAMS = [
-  { name: 'Tatton FC', league: 'Premier League', points: '28 pts', trend: '+3' },
-  { name: 'Engineering Strikers', league: 'Premier League', points: '25 pts', trend: '+1' },
-  { name: 'Maragoli FC', league: 'Championship', points: '22 pts', trend: '+4' }
+export const MOCK_TEAMS: OptionItem[] = [
+  { id: 'team-1', name: 'Tatton FC' },
+  { id: 'team-2', name: 'Njoro City FC' },
+  { id: 'team-3', name: 'Engineering XI' },
+  { id: 'team-4', name: 'Agriculture FC' },
+  { id: 'team-5', name: 'Maragoli Strikers' },
+  { id: 'team-6', name: 'Medical Stars' },
+  { id: 'team-7', name: 'Computer Science FC' },
+  { id: 'team-8', name: 'Environmental Warriors' },
 ];
 
 export const INITIAL_ARTICLES: ArticlePost[] = [
-  // TODAY'S JOURNALS
   {
-    id: 'post-today-1',
-    headline: 'BREAKING: Egerton Premier League Title Race Heats Up as Tatton FC Edge Njoro City 2-1!',
-    subtitle: 'A dramatic 88th-minute header sealed the victory at Pavilion Grounds.',
-    body: 'In a thrilling derby at Pavilion Grounds, Tatton FC secured a pivotal 2-1 victory over rivals Njoro City. Captain Brian Ombati delivered a masterclass performance, scoring early and assisting the match-winner in the 88th minute. With this result, Tatton move 3 points clear at the top of the ESN Premier League standings with 4 rounds remaining.',
+    id: 'art-1',
+    headline: 'BREAKING: Tatton FC Edge Njoro City 2-1 in Thrilling Derby Finish!',
+    subtitle: 'An 88th-minute header by Captain Ombati seals top spot in Egerton Premier League.',
+    body: 'In a packed Pavilion Stadium, Tatton FC snatched victory from the jaws of a draw against rivals Njoro City FC. With the match tied at 1-1 entering final minutes, Ombati rose highest to head home from a pinpoint corner kick, putting Tatton 3 points clear at the summit.',
     category: 'breaking_news',
-    timestamp: '18m ago',
-    isToday: true,
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    images: [
-      'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=800'
-    ],
-    status: 'published',
-    isPinned: true,
-    interactions: {
-      likesCount: 342,
-      repostsCount: 89,
-      commentsCount: 24,
-      viewsCount: 4890,
-      bookmarksCount: 67,
-      isLiked: true,
-      isReposted: false,
-      isBookmarked: true
-    },
-    comments: [
-      {
-        id: 'c1',
-        authorName: 'Coach Ochieng',
-        authorHandle: 'tatton_coach',
-        authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
-        isVerified: true,
-        timestamp: '12m ago',
-        content: 'Tactical discipline made the difference today. Proud of the boys! 🟢⚪'
-      },
-      {
-        id: 'c2',
-        authorName: 'Mercy Chebet',
-        authorHandle: 'chebet_sports',
-        authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
-        isVerified: false,
-        timestamp: '5m ago',
-        content: 'That 88th min goal was pure class! Best match of the semester.'
-      }
-    ]
-  },
-  {
-    id: 'post-today-2',
-    headline: 'MATCH REPORT: Egerton Falcons Basketball Dominate University Games Qualifiers 78-62',
-    subtitle: 'Kevin Omwamba dropped 32 points in a sensational MVP display.',
-    body: 'The Egerton Falcons basketball team showcased unstoppable offence against Nairobi Varsity, clinching their spot in the East Africa Inter-Varsity Championship. Omwamba sank six 3-pointers while controlling the defensive glass.',
-    category: 'match_report',
-    timestamp: '2h ago',
-    isToday: true,
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    images: [
-      'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1519766304817-4f37bda74a29?auto=format&fit=crop&q=80&w=800'
-    ],
-    status: 'published',
-    interactions: {
-      likesCount: 276,
-      repostsCount: 52,
-      commentsCount: 14,
-      viewsCount: 3410,
-      bookmarksCount: 42,
-      isLiked: true,
-      isReposted: true,
-      isBookmarked: true
-    }
-  },
-
-  // TODAY'S FLAGGED ARTICLE
-  {
-    id: 'post-disputed-today',
-    headline: '⚠ Transfer Rumours at Njoro FC',
-    subtitle: 'Alleged mid-season transfer negotiations with rival club.',
-    body: 'Reports emerged early today regarding potential player moves from Njoro FC.',
-    category: 'transfer_rumour',
-    timestamp: 'Flagged today',
-    isToday: true,
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    status: 'disputed',
-    isFlaggedToday: true,
-    disputeReason: 'Transfer not officially confirmed by Njoro FC Management.',
-    interactions: {
-      likesCount: 45,
-      repostsCount: 8,
-      commentsCount: 12,
-      viewsCount: 980,
-      bookmarksCount: 4
-    }
-  },
-
-  // OLDER JOURNALS (LOAD BELOW IN INFINITE SCROLL)
-  {
-    id: 'post-older-1',
-    headline: 'TRANSFER RUMOUR: Maragoli Strikers Target Campus Top Scorer Ahead of Mid-Season Window',
-    subtitle: 'Internal sources suggest a record scholarship swap deal.',
-    body: 'Scouts from Maragoli Strikers were spotted in the stands during Thursday\'s clash. Reliable campus insiders reveal talks are underway for a mid-season move. The transfer could mark one of the biggest player movements in Egerton ESN history.',
-    category: 'transfer_rumour',
-    timestamp: 'Yesterday',
-    isToday: false,
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    images: [
-      'https://images.unsplash.com/photo-1517649763962-0c623266010b?auto=format&fit=crop&q=80&w=800'
-    ],
-    status: 'published',
-    interactions: {
-      likesCount: 198,
-      repostsCount: 45,
-      commentsCount: 18,
-      viewsCount: 2310,
-      bookmarksCount: 31,
-      isLiked: false,
-      isReposted: true,
-      isBookmarked: false
-    }
-  },
-  {
-    id: 'post-older-2',
-    headline: 'PHOTO ESSAY: Egerton Women\'s Volleyball Squad Reaches Inter-Varsity Finals',
-    subtitle: 'High energy photos from the semi-final thriller against Kenyatta University.',
-    body: 'The Egerton Falcons volleyed their way to victory in a five-set thriller! Check out the action-packed match photos from today\'s semi-final.',
-    category: 'photo_story',
-    timestamp: '3 days ago',
-    isToday: false,
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    images: [
-      'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?auto=format&fit=crop&q=80&w=800',
-      'https://images.unsplash.com/photo-1592656670411-b9199081e64e?auto=format&fit=crop&q=80&w=800'
-    ],
-    status: 'published',
-    interactions: {
-      likesCount: 520,
-      repostsCount: 112,
-      commentsCount: 38,
-      viewsCount: 6420,
-      bookmarksCount: 94
-    }
-  }
-];
-
-export const DRAFT_ARTICLES: ArticlePost[] = [
-  {
-    id: 'draft-1',
-    headline: 'EXCLUSIVE: Interview with Egerton Basketball MVP Kevin Omwamba',
-    subtitle: 'Discussing championship goals and balancing academics with varsity sports.',
-    body: 'We sat down with Kevin Omwamba after his 32-point performance against Nairobi University...',
-    category: 'interview',
-    timestamp: 'Drafted 3h ago',
-    authorName: 'Alex Kiptoo',
-    authorHandle: 'kiptoo_esn',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    isVerified: true,
-    roleBadge: 'Lead ESN Journalist',
-    status: 'draft',
-    interactions: {
-      likesCount: 0, repostsCount: 0, commentsCount: 0, viewsCount: 0, bookmarksCount: 0
-    }
-  }
-];
-
-export const ANONYMOUS_TIPS: AnonymousTip[] = [
-  {
-    id: 'tip-1',
-    tipText: 'Maragoli FC wing wizard Dennis Omondi was seen training with Tatton FC fitness coaches at Kilimo Gym early this morning. Potential secret transfer?',
-    sourceCategory: 'Campus Insider',
     timestamp: '25m ago',
-    isRead: false,
-    isSaved: true,
-    matchContext: 'Mid-season Transfer Rumours'
+    publishedAt: new Date().toISOString(),
+    isToday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    images: ['https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80'],
+    status: 'published',
+    viewsCount: 1420,
+    matchId: 'match-1',
+    matchTitle: 'Tatton FC vs Njoro City FC',
+    teamId: 'team-1',
+    teamName: 'Tatton FC',
+    competitionId: 'comp-1',
+    competitionName: 'Egerton Premier League',
+    interactions: {
+      likesCount: 245,
+      repostsCount: 54,
+      commentsCount: 19,
+      viewsCount: 1420,
+      bookmarksCount: 38,
+    },
   },
   {
-    id: 'tip-2',
-    tipText: 'Main pitch floodlights maintenance is scheduled for Thursday 6 PM, which might force the night fixture between Engineering XI and Medical Stars to be moved to Friday.',
-    sourceCategory: 'Ref Squad',
-    timestamp: '2h ago',
-    isRead: false,
-    isSaved: false,
-    matchContext: 'Fixture Scheduling'
-  }
+    id: 'art-2',
+    headline: 'MATCH REPORT: Engineering XI and Agriculture FC Battle Out Goalless First Half',
+    subtitle: 'Tactical stalemate in Inter-Faculty Cup opening group clash.',
+    body: 'Both sides displayed rigorous defensive formations in the first half at Kilimo Grounds. Engineering XI registered 4 shots on target but failed to beat Agriculture keeper Otieno.',
+    category: 'match_report',
+    timestamp: '1h ago',
+    publishedAt: new Date().toISOString(),
+    isToday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    images: ['https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80'],
+    status: 'published',
+    viewsCount: 890,
+    matchId: 'match-2',
+    matchTitle: 'Engineering XI vs Agriculture FC',
+    teamId: 'team-3',
+    teamName: 'Engineering XI',
+    competitionId: 'comp-2',
+    competitionName: 'Inter-Faculty Cup',
+    interactions: {
+      likesCount: 112,
+      repostsCount: 18,
+      commentsCount: 7,
+      viewsCount: 890,
+      bookmarksCount: 14,
+    },
+  },
+  {
+    id: 'art-3',
+    headline: 'TRANSFER RUMOUR: Maragoli Strikers Target Campus Top Scorer Ahead of Window',
+    subtitle: 'Scouts spotted at Thursday match as mid-season talks accelerate.',
+    body: 'Reliable campus insiders report that Maragoli FC management has submitted an official query regarding player availability ahead of the mid-season transfer window.',
+    category: 'transfer_rumour',
+    timestamp: '3h ago',
+    publishedAt: new Date().toISOString(),
+    isToday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    images: ['https://images.unsplash.com/photo-1517649763962-0c623266010b?w=800&auto=format&fit=crop&q=80'],
+    status: 'published',
+    viewsCount: 2150,
+    teamId: 'team-5',
+    teamName: 'Maragoli Strikers',
+    competitionId: 'comp-1',
+    competitionName: 'Egerton Premier League',
+    interactions: {
+      likesCount: 310,
+      repostsCount: 88,
+      commentsCount: 42,
+      viewsCount: 2150,
+      bookmarksCount: 65,
+    },
+  },
+  {
+    id: 'art-4',
+    headline: 'COACH INTERVIEW: "Our Defensive Line Is Stronger Than Ever", Says Coach Ochieng',
+    subtitle: 'Exclusive post-training breakdown before the upcoming derby.',
+    body: 'In an exclusive sit-down at Kilimo Gym, Coach Ochieng shared insights into Tatton FC tactical preparation and squad fitness management.',
+    category: 'coach_interview',
+    timestamp: 'Yesterday',
+    publishedAt: new Date(Date.now() - 86400000).toISOString(),
+    isYesterday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    images: ['https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&fit=crop&q=80'],
+    status: 'published',
+    viewsCount: 3410,
+    teamId: 'team-1',
+    teamName: 'Tatton FC',
+    competitionId: 'comp-1',
+    competitionName: 'Egerton Premier League',
+    interactions: {
+      likesCount: 430,
+      repostsCount: 95,
+      commentsCount: 28,
+      viewsCount: 3410,
+      bookmarksCount: 82,
+    },
+  },
+  {
+    id: 'art-draft-1',
+    headline: 'INJURY UPDATE: Medical Stars Midfielder Cleared for Weekend Fixture',
+    subtitle: 'Scan results confirm minor ankle strain with full recovery expected.',
+    body: 'Medical staff have confirmed that star midfielder Kamau suffered only a low-grade strain and will resume light squad training this afternoon.',
+    category: 'injury_update',
+    timestamp: 'Drafted 2h ago',
+    publishedAt: new Date().toISOString(),
+    isToday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    status: 'draft',
+    viewsCount: 0,
+    teamId: 'team-6',
+    teamName: 'Medical Stars',
+    competitionId: 'comp-1',
+    competitionName: 'Egerton Premier League',
+  },
+  {
+    id: 'art-flagged-1',
+    headline: 'DISPUTED REPORT: Alleged Match Scheduling Conflict for Round 14',
+    subtitle: 'Notice issued by League Administration regarding date overlap.',
+    body: 'Controversy emerged earlier regarding fixture venues for upcoming Round 14 games across Pavilion and Njoro Grounds.',
+    category: 'league_news',
+    timestamp: 'Flagged today',
+    publishedAt: new Date().toISOString(),
+    isToday: true,
+    authorName: 'Alex Mercer',
+    authorHandle: '@alexmercer',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isVerified: true,
+    roleBadge: 'Lead Sports Correspondent',
+    status: 'disputed',
+    disputeReason: 'Pending official confirmation from FA Fixture Committee.',
+    viewsCount: 650,
+    competitionId: 'comp-1',
+    competitionName: 'Egerton Premier League',
+  },
 ];
 
-export const NOTIFICATIONS_DATA: NotificationItem[] = [
+export const INITIAL_PERFORMANCE: PerformanceMetrics = {
+  articlesToday: 3,
+  articlesThisWeek: 12,
+  articlesThisMonth: 48,
+  publishedCount: 42,
+  draftsCount: 5,
+  flaggedCount: 1,
+  impressions: 148500,
+  engagementRate: 7.8,
+  reads: 92400,
+  avgReadTime: '2m 18s',
+  shares: 3420,
+  topArticle: 'Tatton FC Edge Njoro City 2-1 in Derby Thriller',
+  topCompetition: 'Egerton Premier League',
+  mostCoveredTeam: 'Tatton FC',
+};
+
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
-    type: 'tip',
-    actorName: 'Anonymous Tipster',
-    message: 'submitted a new anonymous tip: "Maragoli FC wing wizard Dennis Omondi..."',
-    timestamp: '25m ago',
+    type: 'like',
+    actorName: 'Coach Ochieng',
+    targetArticleTitle: 'Tatton FC Edge Njoro City 2-1',
+    message: 'liked your breaking match report.',
+    timestamp: '15m ago',
     isRead: false,
-    timeGroup: 'Today'
   },
   {
     id: 'notif-2',
     type: 'dispute',
-    actorName: 'FA President',
-    targetArticleTitle: 'Transfer Rumours at Njoro FC',
-    message: 'flagged your article for administrative review.',
+    actorName: 'League Administrator',
+    targetArticleTitle: 'Alleged Match Scheduling Conflict',
+    message: 'flagged your article for administrative verification.',
     timestamp: '2h ago',
     isRead: false,
-    timeGroup: 'Today'
-  }
-];
-
-export const MOCK_ANALYTICS: JournalistAnalytics = {
-  totalImpressions: 142500,
-  articleViews: 89200,
-  engagementRate: 6.4,
-  profileVisits: 12300,
-  followersGrowth: 420,
-  reach: 32100,
-  shares: 3100,
-  avgReadingTime: '2m 14s',
-  bestPostingTime: '7:30 PM (Post Match Peak)',
-  topPerformingArticle: {
-    title: 'Tatton FC Edge Njoro City 2-1 in Derby Thriller',
-    impressions: 48900,
-    engagement: 9.2
   },
-  dailyMetrics: [
-    { day: 'Mon', views: 4200, engagement: 5.1 },
-    { day: 'Tue', views: 6800, engagement: 6.0 },
-    { day: 'Wed', views: 11200, engagement: 7.2 },
-    { day: 'Thu', views: 9500, engagement: 6.5 },
-    { day: 'Fri', views: 18400, engagement: 8.4 },
-    { day: 'Sat', views: 24500, engagement: 9.1 },
-    { day: 'Sun', views: 14600, engagement: 6.8 }
-  ]
-};
+];

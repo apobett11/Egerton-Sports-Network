@@ -1,20 +1,24 @@
 import React from 'react';
 import {
   Home,
-  Bell,
+  FileText,
   BarChart3,
   User,
   Settings,
   Plus,
   CheckCircle2,
-  X,
 } from 'lucide-react';
 import { useJournalistDashboard } from './hooks/useJournalistDashboard';
 import { JournalistHeader } from './components/Header/JournalistHeader';
 import { JournalistHomeView } from './components/Home/JournalistHomeView';
-import { ArticleComposerView } from './components/Composer/ArticleComposerView';
-import { TipsInboxView } from './components/Tips/TipsInboxView';
+import { JournalistArticlesView } from './components/Articles/JournalistArticlesView';
 import { JournalistAnalyticsView } from './components/Analytics/JournalistAnalyticsView';
+import { ArticleComposerModal } from './components/Composer/ArticleComposerModal';
+import { MatchSelectorModal } from './components/Modals/MatchSelectorModal';
+import { ViewArticleModal } from './components/Modals/ViewArticleModal';
+import { ProfileModal } from './components/Modals/ProfileModal';
+import { SettingsModal } from './components/Modals/SettingsModal';
+import { NotificationsModal } from './components/Modals/NotificationsModal';
 
 export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const {
@@ -22,336 +26,327 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     setActiveTab,
     darkMode,
     setDarkMode,
-    searchQuery,
-    setSearchQuery,
-    isMatchLive,
-    setIsMatchLive,
-    liveScoreA,
-    liveScoreB,
-    liveMatchStatusState,
-    liveMinuteState,
-    isEventComposerOpen,
-    setIsEventComposerOpen,
-    composerTarget,
-    setComposerTarget,
-    composerEventType,
-    setComposerEventType,
-    composerMinute,
-    setComposerMinute,
-    composerDetailText,
-    setComposerDetailText,
-    isSubmittingEvent,
+    matches,
+    currentEvent,
+    selectCurrentEvent,
+    competitions,
+    teams,
     articles,
-    drafts: _drafts,
-    tips,
-    notifications: _notifications,
-    ratingData,
+    notifications,
+    performanceMetrics,
+    isMatchSelectorOpen,
+    setIsMatchSelectorOpen,
+    isComposeModalOpen,
+    openComposeModal,
+    closeComposeModal,
+    isViewArticleModalOpen,
+    setIsViewArticleModalOpen,
+    viewingArticle,
+    handleViewArticle,
+    isProfileOpen,
+    setIsProfileOpen,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    isNotificationsOpen,
+    setIsNotificationsOpen,
     toastMessage,
     triggerToast,
-    composerTitle,
-    setComposerTitle,
-    composerCategory,
-    setComposerCategory,
-    composerExcerpt,
-    setComposerExcerpt,
-    composerContent,
-    setComposerContent,
-    composerImageUrl,
-    setComposerImageUrl,
-    composerTagsInput,
-    setComposerTagsInput,
-    composerIsBreaking,
-    setComposerIsBreaking,
+    // Form state
     editingArticleId,
-    hasRecoveredDraft,
+    composeType,
+    setComposeType,
+    composeHeadline,
+    setComposeHeadline,
+    composeSubtitle,
+    setComposeSubtitle,
+    composeBody,
+    setComposeBody,
+    composeMatchId,
+    setComposeMatchId,
+    composeTeamId,
+    setComposeTeamId,
+    composeCompetitionId,
+    setComposeCompetitionId,
+    composeImageUrl,
+    setComposeImageUrl,
     isSavingArticle,
-    handlePublishMatchEvent,
     handleSaveArticle,
-    handleEditDraft: _handleEditDraft,
-    handleDeleteDraft: _handleDeleteDraft,
-    handleConvertTipToDraft,
-    handleClaimTip,
-    handleMarkNotificationRead: _handleMarkNotificationRead,
-    handleMarkAllNotificationsRead: _handleMarkAllNotificationsRead,
-    filteredArticles: _filteredArticles,
-    unreadNotificationsCount,
-    HERO_MATCH_LIVE,
-    HERO_MATCH_NEXT,
-    TRENDING_TEAMS,
-    MOCK_ANALYTICS,
+    handleDeleteArticle,
+    handleMarkNotificationRead,
   } = useJournalistDashboard();
 
-  const bgClass = darkMode ? 'bg-[#0B0F17] text-slate-100' : 'bg-[#F6F8FA] text-slate-800';
-  const cardBg = darkMode ? 'bg-[#141A24] border-slate-800' : 'bg-white border-[#D9E2EC] shadow-sm';
-  const hoverBg = darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50';
+  const bgClass = darkMode ? 'bg-[#0B0F17] text-slate-100' : 'bg-[#F6F8FA] text-slate-900';
+  const cardBg = darkMode ? 'bg-[#141A24] border-slate-800' : 'bg-white border-[#D9E2EC] shadow-xs';
+  const hoverBg = darkMode ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50';
 
-  const todayArticles = articles.filter((a) => a.isToday || a.timestamp === 'Just now');
-  const todayFlaggedArticles = articles.filter((a) => a.status === 'disputed');
-  const olderArticles = articles.filter((a) => !a.isToday && a.timestamp !== 'Just now');
-
-  const getFilteredArticles = (postList: typeof articles) => {
-    if (!searchQuery.trim()) return postList;
-    const q = searchQuery.toLowerCase();
-    return postList.filter(
-      (a) => a.headline.toLowerCase().includes(q) || a.body.toLowerCase().includes(q)
-    );
-  };
+  const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 pb-16`}>
+    <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 pb-24 md:pb-12`}>
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 px-5 py-3 bg-[#148A54] text-white rounded-2xl text-xs font-black shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-400/30">
+        <div className="fixed top-20 right-6 z-50 px-4 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-400/30">
           <CheckCircle2 className="w-4 h-4" /> {toastMessage}
         </div>
       )}
 
-      {/* STICKY HEADER */}
+      {/* HEADER (Profile, Notifications, Settings, Logout — No search) */}
       <JournalistHeader
         darkMode={darkMode}
         setDarkMode={setDarkMode}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         unreadNotificationsCount={unreadNotificationsCount}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={onLogout}
       />
 
-      {/* RESPONSIVE LAYOUT CONTAINER */}
+      {/* MAIN CONTAINER (DESKTOP SIDEBAR + CONTENT) */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT SIDEBAR (DESKTOP) */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-22 space-y-4">
-          <div className={`p-4 rounded-2xl border ${cardBg} space-y-2`}>
-            <div className="px-3 py-2 text-[11px] font-black uppercase tracking-wider text-[#148A54]">
-              Navigation Menu
+        {/* DESKTOP SIDEBAR NAVIGATION (TASK 10) */}
+        <aside className="hidden lg:block lg:col-span-3 sticky top-20 space-y-4">
+          <div className={`p-4 rounded-3xl border ${cardBg} space-y-2 shadow-xs`}>
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-500">
+              Newsroom Navigation
             </div>
 
             <nav className="space-y-1 font-bold text-xs">
+              {/* HOME */}
               <button
                 onClick={() => setActiveTab('home')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
                   activeTab === 'home'
-                    ? 'bg-[#148A54] text-white shadow-xs'
-                    : darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    : darkMode
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <Home className="w-4 h-4" />
-                <span>Home Timeline</span>
+                <span>Home Newsroom</span>
               </button>
 
+              {/* ARTICLES */}
               <button
-                onClick={() => setActiveTab('compose')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === 'compose'
-                    ? 'bg-[#148A54] text-white shadow-xs'
-                    : darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
+                onClick={() => setActiveTab('articles')}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
+                  activeTab === 'articles'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    : darkMode
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                <Plus className="w-4 h-4" />
-                <span>Compose Article</span>
+                <FileText className="w-4 h-4" />
+                <span>My Articles Archive</span>
               </button>
 
-              <button
-                onClick={() => setActiveTab('notifications')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === 'notifications'
-                    ? 'bg-[#148A54] text-white shadow-xs'
-                    : darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Bell className="w-4 h-4" />
-                <span>Anonymous Tips Inbox</span>
-              </button>
-
+              {/* ANALYTICS */}
               <button
                 onClick={() => setActiveTab('analytics')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
                   activeTab === 'analytics'
-                    ? 'bg-[#148A54] text-white shadow-xs'
-                    : darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    : darkMode
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
-                <span>Journalist Performance</span>
+                <span>Journalist Analytics</span>
               </button>
 
+              {/* PROFILE */}
               <button
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                onClick={() => setIsProfileOpen(true)}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
                   darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                <User className="w-4 h-4" />
-                <span>Press Profile & Portfolio</span>
+                <User className="w-4 h-4 text-emerald-500" />
+                <span>Press Credentials</span>
               </button>
 
+              {/* SETTINGS */}
               <button
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                onClick={() => setIsSettingsOpen(true)}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
                   darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <Settings className="w-4 h-4" />
-                <span>Journalist Settings</span>
+                <span>Newsroom Settings</span>
               </button>
             </nav>
           </div>
         </aside>
 
-        {/* MAIN FEED CONTENT */}
+        {/* MAIN VIEW FEED */}
         <main className="lg:col-span-9 space-y-6">
           {activeTab === 'home' && (
             <JournalistHomeView
+              currentEvent={currentEvent}
+              onOpenMatchSelector={() => setIsMatchSelectorOpen(true)}
+              onOpenCompose={() => openComposeModal()}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              performanceMetrics={performanceMetrics}
+              articles={articles}
+              onViewArticle={handleViewArticle}
+              triggerToast={triggerToast}
               cardBg={cardBg}
               hoverBg={hoverBg}
-              isMatchLive={isMatchLive}
-              setIsMatchLive={setIsMatchLive}
-              liveMatchStatusState={liveMatchStatusState}
-              liveMinuteState={liveMinuteState}
-              liveScoreA={liveScoreA}
-              liveScoreB={liveScoreB}
-              setIsEventComposerOpen={setIsEventComposerOpen}
-              HERO_MATCH_LIVE={HERO_MATCH_LIVE}
-              HERO_MATCH_NEXT={HERO_MATCH_NEXT}
-              TRENDING_TEAMS={TRENDING_TEAMS}
-              todayArticles={todayArticles}
-              todayFlaggedArticles={todayFlaggedArticles}
-              olderArticles={olderArticles}
-              getFilteredArticles={getFilteredArticles}
-              triggerToast={triggerToast}
-              setComposeHeadline={setComposerTitle}
-              setComposeBody={setComposerContent}
-              setIsComposeOpen={() => setActiveTab('compose')}
             />
           )}
 
-          {activeTab === 'compose' && (
-            <ArticleComposerView
+          {activeTab === 'articles' && (
+            <JournalistArticlesView
+              articles={articles}
+              competitions={competitions}
+              teams={teams}
+              onOpenCompose={openComposeModal}
+              onViewArticle={handleViewArticle}
+              onDeleteArticle={handleDeleteArticle}
               cardBg={cardBg}
-              composerTitle={composerTitle}
-              setComposerTitle={setComposerTitle}
-              composerCategory={composerCategory}
-              setComposerCategory={setComposerCategory}
-              composerExcerpt={composerExcerpt}
-              setComposerExcerpt={setComposerExcerpt}
-              composerContent={composerContent}
-              setComposerContent={setComposerContent}
-              composerImageUrl={composerImageUrl}
-              setComposerImageUrl={setComposerImageUrl}
-              composerTagsInput={composerTagsInput}
-              setComposerTagsInput={setComposerTagsInput}
-              composerIsBreaking={composerIsBreaking}
-              setComposerIsBreaking={setComposerIsBreaking}
-              editingArticleId={editingArticleId}
-              handleSaveArticle={handleSaveArticle}
-              hasRecoveredDraft={hasRecoveredDraft}
-              isSavingArticle={isSavingArticle}
-            />
-          )}
-
-          {activeTab === 'notifications' && (
-            <TipsInboxView
-              cardBg={cardBg}
-              tips={tips}
-              handleClaimTip={handleClaimTip}
-              handleConvertTipToDraft={handleConvertTipToDraft}
+              hoverBg={hoverBg}
             />
           )}
 
           {activeTab === 'analytics' && (
             <JournalistAnalyticsView
+              metrics={performanceMetrics}
               cardBg={cardBg}
-              ratingData={ratingData}
-              analytics={MOCK_ANALYTICS}
             />
           )}
         </main>
       </div>
 
-      {/* EVENT COMPOSER MODAL */}
-      {isEventComposerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="event-composer-title">
-          <div className={`w-full max-w-md ${cardBg} p-6 rounded-2xl shadow-2xl space-y-4`}>
-            <div className="flex items-center justify-between border-b border-gray-700 pb-3">
-              <h3 id="event-composer-title" className="font-black text-sm text-white">Broadcast Live Match Event</h3>
-              <button
-                onClick={() => setIsEventComposerOpen(false)}
-                aria-label="Close modal"
-                className="p-2 text-gray-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* TASK 7 — TWITTER/X STYLE FLOATING ACTION BUTTON (FAB) FOR COMPOSE */}
+      <button
+        onClick={() => openComposeModal()}
+        aria-label="Compose Article"
+        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 z-40 p-4 md:px-5 md:py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-2xl shadow-emerald-900/50 flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 border border-emerald-400/40"
+        title="Compose Article"
+      >
+        <Plus className="w-5 h-5 md:w-6 md:h-6" />
+        <span className="hidden md:inline font-extrabold tracking-tight">Compose</span>
+      </button>
 
-            <form onSubmit={handlePublishMatchEvent} className="space-y-4 text-xs font-semibold">
-              <div>
-                <label htmlFor="composer-target-select" className="block text-gray-400 uppercase font-bold mb-1">Target Team</label>
-                <select
-                  id="composer-target-select"
-                  value={composerTarget}
-                  onChange={(e) => setComposerTarget(e.target.value as any)}
-                  className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                >
-                  <option value="home">Home ({HERO_MATCH_LIVE.homeTeam})</option>
-                  <option value="away">Away ({HERO_MATCH_LIVE.awayTeam})</option>
-                  <option value="match">Match Event</option>
-                </select>
-              </div>
+      {/* TASK 10 — MOBILE BOTTOM NAVIGATION */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex items-center justify-around text-slate-400">
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            activeTab === 'home' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+          }`}
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Home</span>
+        </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="composer-type-select" className="block text-gray-400 uppercase font-bold mb-1">Event Type</label>
-                  <select
-                    id="composer-type-select"
-                    value={composerEventType}
-                    onChange={(e) => setComposerEventType(e.target.value as any)}
-                    className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                  >
-                    <option value="goal">Goal ⚽</option>
-                    <option value="yellow">Yellow Card 🟨</option>
-                    <option value="red">Red Card 🟥</option>
-                    <option value="sub">Substitution 🔄</option>
-                    <option value="ht">Half Time (HT)</option>
-                    <option value="ft">Full Time (FT)</option>
-                  </select>
-                </div>
+        <button
+          onClick={() => setActiveTab('articles')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            activeTab === 'articles' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Articles</span>
+        </button>
 
-                <div>
-                  <label htmlFor="composer-minute-input" className="block text-gray-400 uppercase font-bold mb-1">Match Minute</label>
-                  <input
-                    id="composer-minute-input"
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={composerMinute}
-                    onChange={(e) => setComposerMinute(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                  />
-                </div>
-              </div>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+            activeTab === 'analytics' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+          }`}
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Analytics</span>
+        </button>
 
-              <div>
-                <label htmlFor="composer-detail-input" className="block text-gray-400 uppercase font-bold mb-1">Event Detail Description</label>
-                <input
-                  id="composer-detail-input"
-                  type="text"
-                  value={composerDetailText}
-                  onChange={(e) => setComposerDetailText(e.target.value)}
-                  placeholder="e.g. Scored by #10 Striker from 20 yards"
-                  className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                />
-              </div>
+        <button
+          onClick={() => setIsProfileOpen(true)}
+          className="flex flex-col items-center gap-1 cursor-pointer hover:text-slate-200 transition-colors"
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Profile</span>
+        </button>
+      </div>
 
-              <button
-                type="submit"
-                disabled={isSubmittingEvent}
-                className="w-full py-3 rounded-xl bg-[#148A54] hover:bg-[#107244] text-white font-black text-xs shadow-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-              >
-                Broadcast Event to Feed
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* MODALS */}
+      {/* 1. MATCH SELECTOR MODAL (Task 2 "See Other Games" popup) */}
+      <MatchSelectorModal
+        isOpen={isMatchSelectorOpen}
+        onClose={() => setIsMatchSelectorOpen(false)}
+        matches={matches}
+        currentEventId={currentEvent.id}
+        onSelectMatch={selectCurrentEvent}
+        cardBg={cardBg}
+      />
+
+      {/* 2. COMPOSE ARTICLE FLOATING POPUP MODAL (Task 7 & Task 8) */}
+      <ArticleComposerModal
+        isOpen={isComposeModalOpen}
+        onClose={closeComposeModal}
+        composeType={composeType}
+        setComposeType={setComposeType}
+        composeHeadline={composeHeadline}
+        setComposeHeadline={setComposeHeadline}
+        composeSubtitle={composeSubtitle}
+        setComposeSubtitle={setComposeSubtitle}
+        composeBody={composeBody}
+        setComposeBody={setComposeBody}
+        composeMatchId={composeMatchId}
+        setComposeMatchId={setComposeMatchId}
+        composeTeamId={composeTeamId}
+        setComposeTeamId={setComposeTeamId}
+        composeCompetitionId={composeCompetitionId}
+        setComposeCompetitionId={setComposeCompetitionId}
+        composeImageUrl={composeImageUrl}
+        setComposeImageUrl={setComposeImageUrl}
+        matches={matches}
+        competitions={competitions}
+        teams={teams}
+        currentEvent={currentEvent}
+        editingArticleId={editingArticleId}
+        isSavingArticle={isSavingArticle}
+        handleSaveArticle={handleSaveArticle}
+        cardBg={cardBg}
+      />
+
+      {/* 3. VIEW ARTICLE MODAL */}
+      <ViewArticleModal
+        isOpen={isViewArticleModalOpen}
+        onClose={() => setIsViewArticleModalOpen(false)}
+        article={viewingArticle}
+        onEdit={(art) => openComposeModal(art)}
+        onDelete={(id) => handleDeleteArticle(id)}
+        cardBg={cardBg}
+      />
+
+      {/* 4. PROFILE OVERLAY */}
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        cardBg={cardBg}
+      />
+
+      {/* 5. SETTINGS OVERLAY */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        cardBg={cardBg}
+      />
+
+      {/* 6. NOTIFICATIONS OVERLAY */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        notifications={notifications}
+        onMarkRead={handleMarkNotificationRead}
+        cardBg={cardBg}
+      />
     </div>
   );
 };

@@ -1,10 +1,41 @@
-export type TabType = 'home' | 'compose' | 'notifications' | 'analytics' | 'profile' | 'settings';
+export type TabType = 'home' | 'articles' | 'analytics' | 'profile' | 'settings';
 
-export type ProfileTabType = 'published' | 'media' | 'drafts' | 'flagged' | 'analytics' | 'bookmarks';
+export type ArticleCategory =
+  | 'match_report'
+  | 'transfer_rumour'
+  | 'breaking_news'
+  | 'press_conference'
+  | 'coach_interview'
+  | 'player_interview'
+  | 'injury_update'
+  | 'match_preview'
+  | 'match_review'
+  | 'opinion'
+  | 'feature_story'
+  | 'league_news'
+  | 'club_news'
+  | 'official_statement'
+  | 'other';
 
-export type ArticleCategory = 'match_report' | 'transfer_rumour' | 'interview' | 'breaking_news' | 'photo_story' | 'opinion';
+export type PostStatus = 'published' | 'draft' | 'disputed';
 
-export type PostStatus = 'published' | 'draft' | 'failed' | 'disputed';
+export const ARTICLE_CATEGORY_LABELS: Record<ArticleCategory, string> = {
+  match_report: 'Match Report',
+  transfer_rumour: 'Transfer Rumour',
+  breaking_news: 'Breaking News',
+  press_conference: 'Press Conference',
+  coach_interview: 'Coach Interview',
+  player_interview: 'Player Interview',
+  injury_update: 'Injury Update',
+  match_preview: 'Match Preview',
+  match_review: 'Match Review',
+  opinion: 'Opinion',
+  feature_story: 'Feature Story',
+  league_news: 'League News',
+  club_news: 'Club News',
+  official_statement: 'Official Statement',
+  other: 'Other',
+};
 
 export interface PostInteraction {
   likesCount: number;
@@ -17,16 +48,6 @@ export interface PostInteraction {
   isBookmarked?: boolean;
 }
 
-export interface Comment {
-  id: string;
-  authorName: string;
-  authorHandle: string;
-  authorAvatar: string;
-  isVerified?: boolean;
-  timestamp: string;
-  content: string;
-}
-
 export interface ArticlePost {
   id: string;
   headline: string;
@@ -34,45 +55,53 @@ export interface ArticlePost {
   body: string;
   category: ArticleCategory;
   timestamp: string;
+  publishedAt?: string;
   isToday?: boolean;
+  isYesterday?: boolean;
+  isThisWeek?: boolean;
+  isThisMonth?: boolean;
   authorName: string;
-  authorHandle: string;
-  authorAvatar: string;
-  isVerified: boolean;
-  roleBadge: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  isVerified?: boolean;
+  roleBadge?: string;
   images?: string[];
-  videoThumbnail?: string;
   status: PostStatus;
-  isPinned?: boolean;
+  viewsCount: number;
+  matchId?: string;
+  matchTitle?: string;
+  teamId?: string;
+  teamName?: string;
+  competitionId?: string;
+  competitionName?: string;
   disputeReason?: string;
-  flaggedDate?: string;
-  isFlaggedToday?: boolean;
-  interactions: PostInteraction;
-  comments?: Comment[];
+  interactions?: PostInteraction;
 }
 
-export interface MatchHeroData {
-  isLive: boolean;
+export interface CurrentMatchEvent {
+  id: string;
+  competition: string;
+  competitionId?: string;
   homeTeam: string;
+  homeTeamId?: string;
+  homeLogo?: string;
   awayTeam: string;
-  score?: string;
+  awayTeamId?: string;
+  awayLogo?: string;
+  scoreHome: number;
+  scoreAway: number;
+  status: 'LIVE' | 'HT' | 'FT' | 'UPCOMING';
   minute?: string;
-  time?: string;
-  venue?: string;
-  league?: string;
-}
-
-export interface JournalistRatingInfo {
-  rating: number;
-  starCount: number;
-  badgeText: string;
-  rankText: string;
+  kickoff: string;
+  time: string;
+  venue: string;
+  countdown?: string;
 }
 
 export interface AnonymousTip {
   id: string;
   tipText: string;
-  sourceCategory: 'Player' | 'Fan' | 'Ref Squad' | 'Campus Insider';
+  sourceCategory: string;
   timestamp: string;
   isRead: boolean;
   isSaved: boolean;
@@ -83,53 +112,30 @@ export interface NotificationItem {
   id: string;
   type: 'like' | 'repost' | 'comment' | 'follower' | 'tip' | 'dispute' | 'mention';
   actorName: string;
-  actorHandle?: string;
-  actorAvatar?: string;
   targetArticleTitle?: string;
   message: string;
   timestamp: string;
   isRead: boolean;
-  timeGroup: 'Today' | 'Yesterday' | 'Earlier';
 }
 
-export interface JournalistAnalytics {
-  totalImpressions: number;
-  articleViews: number;
+export interface PerformanceMetrics {
+  articlesToday: number;
+  articlesThisWeek: number;
+  articlesThisMonth: number;
+  publishedCount: number;
+  draftsCount: number;
+  flaggedCount: number;
+  impressions: number;
   engagementRate: number;
-  profileVisits: number;
-  followersGrowth: number;
-  reach: number;
+  reads: number;
+  avgReadTime: string;
   shares: number;
-  avgReadingTime: string;
-  bestPostingTime: string;
-  topPerformingArticle: {
-    title: string;
-    impressions: number;
-    engagement: number;
-  };
-  dailyMetrics: { day: string; views: number; engagement: number }[];
+  topArticle: string;
+  topCompetition: string;
+  mostCoveredTeam: string;
 }
 
-export type MockAnalytics = JournalistAnalytics & {
-  totalViews?: number;
-  earnings?: number;
-};
-
-export interface HeroMatchLive {
-  homeTeam: string;
-  awayTeam: string;
-  venue: string;
-  league: string;
-}
-
-export interface HeroMatchNext {
-  homeTeam: string;
-  awayTeam: string;
-  venue: string;
-  time: string;
-}
-
-export interface TrendingTeam {
+export interface OptionItem {
+  id: string;
   name: string;
-  trend: string;
 }

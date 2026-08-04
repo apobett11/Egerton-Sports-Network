@@ -1,302 +1,374 @@
 import React from 'react';
-import { Plus, TrendingUp, Clock, AlertTriangle, Hash, MessageCircle, Repeat, Heart, Eye, Bookmark, Share2 } from 'lucide-react';
-import type { MatchStatus } from '../../../../../types';
-import type { ArticlePost, MatchHeroData, TrendingTeam } from '../../JournalistTypes';
+import {
+  Radio,
+  PenSquare,
+  FileText,
+  BarChart3,
+  Bookmark,
+  ChevronRight,
+  Eye,
+  TrendingUp,
+  Clock,
+  MapPin,
+  Calendar,
+  Layers,
+} from 'lucide-react';
+import {
+  CurrentMatchEvent,
+  ArticlePost,
+  PerformanceMetrics,
+  ARTICLE_CATEGORY_LABELS,
+} from '../../JournalistTypes';
 
 interface JournalistHomeViewProps {
+  currentEvent: CurrentMatchEvent;
+  onOpenMatchSelector: () => void;
+  onOpenCompose: () => void;
+  onNavigateTab: (tab: 'articles' | 'analytics') => void;
+  performanceMetrics: PerformanceMetrics;
+  articles: ArticlePost[];
+  onViewArticle: (article: ArticlePost) => void;
+  triggerToast: (msg: string) => void;
   cardBg: string;
   hoverBg: string;
-  isMatchLive: boolean;
-  setIsMatchLive: (val: boolean) => void;
-  liveMatchStatusState: MatchStatus;
-  liveMinuteState: string;
-  liveScoreA: number;
-  liveScoreB: number;
-  setIsEventComposerOpen: (val: boolean) => void;
-  HERO_MATCH_LIVE: MatchHeroData;
-  HERO_MATCH_NEXT: MatchHeroData;
-  TRENDING_TEAMS: TrendingTeam[];
-  todayArticles: ArticlePost[];
-  todayFlaggedArticles: ArticlePost[];
-  olderArticles: ArticlePost[];
-  getFilteredArticles: (posts: ArticlePost[]) => ArticlePost[];
-  triggerToast: (msg: string) => void;
-  setComposeHeadline: (h: string) => void;
-  setComposeBody: (b: string) => void;
-  setIsComposeOpen: (open: boolean) => void;
 }
 
 export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
+  currentEvent,
+  onOpenMatchSelector,
+  onOpenCompose,
+  onNavigateTab,
+  performanceMetrics,
+  articles,
+  onViewArticle,
+  triggerToast,
   cardBg,
   hoverBg,
-  isMatchLive,
-  setIsMatchLive,
-  liveMatchStatusState,
-  liveMinuteState,
-  liveScoreA,
-  liveScoreB,
-  setIsEventComposerOpen,
-  HERO_MATCH_LIVE,
-  HERO_MATCH_NEXT,
-  TRENDING_TEAMS,
-  todayArticles,
-  todayFlaggedArticles,
-  olderArticles,
-  getFilteredArticles,
-  triggerToast,
-  setComposeHeadline,
-  setComposeBody,
-  setIsComposeOpen,
 }) => {
-  const renderJournalCard = (post: ArticlePost) => (
-    <article
-      key={post.id}
-      className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-3`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#E7F7EF] text-[#148A54] dark:bg-emerald-950/60 dark:text-emerald-400">
-              {post.category?.replace('_', ' ') || 'Match Report'}
-            </span>
-            <span className="text-[11px] text-gray-400 font-semibold">• {post.timestamp || 'Just now'}</span>
-          </div>
-
-          <h3 className="font-extrabold text-sm md:text-base leading-snug tracking-tight truncate">
-            {post.headline}
-          </h3>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">
-            {post.body}
-          </p>
-        </div>
-
-        {post.images && post.images.length > 0 && (
-          <img
-            src={post.images[0]}
-            alt="Thumbnail"
-            className="w-20 h-20 rounded-xl object-cover shrink-0 border border-[#D9E2EC] dark:border-slate-800"
-          />
-        )}
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-4">
-          <button className="flex items-center gap-1 font-semibold hover:text-blue-500 transition-colors">
-            <MessageCircle className="w-3.5 h-3.5 text-blue-500" />
-            <span>{post.interactions?.commentsCount || 0}</span>
-          </button>
-          <button className="flex items-center gap-1 font-semibold hover:text-emerald-500 transition-colors">
-            <Repeat className="w-3.5 h-3.5" />
-            <span>{post.interactions?.repostsCount || 0}</span>
-          </button>
-          <button className="flex items-center gap-1 font-semibold hover:text-rose-500 transition-colors">
-            <Heart className="w-3.5 h-3.5 text-rose-500" />
-            <span>{post.interactions?.likesCount || 0}</span>
-          </button>
-          <button className="flex items-center gap-1 font-semibold hover:text-emerald-400 transition-colors">
-            <Eye className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{post.interactions?.viewsCount || 0}</span>
-          </button>
-          <button className="flex items-center gap-1 font-semibold hover:text-[#148A54] transition-colors">
-            <Bookmark className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard?.writeText(`https://esn.egerton.ac.ke/journal/${post.id}`);
-            triggerToast('Journal link copied to clipboard');
-          }}
-          className="flex items-center gap-1 font-bold text-gray-500 hover:text-[#148A54] transition-colors cursor-pointer"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </article>
-  );
+  // Filter today's articles (max 3, newest first)
+  const todayArticles = articles
+    .filter((a) => a.isToday || a.status === 'published')
+    .slice(0, 3);
 
   return (
     <div className="space-y-6">
-      {/* HERO SECTION */}
-      <section className={`p-5 md:p-6 rounded-2xl border ${cardBg} space-y-5 relative overflow-hidden`}>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#148A54] bg-[#E7F7EF] dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-500/20">
-            FEATURED SPORTS FOCUS
-          </span>
+      {/* TASK 2 — HERO: CURRENT EVENT CARD */}
+      <section className={`p-6 rounded-3xl border ${cardBg} space-y-5 shadow-xl relative overflow-hidden`}>
+        {/* TOP STATUS BADGE & LEAGUE */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1.5">
+              <Layers className="w-3 h-3" />
+              {currentEvent.competition}
+            </span>
 
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider flex items-center gap-1.5 ${
+              currentEvent.status === 'LIVE'
+                ? 'bg-rose-600 text-white animate-pulse'
+                : currentEvent.status === 'HT'
+                ? 'bg-amber-500 text-slate-950'
+                : currentEvent.status === 'FT'
+                ? 'bg-slate-700 text-slate-200'
+                : 'bg-blue-600 text-white'
+            }`}>
+              {currentEvent.status === 'LIVE' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+              {currentEvent.status}
+            </span>
+          </div>
+
+          {currentEvent.minute && (
+            <span className="font-mono text-xs font-black text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+              {currentEvent.minute}
+            </span>
+          )}
+        </div>
+
+        {/* TEAMS & SCORE MATCH BOARD */}
+        <div className="py-2 flex items-center justify-between text-center gap-4">
+          {/* HOME TEAM */}
+          <div className="flex-1 space-y-1.5">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 p-2 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+              {currentEvent.homeLogo ? (
+                <img src={currentEvent.homeLogo} alt={currentEvent.homeTeam} className="w-full h-full object-contain" />
+              ) : (
+                <span className="font-black text-sm text-emerald-500">{currentEvent.homeTeam.slice(0, 2).toUpperCase()}</span>
+              )}
+            </div>
+            <h3 className="font-extrabold text-sm md:text-base leading-tight truncate">
+              {currentEvent.homeTeam}
+            </h3>
+          </div>
+
+          {/* SCORE / VS */}
+          <div className="px-4 py-2 rounded-2xl bg-slate-900 text-white dark:bg-black border border-emerald-500/30 font-black text-2xl md:text-3xl tracking-widest font-mono shadow-inner shrink-0">
+            {currentEvent.status === 'UPCOMING' ? (
+              <span className="text-xs uppercase text-slate-400">VS</span>
+            ) : (
+              <span className="text-emerald-400">{currentEvent.scoreHome} - {currentEvent.scoreAway}</span>
+            )}
+          </div>
+
+          {/* AWAY TEAM */}
+          <div className="flex-1 space-y-1.5">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 p-2 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+              {currentEvent.awayLogo ? (
+                <img src={currentEvent.awayLogo} alt={currentEvent.awayTeam} className="w-full h-full object-contain" />
+              ) : (
+                <span className="font-black text-sm text-emerald-500">{currentEvent.awayTeam.slice(0, 2).toUpperCase()}</span>
+              )}
+            </div>
+            <h3 className="font-extrabold text-sm md:text-base leading-tight truncate">
+              {currentEvent.awayTeam}
+            </h3>
+          </div>
+        </div>
+
+        {/* VENUE & KICKOFF META */}
+        <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 font-medium">
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+              {currentEvent.venue}
+            </span>
+            <span className="flex items-center gap-1 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              Kickoff: {currentEvent.kickoff}
+            </span>
+          </div>
+
+          {currentEvent.countdown && (
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              {currentEvent.countdown}
+            </span>
+          )}
+        </div>
+
+        {/* BUTTON: SEE OTHER GAMES */}
+        <div className="pt-2">
           <button
-            onClick={() => setIsMatchLive(!isMatchLive)}
-            className="text-[10px] font-bold text-gray-400 hover:text-emerald-500 transition-colors cursor-pointer"
+            onClick={onOpenMatchSelector}
+            className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 text-slate-800 dark:text-slate-200 font-extrabold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs border border-slate-200 dark:border-slate-700"
           >
-            Simulate: {isMatchLive ? 'Next Match' : 'Live Match'}
+            <Radio className="w-4 h-4 text-emerald-500 group-hover:text-white" />
+            <span>See Other Games</span>
           </button>
         </div>
-
-        {/* MATCH CARD */}
-        {isMatchLive ? (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/30 via-slate-900 to-slate-950 border border-emerald-500/40 space-y-3 shadow-lg">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider flex items-center gap-1 ${
-                liveMatchStatusState === 'LIVE' 
-                  ? 'bg-red-600 text-white animate-pulse' 
-                  : liveMatchStatusState === 'HT'
-                  ? 'bg-amber-500 text-slate-950'
-                  : liveMatchStatusState === 'FT'
-                  ? 'bg-gray-700 text-gray-200'
-                  : 'bg-emerald-600 text-white'
-              }`}>
-                ● {liveMatchStatusState}
-              </span>
-              <span className="text-emerald-400 font-mono font-extrabold">{liveMinuteState}</span>
-              <span className="text-gray-400 text-[11px]">{HERO_MATCH_LIVE.venue}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-2 text-center">
-              <span className="font-extrabold text-sm md:text-base flex-1 text-white">{HERO_MATCH_LIVE.homeTeam}</span>
-              <div className="px-4 py-1.5 rounded-xl bg-black/80 border border-emerald-500/30 font-black text-2xl text-emerald-400 tracking-wider font-mono">
-                {liveScoreA} - {liveScoreB}
-              </div>
-              <span className="font-extrabold text-sm md:text-base flex-1 text-white">{HERO_MATCH_LIVE.awayTeam}</span>
-            </div>
-
-            <div className="pt-3 border-t border-gray-800 flex items-center justify-between text-xs gap-2">
-              <span className="text-gray-400 text-[11px] font-semibold">{HERO_MATCH_LIVE.league}</span>
-              <button
-                onClick={() => setIsEventComposerOpen(true)}
-                disabled={liveMatchStatusState === 'FT'}
-                className={`px-4 py-2 rounded-xl text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                  liveMatchStatusState === 'FT'
-                    ? 'bg-gray-700 cursor-not-allowed opacity-60'
-                    : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400'
-                }`}
-              >
-                <Plus className="w-4 h-4" /> Add Match Event
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900/60 border border-[#D9E2EC] dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider">
-                NEXT MATCH
-              </span>
-              <span className="text-gray-500 text-[11px]">{HERO_MATCH_NEXT.venue}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-2 text-center">
-              <span className="font-extrabold text-sm flex-1">{HERO_MATCH_NEXT.homeTeam}</span>
-              <span className="text-xs font-black text-gray-400 px-3 uppercase">vs</span>
-              <span className="font-extrabold text-sm flex-1">{HERO_MATCH_NEXT.awayTeam}</span>
-            </div>
-
-            <div className="text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-gray-200 dark:border-gray-800">
-              {HERO_MATCH_NEXT.time}
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* TRENDING SECTION ON HOMEPAGE */}
-      <section className={`p-4 md:p-5 rounded-2xl border ${cardBg} space-y-3`}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-black text-xs md:text-sm tracking-tight flex items-center gap-2 text-[#148A54]">
-            <TrendingUp className="w-4 h-4" /> Campus Sports Trends & Buzz
-          </h2>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Updated 5m ago</span>
-        </div>
+      {/* TASK 3 — QUICK ACTIONS */}
+      <section className="space-y-3">
+        <h2 className="font-extrabold text-xs uppercase tracking-wider text-slate-500 px-1">
+          Quick Actions
+        </h2>
 
-        <div className="flex flex-wrap gap-2 text-xs">
-          {[
-            { tag: '#TattonDerby', count: '3.4K Journals', category: 'Derby Clash' },
-            { tag: '#MaragoliTransfer', count: '1.8K Journals', category: 'Transfers' },
-            { tag: '#FalconsMVP', count: '1.2K Journals', category: 'Basketball' },
-            { tag: '#EgertonCup2027', count: '950 Journals', category: 'Tournament' }
-          ].map((t, idx) => (
-            <div
-              key={idx}
-              onClick={() => triggerToast(`Filtering timeline by ${t.tag}`)}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-[#D9E2EC] dark:border-slate-800 hover:border-[#148A54] cursor-pointer transition-colors space-y-0.5"
-            >
-              <div className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1">
-                <Hash className="w-3 h-3 text-[#148A54]" /> {t.tag.replace('#', '')}
-              </div>
-              <div className="text-[10px] text-gray-500 font-semibold">{t.count} · {t.category}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* CARD 1: COMPOSE ARTICLE */}
+          <div
+            onClick={onOpenCompose}
+            className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-2 group hover:border-emerald-500/50 shadow-sm`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+              <PenSquare className="w-5 h-5" />
             </div>
-          ))}
-        </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors">
+                Compose Article
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pt-0.5">
+                Draft or publish news stories, match reports, and transfer rumours.
+              </p>
+            </div>
+          </div>
 
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 grid grid-cols-3 gap-2 text-center text-xs">
-          {TRENDING_TEAMS.map((team, idx) => (
-            <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-gray-200 dark:border-gray-800">
-              <span className="font-black text-slate-900 dark:text-white text-xs block truncate">{team.name}</span>
-              <span className="text-[10px] text-emerald-500 font-extrabold">{team.trend} Rank</span>
+          {/* CARD 2: MY ARTICLES */}
+          <div
+            onClick={() => onNavigateTab('articles')}
+            className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-2 group hover:border-emerald-500/50 shadow-sm`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black group-hover:bg-blue-500 group-hover:text-white transition-colors">
+              <FileText className="w-5 h-5" />
             </div>
-          ))}
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-blue-500 transition-colors">
+                My Articles
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pt-0.5">
+                Browse, filter, edit, or manage your published articles and working drafts.
+              </p>
+            </div>
+          </div>
+
+          {/* CARD 3: ANALYTICS */}
+          <div
+            onClick={() => onNavigateTab('analytics')}
+            className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-2 group hover:border-emerald-500/50 shadow-sm`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-black group-hover:bg-purple-500 group-hover:text-white transition-colors">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-purple-500 transition-colors">
+                Analytics
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pt-0.5">
+                Track article readership, reader impressions, engagement rates, and top stories.
+              </p>
+            </div>
+          </div>
+
+          {/* CARD 4: BOOKMARKS */}
+          <div
+            onClick={() => triggerToast('Bookmarks section is saved & ready for bookmarked coverage.')}
+            className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-2 group hover:border-emerald-500/50 shadow-sm`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-black group-hover:bg-amber-500 group-hover:text-white transition-colors">
+              <Bookmark className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-amber-500 transition-colors">
+                Bookmarks
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug pt-0.5">
+                Saved press releases, reference match notes, and bookmarked articles for future coverage.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* TODAY'S JOURNALS */}
+      {/* TASK 4 — PERFORMANCE CARD */}
+      <section className={`p-6 rounded-3xl border ${cardBg} space-y-4 shadow-xl`}>
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div>
+            <h2 className="font-extrabold text-base tracking-tight flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-500" /> Journalist Performance
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Summary of your editorial statistics and article reach metrics.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">Today</span>
+            <div className="font-black text-xl text-slate-900 dark:text-slate-100">{performanceMetrics.articlesToday}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">This Week</span>
+            <div className="font-black text-xl text-slate-900 dark:text-slate-100">{performanceMetrics.articlesThisWeek}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase">This Month</span>
+            <div className="font-black text-xl text-slate-900 dark:text-slate-100">{performanceMetrics.articlesThisMonth}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-emerald-500 uppercase">Published</span>
+            <div className="font-black text-xl text-emerald-500">{performanceMetrics.publishedCount}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-amber-500 uppercase">Drafts</span>
+            <div className="font-black text-xl text-amber-500">{performanceMetrics.draftsCount}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-blue-500 uppercase">Impressions</span>
+            <div className="font-black text-lg text-slate-900 dark:text-slate-100">{performanceMetrics.impressions.toLocaleString()}</div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-0.5">
+            <span className="text-[10px] font-bold text-purple-500 uppercase">Engagement</span>
+            <div className="font-black text-lg text-purple-500">{performanceMetrics.engagementRate}%</div>
+          </div>
+        </div>
+
+        {/* BUTTON: SEE MORE ANALYTICS */}
+        <div className="pt-2">
+          <button
+            onClick={() => onNavigateTab('analytics')}
+            className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>See More Analytics</span>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </section>
+
+      {/* TASK 5 — TODAY'S ARTICLES */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h2 className="font-black text-sm md:text-base tracking-tight flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#148A54]" /> Today's Journals
+          <h2 className="font-extrabold text-sm md:text-base tracking-tight flex items-center gap-2">
+            <Clock className="w-4 h-4 text-emerald-500" /> Today's Articles
           </h2>
-          <span className="text-xs text-gray-500 font-semibold">{todayArticles.length} published today</span>
+          <span className="text-xs text-slate-500 font-semibold">{todayArticles.length} articles</span>
         </div>
 
+        {/* ARTICLES LIST (MAX 3) */}
         <div className="space-y-3">
-          {getFilteredArticles(todayArticles).map((post) => renderJournalCard(post))}
-        </div>
-      </section>
-
-      {/* TODAY'S FLAGGED ARTICLES */}
-      {todayFlaggedArticles.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-black text-sm md:text-base tracking-tight text-amber-500 flex items-center gap-2 px-1">
-            <AlertTriangle className="w-4 h-4 text-amber-500" /> Today's Flagged Articles
-          </h2>
-
-          <div className="space-y-3">
-            {todayFlaggedArticles.map((flagged) => (
-              <div
-                key={flagged.id}
-                className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/40 space-y-2 text-xs"
+          {todayArticles.length === 0 ? (
+            <div className={`p-6 rounded-2xl border ${cardBg} text-center text-slate-500 text-xs font-semibold`}>
+              No articles published today yet. Click "Compose Article" to write your first story!
+            </div>
+          ) : (
+            todayArticles.map((art) => (
+              <article
+                key={art.id}
+                onClick={() => onViewArticle(art)}
+                className={`p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all cursor-pointer space-y-2 group shadow-xs`}
               >
-                <div className="flex items-center justify-between font-bold">
-                  <span className="font-extrabold text-amber-500 text-sm truncate">{flagged.headline}</span>
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
-                    Flagged today
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-500">
+                        {ARTICLE_CATEGORY_LABELS[art.category] || art.category}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-semibold">• {art.timestamp}</span>
+                    </div>
+
+                    <h3 className="font-extrabold text-sm md:text-base leading-snug tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors line-clamp-1">
+                      {art.headline}
+                    </h3>
+
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                      {art.subtitle || art.body}
+                    </p>
+                  </div>
+
+                  {art.images && art.images.length > 0 && (
+                    <img
+                      src={art.images[0]}
+                      alt={art.headline}
+                      className="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-800"
+                    />
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 font-semibold">
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    {art.competitionName || 'Egerton Sports'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5 text-slate-400" /> {art.viewsCount || 0} views
                   </span>
                 </div>
+              </article>
+            ))
+          )}
+        </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      setComposeHeadline(flagged.headline);
-                      setComposeBody(flagged.body);
-                      setIsComposeOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-extrabold text-xs hover:bg-amber-400 cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* INFINITE SCROLLING FEED */}
-      <section className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-        <h3 className="font-extrabold text-xs uppercase tracking-wider text-gray-400 px-1">
-          Older Journals Timeline
-        </h3>
-
-        <div className="space-y-3">
-          {getFilteredArticles(olderArticles).map((post) => renderJournalCard(post))}
+        {/* BUTTON: SEE ALL ARTICLES */}
+        <div className="pt-1">
+          <button
+            onClick={() => onNavigateTab('articles')}
+            className="w-full py-3 rounded-2xl bg-slate-900 text-white dark:bg-slate-800 dark:hover:bg-slate-700 font-extrabold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          >
+            <span>See All Articles</span>
+            <ChevronRight className="w-4 h-4 text-emerald-400" />
+          </button>
         </div>
       </section>
     </div>
