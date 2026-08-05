@@ -100,53 +100,58 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Stadium & Turf Pitch Backdrop System */
+/* Apple-style Layered Ambient Backdrop System */
 .stadium-bg-overlay {
-  background-image: linear-gradient(to bottom, rgba(248, 250, 252, 0.88), rgba(241, 245, 249, 0.94)),
-                    url('/images/stadium-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  filter: saturate(0.6) opacity(0.35);
+  background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 60%),
+                    radial-gradient(circle at 100% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
   pointer-events: none;
 }
 
 .dark .stadium-bg-overlay {
-  background-image: linear-gradient(to bottom, rgba(9, 13, 22, 0.90), rgba(14, 20, 36, 0.94)),
-                    url('/images/stadium-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  filter: saturate(0.5) opacity(0.25);
+  background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 65%),
+                    radial-gradient(circle at 100% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                    radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.04) 0%, transparent 50%);
   pointer-events: none;
 }
 
-/* Premium Dark Green Turf Grass Pitch Backdrop with White Markings */
+/* Premium Apple Layered Ambient Background */
+.apple-layered-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-color: #F8FAFC;
+  background-image: 
+    radial-gradient(ellipse at 50% -10%, rgba(37, 99, 235, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse at 90% 40%, rgba(16, 185, 129, 0.04) 0%, transparent 60%),
+    linear-gradient(to bottom, #F8FAFC, #F1F5F9);
+}
+
+.dark .apple-layered-bg {
+  background-color: #090D16;
+  background-image: 
+    radial-gradient(ellipse at 50% -10%, rgba(59, 130, 246, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse at 85% 35%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
+    linear-gradient(to bottom, #090D16, #0D1322);
+}
+
+/* Legacy support alias for apple-layered-bg */
 .turf-pitch-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-color: #07170E;
+  background-color: #F8FAFC;
   background-image: 
-    radial-gradient(ellipse at 50% 30%, rgba(16, 185, 129, 0.12) 0%, transparent 70%),
-    linear-gradient(to bottom, rgba(7, 23, 14, 0.92), rgba(4, 14, 9, 0.95)),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 90px, transparent 90px, transparent 180px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1400' width='1000' height='1400'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.18)' stroke-width='2.5'%3E%3Crect x='40' y='40' width='920' height='1320' rx='8'/%3E%3Cline x1='40' y1='700' x2='960' y2='700'/%3E%3Ccircle cx='500' cy='700' r='130'/%3E%3Ccircle cx='500' cy='700' r='5' fill='rgba(255,255,255,0.25)'/%3E%3Crect x='250' y='40' width='500' height='200'/%3E%3Crect x='360' y='40' width='280' height='70'/%3E%3Cpath d='M 400 240 A 110 110 0 0 0 600 240'/%3E%3Crect x='250' y='1160' width='500' height='200'/%3E%3Crect x='360' y='1290' width='280' height='70'/%3E%3Cpath d='M 400 1160 A 110 110 0 0 1 600 1160'/%3E%3Cpath d='M 40 70 A 30 30 0 0 0 70 40'/%3E%3Cpath d='M 930 40 A 30 30 0 0 0 960 70'/%3E%3Cpath d='M 40 1330 A 30 30 0 0 1 70 1360'/%3E%3Cpath d='M 930 1360 A 30 30 0 0 1 960 1330'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 100% 100%, 100% 100%, 180px 100%, min(1000px, 100vw) auto;
-  background-position: center center;
-  background-repeat: no-repeat, no-repeat, repeat-x, no-repeat;
-  opacity: 0.95;
+    radial-gradient(ellipse at 50% -10%, rgba(37, 99, 235, 0.05) 0%, transparent 70%),
+    linear-gradient(to bottom, #F8FAFC, #F1F5F9);
 }
 
-html:not(.dark) .turf-pitch-overlay {
-  background-color: #ECFDF5;
+.dark .turf-pitch-overlay {
+  background-color: #090D16;
   background-image: 
-    radial-gradient(ellipse at 50% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 70%),
-    linear-gradient(to bottom, rgba(236, 253, 245, 0.90), rgba(209, 250, 229, 0.94)),
-    repeating-linear-gradient(90deg, rgba(16, 185, 129, 0.035) 0px, rgba(16, 185, 129, 0.035) 90px, transparent 90px, transparent 180px),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1400' width='1000' height='1400'%3E%3Cg fill='none' stroke='rgba(16,185,129,0.22)' stroke-width='2.5'%3E%3Crect x='40' y='40' width='920' height='1320' rx='8'/%3E%3Cline x1='40' y1='700' x2='960' y2='700'/%3E%3Ccircle cx='500' cy='700' r='130'/%3E%3Ccircle cx='500' cy='700' r='5' fill='rgba(16,185,129,0.3)'/%3E%3Crect x='250' y='40' width='500' height='200'/%3E%3Crect x='360' y='40' width='280' height='70'/%3E%3Cpath d='M 400 240 A 110 110 0 0 0 600 240'/%3E%3Crect x='250' y='1160' width='500' height='200'/%3E%3Crect x='360' y='1290' width='280' height='70'/%3E%3Cpath d='M 400 1160 A 110 110 0 0 1 600 1160'/%3E%3Cpath d='M 40 70 A 30 30 0 0 0 70 40'/%3E%3Cpath d='M 930 40 A 30 30 0 0 0 960 70'/%3E%3Cpath d='M 40 1330 A 30 30 0 0 1 70 1360'/%3E%3Cpath d='M 930 1360 A 30 30 0 0 1 960 1330'/%3E%3C/g%3E%3C/svg%3E");
-  opacity: 0.95;
+    radial-gradient(ellipse at 50% -10%, rgba(59, 130, 246, 0.08) 0%, transparent 70%),
+    linear-gradient(to bottom, #090D16, #0D1322);
 }
 
 /* Glassmorphism Elevation System */

@@ -18,8 +18,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         { id: 'scores' as MainTabType, label: 'Scores', icon: CalendarDays },
         { id: 'table' as MainTabType, label: 'Standings', icon: Trophy },
         { id: 'news' as MainTabType, label: 'News', icon: Newspaper },
-        { id: 'favorites' as MainTabType, label: 'Favorites', icon: Star, badge: favoritesCount },
-        { id: 'login' as MainTabType, label: 'Login', icon: LogIn },
+        { id: 'favorites' as MainTabType, label: 'Favorites', icon: Star, badge: favoritesCount }
     ];
 
     return (

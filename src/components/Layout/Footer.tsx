@@ -1,49 +1,113 @@
 import React from 'react';
-import { Shield, Mail, Award, Activity, Heart } from 'lucide-react';
+import { Shield, Mail, Award, Activity, Heart, ExternalLink, Globe, FileText } from 'lucide-react';
 
 export const Footer: React.FC = () => {
     return (
-        <footer className="w-full bg-slate-100/90 dark:bg-[#0B0F17] text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80 py-10 px-6 mt-auto">
-            <div className="max-w-7xl mx-auto space-y-8">
-                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 text-center md:text-left">
-                    {/* Brand Info Column */}
-                    <div className="space-y-2 max-w-sm">
-                        <div className="flex items-center justify-center md:justify-start gap-2 font-black text-slate-900 dark:text-slate-100 text-base tracking-tight">
-                            <div className="p-1.5 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+        <footer className="w-full bg-slate-100/90 dark:bg-[#070B12] text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80 py-12 px-6 mt-auto select-none">
+            <div className="max-w-7xl mx-auto space-y-10">
+                {/* Main 4-Column Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {/* Col 1: Branding */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2.5 font-black text-slate-900 dark:text-slate-100 text-base tracking-tight">
+                            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
                                 <Activity className="w-4 h-4" />
                             </div>
                             <span>Egerton Sports Network</span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
-                            The official campus live scores, standings engine, match reporting, and official sports portal for Egerton University athletics.
+                            The official live scores, fixture scheduling engine, league standings, and athletics portal for Egerton University sports.
                         </p>
+                        <div className="pt-1 flex items-center gap-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>sports.egerton.ac.ke</span>
+                        </div>
                     </div>
 
-                    {/* Quick Navigation Links */}
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-xs font-bold text-slate-700 dark:text-slate-300">
-                        <a href="#rules" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
-                            <Award className="w-4 h-4 text-[#D4AF37]" aria-hidden="true" />
-                            <span>Match Rules</span>
-                        </a>
-                        <a href="#about" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
-                            <Shield className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-                            <span>Platform Policies</span>
-                        </a>
-                        <a href="#contact" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
-                            <Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
-                            <span>Contact Admin</span>
-                        </a>
+                    {/* Col 2: Competitions */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-200">
+                            Competitions
+                        </h4>
+                        <ul className="space-y-2 text-xs font-medium">
+                            <li>
+                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <Award className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>Egerton Premier League</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <Award className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>Egerton Championships</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <Award className="w-3.5 h-3.5 text-blue-500" />
+                                    <span>Campus Champions Cup</span>
+                                </a>
+                            </li>
+                        </ul>
                     </div>
 
-                    {/* Department & Copyright */}
-                    <div className="text-center md:text-right text-xs text-slate-400 space-y-1">
-                        <p className="font-extrabold text-slate-700 dark:text-slate-300">
-                            © {new Date().getFullYear()} Egerton Sports Network
-                        </p>
-                        <p className="text-[11px]">Faculty of Arts & Social Sciences</p>
-                        <p className="text-[10px] text-slate-500 flex items-center justify-center md:justify-end gap-1">
-                            Built with precision for campus football <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
-                        </p>
+                    {/* Col 3: Useful Links & Governance */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-200">
+                            Useful Links
+                        </h4>
+                        <ul className="space-y-2 text-xs font-medium">
+                            <li>
+                                <a href="#/news" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Official Match Rules</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#/home" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <Shield className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Platform Policies & RLS</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#/home" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Varsity Health Desk</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Col 4: Contact & Legal */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-200">
+                            Contact & Legal
+                        </h4>
+                        <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <p className="font-semibold text-slate-700 dark:text-slate-300">Egerton Sports Council</p>
+                            <p>Njoro Main Campus, Kenya</p>
+                            <p className="text-[11px] font-mono text-slate-400">sports@egerton.ac.ke</p>
+                        </div>
+                        <div className="pt-2 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                            <a href="#/home" className="hover:underline">Privacy Policy</a>
+                            <span>•</span>
+                            <a href="#/home" className="hover:underline">Terms of Service</a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Bar: Copyright & Version */}
+                <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
+                    <div>
+                        © {new Date().getFullYear()} Egerton Sports Network • All Rights Reserved
+                    </div>
+                    <div className="flex items-center gap-4 text-[11px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                            v1.0.0 Production
+                        </span>
+                        <span className="flex items-center gap-1 text-slate-400">
+                            Made with <Heart className="w-3 h-3 text-rose-500 fill-rose-500 inline" /> for Egerton Football
+                        </span>
                     </div>
                 </div>
             </div>

@@ -130,6 +130,9 @@ export const AppContent: React.FC = () => {
 
   const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
 
+  // Competition Switcher State
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>('all');
+
   // Dynamically computed standings derived strictly from finalized matches in liveMatches
   const currentStandings = useMemo(() => {
     const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
@@ -142,6 +145,16 @@ export const AppContent: React.FC = () => {
 
   const getFilteredMatches = () => {
     if (activeSport !== 'football') return [];
+    if (selectedCompetitionId === 'all') return liveMatches;
+    if (selectedCompetitionId === '11111111-1111-1111-1111-111111111111') {
+      return liveMatches.filter((m) => m.league?.toLowerCase().includes('premier') || !m.league?.toLowerCase().includes('championship'));
+    }
+    if (selectedCompetitionId === '22222222-2222-2222-2222-222222222222') {
+      return liveMatches.filter((m) => m.league?.toLowerCase().includes('championship'));
+    }
+    if (selectedCompetitionId === 'friendlies') {
+      return liveMatches.filter((m) => m.league?.toLowerCase().includes('friendly'));
+    }
     return liveMatches;
   };
 
@@ -255,9 +268,9 @@ export const AppContent: React.FC = () => {
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 relative ${
-        darkMode ? 'bg-[#07170E] text-gray-200' : 'bg-[#ECFDF5] text-gray-800'
+        darkMode ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'
       }`}>
-        <div className="turf-pitch-overlay" aria-hidden="true" />
+        <div className="apple-layered-bg" aria-hidden="true" />
         {/* Sidebar Drawer overlay */}
         {sidebarOpen && (
           <div
@@ -268,7 +281,7 @@ export const AppContent: React.FC = () => {
             aria-label="Mobile navigation drawer"
           >
             <div
-              className="w-72 max-w-[80vw] h-full bg-white dark:bg-[#1E1E1E] shadow-2xl p-6 flex flex-col justify-between"
+              className="w-72 max-w-[80vw] h-full bg-white dark:bg-[#0E1424] shadow-2xl p-6 flex flex-col justify-between"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-6">
@@ -277,7 +290,7 @@ export const AppContent: React.FC = () => {
                     <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white shadow-sm ring-1 ring-emerald-500/20">
                       E
                     </div>
-                    <span className="font-extrabold text-base tracking-tight text-gray-900 dark:text-white">
+                    <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
                       Egerton Athletics
                     </span>
                   </div>
@@ -285,27 +298,27 @@ export const AppContent: React.FC = () => {
                     type="button"
                     onClick={() => setSidebarOpen(false)}
                     aria-label="Close navigation drawer"
-                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
                   >
-                    <X className="w-5 h-5 text-gray-500" />
+                    <X className="w-5 h-5 text-slate-500" />
                   </button>
                 </div>
 
 
                 <div className="space-y-4">
-                  <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Campus Leagues</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Campus Competitions</div>
                   <ul className="space-y-2">
-                    <li onClick={() => { setSidebarOpen(false); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
                       <Activity className="w-4 h-4 text-emerald-600" />
                       <span>Egerton Premier League</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
                       <Award className="w-4 h-4 text-amber-500" />
                       <span>Egerton Championships</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
                       <Trophy className="w-4 h-4 text-blue-500" />
-                      <span>Special Games</span>
+                      <span>Friendlies</span>
                     </li>
                   </ul>
                 </div>
@@ -322,7 +335,7 @@ export const AppContent: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider text-center">
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center">
                 Egerton Athletics v1.0.0
               </div>
             </div>
@@ -347,6 +360,9 @@ export const AppContent: React.FC = () => {
               setActiveSport={setActiveSport}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
+              selectedCompetitionId={selectedCompetitionId}
+              setSelectedCompetitionId={setSelectedCompetitionId}
+              dbFixtures={liveMatches}
               onMenuClick={() => setSidebarOpen(true)}
               onNavigateNews={() => setActiveTab('news')}
               onNavigateLogin={() => handleNavigateHash('/login')}
@@ -355,7 +371,7 @@ export const AppContent: React.FC = () => {
             <Navigation
               activeTab={activeTab}
               setActiveTab={(tab) => {
-                if (tab === 'login') {
+                if ((tab as any) === 'login') {
                   handleNavigateHash('/login');
                 } else {
                   setActiveTab(tab);
@@ -664,7 +680,7 @@ export const AppContent: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'table' && <LeagueTable tableData={currentStandings} />}
+              {activeTab === 'table' && <LeagueTable tableData={currentStandings} selectedCompetitionId={selectedCompetitionId} />}
 
               {activeTab === 'news' && <PublicNewsPage />}
 

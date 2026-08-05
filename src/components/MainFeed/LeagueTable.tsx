@@ -7,18 +7,48 @@ interface LeagueTableProps {
   tableData: LeagueTableEntry[];
   title?: string;
   allowHistoricalView?: boolean;
+  selectedCompetitionId?: string;
 }
+
+const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
+const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 
 export const LeagueTable: React.FC<LeagueTableProps> = ({
   tableData,
-  allowHistoricalView = true
+  allowHistoricalView = true,
+  selectedCompetitionId = 'all'
 }) => {
   const [activeTab, setActiveTab] = useState<'current' | 'historical'>('current');
+  const [activeCompTab, setActiveCompTab] = useState<'epl' | 'champ'>('epl');
+  
+  const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>([]);
+  const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>([]);
+
   const [historicalSeasons, setHistoricalSeasons] = useState<HistoricalSeasonStandings[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
   const [topScorers, setTopScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
+  const [champTopScorers, setChampTopScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
 
   useEffect(() => {
+    // Sync activeCompTab if prop changes
+    if (selectedCompetitionId === CHAMP_COMP_ID) {
+      setActiveCompTab('champ');
+    } else if (selectedCompetitionId === EPL_COMP_ID) {
+      setActiveCompTab('epl');
+    }
+  }, [selectedCompetitionId]);
+
+  useEffect(() => {
+    // Fetch live standings for both competitions from database
+    ApiService.getLeagueTable(EPL_COMP_ID).then((res) => {
+      if (res.data && res.data.length > 0) setEplStandings(res.data);
+      else setEplStandings(tableData);
+    });
+
+    ApiService.getLeagueTable(CHAMP_COMP_ID).then((res) => {
+      if (res.data && res.data.length > 0) setChampStandings(res.data);
+    });
+
     if (allowHistoricalView) {
       ApiService.getHistoricalStandings().then((res) => {
         if (res.data && res.data.length > 0) {
@@ -28,18 +58,24 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       });
     }
 
-    ApiService.getTopScorers().then((res) => {
-      if (res.data) {
-        setTopScorers(res.data);
-      }
+    // Top scorers per competition
+    ApiService.getTopScorers(EPL_COMP_ID).then((res) => {
+      if (res.data) setTopScorers(res.data);
     });
-  }, [allowHistoricalView]);
+    ApiService.getTopScorers(CHAMP_COMP_ID).then((res) => {
+      if (res.data) setChampTopScorers(res.data);
+    });
+  }, [allowHistoricalView, tableData]);
 
   const activeSeasonData = historicalSeasons.find((s) => s.seasonId === selectedSeasonId);
 
+  const currentCompData = activeCompTab === 'champ'
+    ? (champStandings.length > 0 ? champStandings : tableData)
+    : (eplStandings.length > 0 ? eplStandings : tableData);
+
   const displayData: LeagueTableEntry[] = activeTab === 'historical' && activeSeasonData
     ? activeSeasonData.entries
-    : tableData;
+    : currentCompData;
 
   // Defensive records computed strictly from live database standings
   const defensiveRecords = [...displayData].sort((a, b) => a.goalsAgainst - b.goalsAgainst).slice(0, 3);
@@ -188,13 +224,56 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   };
 
   return (
-    <div className="space-y-12 select-none pb-12">
+    <div className="space-y-6 select-none pb-12">
+      {/* PART 4 DUAL COMPETITION SWITCHER TABS FOR LEAGUE TABLE */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-[#0E1424] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
+            <Trophy className="w-5 h-5 text-amber-300" />
+          </div>
+          <div>
+            <h2 className="font-black text-base text-slate-900 dark:text-slate-100">
+              Campus League Standings
+            </h2>
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Database-driven live rankings & analytics
+            </p>
+          </div>
+        </div>
+
+        {/* Competition Switcher Pills */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveCompTab('epl')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all ${
+              activeCompTab === 'epl'
+                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
+                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Premier League
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCompTab('champ')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all ${
+              activeCompTab === 'champ'
+                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
+                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Championship
+          </button>
+        </div>
+      </div>
+
       {/* Historical View Toggle Bar */}
       {allowHistoricalView && historicalSeasons.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-[#0E1424] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-amber-500" />
-            <span className="font-black text-sm text-gray-900 dark:text-gray-100">Egerton Campus Football Standings</span>
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span className="font-bold text-xs text-slate-900 dark:text-slate-100">Historical Season Standings Archive</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -202,7 +281,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
                 activeTab === 'current'
                   ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Live Standings
@@ -212,7 +291,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5 ${
                 activeTab === 'historical'
                   ? 'bg-amber-600 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Archive className="w-3.5 h-3.5" /> Historical Archive
