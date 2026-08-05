@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Star, MapPin, Award } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Award, Clock, Calendar } from 'lucide-react';
 import type { Match } from '../../types';
 
 interface MatchHeaderProps {
@@ -19,95 +19,97 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
     const isHT = match.status === 'HT';
 
     return (
-        <div className="bg-white dark:bg-[#1E1E1E] border-b border-gray-200 dark:border-gray-800 transition-colors select-none">
-            {/* Row 1: Back, League info, Favorite */}
-            <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
+        <div className="bg-white dark:bg-[#0E1424] border-b border-slate-200/80 dark:border-slate-800/80 transition-colors select-none">
+            {/* Row 1: Back Button, Competition Badge, Favorite Toggle */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 max-w-4xl mx-auto">
                 <button
                     type="button"
                     onClick={onBack}
-                    className="p-1.5 rounded-lg hover:bg-gray-150 dark:hover:bg-gray-800 transition-colors active:scale-95 flex items-center gap-1 text-gray-700 dark:text-gray-300 font-semibold text-xs"
+                    className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                     aria-label="Back to match list"
                 >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Scores</span>
+                    <ArrowLeft className="w-4 h-4 text-emerald-500" />
+                    <span>Back</span>
                 </button>
 
-                <div className="flex flex-col items-center">
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest">
-                        {match.league}
+                <div className="flex flex-col items-center text-center">
+                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                        {match.league || 'Egerton Premier League'}
                     </span>
-                    <span className="text-[9px] text-gray-400 font-semibold tracking-wider">KENYA</span>
+                    <span className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+                        Matchday Official Fixture
+                    </span>
                 </div>
 
                 <button
                     type="button"
                     onClick={onToggleFavorite}
-                    className="p-1.5 rounded-lg hover:bg-gray-150 dark:hover:bg-gray-850 transition-colors"
+                    className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
                     aria-label="Favorite Match"
                 >
                     <Star
                         className={`w-5 h-5 transition-all ${isFavorite
-                            ? 'fill-amber-400 text-amber-400 scale-105'
-                            : 'text-gray-400 hover:text-amber-500'
+                            ? 'fill-amber-400 text-amber-400 scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                            : 'text-slate-400 hover:text-amber-500'
                             }`}
                     />
                 </button>
             </div>
 
-            {/* Row 2: Scoreboard */}
-            <div className="px-4 py-6 max-w-2xl mx-auto flex items-center justify-between gap-4">
+            {/* Row 2: Hero Scoreboard */}
+            <div className="px-4 sm:px-6 py-8 max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-6">
                 {/* Team A */}
-                <div className="flex flex-col items-center text-center w-[30%]">
-                    <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center p-2 mb-2 shadow-sm">
+                <div className="flex flex-col items-center text-center w-[35%] sm:w-[30%] space-y-2">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 flex items-center justify-center p-3 shadow-md shadow-slate-950/5">
                         <img
                             src={match.teamA.logo}
                             alt={match.teamA.name}
                             className="w-full h-full object-contain"
                         />
                     </div>
-                    <span className="text-xs sm:text-sm font-extrabold text-gray-800 dark:text-gray-200 line-clamp-2">
+                    <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight">
                         {match.teamA.name}
                     </span>
                 </div>
 
-                {/* Score & Time */}
+                {/* Score & Time Centerpiece */}
                 <div className="flex flex-col items-center justify-center flex-1">
                     {match.status === 'UPCOMING' ? (
-                        <div className="flex flex-col items-center gap-1">
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 tracking-wider">
-                                Upcoming
+                        <div className="flex flex-col items-center gap-1.5 text-center">
+                            <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 tracking-widest border border-slate-200 dark:border-slate-700">
+                                Upcoming Match
                             </span>
-                            <span className="text-2xl font-black text-gray-800 dark:text-gray-100 mt-1">
-                                {match.time}
+                            <span className="text-3xl sm:text-4xl font-black font-mono text-slate-900 dark:text-slate-100 mt-1">
+                                {match.time || '15:00 EAT'}
                             </span>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center text-center space-y-2">
                             {/* Big Score Box */}
-                            <div className="flex items-center gap-4">
-                                <span className="text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+                            <div className="flex items-center gap-4 sm:gap-6 px-4 py-2 rounded-2xl bg-slate-50 dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 shadow-inner">
+                                <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tight ${isLive ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>
                                     {match.scoreA}
                                 </span>
-                                <span className="text-gray-400 text-xl font-medium">:</span>
-                                <span className="text-4xl font-black tracking-tight text-gray-900 dark:text-white">
+                                <span className="text-slate-400 text-2xl font-bold font-mono">:</span>
+                                <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tight ${isLive ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>
                                     {match.scoreB}
                                 </span>
                             </div>
 
-                            {/* Status and Clock */}
-                            <div className="mt-3 flex flex-col items-center">
+                            {/* Status & Minute Badge */}
+                            <div>
                                 {isLive ? (
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/10 text-amber-500 font-extrabold text-[10px]">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-live" />
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/30 font-black text-xs">
+                                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
                                         <span>LIVE • {match.minute}</span>
                                     </div>
                                 ) : isHT ? (
-                                    <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-500 font-extrabold text-[10px] uppercase">
-                                        Half Time
+                                    <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 font-black text-xs uppercase tracking-wider">
+                                        Half Time (HT)
                                     </span>
                                 ) : (
-                                    <span className="px-2.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-bold text-[10px] uppercase">
-                                        Ended (FT)
+                                    <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-black text-xs uppercase tracking-wider">
+                                        Full Time (FT)
                                     </span>
                                 )}
                             </div>
@@ -116,33 +118,40 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                 </div>
 
                 {/* Team B */}
-                <div className="flex flex-col items-center text-center w-[30%]">
-                    <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center p-2 mb-2 shadow-sm">
+                <div className="flex flex-col items-center text-center w-[35%] sm:w-[30%] space-y-2">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800/90 flex items-center justify-center p-3 shadow-md shadow-slate-950/5">
                         <img
                             src={match.teamB.logo}
                             alt={match.teamB.name}
                             className="w-full h-full object-contain"
                         />
                     </div>
-                    <span className="text-xs sm:text-sm font-extrabold text-gray-800 dark:text-gray-200 line-clamp-2">
+                    <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight">
                         {match.teamB.name}
                     </span>
                 </div>
             </div>
 
-            {/* Row 3: Meta Info (Venue, Referee) */}
-            <div className="border-t border-gray-100 dark:border-gray-850 px-4 py-2 bg-gray-50/50 dark:bg-black/10 text-[10px] text-gray-550 dark:text-gray-400 font-semibold">
-                <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Venue: <strong className="text-gray-700 dark:text-gray-300 font-bold">{match.venue}</strong></span>
+            {/* Row 3: Meta Logistics Bar (Venue, Kickoff, Referee) */}
+            <div className="border-t border-slate-100 dark:border-slate-800/80 px-4 sm:px-6 py-3 bg-slate-50/60 dark:bg-[#090D16]/60 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-emerald-500" />
+                        <span>Venue: <strong className="text-slate-900 dark:text-slate-200 font-extrabold">{match.venue || 'Main Pavilion Ground'}</strong></span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <Award className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Referee: <strong className="text-gray-700 dark:text-gray-300 font-bold">{match.referee}</strong></span>
+
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-blue-500" />
+                        <span>Kickoff: <strong className="text-slate-900 dark:text-slate-200 font-extrabold">{match.time ? `${match.time} EAT` : '15:00 EAT'}</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-amber-500" />
+                        <span>Referee: <strong className="text-slate-900 dark:text-slate-200 font-extrabold">{match.referee || 'Official Ref.'}</strong></span>
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+

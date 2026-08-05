@@ -12,58 +12,58 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
     const captainB = lineups?.teamB?.find(p => p.isCaptain)?.name || 'Team Captain';
 
     return (
-        <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
+        <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
             {/* Header */}
-            <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 block">
-                    Pre-Match Thoughts
+            <div className="pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
+                    Pre-Match Statements
                 </span>
-                <h3 className="text-base font-black text-gray-900 dark:text-white">
-                    Captain's Notes (Stored Records)
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Captain's Notes & Tactical Outlook
                 </h3>
             </div>
 
-            <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-150 dark:border-gray-800 shadow-md p-6 divide-y divide-gray-100 dark:divide-gray-800 space-y-6 transition-colors">
+            <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm p-6 divide-y divide-slate-100 dark:divide-slate-800 space-y-6 transition-colors">
                 
                 {/* Captain A Note */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-black text-xs text-white shadow-sm" style={{ backgroundColor: teamA.colorCode }}>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-2xl flex items-center justify-center font-black text-xs text-white shadow-sm shrink-0" style={{ backgroundColor: teamA.colorCode }}>
                             C
                         </div>
                         <div>
-                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                                 {teamA.name} Captain
                             </span>
-                            <h4 className="text-sm font-extrabold text-gray-900 dark:text-gray-100">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
                                 {captainA}
                             </h4>
                         </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 leading-relaxed italic bg-gray-50/60 dark:bg-gray-800/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                        {captainNotesA ? `"${captainNotesA}"` : "No official captain's notes published in database for this fixture."}
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                        {captainNotesA ? `"${captainNotesA}"` : "No official captain's notes published for this fixture."}
                     </p>
                 </div>
 
                 {/* Captain B Note */}
-                <div className="pt-6 space-y-2">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-black text-xs text-white shadow-sm" style={{ backgroundColor: teamB.colorCode }}>
+                <div className="pt-6 space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-2xl flex items-center justify-center font-black text-xs text-white shadow-sm shrink-0" style={{ backgroundColor: teamB.colorCode }}>
                             C
                         </div>
                         <div>
-                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                                 {teamB.name} Captain
                             </span>
-                            <h4 className="text-sm font-extrabold text-gray-900 dark:text-gray-100">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
                                 {captainB}
                             </h4>
                         </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 leading-relaxed italic bg-gray-50/60 dark:bg-gray-800/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                        {captainNotesB ? `"${captainNotesB}"` : "No official captain's notes published in database for this fixture."}
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                        {captainNotesB ? `"${captainNotesB}"` : "No official captain's notes published for this fixture."}
                     </p>
                 </div>
 
@@ -71,3 +71,4 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
         </div>
     );
 };
+

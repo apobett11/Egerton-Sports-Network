@@ -49,26 +49,26 @@ export const PlayerRatings: React.FC<PlayerRatingsProps> = ({ match }) => {
     const currentTeam = selectedTeam === 'teamA' ? teamA : teamB;
 
     return (
-        <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
+        <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
                 <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-500 block">
-                        Post-Match Analysis
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
+                        Post-Match Performance
                     </span>
-                    <h3 className="text-base font-black text-gray-900 dark:text-white">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white">
                         Player Performance Ratings
                     </h3>
                 </div>
 
                 {/* Team Toggle */}
-                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                <div className="flex bg-slate-100 dark:bg-[#0E1424] p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
                     <button
                         type="button"
                         onClick={() => setSelectedTeam('teamA')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedTeam === 'teamA'
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs'
-                                : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${selectedTeam === 'teamA'
+                                ? 'bg-emerald-600 text-white shadow-md'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
                     >
                         {teamA.shortName}
@@ -76,9 +76,9 @@ export const PlayerRatings: React.FC<PlayerRatingsProps> = ({ match }) => {
                     <button
                         type="button"
                         onClick={() => setSelectedTeam('teamB')}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedTeam === 'teamB'
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs'
-                                : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${selectedTeam === 'teamB'
+                                ? 'bg-emerald-600 text-white shadow-md'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
                     >
                         {teamB.shortName}
@@ -88,52 +88,52 @@ export const PlayerRatings: React.FC<PlayerRatingsProps> = ({ match }) => {
 
             {/* Ratings Card */}
             {currentPlayers.length === 0 ? (
-                <div className="bg-white dark:bg-[#1E1E1E] p-8 rounded-2xl border border-gray-150 dark:border-gray-800 text-center text-xs text-gray-400">
+                <div className="bg-white dark:bg-[#0E1424] p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 text-center text-xs text-slate-400">
                     No match lineup players available for performance rating.
                 </div>
             ) : (
-                <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-150 dark:border-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-800/80 overflow-hidden transition-colors">
+                <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden transition-colors">
                     {currentPlayers.map((player) => {
                         const ratingNum = player.ratingVal;
                         const isHigh = ratingNum >= 8.0;
                         const isMedium = ratingNum >= 7.0 && ratingNum < 8.0;
 
                         return (
-                            <div key={player.id} className="p-3.5 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                <div className="flex items-center gap-3">
+                            <div key={player.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
+                                <div className="flex items-center gap-3.5">
                                     <div
-                                        className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs text-white shadow-xs shrink-0"
+                                        className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-black text-xs text-white shadow-xs shrink-0"
                                         style={{ backgroundColor: currentTeam.colorCode }}
                                     >
                                         {player.number}
                                     </div>
 
                                     <div>
-                                        <div className="flex items-center gap-1.5">
-                                            <h4 className="text-xs font-extrabold text-gray-900 dark:text-gray-100">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
                                                 {player.name}
                                             </h4>
                                             {player.isMotm && (
-                                                <span className="bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/30 text-[9px] font-black px-1.5 py-0.2 rounded-md flex items-center gap-0.5 uppercase">
+                                                <span className="bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/30 text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider">
                                                     <Award className="w-3 h-3" /> MOTM
                                                 </span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
                                             {player.position} {player.isSub ? '(Sub)' : '(Starter)'}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Rating badge */}
-                                <div className={`px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 ${isHigh
+                                <div className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs ${isHigh
                                         ? 'bg-emerald-500 text-white'
                                         : isMedium
                                             ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                                     }`}>
-                                    <Star className="w-3 h-3 fill-current" />
-                                    <span>{player.ratingStr}</span>
+                                    <Star className="w-3.5 h-3.5 fill-current" />
+                                    <span className="font-mono">{player.ratingStr}</span>
                                 </div>
                             </div>
                         );
@@ -143,3 +143,4 @@ export const PlayerRatings: React.FC<PlayerRatingsProps> = ({ match }) => {
         </div>
     );
 };
+

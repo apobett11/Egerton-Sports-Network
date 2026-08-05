@@ -195,7 +195,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-black/45 pb-10 transition-colors">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-16 transition-colors relative">
             <MatchHeader
                 match={currentMatch}
                 onBack={onBack}
@@ -209,7 +209,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                 status={currentMatch.status}
             />
 
-            <main className="max-w-2xl mx-auto py-2">
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 relative z-10">
                 {renderTabContent()}
             </main>
         </div>
