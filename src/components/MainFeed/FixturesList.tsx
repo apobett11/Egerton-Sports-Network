@@ -55,13 +55,13 @@ export const FixturesList: React.FC<FixturesListProps> = ({
             {Object.entries(matchesByLeague).map(([leagueName, leagueMatches]) => (
                 <div
                     key={leagueName}
-                    className="bg-white/80 dark:bg-[#15191B]/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 dark:border-gray-800/80 shadow-md overflow-hidden transition-all duration-300 hover:border-emerald-500/30"
+                    className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden transition-all duration-200 hover:border-[#D4AF37]/40"
                 >
                     {/* League Header */}
-                    <div className="bg-gray-50/80 dark:bg-black/40 px-4 py-3 border-b border-gray-150/80 dark:border-gray-800/80 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-[#0D121F]/90 px-4 py-3 border-b border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-wider text-[#D4AF37]">
                                 {leagueName}
                             </span>
                         </div>

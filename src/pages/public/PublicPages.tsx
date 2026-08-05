@@ -70,25 +70,29 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
   });
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8 pb-12">
+      {/* HEADER BAR */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5 tracking-tight">
-            <Calendar className="w-6 h-6 text-[#D4AF37]" aria-hidden="true" /> Official Match Schedule & Results
+            <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Calendar className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <span>Official Match Schedule & Results</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Live scores, upcoming fixtures, and verified match results across campus leagues</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Live scores, upcoming fixtures, and verified match results across campus leagues</p>
         </div>
 
         {/* Status Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Fixture Status Filters">
+        <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Fixture Status Filters">
           {['ALL', 'LIVE', 'UPCOMING', 'FT'].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
                 filterStatus === status
-                  ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-[#D4AF37] text-slate-950 font-black shadow-md shadow-amber-500/10'
+                  : 'bg-white dark:bg-[#182030] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-[#D4AF37]/40'
               }`}
             >
               {status === 'FT' ? 'Results (FT)' : status}
@@ -98,7 +102,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
       </div>
 
       {/* Filter Controls Row */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-[#182030] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm">
         <div className="flex-1 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
           <Input
@@ -114,7 +118,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <select
             value={selectedCompetition}
             onChange={(e) => setSelectedCompetition(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
+            className="bg-slate-50 dark:bg-[#101415] border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3.5 py-2.5 font-medium focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
             aria-label="Filter by Competition"
           >
             <option value="ALL">All Competitions</option>
@@ -126,7 +130,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <select
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
+            className="bg-slate-50 dark:bg-[#101415] border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3.5 py-2.5 font-medium focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
             aria-label="Filter by Season"
           >
             <option value="2026">2025/2026 Season</option>
@@ -136,20 +140,22 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-[#1E1E1E] rounded-xl border border-slate-200 dark:border-slate-800">
-          <Calendar className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No Fixtures Found</h3>
-          <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or search query.</p>
+        <div className="text-center py-14 bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No Fixtures Found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">Try adjusting your filter preferences or search term.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filtered.map((match) => (
-            <Card key={match.id} onClick={() => onSelectMatch && onSelectMatch(match)} className="cursor-pointer hover:border-[#D4AF37]/50 transition-all">
-              <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="font-semibold">{match.league}</span>
+            <Card key={match.id} onClick={() => onSelectMatch && onSelectMatch(match)} className="cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 shadow-sm hover:shadow-xl hover:shadow-black/20 rounded-2xl p-5 md:p-6 transition-all duration-200">
+              <div className="flex items-center justify-between text-xs text-slate-500 pb-3 border-b border-slate-100 dark:border-slate-800/80 font-medium">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">{match.league}</span>
                 <div className="flex items-center gap-2">
                   {match.status === 'UPCOMING' && (
-                    <span className="text-[10px] text-amber-500 font-mono flex items-center gap-1">
+                    <span className="text-[10px] text-amber-500 font-mono font-semibold flex items-center gap-1">
                       <Clock className="w-3 h-3" /> Kickoff: {match.time}
                     </span>
                   )}
@@ -159,10 +165,10 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
                 </div>
               </div>
 
-              <div className="py-4 space-y-3">
+              <div className="py-4 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 object-contain" />
+                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 object-contain rounded-full bg-slate-50 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-800" />
                     <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{match.teamA.name}</span>
                   </div>
                   <span className="font-mono font-black text-lg text-slate-900 dark:text-slate-100">
@@ -172,7 +178,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 object-contain" />
+                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 object-contain rounded-full bg-slate-50 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-800" />
                     <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{match.teamB.name}</span>
                   </div>
                   <span className="font-mono font-black text-lg text-slate-900 dark:text-slate-100">
@@ -181,9 +187,9 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
                 </div>
               </div>
 
-              <div className="text-[11px] text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="text-[11px] text-slate-400 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 font-medium">
                 <span>{match.venue}</span>
-                <span className="text-[#D4AF37] font-semibold flex items-center gap-1">
+                <span className="text-[#D4AF37] font-bold flex items-center gap-1">
                   View Match Details <ChevronRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -342,12 +348,17 @@ export const PublicLeaguePage: React.FC = () => {
   if (isLoading) return <LoadingSpinner label="Calculating official league standings..." />;
 
   return (
-    <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-[#D4AF37]" /> Official League Standings
-        </h1>
-        <p className="text-xs text-slate-500">Automatically computed standings derived from verified match outcomes</p>
+    <div className="space-y-8 pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5 tracking-tight">
+            <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Trophy className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <span>Official League Standings</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatically computed standings derived from verified match outcomes</p>
+        </div>
       </div>
 
       <LeagueTable tableData={table} allowHistoricalView={true} />
@@ -376,24 +387,29 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
   );
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8 pb-12">
+      {/* HEADER BAR */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Newspaper className="w-6 h-6 text-[#D4AF37]" /> Football News & Articles
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5 tracking-tight">
+            <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Newspaper className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <span>Football News & Articles</span>
           </h1>
-          <p className="text-xs text-slate-500">Official reports, transfer updates, and coverage from accredited journalists</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Official reports, transfer updates, and coverage from accredited journalists</p>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Category Pills */}
+        <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="News Category Filters">
           {['ALL', 'match_report', 'transfer', 'injury', 'general'].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
                 selectedCategory === cat
-                  ? 'bg-[#D4AF37] text-slate-950 font-bold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  ? 'bg-[#D4AF37] text-slate-950 font-black shadow-md shadow-amber-500/10'
+                  : 'bg-white dark:bg-[#182030] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-[#D4AF37]/40'
               }`}
             >
               {cat === 'match_report' ? 'Match Reports' : cat === 'transfer' ? 'Transfers' : cat === 'injury' ? 'Injuries' : cat}
@@ -404,19 +420,19 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredArticles.map((item) => (
-          <Card key={item.id} onClick={() => setSelectedArticle(item)} className="group cursor-pointer hover:border-[#D4AF37]/50 transition-all">
-            <div className="space-y-3">
-              <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover rounded-lg group-hover:scale-101 transition-transform" />
-              <div className="flex items-center justify-between text-xs text-slate-500">
+          <Card key={item.id} onClick={() => setSelectedArticle(item)} className="group cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 shadow-sm hover:shadow-xl hover:shadow-black/20 rounded-2xl p-5 md:p-6 transition-all duration-200">
+            <div className="space-y-4">
+              <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 group-hover:scale-[1.01] transition-transform duration-300" />
+              <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
                 <Badge variant="gold">{item.category}</Badge>
                 <span>{item.publishedAt}</span>
               </div>
               <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors leading-snug">
                 {item.title}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{item.excerpt}</p>
-              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                <span>By {item.author} ({item.authorRole})</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{item.excerpt}</p>
+              <div className="pt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800/80 font-medium">
+                <span>By <strong className="text-slate-700 dark:text-slate-300">{item.author}</strong> ({item.authorRole})</span>
                 <span className="font-bold text-[#D4AF37] flex items-center gap-1">Read Article <ExternalLink className="w-3 h-3" /></span>
               </div>
             </div>

@@ -50,12 +50,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       : new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 
     return (
-      <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden select-none space-y-0">
+      <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden select-none space-y-0">
         {/* Table Header */}
-        <div className="bg-gray-50 dark:bg-black/30 px-5 py-4 border-b border-gray-200/80 dark:border-gray-800 flex items-center justify-between">
+        <div className="bg-slate-50 dark:bg-[#0D121F]/90 px-5 py-4 border-b border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Trophy className={`w-5 h-5 ${badgeColor}`} />
-            <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
               {title}
             </h3>
           </div>
