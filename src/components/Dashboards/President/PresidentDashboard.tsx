@@ -9,6 +9,7 @@ import { RefereePoolView } from './components/Referees/RefereePoolView';
 import { FixtureEngineView } from './components/Fixtures/FixtureEngineView';
 import { BroadcastView } from './components/Megaphone/BroadcastView';
 import { PresidentProfileView } from './components/Profile/PresidentProfileView';
+import { SeasonLaunchModal } from './components/Fixtures/SeasonLaunchModal';
 
 export interface PresidentDashboardProps {
   onLogout?: () => void;
@@ -25,6 +26,8 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     toastMessage,
     showToast,
     seasons,
+    isSeasonLaunchModalOpen,
+    setIsSeasonLaunchModalOpen,
     showCreateSeasonModal,
     setShowCreateSeasonModal,
     showCreateLeagueModal,
@@ -117,6 +120,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             referees={referees}
             announcementsCount={announcements.length}
             setActiveView={setActiveView}
+            onOpenSeasonLaunchModal={() => setIsSeasonLaunchModalOpen(true)}
           />
         )}
 
@@ -398,6 +402,16 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
           })}
         </div>
       </nav>
+
+      {/* SEASON LAUNCH WORKFLOW MODAL */}
+      <SeasonLaunchModal
+        isOpen={isSeasonLaunchModalOpen}
+        onClose={() => setIsSeasonLaunchModalOpen(false)}
+        isDark={isDark}
+        teams={teams}
+        referees={referees}
+        showToast={showToast}
+      />
     </div>
   );
 };

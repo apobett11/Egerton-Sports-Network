@@ -9,6 +9,7 @@ interface PresidentHomeOverviewProps {
   referees: RefereeItem[];
   announcementsCount?: number;
   setActiveView: (tab: PresidentTab) => void;
+  onOpenSeasonLaunchModal?: () => void;
 }
 
 export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
@@ -18,6 +19,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
   referees,
   announcementsCount = 0,
   setActiveView,
+  onOpenSeasonLaunchModal,
 }) => {
   return (
     <div className="space-y-8">
@@ -31,7 +33,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
             Pre-Season Executive Portal
           </h1>
           <p className={`text-xs md:text-sm font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Manage referee registrations, broadcast announcements, review league registrations, and prepare match fixtures.
+            Manage referee registrations, broadcast announcements, review league registrations, and launch the season fixtures.
           </p>
         </div>
 
@@ -39,12 +41,12 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
-              onClick={() => setActiveView('fixture_engine')}
-              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400 flex items-center justify-between cursor-pointer group"
+              onClick={() => onOpenSeasonLaunchModal ? onOpenSeasonLaunchModal() : setActiveView('fixture_engine')}
+              className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <Trophy className="w-4 h-4" />
-                <span>Generate Fixtures</span>
+                <span>Begin Season</span>
               </span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </button>
@@ -73,7 +75,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('season_engine')}
-              className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center justify-between cursor-pointer group"
+              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />

@@ -78,6 +78,9 @@ export const usePresidentDashboard = () => {
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [conflictsResolved, setConflictsResolved] = useState(false);
 
+  // --- PHASE P: SEASON LAUNCH MODAL STATE ---
+  const [isSeasonLaunchModalOpen, setIsSeasonLaunchModalOpen] = useState(false);
+
   // --- TAB 5: MAKE ANNOUNCEMENT STATE ---
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
@@ -475,6 +478,8 @@ export const usePresidentDashboard = () => {
     isScheduleLocked,
     showLockWarningModal,
     setShowLockWarningModal,
+    isSeasonLaunchModalOpen,
+    setIsSeasonLaunchModalOpen,
     editingFixture,
     setEditingFixture,
     wizardStep,

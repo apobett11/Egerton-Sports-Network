@@ -1219,5 +1219,114 @@ export const ApiService = {
     } catch (err: any) {
       return { success: false, data: null, message: classifyError(err).userMessage };
     }
+  },
+
+  // --- SEASON LAUNCH FIXTURES & CHAMPIONSHIP SEEDING ---
+  async seedChampionshipTeamsIfMissing(): Promise<ApiResponse<any[]>> {
+    try {
+      const champCompId = '22222222-2222-2222-2222-222222222222';
+      const { data: existing } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('competition_id', champCompId)
+        .is('deleted_at', null);
+
+      if (existing && existing.length >= 2) {
+        return { success: true, data: existing };
+      }
+
+      const demoTeams = [
+        { id: 'c1111111-1111-1111-1111-111111111111', competition_id: champCompId, name: 'Championship FC Alpha', short_name: 'CHP-A', color_code: '#10B981', status: 'approved' },
+        { id: 'c2222222-2222-2222-2222-222222222222', competition_id: champCompId, name: 'Championship FC Beta', short_name: 'CHP-B', color_code: '#6366F1', status: 'approved' },
+        { id: 'c3333333-3333-3333-3333-333333333333', competition_id: champCompId, name: 'Championship FC Gamma', short_name: 'CHP-C', color_code: '#F59E0B', status: 'approved' },
+        { id: 'c4444444-4444-4444-4444-444444444444', competition_id: champCompId, name: 'Championship FC Delta', short_name: 'CHP-D', color_code: '#EC4899', status: 'approved' }
+      ];
+
+      const { data: inserted, error } = await supabase
+        .from('teams')
+        .upsert(demoTeams, { onConflict: 'id' })
+        .select();
+
+      this.invalidateCache();
+      if (error) {
+        logger.warn('Championship seeding note:', { error: error.message });
+      }
+      return { success: true, data: inserted || demoTeams };
+    } catch (err: any) {
+      return { success: true, data: [] };
+    }
+  },
+
+  async saveConfirmedFixtures(fixtures: Array<{
+    competition_id: string;
+    home_team_id: string;
+    away_team_id: string;
+    scheduled_time: string;
+    venue?: string;
+    referee_id?: string | null;
+    matchday?: number;
+  }>): Promise<ApiResponse<{ insertedCount: number }>> {
+    if (!fixtures || fixtures.length === 0) {
+      return { success: false, data: null, message: 'No fixtures provided for submission.' };
+    }
+
+    try {
+      this.invalidateCache();
+      const { data: existingDbFixtures } = await supabase
+        .from('fixtures')
+        .select('home_team_id, away_team_id, scheduled_time, competition_id')
+        .is('deleted_at', null);
+
+      const existingSet = new Set(
+        (existingDbFixtures || []).map(
+          (f: any) => `${f.home_team_id}_${f.away_team_id}_${new Date(f.scheduled_time).toISOString()}`
+        )
+      );
+
+      const cleanPayload = fixtures
+        .filter((f) => {
+          const key = `${f.home_team_id}_${f.away_team_id}_${new Date(f.scheduled_time).toISOString()}`;
+          return !existingSet.has(key);
+        })
+        .map((f) => ({
+          competition_id: f.competition_id,
+          home_team_id: f.home_team_id,
+          away_team_id: f.away_team_id,
+          scheduled_time: new Date(f.scheduled_time).toISOString(),
+          venue: f.venue || 'Egerton Main Stadium',
+          referee_id: f.referee_id || null,
+          matchday: f.matchday || 1,
+          status: 'UPCOMING',
+          score_home: 0,
+          score_away: 0
+        }));
+
+      if (cleanPayload.length === 0) {
+        return { success: false, data: { insertedCount: 0 }, message: 'All fixtures already exist in the database.' };
+      }
+
+      const { data: insertedData, error } = await supabase
+        .from('fixtures')
+        .insert(cleanPayload)
+        .select('id');
+
+      if (error) {
+        logger.error('Error inserting fixtures batch to database:', error);
+        return { success: false, data: null, message: `Database error: ${error.message}` };
+      }
+
+      await this.logAuditAction('CONFIRM_SEASON_FIXTURES', 'fixtures', 'season-launch', {
+        insertedCount: insertedData?.length || cleanPayload.length
+      });
+
+      return {
+        success: true,
+        data: { insertedCount: insertedData?.length || cleanPayload.length },
+        message: `Successfully published ${insertedData?.length || cleanPayload.length} fixtures to database!`
+      };
+    } catch (err: any) {
+      const appErr = classifyError(err);
+      return { success: false, data: null, message: appErr.userMessage };
+    }
   }
 };
