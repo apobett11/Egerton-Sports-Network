@@ -171,7 +171,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                     e.stopPropagation();
                                                     toggleFavorite(match.id);
                                                 }}
-                                                className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 active:scale-80 cursor-pointer"
+                                                aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                                                className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-200 active:scale-80 cursor-pointer"
                                             >
                                                 <Star
                                                     className={`w-5 h-5 transition-all duration-300 ${isFav

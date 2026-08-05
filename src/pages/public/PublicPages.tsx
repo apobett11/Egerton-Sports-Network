@@ -73,22 +73,22 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
     <div className="space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-[#D4AF37]" /> Official Match Schedule & Results
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5 tracking-tight">
+            <Calendar className="w-6 h-6 text-[#D4AF37]" aria-hidden="true" /> Official Match Schedule & Results
           </h1>
-          <p className="text-xs text-slate-500">Live scores, upcoming fixtures, and verified match results across campus leagues</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Live scores, upcoming fixtures, and verified match results across campus leagues</p>
         </div>
 
         {/* Status Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Fixture Status Filters">
           {['ALL', 'LIVE', 'UPCOMING', 'FT'].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
                 filterStatus === status
-                  ? 'bg-[#D4AF37] text-slate-950 font-bold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {status === 'FT' ? 'Results (FT)' : status}
@@ -98,14 +98,15 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
       </div>
 
       {/* Filter Controls Row */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
         <div className="flex-1 relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" aria-hidden="true" />
           <Input
             placeholder="Search teams or venues..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 text-xs"
+            className="pl-9 text-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
+            aria-label="Search teams or venues"
           />
         </div>
 
@@ -113,7 +114,8 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <select
             value={selectedCompetition}
             onChange={(e) => setSelectedCompetition(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none"
+            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
+            aria-label="Filter by Competition"
           >
             <option value="ALL">All Competitions</option>
             {competitions.map((comp) => (
@@ -124,7 +126,8 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <select
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none"
+            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
+            aria-label="Filter by Season"
           >
             <option value="2026">2025/2026 Season</option>
             <option value="2025">2024/2025 Season</option>
@@ -497,11 +500,21 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
 
       {/* ARTICLE READER MODAL */}
       {selectedArticle && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedArticle(null)}>
-          <div className="bg-white dark:bg-[#1A1E20] max-w-2xl w-full rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" 
+          onClick={() => setSelectedArticle(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Article Details"
+        >
+          <div className="bg-white dark:bg-[#1A1E20] max-w-2xl w-full rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <Badge variant="gold">{selectedArticle.category}</Badge>
-              <button onClick={() => setSelectedArticle(null)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+              <button 
+                onClick={() => setSelectedArticle(null)} 
+                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] transition-colors"
+                aria-label="Close article modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -529,11 +542,12 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
                     alert('Article link copied to clipboard!');
                   }
                 }}
-                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 hover:underline"
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1.5 py-1"
+                aria-label="Share article link"
               >
                 <Share2 className="w-4 h-4" /> Share Article
               </button>
-              <Button variant="primary" size="sm" onClick={() => setSelectedArticle(null)}>
+              <Button variant="primary" size="sm" onClick={() => setSelectedArticle(null)} className="active:scale-[0.98] transition-transform">
                 Done Reading
               </Button>
             </div>
