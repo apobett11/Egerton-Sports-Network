@@ -254,9 +254,10 @@ export const AppContent: React.FC = () => {
     <HerdMentalityProvider>
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
-        darkMode ? 'bg-[#111111] text-gray-200' : 'bg-gray-50 text-gray-800'
+      <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 relative ${
+        darkMode ? 'bg-[#07170E] text-gray-200' : 'bg-[#ECFDF5] text-gray-800'
       }`}>
+        <div className="turf-pitch-overlay" aria-hidden="true" />
         {/* Sidebar Drawer overlay */}
         {sidebarOpen && (
           <div
@@ -363,7 +364,7 @@ export const AppContent: React.FC = () => {
               favoritesCount={favorites.length}
             />
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
               {activeTab === 'scores' && (
                 <div className="space-y-10">
                   <FixturesList
