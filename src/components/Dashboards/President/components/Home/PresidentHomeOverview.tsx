@@ -40,7 +40,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => setActiveView('fixture_engine')}
-              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <Trophy className="w-4 h-4" />
@@ -51,7 +51,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('megaphone')}
-              className="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+              className="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <Megaphone className="w-4 h-4" />
@@ -62,7 +62,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('referees')}
-              className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+              className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4" />
@@ -73,7 +73,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('season_engine')}
-              className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shadow-md transition-all flex items-center justify-between cursor-pointer group"
+              className="px-4 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
