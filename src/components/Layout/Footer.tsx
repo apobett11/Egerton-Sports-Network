@@ -1,44 +1,51 @@
 import React from 'react';
-import { Shield, Mail, Award, Activity } from 'lucide-react';
+import { Shield, Mail, Award, Activity, Heart } from 'lucide-react';
 
 export const Footer: React.FC = () => {
     return (
-        <footer className="w-full bg-white dark:bg-[#111111] text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-800 py-6 px-4 mt-auto">
-            <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-
-                {/* Info Column */}
-                <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1">
-                    <div className="flex items-center gap-1.5 font-bold text-gray-855 dark:text-gray-200 text-sm">
-                        <Activity className="w-4 h-4 text-emerald-500" />
-                        <span>Egerton Sports Network</span>
+        <footer className="w-full bg-slate-100/90 dark:bg-[#0B0F17] text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80 py-10 px-6 mt-auto">
+            <div className="max-w-7xl mx-auto space-y-8">
+                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 text-center md:text-left">
+                    {/* Brand Info Column */}
+                    <div className="space-y-2 max-w-sm">
+                        <div className="flex items-center justify-center md:justify-start gap-2 font-black text-slate-900 dark:text-slate-100 text-base tracking-tight">
+                            <div className="p-1.5 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                                <Activity className="w-4 h-4" />
+                            </div>
+                            <span>Egerton Sports Network</span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+                            The official campus live scores, standings engine, match reporting, and official sports portal for Egerton University athletics.
+                        </p>
                     </div>
-                    <p className="text-xs max-w-xs text-gray-400 mt-1">
-                        The premier campus livescore, news reporting and transfer desk platform for Egerton University sports.
-                    </p>
-                </div>
 
-                {/* Links Column */}
-                <div className="flex items-center gap-6 text-xs font-medium">
-                    <a href="#rules" className="hover:text-emerald-550 dark:hover:text-emerald-450 transition-colors flex items-center gap-1">
-                        <Award className="w-3.5 h-3.5" />
-                        Rules
-                    </a>
-                    <a href="#about" className="hover:text-emerald-555 dark:hover:text-emerald-455 transition-colors flex items-center gap-1">
-                        <Shield className="w-3.5 h-3.5" />
-                        Policies
-                    </a>
-                    <a href="#contact" className="hover:text-emerald-555 dark:hover:text-emerald-455 transition-colors flex items-center gap-1">
-                        <Mail className="w-3.5 h-3.5" />
-                        Contact
-                    </a>
-                </div>
+                    {/* Quick Navigation Links */}
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <a href="#rules" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
+                            <Award className="w-4 h-4 text-[#D4AF37]" aria-hidden="true" />
+                            <span>Match Rules</span>
+                        </a>
+                        <a href="#about" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
+                            <Shield className="w-4 h-4 text-emerald-500" aria-hidden="true" />
+                            <span>Platform Policies</span>
+                        </a>
+                        <a href="#contact" className="hover:text-[#D4AF37] transition-colors flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1 py-0.5">
+                            <Mail className="w-4 h-4 text-blue-500" aria-hidden="true" />
+                            <span>Contact Admin</span>
+                        </a>
+                    </div>
 
-                {/* Copyright */}
-                <div className="text-center md:text-right text-[10px] text-gray-400">
-                    <p>© {new Date().getFullYear()} Egerton Sports Network.</p>
-                    <p className="mt-0.5">Faculty of Arts & Sciences Dept. project.</p>
+                    {/* Department & Copyright */}
+                    <div className="text-center md:text-right text-xs text-slate-400 space-y-1">
+                        <p className="font-extrabold text-slate-700 dark:text-slate-300">
+                            © {new Date().getFullYear()} Egerton Sports Network
+                        </p>
+                        <p className="text-[11px]">Faculty of Arts & Social Sciences</p>
+                        <p className="text-[10px] text-slate-500 flex items-center justify-center md:justify-end gap-1">
+                            Built with precision for campus football <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+                        </p>
+                    </div>
                 </div>
-
             </div>
         </footer>
     );

@@ -376,255 +376,290 @@ export const AppContent: React.FC = () => {
 
                   {/* HOMEPAGE CONTINUOUS FOOTBALL DISCOVERY FLOW */}
                   <div className="space-y-12 select-none pt-4">
-                    {/* 1. STATISTIC (Hero League Counters) */}
-                    <div className="grid grid-cols-3 gap-4 p-6 rounded-2xl bg-slate-50/60 dark:bg-[#121618] border border-slate-200/70 dark:border-slate-800/70">
-                      <div className="flex flex-col items-center justify-center text-center space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                          <span>⚽</span>
-                          <span>Goals / Game</span>
+                    {/* 1. STATISTIC SECTION CONTAINER (Hero League Performance Snapshot) */}
+                    <section aria-label="League Performance Snapshot" className="p-6 md:p-8 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-4">
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+                        <Activity className="w-5 h-5 text-[#D4AF37]" />
+                        <div>
+                          <h2 className="text-base md:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                            Season Statistical Averages
+                          </h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Key metrics compiled across all verified campus league matches
+                          </p>
                         </div>
-                        <span className="text-2xl md:text-3xl font-black font-mono text-slate-900 dark:text-slate-100">2.8</span>
                       </div>
-                      <div className="flex flex-col items-center justify-center text-center space-y-1 border-x border-slate-200 dark:border-slate-800">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                          <span>🏆</span>
-                          <span>Played</span>
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black font-mono text-amber-500">12</span>
-                      </div>
-                      <div className="flex flex-col items-center justify-center text-center space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                          <span>🔥</span>
-                          <span>Best Streak</span>
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black font-mono text-emerald-500">8</span>
-                      </div>
-                    </div>
 
-                    {/* 2. LEADERBOARD (Top 5 League Snapshot) */}
-                    <div className="p-6 md:p-8 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 shadow-xs space-y-6">
-                      <div className="flex items-center justify-between">
+                      <div className="grid grid-cols-3 gap-4 p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                            <span>⚽</span>
+                            <span>Goals / Game</span>
+                          </div>
+                          <span className="text-2xl md:text-3xl font-black font-mono text-slate-900 dark:text-slate-100">2.8</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center text-center space-y-1 border-x border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                            <span>🏆</span>
+                            <span>Played</span>
+                          </div>
+                          <span className="text-2xl md:text-3xl font-black font-mono text-amber-500">12</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center text-center space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                            <span>🔥</span>
+                            <span>Best Streak</span>
+                          </div>
+                          <span className="text-2xl md:text-3xl font-black font-mono text-emerald-500">8</span>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 2. LEAGUE STANDINGS SNAPSHOT SECTION CONTAINER */}
+                    <section aria-label="League Standings Preview" className="p-6 md:p-8 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-6">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
                         <div className="flex items-center gap-2.5">
-                          <Trophy className="w-5 h-5 text-amber-500" />
-                          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
-                            League Snapshot
-                          </h3>
+                          <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                            <Trophy className="w-5 h-5" aria-hidden="true" />
+                          </div>
+                          <div>
+                            <h2 className="text-lg md:text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                              League Standings Snapshot
+                            </h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Top clubs competing for the Egerton Premier League championship
+                            </p>
+                          </div>
                         </div>
                         <button
                           onClick={() => setActiveTab('table')}
-                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+                          className="text-xs font-bold text-[#D4AF37] hover:underline cursor-pointer flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 transition-colors"
                         >
                           <span>Full Standings</span>
                           <span>→</span>
                         </button>
                       </div>
 
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#182030] shadow-xs">
                         <table className="w-full text-left text-xs font-sans">
                           <thead>
-                            <tr className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                              <th className="pb-3 text-center w-8">#</th>
-                              <th className="pb-3">Club</th>
-                              <th className="pb-3 text-center">P</th>
-                              <th className="pb-3 text-center">GD</th>
-                              <th className="pb-3 text-right font-extrabold text-amber-500">Pts</th>
+                            <tr className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
+                              <th className="p-3.5 text-center w-8">#</th>
+                              <th className="p-3.5">Club</th>
+                              <th className="p-3.5 text-center">P</th>
+                              <th className="p-3.5 text-center">GD</th>
+                              <th className="p-3.5 text-right font-extrabold text-amber-500">Pts</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                             {currentStandings.slice(0, 5).map((row) => (
-                              <tr key={row.teamId} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="py-3 text-center font-black text-slate-400">{row.position}</td>
-                                <td className="py-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+                              <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="p-3.5 text-center font-black text-slate-400">{row.position}</td>
+                                <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
                                   <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
                                   <span>{row.teamName}</span>
                                 </td>
-                                <td className="py-3 text-center text-slate-500">{row.played}</td>
-                                <td className="py-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                                <td className="py-3 text-right font-black text-base text-amber-500 font-mono">{row.points}</td>
+                                <td className="p-3.5 text-center text-slate-500">{row.played}</td>
+                                <td className="p-3.5 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
+                                <td className="p-3.5 text-right font-black text-base text-amber-500 font-mono">{row.points}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    </div>
+                    </section>
 
-                    {/* 3. WIDE STORY (Featured Match Story) */}
-                    <div
+                    {/* 3. FEATURED EDITORIAL STORY SECTION CONTAINER */}
+                    <section
+                      aria-label="Featured Story"
                       onClick={() => setActiveTab('news')}
-                      className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-slate-900 via-[#141819] to-slate-950 border border-slate-800 text-white cursor-pointer hover:border-amber-500/40 transition-all space-y-3"
+                      className="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-[#131B2E] to-slate-950 border border-slate-800 dark:border-[#D4AF37]/30 text-white cursor-pointer hover:border-[#D4AF37]/60 transition-all space-y-3 shadow-xl"
                     >
-                      <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
                         <span>🔥</span>
                         <span>FEATURED STORY</span>
                         <span className="text-slate-500">•</span>
-                        <span className="text-slate-400">Today</span>
+                        <span className="text-slate-400 font-normal">Official Coverage</span>
                       </div>
-                      <h4 className="text-base md:text-lg font-black leading-snug tracking-tight">
+                      <h3 className="text-lg md:text-2xl font-black leading-snug tracking-tight">
                         Egerton Premier League: Sharklets Maintain Lead as FOA Pressures from Second Place
-                      </h4>
-                      <p className="text-xs text-slate-400 line-clamp-1">
-                        Title race intensifies after crucial weekend matchday results across campus pitches.
+                      </h3>
+                      <p className="text-xs md:text-sm text-slate-300/90 line-clamp-2 leading-relaxed">
+                        Title race intensifies after crucial weekend matchday results across campus pitches. Click to read the full report.
                       </p>
-                    </div>
+                    </section>
 
-                    {/* 4. MINI CARDS (Key Player Leaders: Goals, Assists, Clean Sheets) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {/* Goals */}
-                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="flex items-center gap-1.5 text-amber-500 uppercase tracking-wider">
-                            <span>⚽</span> Goals
-                          </span>
-                          <span className="text-slate-400 font-mono text-[11px]">Rank</span>
+                    {/* 4. PLAYER LEADERS SECTION CONTAINER */}
+                    <section aria-label="Player Leaders" className="p-6 md:p-8 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-5">
+                      <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+                        <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                          Player Leaders & Performance
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Top goalscorers, playmakers, and defensive clean sheets across campus
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Goals */}
+                        <div className="p-6 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-4 shadow-xs">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="flex items-center gap-1.5 text-amber-500 uppercase tracking-wider">
+                              <span>⚽</span> Goals
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">Rank</span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 10</span>
+                              <span className="text-xl font-black font-mono text-amber-500">8</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>SHK Player 9</span>
+                              <span className="font-mono font-bold text-slate-400">7</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>FOS Player 11</span>
+                              <span className="font-mono font-bold text-slate-400">6</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 10</span>
-                            <span className="text-xl font-black font-mono text-amber-500">8</span>
+
+                        {/* Assists */}
+                        <div className="p-6 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-4 shadow-xs">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="flex items-center gap-1.5 text-emerald-500 uppercase tracking-wider">
+                              <span>🎯</span> Assists
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">Rank</span>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>SHK Player 9</span>
-                            <span className="font-mono font-bold text-slate-400">7</span>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 8</span>
+                              <span className="text-xl font-black font-mono text-emerald-500">6</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>FOS Player 7</span>
+                              <span className="font-mono font-bold text-slate-400">5</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>SHK Player 10</span>
+                              <span className="font-mono font-bold text-slate-400">4</span>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>FOS Player 11</span>
-                            <span className="font-mono font-bold text-slate-400">6</span>
+                        </div>
+
+                        {/* Clean Sheets */}
+                        <div className="p-6 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-4 shadow-xs">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="flex items-center gap-1.5 text-blue-500 uppercase tracking-wider">
+                              <span>🧤</span> Clean Sheets
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">CS</span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets</span>
+                              <span className="text-xl font-black font-mono text-blue-500">6</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>Faculty of Arts</span>
+                              <span className="font-mono font-bold text-slate-400">4</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>Faculty of Science</span>
+                              <span className="font-mono font-bold text-slate-400">3</span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                    </section>
 
-                      {/* Assists */}
-                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="flex items-center gap-1.5 text-emerald-500 uppercase tracking-wider">
-                            <span>🎯</span> Assists
-                          </span>
-                          <span className="text-slate-400 font-mono text-[11px]">Rank</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">FOA Player 8</span>
-                            <span className="text-xl font-black font-mono text-emerald-500">6</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>FOS Player 7</span>
-                            <span className="font-mono font-bold text-slate-400">5</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>SHK Player 10</span>
-                            <span className="font-mono font-bold text-slate-400">4</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Clean Sheets */}
-                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-4">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="flex items-center gap-1.5 text-blue-500 uppercase tracking-wider">
-                            <span>🧤</span> Clean Sheets
-                          </span>
-                          <span className="text-slate-400 font-mono text-[11px]">CS</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets</span>
-                            <span className="text-xl font-black font-mono text-blue-500">6</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>Faculty of Arts</span>
-                            <span className="font-mono font-bold text-slate-400">4</span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-slate-500">
-                            <span>Faculty of Science</span>
-                            <span className="font-mono font-bold text-slate-400">3</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 5. STATISTIC (Campus Football Rankings & Records) */}
-                    <div className="p-6 md:p-8 rounded-2xl bg-slate-50/70 dark:bg-[#121618] border border-slate-200/70 dark:border-slate-800/70 space-y-4">
-                      <div className="flex items-center gap-2">
+                    {/* 5. CAMPUS LEAGUE RECORDS SECTION CONTAINER */}
+                    <section aria-label="Campus League Records" className="p-6 md:p-8 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-5">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
                         <span className="text-sm">📈</span>
-                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                          Campus League Records
-                        </h3>
+                        <div>
+                          <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-slate-100">
+                            Campus League Milestones
+                          </h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Highest scoring teams and unbeaten streaks this season
+                          </p>
+                        </div>
                       </div>
+
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-center">
-                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
-                          <div className="text-[11px] text-slate-400 font-bold">Most Goals</div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                          <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Goals</div>
                           <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">28</div>
                           <div className="text-[10px] text-slate-500 font-semibold">Faculty of Arts</div>
                         </div>
-                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
-                          <div className="text-[11px] text-slate-400 font-bold">Most Wins</div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                          <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Wins</div>
                           <div className="text-xl font-black text-emerald-500 mt-1">9</div>
                           <div className="text-[10px] text-slate-500 font-semibold">Sharklets</div>
                         </div>
-                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
-                          <div className="text-[11px] text-slate-400 font-bold">Best Defence</div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                          <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Best Defence</div>
                           <div className="text-xl font-black text-blue-500 mt-1">8 GA</div>
                           <div className="text-[10px] text-slate-500 font-semibold">Sharklets</div>
                         </div>
-                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60">
-                          <div className="text-[11px] text-slate-400 font-bold">Win Streak</div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                          <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Win Streak</div>
                           <div className="text-xl font-black text-amber-500 mt-1">5</div>
                           <div className="text-[10px] text-slate-500 font-semibold">Matches</div>
                         </div>
-                        <div className="p-4 rounded-xl bg-white dark:bg-[#181c1e] border border-slate-200/60 dark:border-slate-800/60 col-span-2 sm:col-span-1">
-                          <div className="text-[11px] text-slate-400 font-bold">Unbeaten</div>
+                        <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs col-span-2 sm:col-span-1">
+                          <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Unbeaten</div>
                           <div className="text-xl font-black text-emerald-500 mt-1">8</div>
                           <div className="text-[10px] text-slate-500 font-semibold">Matches</div>
                         </div>
                       </div>
-                    </div>
+                    </section>
 
-                    {/* 6. NEWS & POLL (Weekend Preview & Title Poll) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Weekend Preview */}
-                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-500">
-                          <span>📅</span>
-                          <span className="uppercase tracking-wider">Weekend Preview</span>
+                    {/* 6. SPONSORS SECTION CONTAINER */}
+                    <section aria-label="Official Partners" className="p-6 md:p-8 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-5">
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+                        <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                          <Award className="w-5 h-5" aria-hidden="true" />
                         </div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
-                          Top 2 Title Clash: Sharklets vs FOA
-                        </h4>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          Egerton Pavilion Stadium • Saturday 16:00
-                        </p>
-                      </div>
-
-                      {/* Title Poll */}
-                      <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
-                          <span>🔥</span>
-                          <span className="uppercase tracking-wider">Title Poll</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-slate-100">
-                          <span>Egerton Sharklets</span>
-                          <span className="text-emerald-500 font-mono">54%</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-slate-100">
-                          <span>Faculty of Arts</span>
-                          <span className="text-amber-500 font-mono">36%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 7. HISTORICAL CARD (This Day in Football) */}
-                    <div className="p-6 rounded-2xl bg-white dark:bg-[#15191B] border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">⏱</span>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">This Day in Football</span>
-                          <h4 className="text-xs font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
-                            August 2022 • FOA 4-3 FOS (Penalties)
-                          </h4>
+                          <h2 className="text-base md:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                            Official League Partners & Sponsors
+                          </h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Supporting athletic excellence and campus sports infrastructure
+                          </p>
                         </div>
                       </div>
-                      <span className="text-[11px] font-bold text-slate-400">Campus Cup Final</span>
-                    </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="p-5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-1.5 shadow-xs">
+                          <div className="text-xs font-black text-[#D4AF37]">EUSC</div>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Egerton Sports Council</h3>
+                          <p className="text-[11px] text-slate-500">Official Sports Governance</p>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-1.5 shadow-xs">
+                          <div className="text-xs font-black text-emerald-500">CAB</div>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Campus Athletics Board</h3>
+                          <p className="text-[11px] text-slate-500">League Operations Oversight</p>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-1.5 shadow-xs">
+                          <div className="text-xs font-black text-blue-500">PSC</div>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Pavilion Sports Center</h3>
+                          <p className="text-[11px] text-slate-500">Matchday Venue Partner</p>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 space-y-1.5 shadow-xs">
+                          <div className="text-xs font-black text-amber-500">VHD</div>
+                          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">Varsity Health Desk</h3>
+                          <p className="text-[11px] text-slate-500">Sports Medical Partner</p>
+                        </div>
+                      </div>
+                    </section>
                   </div>
                 </div>
               )}
