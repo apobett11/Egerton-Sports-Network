@@ -136,52 +136,57 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <p className="text-xs text-slate-500 max-w-sm mx-auto">Try adjusting your filter preferences or search term.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs">
           {filtered.map((match) => (
-            <Card key={match.id} onClick={() => onSelectMatch && onSelectMatch(match)} className="cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 shadow-sm hover:shadow-xl hover:shadow-black/20 rounded-2xl p-5 md:p-6 transition-all duration-200">
-              <div className="flex items-center justify-between text-xs text-slate-500 pb-3 border-b border-slate-100 dark:border-slate-800/80 font-medium">
-                <span className="font-semibold text-slate-600 dark:text-slate-400">{match.league}</span>
-                <div className="flex items-center gap-2">
-                  {match.status === 'UPCOMING' && (
-                    <span className="text-[10px] text-amber-500 font-mono font-semibold flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Kickoff: {match.time}
-                    </span>
+            <div 
+              key={match.id} 
+              onClick={() => onSelectMatch && onSelectMatch(match)}
+              className="flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group active:scale-[0.99]"
+            >
+              {/* Left: Time & Status */}
+              <div className="w-20 sm:w-24 flex flex-col items-start pr-3 border-r border-slate-100 dark:border-slate-800">
+                {match.status === 'LIVE' ? (
+                  <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-md animate-pulse">
+                    LIVE {match.minute}
+                  </span>
+                ) : match.status === 'FT' ? (
+                  <span className="text-xs font-black text-slate-400 font-mono">FT</span>
+                ) : (
+                  <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 font-mono">{match.time}</span>
+                )}
+                <span className="text-[10px] text-slate-400 font-sans truncate max-w-[75px]">{match.venue}</span>
+              </div>
+
+              {/* Center: Teams & Scores */}
+              <div className="flex-1 flex items-center justify-between px-3 sm:px-5">
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="flex items-center gap-2.5">
+                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">{match.teamA.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">{match.teamB.name}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 items-end justify-center font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 pr-1">
+                  {match.status !== 'UPCOMING' ? (
+                    <>
+                      <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreA}</span>
+                      <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreB}</span>
+                    </>
+                  ) : (
+                    <span className="text-[11px] font-bold text-slate-400">VS</span>
                   )}
-                  <Badge variant={match.status === 'LIVE' ? 'danger' : match.status === 'FT' ? 'default' : 'info'}>
-                    {match.status === 'LIVE' ? `LIVE (${match.minute})` : match.status}
-                  </Badge>
                 </div>
               </div>
 
-              <div className="py-4 space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 object-contain rounded-full bg-slate-50 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-800" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{match.teamA.name}</span>
-                  </div>
-                  <span className="font-mono font-black text-lg text-slate-900 dark:text-slate-100">
-                    {match.status === 'UPCOMING' ? '-' : match.scoreA}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 object-contain rounded-full bg-slate-50 dark:bg-slate-900 p-0.5 border border-slate-200 dark:border-slate-800" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{match.teamB.name}</span>
-                  </div>
-                  <span className="font-mono font-black text-lg text-slate-900 dark:text-slate-100">
-                    {match.status === 'UPCOMING' ? '-' : match.scoreB}
-                  </span>
-                </div>
+              {/* Right Arrow */}
+              <div className="text-slate-400 group-hover:text-[#D4AF37] transition-colors pl-2">
+                <ChevronRight className="w-4 h-4" />
               </div>
-
-              <div className="text-[11px] text-slate-400 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800/80 font-medium">
-                <span>{match.venue}</span>
-                <span className="text-[#D4AF37] font-bold flex items-center gap-1">
-                  View Match Details <ChevronRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
