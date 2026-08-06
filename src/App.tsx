@@ -55,6 +55,7 @@ export const AppContent: React.FC = () => {
   // Navigation & Routing States
   const [activeTab, setActiveTab] = useState<MainTabType>('scores');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
   // Favorites list
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -367,6 +368,8 @@ export const AppContent: React.FC = () => {
               onMenuClick={() => setSidebarOpen(true)}
               onNavigateNews={() => setActiveTab('news')}
               onNavigateLogin={() => handleNavigateHash('/login')}
+              isCalendarOpen={isCalendarOpen}
+              onCloseCalendar={() => setIsCalendarOpen(false)}
             />
 
             <Navigation
@@ -391,6 +394,7 @@ export const AppContent: React.FC = () => {
                     else handleNavigateHash(path);
                   }}
                   onSelectMatch={handleMatchClick}
+                  onOpenCalendar={() => setIsCalendarOpen(true)}
                 />
               )}
 

@@ -15,6 +15,8 @@ interface HeaderProps {
     onMenuClick?: () => void;
     onNavigateNews?: () => void;
     onNavigateLogin?: () => void;
+    isCalendarOpen?: boolean;
+    onCloseCalendar?: () => void;
 }
 
 const COMPETITION_OPTIONS = [
@@ -36,7 +38,9 @@ export const Header: React.FC<HeaderProps> = ({
     dbFixtures = [],
     onMenuClick,
     onNavigateNews,
-    onNavigateLogin
+    onNavigateLogin,
+    isCalendarOpen = false,
+    onCloseCalendar
 }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -68,6 +72,12 @@ export const Header: React.FC<HeaderProps> = ({
 
     // Calendar Popup Modal State
     const [showCalendarModal, setShowCalendarModal] = useState(false);
+
+    React.useEffect(() => {
+      if (isCalendarOpen) {
+        setShowCalendarModal(true);
+      }
+    }, [isCalendarOpen]);
     const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
 
     const handlePrevYear = () => {
@@ -280,7 +290,10 @@ export const Header: React.FC<HeaderProps> = ({
             {showCalendarModal && (
                 <div 
                     className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
-                    onClick={() => setShowCalendarModal(false)}
+                    onClick={() => {
+                      setShowCalendarModal(false);
+                      if (onCloseCalendar) onCloseCalendar();
+                    }}
                 >
                     <div 
                         className="bg-white dark:bg-[#0E1424] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5 select-none"

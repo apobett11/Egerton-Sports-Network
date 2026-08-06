@@ -11,9 +11,10 @@ import { supabase } from '../../lib/supabase';
 interface HomePageProps {
   onNavigate: (path: string) => void;
   onSelectMatch?: (match: Match) => void;
+  onOpenCalendar?: () => void;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, onOpenCalendar }) => {
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>([]);
   const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>([]);
@@ -105,100 +106,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch })
 
   return (
     <div className="space-y-16 md:space-y-20 pb-20 select-none">
-      {/* 1. HERO SECTION CONTAINER */}
-      <section 
-        aria-label="Welcome Hero" 
-        className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0F172A] via-[#131B2E] to-[#0A0F1D] dark:from-[#0B0F17] dark:via-[#111726] dark:to-[#090D15] border border-slate-800/90 dark:border-[#D4AF37]/20 p-8 md:p-14 shadow-2xl luminous-shadow group"
-      >
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none transition-opacity duration-700 group-hover:opacity-100 opacity-70" />
-        <div className="relative z-10 max-w-3xl space-y-6">
-          <Badge variant="gold" className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" /> Egerton Sports Department Ecosystem
-          </Badge>
-          
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
-            Egerton Premier League & Egerton Championships
-          </h1>
-          
-          <p className="text-sm md:text-base text-slate-300/90 leading-relaxed font-sans max-w-2xl">
-            Explore live matches, standing snapshot rankings, published journalism, and player performance statistics across both official campus competitions in one unified platform.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4 pt-2">
-            <Button 
-              variant="primary" 
-              size="lg" 
-              onClick={() => onNavigate('/register')} 
-              icon={<User className="w-5 h-5" />} 
-              className="shadow-xl shadow-[#D4AF37]/25 active:scale-[0.98] transition-all font-bold px-6 py-3.5"
-            >
-              Register Account
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={() => onNavigate('/fixtures')} 
-              icon={<Calendar className="w-5 h-5" />} 
-              className="active:scale-[0.98] transition-all border-slate-700/80 text-slate-200 hover:bg-slate-800/80 px-6 py-3.5"
-            >
-              Browse All Fixtures
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. LIVE MATCHES SPOTLIGHT SECTION CONTAINER (If any matches are live) */}
-      {liveMatches.length > 0 && (
-        <section 
-          aria-label="Ongoing Live Action" 
-          className="rounded-3xl bg-rose-950/20 dark:bg-rose-950/30 border border-rose-500/30 p-6 md:p-8 shadow-sm space-y-5"
-        >
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500"></span>
-            </span>
-            <div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Ongoing Live Action
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Real-time match updates across both Premier League & Championships
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {liveMatches.map((match) => (
-              <Card 
-                key={match.id}
-                onClick={() => onSelectMatch && onSelectMatch(match)}
-                className="cursor-pointer bg-white dark:bg-[#182030] border-rose-500/40 hover:border-rose-500 transition-all rounded-2xl p-5 space-y-3"
-              >
-                <div className="flex items-center justify-between text-xs font-bold text-rose-500">
-                  <span className="flex items-center gap-1.5">
-                    <Flame className="w-4 h-4 animate-bounce" /> {match.league}
-                  </span>
-                  <span className="font-mono bg-rose-500/10 text-rose-500 border border-rose-500/30 px-2 py-0.5 rounded-full">
-                    {match.minute}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-base font-extrabold text-slate-900 dark:text-slate-100">
-                  <span>{match.teamA.name}</span>
-                  <span className="font-mono text-xl text-rose-500">{match.scoreA} - {match.scoreB}</span>
-                  <span>{match.teamB.name}</span>
-                </div>
-                <div className="text-[11px] text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span>{match.venue}</span>
-                  <span className="text-[#D4AF37] font-semibold">Tap to view live stats →</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 3. FIXTURES SECTION CONTAINER (Structured Hierarchy: Premier League then Championships) */}
+      {/* 1. FIXTURES SECTION CONTAINER (FIRST THING USER SEES) */}
       <section 
         aria-label="Fixtures Section" 
         className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
@@ -219,10 +127,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch })
           </div>
 
           <button 
-            onClick={() => onNavigate('/fixtures')}
-            className="self-start sm:self-auto text-xs font-bold text-[#D4AF37] hover:underline flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-xl px-3.5 py-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 transition-all"
+            onClick={() => onOpenCalendar && onOpenCalendar()}
+            className="self-start sm:self-auto text-xs font-bold text-[#D4AF37] hover:bg-[#D4AF37]/20 flex items-center gap-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-xl px-4 py-2 bg-[#D4AF37]/10 border border-[#D4AF37]/30 transition-all cursor-pointer shadow-xs active:scale-95"
           >
-            Browse All Schedule <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            <Calendar className="w-4 h-4 text-[#D4AF37]" aria-hidden="true" />
+            <span>See other fixture days</span>
           </button>
         </div>
 
