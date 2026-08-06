@@ -224,57 +224,25 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   };
 
   return (
-    <div className="space-y-6 select-none pb-12">
-      {/* PART 4 DUAL COMPETITION SWITCHER TABS FOR LEAGUE TABLE */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-[#0E1424] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
-            <Trophy className="w-5 h-5 text-amber-300" />
+    <div className="space-y-10 select-none pb-12">
+      {/* Dual Competition Header Banner */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
+            <Trophy className="w-6 h-6 text-amber-300" />
           </div>
           <div>
-            <h2 className="font-black text-base text-slate-900 dark:text-slate-100">
-              Campus League Standings
+            <h2 className="font-black text-xl text-slate-900 dark:text-slate-100 tracking-tight">
+              Official Campus League Standings
             </h2>
-            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Database-driven live rankings & analytics
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Live standings for Egerton Premier League and Egerton Championships
             </p>
           </div>
         </div>
 
-        {/* Competition Switcher Pills */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveCompTab('epl')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all ${
-              activeCompTab === 'epl'
-                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
-                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Premier League
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveCompTab('champ')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition-all ${
-              activeCompTab === 'champ'
-                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
-                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            Championship
-          </button>
-        </div>
-      </div>
-
-      {/* Historical View Toggle Bar */}
-      {allowHistoricalView && historicalSeasons.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-white dark:bg-[#0E1424] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span className="font-bold text-xs text-slate-900 dark:text-slate-100">Historical Season Standings Archive</span>
-          </div>
+        {/* Historical View Toggle */}
+        {allowHistoricalView && historicalSeasons.length > 0 && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('current')}
@@ -310,54 +278,66 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </select>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* TABLE: LEAGUE STANDINGS */}
-      {renderTable('League Standings', displayData, 'text-emerald-500')}
+      {/* 1. EGERTON PREMIER LEAGUE TABLE */}
+      <section space-y-4 aria-label="Egerton Premier League Table">
+        {renderTable('Egerton Premier League Table', eplStandings.length > 0 ? eplStandings : tableData, 'text-emerald-500')}
+      </section>
 
-      {/* SECTIONS BELOW TABLE (Calculated Leaderboard & Defensive Records) */}
+      {/* 2. EGERTON CHAMPIONSHIPS TABLE */}
+      <section space-y-4 aria-label="Egerton Championships Table">
+        {renderTable('Egerton Championships Table', champStandings, 'text-amber-500')}
+      </section>
+
+      {/* SECTIONS BELOW TABLES (Top Scorers per competition) */}
       <div className="pt-4 space-y-8 select-none">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Top Scorers Leaderboard */}
-          <div className="p-6 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+          {/* EPL Top Scorers */}
+          <div className="p-6 bg-white dark:bg-[#182030] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-black text-emerald-500 uppercase tracking-wider">
                 <span>⚽</span>
-                <span className="uppercase tracking-wider">Top Scorers (Stored Events)</span>
+                <span>Egerton Premier League — Top Scorers</span>
               </div>
-              <span className="text-[11px] font-mono text-gray-400">Goals</span>
+              <span className="text-[11px] font-mono text-slate-400">Goals</span>
             </div>
             {topScorers.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No goal events recorded in database yet.</p>
+              <p className="text-xs text-slate-400 py-2">No goal events recorded for Premier League yet.</p>
             ) : (
               <div className="space-y-3 text-xs">
                 {topScorers.slice(0, 5).map((scorer, idx) => (
                   <div key={scorer.playerId || idx} className="flex items-center justify-between font-semibold">
-                    <span className="text-gray-900 dark:text-gray-100">
+                    <span className="text-slate-900 dark:text-slate-100">
                       {idx + 1}. {scorer.playerName} ({scorer.teamName})
                     </span>
-                    <span className="text-sm font-black font-mono text-amber-500">{scorer.goals}</span>
+                    <span className="text-sm font-black font-mono text-emerald-500">{scorer.goals}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Defensive Records */}
-          <div className="p-6 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200/80 dark:border-gray-800 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-blue-500 pb-2 border-b border-gray-100 dark:border-gray-800">
-              <span>🧤</span>
-              <span className="uppercase tracking-wider">Defensive Records (Least Conceded)</span>
+          {/* Championship Top Scorers */}
+          <div className="p-6 bg-white dark:bg-[#182030] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-black text-amber-500 uppercase tracking-wider">
+                <span>⚽</span>
+                <span>Egerton Championships — Top Scorers</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">Goals</span>
             </div>
-            {defensiveRecords.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No match records available for defensive analytics.</p>
+            {champTopScorers.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">No goal events recorded for Championships yet.</p>
             ) : (
-              <div className="grid grid-cols-3 gap-3 text-center">
-                {defensiveRecords.map((t) => (
-                  <div key={t.teamId} className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-100 dark:border-gray-800">
-                    <div className="text-[10px] text-gray-400 font-bold truncate">{t.teamName}</div>
-                    <div className="text-lg font-black text-emerald-500 mt-1">{t.goalsAgainst} GA</div>
+              <div className="space-y-3 text-xs">
+                {champTopScorers.slice(0, 5).map((scorer, idx) => (
+                  <div key={scorer.playerId || idx} className="flex items-center justify-between font-semibold">
+                    <span className="text-slate-900 dark:text-slate-100">
+                      {idx + 1}. {scorer.playerName} ({scorer.teamName})
+                    </span>
+                    <span className="text-sm font-black font-mono text-amber-500">{scorer.goals}</span>
                   </div>
                 ))}
               </div>

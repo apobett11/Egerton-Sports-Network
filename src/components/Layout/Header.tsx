@@ -213,48 +213,25 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
             </div>
 
-            {/* Row 2: PART 3 COMPETITION SWITCHER & SPORTS SELECTION */}
+            {/* Row 2: EGERTON SPORTS DEPARTMENT ECOSYSTEM BANNER */}
             <div className="border-t border-slate-200/80 dark:border-slate-800/60 bg-slate-50/50 dark:bg-[#0E1424]/60">
-                <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar px-4 py-2 max-w-7xl mx-auto">
-                    
-                    {/* COMPETITION SELECTOR DROPDOWN (Desktop & Mobile) */}
+                <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar px-4 py-2 max-w-7xl mx-auto text-xs">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <div className="p-1.5 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
                             <Trophy className="w-4 h-4" />
                         </div>
-                        <select
-                            value={selectedCompetitionId}
-                            onChange={(e) => setSelectedCompetitionId && setSelectedCompetitionId(e.target.value)}
-                            className="bg-white dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-black rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer shadow-xs"
-                            aria-label="Select Competition"
-                        >
-                            {COMPETITION_OPTIONS.map((opt) => (
-                                <option key={opt.id} value={opt.id}>
-                                    {opt.label}
-                                </option>
-                            ))}
-                        </select>
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                            Egerton Premier League & Egerton Championships
+                        </span>
                     </div>
 
-                    {/* Competition Quick Filter Pills */}
-                    <div className="flex items-center gap-1.5">
-                        {COMPETITION_OPTIONS.map((opt) => {
-                            const isSel = selectedCompetitionId === opt.id;
-                            return (
-                                <button
-                                    key={opt.id}
-                                    type="button"
-                                    onClick={() => setSelectedCompetitionId && setSelectedCompetitionId(opt.id)}
-                                    className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wide whitespace-nowrap transition-all cursor-pointer ${
-                                        isSel
-                                            ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400/40'
-                                            : 'bg-slate-200/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    {opt.shortLabel}
-                                </button>
-                            );
-                        })}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                            Premier League
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                            Championships
+                        </span>
                     </div>
                 </div>
             </div>

@@ -116,18 +116,6 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
 
         <div className="flex gap-2">
           <select
-            value={selectedCompetition}
-            onChange={(e) => setSelectedCompetition(e.target.value)}
-            className="bg-slate-50 dark:bg-[#101415] border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3.5 py-2.5 font-medium focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
-            aria-label="Filter by Competition"
-          >
-            <option value="ALL">All Competitions</option>
-            {competitions.map((comp) => (
-              <option key={comp} value={comp}>{comp}</option>
-            ))}
-          </select>
-
-          <select
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
             className="bg-slate-50 dark:bg-[#101415] border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3.5 py-2.5 font-medium focus:outline-hidden focus:ring-2 focus:ring-[#D4AF37]"
