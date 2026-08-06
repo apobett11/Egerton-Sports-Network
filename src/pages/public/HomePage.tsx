@@ -153,7 +153,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {eplFixtures.slice(0, 3).map((match) => (
+              {eplFixtures.map((match) => (
                 <Card 
                   key={match.id} 
                   onClick={() => onSelectMatch && onSelectMatch(match)}
@@ -212,7 +212,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {champFixtures.slice(0, 3).map((match) => (
+              {champFixtures.map((match) => (
                 <Card 
                   key={match.id} 
                   onClick={() => onSelectMatch && onSelectMatch(match)}
