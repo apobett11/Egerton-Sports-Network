@@ -17,7 +17,7 @@ export const COMPETITIONS = {
 
 export const OFFICIAL_PITCHES = [
   {
-    id: 'p1111111-1111-1111-1111-111111111111',
+    id: '91111111-1111-1111-1111-111111111111',
     name: 'Egerton Main Stadium Pitch',
     short_code: 'MAIN-STAD',
     location: 'Main Campus Athletics Complex',
@@ -27,7 +27,7 @@ export const OFFICIAL_PITCHES = [
     status: 'Available' as const,
   },
   {
-    id: 'p2222222-2222-2222-2222-222222222222',
+    id: '92222222-2222-2222-2222-222222222222',
     name: 'Pavilion Grounds Pitch A',
     short_code: 'PAV-A',
     location: 'Pavilion Sports Complex',
@@ -37,7 +37,7 @@ export const OFFICIAL_PITCHES = [
     status: 'Available' as const,
   },
   {
-    id: 'p3333333-3333-3333-3333-333333333333',
+    id: '93333333-3333-3333-3333-333333333333',
     name: 'Tatton Complex Ground',
     short_code: 'TAT-GRD',
     location: 'Tatton Campus Ground',
