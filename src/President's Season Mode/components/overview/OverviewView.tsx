@@ -8,10 +8,11 @@ import {
   AlertCircle,
   ArrowRight,
   UserPlus,
-  ClipboardCheck,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
-import type { SeasonTeam, SeasonReferee, SeasonPitch, SeasonModeView } from '../../types/seasonMode';
+import type { SeasonTeam, SeasonReferee, SeasonPitch, SeasonModeView, SeasonFixture } from '../../types/seasonMode';
+import { SeasonReadiness } from './SeasonReadiness';
 
 interface OverviewViewProps {
   isDark: boolean;
@@ -19,9 +20,11 @@ interface OverviewViewProps {
   championshipTeams: SeasonTeam[];
   referees: SeasonReferee[];
   pitches: SeasonPitch[];
+  fixtures?: SeasonFixture[];
   setActiveView: (view: SeasonModeView) => void;
   onOpenCoachModal: () => void;
   onOpenRefModal: () => void;
+  onOpenGenerationModal: () => void;
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({
@@ -30,13 +33,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   championshipTeams,
   referees,
   pitches,
+  fixtures = [],
   setActiveView,
   onOpenCoachModal,
   onOpenRefModal,
+  onOpenGenerationModal,
 }) => {
-  const totalTeams = premierLeagueTeams.length + championshipTeams.length;
   const activeReferees = referees.filter((r) => r.status === 'Active').length;
-  const availablePitches = pitches.filter((p) => p.status === 'Available').length;
 
   // Setup completion progress
   const checklist = [
@@ -47,22 +50,22 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     },
     {
       label: 'Egerton Premier League Roster Intake',
-      status: premierLeagueTeams.length >= 4 ? 'complete' : 'pending',
+      status: premierLeagueTeams.length >= 2 ? 'complete' : 'pending',
       detail: `${premierLeagueTeams.length} Premier League teams registered`,
     },
     {
       label: 'Egerton Championships Roster Intake',
-      status: championshipTeams.length >= 4 ? 'complete' : 'pending',
+      status: championshipTeams.length >= 2 ? 'complete' : 'pending',
       detail: `${championshipTeams.length} Championship teams registered`,
     },
     {
       label: 'Official Referee Pool Verification',
-      status: activeReferees >= 3 ? 'complete' : 'pending',
+      status: activeReferees >= 1 ? 'complete' : 'pending',
       detail: `${activeReferees} active center referees registered`,
     },
     {
       label: 'Official Pitch Foundation Setup',
-      status: pitches.length >= 3 ? 'complete' : 'pending',
+      status: pitches.length >= 1 ? 'complete' : 'pending',
       detail: `${pitches.length} official Egerton grounds configured`,
     },
   ];
@@ -83,13 +86,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         <div className="relative z-10 max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <ShieldCheck className="w-4 h-4" />
-            Season Status: Intake & Foundation Active
+            Season Status: Intake & Preparation Active
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Pre-Season Operations Center
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-            Welcome, Mr. President. Review registered teams across both Egerton divisions, verify referee pool credentials, inspect official campus pitches, and process intake forms before launching the active season.
+            Welcome, Mr. President. Review registered teams across both Egerton divisions, verify referee pool credentials, inspect campus pitches, and initiate season fixture generation.
           </p>
         </div>
       </div>
@@ -181,6 +184,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
       </div>
 
+      {/* PHASE 2C: SEASON READINESS CARD */}
+      <SeasonReadiness
+        isDark={isDark}
+        premierLeagueTeams={premierLeagueTeams}
+        championshipTeams={championshipTeams}
+        referees={referees}
+        pitches={pitches}
+        onOpenGenerationModal={onOpenGenerationModal}
+        hasSavedFixtures={fixtures.length > 0}
+      />
+
       {/* QUICK ACTIONS & PRE-SEASON CHECKLIST */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Quick Actions */}
@@ -190,6 +204,26 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </h2>
 
           <div className="space-y-3">
+            <button
+              onClick={onOpenGenerationModal}
+              className={`w-full p-4 rounded-2xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                isDark
+                  ? 'bg-[#0E1424] border-slate-800 hover:bg-slate-800/60 hover:border-emerald-500/40'
+                  : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-emerald-400'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-xs text-slate-900 dark:text-white">Generate Season Fixtures</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Launch multi-step generation workflow</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400" />
+            </button>
+
             <button
               onClick={() => setActiveView('teams')}
               className={`w-full p-4 rounded-2xl border flex items-center justify-between text-left transition-all cursor-pointer ${
@@ -239,24 +273,6 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 <div>
                   <div className="font-extrabold text-xs text-slate-900 dark:text-white">Register Center Referee</div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">Add verified referee to active pool</div>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-400" />
-            </button>
-
-            <button
-              onClick={() => setActiveView('pitches')}
-              className={`w-full p-4 rounded-2xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                isDark ? 'bg-[#0E1424] border-slate-800 hover:bg-slate-800/60' : 'bg-white border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-xs text-slate-900 dark:text-white">Manage Pitch Availability</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Inspect the 3 official Egerton pitches</div>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-slate-400" />

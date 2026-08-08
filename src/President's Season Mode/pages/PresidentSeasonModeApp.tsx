@@ -6,8 +6,10 @@ import { OverviewView } from '../components/overview/OverviewView';
 import { TeamsView } from '../components/teams/TeamsView';
 import { RefereesView } from '../components/referees/RefereesView';
 import { PitchesView } from '../components/pitches/PitchesView';
+import { FixturesView } from '../components/fixtures/FixturesView';
 import { CoachIntakeModal } from '../components/registration/CoachIntakeModal';
 import { RefereeIntakeModal } from '../components/registration/RefereeIntakeModal';
+import { SeasonGenerationModal } from '../components/generation/SeasonGenerationModal';
 import { LoadingState, ErrorState, OperationalToast } from '../components/shared/StateDisplays';
 
 export interface PresidentSeasonModeAppProps {
@@ -25,16 +27,19 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
     championshipTeams,
     referees,
     pitches,
+    fixtures,
     isLoading,
     error,
     toastMessage,
-    showToast,
     isCoachModalOpen,
     setIsCoachModalOpen,
     isRefModalOpen,
     setIsRefModalOpen,
+    isGenerationModalOpen,
+    setIsGenerationModalOpen,
     handleRegisterCoach,
     handleRegisterReferee,
+    handleSuccessSaveFixtures,
     refreshData,
   } = useSeasonMode();
 
@@ -67,6 +72,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
         teamsCount={teams.length}
         refereesCount={referees.length}
         pitchesCount={pitches.length}
+        fixturesCount={fixtures.length}
       />
 
       {/* MAIN CONTAINER */}
@@ -84,9 +90,11 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
                 championshipTeams={championshipTeams}
                 referees={referees}
                 pitches={pitches}
+                fixtures={fixtures}
                 setActiveView={setActiveView}
                 onOpenCoachModal={() => setIsCoachModalOpen(true)}
                 onOpenRefModal={() => setIsRefModalOpen(true)}
+                onOpenGenerationModal={() => setIsGenerationModalOpen(true)}
               />
             )}
 
@@ -108,6 +116,18 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
             )}
 
             {activeView === 'pitches' && <PitchesView isDark={isDark} pitches={pitches} />}
+
+            {activeView === 'fixtures' && (
+              <FixturesView
+                isDark={isDark}
+                fixtures={fixtures}
+                premierLeagueTeams={premierLeagueTeams}
+                championshipTeams={championshipTeams}
+                referees={referees}
+                pitches={pitches}
+                onOpenGenerationModal={() => setIsGenerationModalOpen(true)}
+              />
+            )}
 
             {activeView === 'registration' && (
               <div className="space-y-6">
@@ -151,7 +171,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
         )}
       </main>
 
-      {/* REGISTRATION MODALS */}
+      {/* REGISTRATION & GENERATION MODALS */}
       <CoachIntakeModal
         isOpen={isCoachModalOpen}
         onClose={() => setIsCoachModalOpen(false)}
@@ -164,6 +184,17 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
         onClose={() => setIsRefModalOpen(false)}
         onSubmit={handleRegisterReferee}
         isDark={isDark}
+      />
+
+      <SeasonGenerationModal
+        isOpen={isGenerationModalOpen}
+        onClose={() => setIsGenerationModalOpen(false)}
+        isDark={isDark}
+        premierLeagueTeams={premierLeagueTeams}
+        championshipTeams={championshipTeams}
+        referees={referees}
+        pitches={pitches}
+        onSuccessSave={handleSuccessSaveFixtures}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, UserCheck, MapPin, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, MapPin, ClipboardCheck, Calendar } from 'lucide-react';
 import type { SeasonModeView } from '../../types/seasonMode';
 
 interface NavigationProps {
@@ -9,6 +9,7 @@ interface NavigationProps {
   teamsCount: number;
   refereesCount: number;
   pitchesCount: number;
+  fixturesCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -18,6 +19,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   teamsCount,
   refereesCount,
   pitchesCount,
+  fixturesCount = 0,
 }) => {
   const navItems = [
     {
@@ -43,6 +45,12 @@ export const Navigation: React.FC<NavigationProps> = ({
       label: 'Pitches Foundation',
       icon: MapPin,
       badge: pitchesCount > 0 ? String(pitchesCount) : null,
+    },
+    {
+      id: 'fixtures' as const,
+      label: 'Season Fixtures',
+      icon: Calendar,
+      badge: fixturesCount > 0 ? String(fixturesCount) : 'Ready',
     },
     {
       id: 'registration' as const,

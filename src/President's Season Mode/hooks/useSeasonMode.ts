@@ -3,6 +3,7 @@ import type {
   SeasonTeam,
   SeasonReferee,
   SeasonPitch,
+  SeasonFixture,
   SeasonModeView,
   CoachIntakePayload,
   RefereeIntakePayload,
@@ -10,6 +11,7 @@ import type {
 import { teamsService } from '../services/teamsService';
 import { refereesService } from '../services/refereesService';
 import { pitchesService } from '../services/pitchesService';
+import { fixturesService } from '../services/fixturesService';
 import { COMPETITIONS } from '../constants/seasonConstants';
 
 export function useSeasonMode() {
@@ -21,6 +23,7 @@ export function useSeasonMode() {
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
   const [referees, setReferees] = useState<SeasonReferee[]>([]);
   const [pitches, setPitches] = useState<SeasonPitch[]>([]);
+  const [fixtures, setFixtures] = useState<SeasonFixture[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,7 @@ export function useSeasonMode() {
   // Modal controls
   const [isCoachModalOpen, setIsCoachModalOpen] = useState<boolean>(false);
   const [isRefModalOpen, setIsRefModalOpen] = useState<boolean>(false);
+  const [isGenerationModalOpen, setIsGenerationModalOpen] = useState<boolean>(false);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -45,10 +49,11 @@ export function useSeasonMode() {
     setIsLoading(true);
     setError(null);
 
-    const [teamsRes, refsRes, pitchesRes] = await Promise.all([
+    const [teamsRes, refsRes, pitchesRes, fixturesRes] = await Promise.all([
       teamsService.fetchTeams(),
       refereesService.fetchReferees(),
       pitchesService.fetchPitches(),
+      fixturesService.fetchFixtures(),
     ]);
 
     if (teamsRes.error && !teamsRes.teams.length) {
@@ -61,6 +66,7 @@ export function useSeasonMode() {
     setTeams(teamsRes.teams);
     setReferees(refsRes.referees);
     setPitches(pitchesRes.pitches);
+    setFixtures(fixturesRes.fixtures);
 
     setIsLoading(false);
   }, []);
@@ -102,6 +108,12 @@ export function useSeasonMode() {
     }
   };
 
+  const handleSuccessSaveFixtures = async () => {
+    showToast('Official season fixtures saved successfully into database.');
+    await loadData();
+    setActiveView('fixtures');
+  };
+
   return {
     activeView,
     setActiveView,
@@ -112,6 +124,7 @@ export function useSeasonMode() {
     championshipTeams,
     referees,
     pitches,
+    fixtures,
     isLoading,
     error,
     toastMessage,
@@ -120,8 +133,11 @@ export function useSeasonMode() {
     setIsCoachModalOpen,
     isRefModalOpen,
     setIsRefModalOpen,
+    isGenerationModalOpen,
+    setIsGenerationModalOpen,
     handleRegisterCoach,
     handleRegisterReferee,
+    handleSuccessSaveFixtures,
     refreshData: loadData,
   };
 }
