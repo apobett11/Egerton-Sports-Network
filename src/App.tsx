@@ -29,6 +29,7 @@ const RefereeDashboard = lazy(() => import('./components/Dashboards/Referee/Refe
 const LinesmanDashboard = lazy(() => import('./components/Dashboards/Linesman/LinesmanDashboard'));
 const PlayerDashboard = lazy(() => import('./components/Dashboards/Player/PlayerDashboard'));
 const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/DoctorDashboard'));
+const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
 const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
 
 const DashboardLoader: React.FC = () => (
@@ -219,6 +220,16 @@ export const AppContent: React.FC = () => {
       <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
           <PresidentDashboard onLogout={() => handleNavigateHash('/home')} />
+        </Suspense>
+      </ProtectedRoute>
+    );
+  }
+
+  if (route === 'season-mode' || route === 'president-season') {
+    return (
+      <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
         </Suspense>
       </ProtectedRoute>
     );
