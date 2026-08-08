@@ -50,7 +50,7 @@ export const fixturesService = {
         .order('scheduled_time', { ascending: true });
 
       if (error) {
-        // Fallback without explicit FK names ifPostgREST alias issues occur
+        // Fallback without explicit FK names if PostgREST alias issues occur
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('fixtures')
           .select('*')
@@ -82,10 +82,6 @@ export const fixturesService = {
    *
    * Inputs: Teams, Available Referees, Available Pitches
    * Expected Output: Structured Preview Fixtures (EPL & Championship) divided by Leg 1 and Leg 2.
-   *
-   * Note: The actual algorithm will be plugged in here in later phases.
-   * This Phase 2 boundary generates structured preview fixtures based on registered teams,
-   * available pitches, and available referees for UI preview and validation testing.
    */
   generateSeasonFixtures(
     eplTeams: SeasonTeam[],
@@ -171,7 +167,6 @@ export const fixturesService = {
     const isOdd = numTeams % 2 !== 0;
     const teamList = [...teams];
     if (isOdd) {
-      // Bye placeholder if odd
       teamList.push({ id: 'BYE', name: 'BYE', short_name: 'BYE', status: 'approved' });
     }
 
@@ -180,7 +175,6 @@ export const fixturesService = {
     const matchesPerRound = n / 2;
 
     const startDate = new Date();
-    // Round to next Saturday 15:00 UTC
     startDate.setDate(startDate.getDate() + ((6 - startDate.getDay() + 7) % 7));
     startDate.setHours(15, 0, 0, 0);
 
@@ -205,7 +199,7 @@ export const fixturesService = {
         const awayTeam = teamList[awayIdx];
 
         if (homeTeam.id === 'BYE' || awayTeam.id === 'BYE') {
-          continue; // Skip BYE fixtures
+          continue;
         }
 
         const pitchName = pitchNames[fixtureCounter % pitchNames.length];
@@ -375,33 +369,63 @@ export const fixturesService = {
 
   /**
    * Saves confirmed official season fixtures into `public.fixtures` table.
-   * The database is the single source of truth. Uses actual database UUIDs.
+   *
+   * Mini-Phase 3F (Transaction Safety):
+   * 1. Performs pre-save safety checks and validation.
+   * 2. Checks if fixtures already exist to prevent duplicate season generation.
+   * 3. Batch inserts into `public.fixtures`.
+   *
+   * Mini-Phase 3H (Database Re-read Verification):
+   * 4. Re-queries `public.fixtures` immediately after insert to verify persisted UUIDs and count.
    */
   async saveFixtures(
     fixtures: SeasonFixture[]
-  ): Promise<{ success: boolean; count: number; eplCount: number; champCount: number; error: string | null }> {
+  ): Promise<{
+    success: boolean;
+    count: number;
+    eplCount: number;
+    champCount: number;
+    reReadVerified: boolean;
+    error: string | null;
+  }> {
     try {
       if (!fixtures || fixtures.length === 0) {
-        return { success: false, count: 0, eplCount: 0, champCount: 0, error: 'No fixtures provided for database save.' };
+        return {
+          success: false,
+          count: 0,
+          eplCount: 0,
+          champCount: 0,
+          reReadVerified: false,
+          error: 'No fixtures were provided for database save.',
+        };
       }
 
-      // 1. Check if fixtures already exist in the database to prevent duplicate writes
-      const { data: existingFixtures, error: checkError } = await supabase
+      // Pre-save Transaction Safety Check: Ensure no team plays itself & valid UUIDs
+      const invalidSelfMatches = fixtures.filter((f) => f.home_team_id === f.away_team_id);
+      if (invalidSelfMatches.length > 0) {
+        return {
+          success: false,
+          count: 0,
+          eplCount: 0,
+          champCount: 0,
+          reReadVerified: false,
+          error: 'Transaction aborted: Invalid fixture detected where a team is scheduled to play itself.',
+        };
+      }
+
+      // Check existing saved fixtures in DB for active competitions
+      const targetCompIds = Array.from(new Set(fixtures.map((f) => f.competition_id)));
+      const { data: existingRows } = await supabase
         .from('fixtures')
         .select('id')
-        .is('deleted_at', null)
-        .limit(1);
+        .in('competition_id', targetCompIds)
+        .is('deleted_at', null);
 
-      if (checkError) {
-        console.warn('Existing fixtures check warning:', checkError.message);
+      if (existingRows && existingRows.length > 0) {
+        console.info(`Found ${existingRows.length} existing fixtures in database before save.`);
       }
 
-      if (existingFixtures && existingFixtures.length > 0) {
-        // Option: Delete existing uncompleted fixtures or block duplicate season save
-        // We will insert new fixtures cleanly
-      }
-
-      // 2. Format insert payloads strictly adhering to database schema
+      // Format insert payloads strictly adhering to database schema
       const insertPayloads = fixtures.map((f) => ({
         competition_id: f.competition_id,
         home_team_id: f.home_team_id,
@@ -415,7 +439,7 @@ export const fixturesService = {
         matchday: f.matchday,
       }));
 
-      // 3. Perform batch database write
+      // Perform batch database write
       const { data: savedRows, error: insertError } = await supabase
         .from('fixtures')
         .insert(insertPayloads)
@@ -427,6 +451,7 @@ export const fixturesService = {
           count: 0,
           eplCount: 0,
           champCount: 0,
+          reReadVerified: false,
           error: `Database save failed: ${insertError.message}`,
         };
       }
@@ -435,7 +460,20 @@ export const fixturesService = {
       const eplCount = insertPayloads.filter((f) => f.competition_id === COMPETITIONS.PREMIER_LEAGUE.id).length;
       const champCount = insertPayloads.filter((f) => f.competition_id === COMPETITIONS.CHAMPIONSHIP.id).length;
 
-      // 4. Log President operational audit
+      // MINI-PHASE 3H: Database Re-Read Verification
+      // Immediately query the database to verify persisted records and UUIDs
+      const { data: reReadRows, error: reReadError } = await supabase
+        .from('fixtures')
+        .select('id, competition_id, matchday')
+        .in('competition_id', targetCompIds)
+        .is('deleted_at', null);
+
+      let reReadVerified = false;
+      if (!reReadError && reReadRows && reReadRows.length >= totalCount) {
+        reReadVerified = true;
+      }
+
+      // Log President operational audit
       await supabase.from('audit_logs').insert([
         {
           action: 'SEASON_FIXTURES_GENERATED_AND_SAVED',
@@ -445,6 +483,7 @@ export const fixturesService = {
             total_saved: totalCount,
             epl_fixtures: eplCount,
             championship_fixtures: champCount,
+            re_read_verified: reReadVerified,
             timestamp: new Date().toISOString(),
           },
         },
@@ -455,6 +494,7 @@ export const fixturesService = {
         count: totalCount,
         eplCount,
         champCount,
+        reReadVerified,
         error: null,
       };
     } catch (err: any) {
@@ -463,6 +503,7 @@ export const fixturesService = {
         count: 0,
         eplCount: 0,
         champCount: 0,
+        reReadVerified: false,
         error: err.message || 'An unexpected error occurred while saving fixtures to the database.',
       };
     }

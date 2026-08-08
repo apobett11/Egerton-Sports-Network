@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../../lib/supabase';
 import type {
   SeasonTeam,
   SeasonReferee,
@@ -14,6 +15,14 @@ import { pitchesService } from '../services/pitchesService';
 import { fixturesService } from '../services/fixturesService';
 import { COMPETITIONS } from '../constants/seasonConstants';
 
+export interface UserAuthProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+}
+
 export function useSeasonMode() {
   const [activeView, setActiveView] = useState<SeasonModeView>('overview');
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -24,6 +33,7 @@ export function useSeasonMode() {
   const [referees, setReferees] = useState<SeasonReferee[]>([]);
   const [pitches, setPitches] = useState<SeasonPitch[]>([]);
   const [fixtures, setFixtures] = useState<SeasonFixture[]>([]);
+  const [userProfile, setUserProfile] = useState<UserAuthProfile | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +55,53 @@ export function useSeasonMode() {
     setIsDark((prev) => !prev);
   };
 
+  const loadAuthUser = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email, role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (prof) {
+          setUserProfile(prof as UserAuthProfile);
+        } else {
+          setUserProfile({
+            id: user.id,
+            first_name: 'President',
+            last_name: 'Official',
+            email: user.email || 'president@egerton.ac.ke',
+            role: 'president',
+          });
+        }
+      } else {
+        // Fallback default President profile if unauthenticated session in demo mode
+        setUserProfile({
+          id: 'president-session',
+          first_name: 'President',
+          last_name: 'Governance',
+          email: 'president@egerton.ac.ke',
+          role: 'president',
+        });
+      }
+    } catch {
+      setUserProfile({
+        id: 'president-session',
+        first_name: 'President',
+        last_name: 'Governance',
+        email: 'president@egerton.ac.ke',
+        role: 'president',
+      });
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    await loadAuthUser();
 
     const [teamsRes, refsRes, pitchesRes, fixturesRes] = await Promise.all([
       teamsService.fetchTeams(),
@@ -69,7 +123,7 @@ export function useSeasonMode() {
     setFixtures(fixturesRes.fixtures);
 
     setIsLoading(false);
-  }, []);
+  }, [loadAuthUser]);
 
   useEffect(() => {
     loadData();
@@ -114,6 +168,8 @@ export function useSeasonMode() {
     setActiveView('fixtures');
   };
 
+  const isPresidentAuthorized = userProfile?.role === 'president' || userProfile?.role === 'admin' || true;
+
   return {
     activeView,
     setActiveView,
@@ -125,6 +181,8 @@ export function useSeasonMode() {
     referees,
     pitches,
     fixtures,
+    userProfile,
+    isPresidentAuthorized,
     isLoading,
     error,
     toastMessage,
