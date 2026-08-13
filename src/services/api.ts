@@ -19,6 +19,7 @@ import { executeWithRetry } from '../lib/retryPolicy';
 import { logger } from '../lib/logger';
 import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
+import { guestCache } from '../lib/guestCache';
 
 // Helper for unwrapping Supabase joins (object vs 1-element array)
 const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
@@ -157,7 +158,13 @@ export const ApiService = {
   },
 
   // --- FIXTURES ---
-  async getFixtures(competitionId?: string): Promise<ApiResponse<Match[]>> {
+  async getFixtures(competitionId?: string, selectedDate?: string): Promise<ApiResponse<Match[]>> {
+    const cacheKey = `${competitionId || 'all'}_${selectedDate || 'all'}`;
+    const cached = guestCache.get<Match[]>('fixtures', cacheKey);
+    if (cached) {
+      return { success: true, data: cached };
+    }
+
     try {
       return await executeWithRetry(async () => {
         let query = supabase
@@ -186,11 +193,21 @@ export const ApiService = {
           query = query.eq('competition_id', competitionId);
         }
 
+        if (selectedDate) {
+          const startOfDay = new Date(selectedDate);
+          startOfDay.setUTCHours(0, 0, 0, 0);
+          const endOfDay = new Date(selectedDate);
+          endOfDay.setUTCHours(23, 59, 59, 999);
+          query = query.gte('scheduled_time', startOfDay.toISOString()).lte('scheduled_time', endOfDay.toISOString());
+        }
+
         const { data, error } = await query.order('scheduled_time', { ascending: true });
 
         if (error || !data || data.length === 0) {
           if (error) logger.warn('Error fetching fixtures from Supabase:', { error });
-          return { success: true, data: DEFAULT_FIXTURES };
+          // If filtering by specific date yielded empty result, return empty list cleanly
+          const fallback = selectedDate ? [] : DEFAULT_FIXTURES;
+          return { success: true, data: fallback };
         }
 
         const formattedMatches: Match[] = data.map((f: any) => {
@@ -240,6 +257,7 @@ export const ApiService = {
           };
         });
 
+        guestCache.set('fixtures', cacheKey, formattedMatches);
         return { success: true, data: formattedMatches };
       });
     } catch (err) {
@@ -253,6 +271,9 @@ export const ApiService = {
     if (!fixtureId) {
       return { success: false, data: null, message: 'Fixture ID is required.' };
     }
+
+    const cached = guestCache.get<Match>('match_details', fixtureId);
+    if (cached) return { success: true, data: cached };
 
     try {
       const { data: f, error: fixErr } = await supabase
@@ -425,6 +446,7 @@ export const ApiService = {
         verifiedByRefereeId: f.verified_by_referee_id
       };
 
+      guestCache.set('match_details', fixtureId, matchDetail);
       return { success: true, data: matchDetail };
     } catch (err: any) {
       const appErr = classifyError(err);
@@ -744,7 +766,7 @@ export const ApiService = {
         .eq('status', 'FT')
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
         .order('scheduled_time', { ascending: false })
-        .limit(5);
+        .limit(6);
 
       if (error || !data) {
         return { success: true, data: [] };
@@ -877,15 +899,109 @@ export const ApiService = {
       mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number };
     };
   }>> {
+    const cached = guestCache.get<any>('performance', 'dual_perf');
+    if (cached) return { success: true, data: cached };
+
     try {
       const EPL_ID = '11111111-1111-1111-1111-111111111111';
       const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
+      // 1. Fetch Top Scorers via RPC
       const [eplScorersRes, champScorersRes, goatsScorersRes] = await Promise.all([
         this.getTopScorers(EPL_ID),
         this.getTopScorers(CHAMP_ID),
         this.getTopScorers()
       ]);
+
+      // 2. Fetch Clean Sheets Mathematically from Completed Fixtures
+      const { data: ftFixtures } = await supabase
+        .from('fixtures')
+        .select('competition_id, home_team_id, away_team_id, score_home, score_away')
+        .eq('status', 'FT');
+
+      const teamCleanSheetsMap: Record<string, number> = {};
+      (ftFixtures || []).forEach((f: any) => {
+        if (f.score_away === 0 && f.home_team_id) {
+          teamCleanSheetsMap[f.home_team_id] = (teamCleanSheetsMap[f.home_team_id] || 0) + 1;
+        }
+        if (f.score_home === 0 && f.away_team_id) {
+          teamCleanSheetsMap[f.away_team_id] = (teamCleanSheetsMap[f.away_team_id] || 0) + 1;
+        }
+      });
+
+      const { data: gks } = await supabase
+        .from('players')
+        .select(`
+          id,
+          team_id,
+          profile:profiles!profile_id(first_name, last_name),
+          team:teams!team_id(id, name, competition_id)
+        `)
+        .eq('position', 'GK');
+
+      const getTopGK = (compId?: string) => {
+        let best: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number } | null = null;
+        (gks || []).forEach((gk: any) => {
+          const tm = unwrap(gk.team);
+          const prof = unwrap(gk.profile);
+          if (compId && tm?.competition_id !== compId) return;
+          const csCount = teamCleanSheetsMap[gk.team_id] || 0;
+          if (!best || csCount > best.cleanSheets) {
+            best = {
+              playerId: gk.id,
+              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Goalkeeper',
+              teamName: tm?.name || 'Campus Team',
+              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
+              cleanSheets: csCount
+            };
+          }
+        });
+        return best;
+      };
+
+      // 3. Query Assists from match_events
+      const { data: assistRows } = await supabase
+        .from('match_events')
+        .select(`
+          assist_player_id,
+          player:players!assist_player_id(
+            id,
+            team_id,
+            profile:profiles!profile_id(first_name, last_name),
+            team:teams!team_id(id, name, competition_id)
+          )
+        `)
+        .not('assist_player_id', 'is', null);
+
+      const assistCountsMap: Record<string, { player: any; count: number }> = {};
+      (assistRows || []).forEach((row: any) => {
+        const pId = row.assist_player_id;
+        if (!pId) return;
+        if (!assistCountsMap[pId]) {
+          assistCountsMap[pId] = { player: unwrap(row.player), count: 0 };
+        }
+        assistCountsMap[pId].count += 1;
+      });
+
+      const getTopAssistPlayer = (compId?: string) => {
+        let best: { playerId: string; playerName: string; teamName: string; league: string; assists: number } | null = null;
+        Object.values(assistCountsMap).forEach(({ player, count }) => {
+          if (!player) return;
+          const tm = unwrap(player.team);
+          const prof = unwrap(player.profile);
+          if (compId && tm?.competition_id !== compId) return;
+          if (!best || count > best.assists) {
+            best = {
+              playerId: player.id,
+              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Midfielder',
+              teamName: tm?.name || 'Campus Team',
+              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
+              assists: count
+            };
+          }
+        });
+        return best;
+      };
 
       const eplTopScorer = eplScorersRes.data?.[0] ? {
         playerId: eplScorersRes.data[0].playerId,
@@ -921,68 +1037,63 @@ export const ApiService = {
         teamName: goatsScorersRes.data[0].teamName,
         league: 'Egerton Premier League',
         goals: goatsScorersRes.data[0].goals
-      } : {
-        playerId: 'goat-1',
-        playerName: 'Victor Wanyama',
+      } : eplTopScorer;
+
+      const eplAssists = getTopAssistPlayer(EPL_ID) || {
+        playerId: 'epl-ast-1',
+        playerName: 'Michael Olunga',
+        teamName: 'Faculty of Arts',
+        league: 'Egerton Premier League',
+        assists: 8
+      };
+
+      const champAssists = getTopAssistPlayer(CHAMP_ID) || {
+        playerId: 'ch-ast-1',
+        playerName: 'Kevin Kimani',
+        teamName: 'Championship FC Beta',
+        league: 'Egerton Championships',
+        assists: 6
+      };
+
+      const goatAssists = getTopAssistPlayer() || eplAssists;
+
+      const eplCleanSheets = getTopGK(EPL_ID) || {
+        playerId: 'epl-cs-1',
+        playerName: 'Patrick Matasi',
         teamName: 'Sharklets FC',
         league: 'Egerton Premier League',
-        goals: 12
+        cleanSheets: 7
       };
+
+      const champCleanSheets = getTopGK(CHAMP_ID) || {
+        playerId: 'ch-cs-1',
+        playerName: 'Farouk Shikhalo',
+        teamName: 'Championship FC Gamma',
+        league: 'Egerton Championships',
+        cleanSheets: 5
+      };
+
+      const goatCleanSheets = getTopGK() || eplCleanSheets;
 
       const performanceData = {
         epl: {
           topScorer: eplTopScorer,
-          mostAssists: {
-            playerId: 'epl-ast-1',
-            playerName: 'Michael Olunga',
-            teamName: 'Faculty of Arts',
-            league: 'Egerton Premier League',
-            assists: 8
-          },
-          mostCleanSheets: {
-            playerId: 'epl-cs-1',
-            playerName: 'Patrick Matasi',
-            teamName: 'Sharklets FC',
-            league: 'Egerton Premier League',
-            cleanSheets: 7
-          }
+          mostAssists: eplAssists,
+          mostCleanSheets: eplCleanSheets
         },
         championship: {
           topScorer: champTopScorer,
-          mostAssists: {
-            playerId: 'ch-ast-1',
-            playerName: 'Kevin Kimani',
-            teamName: 'Championship FC Beta',
-            league: 'Egerton Championships',
-            assists: 6
-          },
-          mostCleanSheets: {
-            playerId: 'ch-cs-1',
-            playerName: 'Farouk Shikhalo',
-            teamName: 'Championship FC Gamma',
-            league: 'Egerton Championships',
-            cleanSheets: 5
-          }
+          mostAssists: champAssists,
+          mostCleanSheets: champCleanSheets
         },
         goats: {
           topScorer: goatScorer,
-          mostAssists: {
-            playerId: 'goat-ast-1',
-            playerName: 'Michael Olunga',
-            teamName: 'Faculty of Arts',
-            league: 'Egerton Premier League',
-            assists: 8
-          },
-          mostCleanSheets: {
-            playerId: 'goat-cs-1',
-            playerName: 'Patrick Matasi',
-            teamName: 'Sharklets FC',
-            league: 'Egerton Premier League',
-            cleanSheets: 7
-          }
+          mostAssists: goatAssists,
+          mostCleanSheets: goatCleanSheets
         }
       };
 
+      guestCache.set('performance', 'dual_perf', performanceData);
       return { success: true, data: performanceData };
     } catch (err) {
       return {
@@ -1003,6 +1114,107 @@ export const ApiService = {
             mostAssists: { playerId: '2', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', league: 'Egerton Premier League', assists: 8 },
             mostCleanSheets: { playerId: '3', playerName: 'Patrick Matasi', teamName: 'Sharklets FC', league: 'Egerton Premier League', cleanSheets: 7 }
           }
+        }
+      };
+    }
+  },
+
+  // --- LEAGUE MILESTONES ---
+  async getLeagueMilestones(): Promise<ApiResponse<{
+    highestScoringMatch: { homeTeam: string; awayTeam: string; scoreHome: number; scoreAway: number; totalGoals: number; league: string } | null;
+    largestWinMargin: { winner: string; loser: string; scoreHome: number; scoreAway: number; margin: number; league: string } | null;
+    totalGoalsScored: number;
+    completedMatchesCount: number;
+    cleanSheetsTotal: number;
+  }>> {
+    const cached = guestCache.get<any>('milestones', 'all_milestones');
+    if (cached) return { success: true, data: cached };
+
+    try {
+      const { data: ftFixtures } = await supabase
+        .from('fixtures')
+        .select(`
+          id, scheduled_time, score_home, score_away,
+          competition:competitions(name),
+          team_home:teams!home_team_id(name),
+          team_away:teams!away_team_id(name)
+        `)
+        .eq('status', 'FT');
+
+      if (!ftFixtures || ftFixtures.length === 0) {
+        return {
+          success: true,
+          data: {
+            highestScoringMatch: null,
+            largestWinMargin: null,
+            totalGoalsScored: 0,
+            completedMatchesCount: 0,
+            cleanSheetsTotal: 0
+          }
+        };
+      }
+
+      let highestScoreMatch: any = null;
+      let largestMarginMatch: any = null;
+      let totalGoals = 0;
+      let cleanSheets = 0;
+
+      ftFixtures.forEach((f: any) => {
+        const home = unwrap(f.team_home);
+        const away = unwrap(f.team_away);
+        const comp = unwrap(f.competition);
+
+        const matchTotal = (f.score_home || 0) + (f.score_away || 0);
+        totalGoals += matchTotal;
+
+        if (f.score_home === 0 || f.score_away === 0) {
+          cleanSheets += 1;
+        }
+
+        if (!highestScoreMatch || matchTotal > (highestScoreMatch.totalGoals || 0)) {
+          highestScoreMatch = {
+            homeTeam: home?.name || 'Home',
+            awayTeam: away?.name || 'Away',
+            scoreHome: f.score_home,
+            scoreAway: f.score_away,
+            totalGoals: matchTotal,
+            league: comp?.name || 'Egerton League'
+          };
+        }
+
+        const margin = Math.abs((f.score_home || 0) - (f.score_away || 0));
+        if (!largestMarginMatch || margin > (largestMarginMatch.margin || 0)) {
+          const isHomeWinner = f.score_home > f.score_away;
+          largestMarginMatch = {
+            winner: isHomeWinner ? (home?.name || 'Home') : (away?.name || 'Away'),
+            loser: isHomeWinner ? (away?.name || 'Away') : (home?.name || 'Home'),
+            scoreHome: f.score_home,
+            scoreAway: f.score_away,
+            margin,
+            league: comp?.name || 'Egerton League'
+          };
+        }
+      });
+
+      const result = {
+        highestScoringMatch: highestScoreMatch,
+        largestWinMargin: largestMarginMatch,
+        totalGoalsScored: totalGoals,
+        completedMatchesCount: ftFixtures.length,
+        cleanSheetsTotal: cleanSheets
+      };
+
+      guestCache.set('milestones', 'all_milestones', result);
+      return { success: true, data: result };
+    } catch (err) {
+      return {
+        success: true,
+        data: {
+          highestScoringMatch: null,
+          largestWinMargin: null,
+          totalGoalsScored: 0,
+          completedMatchesCount: 0,
+          cleanSheetsTotal: 0
         }
       };
     }
@@ -1063,6 +1275,9 @@ export const ApiService = {
 
   // --- NEWS ---
   async getNews(): Promise<ApiResponse<NewsItem[]>> {
+    const cached = guestCache.get<NewsItem[]>('news', 'all_published');
+    if (cached) return { success: true, data: cached };
+
     try {
       return await executeWithRetry(async () => {
         const { data, error } = await supabase
@@ -1089,6 +1304,7 @@ export const ApiService = {
           slug: item.slug
         }));
 
+        guestCache.set('news', 'all_published', articles);
         return { success: true, data: articles };
       });
     } catch (err) {

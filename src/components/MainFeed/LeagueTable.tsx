@@ -67,6 +67,21 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     });
   }, [allowHistoricalView, tableData]);
 
+  const [teamFormsMap, setTeamFormsMap] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const allTeams = [...eplStandings, ...champStandings];
+    allTeams.forEach((row) => {
+      if (!row.teamId) return;
+      ApiService.getTeamForm(row.teamId).then((res) => {
+        if (res.data && res.data.length > 0) {
+          const sequence = res.data.map((item) => item.result);
+          setTeamFormsMap((prev) => ({ ...prev, [row.teamId]: sequence }));
+        }
+      });
+    });
+  }, [eplStandings, champStandings]);
+
   const activeSeasonData = historicalSeasons.find((s) => s.seasonId === selectedSeasonId);
 
   const currentCompData = activeCompTab === 'champ'
@@ -468,15 +483,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {(eplStandings.length > 0 ? eplStandings : tableData).map((row) => {
-                      const preset: Record<number, string[]> = {
-                        1: ['W', 'W', 'D', 'W', 'W', 'W'],
-                        2: ['W', 'D', 'W', 'W', 'L', 'W'],
-                        3: ['W', 'L', 'W', 'W', 'D', 'W'],
-                        4: ['D', 'W', 'L', 'W', 'W', 'D'],
-                        5: ['L', 'W', 'W', 'D', 'L', 'W'],
-                        6: ['L', 'L', 'D', 'W', 'L', 'L']
-                      };
-                      const form6 = preset[row.position] || ['W', 'D', 'L', 'W', 'D', 'W'];
+                      const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
 
                       return (
                         <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
@@ -531,15 +538,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {champStandings.map((row) => {
-                      const preset: Record<number, string[]> = {
-                        1: ['W', 'W', 'W', 'D', 'W', 'W'],
-                        2: ['W', 'W', 'L', 'W', 'D', 'W'],
-                        3: ['W', 'D', 'W', 'L', 'W', 'W'],
-                        4: ['D', 'L', 'W', 'W', 'D', 'L'],
-                        5: ['L', 'W', 'D', 'L', 'W', 'L'],
-                        6: ['L', 'L', 'L', 'D', 'L', 'L']
-                      };
-                      const form6 = preset[row.position] || ['W', 'D', 'W', 'L', 'W', 'D'];
+                      const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
 
                       return (
                         <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
