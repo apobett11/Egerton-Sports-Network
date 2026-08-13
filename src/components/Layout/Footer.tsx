@@ -3,7 +3,7 @@ import { Shield, Mail, Award, Activity, Heart, ExternalLink, Globe, FileText } f
 
 export const Footer: React.FC = () => {
     return (
-        <footer className="w-full bg-slate-100/90 dark:bg-[#070B12] text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800/80 py-12 px-6 mt-auto select-none">
+        <footer className="w-full bg-slate-200/90 dark:bg-[#070A14] text-slate-500 dark:text-slate-400 border-t-2 border-[#D4AF37]/50 dark:border-t-2 dark:border-[#D4AF37]/40 py-12 px-6 mt-auto select-none shadow-2xl relative z-20">
             <div className="max-w-7xl mx-auto space-y-10">
                 {/* Main 4-Column Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

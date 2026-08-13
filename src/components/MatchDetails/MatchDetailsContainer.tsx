@@ -31,13 +31,11 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
     const [h2hRecords, setH2hRecords] = useState<Array<{ id: string; date: string; scoreA: number; scoreB: number; winner: string; venue: string }>>([]);
     
-    const isPreMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
-    const [activeTab, setActiveTab] = useState<MatchDetailTabType>(isPreMatch ? 'squads' : 'overview');
+    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('squads');
 
     useEffect(() => {
         setCurrentMatch(match);
-        const preMatch = match.status === 'UPCOMING' || match.status === 'POSTPONED' || match.status === 'CANCELLED';
-        setActiveTab(preMatch ? 'squads' : 'overview');
+        setActiveTab('squads');
 
         // Fetch deep match details from database
         ApiService.getMatchDetails(match.id).then((res) => {

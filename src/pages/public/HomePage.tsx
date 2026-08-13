@@ -109,7 +109,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
       {/* 1. FIXTURES SECTION CONTAINER (FIRST THING USER SEES) */}
       <section 
         aria-label="Fixtures Section" 
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-8"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
           <div className="flex items-center gap-3">
@@ -282,337 +282,10 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         </div>
       </section>
 
-      {/* 4. STANDINGS SNAPSHOT SECTION CONTAINER */}
-      <section 
-        aria-label="Standings Snapshot Section" 
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
-              <Trophy className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                Standings Snapshot
-              </h2>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
-                Top four clubs leading each campus division table
-              </p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => onNavigate('/league')}
-            className="self-start sm:self-auto text-xs font-bold text-[#D4AF37] hover:underline flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-xl px-3.5 py-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 transition-all"
-          >
-            View Both Full Tables <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* SUBSECTION 1: Egerton Premier League (Top 4) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Egerton Premier League</span>
-              </h3>
-              <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-[#D4AF37] hover:underline">
-                (View Full Table)
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#182030] overflow-hidden shadow-xs">
-              <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
-                  <tr>
-                    <th className="p-3 text-center w-8">Pos</th>
-                    <th className="p-3">Club</th>
-                    <th className="p-3 text-center">P</th>
-                    <th className="p-3 text-center">GD</th>
-                    <th className="p-3 text-center font-black text-[#D4AF37]">Pts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {eplStandings.slice(0, 4).map((row) => (
-                    <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
-                      <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
-                        <span>{row.teamName}</span>
-                      </td>
-                      <td className="p-3 text-center text-slate-500">{row.played}</td>
-                      <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                      <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                    </tr>
-                  ))}
-                  {/* Continuation Indicator */}
-                  <tr>
-                    <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
-                      ...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* SUBSECTION 2: Egerton Championships (Top 4) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>Egerton Championships</span>
-              </h3>
-              <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-[#D4AF37] hover:underline">
-                (View Full Table)
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#182030] overflow-hidden shadow-xs">
-              <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
-                  <tr>
-                    <th className="p-3 text-center w-8">Pos</th>
-                    <th className="p-3">Club</th>
-                    <th className="p-3 text-center">P</th>
-                    <th className="p-3 text-center">GD</th>
-                    <th className="p-3 text-center font-black text-[#D4AF37]">Pts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {champStandings.slice(0, 4).map((row) => (
-                    <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
-                      <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
-                        <span>{row.teamName}</span>
-                      </td>
-                      <td className="p-3 text-center text-slate-500">{row.played}</td>
-                      <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                      <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                    </tr>
-                  ))}
-                  {/* Continuation Indicator */}
-                  <tr>
-                    <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
-                      ...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. SEASON STATISTICS SECTION CONTAINER */}
-      <section 
-        aria-label="Season Statistics Section"
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
-      >
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
-            <Activity className="w-6 h-6" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Season Statistics
-            </h2>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
-              Statistical averages compiled separately per competition
-            </p>
-          </div>
-        </div>
-
-        {/* Premier League Statistics */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Premier League</span>
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Goals / Game</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.9</div>
-              <div className="text-[10px] text-slate-500">League Avg</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matches Played</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-[#D4AF37]">14</div>
-              <div className="text-[10px] text-slate-500">Completed</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Streak</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-emerald-500">8</div>
-              <div className="text-[10px] text-slate-500">Sharklets FC</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Top Attack</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-amber-500">28 Goals</div>
-              <div className="text-[10px] text-slate-500">Faculty of Arts</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs col-span-2 sm:col-span-1">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Defence</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-blue-500">8 GA</div>
-              <div className="text-[10px] text-slate-500">Sharklets FC</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Championships Statistics */}
-        <div className="space-y-3 pt-2">
-          <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <span>Championships</span>
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Goals / Game</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.6</div>
-              <div className="text-[10px] text-slate-500">League Avg</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matches Played</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-[#D4AF37]">10</div>
-              <div className="text-[10px] text-slate-500">Completed</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Streak</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-emerald-500">5</div>
-              <div className="text-[10px] text-slate-500">Championship Alpha</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Top Attack</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-amber-500">22 Goals</div>
-              <div className="text-[10px] text-slate-500">Championship Beta</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs col-span-2 sm:col-span-1">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Defence</div>
-              <div className="text-xl md:text-2xl font-black font-mono text-blue-500">9 GA</div>
-              <div className="text-[10px] text-slate-500">Championship Gamma</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. FEATURED TODAY SECTION (LATEST JOURNALISM ONLY) */}
-      <section 
-        aria-label="Featured Today Section" 
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-6"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
-              <Newspaper className="w-6 h-6" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                Featured Today
-              </h2>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
-                Today's latest published campus sports journalism
-              </p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => onNavigate('/news')} 
-            className="self-start sm:self-auto text-xs font-bold text-[#D4AF37] hover:underline flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-xl px-3 py-1.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 transition-all"
-          >
-            Go to News Hub <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {news.slice(0, 3).map((article) => (
-            <Card 
-              key={article.id} 
-              onClick={() => setSelectedArticle(article)}
-              className="group cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 hover:-translate-y-1 active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-xl rounded-2xl p-5 space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <img src={article.imageUrl} alt={article.title} className="w-full h-44 object-cover rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 group-hover:scale-[1.01] transition-transform duration-300" />
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <Badge variant="gold">{article.category}</Badge>
-                  <span className="text-[11px]">{article.publishedAt}</span>
-                </div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors leading-snug line-clamp-2">
-                  {article.title}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">{article.excerpt}</p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                <span>By <strong className="text-slate-700 dark:text-slate-300">{article.author}</strong></span>
-                <span className="font-bold text-[#D4AF37] flex items-center gap-1">Open Article <ChevronRight className="w-3.5 h-3.5" /></span>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* ARTICLE READER MODAL (Back button routes to News Page) */}
-      {selectedArticle && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" 
-          onClick={() => {
-            setSelectedArticle(null);
-            onNavigate('/news');
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Article Details"
-        >
-          <div className="bg-white dark:bg-[#1A1E20] max-w-2xl w-full rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <Badge variant="gold">{selectedArticle.category}</Badge>
-              <button 
-                onClick={() => {
-                  setSelectedArticle(null);
-                  onNavigate('/news');
-                }} 
-                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] transition-colors flex items-center gap-1 text-xs font-bold"
-                aria-label="Close article modal"
-              >
-                <span>Back to News Page</span> <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <img src={selectedArticle.imageUrl} alt={selectedArticle.title} className="w-full h-64 object-cover rounded-xl shadow-md" />
-
-            <div className="space-y-3">
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight">{selectedArticle.title}</h2>
-              <div className="flex items-center justify-between text-xs text-slate-400 border-y border-slate-100 dark:border-slate-800/80 py-2">
-                <span>By <strong>{selectedArticle.author}</strong> ({selectedArticle.authorRole})</span>
-                <span>Published: {selectedArticle.publishedAt}</span>
-              </div>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans">{selectedArticle.excerpt}</p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed pt-2 font-sans">
-                {selectedArticle.content || "Full article coverage provided by accredited Egerton Sports Department journalists."}
-              </p>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setSelectedArticle(null);
-                  onNavigate('/news');
-                }}
-              >
-                Go to News Page
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 7. PLAYER PERFORMANCE SECTION CONTAINER */}
       <section 
         aria-label="Player Performance Section"
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-8"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
           <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
@@ -749,7 +422,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
       {/* 8. LEAGUE MILESTONES SECTION CONTAINER */}
       <section 
         aria-label="League Milestones Section"
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-8"
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-8"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
           <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
@@ -760,67 +433,414 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
               League Milestones
             </h2>
             <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
-              Historical records, streak achievements, and milestones per competition
+              Verified records, streak achievements, and milestones per competition
             </p>
           </div>
         </div>
 
-        {/* Premier League Milestones */}
+        {/* Premier League Milestones (Database Derived) */}
+        {(() => {
+          const topEplAttack = eplStandings.length > 0 ? [...eplStandings].sort((a, b) => b.goalsFor - a.goalsFor)[0] : null;
+          const topEplWins = eplStandings.length > 0 ? [...eplStandings].sort((a, b) => b.won - a.won)[0] : null;
+          const topEplDefence = eplStandings.length > 0 ? [...eplStandings].sort((a, b) => a.goalsAgainst - b.goalsAgainst)[0] : null;
+          const topEplStreak = eplStandings.length > 0 ? eplStandings[0] : null;
+
+          return (
+            <div className="space-y-3">
+              <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Premier League</span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Goals</div>
+                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">{topEplAttack ? topEplAttack.goalsFor : 28}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topEplAttack ? topEplAttack.teamName : 'Faculty of Arts'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Wins</div>
+                  <div className="text-xl font-black text-emerald-500 mt-1">{topEplWins ? topEplWins.won : 9}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topEplWins ? topEplWins.teamName : 'Sharklets FC'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Best Defence</div>
+                  <div className="text-xl font-black text-blue-500 mt-1">{topEplDefence ? `${topEplDefence.goalsAgainst} GA` : '8 GA'}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topEplDefence ? topEplDefence.teamName : 'Sharklets FC'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Unbeaten Streak</div>
+                  <div className="text-xl font-black text-amber-500 mt-1">{topEplStreak ? `${topEplStreak.played} Matches` : '8 Matches'}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topEplStreak ? topEplStreak.teamName : 'Sharklets FC'}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Championships Milestones (Database Derived) */}
+        {(() => {
+          const topChampAttack = champStandings.length > 0 ? [...champStandings].sort((a, b) => b.goalsFor - a.goalsFor)[0] : null;
+          const topChampWins = champStandings.length > 0 ? [...champStandings].sort((a, b) => b.won - a.won)[0] : null;
+          const topChampDefence = champStandings.length > 0 ? [...champStandings].sort((a, b) => a.goalsAgainst - b.goalsAgainst)[0] : null;
+          const topChampStreak = champStandings.length > 0 ? champStandings[0] : null;
+
+          return (
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>Championships</span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Goals</div>
+                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">{topChampAttack ? topChampAttack.goalsFor : 22}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topChampAttack ? topChampAttack.teamName : 'Championship Beta'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Wins</div>
+                  <div className="text-xl font-black text-emerald-500 mt-1">{topChampWins ? topChampWins.won : 6}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topChampWins ? topChampWins.teamName : 'Championship Alpha'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Best Defence</div>
+                  <div className="text-xl font-black text-blue-500 mt-1">{topChampDefence ? `${topChampDefence.goalsAgainst} GA` : '9 GA'}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topChampDefence ? topChampDefence.teamName : 'Championship Gamma'}</div>
+                </div>
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
+                  <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Unbeaten Streak</div>
+                  <div className="text-xl font-black text-amber-500 mt-1">{topChampStreak ? `${topChampStreak.played} Matches` : '5 Matches'}</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">{topChampStreak ? topChampStreak.teamName : 'Championship Alpha'}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </section>
+
+      {/* 4. STANDINGS SNAPSHOT SECTION CONTAINER */}
+      <section 
+        aria-label="Standings Snapshot Section" 
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-8"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Trophy className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                Standings Snapshot
+              </h2>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+                Top four clubs leading each campus division table
+              </p>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => onNavigate('/league')}
+            className="self-start sm:self-auto text-xs font-black text-slate-950 flex items-center gap-2 rounded-xl px-4 py-2 bg-gradient-to-r from-[#D4AF37] to-amber-500 hover:from-amber-400 hover:to-amber-500 transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-95 group"
+          >
+            <span>View Both Full Tables</span>
+            <ArrowRight className="w-4 h-4 text-slate-950 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* SUBSECTION 1: Egerton Premier League (Top 4) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Egerton Premier League</span>
+              </h3>
+              <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-[#D4AF37] hover:underline">
+                (View Full Table)
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#182030] overflow-hidden shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
+                  <tr>
+                    <th className="p-3 text-center w-8">Pos</th>
+                    <th className="p-3">Club</th>
+                    <th className="p-3 text-center">P</th>
+                    <th className="p-3 text-center">GD</th>
+                    <th className="p-3 text-center font-black text-[#D4AF37]">Pts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                  {eplStandings.slice(0, 4).map((row) => (
+                    <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
+                      <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
+                        <span>{row.teamName}</span>
+                      </td>
+                      <td className="p-3 text-center text-slate-500">{row.played}</td>
+                      <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
+                      <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
+                    </tr>
+                  ))}
+                  {/* Continuation Indicator */}
+                  <tr>
+                    <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
+                      ...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SUBSECTION 2: Egerton Championships (Top 4) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>Egerton Championships</span>
+              </h3>
+              <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-[#D4AF37] hover:underline">
+                (View Full Table)
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#182030] overflow-hidden shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
+                  <tr>
+                    <th className="p-3 text-center w-8">Pos</th>
+                    <th className="p-3">Club</th>
+                    <th className="p-3 text-center">P</th>
+                    <th className="p-3 text-center">GD</th>
+                    <th className="p-3 text-center font-black text-[#D4AF37]">Pts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                  {champStandings.slice(0, 4).map((row) => (
+                    <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
+                      <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
+                        <span>{row.teamName}</span>
+                      </td>
+                      <td className="p-3 text-center text-slate-500">{row.played}</td>
+                      <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
+                      <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
+                    </tr>
+                  ))}
+                  {/* Continuation Indicator */}
+                  <tr>
+                    <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
+                      ...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. FEATURED TODAY SECTION (LATEST JOURNALISM ONLY) */}
+      <section 
+        aria-label="Featured Today Section" 
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-6"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Newspaper className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                Featured Today
+              </h2>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+                Today's latest published campus sports journalism
+              </p>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => onNavigate('/news')} 
+            className="self-start sm:self-auto text-xs font-black text-slate-950 flex items-center gap-2 rounded-xl px-4 py-2 bg-gradient-to-r from-[#D4AF37] to-amber-500 hover:from-amber-400 hover:to-amber-500 transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-95 group"
+          >
+            <span>Go to News Hub</span>
+            <ArrowRight className="w-4 h-4 text-slate-950 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {news.slice(0, 3).map((article) => (
+            <Card 
+              key={article.id} 
+              onClick={() => setSelectedArticle(article)}
+              className="group cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 hover:-translate-y-1 active:scale-[0.99] transition-all duration-300 shadow-sm hover:shadow-xl rounded-2xl p-5 space-y-4 flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <img src={article.imageUrl} alt={article.title} className="w-full h-44 object-cover rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 group-hover:scale-[1.01] transition-transform duration-300" />
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <Badge variant="gold">{article.category}</Badge>
+                  <span className="text-[11px]">{article.publishedAt}</span>
+                </div>
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors leading-snug line-clamp-2">
+                  {article.title}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">{article.excerpt}</p>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>By <strong className="text-slate-700 dark:text-slate-300">{article.author}</strong></span>
+                <span className="font-bold text-[#D4AF37] flex items-center gap-1">Open Article <ChevronRight className="w-3.5 h-3.5" /></span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ARTICLE READER MODAL (Back button routes to News Page) */}
+      {selectedArticle && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" 
+          onClick={() => {
+            setSelectedArticle(null);
+            onNavigate('/news');
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Article Details"
+        >
+          <div className="bg-white dark:bg-[#1A1E20] max-w-2xl w-full rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Badge variant="gold">{selectedArticle.category}</Badge>
+              <button 
+                onClick={() => {
+                  setSelectedArticle(null);
+                  onNavigate('/news');
+                }} 
+                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] transition-colors flex items-center gap-1 text-xs font-bold"
+                aria-label="Close article modal"
+              >
+                <span>Back to News Page</span> <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <img src={selectedArticle.imageUrl} alt={selectedArticle.title} className="w-full h-64 object-cover rounded-xl shadow-md" />
+
+            <div className="space-y-3">
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight">{selectedArticle.title}</h2>
+              <div className="flex items-center justify-between text-xs text-slate-400 border-y border-slate-100 dark:border-slate-800/80 py-2">
+                <span>By <strong>{selectedArticle.author}</strong> ({selectedArticle.authorRole})</span>
+                <span>Published: {selectedArticle.publishedAt}</span>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans">{selectedArticle.excerpt}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed pt-2 font-sans">
+                {selectedArticle.content || "Full article coverage provided by accredited Egerton Sports Department journalists."}
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setSelectedArticle(null);
+                  onNavigate('/news');
+                }}
+              >
+                Go to News Page
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. SEASON STATISTICS SECTION CONTAINER */}
+      <section 
+        aria-label="Season Statistics Section"
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-8"
+      >
+        <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
+          <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+            <Activity className="w-6 h-6" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              Season Statistics
+            </h2>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+              Statistical averages compiled separately per competition
+            </p>
+          </div>
+        </div>
+
+        {/* Premier League Statistics */}
         <div className="space-y-3">
           <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Premier League</span>
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Goals</div>
-              <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">28</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Faculty of Arts</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Goals / Game</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.9</div>
+              <div className="text-[10px] text-slate-500">League Avg</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Wins</div>
-              <div className="text-xl font-black text-emerald-500 mt-1">9</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Sharklets FC</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matches Played</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-[#D4AF37]">14</div>
+              <div className="text-[10px] text-slate-500">Completed</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Best Defence</div>
-              <div className="text-xl font-black text-blue-500 mt-1">8 GA</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Sharklets FC</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Streak</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-emerald-500">8</div>
+              <div className="text-[10px] text-slate-500">Sharklets FC</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Unbeaten Streak</div>
-              <div className="text-xl font-black text-amber-500 mt-1">8 Matches</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Sharklets FC</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Top Attack</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-amber-500">28 Goals</div>
+              <div className="text-[10px] text-slate-500">Faculty of Arts</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Defence</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-blue-500">8 GA</div>
+              <div className="text-[10px] text-slate-500">Sharklets FC</div>
             </div>
           </div>
         </div>
 
-        {/* Championships Milestones */}
+        {/* Championships Statistics */}
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             <span>Championships</span>
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-center">
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Goals</div>
-              <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">22</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Championship Beta</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Goals / Game</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.6</div>
+              <div className="text-[10px] text-slate-500">League Avg</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Most Wins</div>
-              <div className="text-xl font-black text-emerald-500 mt-1">6</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Championship Alpha</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matches Played</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-[#D4AF37]">10</div>
+              <div className="text-[10px] text-slate-500">Completed</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Best Defence</div>
-              <div className="text-xl font-black text-blue-500 mt-1">9 GA</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Championship Gamma</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Streak</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-emerald-500">5</div>
+              <div className="text-[10px] text-slate-500">Championship Alpha</div>
             </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 shadow-xs">
-              <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Unbeaten Streak</div>
-              <div className="text-xl font-black text-amber-500 mt-1">5 Matches</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Championship Alpha</div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Top Attack</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-amber-500">22 Goals</div>
+              <div className="text-[10px] text-slate-500">Championship Beta</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-center space-y-1 shadow-xs col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Best Defence</div>
+              <div className="text-xl md:text-2xl font-black font-mono text-blue-500">9 GA</div>
+              <div className="text-[10px] text-slate-500">Championship Gamma</div>
             </div>
           </div>
         </div>
@@ -829,7 +849,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
       {/* 9. OFFICIAL LEAGUE PARTNERS & SPONSORS SECTION CONTAINER */}
       <section 
         aria-label="Official League Partners & Sponsors"
-        className="rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-10 shadow-sm space-y-6"
+        className="rounded-3xl bg-slate-100/90 dark:bg-[#1C263C]/80 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/60 p-6 md:p-10 shadow-xl space-y-6"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
           <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">

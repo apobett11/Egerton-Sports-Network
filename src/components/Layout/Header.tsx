@@ -137,76 +137,78 @@ export const Header: React.FC<HeaderProps> = ({
     }, [dbFixtures]);
 
     return (
-        <header className="sticky top-0 z-50 w-full shadow-lg backdrop-blur-xl select-none bg-white/90 dark:bg-[#090D16]/90 text-slate-800 dark:text-slate-200 border-b border-slate-200/80 dark:border-slate-800/80 transition-all duration-300">
+        <header className="sticky top-0 z-50 w-full shadow-xl backdrop-blur-xl select-none bg-white/95 dark:bg-[#0A0E1A]/95 text-slate-800 dark:text-slate-200 border-b border-slate-200/90 dark:border-slate-800/90 transition-all duration-300">
             {/* Row 1: Logo & Top controls */}
-            <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto">
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={onMenuClick}
-                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-90 transition-all duration-200 ring-1 ring-transparent hover:ring-emerald-500/20 outline-none cursor-pointer"
+                        className="p-2 rounded-xl bg-slate-100/80 dark:bg-[#161F30] text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700/80 active:scale-95 transition-all duration-200 border border-slate-200/60 dark:border-slate-700/50 outline-none cursor-pointer"
                         aria-label="Toggle navigation menu"
                     >
-                        <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                        <Menu className="w-5 h-5" />
                     </button>
 
                     <div className="flex items-center gap-2.5 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-white shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400/40 group-hover:scale-105 transition-transform duration-300">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37] via-amber-500 to-emerald-600 flex items-center justify-center font-black text-slate-950 shadow-md ring-1 ring-[#D4AF37]/50 group-hover:scale-105 transition-transform duration-300">
                             E
                         </div>
                         <div className="flex flex-col">
-                            <span className="font-black text-lg tracking-tight bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 bg-clip-text text-transparent">
+                            <span className="font-black text-lg tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">
                                 Egerton Sports
                             </span>
-                            <span className="text-[9px] font-bold tracking-widest text-emerald-600/80 dark:text-emerald-400/80 uppercase -mt-1">
+                            <span className="text-[9px] font-extrabold tracking-widest text-[#D4AF37] uppercase -mt-0.5">
                                 Official Campus Hub
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Action Controls */}
-                <div className="flex items-center gap-2">
+                {/* Right-side Action Controls: Visually distinct rounded action container */}
+                <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-[#162032]/90 p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-700/70 shadow-inner">
                     {showSearch && (
                         <input
                             type="text"
                             placeholder="Search campus teams..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="px-3.5 py-1.5 text-xs bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-slate-100 max-w-[160px] transition-all duration-200"
+                            className="px-3 py-1 text-xs bg-white dark:bg-[#0D1322] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-slate-800 dark:text-slate-100 max-w-[150px] transition-all duration-200"
                         />
                     )}
 
-                    {/* Prominent News Header Button */}
+                    {/* News Header Button */}
                     <button
                         type="button"
                         onClick={onNavigateNews || (() => { window.location.hash = '/news'; })}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30 active:scale-95 transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] font-bold text-xs border border-[#D4AF37]/40 active:scale-95 transition-all cursor-pointer shadow-xs"
                         aria-label="Campus News"
                     >
-                        <Newspaper className="w-4 h-4" />
+                        <Newspaper className="w-4 h-4 text-[#D4AF37]" />
                         <span className="hidden sm:inline">News</span>
                     </button>
 
+                    {/* Search Button */}
                     <button
                         type="button"
                         onClick={() => setShowSearch(!showSearch)}
-                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-90 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-emerald-500 cursor-pointer"
+                        className="p-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/70 active:scale-90 transition-all cursor-pointer"
                         aria-label="Search"
                     >
-                        <Search className="w-5 h-5" />
+                        <Search className="w-4.5 h-4.5" />
                     </button>
 
+                    {/* Theme Toggle */}
                     <button
                         type="button"
                         onClick={toggleDarkMode}
-                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 active:scale-90 transition-all duration-200 text-slate-500 dark:text-slate-400 cursor-pointer"
+                        className="p-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/70 active:scale-90 transition-all cursor-pointer"
                         aria-label="Toggle Dark Mode"
                     >
                         {darkMode ? (
-                            <Sun className="w-5 h-5 text-amber-400 hover:rotate-45 transition-transform duration-300" />
+                            <Sun className="w-4.5 h-4.5 text-amber-400 hover:rotate-45 transition-transform duration-300" />
                         ) : (
-                            <Moon className="w-5 h-5 text-slate-700 hover:-rotate-12 transition-transform duration-300" />
+                            <Moon className="w-4.5 h-4.5 text-slate-700 hover:-rotate-12 transition-transform duration-300" />
                         )}
                     </button>
 
@@ -214,89 +216,100 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={onNavigateLogin || (() => { window.location.hash = '/login'; })}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
                         aria-label="Login"
                     >
-                        <LogIn className="w-4 h-4" />
+                        <LogIn className="w-4 h-4 text-slate-950" />
                         <span className="hidden sm:inline">Login</span>
                     </button>
                 </div>
             </div>
 
-            {/* Row 2: EGERTON SPORTS DEPARTMENT ECOSYSTEM BANNER */}
-            <div className="border-t border-slate-200/80 dark:border-slate-800/60 bg-slate-50/50 dark:bg-[#0E1424]/60">
+            {/* Row 2: EGERTON SPORTS DEPARTMENT ECOSYSTEM BANNER (CALM CONTINUITY STRIP) */}
+            <div className="border-t border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-100/70 dark:bg-[#12192B]/80 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar px-4 py-2 max-w-7xl mx-auto text-xs">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
-                            <Trophy className="w-4 h-4" />
+                        <div className="p-1 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+                            <Trophy className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 tracking-tight text-[11px] sm:text-xs">
                             Egerton Premier League & Egerton Championships
                         </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                        <span className="text-[10px] sm:text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                             Premier League
                         </span>
-                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                        <span className="text-[10px] sm:text-[11px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
                             Championships
                         </span>
                     </div>
                 </div>
             </div>
 
-            {/* Row 3: Date Navigator */}
-            <div className="border-t border-slate-200/80 dark:border-slate-800/60 bg-white/50 dark:bg-[#090D16]/80">
+            {/* Row 3: DATE NAVIGATOR STRIP WITH EXPLICIT DAY MOVEMENT */}
+            <div className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-[#0E1524]/90 backdrop-blur-md">
                 <div className="flex items-center justify-between px-4 py-2 max-w-7xl mx-auto">
                     <button
                         type="button"
                         onClick={() => changeDate(-1)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 active:scale-85 transition-all cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#182236] hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/60"
+                        title="Move to previous day"
+                        aria-label="Move to previous day"
                     >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-4 h-4 text-[#D4AF37]" />
+                        <span className="hidden sm:inline">Previous Day</span>
                     </button>
 
-                    <span className="text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                        {formatDateLabel(selectedDate)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#D4AF37] flex items-center gap-2">
+                            {formatDateLabel(selectedDate)}
+                        </span>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={() => changeDate(1)}
-                            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 active:scale-85 transition-all cursor-pointer mr-1"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#182236] hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/60"
+                            title="Move to next day"
+                            aria-label="Move to next day"
                         >
-                            <ChevronRight className="w-4 h-4" />
+                            <span className="hidden sm:inline">Next Day</span>
+                            <ChevronRight className="w-4 h-4 text-[#D4AF37]" />
                         </button>
-                        <div className="w-px h-4 bg-slate-200 dark:bg-slate-800" />
+                        <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
                         <button
                             type="button"
                             onClick={() => {
                                 setViewDate(new Date(selectedDate));
                                 setShowCalendarModal(true);
                             }}
-                            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 active:scale-85 transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs"
-                            title="Database-Driven Gameweek Calendar"
+                            className="p-1.5 rounded-xl bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-[#D4AF37] active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-xs"
+                            title="Database-Driven Monday-First Calendar"
                         >
-                            <Calendar className="w-4 h-4 text-emerald-500" />
-                            <span className="hidden sm:inline">Gameweek Calendar</span>
+                            <Calendar className="w-4 h-4 text-[#D4AF37]" />
+                            <span className="hidden sm:inline">Full Calendar</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* PART 2 DATABASE-DRIVEN GAMEWEEK CALENDAR POPUP MODAL */}
+            {/* DATABASE-DRIVEN GAMEWEEK CALENDAR POPUP MODAL (MONDAY-FIRST) */}
             {showCalendarModal && (
                 <div 
-                    className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+                    className="fixed inset-0 z-100 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
                     onClick={() => {
                       setShowCalendarModal(false);
                       if (onCloseCalendar) onCloseCalendar();
                     }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Gameweek Calendar Modal"
                 >
                     <div 
-                        className="bg-white dark:bg-[#0E1424] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5 select-none"
+                        className="bg-white dark:bg-[#121827] border border-slate-200 dark:border-slate-700/80 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5 select-none"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header: Controls for Year and Month */}
@@ -305,7 +318,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <button
                                     type="button"
                                     onClick={handlePrevYear}
-                                    className="px-2 py-1 text-xs font-bold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                                     title="Previous Year"
                                 >
                                     &laquo;
@@ -313,7 +326,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <button
                                     type="button"
                                     onClick={handlePrevMonth}
-                                    className="p-1 text-xs font-bold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                                     title="Previous Month"
                                 >
                                     &lt;
@@ -324,8 +337,8 @@ export const Header: React.FC<HeaderProps> = ({
                                 <span className="font-black text-base text-slate-900 dark:text-slate-100 block">
                                     {monthNames[month]} {year}
                                 </span>
-                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500">
-                                    Database Driven Fixtures
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#D4AF37]">
+                                    Database Gameweek Calendar
                                 </span>
                             </div>
 
@@ -333,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <button
                                     type="button"
                                     onClick={handleNextMonth}
-                                    className="p-1 text-xs font-bold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                                     title="Next Month"
                                 >
                                     &gt;
@@ -341,7 +354,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <button
                                     type="button"
                                     onClick={handleNextYear}
-                                    className="px-2 py-1 text-xs font-bold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
+                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                                     title="Next Year"
                                 >
                                     &raquo;
@@ -349,14 +362,15 @@ export const Header: React.FC<HeaderProps> = ({
                             </div>
                         </div>
 
-                        {/* Weekday Labels */}
+                        {/* Weekday Labels (Monday-First: Mo, Tu, We, Th, Fr, Sa, Su) */}
                         <div className="grid grid-cols-7 text-center text-[11px] font-black text-slate-400 uppercase tracking-wider">
-                            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
                         </div>
 
-                        {/* Month Grid with Gameweeks and Indicators */}
+                        {/* Month Grid with Monday-First calculations */}
                         <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
-                            {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                            {/* Calculate empty slots for Monday-First: (firstDayIndex + 6) % 7 */}
+                            {Array.from({ length: (firstDayOfMonth + 6) % 7 }).map((_, i) => (
                                 <div key={`empty-${i}`} />
                             ))}
                             {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -370,8 +384,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 const hasLeague = matchInfo?.isLeague;
                                 const hasFriendly = matchInfo?.isFriendly;
 
-                                // Derived Gameweek numbering per week row
-                                const dayIndex = firstDayOfMonth + i;
+                                const dayIndex = ((firstDayOfMonth + 6) % 7) + i;
                                 const weekNum = Math.floor(dayIndex / 7) + 1;
 
                                 return (
@@ -381,18 +394,19 @@ export const Header: React.FC<HeaderProps> = ({
                                             onClick={() => {
                                                 setSelectedDate(targetDate);
                                                 setShowCalendarModal(false);
+                                                if (onCloseCalendar) onCloseCalendar();
                                             }}
-                                            className={`w-full py-2.5 rounded-2xl font-black text-xs transition-all cursor-pointer relative flex flex-col items-center justify-center ${
+                                            className={`w-full py-2 rounded-2xl font-black text-xs transition-all cursor-pointer relative flex flex-col items-center justify-center ${
                                                 isSelected
-                                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30'
+                                                    ? 'bg-gradient-to-br from-[#D4AF37] to-amber-600 text-slate-950 shadow-lg shadow-[#D4AF37]/30 ring-2 ring-[#D4AF37]'
                                                     : isToday
-                                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/40'
+                                                    ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
                                                     : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
                                             }`}
                                         >
                                             <span>{dayNum}</span>
 
-                                            {/* Color Indicators: Green for League Match, Orange for Friendly */}
+                                            {/* Color Indicators: Green for League Match, Amber for Friendly */}
                                             <div className="flex items-center gap-1 mt-0.5">
                                                 {hasLeague && (
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-emerald-400" title="League Match Scheduled" />
@@ -405,7 +419,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                                         {/* Gameweek Badge indicator on start of week */}
                                         {(dayIndex % 7 === 0 || dayNum === 1) && (
-                                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-widest bg-slate-900 text-amber-400 border border-amber-500/30 rounded-md pointer-events-none z-10 whitespace-nowrap shadow-sm">
+                                            <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-widest bg-slate-950 text-[#D4AF37] border border-[#D4AF37]/30 rounded-md pointer-events-none z-10 whitespace-nowrap shadow-sm">
                                                 {matchInfo?.matchday ? `GW ${matchInfo.matchday}` : `GW ${weekNum}`}
                                             </span>
                                         )}
@@ -418,7 +432,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-bold text-slate-400">
                             <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> League Match
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> League
                                 </span>
                                 <span className="flex items-center gap-1">
                                     <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Friendly
@@ -427,8 +441,11 @@ export const Header: React.FC<HeaderProps> = ({
 
                             <button
                                 type="button"
-                                onClick={() => setShowCalendarModal(false)}
-                                className="px-3 py-1 rounded-xl bg-slate-800 text-white text-xs font-black cursor-pointer hover:bg-slate-700"
+                                onClick={() => {
+                                    setShowCalendarModal(false);
+                                    if (onCloseCalendar) onCloseCalendar();
+                                }}
+                                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-black cursor-pointer shadow-sm transition-colors"
                             >
                                 Close
                             </button>
