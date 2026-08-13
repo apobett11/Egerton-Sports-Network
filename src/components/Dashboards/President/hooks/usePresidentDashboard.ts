@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../../../../services/api';
+import { pitchesService } from '../services/pitchesService';
+import { fixturesService } from '../services/fixturesService';
 import type {
   PresidentTab,
   LeagueTab,
@@ -9,6 +11,8 @@ import type {
   TeamItem,
   RefereeItem,
   DraftFixture,
+  PitchItem,
+  SeasonFixture,
 } from '../types';
 import {
   INITIAL_SEASONS,
@@ -17,13 +21,18 @@ import {
   INITIAL_TEAMS,
   INITIAL_REFEREES,
   INITIAL_DRAFT_FIXTURES,
+  OFFICIAL_PITCHES,
 } from '../constants';
 
 export const usePresidentDashboard = () => {
-  const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState<PresidentTab>('overview');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // --- TAB 0: CAMPUS PITCHES STATE ---
+  const [pitches, setPitches] = useState<PitchItem[]>(OFFICIAL_PITCHES as PitchItem[]);
+
 
   // --- TAB 1: SEASON & LEAGUE ENGINE STATE ---
   const [seasons, setSeasons] = useState<SeasonItem[]>(INITIAL_SEASONS);
@@ -72,6 +81,7 @@ export const usePresidentDashboard = () => {
 
   // --- TAB 4: FIXTURE ENGINE & SCHEDULE LOCK STATE ---
   const [draftFixtures, setDraftFixtures] = useState<DraftFixture[]>([]);
+  const [savedFixtures, setSavedFixtures] = useState<SeasonFixture[]>([]);
   const [isScheduleLocked, setIsScheduleLocked] = useState(false);
   const [showLockWarningModal, setShowLockWarningModal] = useState(false);
   const [editingFixture, setEditingFixture] = useState<DraftFixture | null>(null);
@@ -131,10 +141,29 @@ export const usePresidentDashboard = () => {
         }));
         setTeams(formattedTeams);
       }
+
+      // 4. Fetch Campus Pitches
+      const pitchRes = await pitchesService.fetchPitches();
+      if (pitchRes.pitches && pitchRes.pitches.length > 0) {
+        setPitches(pitchRes.pitches);
+      }
+
+      // 5. Fetch Official Saved Season Fixtures
+      const fixRes = await fixturesService.fetchFixtures();
+      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
+        setSavedFixtures(fixRes.fixtures);
+      }
     };
 
     fetchPresidentData();
   }, []);
+
+  const reloadSavedFixtures = async () => {
+    const fixRes = await fixturesService.fetchFixtures();
+    if (fixRes.fixtures) {
+      setSavedFixtures(fixRes.fixtures);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -492,6 +521,9 @@ export const usePresidentDashboard = () => {
     recipientGroup,
     setRecipientGroup,
     announcements,
+    pitches,
+    savedFixtures,
+    reloadSavedFixtures,
     handleCreateSeason,
     handleToggleSeasonStatus,
     handleCreateLeague,

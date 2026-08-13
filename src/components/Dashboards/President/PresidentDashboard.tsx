@@ -72,6 +72,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     recipientGroup,
     setRecipientGroup,
     announcements,
+    pitches,
+    savedFixtures,
+    reloadSavedFixtures,
     handleCreateSeason,
     handleCreateLeague,
     handleApproveTeam,
@@ -118,6 +121,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             seasons={seasons}
             teams={teams}
             referees={referees}
+            pitches={pitches}
             announcementsCount={announcements.length}
             setActiveView={setActiveView}
             onOpenSeasonLaunchModal={() => setIsSeasonLaunchModalOpen(true)}
@@ -155,11 +159,8 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         {activeView === 'fixture_engine' && (
           <FixtureEngineView
             isDark={isDark}
-            draftFixtures={draftFixtures}
-            isScheduleLocked={isScheduleLocked}
-            handleGenerateFixtures={handleGenerateFixtures}
-            handleLockSchedule={handleLockSchedule}
-            handleSwapTeams={handleSwapTeams}
+            savedFixtures={savedFixtures}
+            onOpenLaunchModal={() => setIsSeasonLaunchModalOpen(true)}
           />
         )}
 
@@ -378,7 +379,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
             { id: 'season_engine', label: 'Leagues', icon: Calendar },
             { id: 'referees', label: 'Referees', icon: UserCheck },
             { id: 'megaphone', label: 'Announce', icon: Megaphone },
-            { id: 'fixture_engine', label: 'Fixtures', icon: Trophy }
+            { id: 'fixture_engine', label: 'Season', icon: Trophy }
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -410,7 +411,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         isDark={isDark}
         teams={teams}
         referees={referees}
+        pitches={pitches}
         showToast={showToast}
+        onSuccessSave={reloadSavedFixtures}
       />
     </div>
   );

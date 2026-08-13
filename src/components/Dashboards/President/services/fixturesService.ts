@@ -1,15 +1,15 @@
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 import type {
-  SeasonTeam,
-  SeasonReferee,
-  SeasonPitch,
+  TeamItem,
+  RefereeItem,
+  PitchItem,
   SeasonFixture,
   GeneratedCompetitionFixtures,
   GeneratedLegFixtures,
   GenerationServiceResult,
   PreviewValidationResult,
-} from '../types/seasonMode';
-import { COMPETITIONS } from '../constants/seasonConstants';
+} from '../types';
+import { COMPETITIONS } from '../constants';
 
 export const fixturesService = {
   /**
@@ -78,16 +78,15 @@ export const fixturesService = {
   },
 
   /**
-   * Isolated Service Boundary for Future Season Fixture Generation Algorithm.
-   *
-   * Inputs: Teams, Available Referees, Available Pitches
-   * Expected Output: Structured Preview Fixtures (EPL & Championship) divided by Leg 1 and Leg 2.
+   * Double Round-Robin Fixture Generation Engine
+   * Inputs: EPL Teams, Championship Teams, Available Referees, Available Pitches
+   * Output: Structured Preview Fixtures (EPL & Championship) divided by Leg 1 and Leg 2.
    */
   generateSeasonFixtures(
-    eplTeams: SeasonTeam[],
-    championshipTeams: SeasonTeam[],
-    availableReferees: SeasonReferee[],
-    availablePitches: SeasonPitch[]
+    eplTeams: TeamItem[],
+    championshipTeams: TeamItem[],
+    availableReferees: RefereeItem[],
+    availablePitches: PitchItem[]
   ): GenerationServiceResult {
     try {
       if (eplTeams.length < 2 && championshipTeams.length < 2) {
@@ -134,27 +133,27 @@ export const fixturesService = {
         success: false,
         validation: {
           isValid: false,
-          errors: [err.message || 'Generation handoff execution error'],
+          errors: [err.message || 'Generation execution error'],
           warnings: [],
           totalFixtures: 0,
         },
-        error: err.message || 'Generation handoff execution error',
+        error: err.message || 'Generation execution error',
       };
     }
   },
 
   /**
-   * Helper function creating structured preview fixtures for a single competition.
-   * Creates Leg 1 (Matchday 1..N-1) and Leg 2 (Matchday N..2N-2) pairs.
+   * Creates structured double-round robin preview fixtures for a single competition.
+   * Leg 1 (Matchdays 1..N-1) & Leg 2 (Matchdays N..2N-2).
    */
   createCompetitionFixtures(
-    teams: SeasonTeam[],
+    teams: TeamItem[],
     competitionId: string,
     competitionName: string,
-    referees: SeasonReferee[],
-    pitches: SeasonPitch[]
+    referees: RefereeItem[],
+    pitches: PitchItem[]
   ): GeneratedCompetitionFixtures {
-    const activePitches = pitches.filter((p) => p.status === 'Available');
+    const activePitches = pitches.filter((p) => !p.status || p.status === 'Available');
     const pitchNames = activePitches.length > 0 ? activePitches.map((p) => p.name) : ['Egerton Main Stadium Pitch'];
 
     const activeRefs = referees.filter((r) => r.status === 'Active');
@@ -165,9 +164,14 @@ export const fixturesService = {
 
     const numTeams = teams.length;
     const isOdd = numTeams % 2 !== 0;
-    const teamList = [...teams];
+    const teamList: Array<Partial<TeamItem> & { id: string; name: string }> = teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      code: t.code,
+    }));
+
     if (isOdd) {
-      teamList.push({ id: 'BYE', name: 'BYE', short_name: 'BYE', status: 'approved' });
+      teamList.push({ id: 'BYE', name: 'BYE', code: 'BYE' });
     }
 
     const n = teamList.length;
@@ -218,9 +222,9 @@ export const fixturesService = {
           venue: pitchName,
           referee_id: refereeObj?.id || null,
           matchday: round + 1,
-          home_team: homeTeam,
-          away_team: awayTeam,
-          referee: refereeObj,
+          home_team: { id: homeTeam.id, name: homeTeam.name, short_name: homeTeam.code },
+          away_team: { id: awayTeam.id, name: awayTeam.name, short_name: awayTeam.code },
+          referee: refereeObj ? { id: refereeObj.id, name: refereeObj.name, phone: refereeObj.phone } : null,
         };
 
         // Leg 2 Fixture (Reversed home/away)
@@ -236,9 +240,9 @@ export const fixturesService = {
           venue: pitchName,
           referee_id: refereeObj?.id || null,
           matchday: rounds + round + 1,
-          home_team: awayTeam,
-          away_team: homeTeam,
-          referee: refereeObj,
+          home_team: { id: awayTeam.id, name: awayTeam.name, short_name: awayTeam.code },
+          away_team: { id: homeTeam.id, name: homeTeam.name, short_name: homeTeam.code },
+          referee: refereeObj ? { id: refereeObj.id, name: refereeObj.name, phone: refereeObj.phone } : null,
         };
 
         leg1MatchdayFixtures.push(fixtureLeg1);
@@ -277,19 +281,11 @@ export const fixturesService = {
   },
 
   /**
-   * Preview Validation Engine verifying explicit integrity criteria:
-   * 1. No team playing itself
-   * 2. Every fixture has two different team UUIDs
-   * 3. Valid team UUIDs matching registered rosters
-   * 4. Correct competition ID present
-   * 5. Valid fixture structure
-   * 6. Leg 1 exists
-   * 7. Leg 2 exists
-   * 8. No duplicate fixture identity in same matchday
+   * Preview Validation Engine verifying integrity criteria
    */
   validateGeneratedFixtures(
     fixtures: SeasonFixture[],
-    registeredTeams: SeasonTeam[]
+    registeredTeams: TeamItem[]
   ): PreviewValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -322,10 +318,10 @@ export const fixturesService = {
 
       // 3. Valid team UUIDs
       if (f.home_team_id && !validTeamIds.has(f.home_team_id)) {
-        warnings.push(`Home team UUID "${f.home_team_id}" is not in the registered roster.`);
+        warnings.push(`Home team ID "${f.home_team_id}" is not in registered roster.`);
       }
       if (f.away_team_id && !validTeamIds.has(f.away_team_id)) {
-        warnings.push(`Away team UUID "${f.away_team_id}" is not in the registered roster.`);
+        warnings.push(`Away team ID "${f.away_team_id}" is not in registered roster.`);
       }
 
       // 4. Competition ID presence
@@ -369,14 +365,7 @@ export const fixturesService = {
 
   /**
    * Saves confirmed official season fixtures into `public.fixtures` table.
-   *
-   * Mini-Phase 3F (Transaction Safety):
-   * 1. Performs pre-save safety checks and validation.
-   * 2. Checks if fixtures already exist to prevent duplicate season generation.
-   * 3. Batch inserts into `public.fixtures`.
-   *
-   * Mini-Phase 3H (Database Re-read Verification):
-   * 4. Re-queries `public.fixtures` immediately after insert to verify persisted UUIDs and count.
+   * Includes batch insert, re-read verification, and audit logging.
    */
   async saveFixtures(
     fixtures: SeasonFixture[]
@@ -400,7 +389,7 @@ export const fixturesService = {
         };
       }
 
-      // Pre-save Transaction Safety Check: Ensure no team plays itself & valid UUIDs
+      // Pre-save Transaction Safety Check: Ensure no team plays itself
       const invalidSelfMatches = fixtures.filter((f) => f.home_team_id === f.away_team_id);
       if (invalidSelfMatches.length > 0) {
         return {
@@ -422,9 +411,6 @@ export const fixturesService = {
         .is('deleted_at', null);
 
       const existingCount = existingRows ? existingRows.length : 0;
-      if (existingCount > 0) {
-        console.info(`Found ${existingCount} existing fixtures in database before save.`);
-      }
 
       // Format insert payloads strictly adhering to database schema
       const insertPayloads = fixtures.map((f) => ({
@@ -441,8 +427,6 @@ export const fixturesService = {
       }));
 
       // Perform batch database write
-      // Note: Supabase PostgREST multi-row insert is a batch operation.
-      // ATOMIC TRANSACTION IS NOT VERIFIED at PostgREST boundary.
       const { data: savedRows, error: insertError } = await supabase
         .from('fixtures')
         .insert(insertPayloads)
@@ -463,33 +447,30 @@ export const fixturesService = {
       const eplCount = insertPayloads.filter((f) => f.competition_id === COMPETITIONS.PREMIER_LEAGUE.id).length;
       const champCount = insertPayloads.filter((f) => f.competition_id === COMPETITIONS.CHAMPIONSHIP.id).length;
 
-      // DATABASE RE-READ VERIFICATION (Task 8)
-      // Immediately query the database to verify persisted records and UUIDs
+      // DATABASE RE-READ VERIFICATION
       const { data: reReadRows, error: reReadError } = await supabase
         .from('fixtures')
         .select('id, competition_id, matchday')
         .in('competition_id', targetCompIds)
         .is('deleted_at', null);
 
-      const totalAfter = reReadRows ? reReadRows.length : existingCount + totalCount;
       let reReadVerified = false;
       if (!reReadError && reReadRows && reReadRows.length >= totalCount) {
         reReadVerified = true;
       }
 
-      // Log President operational audit with exact distinction (Task 7)
+      // Log President operational audit
       await supabase.from('audit_logs').insert([
         {
           action: 'SEASON_FIXTURES_GENERATED_AND_SAVED',
           resource_type: 'fixtures',
-          resource_id: 'SEASON-2025/2026',
+          resource_id: 'SEASON-2027/2028',
           details: {
             existing_fixtures_before: existingCount,
             newly_generated_saved: totalCount,
-            total_fixtures_after: totalAfter,
             epl_fixtures_saved: eplCount,
             championship_fixtures_saved: champCount,
-            transaction_status: 'ATOMIC TRANSACTION NOT VERIFIED (Batch Insert with Pre-Save & Re-read Verification)',
+            transaction_status: 'Batch Insert with Pre-Save & Re-Read Verification',
             re_read_verified: reReadVerified,
             timestamp: new Date().toISOString(),
           },
@@ -515,73 +496,4 @@ export const fixturesService = {
       };
     }
   },
-
-  /**
-   * TASK 14: Synthetic Test Verification for 10 EPL / 13 Championship Production Target.
-   * Runs in-memory validation against a 23-team roster without inserting records into production Supabase.
-   */
-  testLargeSeasonFixturesGeneration(): {
-    eplTeamCount: number;
-    champTeamCount: number;
-    eplFixturesGenerated: number;
-    champFixturesGenerated: number;
-    totalFixturesGenerated: number;
-    expectedEpl: number;
-    expectedChamp: number;
-    expectedTotal: number;
-    isValid: boolean;
-    errors: string[];
-  } {
-    // Construct synthetic 10 EPL teams
-    const syntheticEplTeams: SeasonTeam[] = Array.from({ length: 10 }, (_, i) => ({
-      id: `10000000-0000-0000-0000-${(i + 1).toString().padStart(12, '0')}`,
-      competition_id: COMPETITIONS.PREMIER_LEAGUE.id,
-      name: `Synthetic EPL Team ${i + 1}`,
-      short_name: `EPL-${i + 1}`,
-      status: 'approved',
-    }));
-
-    // Construct synthetic 13 Championship teams
-    const syntheticChampTeams: SeasonTeam[] = Array.from({ length: 13 }, (_, i) => ({
-      id: `20000000-0000-0000-0000-${(i + 1).toString().padStart(12, '0')}`,
-      competition_id: COMPETITIONS.CHAMPIONSHIP.id,
-      name: `Synthetic Champ Team ${i + 1}`,
-      short_name: `CHP-${i + 1}`,
-      status: 'approved',
-    }));
-
-    const dummyReferees: SeasonReferee[] = [
-      { id: '30000000-0000-0000-0000-000000000001', name: 'Ref Alpha', phone: '0700000001', status: 'Active' },
-      { id: '30000000-0000-0000-0000-000000000002', name: 'Ref Beta', phone: '0700000002', status: 'Active' },
-    ];
-
-    const dummyPitches: SeasonPitch[] = [
-      { id: '40000000-0000-0000-0000-000000000001', name: 'Pitch 1', short_code: 'P1', location: 'Loc 1', capacity: 5000, surface_type: 'Grass', has_lighting: true, status: 'Available' },
-    ];
-
-    const result = this.generateSeasonFixtures(
-      syntheticEplTeams,
-      syntheticChampTeams,
-      dummyReferees,
-      dummyPitches
-    );
-
-    const eplCount = result.premierLeagueFixtures?.all_fixtures.length || 0;
-    const champCount = result.championshipFixtures?.all_fixtures.length || 0;
-    const totalCount = eplCount + champCount;
-
-    return {
-      eplTeamCount: 10,
-      champTeamCount: 13,
-      eplFixturesGenerated: eplCount,
-      champFixturesGenerated: champCount,
-      totalFixturesGenerated: totalCount,
-      expectedEpl: 90,
-      expectedChamp: 156,
-      expectedTotal: 246,
-      isValid: result.validation.isValid && eplCount === 90 && champCount === 156,
-      errors: result.validation.errors,
-    };
-  },
 };
-

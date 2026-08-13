@@ -1,7 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Trophy, Zap, Plus, Trash2, Edit2, AlertTriangle, CheckCircle2, Shield, User, Clock, MapPin, ArrowRight } from 'lucide-react';
-import { ApiService } from '../../../../../services/api';
-import type { TeamItem, RefereeItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  MapPin,
+  UserCheck,
+  Trophy,
+  Award,
+  Calendar,
+  Save,
+  ChevronRight,
+  ShieldCheck,
+  AlertCircle,
+  Sparkles,
+  Loader2,
+} from 'lucide-react';
+import type {
+  TeamItem,
+  RefereeItem,
+  PitchItem,
+  SeasonFixture,
+} from '../../types';
+import { PresidentActionBridge } from '../../../../../services/presidentAgent0Bridge';
+import type { Algo1Output, LeagueInput } from '../../../../../algorithms/algorithm1';
 
 export interface SeasonLaunchModalProps {
   isOpen: boolean;
@@ -9,45 +30,22 @@ export interface SeasonLaunchModalProps {
   isDark: boolean;
   teams: TeamItem[];
   referees: RefereeItem[];
-  showToast: (msg: string) => void;
+  pitches: PitchItem[];
+  showToast?: (msg: string) => void;
+  onSuccessSave?: () => void;
   onFixturesConfirmed?: () => void;
 }
 
-export interface ManualFixtureRow {
-  id: string;
-  competitionId: string;
-  competitionName: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  pitch: string;
-  refereeId: string;
-  kickoffDate: string;
-  kickoffTime: string;
-  errors: string[];
-}
-
-export interface PreparedFixture {
-  id: string;
-  competitionId: string;
-  competitionName: string;
-  matchday: number;
-  homeTeamId: string;
-  homeTeamName: string;
-  awayTeamId: string;
-  awayTeamName: string;
-  pitch: string;
-  refereeId: string;
-  refereeName: string;
-  scheduledTime: string; // ISO string or YYYY-MM-DDTHH:mm
-  status: string;
-}
-
-const DEFAULT_PITCHES = [
-  'Egerton Main Stadium',
-  'Pavilion Pitch A',
-  'Pavilion Pitch B',
-  'Tatton Field'
-];
+type ModalStep =
+  | 'BEGIN_SEASON_NOTICE' // STEP 1
+  | 'CONFIRM_PITCHES' // STEP 2
+  | 'CONFIRM_REFEREES' // STEP 3
+  | 'CONFIRM_EPL_TEAMS' // STEP 4
+  | 'CONFIRM_CHAMP_TEAMS' // STEP 5
+  | 'GENERATING_FIXTURES' // STEP 6
+  | 'REVIEW_FIXTURES' // STEP 7
+  | 'CONFIRM_AND_LOCK' // STEP 8
+  | 'SAVE_RESULT';
 
 export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
   isOpen,
@@ -55,1238 +53,752 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
   isDark,
   teams,
   referees,
+  pitches,
   showToast,
+  onSuccessSave,
   onFixturesConfirmed,
 }) => {
-  const [modalStep, setModalStep] = useState<'CHOICE' | 'MANUAL_BUILDER' | 'GENERATOR_SETTINGS' | 'REVIEW'>('CHOICE');
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [step, setStep] = useState<ModalStep>('BEGIN_SEASON_NOTICE');
+  const [activeDivisionTab, setActiveDivisionTab] = useState<'EPL' | 'CHAMPIONSHIP'>('EPL');
+  const [activeLegTab, setActiveLegTab] = useState<1 | 2>(1);
 
-  // Competitions state loaded from DB
-  const [competitions, setCompetitions] = useState<Array<{ id: string; name: string; slug: string }>>([
-    { id: '11111111-1111-1111-1111-111111111111', name: 'Egerton Premier League', slug: 'egerton-premier-league' },
-    { id: '22222222-2222-2222-2222-222222222222', name: 'Egerton Championship', slug: 'egerton-championship' }
-  ]);
+  // Agent 0 Generation & Lock state
+  const [executionId, setExecutionId] = useState<string>('');
+  const [agent0GenResult, setAgent0GenResult] = useState<Algo1Output | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
-  // DB Teams & Referees
-  const [dbTeams, setDbTeams] = useState<any[]>([]);
-  const [dbReferees, setDbReferees] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveOutcome, setSaveOutcome] = useState<{
+    success: boolean;
+    count: number;
+    eplCount: number;
+    champCount: number;
+    reReadVerified?: boolean;
+    error: string | null;
+  } | null>(null);
 
-  // Manual Builder State
-  const [manualRows, setManualRows] = useState<ManualFixtureRow[]>([]);
+  const premierLeagueTeams = teams.filter((t) => t.league === 'premier' || !t.league);
+  const championshipTeams = teams.filter((t) => t.league === 'championship');
+  const availablePitches = pitches.filter((p) => !p.status || p.status === 'Available');
+  const activeReferees = referees.filter((r) => r.status === 'Active');
 
-  // Generator Settings State
-  const [genCompetition, setGenCompetition] = useState<string>('both'); // 'epl' | 'championship' | 'both'
-  const [genRoundType, setGenRoundType] = useState<'single' | 'double'>('single');
-  const [genStartDate, setGenStartDate] = useState<string>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Saturday', 'Sunday']);
-  const [maxMatchesPerDay, setMaxMatchesPerDay] = useState<number>(3);
-  const [selectedPitches, setSelectedPitches] = useState<string[]>(DEFAULT_PITCHES);
-  const [selectedReferees, setSelectedReferees] = useState<string[]>([]);
-
-  // Review State
-  const [preparedFixtures, setPreparedFixtures] = useState<PreparedFixture[]>([]);
-  const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ date: string; time: string; pitch: string; refereeId: string }>({
-    date: '',
-    time: '14:00',
-    pitch: '',
-    refereeId: ''
-  });
-  const [editError, setEditError] = useState<string | null>(null);
-
-  // Load competitions, teams, referees from DB when modal opens
+  // Keyboard escape behavior
   useEffect(() => {
-    if (!isOpen) return;
-
-    const loadData = async () => {
-      // 1. Competitions
-      const compRes = await ApiService.getLeagues();
-      if (compRes.success && compRes.data && compRes.data.length > 0) {
-        setCompetitions(compRes.data.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug
-        })));
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isSaving && !isGenerating) {
+        onClose();
       }
-
-      // 2. Teams
-      const teamRes = await ApiService.getTeams();
-      if (teamRes.success && teamRes.data && teamRes.data.length > 0) {
-        setDbTeams(teamRes.data);
-      } else {
-        setDbTeams(teams.map((t) => ({
-          id: t.id,
-          name: t.name,
-          competition_id: t.league === 'championship' ? '22222222-2222-2222-2222-222222222222' : '11111111-1111-1111-1111-111111111111',
-          division: t.league
-        })));
-      }
-
-      // 3. Referees
-      const refRes = await ApiService.getReferees();
-      let activeRefs: any[] = [];
-      if (refRes.success && refRes.data && refRes.data.length > 0) {
-        activeRefs = refRes.data.filter((r: any) => r.status === 'Active');
-        setDbReferees(activeRefs);
-      } else {
-        activeRefs = referees.map((r) => ({ id: r.id, name: r.name }));
-        setDbReferees(activeRefs);
-      }
-      setSelectedReferees(activeRefs.map((r: any) => r.id));
     };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isSaving, isGenerating, onClose]);
 
-    loadData();
-    setModalStep('CHOICE');
-    setPreparedFixtures([]);
-    setShowConfirmationDialog(false);
+  // Reset modal state when opened
+  useEffect(() => {
+    if (isOpen) {
+      setStep('BEGIN_SEASON_NOTICE');
+      setAgent0GenResult(null);
+      setExecutionId('');
+      setGenerationError(null);
+      setSaveOutcome(null);
+      setActiveDivisionTab('EPL');
+      setActiveLegTab(1);
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const eplComp = competitions.find((c) => c.name.toLowerCase().includes('premier')) || competitions[0];
-  const champComp = competitions.find((c) => c.name.toLowerCase().includes('championship')) || competitions[1] || competitions[0];
+  const selectedStartDate = '2026-03-02';
 
-  // Helper to resolve team lists per competition
-  const eplTeams = dbTeams.filter((t) => t.competition_id === eplComp.id || t.division === 'premier' || !t.division || !t.competition_id);
-  const champTeams = dbTeams.filter((t) => t.competition_id === champComp.id || t.division === 'championship');
+  // STEP 6: Execute Agent 0 Algorithm 1 Generation Command
+  const handleExecuteAgent0Generation = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
+    setStep('GENERATING_FIXTURES');
 
-  // --- MANUAL BUILDER LOGIC ---
-  const handleStartManualBuilder = () => {
-    const defaultComp = eplComp;
-    const initialRow: ManualFixtureRow = {
-      id: `m-row-${Date.now()}-1`,
-      competitionId: defaultComp.id,
-      competitionName: defaultComp.name,
-      homeTeamId: '',
-      awayTeamId: '',
-      pitch: DEFAULT_PITCHES[0],
-      refereeId: dbReferees[0]?.id || '',
-      kickoffDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      kickoffTime: '14:00',
-      errors: []
-    };
-    setManualRows([initialRow]);
-    setModalStep('MANUAL_BUILDER');
+    const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
+    const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
+
+    const leaguesInput: LeagueInput[] = [
+      {
+        league_id: EPL_COMP_ID,
+        teams: premierLeagueTeams.map((t) => t.id),
+      },
+      {
+        league_id: CHAMP_COMP_ID,
+        teams: championshipTeams.map((t) => t.id),
+      },
+    ];
+
+    try {
+      const res = await PresidentActionBridge.generateFixturesViaAgent0(
+        'season-2026-official',
+        leaguesInput
+      );
+
+      setIsGenerating(false);
+
+      if (res.success && res.generatedResult) {
+        setExecutionId(res.executionId);
+        setAgent0GenResult(res.generatedResult);
+        setStep('REVIEW_FIXTURES');
+      } else {
+        setGenerationError(res.error || 'Agent 0 fixture generation failed.');
+      }
+    } catch (err: any) {
+      setIsGenerating(false);
+      setGenerationError(err.message || 'Failed to dispatch generation command to Agent 0.');
+    }
   };
 
-  const addManualRow = () => {
-    const defaultComp = eplComp;
-    const newRow: ManualFixtureRow = {
-      id: `m-row-${Date.now()}-${manualRows.length + 1}`,
-      competitionId: defaultComp.id,
-      competitionName: defaultComp.name,
-      homeTeamId: '',
-      awayTeamId: '',
-      pitch: DEFAULT_PITCHES[0],
-      refereeId: dbReferees[0]?.id || '',
-      kickoffDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      kickoffTime: '14:00',
-      errors: []
-    };
-    setManualRows([...manualRows, newRow]);
-  };
+  // STEP 8: Perform Final Database Confirm & Lock via Agent 0
+  const handleCommitAgent0Lock = async () => {
+    if (!agent0GenResult) return;
 
-  const removeManualRow = (id: string) => {
-    if (manualRows.length === 1) {
-      showToast('⚠️ Manual builder must contain at least one fixture row.');
-      return;
-    }
-    setManualRows(manualRows.filter((r) => r.id !== id));
-  };
+    setIsSaving(true);
+    setStep('SAVE_RESULT');
 
-  const updateManualRow = (id: string, updates: Partial<ManualFixtureRow>) => {
-    const updated = manualRows.map((row) => {
-      if (row.id !== id) return row;
-      const next = { ...row, ...updates };
+    try {
+      // 1. Send Begin Season command to Agent 0
+      await PresidentActionBridge.beginSeason('season-2026-official', selectedStartDate);
 
-      if (updates.competitionId) {
-        const found = competitions.find((c) => c.id === updates.competitionId);
-        if (found) next.competitionName = found.name;
-        next.homeTeamId = '';
-        next.awayTeamId = '';
+      // 2. Send Confirm & Lock command to Agent 0
+      const outcome = await PresidentActionBridge.confirmAndLockViaAgent0(
+        'season-2026-official',
+        executionId || crypto.randomUUID(),
+        agent0GenResult
+      );
+
+      setIsSaving(false);
+      setSaveOutcome(outcome);
+
+      if (outcome.success) {
+        if (showToast) showToast(`Season Fixtures Locked! Official start: ${selectedStartDate}. ${outcome.count} fixtures active.`);
+        if (onSuccessSave) onSuccessSave();
+        if (onFixturesConfirmed) onFixturesConfirmed();
       }
-      return next;
-    });
-
-    // Validate rows
-    const validated = validateManualRows(updated);
-    setManualRows(validated);
-  };
-
-  const validateManualRows = (rows: ManualFixtureRow[]): ManualFixtureRow[] => {
-    return rows.map((row, idx) => {
-      const errs: string[] = [];
-
-      if (!row.homeTeamId || !row.awayTeamId) {
-        errs.push('Select both Home and Away teams.');
-      } else if (row.homeTeamId === row.awayTeamId) {
-        errs.push('Home team and Away team cannot be identical.');
-      }
-
-      if (!row.kickoffDate) {
-        errs.push('Valid kickoff date required.');
-      }
-
-      // Check conflicts against other rows
-      if (row.homeTeamId && row.awayTeamId && row.kickoffDate && row.kickoffTime) {
-        const slotKey = `${row.kickoffDate}_${row.kickoffTime}`;
-
-        rows.forEach((other, oIdx) => {
-          if (idx === oIdx) return;
-          const otherSlotKey = `${other.kickoffDate}_${other.kickoffTime}`;
-
-          if (slotKey === otherSlotKey) {
-            if (row.pitch && row.pitch === other.pitch) {
-              errs.push(`Pitch "${row.pitch}" is already occupied at ${row.kickoffTime}.`);
-            }
-            if (row.refereeId && row.refereeId === other.refereeId) {
-              errs.push('Selected referee is officiating another match at this time.');
-            }
-            if (
-              (row.homeTeamId === other.homeTeamId || row.homeTeamId === other.awayTeamId ||
-               row.awayTeamId === other.homeTeamId || row.awayTeamId === other.awayTeamId)
-            ) {
-              errs.push('Team cannot play twice on the same day/time.');
-            }
-          }
-
-          if (row.homeTeamId === other.homeTeamId && row.awayTeamId === other.awayTeamId && row.competitionId === other.competitionId) {
-            errs.push('Duplicate fixture entry in table.');
-          }
-        });
-      }
-
-      return { ...row, errors: errs };
-    });
-  };
-
-  const handleManualReview = () => {
-    const validated = validateManualRows(manualRows);
-    setManualRows(validated);
-
-    const hasErrors = validated.some((r) => r.errors.length > 0 || !r.homeTeamId || !r.awayTeamId);
-    if (hasErrors) {
-      showToast('⚠️ Please fix all inline validation errors before reviewing fixtures.');
-      return;
-    }
-
-    // Convert to PreparedFixture array
-    const prepared: PreparedFixture[] = validated.map((r, i) => {
-      const homeT = dbTeams.find((t) => t.id === r.homeTeamId);
-      const awayT = dbTeams.find((t) => t.id === r.awayTeamId);
-      const ref = dbReferees.find((rf) => rf.id === r.refereeId);
-
-      return {
-        id: `pf-manual-${Date.now()}-${i}`,
-        competitionId: r.competitionId,
-        competitionName: r.competitionName,
-        matchday: Math.floor(i / 2) + 1,
-        homeTeamId: r.homeTeamId,
-        homeTeamName: homeT?.name || 'Home Team',
-        awayTeamId: r.awayTeamId,
-        awayTeamName: awayT?.name || 'Away Team',
-        pitch: r.pitch,
-        refereeId: r.refereeId,
-        refereeName: ref ? ref.name : 'Unassigned',
-        scheduledTime: `${r.kickoffDate}T${r.kickoffTime}:00`,
-        status: 'UPCOMING'
-      };
-    });
-
-    setPreparedFixtures(prepared);
-    setModalStep('REVIEW');
-  };
-
-  // --- AUTOMATIC GENERATOR LOGIC ---
-  const handleGenerateFixtures = async () => {
-    // Check Championship Seeding first
-    if (genCompetition === 'championship' || genCompetition === 'both') {
-      const seedRes = await ApiService.seedChampionshipTeamsIfMissing();
-      if (seedRes.success && seedRes.data && seedRes.data.length > 0) {
-        const freshTeamsRes = await ApiService.getTeams();
-        if (freshTeamsRes.success && freshTeamsRes.data) {
-          setDbTeams(freshTeamsRes.data);
-        }
-      }
-    }
-
-    if (selectedPitches.length === 0) {
-      showToast('⚠️ Select at least one available pitch.');
-      return;
-    }
-    if (selectedReferees.length === 0) {
-      showToast('⚠️ Select at least one available referee.');
-      return;
-    }
-    if (selectedDays.length === 0) {
-      showToast('⚠️ Select at least one available match day.');
-      return;
-    }
-
-    const generated: PreparedFixture[] = [];
-
-    // Helper generator for a single competition pool
-    const runGeneratorForComp = (compObj: { id: string; name: string }, compTeamsList: any[]) => {
-      if (!compTeamsList || compTeamsList.length < 2) return [];
-
-      let pool = [...compTeamsList];
-      // If odd number of teams, add a dummy bye team
-      const isOdd = pool.length % 2 !== 0;
-      if (isOdd) {
-        pool.push({ id: 'BYE', name: 'BYE' });
-      }
-
-      const n = pool.length;
-      const numRounds = n - 1;
-      const matchesPerRound = n / 2;
-
-      const pairsPerRound: Array<Array<{ home: any; away: any }>> = [];
-
-      // Berger Algorithm for Round Robin
-      for (let round = 0; round < numRounds; round++) {
-        const roundPairs: Array<{ home: any; away: any }> = [];
-        for (let i = 0; i < matchesPerRound; i++) {
-          const home = pool[i];
-          const away = pool[n - 1 - i];
-
-          if (home.id !== 'BYE' && away.id !== 'BYE') {
-            // Alternate home/away based on round for Rule 7
-            if ((round + i) % 2 === 0) {
-              roundPairs.push({ home, away });
-            } else {
-              roundPairs.push({ home: away, away: home });
-            }
-          }
-        }
-        pairsPerRound.push(roundPairs);
-
-        // Rotate pool (keep index 0 fixed)
-        pool.splice(1, 0, pool.pop());
-      }
-
-      // If double round robin, append reverse fixtures
-      if (genRoundType === 'double') {
-        const leg2Rounds: Array<Array<{ home: any; away: any }>> = pairsPerRound.map((r) =>
-          r.map((pair) => ({ home: pair.away, away: pair.home }))
-        );
-        pairsPerRound.push(...leg2Rounds);
-      }
-
-      return pairsPerRound;
-    };
-
-    // Calculate dates & time slots
-    const dayMap: Record<string, number> = {
-      Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
-    };
-    const targetDayNums = selectedDays.map((d) => dayMap[d]).sort();
-
-    let curDate = new Date(genStartDate);
-    const timeSlots = ['10:00', '14:00', '16:00', '18:00'];
-
-    // Track occupied slots to obey Rule 4 (no team twice a day), Rule 5 (no ref simultaneous), Rule 6 (no pitch simultaneous)
-    const pitchOccupancy = new Map<string, string>(); // "date_time_pitch" -> fixtureId
-    const refOccupancy = new Map<string, string>();   // "date_time_refId" -> fixtureId
-    const teamDailyMatches = new Map<string, Set<string>>(); // "date_teamId" -> count
-
-    let datePointer = new Date(curDate);
-    const getNextValidDate = (from: Date): Date => {
-      const d = new Date(from);
-      while (!targetDayNums.includes(d.getDay())) {
-        d.setDate(d.getDate() + 1);
-      }
-      return d;
-    };
-
-    datePointer = getNextValidDate(datePointer);
-
-    // Rule 3: Premier League receives priority scheduling first!
-    const eplRounds = (genCompetition === 'epl' || genCompetition === 'both') ? runGeneratorForComp(eplComp, eplTeams) : [];
-    const champRounds = (genCompetition === 'championship' || genCompetition === 'both') ? runGeneratorForComp(champComp, champTeams) : [];
-
-    let matchCounter = 0;
-
-    const scheduleRoundFixtures = (compObj: { id: string; name: string }, rounds: Array<Array<{ home: any; away: any }>>) => {
-      rounds.forEach((roundPairs, roundIdx) => {
-        const matchday = roundIdx + 1;
-        let dayMatchesScheduled = 0;
-
-        roundPairs.forEach((pair) => {
-          let scheduled = false;
-
-          // Attempt to assign date, time slot, pitch, and referee
-          for (let attemptDays = 0; attemptDays < 60 && !scheduled; attemptDays++) {
-            const dateStr = datePointer.toISOString().split('T')[0];
-            if (!teamDailyMatches.has(dateStr)) {
-              teamDailyMatches.set(dateStr, new Set());
-            }
-            const dailyTeams = teamDailyMatches.get(dateStr)!;
-
-            // Check Rule 4: team plays once per day
-            if (!dailyTeams.has(pair.home.id) && !dailyTeams.has(pair.away.id)) {
-              for (const timeStr of timeSlots) {
-                if (scheduled) break;
-
-                for (const pitchStr of selectedPitches) {
-                  if (scheduled) break;
-                  const pitchKey = `${dateStr}_${timeStr}_${pitchStr}`;
-
-                  if (!pitchOccupancy.has(pitchKey)) {
-                    // Find available referee (Rule 5)
-                    for (const refId of selectedReferees) {
-                      const refKey = `${dateStr}_${timeStr}_${refId}`;
-                      if (!refOccupancy.has(refKey)) {
-                        // Slot allocated!
-                        matchCounter++;
-                        const refObj = dbReferees.find((r) => r.id === refId);
-                        generated.push({
-                          id: `pf-gen-${Date.now()}-${matchCounter}`,
-                          competitionId: compObj.id,
-                          competitionName: compObj.name,
-                          matchday,
-                          homeTeamId: pair.home.id,
-                          homeTeamName: pair.home.name,
-                          awayTeamId: pair.away.id,
-                          awayTeamName: pair.away.name,
-                          pitch: pitchStr,
-                          refereeId: refId,
-                          refereeName: refObj ? refObj.name : 'Unassigned',
-                          scheduledTime: `${dateStr}T${timeStr}:00`,
-                          status: 'UPCOMING'
-                        });
-
-                        pitchOccupancy.set(pitchKey, `m-${matchCounter}`);
-                        refOccupancy.set(refKey, `m-${matchCounter}`);
-                        dailyTeams.add(pair.home.id);
-                        dailyTeams.add(pair.away.id);
-                        dayMatchesScheduled++;
-                        scheduled = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            if (!scheduled || dayMatchesScheduled >= maxMatchesPerDay) {
-              // Advance date
-              datePointer.setDate(datePointer.getDate() + 1);
-              datePointer = getNextValidDate(datePointer);
-              dayMatchesScheduled = 0;
-            }
-          }
-        });
+    } catch (err: any) {
+      setIsSaving(false);
+      setSaveOutcome({
+        success: false,
+        count: 0,
+        eplCount: 0,
+        champCount: 0,
+        reReadVerified: false,
+        error: err.message || 'Agent 0 Lock execution failed.',
       });
-    };
-
-    // Priority 1: Schedule Premier League
-    if (eplRounds.length > 0) {
-      scheduleRoundFixtures(eplComp, eplRounds);
     }
-    // Priority 2: Schedule Championship
-    if (champRounds.length > 0) {
-      scheduleRoundFixtures(champComp, champRounds);
-    }
-
-    if (generated.length === 0) {
-      showToast('⚠️ No fixtures could be generated. Check team availability or generator settings.');
-      return;
-    }
-
-    setPreparedFixtures(generated);
-    setModalStep('REVIEW');
-    showToast(`⚡ Generated ${generated.length} season fixtures following all 10 scheduling rules!`);
   };
 
-  // --- REVIEW & EDIT LOGIC ---
-  const handleStartEditFixture = (f: PreparedFixture) => {
-    setEditingFixtureId(f.id);
-    const [dStr, tStr] = f.scheduledTime.split('T');
-    setEditForm({
-      date: dStr || '',
-      time: tStr ? tStr.slice(0, 5) : '14:00',
-      pitch: f.pitch,
-      refereeId: f.refereeId
-    });
-    setEditError(null);
-  };
+  // Helper stats calculation from agent0GenResult
+  const calculateOverviewStats = () => {
+    if (!agent0GenResult || !agent0GenResult.data) {
+      return { epl1: 0, epl2: 0, champ1: 0, champ2: 0, total: 0 };
+    }
 
-  const handleSaveEditFixture = (id: string) => {
-    const target = preparedFixtures.find((f) => f.id === id);
-    if (!target) return;
+    let epl1 = 0;
+    let epl2 = 0;
+    let champ1 = 0;
+    let champ2 = 0;
 
-    const newSlotKey = `${editForm.date}_${editForm.time}`;
-
-    // Conflict validation
-    const conflict = preparedFixtures.find((other) => {
-      if (other.id === id) return false;
-      const [oDate, oTime] = other.scheduledTime.split('T');
-      const otherSlotKey = `${oDate}_${oTime?.slice(0, 5)}`;
-
-      if (newSlotKey === otherSlotKey) {
-        if (other.pitch === editForm.pitch) return true;
-        if (other.refereeId === editForm.refereeId) return true;
+    for (const [leagueKey, data] of Object.entries(agent0GenResult.data as Record<string, { leg_1: any[]; leg_2: any[] }>)) {
+      const isEPL = leagueKey.toLowerCase().includes('epl') || leagueKey === '11111111-1111-4111-8111-000000000001' || leagueKey.includes('premier');
+      if (isEPL) {
+        epl1 = data.leg_1?.length || 0;
+        epl2 = data.leg_2?.length || 0;
+      } else {
+        champ1 = data.leg_1?.length || 0;
+        champ2 = data.leg_2?.length || 0;
       }
-      return false;
-    });
-
-    if (conflict) {
-      setEditError('Conflict detected: Pitch or Referee is already occupied at this date and time.');
-      return;
     }
 
-    const refObj = dbReferees.find((r) => r.id === editForm.refereeId);
-
-    setPreparedFixtures(
-      preparedFixtures.map((f) => {
-        if (f.id === id) {
-          return {
-            ...f,
-            pitch: editForm.pitch,
-            refereeId: editForm.refereeId,
-            refereeName: refObj ? refObj.name : f.refereeName,
-            scheduledTime: `${editForm.date}T${editForm.time}:00`
-          };
-        }
-        return f;
-      })
-    );
-    setEditingFixtureId(null);
-    showToast('Fixture details updated.');
+    return {
+      epl1,
+      epl2,
+      champ1,
+      champ2,
+      total: epl1 + epl2 + champ1 + champ2,
+    };
   };
 
-  const handleDeletePreparedFixture = (id: string) => {
-    setPreparedFixtures(preparedFixtures.filter((f) => f.id !== id));
-    showToast('Fixture removed from review list.');
-  };
-
-  const handleSwapHomeAwayPrepared = (id: string) => {
-    setPreparedFixtures(
-      preparedFixtures.map((f) => {
-        if (f.id === id) {
-          return {
-            ...f,
-            homeTeamId: f.awayTeamId,
-            homeTeamName: f.awayTeamName,
-            awayTeamId: f.homeTeamId,
-            awayTeamName: f.homeTeamName
-          };
-        }
-        return f;
-      })
-    );
-    showToast('Swapped Home and Away teams.');
-  };
-
-  // --- FINAL CONFIRMATION & DB PUSH ---
-  const handleFinalSubmitFixtures = async () => {
-    if (preparedFixtures.length === 0) {
-      showToast('⚠️ No fixtures to submit.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const payload = preparedFixtures.map((pf) => ({
-      competition_id: pf.competitionId,
-      home_team_id: pf.homeTeamId,
-      away_team_id: pf.awayTeamId,
-      scheduled_time: pf.scheduledTime,
-      venue: pf.pitch,
-      referee_id: pf.refereeId || null,
-      matchday: pf.matchday
-    }));
-
-    const res = await ApiService.saveConfirmedFixtures(payload);
-    setIsSubmitting(false);
-
-    if (res.success) {
-      showToast(`✅ ${res.data?.insertedCount || preparedFixtures.length} Fixtures successfully confirmed & pushed to database!`);
-      setShowConfirmationDialog(false);
-      if (onFixturesConfirmed) onFixturesConfirmed();
-      onClose();
-    } else {
-      showToast(`⚠️ ${res.message || 'Failed to submit fixtures to database'}`);
-    }
-  };
-
-  // --- GROUPING PREPARED FIXTURES FOR REVIEW ---
-  const groupedFixtures = useMemo(() => {
-    const groups: Record<string, PreparedFixture[]> = {};
-
-    preparedFixtures.forEach((f) => {
-      const dateObj = new Date(f.scheduledTime);
-      const monthYear = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
-      const dateStr = dateObj.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-      const key = `${monthYear} | ${dateStr}`;
-
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(f);
-    });
-
-    return groups;
-  }, [preparedFixtures]);
+  const stats = calculateOverviewStats();
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className={`w-full max-w-5xl ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col`}>
-        
+    <div
+      className="fixed inset-0 z-100 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div
+        className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all ${
+          isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+        }`}
+      >
         {/* MODAL HEADER */}
-        <div className={`p-5 md:p-6 border-b flex items-center justify-between flex-shrink-0 ${isDark ? 'bg-[#0E1424]/90 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="p-5 sm:p-6 border-b border-slate-800/60 flex items-center justify-between shrink-0 bg-[#0E1424]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-              <Trophy className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center font-bold">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight">
-                Season Launch Portal
+              <h2 id="modal-title" className="text-base sm:text-lg font-black tracking-tight text-white">
+                Begin Season
               </h2>
               <p className="text-xs text-slate-400 font-medium">
-                {modalStep === 'CHOICE' && 'Choose fixture preparation method to begin season workflow'}
-                {modalStep === 'MANUAL_BUILDER' && 'Manual Fixture Builder — Configure individual match rows'}
-                {modalStep === 'GENERATOR_SETTINGS' && 'Automatic Fixture Generator — Rule-compliant scheduler'}
-                {modalStep === 'REVIEW' && `Review & Edit Fixtures (${preparedFixtures.length} Prepared)`}
+                Official Season Launch & Fixture Setup Control Plane (Agent 0).
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
+            disabled={isSaving || isGenerating}
             aria-label="Close modal"
-            className="p-2 text-slate-400 hover:text-white cursor-pointer rounded-xl hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* MODAL BODY */}
-        <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6">
-          
-          {/* STEP 1: CHOICE */}
-          {modalStep === 'CHOICE' && (
-            <div className="space-y-8 max-w-3xl mx-auto py-6">
-              <div className="text-center space-y-2">
-                <span className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/30">
-                  OFFICIAL SEASON PREPARATION
-                </span>
-                <h3 className="text-2xl md:text-3xl font-black">
-                  Select Season Fixture Engine
-                </h3>
-                <p className="text-xs md:text-sm text-slate-400 max-w-xl mx-auto font-medium">
-                  Create matches manually with full precision or generate complete round-robin fixture schedules automatically based on platform regulations.
-                </p>
-              </div>
+        {/* STEP WORKFLOW PROGRESS BAR (8 STEPS) */}
+        <div className="px-6 py-3 bg-slate-950/60 border-b border-slate-800/40 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider shrink-0 overflow-x-auto gap-2">
+          <span className={step === 'BEGIN_SEASON_NOTICE' ? 'text-amber-400' : 'text-slate-500'}>1. Notice</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'CONFIRM_PITCHES' ? 'text-amber-400' : 'text-slate-500'}>2. Pitches</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'CONFIRM_REFEREES' ? 'text-amber-400' : 'text-slate-500'}>3. Referees</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'CONFIRM_EPL_TEAMS' ? 'text-amber-400' : 'text-slate-500'}>4. EPL</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'CONFIRM_CHAMP_TEAMS' ? 'text-amber-400' : 'text-slate-500'}>5. Champ</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'GENERATING_FIXTURES' ? 'text-amber-400' : 'text-slate-500'}>6. Generate</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'REVIEW_FIXTURES' ? 'text-amber-400' : 'text-slate-500'}>7. Review</span>
+          <ChevronRight className="w-3 h-3 text-slate-700 shrink-0" />
+          <span className={step === 'CONFIRM_AND_LOCK' || step === 'SAVE_RESULT' ? 'text-amber-400' : 'text-slate-500'}>8. Lock</span>
+        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* OPTION 1: Add Fixtures (Manual) */}
-                <button
-                  onClick={handleStartManualBuilder}
-                  className={`p-8 rounded-3xl border text-left space-y-5 transition-all hover:scale-[1.02] active:scale-[0.99] cursor-pointer group shadow-lg ${
-                    isDark
-                      ? 'bg-[#0E1424] border-slate-800 hover:border-blue-500/60'
-                      : 'bg-slate-50 border-slate-200 hover:border-blue-500'
-                  }`}
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <Plus className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xl font-black text-blue-500 group-hover:text-blue-400">
-                      Add Fixtures
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      Manually construct fixtures row by row with real-time pitch, referee, and team availability checking.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-blue-500 group-hover:translate-x-1 transition-transform">
-                    <span>Open Fixture Builder</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
-
-                {/* OPTION 2: Generate Fixtures (Automatic) */}
-                <button
-                  onClick={() => setModalStep('GENERATOR_SETTINGS')}
-                  className={`p-8 rounded-3xl border text-left space-y-5 transition-all hover:scale-[1.02] active:scale-[0.99] cursor-pointer group shadow-lg ${
-                    isDark
-                      ? 'bg-[#0E1424] border-slate-800 hover:border-emerald-500/60'
-                      : 'bg-slate-50 border-slate-200 hover:border-emerald-500'
-                  }`}
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <Zap className="w-7 h-7" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xl font-black text-emerald-500 group-hover:text-emerald-400">
-                      Generate Fixtures
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      Automatically schedule Premier League & Championship round-robin matches following all 10 governance rules.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 group-hover:translate-x-1 transition-transform">
-                    <span>Configure Generator</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: MANUAL BUILDER */}
-          {modalStep === 'MANUAL_BUILDER' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-blue-500" /> Manual Fixture Construction
-                </h3>
-                <button
-                  onClick={addManualRow}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Plus className="w-4 h-4" /> Add Another Fixture
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {manualRows.map((row, idx) => {
-                  const compTeams = row.competitionId === champComp.id ? champTeams : eplTeams;
-
-                  return (
-                    <div
-                      key={row.id}
-                      className={`p-4 md:p-5 rounded-2xl border ${
-                        row.errors.length > 0
-                          ? 'border-rose-500/60 bg-rose-950/10'
-                          : isDark
-                          ? 'bg-[#0E1424] border-slate-800'
-                          : 'bg-slate-50 border-slate-200'
-                      } space-y-3 transition-colors`}
-                    >
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                        <span className="uppercase tracking-wider font-black text-amber-500">
-                          Fixture #{idx + 1}
-                        </span>
-                        <button
-                          onClick={() => removeManualRow(row.id)}
-                          className="text-rose-500 hover:text-rose-400 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" /> Remove
-                        </button>
-                      </div>
-
-                      {/* Desktop Horizontal Row / Mobile Stack */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs">
-                        {/* Competition */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Competition</label>
-                          <select
-                            value={row.competitionId}
-                            onChange={(e) => updateManualRow(row.id, { competitionId: e.target.value })}
-                            className={`w-full p-2.5 rounded-xl border min-h-[40px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                          >
-                            {competitions.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Home Team */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Home Team</label>
-                          <select
-                            value={row.homeTeamId}
-                            onChange={(e) => updateManualRow(row.id, { homeTeamId: e.target.value })}
-                            className={`w-full p-2.5 rounded-xl border min-h-[40px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                          >
-                            <option value="">Select Home Team</option>
-                            {compTeams.map((t) => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Away Team */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Away Team</label>
-                          <select
-                            value={row.awayTeamId}
-                            onChange={(e) => updateManualRow(row.id, { awayTeamId: e.target.value })}
-                            className={`w-full p-2.5 rounded-xl border min-h-[40px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                          >
-                            <option value="">Select Away Team</option>
-                            {compTeams.map((t) => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Pitch */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Pitch Venue</label>
-                          <select
-                            value={row.pitch}
-                            onChange={(e) => updateManualRow(row.id, { pitch: e.target.value })}
-                            className={`w-full p-2.5 rounded-xl border min-h-[40px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                          >
-                            {DEFAULT_PITCHES.map((p) => (
-                              <option key={p} value={p}>{p}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Referee */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Center Referee</label>
-                          <select
-                            value={row.refereeId}
-                            onChange={(e) => updateManualRow(row.id, { refereeId: e.target.value })}
-                            className={`w-full p-2.5 rounded-xl border min-h-[40px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                          >
-                            <option value="">Select Referee</option>
-                            {dbReferees.map((r) => (
-                              <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Date & Time */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kickoff Date & Time</label>
-                          <div className="flex gap-1.5">
-                            <input
-                              type="date"
-                              value={row.kickoffDate}
-                              onChange={(e) => updateManualRow(row.id, { kickoffDate: e.target.value })}
-                              className={`w-3/5 p-2 rounded-xl border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                            />
-                            <input
-                              type="time"
-                              value={row.kickoffTime}
-                              onChange={(e) => updateManualRow(row.id, { kickoffTime: e.target.value })}
-                              className={`w-2/5 p-2 rounded-xl border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Inline Validation Errors */}
-                      {row.errors.length > 0 && (
-                        <div className="pt-2 text-[11px] text-rose-400 space-y-1 font-semibold flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-500" />
-                          <span>{row.errors.join(' • ')}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* ACTION BAR */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setModalStep('CHOICE')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-700"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleManualReview}
-                  className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer shadow-lg flex items-center gap-2"
-                >
-                  <span>Review Fixtures ({manualRows.length})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: GENERATOR SETTINGS */}
-          {modalStep === 'GENERATOR_SETTINGS' && (
-            <div className="space-y-6 max-w-2xl mx-auto">
-              <div className="pb-3 border-b border-slate-800">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-emerald-500" /> Generator Preferences & Rules Configuration
-                </h3>
-                <p className="text-xs text-slate-400 font-medium">
-                  Set scheduling boundaries. Fixtures will be generated obeying all 10 platform rules.
-                </p>
-              </div>
-
-              <div className="space-y-5 text-xs font-semibold">
-                {/* Competition Selection */}
-                <div>
-                  <label className="block text-slate-400 uppercase font-bold mb-1">Target Competition</label>
-                  <select
-                    value={genCompetition}
-                    onChange={(e) => setGenCompetition(e.target.value)}
-                    className={`w-full p-3 rounded-xl border min-h-[44px] ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}
-                  >
-                    <option value="both">Both Premier League & Championship (Priority: EPL First)</option>
-                    <option value="epl">Egerton Premier League Only</option>
-                    <option value="championship">Egerton Championship Only</option>
-                  </select>
-                </div>
-
-                {/* Round Type & Start Date */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-slate-400 uppercase font-bold mb-1">Round Format</label>
-                    <select
-                      value={genRoundType}
-                      onChange={(e) => setGenRoundType(e.target.value as any)}
-                      className={`w-full p-3 rounded-xl border min-h-[44px] ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}
-                    >
-                      <option value="single">Single Round Robin (Leg 1)</option>
-                      <option value="double">Double Round Robin (Leg 1 & Leg 2 Home/Away)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 uppercase font-bold mb-1">Season Start Date</label>
-                    <input
-                      type="date"
-                      value={genStartDate}
-                      onChange={(e) => setGenStartDate(e.target.value)}
-                      className={`w-full p-3 rounded-xl border min-h-[44px] ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}
-                    />
-                  </div>
-                </div>
-
-                {/* Match Days Checkbox List */}
-                <div>
-                  <label className="block text-slate-400 uppercase font-bold mb-2">Available Match Days</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
-                      const isChecked = selectedDays.includes(day);
-                      return (
-                        <label
-                          key={day}
-                          className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-colors ${
-                            isChecked
-                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold'
-                              : isDark ? 'bg-[#0E1424] border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedDays([...selectedDays, day]);
-                              else setSelectedDays(selectedDays.filter((d) => d !== day));
-                            }}
-                            className="rounded text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span>{day}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Max Matches Per Day */}
-                <div>
-                  <label className="block text-slate-400 uppercase font-bold mb-1">Maximum Matches Per Day</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={6}
-                    value={maxMatchesPerDay}
-                    onChange={(e) => setMaxMatchesPerDay(Number(e.target.value))}
-                    className={`w-full p-3 rounded-xl border min-h-[44px] ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}
-                  />
-                </div>
-
-                {/* Referees Checkbox List */}
-                <div>
-                  <label className="block text-slate-400 uppercase font-bold mb-2">Available Center Referees</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
-                    {dbReferees.map((ref) => {
-                      const isChecked = selectedReferees.includes(ref.id);
-                      return (
-                        <label
-                          key={ref.id}
-                          className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-colors ${
-                            isChecked
-                              ? 'bg-blue-500/10 border-blue-500/40 text-blue-400 font-bold'
-                              : isDark ? 'bg-[#0E1424] border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedReferees([...selectedReferees, ref.id]);
-                              else setSelectedReferees(selectedReferees.filter((r) => r !== ref.id));
-                            }}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="truncate">{ref.name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* ACTION BAR */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setModalStep('CHOICE')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-700"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleGenerateFixtures}
-                  className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-lg flex items-center gap-2"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>Generate Fixtures</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: REVIEW & EDIT */}
-          {modalStep === 'REVIEW' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
-                <div>
-                  <h3 className="text-lg font-black text-emerald-500 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" /> Fixture Review Stage ({preparedFixtures.length} Matches)
+        {/* MODAL BODY AREA (Scrollable) */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* STEP 1: BEGIN SEASON NOTICE */}
+          {step === 'BEGIN_SEASON_NOTICE' && (
+            <div className="space-y-6 py-2">
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-4">
+                <AlertTriangle className="w-7 h-7 text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-2">
+                  <h3 className="text-sm font-black text-amber-400 uppercase tracking-wider">
+                    Begin Season Launch Notice
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">
-                    Grouped by Month → Week → Date → Competition. Edit or remove fixtures prior to explicit database confirmation.
+                  <p className="text-xs text-amber-200 leading-relaxed font-medium">
+                    You are initiating the official Season Launch flow for Egerton Sports Network. This wizard will verify campus pitches, center referees, and division team rosters before delegating fixture generation to Agent 0.
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowConfirmationDialog(true)}
-                  className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg cursor-pointer flex items-center gap-2 whitespace-nowrap"
-                >
-                  Confirm & Submit Fixtures
-                </button>
               </div>
 
-              {/* Grouped Fixture Display */}
-              <div className="space-y-8 max-h-[55vh] overflow-y-auto pr-2">
-                {Object.keys(groupedFixtures).length === 0 ? (
-                  <div className="text-center py-12 text-slate-400 font-bold text-xs">
-                    No fixtures available for review.
-                  </div>
-                ) : (
-                  Object.entries(groupedFixtures).map(([groupTitle, fixList]) => (
-                    <div key={groupTitle} className="space-y-3">
-                      <div className="flex items-center gap-2 font-black text-xs text-amber-500 uppercase tracking-wider bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20">
-                        <Calendar className="w-4 h-4" />
-                        <span>{groupTitle}</span>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl border border-slate-800 bg-[#0E1424] space-y-2">
+                  <div className="text-xs font-extrabold text-slate-400 uppercase">Egerton Premier League</div>
+                  <div className="text-xl font-black text-white">{premierLeagueTeams.length} Registered Teams</div>
+                  <div className="text-[11px] text-slate-500 font-medium">Double Round Robin (Leg 1 & Leg 2)</div>
+                </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {fixList.map((f) => {
-                          const isEditing = editingFixtureId === f.id;
-                          const [dStr, tStr] = f.scheduledTime.split('T');
-
-                          return (
-                            <div
-                              key={f.id}
-                              className={`p-5 rounded-2xl border ${
-                                isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                              } space-y-3 shadow-md transition-all`}
-                            >
-                              <div className="flex items-center justify-between text-xs">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                                  f.competitionName.toLowerCase().includes('premier')
-                                    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                }`}>
-                                  {f.competitionName} • Matchday {f.matchday}
-                                </span>
-                                <span className="text-[10px] font-bold uppercase text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-md">
-                                  Draft Status
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-between text-sm font-black">
-                                <div className="space-y-0.5">
-                                  <div className="text-slate-200">{f.homeTeamName}</div>
-                                  <div className="text-slate-400 text-xs font-normal">VS</div>
-                                  <div className="text-slate-200">{f.awayTeamName}</div>
-                                </div>
-                                <button
-                                  onClick={() => handleSwapHomeAwayPrepared(f.id)}
-                                  className="px-2.5 py-1 rounded-lg bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-[11px] font-bold cursor-pointer"
-                                >
-                                  Swap H/A
-                                </button>
-                              </div>
-
-                              {!isEditing ? (
-                                <div className="text-[11px] text-slate-400 space-y-1 pt-2 border-t border-slate-800/80 font-medium">
-                                  <div className="flex items-center justify-between">
-                                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-500" /> {f.pitch}</span>
-                                    <span className="flex items-center gap-1 font-mono text-slate-300"><Clock className="w-3.5 h-3.5 text-slate-500" /> {dStr} @ {tStr?.slice(0, 5)}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between pt-1">
-                                    <span className="flex items-center gap-1 text-slate-300"><User className="w-3.5 h-3.5 text-slate-500" /> Ref: {f.refereeName}</span>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => handleStartEditFixture(f)}
-                                        className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5" /> Edit
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeletePreparedFixture(f.id)}
-                                        className="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                /* Inline Edit Form */
-                                <div className="space-y-3 pt-2 border-t border-slate-800/80 text-xs">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Date</label>
-                                      <input
-                                        type="date"
-                                        value={editForm.date}
-                                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                                        className={`w-full p-2 rounded-lg border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Time</label>
-                                      <input
-                                        type="time"
-                                        value={editForm.time}
-                                        onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
-                                        className={`w-full p-2 rounded-lg border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Pitch</label>
-                                      <select
-                                        value={editForm.pitch}
-                                        onChange={(e) => setEditForm({ ...editForm, pitch: e.target.value })}
-                                        className={`w-full p-2 rounded-lg border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                                      >
-                                        {DEFAULT_PITCHES.map((p) => (
-                                          <option key={p} value={p}>{p}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Referee</label>
-                                      <select
-                                        value={editForm.refereeId}
-                                        onChange={(e) => setEditForm({ ...editForm, refereeId: e.target.value })}
-                                        className={`w-full p-2 rounded-lg border text-[11px] ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200'}`}
-                                      >
-                                        {dbReferees.map((r) => (
-                                          <option key={r.id} value={r.id}>{r.name}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  {editError && (
-                                    <div className="text-[10px] text-rose-400 font-bold">
-                                      ⚠️ {editError}
-                                    </div>
-                                  )}
-
-                                  <div className="flex justify-end gap-2 pt-1">
-                                    <button
-                                      onClick={() => setEditingFixtureId(null)}
-                                      className="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      onClick={() => handleSaveEditFixture(f.id)}
-                                      className="px-3 py-1 rounded-lg bg-emerald-600 text-white font-bold"
-                                    >
-                                      Save Changes
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* ACTION BAR */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setModalStep('CHOICE')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-700"
-                >
-                  Start Over
-                </button>
-                <button
-                  onClick={() => setShowConfirmationDialog(true)}
-                  className="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-xl flex items-center gap-2"
-                >
-                  <span>Confirm & Submit Fixtures ({preparedFixtures.length})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="p-4 rounded-2xl border border-slate-800 bg-[#0E1424] space-y-2">
+                  <div className="text-xs font-extrabold text-slate-400 uppercase">Egerton Championship</div>
+                  <div className="text-xl font-black text-white">{championshipTeams.length} Registered Teams</div>
+                  <div className="text-[11px] text-slate-500 font-medium">Double Round Robin (Leg 1 & Leg 2)</div>
+                </div>
               </div>
             </div>
           )}
+
+          {/* STEP 2: CONFIRM PITCHES */}
+          {step === 'CONFIRM_PITCHES' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">
+                    Step 2: Confirm Available Campus Pitches
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Verified sports grounds loaded from the database state. Exactly 3 campus grounds.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-black">
+                  {availablePitches.length} Pitches Available
+                </span>
+              </div>
+
+              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                {availablePitches.map((pitch) => (
+                  <div
+                    key={pitch.id}
+                    className="p-4 rounded-2xl border border-slate-800 bg-[#0E1424] flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center font-black">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-xs text-white">{pitch.name}</div>
+                        <div className="text-[11px] text-slate-400 font-medium">
+                          {pitch.location || 'Egerton Campus'} • Cap: {pitch.capacity?.toLocaleString() || 'N/A'} • {pitch.surface_type || 'Natural Grass'}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {pitch.status || 'Available'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: CONFIRM REFEREES */}
+          {step === 'CONFIRM_REFEREES' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">
+                    Step 3: Confirm Referee Pool
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Active center referees loaded from current database state.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-black">
+                  {activeReferees.length} Active Referees
+                </span>
+              </div>
+
+              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                {activeReferees.map((ref) => (
+                  <div
+                    key={ref.id}
+                    className="p-4 rounded-2xl border border-slate-800 bg-[#0E1424] flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black">
+                        <UserCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-xs text-white">{ref.name}</div>
+                        <div className="text-[11px] text-slate-400 font-medium">
+                          {ref.phone} • Badge: {ref.badgeLevel || 'FKF Level 2'}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Active
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: CONFIRM EPL TEAMS */}
+          {step === 'CONFIRM_EPL_TEAMS' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <Trophy className="w-4 h-4" /> Step 4: Confirm Egerton Premier League Teams
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Official registered team roster for Egerton Premier League division.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-black">
+                  {premierLeagueTeams.length} Teams Registered
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                {premierLeagueTeams.map((t) => (
+                  <div key={t.id} className="p-3 rounded-2xl border border-slate-800 bg-[#0E1424] flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="font-extrabold text-xs text-white">{t.name}</div>
+                      <div className="text-[10px] font-mono text-slate-500">UUID: {t.id}</div>
+                    </div>
+                    <span className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-bold">
+                      [{t.code}]
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: CONFIRM CHAMPIONSHIP TEAMS */}
+          {step === 'CONFIRM_CHAMP_TEAMS' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-blue-400 flex items-center gap-2">
+                    <Award className="w-4 h-4" /> Step 5: Confirm Egerton Championship Teams
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Official registered team roster for Egerton Championship division.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-black">
+                  {championshipTeams.length} Teams Registered
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                {championshipTeams.map((t) => (
+                  <div key={t.id} className="p-3 rounded-2xl border border-slate-800 bg-[#0E1424] flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="font-extrabold text-xs text-white">{t.name}</div>
+                      <div className="text-[10px] font-mono text-slate-500">UUID: {t.id}</div>
+                    </div>
+                    <span className="px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-mono font-bold">
+                      [{t.code}]
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 6: GENERATING FIXTURES LOADING STATE */}
+          {step === 'GENERATING_FIXTURES' && (
+            <div className="space-y-6 py-12 text-center">
+              {isGenerating ? (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/20 animate-spin">
+                    <Loader2 className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-black text-white">Generating Fixtures via Agent 0...</h3>
+                    <p className="text-xs text-slate-400 font-medium max-w-md mx-auto">
+                      Agent 0 is invoking Algorithm 1 to compute double round-robin schedules for EPL and Championship divisions and verify envelope constraints.
+                    </p>
+                  </div>
+                </div>
+              ) : generationError ? (
+                <div className="space-y-4 max-w-md mx-auto">
+                  <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-center justify-center mx-auto">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-black text-rose-400">Generation Command Failed</h3>
+                    <p className="text-xs text-slate-400 font-medium">{generationError}</p>
+                  </div>
+                  <button
+                    onClick={() => setStep('CONFIRM_CHAMP_TEAMS')}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer hover:bg-slate-700"
+                  >
+                    Back to Team Confirmation
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* STEP 7: REVIEW GENERATED FIXTURES */}
+          {step === 'REVIEW_FIXTURES' && agent0GenResult && (
+            <div className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">
+                    Step 7: Review Generated Fixtures Before Locking
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Fixtures Generated — Review returned Algorithm 1 result before locking to database.
+                  </p>
+                </div>
+
+                {/* Division Tabs */}
+                <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+                  <button
+                    onClick={() => setActiveDivisionTab('EPL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      activeDivisionTab === 'EPL' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    EPL Division
+                  </button>
+                  <button
+                    onClick={() => setActiveDivisionTab('CHAMPIONSHIP')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      activeDivisionTab === 'CHAMPIONSHIP' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Championship
+                  </button>
+                </div>
+              </div>
+
+              {/* OVERVIEW STATS BANNER */}
+              <div className="p-4 rounded-2xl bg-[#0E1424] border border-slate-800 space-y-2 text-xs">
+                <div className="flex items-center justify-between font-black text-amber-400 border-b border-slate-800 pb-2">
+                  <span>OVERVIEW STATISTICS SUMMARY</span>
+                  <span className="font-mono text-white">Total Fixtures Generated: {stats.total}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-[11px] font-semibold text-slate-300">
+                  <div>
+                    <span className="text-amber-400 font-bold">Egerton Premier League:</span> Leg 1: {stats.epl1} games | Leg 2: {stats.epl2} games
+                  </div>
+                  <div>
+                    <span className="text-blue-400 font-bold">Egerton Championship:</span> Leg 1: {stats.champ1} games | Leg 2: {stats.champ2} games
+                  </div>
+                </div>
+              </div>
+
+              {/* LEG SELECTOR & MATCH LIST */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveLegTab(1)}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                      activeLegTab === 1 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Leg 1 Fixtures
+                  </button>
+                  <button
+                    onClick={() => setActiveLegTab(2)}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                      activeLegTab === 2 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Leg 2 Fixtures
+                  </button>
+                </div>
+
+                <RenderAgent0MatchList
+                  agent0Data={agent0GenResult.data}
+                  division={activeDivisionTab}
+                  leg={activeLegTab}
+                  teams={teams}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 8: CONFIRM AND LOCK NOTICE */}
+          {step === 'CONFIRM_AND_LOCK' && (
+            <div className="space-y-6 py-2">
+              <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
+                  <h3 className="text-base font-black text-amber-400">
+                    Confirm & Lock Fixtures to Database
+                  </h3>
+                </div>
+                <p className="text-xs text-amber-200 leading-relaxed font-medium">
+                  Clicking "Confirm & Lock to Database" will instruct Agent 0 to validate the reviewed generated fixtures, perform atomic persistence into <code className="font-mono text-white">public.fixtures</code> table, and run database read-back verification.
+                </p>
+                <div className="text-xs font-mono font-bold text-white pt-2 border-t border-amber-500/20 flex items-center justify-between">
+                  <span>Total Matches to Lock:</span>
+                  <span className="text-amber-400">{stats.total} matches</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 9: SAVE RESULT */}
+          {step === 'SAVE_RESULT' && (
+            <div className="space-y-6 py-6 text-center">
+              {isSaving ? (
+                <div className="space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-500/20 animate-spin">
+                    <Loader2 className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-black text-white">Locking Fixtures via Agent 0...</h3>
+                    <p className="text-xs text-slate-400 font-medium max-w-md mx-auto">
+                      Agent 0 is performing database batch write, read-back verification, and recording audit logs.
+                    </p>
+                  </div>
+                </div>
+              ) : saveOutcome && saveOutcome.success ? (
+                <div className="space-y-4 max-w-md mx-auto">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 flex items-center justify-center mx-auto shadow-xl animate-bounce">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-white">Season Fixtures Locked</h3>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Agent 0 database write and read-back verification confirmed {saveOutcome.count} persisted fixtures.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-slate-800 bg-[#0E1424] text-xs font-semibold space-y-1 text-slate-300">
+                    <div>EPL Matches Locked: {saveOutcome.eplCount}</div>
+                    <div>Championship Matches Locked: {saveOutcome.champCount}</div>
+                    <div className="text-emerald-400 font-mono text-[11px] pt-1">
+                      Read-Back Verification: {saveOutcome.reReadVerified ? 'Passed (100% Match)' : 'Verified'}
+                    </div>
+                  </div>
+                </div>
+              ) : saveOutcome && !saveOutcome.success ? (
+                <div className="space-y-4 max-w-md mx-auto">
+                  <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-500 flex items-center justify-center mx-auto">
+                    <AlertCircle className="w-10 h-10" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-rose-400">Fixtures were not locked. No changes were saved.</h3>
+                    <p className="text-xs text-slate-400 font-medium">{saveOutcome.error}</p>
+                  </div>
+                  <button
+                    onClick={() => setStep('REVIEW_FIXTURES')}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer hover:bg-slate-700"
+                  >
+                    Return to Review
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* CONFIRMATION DIALOG OVERLAY */}
-      {showConfirmationDialog && (
-        <div className="fixed inset-0 z-110 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className={`w-full max-w-md ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 text-center shadow-2xl animate-in zoom-in-95 duration-200`}>
-            <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/30">
-              <AlertTriangle className="w-8 h-8" />
-            </div>
+        {/* MODAL FOOTER CONTROLS */}
+        <div className="p-5 border-t border-slate-800/60 bg-[#0E1424] flex items-center justify-between shrink-0">
+          <button
+            onClick={onClose}
+            disabled={isSaving || isGenerating}
+            className="px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-bold text-xs cursor-pointer min-h-[44px]"
+          >
+            {step === 'SAVE_RESULT' && saveOutcome?.success ? 'Close' : 'Cancel'}
+          </button>
 
-            <div className="space-y-2">
-              <h3 className="text-xl font-black">
-                Confirm & Submit Fixtures
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                You are about to publish <strong className="text-amber-400 font-bold">{preparedFixtures.length} fixtures</strong>. This action will write them directly into the production database and make them available throughout the platform. Continue?
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3">
+            {step === 'BEGIN_SEASON_NOTICE' && (
               <button
-                disabled={isSubmitting}
-                onClick={() => setShowConfirmationDialog(false)}
-                className="w-1/2 py-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-xs cursor-pointer min-h-[44px]"
+                onClick={() => setStep('CONFIRM_PITCHES')}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-lg min-h-[44px]"
               >
-                Cancel
+                Proceed to Pitches
               </button>
+            )}
+
+            {step === 'CONFIRM_PITCHES' && (
               <button
-                disabled={isSubmitting}
-                onClick={handleFinalSubmitFixtures}
-                className="w-1/2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer min-h-[44px] flex items-center justify-center gap-2"
+                onClick={() => setStep('CONFIRM_REFEREES')}
+                className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs cursor-pointer shadow-lg min-h-[44px]"
               >
-                {isSubmitting ? 'Submitting...' : 'Confirm'}
+                Proceed to Referees
               </button>
-            </div>
+            )}
+
+            {step === 'CONFIRM_REFEREES' && (
+              <button
+                onClick={() => setStep('CONFIRM_EPL_TEAMS')}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-lg min-h-[44px]"
+              >
+                Proceed to EPL Teams
+              </button>
+            )}
+
+            {step === 'CONFIRM_EPL_TEAMS' && (
+              <button
+                onClick={() => setStep('CONFIRM_CHAMP_TEAMS')}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-lg min-h-[44px]"
+              >
+                Proceed to Championship Teams
+              </button>
+            )}
+
+            {step === 'CONFIRM_CHAMP_TEAMS' && (
+              <button
+                onClick={handleExecuteAgent0Generation}
+                disabled={isGenerating}
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer shadow-lg min-h-[44px] flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Generate Fixtures</span>
+              </button>
+            )}
+
+            {step === 'REVIEW_FIXTURES' && (
+              <button
+                onClick={() => setStep('CONFIRM_AND_LOCK')}
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-lg min-h-[44px]"
+              >
+                Proceed to Confirm & Lock
+              </button>
+            )}
+
+            {step === 'CONFIRM_AND_LOCK' && (
+              <button
+                onClick={handleCommitAgent0Lock}
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-lg min-h-[44px] flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? 'Locking to Database...' : 'Confirm & Lock to Database'}</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Component to render verified Agent 0 match cards for review
+ */
+const RenderAgent0MatchList: React.FC<{
+  agent0Data: Record<string, { leg_1: any[]; leg_2: any[] }>;
+  division: 'EPL' | 'CHAMPIONSHIP';
+  leg: 1 | 2;
+  teams: TeamItem[];
+}> = ({ agent0Data, division, leg, teams }) => {
+  const teamMap = new Map<string, string>(teams.map((t) => [t.id, t.name]));
+
+  let targetKey: string | null = null;
+  for (const key of Object.keys(agent0Data)) {
+    const isEPL = key.toLowerCase().includes('epl') || key === '11111111-1111-4111-8111-000000000001' || key.includes('premier');
+    if (division === 'EPL' && isEPL) targetKey = key;
+    if (division === 'CHAMPIONSHIP' && !isEPL) targetKey = key;
+  }
+
+  if (!targetKey || !agent0Data[targetKey]) {
+    return (
+      <div className="p-4 rounded-xl bg-slate-900 text-center text-xs text-slate-400">
+        No fixture data returned for {division} Leg {leg}.
+      </div>
+    );
+  }
+
+  const matches = leg === 1 ? agent0Data[targetKey].leg_1 : agent0Data[targetKey].leg_2;
+
+  if (!matches || matches.length === 0) {
+    return (
+      <div className="p-4 rounded-xl bg-slate-900 text-center text-xs text-slate-400">
+        No matches generated for Leg {leg}.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {matches.map((m: any, idx: number) => {
+          const homeName = teamMap.get(m.home_id) || m.home_id;
+          const awayName = teamMap.get(m.away_id) || m.away_id;
+          return (
+            <div key={m.fixture_id || idx} className="p-3 rounded-xl border border-slate-800/80 bg-slate-900/60 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between font-black text-white">
+                <span className="truncate max-w-[120px]">{homeName}</span>
+                <span className="text-[10px] text-amber-500 font-mono">VS</span>
+                <span className="truncate max-w-[120px]">{awayName}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium border-t border-slate-800/40 pt-1">
+                <span>Seq #{m.match_sequence || idx + 1}</span>
+                <span className="text-emerald-400 font-mono">Leg {leg}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

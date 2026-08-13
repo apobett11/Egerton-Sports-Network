@@ -1,15 +1,13 @@
-import React from 'react';
-import { useSeasonMode } from '../hooks/useSeasonMode';
+import React, { useState } from 'react';
+import { useSeasonModeOperations } from '../hooks/useSeasonModeOperations';
 import { Header } from '../components/layout/Header';
 import { Navigation } from '../components/layout/Navigation';
 import { OverviewView } from '../components/overview/OverviewView';
-import { TeamsView } from '../components/teams/TeamsView';
+import { MatchdaysView } from '../components/matchdays/MatchdaysView';
 import { RefereesView } from '../components/referees/RefereesView';
 import { PitchesView } from '../components/pitches/PitchesView';
-import { FixturesView } from '../components/fixtures/FixturesView';
-import { CoachIntakeModal } from '../components/registration/CoachIntakeModal';
-import { RefereeIntakeModal } from '../components/registration/RefereeIntakeModal';
-import { SeasonGenerationModal } from '../components/generation/SeasonGenerationModal';
+import { TeamsView } from '../components/teams/TeamsView';
+import { CalendarModal } from '../components/calendar/CalendarModal';
 import { LoadingState, ErrorState, OperationalToast } from '../components/shared/StateDisplays';
 
 export interface PresidentSeasonModeAppProps {
@@ -22,26 +20,45 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
     setActiveView,
     isDark,
     toggleTheme,
-    teams,
-    premierLeagueTeams,
-    championshipTeams,
-    referees,
-    pitches,
-    fixtures,
     isLoading,
     error,
     toastMessage,
-    isCoachModalOpen,
-    setIsCoachModalOpen,
-    isRefModalOpen,
-    setIsRefModalOpen,
-    isGenerationModalOpen,
-    setIsGenerationModalOpen,
-    handleRegisterCoach,
-    handleRegisterReferee,
-    handleSuccessSaveFixtures,
+    fixtures,
+    referees,
+    pitches,
+    teams,
+    premierLeagueTeams,
+    championshipTeams,
+    alerts,
+    pitchConflictModalData,
+    setPitchConflictModalData,
+    capacity,
+    handleExecuteChangeMatchCapacity,
+    handleExecuteAddPlayday,
+    handleExecuteRemovePlayday,
+    handleExecuteChangePitchState,
+    handleExecuteChangeTimeConfiguration,
+    handleExecuteRemoveReferee,
+    handleExecuteSwapReferee,
+    handleExecuteShiftMatch,
+    handleExecuteCancelMatch,
+    handleExecuteCancelMatchday,
+    handleExecuteFlagLinesmanDefault,
+    handleExecuteUpdatePitchAvailability,
+    handleExecuteMarkRefUnavailable,
     refreshData,
-  } = useSeasonMode();
+  } = useSeasonModeOperations();
+
+  // Calendar Modal & Selected Date States
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+
+  const handleSelectDateFromCalendar = (dateStr: string) => {
+    setSelectedDateStr(dateStr);
+    setActiveView('matchdays');
+  };
 
   return (
     <div
@@ -51,7 +68,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
     >
       <div className="stadium-bg-overlay fixed inset-0 pointer-events-none z-0" />
 
-      {/* TOAST ALERT */}
+      {/* TOAST NOTIFICATION */}
       <OperationalToast message={toastMessage} />
 
       {/* HEADER */}
@@ -60,25 +77,26 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
         toggleTheme={toggleTheme}
         activeView={activeView}
         setActiveView={setActiveView}
-        onOpenCoachModal={() => setIsCoachModalOpen(true)}
-        onOpenRefModal={() => setIsRefModalOpen(true)}
+        onOpenAddFriendly={() => {}}
+        onOpenCalendar={() => setIsCalendarOpen(true)}
       />
 
-      {/* NAVIGATION BAR */}
+      {/* NAVIGATION BAR (5 OPERATIONAL TABS) */}
       <Navigation
         activeView={activeView}
         setActiveView={setActiveView}
         isDark={isDark}
-        teamsCount={teams.length}
+        matchdaysCount={18}
+        fixturesCount={fixtures.length}
         refereesCount={referees.length}
         pitchesCount={pitches.length}
-        fixturesCount={fixtures.length}
+        teamsCount={teams.length}
       />
 
       {/* MAIN CONTAINER */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 relative z-10">
         {isLoading ? (
-          <LoadingState isDark={isDark} label="Syncing President's Season Mode Data..." />
+          <LoadingState isDark={isDark} label="Initializing Season Control Centre Operations..." />
         ) : error ? (
           <ErrorState isDark={isDark} message={error} onRetry={refreshData} />
         ) : (
@@ -86,15 +104,60 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
             {activeView === 'overview' && (
               <OverviewView
                 isDark={isDark}
-                premierLeagueTeams={premierLeagueTeams}
-                championshipTeams={championshipTeams}
+                fixtures={fixtures}
                 referees={referees}
                 pitches={pitches}
-                fixtures={fixtures}
+                teams={teams}
+                alerts={alerts}
                 setActiveView={setActiveView}
-                onOpenCoachModal={() => setIsCoachModalOpen(true)}
-                onOpenRefModal={() => setIsRefModalOpen(true)}
-                onOpenGenerationModal={() => setIsGenerationModalOpen(true)}
+                onOpenCalendar={() => setIsCalendarOpen(true)}
+                onCancelMatchday={handleExecuteCancelMatchday}
+                onSelectDate={handleSelectDateFromCalendar}
+              />
+            )}
+
+            {activeView === 'matchdays' && (
+              <MatchdaysView
+                isDark={isDark}
+                fixtures={fixtures}
+                referees={referees}
+                pitches={pitches}
+                selectedDateStr={selectedDateStr}
+                onDateChange={(d) => setSelectedDateStr(d)}
+                onCancelMatch={handleExecuteCancelMatch}
+                onSwapReferee={handleExecuteSwapReferee}
+                onShiftMatch={handleExecuteShiftMatch}
+                onFlagLinesmanDefault={handleExecuteFlagLinesmanDefault}
+                capacity={capacity}
+                onChangeCapacity={handleExecuteChangeMatchCapacity}
+                onAddPlayday={handleExecuteAddPlayday}
+                onRemovePlayday={handleExecuteRemovePlayday}
+                onCancelMatchdayNum={handleExecuteCancelMatchday}
+                onChangePitchState={handleExecuteChangePitchState}
+                onChangeTimeConfiguration={handleExecuteChangeTimeConfiguration}
+              />
+            )}
+
+            {activeView === 'referees' && (
+              <RefereesView
+                isDark={isDark}
+                referees={referees}
+                fixtures={fixtures}
+                onMarkRefUnavailable={handleExecuteMarkRefUnavailable}
+                onRemoveReferee={handleExecuteRemoveReferee}
+                onReplaceReferee={handleExecuteSwapReferee}
+                setActiveView={setActiveView}
+              />
+            )}
+
+            {activeView === 'pitches' && (
+              <PitchesView
+                isDark={isDark}
+                pitches={pitches}
+                fixtures={fixtures}
+                onUpdatePitchAvailability={handleExecuteUpdatePitchAvailability}
+                pitchConflictModalData={pitchConflictModalData}
+                onClosePitchConflictModal={() => setPitchConflictModalData(null)}
               />
             )}
 
@@ -103,98 +166,19 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
                 isDark={isDark}
                 premierLeagueTeams={premierLeagueTeams}
                 championshipTeams={championshipTeams}
-                onOpenCoachModal={() => setIsCoachModalOpen(true)}
               />
-            )}
-
-            {activeView === 'referees' && (
-              <RefereesView
-                isDark={isDark}
-                referees={referees}
-                onOpenRefModal={() => setIsRefModalOpen(true)}
-              />
-            )}
-
-            {activeView === 'pitches' && <PitchesView isDark={isDark} pitches={pitches} />}
-
-            {activeView === 'fixtures' && (
-              <FixturesView
-                isDark={isDark}
-                fixtures={fixtures}
-                premierLeagueTeams={premierLeagueTeams}
-                championshipTeams={championshipTeams}
-                referees={referees}
-                pitches={pitches}
-                onOpenGenerationModal={() => setIsGenerationModalOpen(true)}
-              />
-            )}
-
-            {activeView === 'registration' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-extrabold tracking-tight">Registration Intake Center</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div
-                    onClick={() => setIsCoachModalOpen(true)}
-                    className={`p-6 rounded-3xl border cursor-pointer space-y-3 transition-all ${
-                      isDark ? 'bg-[#0E1424] border-slate-800 hover:border-emerald-500/40' : 'bg-white border-slate-200 hover:border-emerald-400'
-                    }`}
-                  >
-                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Coach & Team Registration Form</h3>
-                    <p className="text-xs text-slate-400">
-                      Minimal intake capturing Official First & Last Name, Phone, Email, Team Name with live team normalization engine.
-                    </p>
-                    <button className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs cursor-pointer">
-                      Launch Form Modal
-                    </button>
-                  </div>
-
-                  <div
-                    onClick={() => setIsRefModalOpen(true)}
-                    className={`p-6 rounded-3xl border cursor-pointer space-y-3 transition-all ${
-                      isDark ? 'bg-[#0E1424] border-slate-800 hover:border-emerald-500/40' : 'bg-white border-slate-200 hover:border-emerald-400'
-                    }`}
-                  >
-                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white">Center Referee Intake Form</h3>
-                    <p className="text-xs text-slate-400">
-                      Captures official referee credentials, phone number, email identity, and badge level accreditation.
-                    </p>
-                    <button className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs cursor-pointer">
-                      Launch Form Modal
-                    </button>
-                  </div>
-                </div>
-              </div>
             )}
           </>
         )}
       </main>
 
-      {/* REGISTRATION & GENERATION MODALS */}
-      <CoachIntakeModal
-        isOpen={isCoachModalOpen}
-        onClose={() => setIsCoachModalOpen(false)}
-        onSubmit={handleRegisterCoach}
+      {/* COMPACT CALENDAR MODAL */}
+      <CalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
         isDark={isDark}
-      />
-
-      <RefereeIntakeModal
-        isOpen={isRefModalOpen}
-        onClose={() => setIsRefModalOpen(false)}
-        onSubmit={handleRegisterReferee}
-        isDark={isDark}
-      />
-
-      <SeasonGenerationModal
-        isOpen={isGenerationModalOpen}
-        onClose={() => setIsGenerationModalOpen(false)}
-        isDark={isDark}
-        premierLeagueTeams={premierLeagueTeams}
-        championshipTeams={championshipTeams}
-        referees={referees}
-        pitches={pitches}
-        onSuccessSave={handleSuccessSaveFixtures}
+        fixtures={fixtures}
+        onSelectDate={handleSelectDateFromCalendar}
       />
     </div>
   );

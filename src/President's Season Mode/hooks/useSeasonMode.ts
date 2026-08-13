@@ -6,6 +6,7 @@ import type {
   SeasonPitch,
   SeasonFixture,
   SeasonModeView,
+  SeasonState,
   CoachIntakePayload,
   RefereeIntakePayload,
 } from '../types/seasonMode';
@@ -165,10 +166,35 @@ export function useSeasonMode() {
   const handleSuccessSaveFixtures = async () => {
     showToast('Official season fixtures saved successfully into database.');
     await loadData();
-    setActiveView('fixtures');
+    setActiveView('matchdays');
   };
 
-  const isPresidentAuthorized = userProfile?.role === 'president' || userProfile?.role === 'admin' || true;
+  // TASK 5A: Authoritative Season State derived directly from database queries
+  const hasOfficialSeason = fixtures.length > 0;
+
+  const [modalSeasonState, setModalSeasonState] = useState<SeasonState | null>(null);
+
+  const seasonState: SeasonState = error
+    ? 'GENERATION_ERROR'
+    : hasOfficialSeason
+    ? 'SEASON_OFFICIAL'
+    : modalSeasonState || 'SEASON_NOT_GENERATED';
+
+  const isPresidentAuthorized = Boolean(
+    userProfile && (userProfile.role === 'president' || userProfile.role === 'admin')
+  );
+
+  const handleOpenGenerationModal = () => {
+    if (hasOfficialSeason) {
+      showToast('The season already has official fixtures saved in the database. Matchups are immutable and cannot be regenerated.');
+      return;
+    }
+    if (!isPresidentAuthorized) {
+      showToast('Operational actions are restricted to authenticated President or Admin profiles.');
+      return;
+    }
+    setIsGenerationModalOpen(true);
+  };
 
   return {
     activeView,
@@ -183,6 +209,8 @@ export function useSeasonMode() {
     fixtures,
     userProfile,
     isPresidentAuthorized,
+    seasonState,
+    hasOfficialSeason,
     isLoading,
     error,
     toastMessage,
@@ -193,9 +221,12 @@ export function useSeasonMode() {
     setIsRefModalOpen,
     isGenerationModalOpen,
     setIsGenerationModalOpen,
+    handleOpenGenerationModal,
+    setModalSeasonState,
     handleRegisterCoach,
     handleRegisterReferee,
     handleSuccessSaveFixtures,
     refreshData: loadData,
   };
 }
+

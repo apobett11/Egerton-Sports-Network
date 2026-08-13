@@ -1,5 +1,20 @@
 import type { SeasonItem, LeagueItem, PendingTeam, TeamItem, RefereeItem, DraftFixture } from './types';
 
+export const COMPETITIONS = {
+  PREMIER_LEAGUE: {
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'Egerton Premier League',
+    shortName: 'EPL',
+    color: '#D4AF37',
+  },
+  CHAMPIONSHIP: {
+    id: '22222222-2222-2222-2222-222222222222',
+    name: 'Egerton Championship',
+    shortName: 'Championship',
+    color: '#2563EB',
+  },
+} as const;
+
 export const INITIAL_SEASONS: SeasonItem[] = [
   {
     id: 's1',
@@ -78,3 +93,51 @@ export const INITIAL_DRAFT_FIXTURES: DraftFixture[] = [
   { id: 'df4', matchday: 2, homeTeam: 'Engineering Strikers FC', awayTeam: 'Njoro Spurs', date: '2027-09-11', timeSlot: '15:00', pitch: 'Pavilion Ground', hasConflict: false },
   { id: 'df5', matchday: 2, homeTeam: 'Science Lions', awayTeam: 'Tatton United FC', date: '2027-09-11', timeSlot: '15:00', pitch: 'Tatton Complex', hasConflict: false }
 ];
+
+export const OFFICIAL_PITCHES = [
+  {
+    id: '91111111-1111-1111-1111-111111111111',
+    name: 'Egerton Main Stadium Pitch',
+    short_code: 'MAIN-STAD',
+    location: 'Main Campus Athletics Complex',
+    capacity: 10000,
+    surface_type: 'Natural Grass',
+    has_lighting: true,
+    status: 'Available',
+  },
+  {
+    id: '92222222-2222-2222-2222-222222222222',
+    name: 'Pavilion Grounds Pitch A',
+    short_code: 'PAV-A',
+    location: 'Pavilion Sports Complex',
+    capacity: 3500,
+    surface_type: 'Hybrid Turf',
+    has_lighting: true,
+    status: 'Available',
+  },
+  {
+    id: '93333333-3333-3333-3333-333333333333',
+    name: 'Tatton Complex Ground',
+    short_code: 'TAT-GRD',
+    location: 'Tatton Campus Ground',
+    capacity: 2500,
+    surface_type: 'Natural Grass',
+    has_lighting: false,
+    status: 'Available',
+  },
+];
+
+export const OPERATIONAL_STATUS_COLORS: Record<string, string> = {
+  Available: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  Active: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  approved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  Maintenance: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  Occupied: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  Suspended: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  rejected: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+  Deactivated: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+  Inactive: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+  Unavailable: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+};
+

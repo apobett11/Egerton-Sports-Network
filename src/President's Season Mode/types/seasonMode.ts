@@ -46,7 +46,7 @@ export interface SeasonReferee {
   name: string;
   email?: string | null;
   phone: string;
-  status: 'Active' | 'Suspended' | 'Deactivated' | 'Inactive';
+  status: 'Active' | 'Suspended' | 'Deactivated' | 'Inactive' | 'Unavailable';
   badge_level?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -108,9 +108,13 @@ export interface TeamNormalizationResult {
   changes_made: string[];
 }
 
-export type SeasonModeView = 'overview' | 'teams' | 'referees' | 'pitches' | 'registration' | 'fixtures';
+export type SeasonModeView =
+  | 'overview'
+  | 'matchdays'
+  | 'referees'
+  | 'pitches'
+  | 'teams';
 
-// Phase 2 Fixture & Season Generation Contracts
 export interface SeasonFixture {
   id: string;
   competition_id: string;
@@ -126,7 +130,6 @@ export interface SeasonFixture {
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
-  // Expanded relation properties
   home_team?: SeasonTeam | null;
   away_team?: SeasonTeam | null;
   referee?: SeasonReferee | null;
@@ -163,4 +166,95 @@ export interface GenerationServiceResult {
   validation: PreviewValidationResult;
   error: string | null;
 }
+
+export type SeasonState =
+  | 'SEASON_NOT_GENERATED'
+  | 'PREVIEW_READY'
+  | 'AWAITING_FINAL_CONFIRMATION'
+  | 'SEASON_OFFICIAL'
+  | 'GENERATION_ERROR';
+
+// Additional Operational Contracts for President Season Control Centre
+export interface LinesmanAssignment {
+  linesman_team1_id?: string | null;
+  linesman_team1_name?: string | null;
+  linesman_team1_status: 'Assigned' | 'Defaulted' | 'Replaced' | 'Pending';
+  linesman_team2_id?: string | null;
+  linesman_team2_name?: string | null;
+  linesman_team2_status: 'Assigned' | 'Defaulted' | 'Replaced' | 'Pending';
+}
+
+export interface OperationalMatch extends SeasonFixture {
+  linesmen?: LinesmanAssignment;
+  is_friendly?: boolean;
+  friendly_name?: string;
+  cancellation_reason?: string;
+  spillover_status?: boolean;
+}
+
+export type PitchAvailabilityMode = 'Available' | 'Morning only' | 'Afternoon only' | 'Unavailable';
+
+export interface PitchAvailabilityState {
+  pitch_id: string;
+  mode: PitchAvailabilityMode;
+  notes?: string;
+  affected_match_ids?: string[];
+}
+
+export interface RefereeEligibility {
+  referee: SeasonReferee;
+  is_eligible: boolean;
+  rejection_reasons: string[];
+  fatigue_warning?: boolean;
+  tier_match: boolean;
+  current_assignments_today: number;
+}
+
+export interface FriendlyMatchPayload {
+  friendly_name: string;
+  date: string;
+  time: string;
+  home_team_id: string;
+  away_team_id: string;
+  referee_id: string;
+  pitch_id: string;
+}
+
+export interface FriendlyConflictResult {
+  has_conflict: boolean;
+  team_conflict?: string | null;
+  referee_conflict?: string | null;
+  pitch_conflict?: string | null;
+  time_conflict?: string | null;
+}
+
+export interface OperationalAlert {
+  id: string;
+  type:
+    | 'MATCH_CANCELLED'
+    | 'REFEREE_UNAVAILABLE'
+    | 'PITCH_UNAVAILABLE'
+    | 'MATCH_POSTPONED'
+    | 'SPILLOVER_DETECTED'
+    | 'LINESMAN_DEFAULT'
+    | 'SCHEDULING_CONFLICT'
+    | 'UNASSIGNED_REFEREE';
+  severity: 'high' | 'medium' | 'info';
+  title: string;
+  description: string;
+  related_id?: string;
+  timestamp: string;
+}
+
+export interface CalendarDayState {
+  date_str: string; // YYYY-MM-DD
+  is_matchday: boolean;
+  is_weekend: boolean;
+  is_override_available: boolean;
+  is_override_unavailable: boolean;
+  matches: OperationalMatch[];
+  matchday_number?: number | null;
+}
+
+
 

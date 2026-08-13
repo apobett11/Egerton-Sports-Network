@@ -93,3 +93,95 @@ export interface DraftFixture {
   hasConflict: boolean;
   conflictReason?: string;
 }
+
+export interface PitchItem {
+  id: string;
+  name: string;
+  short_code?: string;
+  location?: string;
+  capacity?: number;
+  surface_type?: string;
+  has_lighting?: boolean;
+  status?: 'Available' | 'Maintenance' | 'Occupied' | 'Unavailable' | string;
+}
+
+export interface SeasonFixture {
+  id: string;
+  competition_id: string;
+  home_team_id: string;
+  away_team_id: string;
+  scheduled_time: string;
+  status: 'UPCOMING' | 'LIVE' | 'HT' | 'FT' | 'POSTPONED' | 'CANCELLED' | string;
+  score_home: number;
+  score_away: number;
+  venue: string;
+  referee_id?: string | null;
+  matchday: number;
+  created_at?: string;
+  updated_at?: string;
+  deleted_at?: string | null;
+  home_team?: {
+    id: string;
+    name: string;
+    short_name?: string | null;
+    logo_url?: string | null;
+    color_code?: string | null;
+  } | null;
+  away_team?: {
+    id: string;
+    name: string;
+    short_name?: string | null;
+    logo_url?: string | null;
+    color_code?: string | null;
+  } | null;
+  referee?: {
+    id: string;
+    name: string;
+    phone?: string;
+  } | null;
+  competition?: {
+    id: string;
+    name: string;
+    slug?: string;
+  } | null;
+}
+
+export interface GeneratedLegFixtures {
+  leg: 1 | 2;
+  matchday: number;
+  fixtures: SeasonFixture[];
+}
+
+export interface GeneratedCompetitionFixtures {
+  competition_id: string;
+  competition_name: string;
+  teams_count: number;
+  total_matchdays: number;
+  leg1_fixtures: GeneratedLegFixtures[];
+  leg2_fixtures: GeneratedLegFixtures[];
+  all_fixtures: SeasonFixture[];
+}
+
+export interface PreviewValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  totalFixtures: number;
+}
+
+export interface GenerationServiceResult {
+  success: boolean;
+  premierLeagueFixtures?: GeneratedCompetitionFixtures;
+  championshipFixtures?: GeneratedCompetitionFixtures;
+  validation: PreviewValidationResult;
+  error: string | null;
+}
+
+export type SeasonState =
+  | 'SEASON_NOT_GENERATED'
+  | 'PREVIEW_READY'
+  | 'AWAITING_FINAL_CONFIRMATION'
+  | 'SEASON_OFFICIAL'
+  | 'GENERATION_ERROR';
+
+

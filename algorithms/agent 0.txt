@@ -1,0 +1,3567 @@
+/* ============================================================================
+ * AGENT 0 — MASTER SPORTS LEAGUE ORCHESTRATOR
+ * ============================================================================
+ *
+ * PURPOSE
+ * -------
+ * Agent 0 is the operational control plane for:
+ *
+ *   Algorithm 1 → immutable fixture generation
+ *   Algorithm 2 → matchday + playday scheduling
+ *   Algorithm 3 → pitch + slot + time allocation
+ *   Algorithm 4 → center referee allocation
+ *   Algorithm 5 → peer-linesman allocation
+ *
+ * ARCHITECTURE
+ * ------------
+ * Algorithms are injected pure functions.
+ * Agent 0:
+ *
+ *   - receives President/System events
+ *   - validates them
+ *   - translates UI state into algorithm contracts
+ *   - decides which algorithm(s) to execute
+ *   - enforces dependency order
+ *   - enforces ALL-OR-NONE
+ *   - persists only verified outputs
+ *   - reads back persisted state
+ *   - compares expected vs actual
+ *   - emits admin incidents on every hard failure
+ *
+ * DATABASE ACCESS
+ * ---------------
+ * Agent 0 does not know SQL details.
+ *
+ * A transaction-capable repository adapter is injected.
+ *
+ * IMPORTANT:
+ * ------------
+ * No algorithm is allowed to call the database itself.
+ *
+ * ========================================================================== */
+
+///////////////////////////////
+// DOMAIN TYPES
+///////////////////////////////
+
+export type AlgorithmName =
+  | "ALGORITHM_1"
+  | "ALGORITHM_2"
+  | "ALGORITHM_3"
+  | "ALGORITHM_4"
+  | "ALGORITHM_5";
+
+export type PipelineState =
+  | "IDLE"
+  | "RECEIVED"
+  | "VALIDATING"
+  | "CLASSIFYING"
+  | "PREPARING_INPUT"
+  | "RUNNING"
+  | "VERIFYING"
+  | "PREPARING_DATABASE_WRITE"
+  | "DATABASE_TRANSACTION"
+  | "READ_BACK"
+  | "VERIFYING_DATABASE"
+  | "SUCCESS"
+  | "STOPPED";
+
+export type Severity = "CRITICAL" | "HIGH" | "WARNING";
+
+export type PresidentEventType =
+  | "BEGIN_SEASON"
+  | "CHANGE_MATCH_CAPACITY"
+  | "ADD_PLAYDAY_ONCE"
+  | "REMOVE_PLAYDAY_ONCE"
+  | "ADD_PLAYDAY_PERMANENT"
+  | "REMOVE_PLAYDAY_PERMANENT"
+  | "CANCEL_MATCHDAY"
+  | "CHANGE_PITCH_STATE"
+  | "CHANGE_TIME_CONFIGURATION"
+  | "REFEREE_POOL_CHANGED"
+  | "PERMANENT_REFEREE_REMOVAL"
+  | "PERMANENT_REFEREE_ADDITION"
+  | "REBUILD_OFFICIATING"
+  | "SYSTEM_RETRY_AFTER_ADMIN_FIX";
+
+export interface BaseEvent {
+  eventId: string;
+  seasonId: string;
+  requestedBy: string;
+  occurredAt: string;
+}
+
+export interface BeginSeasonEvent extends BaseEvent {
+  type: "BEGIN_SEASON";
+
+  /**
+   * The President chooses the first playable date.
+   * Agent 0 passes this directly to Algorithm 2.
+   */
+  seasonStartDate: string;
+}
+
+export interface MatchCapacityChangeEvent extends BaseEvent {
+  type: "CHANGE_MATCH_CAPACITY";
+
+  eplMatchesPerMatchday?: number;
+  championshipMatchesPerMatchday?: number;
+}
+
+export interface PlaydayChangeEvent extends BaseEvent {
+  type:
+    | "ADD_PLAYDAY_ONCE"
+    | "REMOVE_PLAYDAY_ONCE"
+    | "ADD_PLAYDAY_PERMANENT"
+    | "REMOVE_PLAYDAY_PERMANENT";
+
+  date: string;
+}
+
+export interface CancelMatchdayEvent extends BaseEvent {
+  type: "CANCEL_MATCHDAY";
+  matchdayNumber: number;
+}
+
+export interface PitchStateChangeEvent extends BaseEvent {
+  type: "CHANGE_PITCH_STATE";
+
+  pitchId: string;
+
+  amAvailable: boolean;
+  pmAvailable: boolean;
+}
+
+export interface TimeConfigurationChangeEvent extends BaseEvent {
+  type: "CHANGE_TIME_CONFIGURATION";
+
+  eplSlots?: TimeSlotConfig[];
+  championshipSlots?: TimeSlotConfig[];
+}
+
+export interface RefereePoolChangeEvent extends BaseEvent {
+  type:
+    | "REFEREE_POOL_CHANGED"
+    | "PERMANENT_REFEREE_REMOVAL"
+    | "PERMANENT_REFEREE_ADDITION";
+
+  refereeId: string;
+  reason: string;
+}
+
+export interface RebuildOfficiatingEvent extends BaseEvent {
+  type: "REBUILD_OFFICIATING";
+  reason: string;
+}
+
+export type PresidentEvent =
+  | BeginSeasonEvent
+  | MatchCapacityChangeEvent
+  | PlaydayChangeEvent
+  | CancelMatchdayEvent
+  | PitchStateChangeEvent
+  | TimeConfigurationChangeEvent
+  | RefereePoolChangeEvent
+  | RebuildOfficiatingEvent;
+
+///////////////////////////////
+// SHARED ALGORITHM CONTRACTS
+///////////////////////////////
+
+export interface LeagueConfig {
+  leagueId: string;
+  leagueType: "EPL" | "CHAMPIONSHIP";
+  teamIds: string[];
+}
+
+export interface Algorithm1Fixture {
+  fixtureId: string;
+  seasonId: string;
+  leagueId: string;
+  homeId: string;
+  awayId: string;
+  leg: 1 | 2;
+  matchSequence: number;
+}
+
+export interface Algorithm1Output {
+  status: "success" | "failed";
+  verification_logs: string[];
+
+  data: Record<
+    string,
+    {
+      leg_1: Array<{
+        home_id: string;
+        away_id: string;
+        match_sequence: number;
+      }>;
+      leg_2: Array<{
+        home_id: string;
+        away_id: string;
+        match_sequence: number;
+      }>;
+    }
+  >;
+}
+
+export interface FixtureRecord {
+  fixtureId: string;
+  seasonId: string;
+  leagueId: string;
+  homeId: string;
+  awayId: string;
+  leg: 1 | 2;
+  matchSequence: number;
+}
+
+export interface MatchdayRecord {
+  matchdayId: string;
+  seasonId: string;
+  matchdayNumber: number;
+  playDate: string;
+  fixtureIds: string[];
+}
+
+export interface PitchState {
+  pitchId: string;
+  amAvailable: boolean;
+  pmAvailable: boolean;
+}
+
+export interface TimeSlotConfig {
+  slotId: string;
+  period: "AM" | "PM";
+  startTime: string;
+  endTime: string;
+}
+
+export interface MatchAssignmentRecord {
+  fixtureId: string;
+  matchdayId: string;
+  playDate: string;
+  pitchId: string;
+  slotId: string;
+  startTime: string;
+  endTime: string;
+  allocationStatus: string;
+  spillover: boolean;
+}
+
+export interface TimeSlottedMatch {
+  match_id: string;
+  league_type: "EPL" | "CHAMPIONSHIP";
+  home_team_id: string;
+  away_team_id: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface RefereeInput {
+  referee_id: string;
+  tier: "EPL_Exclusive" | "Mixed";
+}
+
+export interface TeamInput {
+  team_id: string;
+}
+
+export interface CenterAssignment {
+  match_id: string;
+  center_referee_id: string | null;
+}
+
+export interface LinesmanAssignment {
+  match_id: string;
+  center_referee_id: string;
+  linesman_team_a_id: string | null;
+  linesman_team_b_id: string | null;
+}
+
+///////////////////////////////
+// GENERIC ALGORITHM OUTPUTS
+///////////////////////////////
+
+export interface Algorithm2Output {
+  status: "success" | "failed";
+
+  signal_id: string;
+
+  verification_logs: string[];
+
+  execution: {
+    operation:
+      | "MATCHDAY_ONLY"
+      | "PLAYDAY_ONLY"
+      | "MATCHDAY_AND_PLAYDAY";
+
+    matchday_engine_run: boolean;
+    playday_engine_run: boolean;
+
+    affected_leagues: string[];
+
+    cycle_number: 1;
+  };
+
+  database: {
+    operation: "UPDATE";
+
+    mutations: Algorithm2Mutation[];
+
+    preserved: Algorithm2Preserved[];
+
+    expected_update_count: number;
+  };
+
+  final_schedule: {
+    EPL: unknown[];
+    Championship: unknown[];
+  };
+}
+
+export interface Algorithm2Mutation {
+  fixtureId: string;
+  leagueId: string;
+  homeId: string;
+  awayId: string;
+  leg: 1 | 2;
+  matchSequence: number;
+  matchdayNumber: number;
+  playday: string;
+  operation: "UPDATE";
+}
+
+export interface Algorithm2Preserved {
+  fixtureId: string;
+  reason: string;
+}
+
+export interface Algorithm3Output {
+  status: "success" | "failed";
+
+  run_id: string;
+
+  cycle_count: 1;
+
+  stopped: true;
+
+  trigger: string;
+
+  verification: {
+    passed: boolean;
+    logs: string[];
+    errors: string[];
+  };
+
+  summary: {
+    total_future_matches_received: number;
+    total_completed_matches_preserved: number;
+    total_allocated: number;
+    total_spillover: number;
+
+    epl_allocated: number;
+    championship_allocated: number;
+
+    epl_spillover: number;
+    championship_spillover: number;
+  };
+
+  database_operations: {
+    allocations: Array<{
+      operation: "UPSERT_MATCH_ALLOCATION";
+      match_id: string;
+      league_id: string;
+      matchday_number: number;
+      play_date: string;
+      pitch_id: string;
+      slot_number: number;
+      start_time: string;
+      end_time: string;
+      status: "scheduled";
+      source: "ALGORITHM_3";
+    }>;
+
+    spillovers: Array<{
+      operation: "MARK_MATCH_SPILLOVER";
+      match_id: string;
+      league_id: string;
+      matchday_number: number;
+      current_play_date: string;
+      status: "spillover";
+      source: "ALGORITHM_3";
+    }>;
+  };
+}
+
+export interface OfficiatingOutput {
+  status: "success" | "failed";
+
+  verification_logs: string[];
+
+  assignments: Array<{
+    match_id: string;
+    center_referee_id: string | null;
+    linesman_team_a_id: string | null;
+    linesman_team_b_id: string | null;
+  }>;
+}
+
+///////////////////////////////
+// ALGORITHM DEPENDENCIES
+///////////////////////////////
+
+export interface AlgorithmAdapters {
+  algorithm1: (
+    leagues: LeagueConfig[],
+  ) => Promise<Algorithm1Output> | Algorithm1Output;
+
+  algorithm2: (
+    signal: Algorithm2AgentSignal,
+  ) => Promise<Algorithm2Output> | Algorithm2Output;
+
+  algorithm3: (
+    signal: Algorithm3AgentSignal,
+  ) => Promise<Algorithm3Output> | Algorithm3Output;
+
+  algorithm4And5: (
+    matches: TimeSlottedMatch[],
+    referees: RefereeInput[],
+    teams: TeamInput[],
+  ) => Promise<OfficiatingOutput> | OfficiatingOutput;
+}
+
+///////////////////////////////
+// AGENT 0 → ALGORITHM 2
+///////////////////////////////
+
+export type Algorithm2ChangeType =
+  | "INITIAL_SCHEDULING"
+  | "MATCH_CAPACITY_CHANGED"
+  | "PLAYDAY_ADDED"
+  | "PLAYDAY_REMOVED"
+  | "ACTIVE_MATCHDAY_CANCELLED"
+  | "MULTIPLE_CHANGES";
+
+export interface Algorithm2AgentSignal {
+  signalId: string;
+  seasonId: string;
+
+  changeType: Algorithm2ChangeType;
+
+  requestedOperation?:
+    | "MATCHDAY_ONLY"
+    | "PLAYDAY_ONLY"
+    | "MATCHDAY_AND_PLAYDAY";
+
+  affectedLeagues: string[];
+
+  firstPlayday?: string;
+
+  fixtures: FixtureRecord[];
+
+  playdays: Array<{
+    date: string;
+    mode: "ONE_TIME" | "PERMANENT";
+    active: boolean;
+  }>;
+
+  matchesPerMatchday: {
+    EPL: number;
+    Championship: number;
+  };
+
+  cancelledMatchdayNumber?: number;
+}
+
+///////////////////////////////
+// AGENT 0 → ALGORITHM 3
+///////////////////////////////
+
+export interface Algorithm3AgentSignal {
+  runId: string;
+  seasonId: string;
+
+  changeType:
+    | "INITIAL_ALLOCATION"
+    | "PITCH_STATE_CHANGED"
+    | "TIME_CONFIGURATION_CHANGED"
+    | "MATCHDAY_CHANGED"
+    | "SPILLOVER_RECALCULATION"
+    | "PLAYDAY_CONFIGURATION_CHANGED";
+
+  matchdays: Array<{
+    matchdayNumber: number;
+    playDate: string;
+    playable: boolean;
+    matches: Array<{
+      match_id: string;
+      league_id: "EPL" | "CHAMPIONSHIP";
+      home_id: string;
+      away_id: string;
+      status: "scheduled" | "completed" | "cancelled" | "spillover";
+      matchday_number: number;
+      is_spillover?: boolean;
+      completed?: boolean;
+    }>;
+  }>;
+
+  pitches: PitchState[];
+
+  timeConfiguration: {
+    EPL?: TimeSlotConfig[];
+    Championship?: TimeSlotConfig[];
+  };
+
+  existingAllocations: MatchAssignmentRecord[];
+}
+
+///////////////////////////////
+// DATABASE REPOSITORY
+///////////////////////////////
+
+export interface DatabaseWriteSet {
+  fixtures?: FixtureRecord[];
+  matchdays?: MatchdayRecord[];
+  matchAssignments?: MatchAssignmentRecord[];
+}
+
+export interface DatabaseSnapshot {
+  fixtures: FixtureRecord[];
+  matchdays: MatchdayRecord[];
+  matchAssignments: MatchAssignmentRecord[];
+}
+
+export interface DatabaseTransaction {
+  write(
+    writeSet: DatabaseWriteSet,
+  ): Promise<void>;
+
+  readBack(): Promise<DatabaseSnapshot>;
+
+  rollback(): Promise<void>;
+}
+
+export interface DatabaseRepository {
+  beginTransaction(): Promise<DatabaseTransaction>;
+}
+
+///////////////////////////////
+// ADMIN INCIDENTS
+///////////////////////////////
+
+export interface AdminIncident {
+  incidentId: string;
+  seasonId: string;
+  executionId: string;
+
+  stage: PipelineState;
+
+  algorithm?: AlgorithmName;
+
+  severity: Severity;
+
+  errorCode: string;
+  message: string;
+
+  createdAt: string;
+
+  details: Record<string, unknown>;
+}
+
+export interface AdminNotifier {
+  notify(incident: AdminIncident): Promise<void> | void;
+}
+
+///////////////////////////////
+// MASTER AGENT STATE
+///////////////////////////////
+
+export interface Agent0State {
+  pipelineState: PipelineState;
+
+  seasonId: string;
+
+  executionId: string;
+
+  currentAlgorithm?: AlgorithmName;
+
+  lastSuccessfulStage?:
+    | "ALGORITHM_1"
+    | "ALGORITHM_2"
+    | "ALGORITHM_3"
+    | "ALGORITHM_4_5";
+
+  stopped: boolean;
+}
+
+///////////////////////////////
+// INTERNAL ROUTING PLAN
+///////////////////////////////
+
+interface ExecutionPlan {
+  algorithms: AlgorithmName[];
+  reason: string;
+  allOrNone: true;
+}
+
+///////////////////////////////
+// MASTER AGENT CLASS
+///////////////////////////////
+
+export class Agent0MasterController {
+  private state: Agent0State;
+
+  constructor(
+    private readonly algorithms: AlgorithmAdapters,
+    private readonly db: DatabaseRepository,
+    private readonly admin: AdminNotifier,
+  ) {
+    this.state = {
+      pipelineState: "IDLE",
+      seasonId: "",
+      executionId: "",
+      stopped: false,
+    };
+  }
+
+  //////////////////////////////
+  // PUBLIC ENTRYPOINT
+  //////////////////////////////
+
+  async handleEvent(
+    event: PresidentEvent,
+  ): Promise<void> {
+    const executionId = crypto.randomUUID();
+
+    this.state = {
+      pipelineState: "RECEIVED",
+      seasonId: event.seasonId,
+      executionId,
+      stopped: false,
+    };
+
+    try {
+      await this.validateEvent(event);
+
+      const plan = this.buildExecutionPlan(
+        event,
+      );
+
+      /*
+       * Critical principle:
+       *
+       * Agent 0 does not blindly execute whatever event arrived.
+       * It first determines the exact algorithm chain.
+       */
+
+      this.state.pipelineState =
+        "CLASSIFYING";
+
+      await this.prepareStateForEvent(
+        event,
+        plan,
+      );
+
+      await this.executePlan(
+        event,
+        plan,
+      );
+
+      this.state.pipelineState =
+        "SUCCESS";
+
+      this.state.stopped = false;
+    } catch (error) {
+      await this.hardStop({
+        event,
+        error,
+      });
+    }
+  }
+
+  //////////////////////////////
+  // EVENT VALIDATION
+  //////////////////////////////
+
+  private async validateEvent(
+    event: PresidentEvent,
+  ): Promise<void> {
+    this.state.pipelineState =
+      "VALIDATING";
+
+    if (!event.eventId) {
+      throw new Agent0Error(
+        "INVALID_EVENT_ID",
+        "Event ID is missing.",
+      );
+    }
+
+    if (!event.seasonId) {
+      throw new Agent0Error(
+        "INVALID_SEASON_ID",
+        "Season ID is missing.",
+      );
+    }
+
+    if (!event.requestedBy) {
+      throw new Agent0Error(
+        "INVALID_REQUESTER",
+        "Requester identity is missing.",
+      );
+    }
+
+    if (
+      !this.isValidISODateTime(
+        event.occurredAt,
+      )
+    ) {
+      throw new Agent0Error(
+        "INVALID_EVENT_TIMESTAMP",
+        "Event timestamp is invalid.",
+      );
+    }
+
+    switch (event.type) {
+      case "BEGIN_SEASON":
+        this.validateBeginSeason(event);
+        break;
+
+      case "CHANGE_MATCH_CAPACITY":
+        this.validateCapacityChange(event);
+        break;
+
+      case "ADD_PLAYDAY_ONCE":
+      case "REMOVE_PLAYDAY_ONCE":
+      case "ADD_PLAYDAY_PERMANENT":
+      case "REMOVE_PLAYDAY_PERMANENT":
+        this.validatePlaydayChange(event);
+        break;
+
+      case "CANCEL_MATCHDAY":
+        if (event.matchdayNumber < 1) {
+          throw new Agent0Error(
+            "INVALID_MATCHDAY_NUMBER",
+            "Matchday number must be >= 1.",
+          );
+        }
+        break;
+
+      case "CHANGE_PITCH_STATE":
+        if (!event.pitchId) {
+          throw new Agent0Error(
+            "INVALID_PITCH_ID",
+            "Pitch ID is required.",
+          );
+        }
+        break;
+
+      case "CHANGE_TIME_CONFIGURATION":
+        this.validateTimeConfigurationChange(
+          event,
+        );
+        break;
+
+      case "REFEREE_POOL_CHANGED":
+      case "PERMANENT_REFEREE_REMOVAL":
+      case "PERMANENT_REFEREE_ADDITION":
+        if (!event.refereeId) {
+          throw new Agent0Error(
+            "INVALID_REFEREE_ID",
+            "Referee ID is required.",
+          );
+        }
+        break;
+
+      case "REBUILD_OFFICIATING":
+        if (!event.reason.trim()) {
+          throw new Agent0Error(
+            "INVALID_REBUILD_REASON",
+            "A reason is required for officiating rebuild.",
+          );
+        }
+        break;
+
+      default:
+        throw new Agent0Error(
+          "UNKNOWN_EVENT_TYPE",
+          `Unsupported event type: ${String(
+            (event as { type?: unknown }).type,
+          )}`,
+        );
+    }
+  }
+
+  //////////////////////////////
+  // EVENT → EXECUTION PLAN
+  //////////////////////////////
+
+  private buildExecutionPlan(
+    event: PresidentEvent,
+  ): ExecutionPlan {
+    switch (event.type) {
+      /*
+       * INITIAL:
+       *
+       * Algorithm 1
+       *   ↓
+       * Algorithm 2
+       *   ↓
+       * Algorithm 3
+       *   ↓
+       * Algorithm 4/5
+       */
+      case "BEGIN_SEASON":
+        return {
+          algorithms: [
+            "ALGORITHM_1",
+            "ALGORITHM_2",
+            "ALGORITHM_3",
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Initial season construction.",
+          allOrNone: true,
+        };
+
+      /*
+       * Match capacity can change how matches are grouped.
+       *
+       * Therefore:
+       * Algorithm 2 → Algorithm 3.
+       *
+       * Officiating must then be recalculated because
+       * times and match assignments may have moved.
+       */
+      case "CHANGE_MATCH_CAPACITY":
+        return {
+          algorithms: [
+            "ALGORITHM_2",
+            "ALGORITHM_3",
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Matchday capacity changed.",
+          allOrNone: true,
+        };
+
+      /*
+       * Calendar-only change:
+       *
+       * Algorithm 2 is authoritative for playday mapping.
+       *
+       * Algorithm 3 must then remap operational assignments.
+       */
+      case "ADD_PLAYDAY_ONCE":
+      case "REMOVE_PLAYDAY_ONCE":
+      case "ADD_PLAYDAY_PERMANENT":
+      case "REMOVE_PLAYDAY_PERMANENT":
+        return {
+          algorithms: [
+            "ALGORITHM_2",
+            "ALGORITHM_3",
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Playable calendar changed.",
+          allOrNone: true,
+        };
+
+      /*
+       * Cancelling a matchday changes future grouping.
+       */
+      case "CANCEL_MATCHDAY":
+        return {
+          algorithms: [
+            "ALGORITHM_2",
+            "ALGORITHM_3",
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Future matchday cancelled.",
+          allOrNone: true,
+        };
+
+      /*
+       * Pitch state changes do NOT require Algorithm 2.
+       *
+       * Algorithm 3 owns pitch resources.
+       */
+      case "CHANGE_PITCH_STATE":
+        return {
+          algorithms: [
+            "ALGORITHM_3",
+          ],
+          reason:
+            "Pitch availability changed.",
+          allOrNone: true,
+        };
+
+      /*
+       * Time configuration belongs to Algorithm 3.
+       */
+      case "CHANGE_TIME_CONFIGURATION":
+        return {
+          algorithms: [
+            "ALGORITHM_3",
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Operational match times changed.",
+          allOrNone: true,
+        };
+
+      /*
+       * Referee pool changes do not alter fixture identities,
+       * matchday grouping, or pitches.
+       *
+       * Rebuild officiating only.
+       */
+      case "REFEREE_POOL_CHANGED":
+      case "PERMANENT_REFEREE_REMOVAL":
+      case "PERMANENT_REFEREE_ADDITION":
+      case "REBUILD_OFFICIATING":
+        return {
+          algorithms: [
+            "ALGORITHM_4",
+            "ALGORITHM_5",
+          ],
+          reason:
+            "Officiating resource changed.",
+          allOrNone: true,
+        };
+
+      default:
+        throw new Agent0Error(
+          "NO_EXECUTION_PLAN",
+          "No safe execution plan exists for the event.",
+        );
+    }
+  }
+
+  //////////////////////////////
+  // STATE PREPARATION
+  //////////////////////////////
+
+  private async prepareStateForEvent(
+    event: PresidentEvent,
+    plan: ExecutionPlan,
+  ): Promise<void> {
+    /*
+     * This method is intentionally the "control-center" layer.
+     *
+     * It may validate the current DB state.
+     * It MUST NOT perform algorithm mathematics.
+     */
+
+    const current =
+      await this.loadCurrentState(
+        event.seasonId,
+      );
+
+    if (
+      event.type !== "BEGIN_SEASON" &&
+      current.fixtures.length === 0
+    ) {
+      throw new Agent0Error(
+        "SEASON_STATE_MISSING",
+        "Cannot execute an in-season operation because no immutable fixtures exist.",
+      );
+    }
+
+    /*
+     * For initial generation, the system must not already
+     * contain official fixtures.
+     */
+
+    if (
+      event.type === "BEGIN_SEASON" &&
+      current.fixtures.length > 0
+    ) {
+      throw new Agent0Error(
+        "FIXTURES_ALREADY_GENERATED",
+        "Season generation was requested but immutable fixtures already exist.",
+      );
+    }
+
+    /*
+     * Ensure the selected algorithm chain can legally execute.
+     */
+    if (
+      plan.algorithms.length === 0
+    ) {
+      throw new Agent0Error(
+        "EMPTY_EXECUTION_PLAN",
+        "No algorithms selected.",
+      );
+    }
+  }
+
+  //////////////////////////////
+  // PLAN EXECUTION
+  //////////////////////////////
+
+  private async executePlan(
+    event: PresidentEvent,
+    plan: ExecutionPlan,
+  ): Promise<void> {
+    /*
+     * This is where Agent 0 becomes the actual master controller.
+     *
+     * Every algorithm is sequential.
+     * Every boundary is all-or-none.
+     */
+
+    for (
+      let i = 0;
+      i < plan.algorithms.length;
+      i++
+    ) {
+      const algorithm =
+        plan.algorithms[i];
+
+      this.assertPipelineNotStopped();
+
+      this.state.currentAlgorithm =
+        algorithm;
+
+      switch (algorithm) {
+        case "ALGORITHM_1":
+          await this.executeAlgorithm1(
+            event as BeginSeasonEvent,
+          );
+          break;
+
+        case "ALGORITHM_2":
+          await this.executeAlgorithm2(
+            event,
+          );
+          break;
+
+        case "ALGORITHM_3":
+          await this.executeAlgorithm3(
+            event,
+          );
+          break;
+
+        case "ALGORITHM_4":
+          /*
+           * Algorithm 4 and 5 are treated as one atomic officiating stage.
+           *
+           * The actual pure module may execute them sequentially.
+           * Agent 0 still controls the boundary.
+           */
+          await this.executeAlgorithm45(
+            event,
+          );
+          break;
+
+        case "ALGORITHM_5":
+          /*
+           * Algorithm 5 is already executed by executeAlgorithm45.
+           *
+           * This branch exists only for explicit orchestration-state clarity.
+           */
+          break;
+
+        default:
+          throw new Agent0Error(
+            "UNKNOWN_ALGORITHM",
+            `Unknown algorithm ${algorithm}.`,
+          );
+      }
+
+      this.assertPipelineNotStopped();
+    }
+  }
+
+  //////////////////////////////
+  // ALGORITHM 1
+  //////////////////////////////
+
+  private async executeAlgorithm1(
+    event: BeginSeasonEvent,
+  ): Promise<void> {
+    this.state.pipelineState =
+      "PREPARING_INPUT";
+
+    const teams =
+      await this.loadAuthoritativeTeams(
+        event.seasonId,
+      );
+
+    const leagues =
+      this.buildAlgorithm1LeagueInput(
+        teams,
+      );
+
+    /*
+     * Agent 0 verifies the league partition BEFORE
+     * handing anything to Algorithm 1.
+     */
+    this.verifyLeaguePartition(
+      leagues,
+    );
+
+    this.state.pipelineState =
+      "RUNNING";
+
+    const output =
+      await this.algorithms.algorithm1(
+        leagues,
+      );
+
+    this.state.pipelineState =
+      "VERIFYING";
+
+    this.verifyAlgorithm1Output(
+      output,
+      leagues,
+      event.seasonId,
+    );
+
+    /*
+     * Translate Algorithm 1 output into DB rows.
+     *
+     * This is not semantic reinterpretation.
+     * It is a strict structural projection into the
+     * exact immutable fixtures schema.
+     */
+    const fixtures =
+      this.flattenAlgorithm1Output(
+        output,
+        leagues,
+        event.seasonId,
+      );
+
+    /*
+     * Atomic persistence gate.
+     */
+    await this.atomicPersistAndVerify({
+      stage: "ALGORITHM_1",
+      expected: {
+        fixtures,
+      },
+      write: {
+        fixtures,
+      },
+    });
+
+    this.state.lastSuccessfulStage =
+      "ALGORITHM_1";
+  }
+
+  //////////////////////////////
+  // ALGORITHM 2
+  //////////////////////////////
+
+  private async executeAlgorithm2(
+    event: PresidentEvent,
+  ): Promise<void> {
+    this.state.pipelineState =
+      "PREPARING_INPUT";
+
+    const fixtures =
+      await this.loadAuthoritativeFixtures(
+        event.seasonId,
+      );
+
+    const existingPlaydays =
+      await this.loadPlaydays(
+        event.seasonId,
+      );
+
+    const matchesPerMatchday =
+      await this.loadMatchdayCapacity(
+        event.seasonId,
+      );
+
+    const signal =
+      this.buildAlgorithm2Signal(
+        event,
+        fixtures,
+        existingPlaydays,
+        matchesPerMatchday,
+      );
+
+    this.state.pipelineState =
+      "RUNNING";
+
+    const output =
+      await this.algorithms.algorithm2(
+        signal,
+      );
+
+    this.state.pipelineState =
+      "VERIFYING";
+
+    this.verifyAlgorithm2Output(
+      output,
+      fixtures,
+      event,
+    );
+
+    const writeSet =
+      this.mapAlgorithm2OutputToDatabase(
+        output,
+        event.seasonId,
+      );
+
+    await this.atomicPersistAndVerify({
+      stage: "ALGORITHM_2",
+      expected: writeSet,
+      write: writeSet,
+    });
+
+    this.state.lastSuccessfulStage =
+      "ALGORITHM_2";
+  }
+
+  //////////////////////////////
+  // ALGORITHM 3
+  //////////////////////////////
+
+  private async executeAlgorithm3(
+    event: PresidentEvent,
+  ): Promise<void> {
+    this.state.pipelineState =
+      "PREPARING_INPUT";
+
+    const current =
+      await this.loadCurrentState(
+        event.seasonId,
+      );
+
+    const signal =
+      this.buildAlgorithm3Signal(
+        event,
+        current,
+      );
+
+    this.state.pipelineState =
+      "RUNNING";
+
+    const output =
+      await this.algorithms.algorithm3(
+        signal,
+      );
+
+    this.state.pipelineState =
+      "VERIFYING";
+
+    this.verifyAlgorithm3Output(
+      output,
+    );
+
+    const writeSet =
+      this.mapAlgorithm3OutputToDatabase(
+        output,
+      );
+
+    /*
+     * Algorithm 3 is operational schedule state.
+     */
+    await this.atomicPersistAndVerify({
+      stage: "ALGORITHM_3",
+      expected: writeSet,
+      write: writeSet,
+    });
+
+    this.state.lastSuccessfulStage =
+      "ALGORITHM_3";
+  }
+
+  //////////////////////////////
+  // ALGORITHM 4 + 5
+  //////////////////////////////
+
+  private async executeAlgorithm45(
+    event: PresidentEvent,
+  ): Promise<void> {
+    this.state.pipelineState =
+      "PREPARING_INPUT";
+
+    const current =
+      await this.loadCurrentState(
+        event.seasonId,
+      );
+
+    const officiatingMatches =
+      this.buildTimeSlottedMatches(
+        current,
+      );
+
+    const referees =
+      await this.loadActiveReferees(
+        event.seasonId,
+      );
+
+    const teams =
+      await this.loadActiveTeams(
+        event.seasonId,
+      );
+
+    this.state.pipelineState =
+      "RUNNING";
+
+    /*
+     * Combined module internally:
+     *
+     * Algorithm 4 → verify → Algorithm 5 → verify.
+     *
+     * It returns one unified output.
+     */
+    const output =
+      await this.algorithms.algorithm4And5(
+        officiatingMatches,
+        referees,
+        teams,
+      );
+
+    this.state.pipelineState =
+      "VERIFYING";
+
+    this.verifyOfficiatingOutput(
+      output,
+      officiatingMatches,
+      referees,
+      teams,
+    );
+
+    const writeSet =
+      this.mapOfficiatingOutputToDatabase(
+        output,
+      );
+
+    /*
+     * IMPORTANT:
+     *
+     * Center referee + linesmen are persisted together.
+     *
+     * We never commit Algorithm 4 without Algorithm 5.
+     */
+    await this.atomicPersistAndVerify({
+      stage: "ALGORITHM_4_5",
+      expected: writeSet,
+      write: writeSet,
+    });
+
+    this.state.lastSuccessfulStage =
+      "ALGORITHM_4_5";
+  }
+
+  //////////////////////////////
+  // ALGORITHM 1 INPUT
+  //////////////////////////////
+
+  private buildAlgorithm1LeagueInput(
+    teams: Array<{
+      teamId: string;
+      leagueId: string;
+      leagueType:
+        | "EPL"
+        | "CHAMPIONSHIP";
+    }>,
+  ): LeagueConfig[] {
+    const epl = teams
+      .filter(
+        (team) =>
+          team.leagueType === "EPL",
+      )
+      .map((team) => team.teamId);
+
+    const championship =
+      teams
+        .filter(
+          (team) =>
+            team.leagueType ===
+            "CHAMPIONSHIP",
+        )
+        .map(
+          (team) =>
+            team.teamId,
+        );
+
+    const result: LeagueConfig[] = [
+      {
+        leagueId:
+          this.resolveLeagueId(
+            teams,
+            "EPL",
+          ),
+
+        leagueType: "EPL",
+
+        teamIds: epl,
+      },
+
+      {
+        leagueId:
+          this.resolveLeagueId(
+            teams,
+            "CHAMPIONSHIP",
+          ),
+
+        leagueType:
+          "CHAMPIONSHIP",
+
+        teamIds:
+          championship,
+      },
+    ];
+
+    return result;
+  }
+
+  private verifyLeaguePartition(
+    leagues: LeagueConfig[],
+  ): void {
+    if (leagues.length !== 2) {
+      throw new Agent0Error(
+        "INVALID_LEAGUE_PARTITION",
+        "Exactly EPL and Championship league inputs are required.",
+      );
+    }
+
+    const seen = new Set<string>();
+
+    for (const league of leagues) {
+      if (!league.leagueId) {
+        throw new Agent0Error(
+          "MISSING_LEAGUE_ID",
+          "League ID is missing.",
+        );
+      }
+
+      if (
+        league.teamIds.length < 2
+      ) {
+        throw new Agent0Error(
+          "INSUFFICIENT_TEAMS",
+          `League ${league.leagueId} has fewer than two teams.`,
+        );
+      }
+
+      for (const teamId of league.teamIds) {
+        if (seen.has(teamId)) {
+          throw new Agent0Error(
+            "CROSS_LEAGUE_TEAM_CONTAMINATION",
+            `Team ${teamId} appears in more than one league.`,
+          );
+        }
+
+        seen.add(teamId);
+      }
+    }
+  }
+
+  //////////////////////////////
+  // ALGORITHM 1 VERIFICATION
+  //////////////////////////////
+
+  private verifyAlgorithm1Output(
+    output: Algorithm1Output,
+    input: LeagueConfig[],
+    seasonId: string,
+  ): void {
+    if (output.status !== "success") {
+      throw new Agent0Error(
+        "ALGORITHM_1_FAILED",
+        "Algorithm 1 did not return success.",
+      );
+    }
+
+    if (
+      !output.data ||
+      typeof output.data !== "object"
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_1_INVALID_OUTPUT",
+        "Algorithm 1 data object is missing.",
+      );
+    }
+
+    for (const league of input) {
+      const data =
+        output.data[league.leagueId];
+
+      if (!data) {
+        throw new Agent0Error(
+          "ALGORITHM_1_LEAGUE_MISSING",
+          `Algorithm 1 did not return league ${league.leagueId}.`,
+        );
+      }
+
+      this.verifyLeg(
+        data.leg_1,
+        league,
+      );
+
+      this.verifyLeg(
+        data.leg_2,
+        league,
+      );
+
+      this.verifyLegMirror(
+        data.leg_1,
+        data.leg_2,
+        league,
+      );
+    }
+
+    /*
+     * Ensure logs contain a successful completion state.
+     */
+    const logs =
+      output.verification_logs.join(
+        "\n",
+      );
+
+    if (
+      !/success/i.test(logs) ||
+      /failed/i.test(logs)
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_1_VERIFICATION_UNTRUSTED",
+        "Algorithm 1 did not provide a clean verification trail.",
+      );
+    }
+
+    void seasonId;
+  }
+
+  private verifyLeg(
+    leg: Array<{
+      home_id: string;
+      away_id: string;
+      match_sequence: number;
+    }>,
+    league: LeagueConfig,
+  ): void {
+    const validTeams =
+      new Set(league.teamIds);
+
+    const seen = new Set<string>();
+
+    for (const match of leg) {
+      if (
+        !validTeams.has(
+          match.home_id,
+        ) ||
+        !validTeams.has(
+          match.away_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_1_CROSS_LEAGUE_FIXTURE",
+          `Fixture references a team outside league ${league.leagueId}.`,
+        );
+      }
+
+      if (
+        match.home_id ===
+        match.away_id
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_1_SELF_PLAY",
+          "Algorithm 1 returned a self-match.",
+        );
+      }
+
+      const unordered = [
+        match.home_id,
+        match.away_id,
+      ]
+        .sort()
+        .join("|");
+
+      if (
+        seen.has(unordered)
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_1_DUPLICATE_MATCHUP",
+          `Duplicate matchup ${unordered}.`,
+        );
+      }
+
+      seen.add(unordered);
+    }
+  }
+
+  private verifyLegMirror(
+    leg1: Array<{
+      home_id: string;
+      away_id: string;
+      match_sequence: number;
+    }>,
+    leg2: Array<{
+      home_id: string;
+      away_id: string;
+      match_sequence: number;
+    }>,
+    league: LeagueConfig,
+  ): void {
+    if (
+      leg1.length !==
+      leg2.length
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_1_LEG_COUNT_MISMATCH",
+        `Leg counts differ for ${league.leagueId}.`,
+      );
+    }
+
+    const expected = new Set(
+      leg1.map(
+        (match) =>
+          `${match.home_id}|${match.away_id}`,
+      ),
+    );
+
+    const actual = new Set(
+      leg2.map(
+        (match) =>
+          `${match.away_id}|${match.home_id}`,
+      ),
+    );
+
+    if (
+      expected.size !==
+      actual.size
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_1_LEG_MIRROR_FAILURE",
+        `Leg 2 is not a complete home/away inverse for ${league.leagueId}.`,
+      );
+    }
+
+    for (
+      const key of expected
+    ) {
+      if (!actual.has(key)) {
+        throw new Agent0Error(
+          "ALGORITHM_1_LEG_MIRROR_FAILURE",
+          `Missing mirrored fixture ${key}.`,
+        );
+      }
+    }
+  }
+
+  //////////////////////////////
+  // ALGORITHM 2 INPUT
+  //////////////////////////////
+
+  private buildAlgorithm2Signal(
+    event: PresidentEvent,
+    fixtures: FixtureRecord[],
+    existingPlaydays: Array<{
+      date: string;
+      mode: "ONE_TIME" | "PERMANENT";
+      active: boolean;
+    }>,
+    capacity: {
+      EPL: number;
+      Championship: number;
+    },
+  ): Algorithm2AgentSignal {
+    let changeType:
+      | Algorithm2ChangeType;
+
+    switch (event.type) {
+      case "BEGIN_SEASON":
+        changeType =
+          "INITIAL_SCHEDULING";
+        break;
+
+      case "CHANGE_MATCH_CAPACITY":
+        changeType =
+          "MATCH_CAPACITY_CHANGED";
+        break;
+
+      case "ADD_PLAYDAY_ONCE":
+      case "ADD_PLAYDAY_PERMANENT":
+        changeType =
+          "PLAYDAY_ADDED";
+        break;
+
+      case "REMOVE_PLAYDAY_ONCE":
+      case "REMOVE_PLAYDAY_PERMANENT":
+        changeType =
+          "PLAYDAY_REMOVED";
+        break;
+
+      case "CANCEL_MATCHDAY":
+        changeType =
+          "ACTIVE_MATCHDAY_CANCELLED";
+        break;
+
+      default:
+        /*
+         * This should never happen because the execution plan
+         * only calls Algorithm 2 for these events.
+         */
+        throw new Agent0Error(
+          "INVALID_ALGORITHM_2_ROUTING",
+          `Event ${event.type} does not belong to Algorithm 2.`,
+        );
+    }
+
+    const affectedLeagues =
+      this.getAffectedLeagues(
+        event,
+      );
+
+    const playdays =
+      this.applyCalendarEventLocally(
+        existingPlaydays,
+        event,
+      );
+
+    return {
+      signalId:
+        crypto.randomUUID(),
+
+      seasonId:
+        event.seasonId,
+
+      changeType,
+
+      /*
+       * Explicitly request both engines whenever
+       * capacity/calendar changes can alter the date mapping.
+       */
+      requestedOperation:
+        changeType ===
+          "INITIAL_SCHEDULING" ||
+        changeType ===
+          "MATCH_CAPACITY_CHANGED" ||
+        changeType ===
+          "PLAYDAY_ADDED" ||
+        changeType ===
+          "PLAYDAY_REMOVED" ||
+        changeType ===
+          "ACTIVE_MATCHDAY_CANCELLED"
+          ? "MATCHDAY_AND_PLAYDAY"
+          : undefined,
+
+      affectedLeagues,
+
+      firstPlayday:
+        event.type ===
+          "BEGIN_SEASON"
+          ? event.seasonStartDate
+          : undefined,
+
+      fixtures,
+
+      playdays,
+
+      matchesPerMatchday:
+        capacity,
+
+      cancelledMatchdayNumber:
+        event.type ===
+        "CANCEL_MATCHDAY"
+          ? event.matchdayNumber
+          : undefined,
+    };
+  }
+
+  //////////////////////////////
+  // ALGORITHM 2 VERIFICATION
+  //////////////////////////////
+
+  private verifyAlgorithm2Output(
+    output: Algorithm2Output,
+    fixtures: FixtureRecord[],
+    event: PresidentEvent,
+  ): void {
+    if (
+      output.status !==
+      "success"
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_2_FAILED",
+        "Algorithm 2 returned a non-success status.",
+      );
+    }
+
+    if (
+      output.execution.cycle_number !==
+      1
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_2_MULTIPLE_CYCLES",
+        "Algorithm 2 violated the one-cycle rule.",
+      );
+    }
+
+    const mutations =
+      output.database.mutations;
+
+    if (
+      mutations.length !==
+      output.database.expected_update_count
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_2_MUTATION_COUNT_MISMATCH",
+        "Mutation count does not match expected update count.",
+      );
+    }
+
+    const fixtureIds =
+      new Set(
+        fixtures.map(
+          (fixture) =>
+            fixture.fixtureId,
+        ),
+      );
+
+    const seen =
+      new Set<string>();
+
+    for (
+      const mutation of mutations
+    ) {
+      if (
+        !fixtureIds.has(
+          mutation.fixtureId,
+        )
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_2_UNKNOWN_FIXTURE",
+          `Mutation references unknown fixture ${mutation.fixtureId}.`,
+        );
+      }
+
+      if (
+        seen.has(
+          mutation.fixtureId,
+        )
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_2_DUPLICATE_MUTATION",
+          `Fixture ${mutation.fixtureId} mutated more than once.`,
+        );
+      }
+
+      seen.add(
+        mutation.fixtureId,
+      );
+    }
+
+    /*
+     * If the change targets a single league, Agent 0 independently
+     * confirms that the other league remains preserved.
+     */
+    const affected =
+      new Set(
+        this.getAffectedLeagues(
+          event,
+        ),
+      );
+
+    if (
+      affected.size === 1
+    ) {
+      for (
+        const fixture of fixtures
+      ) {
+        if (
+          !affected.has(
+            fixture.leagueId,
+          )
+        ) {
+          const mutated =
+            seen.has(
+              fixture.fixtureId,
+            );
+
+          if (mutated) {
+            throw new Agent0Error(
+              "ALGORITHM_2_UNAFFECTED_LEAGUE_MUTATED",
+              `Unaffected fixture ${fixture.fixtureId} was mutated.`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  //////////////////////////////
+  // ALGORITHM 3 VERIFICATION
+  //////////////////////////////
+
+  private verifyAlgorithm3Output(
+    output: Algorithm3Output,
+  ): void {
+    if (
+      output.status !==
+      "success"
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_3_FAILED",
+        "Algorithm 3 returned failure.",
+      );
+    }
+
+    if (
+      output.cycle_count !==
+      1
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_3_MULTIPLE_CYCLES",
+        "Algorithm 3 violated the one-cycle rule.",
+      );
+    }
+
+    if (!output.stopped) {
+      throw new Agent0Error(
+        "ALGORITHM_3_NOT_STOPPED",
+        "Algorithm 3 did not return a terminal state.",
+      );
+    }
+
+    if (
+      !output.verification.passed
+    ) {
+      throw new Agent0Error(
+        "ALGORITHM_3_VERIFICATION_FAILED",
+        "Algorithm 3 internal verification failed.",
+      );
+    }
+
+    const allocations =
+      output.database_operations
+        .allocations;
+
+    const seen =
+      new Set<string>();
+
+    for (
+      const allocation of allocations
+    ) {
+      if (
+        seen.has(
+          allocation.match_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_3_DUPLICATE_ALLOCATION",
+          `Duplicate allocation for ${allocation.match_id}.`,
+        );
+      }
+
+      seen.add(
+        allocation.match_id,
+      );
+
+      if (
+        !allocation.pitch_id ||
+        !allocation.start_time ||
+        !allocation.end_time
+      ) {
+        throw new Agent0Error(
+          "ALGORITHM_3_INCOMPLETE_ALLOCATION",
+          `Allocation for ${allocation.match_id} is incomplete.`,
+        );
+      }
+    }
+  }
+
+  //////////////////////////////
+  // ALGORITHM 4 + 5 VERIFICATION
+  //////////////////////////////
+
+  private verifyOfficiatingOutput(
+    output: OfficiatingOutput,
+    matches: TimeSlottedMatch[],
+    referees: RefereeInput[],
+    teams: TeamInput[],
+  ): void {
+    if (
+      output.status !==
+      "success"
+    ) {
+      throw new Agent0Error(
+        "OFFICIATING_FAILED",
+        "Algorithm 4/5 returned a non-success status.",
+      );
+    }
+
+    if (
+      output.assignments.length !==
+      matches.length
+    ) {
+      throw new Agent0Error(
+        "OFFICIATING_ASSIGNMENT_COUNT_MISMATCH",
+        "Not every match received an officiating assignment.",
+      );
+    }
+
+    const matchIds =
+      new Set(
+        matches.map(
+          (match) =>
+            match.match_id,
+        ),
+      );
+
+    const refereeIds =
+      new Set(
+        referees.map(
+          (referee) =>
+            referee.referee_id,
+        ),
+      );
+
+    const teamIds =
+      new Set(
+        teams.map(
+          (team) =>
+            team.team_id,
+        ),
+      );
+
+    const seen =
+      new Set<string>();
+
+    for (
+      const assignment of output.assignments
+    ) {
+      if (
+        seen.has(
+          assignment.match_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_DUPLICATE_MATCH",
+          `Duplicate officiating assignment for ${assignment.match_id}.`,
+        );
+      }
+
+      seen.add(
+        assignment.match_id,
+      );
+
+      if (
+        !matchIds.has(
+          assignment.match_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_UNKNOWN_MATCH",
+          `Unknown match ${assignment.match_id}.`,
+        );
+      }
+
+      if (
+        !assignment.center_referee_id
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_MISSING_REFEREE",
+          `Match ${assignment.match_id} has no center referee.`,
+        );
+      }
+
+      if (
+        !refereeIds.has(
+          assignment.center_referee_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_UNKNOWN_REFEREE",
+          `Unknown referee ${assignment.center_referee_id}.`,
+        );
+      }
+
+      if (
+        !assignment.linesman_team_a_id ||
+        !assignment.linesman_team_b_id
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_MISSING_LINESMEN",
+          `Match ${assignment.match_id} lacks two linesmen.`,
+        );
+      }
+
+      if (
+        !teamIds.has(
+          assignment.linesman_team_a_id,
+        ) ||
+        !teamIds.has(
+          assignment.linesman_team_b_id,
+        )
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_UNKNOWN_LINE_TEAM",
+          `Match ${assignment.match_id} references an unknown linesman team.`,
+        );
+      }
+
+      if (
+        assignment.linesman_team_a_id ===
+        assignment.linesman_team_b_id
+      ) {
+        throw new Agent0Error(
+          "OFFICIATING_DUPLICATE_LINESMAN_TEAM",
+          `Match ${assignment.match_id} uses the same linesman twice.`,
+        );
+      }
+    }
+  }
+
+  //////////////////////////////
+  // DATABASE ATOMIC GATE
+  //////////////////////////////
+
+  private async atomicPersistAndVerify(
+    args: {
+      stage:
+        | "ALGORITHM_1"
+        | "ALGORITHM_2"
+        | "ALGORITHM_3"
+        | "ALGORITHM_4_5";
+
+      expected: DatabaseWriteSet;
+
+      write: DatabaseWriteSet;
+    },
+  ): Promise<void> {
+    /*
+     * ALL OR NONE starts here.
+     */
+
+    this.state.pipelineState =
+      "PREPARING_DATABASE_WRITE";
+
+    this.validateWriteSet(
+      args.stage,
+      args.write,
+    );
+
+    const transaction =
+      await this.db.beginTransaction();
+
+    try {
+      this.state.pipelineState =
+        "DATABASE_TRANSACTION";
+
+      await transaction.write(
+        args.write,
+      );
+
+      this.state.pipelineState =
+        "READ_BACK";
+
+      const actual =
+        await transaction.readBack();
+
+      this.state.pipelineState =
+        "VERIFYING_DATABASE";
+
+      this.verifyDatabaseState(
+        args.expected,
+        actual,
+      );
+
+      /*
+       * Repository transaction implementation should commit
+       * after successful verification.
+       *
+       * Since the generic interface exposes no explicit commit()
+       * method, the transaction's successful completion is treated
+       * as its commit boundary.
+       */
+    } catch (error) {
+      await transaction.rollback();
+
+      throw new Agent0Error(
+        "DATABASE_TRANSACTION_FAILED",
+        this.describeError(
+          error,
+        ),
+        {
+          cause:
+            error instanceof Error
+              ? error.message
+              : String(error),
+          stage:
+            args.stage,
+        },
+      );
+    }
+  }
+
+  private validateWriteSet(
+    stage:
+      | "ALGORITHM_1"
+      | "ALGORITHM_2"
+      | "ALGORITHM_3"
+      | "ALGORITHM_4_5",
+    write: DatabaseWriteSet,
+  ): void {
+    switch (stage) {
+      case "ALGORITHM_1":
+        if (
+          !write.fixtures ||
+          write.fixtures.length === 0
+        ) {
+          throw new Agent0Error(
+            "EMPTY_ALGORITHM_1_WRITE",
+            "Algorithm 1 produced no fixtures.",
+          );
+        }
+        break;
+
+      case "ALGORITHM_2":
+        if (
+          !write.matchdays
+        ) {
+          throw new Agent0Error(
+            "INVALID_ALGORITHM_2_WRITE",
+            "Algorithm 2 write set is missing matchdays.",
+          );
+        }
+        break;
+
+      case "ALGORITHM_3":
+        if (
+          !write.matchAssignments
+        ) {
+          throw new Agent0Error(
+            "INVALID_ALGORITHM_3_WRITE",
+            "Algorithm 3 write set is missing match assignments.",
+          );
+        }
+        break;
+
+      case "ALGORITHM_4_5":
+        if (
+          !write.matchAssignments
+        ) {
+          throw new Agent0Error(
+            "INVALID_ALGORITHM_4_5_WRITE",
+            "Officiating write set is missing match assignments.",
+          );
+        }
+        break;
+    }
+  }
+
+  //////////////////////////////
+  // DATABASE READ-BACK
+  //////////////////////////////
+
+  private verifyDatabaseState(
+    expected: DatabaseWriteSet,
+    actual: DatabaseSnapshot,
+  ): void {
+    if (
+      expected.fixtures
+    ) {
+      this.verifyFixturePersistence(
+        expected.fixtures,
+        actual.fixtures,
+      );
+    }
+
+    if (
+      expected.matchdays
+    ) {
+      this.verifyMatchdayPersistence(
+        expected.matchdays,
+        actual.matchdays,
+      );
+    }
+
+    if (
+      expected.matchAssignments
+    ) {
+      this.verifyAssignmentPersistence(
+        expected.matchAssignments,
+        actual.matchAssignments,
+      );
+    }
+  }
+
+  private verifyFixturePersistence(
+    expected: FixtureRecord[],
+    actual: FixtureRecord[],
+  ): void {
+    const actualMap =
+      new Map(
+        actual.map(
+          (row) => [
+            row.fixtureId,
+            row,
+          ],
+        ),
+      );
+
+    for (
+      const fixture of expected
+    ) {
+      const persisted =
+        actualMap.get(
+          fixture.fixtureId,
+        );
+
+      if (!persisted) {
+        throw new Agent0Error(
+          "FIXTURE_READBACK_MISSING",
+          `Fixture ${fixture.fixtureId} is missing after database write.`,
+        );
+      }
+
+      this.assertExactEqual(
+        fixture.seasonId,
+        persisted.seasonId,
+        "seasonId",
+        fixture.fixtureId,
+      );
+
+      this.assertExactEqual(
+        fixture.leagueId,
+        persisted.leagueId,
+        "leagueId",
+        fixture.fixtureId,
+      );
+
+      this.assertExactEqual(
+        fixture.homeId,
+        persisted.homeId,
+        "homeId",
+        fixture.fixtureId,
+      );
+
+      this.assertExactEqual(
+        fixture.awayId,
+        persisted.awayId,
+        "awayId",
+        fixture.fixtureId,
+      );
+
+      this.assertExactEqual(
+        fixture.leg,
+        persisted.leg,
+        "leg",
+        fixture.fixtureId,
+      );
+
+      this.assertExactEqual(
+        fixture.matchSequence,
+        persisted.matchSequence,
+        "matchSequence",
+        fixture.fixtureId,
+      );
+    }
+  }
+
+  private verifyMatchdayPersistence(
+    expected: MatchdayRecord[],
+    actual: MatchdayRecord[],
+  ): void {
+    const actualMap =
+      new Map(
+        actual.map(
+          (row) => [
+            row.matchdayId,
+            row,
+          ],
+        ),
+      );
+
+    for (
+      const row of expected
+    ) {
+      const persisted =
+        actualMap.get(
+          row.matchdayId,
+        );
+
+      if (!persisted) {
+        throw new Agent0Error(
+          "MATCHDAY_READBACK_MISSING",
+          `Matchday ${row.matchdayId} is missing after write.`,
+        );
+      }
+
+      this.assertExactEqual(
+        row.seasonId,
+        persisted.seasonId,
+        "seasonId",
+        row.matchdayId,
+      );
+
+      this.assertExactEqual(
+        row.matchdayNumber,
+        persisted.matchdayNumber,
+        "matchdayNumber",
+        row.matchdayId,
+      );
+
+      this.assertExactEqual(
+        row.playDate,
+        persisted.playDate,
+        "playDate",
+        row.matchdayId,
+      );
+    }
+  }
+
+  private verifyAssignmentPersistence(
+    expected: MatchAssignmentRecord[],
+    actual: MatchAssignmentRecord[],
+  ): void {
+    const actualMap =
+      new Map(
+        actual.map(
+          (row) => [
+            row.fixtureId,
+            row,
+          ],
+        ),
+      );
+
+    for (
+      const row of expected
+    ) {
+      const persisted =
+        actualMap.get(
+          row.fixtureId,
+        );
+
+      if (!persisted) {
+        throw new Agent0Error(
+          "ASSIGNMENT_READBACK_MISSING",
+          `Assignment ${row.fixtureId} is missing after write.`,
+        );
+      }
+
+      this.assertExactEqual(
+        row.matchdayId,
+        persisted.matchdayId,
+        "matchdayId",
+        row.fixtureId,
+      );
+
+      this.assertExactEqual(
+        row.playDate,
+        persisted.playDate,
+        "playDate",
+        row.fixtureId,
+      );
+
+      this.assertExactEqual(
+        row.pitchId,
+        persisted.pitchId,
+        "pitchId",
+        row.fixtureId,
+      );
+
+      this.assertExactEqual(
+        row.startTime,
+        persisted.startTime,
+        "startTime",
+        row.fixtureId,
+      );
+
+      this.assertExactEqual(
+        row.endTime,
+        persisted.endTime,
+        "endTime",
+        row.fixtureId,
+      );
+    }
+  }
+
+  //////////////////////////////
+  // OUTPUT → DATABASE MAPPING
+  //////////////////////////////
+
+  private flattenAlgorithm1Output(
+    output: Algorithm1Output,
+    leagues: LeagueConfig[],
+    seasonId: string,
+  ): FixtureRecord[] {
+    const rows: FixtureRecord[] = [];
+
+    let generatedIdCounter = 0;
+
+    for (
+      const league of leagues
+    ) {
+      const data =
+        output.data[league.leagueId];
+
+      for (
+        const leg of [1, 2] as const
+      ) {
+        const fixtures =
+          leg === 1
+            ? data.leg_1
+            : data.leg_2;
+
+        for (
+          const fixture of fixtures
+        ) {
+          generatedIdCounter += 1;
+
+          rows.push({
+            /*
+             * IMPORTANT:
+             *
+             * In the real implementation, use an ID generated
+             * before Algorithm 1 or a deterministic ID contract
+             * agreed with Algorithm 1.
+             *
+             * This placeholder is deliberately centralized.
+             */
+            fixtureId:
+              this.buildFixtureIdentity(
+                seasonId,
+                league.leagueId,
+                leg,
+                fixture.match_sequence,
+                generatedIdCounter,
+              ),
+
+            seasonId,
+
+            leagueId:
+              league.leagueId,
+
+            homeId:
+              fixture.home_id,
+
+            awayId:
+              fixture.away_id,
+
+            leg,
+
+            matchSequence:
+              fixture.match_sequence,
+          });
+        }
+      }
+    }
+
+    return rows;
+  }
+
+  private mapAlgorithm2OutputToDatabase(
+    output: Algorithm2Output,
+    seasonId: string,
+  ): DatabaseWriteSet {
+    /*
+     * Agent 0 does not "fix" Algorithm 2 output.
+     *
+     * It performs a strict projection.
+     */
+    const mutations =
+      output.database.mutations;
+
+    const groups =
+      new Map<string, MatchdayRecord>();
+
+    for (
+      const mutation of mutations
+    ) {
+      const matchdayId =
+        `${seasonId}:MD:${mutation.matchdayNumber}`;
+
+      let group =
+        groups.get(matchdayId);
+
+      if (!group) {
+        group = {
+          matchdayId,
+          seasonId,
+          matchdayNumber:
+            mutation.matchdayNumber,
+          playDate:
+            mutation.playday,
+          fixtureIds: [],
+        };
+
+        groups.set(
+          matchdayId,
+          group,
+        );
+      }
+
+      group.fixtureIds.push(
+        mutation.fixtureId,
+      );
+    }
+
+    return {
+      matchdays:
+        [...groups.values()],
+
+      /*
+       * matchday_matches would normally be a separate table.
+       * This DTO can be split by the repository adapter into
+       * matchdays + matchday_matches atomically.
+       */
+    };
+  }
+
+  private mapAlgorithm3OutputToDatabase(
+    output: Algorithm3Output,
+  ): DatabaseWriteSet {
+    return {
+      matchAssignments:
+        output.database_operations.allocations.map(
+          (row) => ({
+            fixtureId:
+              row.match_id,
+
+            matchdayId:
+              `${row.matchday_number}`,
+
+            playDate:
+              row.play_date,
+
+            pitchId:
+              row.pitch_id,
+
+            slotId:
+              String(row.slot_number),
+
+            startTime:
+              row.start_time,
+
+            endTime:
+              row.end_time,
+
+            allocationStatus:
+              row.status,
+
+            spillover:
+              false,
+          }),
+        ),
+    };
+  }
+
+  private mapOfficiatingOutputToDatabase(
+    output: OfficiatingOutput,
+  ): DatabaseWriteSet {
+    /*
+     * In production, this should UPDATE the existing
+     * match_assignments rows in the SAME atomic transaction
+     * that Agent 0 uses for Algorithm 4 + 5.
+     */
+    return {
+      matchAssignments:
+        output.assignments.map(
+          (row) => ({
+            fixtureId:
+              row.match_id,
+
+            matchdayId: "",
+
+            playDate: "",
+
+            pitchId: "",
+
+            slotId: "",
+
+            startTime: "",
+
+            endTime: "",
+
+            allocationStatus:
+              "OFFICIATING_ASSIGNED",
+
+            spillover:
+              false,
+          }),
+        ),
+    };
+  }
+
+  //////////////////////////////
+  // CURRENT STATE BUILDERS
+  //////////////////////////////
+
+  private async loadCurrentState(
+    seasonId: string,
+  ): Promise<DatabaseSnapshot> {
+    /*
+     * The repository abstraction should implement this
+     * using the real DB.
+     *
+     * Kept here as a single state-loading boundary.
+     */
+    const transaction =
+      await this.db.beginTransaction();
+
+    try {
+      const snapshot =
+        await transaction.readBack();
+
+      await transaction.rollback();
+
+      void seasonId;
+
+      return snapshot;
+    } catch (error) {
+      await transaction.rollback();
+
+      throw new Agent0Error(
+        "STATE_LOAD_FAILED",
+        this.describeError(
+          error,
+        ),
+      );
+    }
+  }
+
+  private async loadAuthoritativeTeams(
+    _seasonId: string,
+  ): Promise<
+    Array<{
+      teamId: string;
+      leagueId: string;
+      leagueType:
+        | "EPL"
+        | "CHAMPIONSHIP";
+    }>
+  > {
+    /*
+     * Repository-specific implementation belongs here.
+     */
+    return [];
+  }
+
+  private async loadAuthoritativeFixtures(
+    _seasonId: string,
+  ): Promise<FixtureRecord[]> {
+    return [];
+  }
+
+  private async loadPlaydays(
+    _seasonId: string,
+  ): Promise<
+    Array<{
+      date: string;
+      mode: "ONE_TIME" | "PERMANENT";
+      active: boolean;
+    }>
+  > {
+    return [];
+  }
+
+  private async loadMatchdayCapacity(
+    _seasonId: string,
+  ): Promise<{
+    EPL: number;
+    Championship: number;
+  }> {
+    return {
+      EPL: 3,
+      Championship: 3,
+    };
+  }
+
+  private async loadActiveReferees(
+    _seasonId: string,
+  ): Promise<RefereeInput[]> {
+    return [];
+  }
+
+  private async loadActiveTeams(
+    _seasonId: string,
+  ): Promise<TeamInput[]> {
+    return [];
+  }
+
+  //////////////////////////////
+  // ALGORITHM 3 SIGNAL BUILDER
+  //////////////////////////////
+
+  private buildAlgorithm3Signal(
+    event: PresidentEvent,
+    state: DatabaseSnapshot,
+  ): Algorithm3AgentSignal {
+    const pitches =
+      this.buildPitchState(event);
+
+    const matchdays =
+      this.buildMatchdayInput(
+        state,
+      );
+
+    return {
+      runId:
+        crypto.randomUUID(),
+
+      seasonId:
+        event.seasonId,
+
+      changeType:
+        this.toAlgorithm3ChangeType(
+          event,
+        ),
+
+      matchdays,
+
+      pitches,
+
+      timeConfiguration:
+        this.extractTimeConfiguration(
+          event,
+        ),
+
+      existingAllocations:
+        state.matchAssignments,
+    };
+  }
+
+  //////////////////////////////
+  // VARIABLE TRANSLATION
+  //////////////////////////////
+
+  private getAffectedLeagues(
+    event: PresidentEvent,
+  ): string[] {
+    if (
+      event.type ===
+      "CHANGE_MATCH_CAPACITY"
+    ) {
+      const result: string[] = [];
+
+      if (
+        event.eplMatchesPerMatchday !==
+        undefined
+      ) {
+        result.push(
+          this.getEplLeagueId(),
+        );
+      }
+
+      if (
+        event.championshipMatchesPerMatchday !==
+        undefined
+      ) {
+        result.push(
+          this.getChampionshipLeagueId(),
+        );
+      }
+
+      if (
+        result.length === 0
+      ) {
+        throw new Agent0Error(
+          "NO_AFFECTED_LEAGUE",
+          "Capacity change contains no affected league.",
+        );
+      }
+
+      return result;
+    }
+
+    /*
+     * Calendar changes affect both leagues unless a later
+     * domain rule narrows them.
+     */
+    return [
+      this.getEplLeagueId(),
+      this.getChampionshipLeagueId(),
+    ];
+  }
+
+  private applyCalendarEventLocally(
+    existing: Array<{
+      date: string;
+      mode: "ONE_TIME" | "PERMANENT";
+      active: boolean;
+    }>,
+    event: PresidentEvent,
+  ): Array<{
+    date: string;
+    mode: "ONE_TIME" | "PERMANENT";
+    active: boolean;
+  }> {
+    const next =
+      existing.map(
+        (item) => ({ ...item }),
+      );
+
+    if (
+      event.type ===
+        "ADD_PLAYDAY_ONCE" ||
+      event.type ===
+        "ADD_PLAYDAY_PERMANENT"
+    ) {
+      const mode =
+        event.type ===
+        "ADD_PLAYDAY_ONCE"
+          ? "ONE_TIME"
+          : "PERMANENT";
+
+      const duplicate =
+        next.some(
+          (item) =>
+            item.date ===
+              event.date &&
+            item.active,
+        );
+
+      if (duplicate) {
+        throw new Agent0Error(
+          "DUPLICATE_PLAYDAY",
+          `Playday ${event.date} already exists.`,
+        );
+      }
+
+      next.push({
+        date:
+          event.date,
+        mode,
+        active: true,
+      });
+    }
+
+    if (
+      event.type ===
+        "REMOVE_PLAYDAY_ONCE" ||
+      event.type ===
+        "REMOVE_PLAYDAY_PERMANENT"
+    ) {
+      const item =
+        next.find(
+          (candidate) =>
+            candidate.date ===
+            event.date &&
+            candidate.active,
+        );
+
+      if (!item) {
+        throw new Agent0Error(
+          "PLAYDAY_NOT_FOUND",
+          `Playday ${event.date} does not exist.`,
+        );
+      }
+
+      item.active = false;
+    }
+
+    return next;
+  }
+
+  private buildPitchState(
+    event: PresidentEvent,
+  ): PitchState[] {
+    /*
+     * In production this is loaded from the authoritative DB
+     * and the event is applied to that in-memory state.
+     *
+     * Exactly three pitches are permitted.
+     */
+    const pitches =
+      this.defaultThreePitchState();
+
+    if (
+      event.type ===
+      "CHANGE_PITCH_STATE"
+    ) {
+      const pitch =
+        pitches.find(
+          (item) =>
+            item.pitchId ===
+            event.pitchId,
+        );
+
+      if (!pitch) {
+        throw new Agent0Error(
+          "UNKNOWN_PITCH",
+          `Unknown pitch ${event.pitchId}.`,
+        );
+      }
+
+      pitch.amAvailable =
+        event.amAvailable;
+
+      pitch.pmAvailable =
+        event.pmAvailable;
+    }
+
+    return pitches;
+  }
+
+  private extractTimeConfiguration(
+    event: PresidentEvent,
+  ): {
+    EPL?: TimeSlotConfig[];
+    Championship?: TimeSlotConfig[];
+  } {
+    if (
+      event.type ===
+      "CHANGE_TIME_CONFIGURATION"
+    ) {
+      return {
+        EPL:
+          event.eplSlots,
+
+        Championship:
+          event.championshipSlots,
+      };
+    }
+
+    return {};
+  }
+
+  //////////////////////////////
+  // CONVERTERS
+  //////////////////////////////
+
+  private buildMatchdayInput(
+    state: DatabaseSnapshot,
+  ): Algorithm3AgentSignal["matchdays"] {
+    /*
+     * Production repository should supply the actual fixture/team
+     * relations. This centralized conversion boundary makes sure
+     * Algorithm 3 receives its exact contract.
+     */
+    return state.matchdays.map(
+      (matchday) => ({
+        matchdayNumber:
+          matchday.matchdayNumber,
+
+        playDate:
+          matchday.playDate,
+
+        playable: true,
+
+        matches:
+          matchday.fixtureIds.map(
+            (fixtureId) => ({
+              match_id:
+                fixtureId,
+
+              league_id:
+                this.inferLeagueFromFixture(
+                  fixtureId,
+                  state,
+                ),
+
+              home_id:
+                this.getFixture(
+                  fixtureId,
+                  state,
+                ).homeId,
+
+              away_id:
+                this.getFixture(
+                  fixtureId,
+                  state,
+                ).awayId,
+
+              status:
+                "scheduled",
+
+              matchday_number:
+                matchday.matchdayNumber,
+            }),
+          ),
+      }),
+    );
+  }
+
+  private buildTimeSlottedMatches(
+    state: DatabaseSnapshot,
+  ): TimeSlottedMatch[] {
+    return state.matchAssignments
+      .filter(
+        (assignment) =>
+          assignment.allocationStatus !==
+          "COMPLETED",
+      )
+      .map(
+        (assignment) => {
+          const fixture =
+            this.getFixture(
+              assignment.fixtureId,
+              state,
+            );
+
+          return {
+            match_id:
+              assignment.fixtureId,
+
+            league_type:
+              this.inferLeagueType(
+                fixture.leagueId,
+              ),
+
+            home_team_id:
+              fixture.homeId,
+
+            away_team_id:
+              fixture.awayId,
+
+            start_time:
+              assignment.startTime,
+
+            end_time:
+              assignment.endTime,
+          };
+        },
+      )
+      .sort(
+        (a, b) =>
+          Date.parse(
+            a.start_time,
+          ) -
+          Date.parse(
+            b.start_time,
+          ),
+      );
+  }
+
+  //////////////////////////////
+  // INCIDENT / FAILURE
+  //////////////////////////////
+
+  private async hardStop(
+    args: {
+      event: PresidentEvent;
+      error: unknown;
+    },
+  ): Promise<void> {
+    this.state.pipelineState =
+      "STOPPED";
+
+    this.state.stopped = true;
+
+    const error =
+      args.error instanceof Agent0Error
+        ? args.error
+        : new Agent0Error(
+            "UNHANDLED_AGENT0_ERROR",
+            this.describeError(
+              args.error,
+            ),
+          );
+
+    const incident: AdminIncident =
+      {
+        incidentId:
+          crypto.randomUUID(),
+
+        seasonId:
+          args.event.seasonId,
+
+        executionId:
+          this.state.executionId,
+
+        stage:
+          this.state.pipelineState,
+
+        algorithm:
+          this.state.currentAlgorithm,
+
+        severity:
+          "CRITICAL",
+
+        errorCode:
+          error.code,
+
+        message:
+          error.message,
+
+        createdAt:
+          new Date().toISOString(),
+
+        details: {
+          eventType:
+            args.event.type,
+
+          lastSuccessfulStage:
+            this.state
+              .lastSuccessfulStage,
+
+          pipelineState:
+            this.state.pipelineState,
+
+          cause:
+            error.details,
+        },
+      };
+
+    await this.admin.notify(
+      incident,
+    );
+
+    /*
+     * Intentionally do not continue.
+     */
+  }
+
+  //////////////////////////////
+  // UTILITIES
+  //////////////////////////////
+
+  private assertPipelineNotStopped(): void {
+    if (
+      this.state.stopped ||
+      this.state.pipelineState ===
+        "STOPPED"
+    ) {
+      throw new Agent0Error(
+        "PIPELINE_ALREADY_STOPPED",
+        "Pipeline is stopped and cannot continue.",
+      );
+    }
+  }
+
+  private validateBeginSeason(
+    event: BeginSeasonEvent,
+  ): void {
+    if (
+      !this.isValidDate(
+        event.seasonStartDate,
+      )
+    ) {
+      throw new Agent0Error(
+        "INVALID_SEASON_START_DATE",
+        "Season start date is invalid.",
+      );
+    }
+  }
+
+  private validateCapacityChange(
+    event: MatchCapacityChangeEvent,
+  ): void {
+    if (
+      event.eplMatchesPerMatchday !==
+        undefined &&
+      (
+        !Number.isInteger(
+          event.eplMatchesPerMatchday,
+        ) ||
+        event.eplMatchesPerMatchday <
+          1
+      )
+    ) {
+      throw new Agent0Error(
+        "INVALID_EPL_CAPACITY",
+        "EPL capacity must be a positive integer.",
+      );
+    }
+
+    if (
+      event.championshipMatchesPerMatchday !==
+        undefined &&
+      (
+        !Number.isInteger(
+          event.championshipMatchesPerMatchday,
+        ) ||
+        event.championshipMatchesPerMatchday <
+          1
+      )
+    ) {
+      throw new Agent0Error(
+        "INVALID_CHAMPIONSHIP_CAPACITY",
+        "Championship capacity must be a positive integer.",
+      );
+    }
+  }
+
+  private validatePlaydayChange(
+    event: PlaydayChangeEvent,
+  ): void {
+    if (
+      !this.isValidDate(
+        event.date,
+      )
+    ) {
+      throw new Agent0Error(
+        "INVALID_PLAYDAY_DATE",
+        `Invalid playday ${event.date}.`,
+      );
+    }
+  }
+
+  private validateTimeConfigurationChange(
+    event: TimeConfigurationChangeEvent,
+  ): void {
+    const configurations = [
+      ...(event.eplSlots ?? []),
+      ...(event.championshipSlots ?? []),
+    ];
+
+    for (
+      const slot of configurations
+    ) {
+      const start =
+        Date.parse(
+          `1970-01-01T${slot.startTime}:00Z`,
+        );
+
+      const end =
+        Date.parse(
+          `1970-01-01T${slot.endTime}:00Z`,
+        );
+
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        end <= start
+      ) {
+        throw new Agent0Error(
+          "INVALID_TIME_CONFIGURATION",
+          `Invalid slot ${slot.slotId}.`,
+        );
+      }
+    }
+  }
+
+  private isValidDate(
+    value: string,
+  ): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(
+      value,
+    );
+  }
+
+  private isValidISODateTime(
+    value: string,
+  ): boolean {
+    return Number.isFinite(
+      Date.parse(value),
+    );
+  }
+
+  private resolveLeagueId(
+    teams: Array<{
+      teamId: string;
+      leagueId: string;
+      leagueType:
+        | "EPL"
+        | "CHAMPIONSHIP";
+    }>,
+    leagueType:
+      | "EPL"
+      | "CHAMPIONSHIP",
+  ): string {
+    const ids =
+      new Set(
+        teams
+          .filter(
+            (team) =>
+              team.leagueType ===
+              leagueType,
+          )
+          .map(
+            (team) =>
+              team.leagueId,
+          ),
+      );
+
+    if (ids.size !== 1) {
+      throw new Agent0Error(
+        "LEAGUE_ID_AMBIGUOUS",
+        `Unable to resolve unique league ID for ${leagueType}.`,
+      );
+    }
+
+    return [...ids][0];
+  }
+
+  private getFixture(
+    fixtureId: string,
+    state: DatabaseSnapshot,
+  ): FixtureRecord {
+    const fixture =
+      state.fixtures.find(
+        (row) =>
+          row.fixtureId ===
+          fixtureId,
+      );
+
+    if (!fixture) {
+      throw new Agent0Error(
+        "FIXTURE_NOT_FOUND",
+        `Fixture ${fixtureId} was not found.`,
+      );
+    }
+
+    return fixture;
+  }
+
+  private inferLeagueFromFixture(
+    fixtureId: string,
+    state: DatabaseSnapshot,
+  ): "EPL" | "CHAMPIONSHIP" {
+    return this.inferLeagueType(
+      this.getFixture(
+        fixtureId,
+        state,
+      ).leagueId,
+    );
+  }
+
+  private inferLeagueType(
+    leagueId: string,
+  ): "EPL" | "CHAMPIONSHIP" {
+    if (
+      leagueId ===
+      this.getEplLeagueId()
+    ) {
+      return "EPL";
+    }
+
+    if (
+      leagueId ===
+      this.getChampionshipLeagueId()
+    ) {
+      return "CHAMPIONSHIP";
+    }
+
+    throw new Agent0Error(
+      "UNKNOWN_LEAGUE",
+      `Unknown league ID ${leagueId}.`,
+    );
+  }
+
+  private getEplLeagueId(): string {
+    return (
+      process.env.EPL_LEAGUE_ID ??
+      "11111111-1111-1111-1111-111111111111"
+    );
+  }
+
+  private getChampionshipLeagueId(): string {
+    return (
+      process.env.CHAMPIONSHIP_LEAGUE_ID ??
+      "22222222-2222-2222-2222-222222222222"
+    );
+  }
+
+  private defaultThreePitchState(): PitchState[] {
+    return [
+      {
+        pitchId:
+          process.env.PITCH_1_ID ??
+          "91111111-1111-1111-1111-111111111111",
+        amAvailable: true,
+        pmAvailable: true,
+      },
+      {
+        pitchId:
+          process.env.PITCH_2_ID ??
+          "92222222-2222-2222-2222-222222222222",
+        amAvailable: true,
+        pmAvailable: true,
+      },
+      {
+        pitchId:
+          process.env.PITCH_3_ID ??
+          "93333333-3333-3333-3333-333333333333",
+        amAvailable: true,
+        pmAvailable: true,
+      },
+    ];
+  }
+
+  private toAlgorithm3ChangeType(
+    event: PresidentEvent,
+  ): Algorithm3AgentSignal["changeType"] {
+    switch (event.type) {
+      case "CHANGE_PITCH_STATE":
+        return "PITCH_STATE_CHANGED";
+
+      case "CHANGE_TIME_CONFIGURATION":
+        return "TIME_CONFIGURATION_CHANGED";
+
+      case "CHANGE_MATCH_CAPACITY":
+      case "CANCEL_MATCHDAY":
+        return "MATCHDAY_CHANGED";
+
+      case "ADD_PLAYDAY_ONCE":
+      case "REMOVE_PLAYDAY_ONCE":
+      case "ADD_PLAYDAY_PERMANENT":
+      case "REMOVE_PLAYDAY_PERMANENT":
+        return "PLAYDAY_CONFIGURATION_CHANGED";
+
+      case "BEGIN_SEASON":
+        return "INITIAL_ALLOCATION";
+
+      default:
+        return "SPILLOVER_RECALCULATION";
+    }
+  }
+
+  private buildFixtureIdentity(
+    seasonId: string,
+    leagueId: string,
+    leg: 1 | 2,
+    matchSequence: number,
+    counter: number,
+  ): string {
+    /*
+     * This is the one place that should be replaced by the
+     * authoritative fixture UUID contract if Algorithm 1 itself
+     * generates UUIDs.
+     *
+     * Never use array position as a permanent database identity.
+     */
+    return [
+      seasonId,
+      leagueId,
+      `L${leg}`,
+      matchSequence,
+      counter,
+    ].join(":");
+  }
+
+  private assertExactEqual(
+    expected: unknown,
+    actual: unknown,
+    field: string,
+    id: string,
+  ): void {
+    if (expected !== actual) {
+      throw new Agent0Error(
+        "DATABASE_READBACK_MISMATCH",
+        `Database read-back mismatch for ${id}.${field}. Expected ${String(
+          expected,
+        )}; received ${String(actual)}.`,
+      );
+    }
+  }
+
+  private describeError(
+    error: unknown,
+  ): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
+  }
+}
+
+/* ============================================================================
+ * AGENT 0 ERROR
+ * ========================================================================== */
+
+export class Agent0Error extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "Agent0Error";
+  }
+}

@@ -66,13 +66,20 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenGenerationModal}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-md shadow-emerald-600/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Generate Fixtures Workflow</span>
-        </button>
+        {fixtures.length > 0 ? (
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-black text-xs">
+            <Sparkles className="w-4 h-4 text-blue-500" />
+            <span>Official Schedule Active (Read-Only)</span>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenGenerationModal}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-md shadow-emerald-600/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Generate Fixtures Workflow</span>
+          </button>
+        )}
       </div>
 
       {/* NO SAVED FIXTURES EMPTY STATE */}

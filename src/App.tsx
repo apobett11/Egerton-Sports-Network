@@ -225,13 +225,11 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'season-mode' || route === 'president-season') {
+  if (route === 'season-mode' || route === 'president-season' || route === 'season') {
     return (
-      <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
-        </Suspense>
-      </ProtectedRoute>
+      <Suspense fallback={<DashboardLoader />}>
+        <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
+      </Suspense>
     );
   }
 

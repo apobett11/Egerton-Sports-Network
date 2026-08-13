@@ -13,11 +13,13 @@ export interface AppConfig {
   allowedImageMimeTypes: string[];
 }
 
+const env = typeof import.meta !== 'undefined' ? import.meta.env || {} : {};
+
 export const config: AppConfig = {
-  supabaseUrl: (import.meta.env.VITE_SUPABASE_URL || '').trim(),
-  supabaseAnonKey: (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim(),
-  isProduction: import.meta.env.PROD ?? false,
-  isDevelopment: import.meta.env.DEV ?? true,
+  supabaseUrl: ((env as any).VITE_SUPABASE_URL || '').trim(),
+  supabaseAnonKey: ((env as any).VITE_SUPABASE_ANON_KEY || '').trim(),
+  isProduction: (env as any).PROD ?? false,
+  isDevelopment: (env as any).DEV ?? true,
   enableAuditLogs: true,
   maxUploadSizeBytes: 5 * 1024 * 1024, // 5MB limit
   allowedImageMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],

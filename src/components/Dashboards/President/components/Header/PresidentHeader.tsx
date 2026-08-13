@@ -116,7 +116,7 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
             { id: 'season_engine', label: '1. Season & League', icon: Calendar },
             { id: 'teams', label: '2. Team Approvals', icon: Shield },
             { id: 'referees', label: '3. Referee Setup', icon: UserCheck },
-            { id: 'fixture_engine', label: '4. Fixture Engine', icon: Trophy },
+            { id: 'fixture_engine', label: '4. Season', icon: Trophy },
             { id: 'megaphone', label: '5. Make Announcement', icon: Megaphone }
           ].map((tab) => {
             const Icon = tab.icon;
@@ -165,7 +165,7 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
                   { id: 'season_engine', label: 'League Registration', icon: Calendar },
                   { id: 'teams', label: 'Team Approvals', icon: Shield },
                   { id: 'referees', label: 'Referee Management', icon: UserCheck },
-                  { id: 'fixture_engine', label: 'Fixture Engine', icon: Trophy },
+                  { id: 'fixture_engine', label: 'Season', icon: Trophy },
                   { id: 'megaphone', label: 'Make Announcement', icon: Megaphone },
                   { id: 'registration', label: 'Registration Links', icon: Zap }
                 ].map((item) => {
