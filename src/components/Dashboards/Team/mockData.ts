@@ -1,4 +1,4 @@
-import { Player, Match, StandingEntry, TeamFormEntry, FormationName, PitchNodeCoordinate, TacticalSliders } from './types';
+import { Player, Match, StandingEntry, TeamFormEntry, FormationName, PitchNodeCoordinate, TacticalSliders, PracticeSession } from './types';
 
 export const initialRoster: Player[] = [
     {
