@@ -101,119 +101,123 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       : new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 
     return (
-      <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden select-none space-y-0">
+      <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden select-none space-y-0">
         {/* Table Header: Seamlessly attached to table section */}
-        <div className="bg-slate-100/90 dark:bg-[#141C2E] px-5 py-3.5 border-b border-slate-200/90 dark:border-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <Trophy className={`w-5 h-5 ${badgeColor}`} />
+        <div className="bg-white/80 dark:bg-[#0E1526]/90 px-6 py-4 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20 shadow-xs">
+              <Trophy className={`w-5 h-5 ${badgeColor}`} />
+            </div>
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              <h3 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
                 {title}
               </h3>
-              <p className="text-[11px] font-semibold text-[#D4AF37]">
-                Updated: {latestTimestamp}
+              <p className="text-[11px] font-semibold text-amber-600 dark:text-[#D4AF37]">
+                Live Standings • Updated: {latestTimestamp}
               </p>
             </div>
           </div>
-          <span className="self-start sm:self-auto text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 shadow-xs">
+          <span className="self-start sm:self-auto text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-[#D4AF37] border border-amber-500/30 shadow-xs">
             OFFICIAL LEAGUE TABLE
           </span>
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto p-4 sm:p-6">
           {data.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs font-semibold">
+            <div className="p-8 text-center text-slate-400 text-xs font-semibold bg-white dark:bg-[#090D16] rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
               No completed match statistics available for this league table yet.
             </div>
           ) : (
-            <table className="w-full text-left font-sans text-xs">
-              <thead>
-                <tr className="bg-slate-200/50 dark:bg-[#0F1626] text-slate-500 dark:text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
-                  <th className="py-3 px-2 text-center w-8">#</th>
-                  <th className="py-3 px-1 text-center w-6">Pos</th>
-                  <th className="py-3 px-3">Team</th>
-                  <th className="py-3 px-2 text-center w-8">P</th>
-                  <th className="py-3 px-2 text-center w-8">W</th>
-                  <th className="py-3 px-2 text-center w-8">D</th>
-                  <th className="py-3 px-2 text-center w-8">L</th>
-                  <th className="py-3 px-2 text-center w-10">GF</th>
-                  <th className="py-3 px-2 text-center w-10">GA</th>
-                  <th className="py-3 px-2 text-center w-10">GD</th>
-                  <th className="py-3 px-3 text-center font-black text-[#D4AF37] bg-[#D4AF37]/10 w-12 border-l border-r border-[#D4AF37]/20">Pts</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
-                {data.map((row) => {
-                  const isTop = row.position <= 2;
-                  const isBottom = row.position >= data.length;
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16] overflow-hidden shadow-xs">
+              <table className="w-full text-left font-sans text-xs">
+                <thead>
+                  <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
+                    <th className="py-3.5 px-3 text-center w-8">#</th>
+                    <th className="py-3.5 px-1 text-center w-6">Pos</th>
+                    <th className="py-3.5 px-3">Team</th>
+                    <th className="py-3.5 px-2 text-center w-8">P</th>
+                    <th className="py-3.5 px-2 text-center w-8">W</th>
+                    <th className="py-3.5 px-2 text-center w-8">D</th>
+                    <th className="py-3.5 px-2 text-center w-8">L</th>
+                    <th className="py-3.5 px-2 text-center w-10">GF</th>
+                    <th className="py-3.5 px-2 text-center w-10">GA</th>
+                    <th className="py-3.5 px-2 text-center w-10">GD</th>
+                    <th className="py-3.5 px-3 text-center font-black text-amber-500 dark:text-[#D4AF37] bg-amber-500/10 w-12 border-l border-r border-amber-500/20">Pts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                  {data.map((row) => {
+                    const isTop = row.position <= 2;
+                    const isBottom = row.position >= data.length;
 
-                  let rowClass = 'hover:bg-gray-50 dark:hover:bg-[#252525] transition-colors';
-                  let positionBadgeClass = 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800';
+                    let rowClass = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors';
+                    let positionBadgeClass = 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800';
 
-                  if (isTop) {
-                    rowClass += ' bg-emerald-500/[0.03] dark:bg-emerald-500/[0.015] border-l-4 border-l-emerald-500';
-                    positionBadgeClass = 'text-white bg-emerald-600';
-                  } else if (isBottom) {
-                    rowClass += ' bg-rose-500/[0.03] dark:bg-rose-500/[0.015] border-l-4 border-l-rose-500';
-                    positionBadgeClass = 'text-white bg-rose-600';
-                  }
+                    if (isTop) {
+                      rowClass += ' bg-emerald-500/[0.03] dark:bg-emerald-500/[0.015] border-l-4 border-l-emerald-500';
+                      positionBadgeClass = 'text-white bg-emerald-600';
+                    } else if (isBottom) {
+                      rowClass += ' bg-rose-500/[0.03] dark:bg-rose-500/[0.015] border-l-4 border-l-rose-500';
+                      positionBadgeClass = 'text-white bg-rose-600';
+                    }
 
-                  return (
-                    <tr key={row.teamId} className={rowClass}>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${positionBadgeClass}`}>
-                          {row.position}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-1 text-center">
-                        {row.movement === 'up' && (
-                          <span className="inline-flex items-center text-emerald-500 font-bold" title="Climbed position">
-                            <ArrowUp className="w-3.5 h-3.5" />
+                    return (
+                      <tr key={row.teamId} className={rowClass}>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${positionBadgeClass}`}>
+                            {row.position}
                           </span>
-                        )}
-                        {row.movement === 'down' && (
-                          <span className="inline-flex items-center text-rose-500 font-bold" title="Dropped position">
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </span>
-                        )}
-                        {(!row.movement || row.movement === 'same') && (
-                          <span className="inline-flex items-center text-gray-400" title="Position unchanged">
-                            <Minus className="w-3 h-3" />
-                          </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3 px-2 font-semibold">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={row.teamLogo}
-                            alt={row.teamName}
-                            className="w-5 h-5 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
-                          />
-                          <span className="truncate max-w-[160px]">{row.teamName}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center text-gray-500 dark:text-gray-400">{row.played}</td>
-                      <td className="py-3 px-2 text-center font-bold text-emerald-600">{row.won}</td>
-                      <td className="py-3 px-2 text-center text-gray-400">{row.drawn}</td>
-                      <td className="py-3 px-2 text-center text-rose-500">{row.lost}</td>
-                      <td className="py-3 px-2 text-center text-gray-500">{row.goalsFor}</td>
-                      <td className="py-3 px-2 text-center text-gray-500">{row.goalsAgainst}</td>
-                      <td className="py-3 px-2 text-center font-mono font-bold">
-                        <span className={row.goalDifference > 0 ? 'text-emerald-600 dark:text-emerald-500' : row.goalDifference < 0 ? 'text-rose-600 dark:text-rose-500' : ''}>
-                          {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center font-black text-amber-500 text-sm">
-                        {row.points}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td className="py-3 px-1 text-center">
+                          {row.movement === 'up' && (
+                            <span className="inline-flex items-center text-emerald-500 font-bold" title="Climbed position">
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                          {row.movement === 'down' && (
+                            <span className="inline-flex items-center text-rose-500 font-bold" title="Dropped position">
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                          {(!row.movement || row.movement === 'same') && (
+                            <span className="inline-flex items-center text-slate-400" title="Position unchanged">
+                              <Minus className="w-3 h-3" />
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-2 font-semibold">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={row.teamLogo}
+                              alt={row.teamName}
+                              className="w-5 h-5 rounded-full object-contain bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5"
+                            />
+                            <span className="truncate max-w-[160px] font-bold text-slate-900 dark:text-slate-100">{row.teamName}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center text-slate-500 dark:text-slate-400">{row.played}</td>
+                        <td className="py-3 px-2 text-center font-bold text-emerald-600 dark:text-emerald-400">{row.won}</td>
+                        <td className="py-3 px-2 text-center text-slate-400">{row.drawn}</td>
+                        <td className="py-3 px-2 text-center text-rose-500">{row.lost}</td>
+                        <td className="py-3 px-2 text-center text-slate-500">{row.goalsFor}</td>
+                        <td className="py-3 px-2 text-center text-slate-500">{row.goalsAgainst}</td>
+                        <td className="py-3 px-2 text-center font-mono font-bold">
+                          <span className={row.goalDifference > 0 ? 'text-emerald-600 dark:text-emerald-400' : row.goalDifference < 0 ? 'text-rose-600 dark:text-rose-400' : ''}>
+                            {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-black font-mono text-amber-500 text-sm">
+                          {row.points}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -224,27 +228,26 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               const el = document.getElementById('full-form-tables');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="p-4 bg-slate-100/80 dark:bg-[#0D1322] border-t border-slate-200/90 dark:border-slate-800/90 cursor-pointer group hover:bg-slate-200/60 dark:hover:bg-[#121A2C] transition-colors"
+            className="p-5 bg-white/60 dark:bg-[#0C1220]/90 border-t border-slate-200/80 dark:border-slate-800/80 cursor-pointer group hover:bg-slate-200/40 dark:hover:bg-[#121A2C] transition-colors"
           >
-            <div className="flex items-center justify-between text-xs font-extrabold mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-extrabold mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-slate-900 dark:text-slate-100 font-black tracking-tight uppercase text-[11px]">
                   Recent Team Form (Top 3 Clubs)
                 </span>
               </div>
               <button 
                 type="button"
-                className="text-xs font-black text-slate-950 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-amber-500 hover:from-amber-400 hover:to-amber-500 shadow-md transition-all cursor-pointer flex items-center gap-1 group-hover:scale-105"
+                className="self-start sm:self-auto text-xs font-black text-slate-950 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-[#D4AF37] hover:from-amber-300 hover:to-amber-400 shadow-md transition-all cursor-pointer flex items-center gap-1 group-hover:scale-105 active:scale-95"
               >
                 <span>See All Team Forms</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {data.slice(0, 3).map((team) => {
-                // Determine 4-game recent form for top 3 team
                 const defaultForms: Record<string, string[]> = {
                   '1': ['W', 'W', 'D', 'W'],
                   '2': ['W', 'D', 'W', 'W'],
@@ -253,19 +256,19 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 const last4 = defaultForms[String(team.position)] || ['W', 'W', 'D', 'L'];
 
                 return (
-                  <div key={team.teamId} className="p-3 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs">
-                    <div className="flex items-center gap-2">
-                      <img src={team.teamLogo} alt={team.teamName} className="w-5 h-5 object-contain" />
+                  <div key={team.teamId} className="p-3.5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <img src={team.teamLogo} alt={team.teamName} className="w-5 h-5 object-contain rounded-full" />
                       <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 truncate max-w-[110px]">
                         {team.teamName}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       {last4.map((res, i) => (
                         <span 
                           key={i} 
-                          className={`w-5 h-5 rounded-md flex items-center justify-center font-mono font-black text-[10px] text-white shadow-2xs ${
+                          className={`w-5.5 h-5.5 rounded-md flex items-center justify-center font-mono font-black text-[10px] text-white shadow-2xs ${
                             res === 'W' 
                               ? 'bg-emerald-600' 
                               : res === 'D' 
@@ -288,12 +291,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   };
 
   return (
-    <div className="space-y-10 select-none pb-12">
+    <div className="space-y-12 select-none pb-16 px-3 sm:px-6">
       {/* Dual Competition Header Banner */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
-            <Trophy className="w-6 h-6 text-amber-300" />
+          <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-[#D4AF37] text-slate-950 shadow-sm font-black">
+            <Trophy className="w-6 h-6" />
           </div>
           <div>
             <h2 className="font-black text-xl text-slate-900 dark:text-slate-100 tracking-tight">
@@ -312,7 +315,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               onClick={() => setActiveTab('current')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
                 activeTab === 'current'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-sm font-extrabold'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -332,7 +335,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               <select
                 value={selectedSeasonId}
                 onChange={(e) => setSelectedSeasonId(e.target.value)}
-                className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-xl px-3 py-1"
+                className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-1"
               >
                 {historicalSeasons.map((s) => (
                   <option key={s.seasonId} value={s.seasonId}>
@@ -346,22 +349,22 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       </div>
 
       {/* 1. EGERTON PREMIER LEAGUE TABLE */}
-      <section space-y-4 aria-label="Egerton Premier League Table">
+      <section className="space-y-4" aria-label="Egerton Premier League Table">
         {renderTable('Egerton Premier League Table', eplStandings.length > 0 ? eplStandings : tableData, 'text-emerald-500')}
       </section>
 
       {/* 2. EGERTON CHAMPIONSHIPS TABLE */}
-      <section space-y-4 aria-label="Egerton Championships Table">
+      <section className="space-y-4" aria-label="Egerton Championships Table">
         {renderTable('Egerton Championships Table', champStandings, 'text-amber-500')}
       </section>
 
-      {/* SECTIONS BELOW TABLES (LEVEL 10 FINAL STRUCTURE) */}
-      <div className="pt-6 space-y-10 select-none">
+      {/* SECTIONS BELOW TABLES (LEVEL QUEST ORDER) */}
+      <div className="space-y-12 select-none">
         {/* 1. GOLDEN BOOT (ONE UNIFIED CARD CONTAINING BOTH LEAGUES) */}
-        <div className="p-6 md:p-8 bg-white dark:bg-[#182030] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 space-y-6 shadow-md">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
+        <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
                 <Trophy className="w-6 h-6" />
               </div>
               <div>
@@ -369,11 +372,11 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   Official Golden Boot Leaderboards
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-sans">
-                  Top goalscorers across Egerton Premier League and Egerton Championships
+                  Top goalscorers across Egerton Premier League and Egerton Championships united in one ranking
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-black text-slate-950 uppercase tracking-widest px-3 py-1 rounded-xl bg-gradient-to-r from-[#D4AF37] to-amber-500 shadow-sm">
+            <span className="self-start sm:self-auto text-[10px] font-black text-slate-950 uppercase tracking-widest px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-[#D4AF37] shadow-sm">
               Verified Top Scorers
             </span>
           </div>
@@ -389,12 +392,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 <span className="text-[10px] font-mono text-slate-400">Goals</span>
               </h4>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-slate-50/50 dark:bg-[#0D1322]">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-white dark:bg-[#090D16]">
                 {topScorers.length === 0 ? (
                   <p className="text-xs text-slate-400 p-4">No goal events recorded for Premier League yet.</p>
                 ) : (
                   topScorers.slice(0, 5).map((scorer, idx) => (
-                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-100/60 dark:hover:bg-slate-800/50 transition-colors">
+                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       <div className="flex items-center gap-3">
                         <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
                         <div className="flex flex-col">
@@ -419,12 +422,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 <span className="text-[10px] font-mono text-slate-400">Goals</span>
               </h4>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-slate-50/50 dark:bg-[#0D1322]">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-white dark:bg-[#090D16]">
                 {champTopScorers.length === 0 ? (
                   <p className="text-xs text-slate-400 p-4">No goal events recorded for Championships yet.</p>
                 ) : (
                   champTopScorers.slice(0, 5).map((scorer, idx) => (
-                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-100/60 dark:hover:bg-slate-800/50 transition-colors">
+                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       <div className="flex items-center gap-3">
                         <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
                         <div className="flex flex-col">
@@ -441,12 +444,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </div>
         </div>
 
-        {/* 2. FULL 6-GAME FORM TABLES (EPL & CHAMPIONSHIP) */}
+        {/* 2. FULL 6-GAME FORM TABLES (EPL & CHAMPIONSHIP — POSITION PRESERVING) */}
         <div id="full-form-tables" className="space-y-6 pt-2 select-none">
           <div className="pb-3 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <span className="p-1 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37]">
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 dark:text-[#D4AF37]">
                   <Trophy className="w-4 h-4" />
                 </span>
                 <span>Official Form Tables (Last 6 Matches)</span>
@@ -455,30 +458,30 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 Full 6-game result sequence strictly preserving primary standings position ordering
               </p>
             </div>
-            <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider font-mono">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase tracking-wider font-mono">
               6-Game Window
             </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* EPL Form Table */}
-            <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden space-y-0">
-              <div className="bg-slate-100/90 dark:bg-[#141C2E] px-4 py-3 border-b border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
+            <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden space-y-0 p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#0E1526] px-4 py-3 rounded-t-2xl border-t border-l border-r border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
                 <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>Egerton Premier League — Form Table</span>
                 </h4>
                 <span className="text-[10px] font-mono text-slate-400">Position Order</span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16]">
                 <table className="w-full text-left font-sans text-xs">
                   <thead>
-                    <tr className="bg-slate-200/50 dark:bg-[#0F1626] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
+                    <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
                       <th className="py-2.5 px-3 text-center w-8">Pos</th>
                       <th className="py-2.5 px-2">Club</th>
                       <th className="py-2.5 px-2 text-center w-8">P</th>
                       <th className="py-2.5 px-2 text-center">Form (Last 6 Games)</th>
-                      <th className="py-2.5 px-2 text-center font-black text-[#D4AF37] w-10">Pts</th>
+                      <th className="py-2.5 px-2 text-center font-black text-amber-500 dark:text-[#D4AF37] w-10">Pts</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -486,7 +489,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
 
                       return (
-                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}</td>
                           <td className="py-2.5 px-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
@@ -517,23 +520,23 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             {/* Championship Form Table */}
-            <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden space-y-0">
-              <div className="bg-slate-100/90 dark:bg-[#141C2E] px-4 py-3 border-b border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
+            <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden space-y-0 p-4 sm:p-6">
+              <div className="bg-white dark:bg-[#0E1526] px-4 py-3 rounded-t-2xl border-t border-l border-r border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
                 <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   <span>Egerton Championships — Form Table</span>
                 </h4>
                 <span className="text-[10px] font-mono text-slate-400">Position Order</span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16]">
                 <table className="w-full text-left font-sans text-xs">
                   <thead>
-                    <tr className="bg-slate-200/50 dark:bg-[#0F1626] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
+                    <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
                       <th className="py-2.5 px-3 text-center w-8">Pos</th>
                       <th className="py-2.5 px-2">Club</th>
                       <th className="py-2.5 px-2 text-center w-8">P</th>
                       <th className="py-2.5 px-2 text-center">Form (Last 6 Games)</th>
-                      <th className="py-2.5 px-2 text-center font-black text-[#D4AF37] w-10">Pts</th>
+                      <th className="py-2.5 px-2 text-center font-black text-amber-500 dark:text-[#D4AF37] w-10">Pts</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -541,7 +544,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
 
                       return (
-                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}</td>
                           <td className="py-2.5 px-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
@@ -574,11 +577,11 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
 
         {/* 3. UNIFIED MATCHDAY DISTRIBUTION CARD (TODAY, PER MATCHDAY, ALL TIME) */}
-        <div className="p-6 md:p-8 bg-white dark:bg-[#182030] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 space-y-6 shadow-md">
+        <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-6 shadow-xl">
           <div className="pb-4 border-b border-slate-200/60 dark:border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <span className="p-1 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37]">
+                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 dark:text-[#D4AF37]">
                   <ChevronRight className="w-4 h-4" />
                 </span>
                 <span>Matchday Distribution & League Statistics</span>
@@ -587,14 +590,14 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 Unified statistics breakdown covering current matchday, per-gameweek distributions, and all-time records
               </p>
             </div>
-            <span className="self-start sm:self-auto text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest font-mono">
+            <span className="self-start sm:self-auto text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase tracking-widest font-mono">
               Campus Metrics
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Today / Current Matchday */}
-            <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-[#0D1322] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Today / Current Matchday</span>
               <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">Matchday Active</div>
               <div className="space-y-1.5 text-xs text-slate-500">
@@ -605,7 +608,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             {/* Per Matchday */}
-            <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-[#0D1322] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
               <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Per Matchday Averages</span>
               <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.8 Goals / GW</div>
               <div className="space-y-1.5 text-xs text-slate-500">
@@ -616,12 +619,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             {/* All Time */}
-            <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-[#0D1322] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-              <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest">All Time Campus Records</span>
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+              <span className="text-[10px] font-black text-amber-500 dark:text-[#D4AF37] uppercase tracking-widest">All Time Campus Records</span>
               <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">142 Goals</div>
               <div className="space-y-1.5 text-xs text-slate-500">
                 <div className="flex justify-between"><span>Total Official Fixtures:</span><strong className="text-slate-800 dark:text-slate-200 font-mono">52 Matches</strong></div>
-                <div className="flex justify-between"><span>All-Time Top Scorer:</span><strong className="text-[#D4AF37] font-mono">Brian Ochieng (12)</strong></div>
+                <div className="flex justify-between"><span>All-Time Top Scorer:</span><strong className="text-amber-500 dark:text-[#D4AF37] font-mono">Brian Ochieng (12)</strong></div>
                 <div className="flex justify-between"><span>Most Unbeaten Games:</span><strong className="text-emerald-500 font-mono">Sharklets FC (8)</strong></div>
               </div>
             </div>
@@ -629,7 +632,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
 
         {/* 4. OFFICIAL REFEREE MATCH REPORTS HIGHLIGHTS */}
-        <div className="p-6 md:p-8 bg-white dark:bg-[#182030] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 space-y-5 shadow-sm">
+        <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-5 shadow-xl">
           <div className="pb-3 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight">
@@ -645,7 +648,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0E1424] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-black text-emerald-500 uppercase">Matchday 4 Derby</span>
                 <span className="text-slate-400 font-mono text-[11px]">Ref: Official #102</span>
@@ -658,7 +661,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#0E1424] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-black text-amber-500 uppercase">Championship Matchday 3</span>
                 <span className="text-slate-400 font-mono text-[11px]">Ref: Official #108</span>

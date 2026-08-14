@@ -1284,6 +1284,7 @@ export const ApiService = {
           .from('news_articles')
           .select('*')
           .eq('status', 'published')
+          .order('is_pinned', { ascending: false })
           .order('published_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
@@ -1297,8 +1298,8 @@ export const ApiService = {
           content: item.content,
           imageUrl: item.image_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
           publishedAt: new Date(item.published_at || item.created_at).toLocaleDateString(),
-          author: 'Sports Journalist',
-          authorRole: 'Official Journalist',
+          author: item.author || 'Sports Journalist',
+          authorRole: item.author_role || 'Official Journalist',
           verified: true,
           category: item.category || 'general',
           slug: item.slug

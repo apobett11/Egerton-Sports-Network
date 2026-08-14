@@ -75,8 +75,8 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status 
     }
 
     return (
-        <div className="sticky top-0 z-40 bg-slate-100/90 dark:bg-[#12192B]/95 backdrop-blur-xl border-b border-slate-200/90 dark:border-slate-700/80 select-none shadow-md">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth px-4 sm:px-6 py-2.5 max-w-4xl mx-auto">
+        <div className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B101E]/95 backdrop-blur-2xl border-b border-amber-500/30 dark:border-[#D4AF37]/30 select-none shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-4 sm:px-6 py-2.5 max-w-4xl mx-auto">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
 
@@ -86,10 +86,10 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status 
                             ref={isActive ? activeTabRef : null}
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-xl font-black text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer ${
+                            className={`px-4 py-2 rounded-xl font-black text-xs tracking-wide whitespace-nowrap transition-all duration-200 cursor-pointer ${
                                 isActive
-                                    ? 'bg-gradient-to-r from-[#D4AF37] to-amber-500 text-slate-950 shadow-md shadow-[#D4AF37]/30 ring-2 ring-[#D4AF37] scale-[1.03]'
-                                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-slate-800/80 font-bold'
+                                    ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-[#D4AF37] text-slate-950 shadow-[0_4px_16px_rgba(212,175,55,0.4)] ring-2 ring-amber-400 scale-[1.03]'
+                                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold border border-transparent'
                             }`}
                         >
                             {tab.label}
@@ -100,4 +100,5 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status 
         </div>
     );
 };
+
 

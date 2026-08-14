@@ -3,14 +3,14 @@ import { Shield, Mail, Award, Activity, Heart, ExternalLink, Globe, FileText } f
 
 export const Footer: React.FC = () => {
     return (
-        <footer className="w-full bg-slate-200/90 dark:bg-[#070A14] text-slate-500 dark:text-slate-400 border-t-2 border-[#D4AF37]/50 dark:border-t-2 dark:border-[#D4AF37]/40 py-12 px-6 mt-auto select-none shadow-2xl relative z-20">
+        <footer className="w-full bg-slate-200/95 dark:bg-[#0B101E] text-slate-600 dark:text-slate-400 border-t-2 border-[#D4AF37]/60 dark:border-t-2 dark:border-[#D4AF37]/50 py-12 px-6 mt-auto select-none shadow-[0_-10px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.6)] relative z-20">
             <div className="max-w-7xl mx-auto space-y-10">
                 {/* Main 4-Column Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     {/* Col 1: Branding */}
                     <div className="space-y-3">
                         <div className="flex items-center gap-2.5 font-black text-slate-900 dark:text-slate-100 text-base tracking-tight">
-                            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-sm">
+                            <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-[#D4AF37] text-slate-950 shadow-sm font-black">
                                 <Activity className="w-4 h-4" />
                             </div>
                             <span>Egerton Sports Network</span>
@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
                             The official live scores, fixture scheduling engine, league standings, and athletics portal for Egerton University sports.
                         </p>
-                        <div className="pt-1 flex items-center gap-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <div className="pt-1 flex items-center gap-2 text-[11px] font-bold text-amber-600 dark:text-[#D4AF37]">
                             <Globe className="w-3.5 h-3.5" />
                             <span>sports.egerton.ac.ke</span>
                         </div>
@@ -31,19 +31,19 @@ export const Footer: React.FC = () => {
                         </h4>
                         <ul className="space-y-2 text-xs font-medium">
                             <li>
-                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/scores" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <Award className="w-3.5 h-3.5 text-amber-500" />
                                     <span>Egerton Premier League</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/scores" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <Award className="w-3.5 h-3.5 text-emerald-500" />
                                     <span>Egerton Championships</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="#/scores" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/scores" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <Award className="w-3.5 h-3.5 text-blue-500" />
                                     <span>Campus Champions Cup</span>
                                 </a>
@@ -58,19 +58,19 @@ export const Footer: React.FC = () => {
                         </h4>
                         <ul className="space-y-2 text-xs font-medium">
                             <li>
-                                <a href="#/news" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/news" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <FileText className="w-3.5 h-3.5 text-slate-400" />
                                     <span>Official Match Rules</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="#/home" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/home" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <Shield className="w-3.5 h-3.5 text-slate-400" />
                                     <span>Platform Policies & RLS</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="#/home" className="hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                                <a href="#/home" className="hover:text-amber-500 dark:hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                                     <Mail className="w-3.5 h-3.5 text-slate-400" />
                                     <span>Varsity Health Desk</span>
                                 </a>
@@ -97,7 +97,7 @@ export const Footer: React.FC = () => {
                 </div>
 
                 {/* Bottom Bar: Copyright & Version */}
-                <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
+                <div className="pt-6 border-t border-slate-300 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
                     <div>
                         © {new Date().getFullYear()} Egerton Sports Network • All Rights Reserved
                     </div>
@@ -114,3 +114,4 @@ export const Footer: React.FC = () => {
         </footer>
     );
 };
+
