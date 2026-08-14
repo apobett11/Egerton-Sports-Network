@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Input } from '../../../../common/UIComponents';
-import { CheckCircle2, ChevronRight, ChevronLeft, ArrowLeft, AlertCircle, FileText } from 'lucide-react';
+import { 
+  CheckCircle2, ChevronRight, ChevronLeft, ArrowLeft, 
+  AlertCircle, FileText, ShieldCheck, Trophy 
+} from 'lucide-react';
 import type { Match, MatchStatus } from '../../../../../types';
 import type { GoalEntry, CardEntry, InjuryEntry, PlayerLookupItem, RefereeTab } from '../../types';
 
@@ -29,11 +31,14 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
   setActiveTab,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-
   const [matchState, setMatchState] = useState<MatchStatus>('FT');
 
-  const [scoreHomeStr, setScoreHomeStr] = useState<string>(selectedFixture?.scoreA !== undefined ? String(selectedFixture.scoreA) : '');
-  const [scoreAwayStr, setScoreAwayStr] = useState<string>(selectedFixture?.scoreB !== undefined ? String(selectedFixture.scoreB) : '');
+  const [scoreHomeStr, setScoreHomeStr] = useState<string>(
+    selectedFixture?.scoreA !== undefined ? String(selectedFixture.scoreA) : ''
+  );
+  const [scoreAwayStr, setScoreAwayStr] = useState<string>(
+    selectedFixture?.scoreB !== undefined ? String(selectedFixture.scoreB) : ''
+  );
 
   const [homeGoals, setHomeGoals] = useState<GoalEntry[]>([]);
   const [awayGoals, setAwayGoals] = useState<GoalEntry[]>([]);
@@ -50,6 +55,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [step3Error, setStep3Error] = useState<string | null>(null);
 
+  // Sync goals array size with scores
   useEffect(() => {
     const num = parseInt(scoreHomeStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -100,6 +106,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [scoreAwayStr]);
 
+  // Sync cards arrays
   useEffect(() => {
     const num = parseInt(yellowCountStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -150,6 +157,7 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
     });
   }, [redCountStr]);
 
+  // Sync injuries array
   useEffect(() => {
     const num = parseInt(injuryCountStr, 10);
     const count = isNaN(num) || num < 0 ? 0 : num;
@@ -176,90 +184,74 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
   if (!selectedFixture) {
     return (
-      <section className="bg-[#12171B] border border-slate-800/80 rounded-2xl p-6 shadow-xl text-center">
-        <p className="text-slate-400">Please select a fixture from My Matches to begin match report.</p>
-      </section>
+      <div className="bg-white dark:bg-[#0E1524] border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-3">
+        <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+        <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">No Match Selected</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Please select a fixture from the overview or matches list to begin report entry.</p>
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="px-4 py-2 rounded-xl bg-[#D4AF37] text-slate-950 font-bold text-xs cursor-pointer"
+        >
+          Return to Overview
+        </button>
+      </div>
     );
   }
 
-  const handleJerseyLookup = (
-    numStr: string,
-    squad: PlayerLookupItem[]
-  ): { playerFound: PlayerLookupItem | null; squad: PlayerLookupItem[] } => {
+  // Auto Lookup helper
+  const handleLookupJersey = (numStr: string, squad: PlayerLookupItem[]) => {
     const num = parseInt(numStr, 10);
-    if (isNaN(num)) return { playerFound: null, squad };
-    const startingXI = squad.filter((p) => !p.isSub);
-    const foundInStartingXI = startingXI.find((p) => p.jerseyNumber === num);
-    return { playerFound: foundInStartingXI || null, squad };
+    if (isNaN(num)) return null;
+    return squad.find((p) => p.jerseyNumber === num) || null;
   };
 
-  const handleGoalJerseyChange = (
-    team: 'home' | 'away',
-    index: number,
-    jerseyVal: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const { playerFound } = handleJerseyLookup(jerseyVal, squad);
-    const num = jerseyVal === '' ? '' : parseInt(jerseyVal, 10);
-
+  // 1. Goal Handlers: Jersey Number is primary and auto-populates name; manual name input overrides always
+  const handleGoalJerseyChange = (team: 'home' | 'away', index: number, val: string, squad: PlayerLookupItem[]) => {
+    const found = handleLookupJersey(val, squad);
+    const num = val === '' ? '' : parseInt(val, 10);
     const updateFn = team === 'home' ? setHomeGoals : setAwayGoals;
+
     updateFn((prev) =>
       prev.map((item, idx) => {
         if (idx !== index) return item;
         return {
           ...item,
           jerseyNumber: isNaN(num as number) ? '' : num,
-          playerName: playerFound ? playerFound.name : '',
-          playerId: playerFound ? playerFound.id : undefined,
+          playerName: found ? found.name : item.playerName, // auto-populates name if found
+          playerId: found ? found.id : item.playerId,
         };
       })
     );
   };
 
-  const handleGoalPlayerSelect = (
-    team: 'home' | 'away',
-    index: number,
-    playerId: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const selected = squad.find((p) => p.id === playerId);
+  const handleGoalNameDirectChange = (team: 'home' | 'away', index: number, name: string) => {
     const updateFn = team === 'home' ? setHomeGoals : setAwayGoals;
     updateFn((prev) =>
-      prev.map((item, idx) => {
-        if (idx !== index) return item;
-        return {
-          ...item,
-          playerId: selected?.id,
-          playerName: selected ? selected.name : '',
-          jerseyNumber: selected ? selected.jerseyNumber : item.jerseyNumber,
-        };
-      })
+      prev.map((item, idx) => (idx === index ? { ...item, playerName: name } : item))
     );
   };
 
-  const handleGoalMinuteChange = (team: 'home' | 'away', index: number, minVal: string) => {
-    const num = minVal === '' ? '' : parseInt(minVal, 10);
+  const handleGoalPlayerSelect = (team: 'home' | 'away', index: number, playerId: string, squad: PlayerLookupItem[]) => {
+    const p = squad.find((x) => x.id === playerId);
     const updateFn = team === 'home' ? setHomeGoals : setAwayGoals;
     updateFn((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, minute: isNaN(num as number) ? '' : num } : item))
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              playerId: p?.id,
+              playerName: p ? p.name : item.playerName,
+              jerseyNumber: p ? p.jerseyNumber : item.jerseyNumber,
+            }
+          : item
+      )
     );
   };
 
-  const handleGoalTypeChange = (team: 'home' | 'away', index: number, goalType: 'normal' | 'penalty' | 'own_goal') => {
-    const updateFn = team === 'home' ? setHomeGoals : setAwayGoals;
-    updateFn((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, goalType } : item))
-    );
-  };
-
-  const handleCardJerseyChange = (
-    cardListType: 'yellow' | 'red',
-    index: number,
-    jerseyVal: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const { playerFound } = handleJerseyLookup(jerseyVal, squad);
-    const num = jerseyVal === '' ? '' : parseInt(jerseyVal, 10);
+  // 2. Card Handlers: Jersey Number primary, Name override
+  const handleCardJerseyChange = (cardListType: 'yellow' | 'red', index: number, val: string, squad: PlayerLookupItem[]) => {
+    const found = handleLookupJersey(val, squad);
+    const num = val === '' ? '' : parseInt(val, 10);
     const updateFn = cardListType === 'yellow' ? setYellowCards : setRedCards;
 
     updateFn((prev) =>
@@ -268,151 +260,82 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
         return {
           ...item,
           jerseyNumber: isNaN(num as number) ? '' : num,
-          playerName: playerFound ? playerFound.name : '',
-          playerId: playerFound ? playerFound.id : undefined,
+          playerName: found ? found.name : item.playerName,
+          playerId: found ? found.id : item.playerId,
         };
       })
     );
   };
 
-  const handleCardPlayerSelect = (
-    cardListType: 'yellow' | 'red',
-    index: number,
-    playerId: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const selected = squad.find((p) => p.id === playerId);
+  const handleCardNameDirectChange = (cardListType: 'yellow' | 'red', index: number, name: string) => {
     const updateFn = cardListType === 'yellow' ? setYellowCards : setRedCards;
     updateFn((prev) =>
-      prev.map((item, idx) => {
-        if (idx !== index) return item;
-        return {
-          ...item,
-          playerId: selected?.id,
-          playerName: selected ? selected.name : '',
-          jerseyNumber: selected ? selected.jerseyNumber : item.jerseyNumber,
-        };
-      })
+      prev.map((item, idx) => (idx === index ? { ...item, playerName: name } : item))
     );
   };
 
-  const handleCardTeamSelect = (cardListType: 'yellow' | 'red', index: number, teamTarget: 'home' | 'away') => {
-    const updateFn = cardListType === 'yellow' ? setYellowCards : setRedCards;
-    updateFn((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
-    );
-  };
-
-  const handleCardMinuteChange = (cardListType: 'yellow' | 'red', index: number, minVal: string) => {
-    const num = minVal === '' ? '' : parseInt(minVal, 10);
-    const updateFn = cardListType === 'yellow' ? setYellowCards : setRedCards;
-    updateFn((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, minute: isNaN(num as number) ? '' : num } : item))
-    );
-  };
-
-  const handleInjuryJerseyChange = (
-    index: number,
-    jerseyVal: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const { playerFound } = handleJerseyLookup(jerseyVal, squad);
-    const num = jerseyVal === '' ? '' : parseInt(jerseyVal, 10);
-
+  // 3. Injury Handlers: Jersey Number primary, Name override
+  const handleInjuryJerseyChange = (index: number, val: string, squad: PlayerLookupItem[]) => {
+    const found = handleLookupJersey(val, squad);
+    const num = val === '' ? '' : parseInt(val, 10);
     setInjuries((prev) =>
       prev.map((item, idx) => {
         if (idx !== index) return item;
         return {
           ...item,
           jerseyNumber: isNaN(num as number) ? '' : num,
-          playerName: playerFound ? playerFound.name : '',
-          playerId: playerFound ? playerFound.id : undefined,
+          playerName: found ? found.name : item.playerName,
+          playerId: found ? found.id : item.playerId,
         };
       })
     );
   };
 
-  const handleInjuryPlayerSelect = (
-    index: number,
-    playerId: string,
-    squad: PlayerLookupItem[]
-  ) => {
-    const selected = squad.find((p) => p.id === playerId);
+  const handleInjuryNameDirectChange = (index: number, name: string) => {
     setInjuries((prev) =>
-      prev.map((item, idx) => {
-        if (idx !== index) return item;
-        return {
-          ...item,
-          playerId: selected?.id,
-          playerName: selected ? selected.name : '',
-          jerseyNumber: selected ? selected.jerseyNumber : item.jerseyNumber,
-        };
-      })
+      prev.map((item, idx) => (idx === index ? { ...item, playerName: name } : item))
     );
   };
 
-  const handleInjuryMinuteChange = (index: number, minVal: string) => {
-    const num = minVal === '' ? '' : parseInt(minVal, 10);
-    setInjuries((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, minute: isNaN(num as number) ? '' : num } : item))
-    );
-  };
-
+  // Validations
   const validateStep1 = (): boolean => {
     setStep1Error(null);
-    if (scoreHomeStr === '') {
-      setStep1Error('Please enter Home Score.');
+    if (scoreHomeStr === '' || scoreAwayStr === '') {
+      setStep1Error('Please enter final scores for both Home and Away teams.');
       return false;
     }
-    if (scoreAwayStr === '') {
-      setStep1Error('Please enter Away Score.');
+    const h = parseInt(scoreHomeStr, 10);
+    const a = parseInt(scoreAwayStr, 10);
+    if (isNaN(h) || isNaN(a) || h < 0 || a < 0) {
+      setStep1Error('Scores must be valid non-negative numbers.');
       return false;
     }
-
-    const homeNum = parseInt(scoreHomeStr, 10);
-    const awayNum = parseInt(scoreAwayStr, 10);
-
-    if (isNaN(homeNum) || homeNum < 0) {
-      setStep1Error('Home Score must be a valid number.');
-      return false;
-    }
-    if (isNaN(awayNum) || awayNum < 0) {
-      setStep1Error('Away Score must be a valid number.');
-      return false;
-    }
-
-    for (let i = 0; i < homeNum; i++) {
-      const g = homeGoals[i];
-      if (!g || g.minute === '' || !g.playerName.trim()) {
-        setStep1Error(`Home Goal ${i + 1} requires both a minute and a selected player.`);
+    for (let i = 0; i < h; i++) {
+      if (!homeGoals[i] || !homeGoals[i].playerName.trim() || homeGoals[i].minute === '') {
+        setStep1Error(`Home Goal #${i + 1} requires both a minute and a player name.`);
         return false;
       }
     }
-
-    for (let i = 0; i < awayNum; i++) {
-      const g = awayGoals[i];
-      if (!g || g.minute === '' || !g.playerName.trim()) {
-        setStep1Error(`Away Goal ${i + 1} requires both a minute and a selected player.`);
+    for (let i = 0; i < a; i++) {
+      if (!awayGoals[i] || !awayGoals[i].playerName.trim() || awayGoals[i].minute === '') {
+        setStep1Error(`Away Goal #${i + 1} requires both a minute and a player name.`);
         return false;
       }
     }
-
     return true;
   };
 
   const validateStep2 = (): boolean => {
     setStep2Error(null);
     for (let i = 0; i < yellowCards.length; i++) {
-      const c = yellowCards[i];
-      if (c.minute === '' || !c.playerName.trim()) {
-        setStep2Error(`Yellow Card ${i + 1} requires both a minute and a selected player.`);
+      if (!yellowCards[i].playerName.trim() || yellowCards[i].minute === '') {
+        setStep2Error(`Yellow Card #${i + 1} requires both minute and player name.`);
         return false;
       }
     }
     for (let i = 0; i < redCards.length; i++) {
-      const c = redCards[i];
-      if (c.minute === '' || !c.playerName.trim()) {
-        setStep2Error(`Red Card ${i + 1} requires both a minute and a selected player.`);
+      if (!redCards[i].playerName.trim() || redCards[i].minute === '') {
+        setStep2Error(`Red Card #${i + 1} requires both minute and player name.`);
         return false;
       }
     }
@@ -422,39 +345,18 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
   const validateStep3 = (): boolean => {
     setStep3Error(null);
     for (let i = 0; i < injuries.length; i++) {
-      const inj = injuries[i];
-      if (inj.minute === '' || !inj.playerName.trim()) {
-        setStep3Error(`Injury record ${i + 1} requires both a minute and a selected player.`);
+      if (!injuries[i].playerName.trim() || injuries[i].minute === '') {
+        setStep3Error(`Injury timeout #${i + 1} requires minute and player name.`);
         return false;
       }
     }
     return true;
   };
 
-  const handleNextToCards = () => {
-    if (validateStep1()) {
-      setStep(2);
-    }
-  };
-
-  const handleNextToInjuries = () => {
-    if (validateStep2()) {
-      setStep(3);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!validateStep1()) {
-      setStep(1);
-      return;
-    }
-    if (!validateStep2()) {
-      setStep(2);
-      return;
-    }
-    if (!validateStep3()) {
-      return;
-    }
+    if (!validateStep1()) { setStep(1); return; }
+    if (!validateStep2()) { setStep(2); return; }
+    if (!validateStep3()) { setStep(3); return; }
 
     const homeNum = parseInt(scoreHomeStr, 10) || 0;
     const awayNum = parseInt(scoreAwayStr, 10) || 0;
@@ -470,50 +372,47 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Back button */}
+    <div className="space-y-6 animate-fadeIn select-none">
+      {/* Back Button */}
       <button
-        onClick={() => setActiveTab('match_details')}
-        className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer min-h-[44px]"
+        onClick={() => setActiveTab('overview')}
+        className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to Match Details
+        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
       </button>
 
-      {/* SECTION CONTAINER BLOCK */}
-      <section className="bg-[#12171B] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
-        {/* Header & Match State Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-400" />
-            <div>
-              <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md">
-                SUBMIT MATCH REPORT
-              </span>
-              <h2 className="text-base font-bold text-white mt-1">
-                {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
-              </h2>
-            </div>
+      {/* Main Workflow Card */}
+      <div className="bg-white/80 dark:bg-[#0E1524]/80 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
+        {/* Match Title & Status State */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-[#D4AF37] border border-amber-500/20">
+              OFFICIAL MATCH REPORT ENTRY
+            </span>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-1">
+              {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 font-bold">Match State:</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Match Status:</span>
             <select
               value={matchState}
               onChange={(e) => setMatchState(e.target.value as MatchStatus)}
-              className="px-3 py-2 rounded-xl bg-[#111111] border border-[#2A2A2A] text-xs font-bold text-emerald-400 focus:outline-none min-h-[44px]"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#182236] border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100"
             >
-              <option value="HT">Half Time (HT)</option>
               <option value="FT">Full Time (FT)</option>
-              <option value="CANCELLED">Match Cancelled</option>
+              <option value="HT">Half Time (HT)</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
         </div>
 
-        {/* 3 Steps Navigation Indicator */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Step Indicator Tabs */}
+        <div className="grid grid-cols-3 gap-2.5">
           {[
-            { num: 1, label: '1. Final Score & Goals' },
-            { num: 2, label: '2. Cards' },
+            { num: 1, label: '1. Goals & Scorers' },
+            { num: 2, label: '2. Cards & Cautions' },
             { num: 3, label: '3. Injuries & Submit' },
           ].map((s) => (
             <button
@@ -524,10 +423,10 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
                 if (s.num === 3 && (!validateStep1() || !validateStep2())) return;
                 setStep(s.num as any);
               }}
-              className={`min-h-[44px] p-3 rounded-xl text-center text-xs font-bold transition-all cursor-pointer ${
+              className={`p-3 rounded-2xl text-center text-xs font-extrabold transition-all cursor-pointer ${
                 step === s.num
-                  ? 'bg-[#1F1F1F] text-emerald-400 border border-[#2A2A2A] shadow-md font-bold'
-                  : 'bg-[#111111] text-gray-400 border border-[#2A2A2A] hover:text-white'
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-[#D4AF37] border border-amber-500/30 dark:border-[#D4AF37]/40 shadow-sm'
+                  : 'bg-slate-50 dark:bg-[#141C2E] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {s.label}
@@ -535,243 +434,228 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
           ))}
         </div>
 
-        {/* STEP 1: FINAL SCORE & GOAL SCORERS */}
+        {/* STEP 1: GOALS & SCORES */}
         {step === 1 && (
-          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-              Step 1 — Final Score & Goal Scorers
-            </h3>
-
+          <div className="space-y-6">
             {step1Error && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
                 <span>{step1Error}</span>
               </div>
             )}
 
-            {/* Score Inputs Grid */}
+            {/* Scores Input Block */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
                   {selectedFixture.teamA.name} Score (Home)
                 </label>
-                <Input
+                <input
                   type="number"
                   min="0"
                   placeholder="0"
                   value={scoreHomeStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  onChange={(e) => {
                     setScoreHomeStr(e.target.value);
                     setStep1Error(null);
                   }}
-                  className="font-mono text-lg font-bold"
+                  className="w-full p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-lg font-black font-mono focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 />
               </div>
 
-              <div className="p-4 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
                   {selectedFixture.teamB.name} Score (Away)
                 </label>
-                <Input
+                <input
                   type="number"
                   min="0"
                   placeholder="0"
                   value={scoreAwayStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  onChange={(e) => {
                     setScoreAwayStr(e.target.value);
                     setStep1Error(null);
                   }}
-                  className="font-mono text-lg font-bold"
+                  className="w-full p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-lg font-black font-mono focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 />
               </div>
             </div>
 
-            {/* Home Goals list */}
-            <div className="space-y-4 pt-2">
-              <h4 className="font-bold text-xs text-emerald-400 uppercase">
-                Home Goal Scorers ({homeGoals.length})
-              </h4>
-              {homeGoals.length > 0 ? (
-                <div className="space-y-3">
-                  {homeGoals.map((g, idx) => (
-                    <div key={g.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-400">Home Goal {idx + 1}</span>
-                        <div className="flex items-center gap-2">
-                          <label className="text-gray-400 text-[11px] font-bold">Type:</label>
-                          <select
-                            value={g.goalType}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                              handleGoalTypeChange('home', idx, e.target.value as any)
-                            }
-                            className="px-2.5 py-1 rounded bg-[#191919] border border-[#2A2A2A] text-xs text-white"
-                          >
-                            <option value="normal">Normal Goal</option>
-                            <option value="penalty">Penalty</option>
-                            <option value="own_goal">Own Goal</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
-                          <Input
-                            type="number"
-                            placeholder="Min"
-                            value={g.minute}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              handleGoalMinuteChange('home', idx, e.target.value)
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
-                          <Input
-                            type="number"
-                            placeholder="Jersey"
-                            value={g.jerseyNumber}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              handleGoalJerseyChange('home', idx, e.target.value, homeLineup)
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-6">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Scorer Name</label>
-                          {g.playerName ? (
-                            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                              <span className="truncate">✓ {g.playerName}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleGoalJerseyChange('home', idx, '', homeLineup)}
-                                className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
-                              >
-                                Change
-                              </button>
-                            </div>
-                          ) : (
-                            <select
-                              value={g.playerId || ''}
-                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                handleGoalPlayerSelect('home', idx, e.target.value, homeLineup)
-                              }
-                              className="w-full p-2.5 rounded-lg bg-[#191919] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
-                            >
-                              <option value="">Select Home Player...</option>
-                              {homeLineup.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 italic">No home goals recorded.</p>
-              )}
+            {/* Helper Notice */}
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300">
+              💡 <strong>Smart Player Auto-Detection:</strong> Enter the player's <strong>Jersey #</strong> first to automatically read their name. Typing directly in the <strong>Player Name</strong> input will always override the jersey lookup.
             </div>
 
-            {/* Away Goals list */}
-            <div className="space-y-4 pt-2">
-              <h4 className="font-bold text-xs text-emerald-400 uppercase">
-                Away Goal Scorers ({awayGoals.length})
-              </h4>
-              {awayGoals.length > 0 ? (
-                <div className="space-y-3">
-                  {awayGoals.map((g, idx) => (
-                    <div key={g.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-400">Away Goal {idx + 1}</span>
-                        <div className="flex items-center gap-2">
-                          <label className="text-gray-400 text-[11px] font-bold">Type:</label>
-                          <select
-                            value={g.goalType}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                              handleGoalTypeChange('away', idx, e.target.value as any)
-                            }
-                            className="px-2.5 py-1 rounded bg-[#191919] border border-[#2A2A2A] text-xs text-white"
-                          >
-                            <option value="normal">Normal Goal</option>
-                            <option value="penalty">Penalty</option>
-                            <option value="own_goal">Own Goal</option>
-                          </select>
-                        </div>
+            {/* Home Goals Details */}
+            {homeGoals.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  {selectedFixture.teamA.name} Goal Scorers ({homeGoals.length})
+                </h4>
+                {homeGoals.map((g, idx) => (
+                  <div
+                    key={g.id}
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
+                        ⚽ Goal #{idx + 1}
+                      </span>
+                      <select
+                        value={g.goalType}
+                        onChange={(e) =>
+                          setHomeGoals((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, goalType: e.target.value as any } : item
+                            )
+                          )
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="normal">Normal Goal</option>
+                        <option value="penalty">Penalty</option>
+                        <option value="own_goal">Own Goal</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Minute</label>
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          value={g.minute}
+                          onChange={(e) =>
+                            setHomeGoals((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, minute: parseInt(e.target.value, 10) || '' } : item
+                              )
+                            )
+                          }
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                        />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
-                          <Input
-                            type="number"
-                            placeholder="Min"
-                            value={g.minute}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              handleGoalMinuteChange('away', idx, e.target.value)
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-3">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
-                          <Input
-                            type="number"
-                            placeholder="Jersey"
-                            value={g.jerseyNumber}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              handleGoalJerseyChange('away', idx, e.target.value, awayLineup)
-                            }
-                          />
-                        </div>
-                        <div className="sm:col-span-6">
-                          <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Scorer Name</label>
-                          {g.playerName ? (
-                            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                              <span className="truncate">✓ {g.playerName}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleGoalJerseyChange('away', idx, '', awayLineup)}
-                                className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
-                              >
-                                Change
-                              </button>
-                            </div>
-                          ) : (
-                            <select
-                              value={g.playerId || ''}
-                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                handleGoalPlayerSelect('away', idx, e.target.value, awayLineup)
-                              }
-                              className="w-full p-2.5 rounded-lg bg-[#191919] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
-                            >
-                              <option value="">Select Away Player...</option>
-                              {awayLineup.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
+                      {/* Number input is primary and first */}
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase mb-0.5">Jersey # (Primary)</label>
+                        <input
+                          type="number"
+                          placeholder="# No"
+                          value={g.jerseyNumber}
+                          onChange={(e) =>
+                            handleGoalJerseyChange('home', idx, e.target.value, homeLineup)
+                          }
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-amber-500/40 text-slate-800 dark:text-slate-200 font-bold"
+                        />
+                      </div>
+
+                      {/* Name input (overrides jersey number always) */}
+                      <div className="sm:col-span-6">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Player Name (Overrides Jersey)</label>
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={g.playerName}
+                          onChange={(e) => handleGoalNameDirectChange('home', idx, e.target.value)}
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 italic">No away goals recorded.</p>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div className="flex justify-end pt-4 border-t border-[#2A2A2A]">
+            {/* Away Goals Details */}
+            {awayGoals.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  {selectedFixture.teamB.name} Goal Scorers ({awayGoals.length})
+                </h4>
+                {awayGoals.map((g, idx) => (
+                  <div
+                    key={g.id}
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
+                        ⚽ Goal #{idx + 1}
+                      </span>
+                      <select
+                        value={g.goalType}
+                        onChange={(e) =>
+                          setAwayGoals((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, goalType: e.target.value as any } : item
+                            )
+                          )
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="normal">Normal Goal</option>
+                        <option value="penalty">Penalty</option>
+                        <option value="own_goal">Own Goal</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Minute</label>
+                        <input
+                          type="number"
+                          placeholder="Min"
+                          value={g.minute}
+                          onChange={(e) =>
+                            setAwayGoals((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, minute: parseInt(e.target.value, 10) || '' } : item
+                              )
+                            )
+                          }
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase mb-0.5">Jersey # (Primary)</label>
+                        <input
+                          type="number"
+                          placeholder="# No"
+                          value={g.jerseyNumber}
+                          onChange={(e) =>
+                            handleGoalJerseyChange('away', idx, e.target.value, awayLineup)
+                          }
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-amber-500/40 text-slate-800 dark:text-slate-200 font-bold"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-6">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Player Name (Overrides Jersey)</label>
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={g.playerName}
+                          onChange={(e) => handleGoalNameDirectChange('away', idx, e.target.value)}
+                          className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
-                onClick={handleNextToCards}
-                className="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                onClick={() => {
+                  if (validateStep1()) setStep(2);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#D4AF37] text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>Proceed to Cards</span>
-                <ChevronRight className="w-4 h-4 text-white" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -779,113 +663,85 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
         {/* STEP 2: CARDS */}
         {step === 2 && (
-          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-              Step 2 — Cards Summary & Details
-            </h3>
-
+          <div className="space-y-6">
             {step2Error && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
                 <span>{step2Error}</span>
               </div>
             )}
 
-            {/* Yellow Cards Section */}
-            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
-                <h4 className="font-bold text-xs text-amber-400 uppercase flex items-center gap-2">
-                  <div className="w-3.5 h-5 bg-amber-400 rounded-xs" /> Yellow Cards
+            {/* Yellow Cards Input */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                  🟨 Yellow Cards Issued
                 </h4>
               </div>
-
-              <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Yellow Cards Count</label>
-                <Input
+              <div className="max-w-xs">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Yellow Cards Count</label>
+                <input
                   type="number"
                   min="0"
-                  placeholder="Number of yellow cards"
+                  placeholder="0"
                   value={yellowCountStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setYellowCountStr(e.target.value)}
+                  onChange={(e) => setYellowCountStr(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
                 />
               </div>
 
               {yellowCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
+                  <div key={c.id} className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-amber-400">Yellow Card {idx + 1}</span>
-                      <div className="flex items-center gap-2">
-                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
-                        <select
-                          value={c.teamTarget}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            const teamTarget = e.target.value as 'home' | 'away';
-                            setYellowCards((prev) =>
-                              prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
-                            );
-                          }}
-                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
-                        >
-                          <option value="home">{selectedFixture.teamA.name}</option>
-                          <option value="away">{selectedFixture.teamB.name}</option>
-                        </select>
-                      </div>
+                      <span className="font-extrabold text-amber-500">Yellow Card #{idx + 1}</span>
+                      <select
+                        value={c.teamTarget}
+                        onChange={(e) => {
+                          const t = e.target.value as 'home' | 'away';
+                          setYellowCards((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, teamTarget: t, playerName: '', jerseyNumber: '' } : item))
+                          );
+                        }}
+                        className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#182236] border border-slate-200 dark:border-slate-700 text-xs"
+                      >
+                        <option value="home">{selectedFixture.teamA.name}</option>
+                        <option value="away">{selectedFixture.teamB.name}</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
-                        <Input
+                        <input
                           type="number"
                           placeholder="Min"
                           value={c.minute}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleCardMinuteChange('yellow', idx, e.target.value)
+                          onChange={(e) =>
+                            setYellowCards((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, minute: parseInt(e.target.value, 10) || '' } : item))
+                            )
                           }
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
-                        <Input
+                        <input
                           type="number"
-                          placeholder="Jersey"
+                          placeholder="Jersey #"
                           value={c.jerseyNumber}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleCardJerseyChange('yellow', idx, e.target.value, squad)
-                          }
+                          onChange={(e) => handleCardJerseyChange('yellow', idx, e.target.value, squad)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-amber-500/40"
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
-                        {c.playerName ? (
-                          <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                            <span className="truncate">✓ {c.playerName}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCardJerseyChange('yellow', idx, '', squad)}
-                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
-                            >
-                              Change
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            value={c.playerId || ''}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                              handleCardPlayerSelect('yellow', idx, e.target.value, squad)
-                            }
-                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
-                          >
-                            <option value="">Use player name instead</option>
-                            {squad.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={c.playerName}
+                          onChange={(e) => handleCardNameDirectChange('yellow', idx, e.target.value)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
+                        />
                       </div>
                     </div>
                   </div>
@@ -893,101 +749,77 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               })}
             </div>
 
-            {/* Red Cards Section */}
-            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
-                <h4 className="font-bold text-xs text-rose-500 uppercase flex items-center gap-2">
-                  <div className="w-3.5 h-5 bg-rose-600 rounded-xs" /> Red Cards
+            {/* Red Cards Input */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-rose-500 flex items-center gap-1.5">
+                  🟥 Red Cards Dismissals
                 </h4>
               </div>
-
-              <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Red Cards Count</label>
-                <Input
+              <div className="max-w-xs">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Red Cards Count</label>
+                <input
                   type="number"
                   min="0"
-                  placeholder="Number of red cards"
+                  placeholder="0"
                   value={redCountStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRedCountStr(e.target.value)}
+                  onChange={(e) => setRedCountStr(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
                 />
               </div>
 
               {redCards.map((c, idx) => {
                 const squad = c.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={c.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
+                  <div key={c.id} className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-rose-500">Red Card {idx + 1}</span>
-                      <div className="flex items-center gap-2">
-                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
-                        <select
-                          value={c.teamTarget}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            const teamTarget = e.target.value as 'home' | 'away';
-                            setRedCards((prev) =>
-                              prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
-                            );
-                          }}
-                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
-                        >
-                          <option value="home">{selectedFixture.teamA.name}</option>
-                          <option value="away">{selectedFixture.teamB.name}</option>
-                        </select>
-                      </div>
+                      <span className="font-extrabold text-rose-500">Red Card #{idx + 1}</span>
+                      <select
+                        value={c.teamTarget}
+                        onChange={(e) => {
+                          const t = e.target.value as 'home' | 'away';
+                          setRedCards((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, teamTarget: t, playerName: '', jerseyNumber: '' } : item))
+                          );
+                        }}
+                        className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#182236] border border-slate-200 dark:border-slate-700 text-xs"
+                      >
+                        <option value="home">{selectedFixture.teamA.name}</option>
+                        <option value="away">{selectedFixture.teamB.name}</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
-                        <Input
+                        <input
                           type="number"
                           placeholder="Min"
                           value={c.minute}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleCardMinuteChange('red', idx, e.target.value)
+                          onChange={(e) =>
+                            setRedCards((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, minute: parseInt(e.target.value, 10) || '' } : item))
+                            )
                           }
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
-                        <Input
+                        <input
                           type="number"
-                          placeholder="Jersey"
+                          placeholder="Jersey #"
                           value={c.jerseyNumber}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleCardJerseyChange('red', idx, e.target.value, squad)
-                          }
+                          onChange={(e) => handleCardJerseyChange('red', idx, e.target.value, squad)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-rose-500/40"
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
-                        {c.playerName ? (
-                          <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                            <span className="truncate">✓ {c.playerName}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCardJerseyChange('red', idx, '', squad)}
-                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
-                            >
-                              Change
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            value={c.playerId || ''}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                              handleCardPlayerSelect('red', idx, e.target.value, squad)
-                            }
-                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
-                          >
-                            <option value="">Use player name instead</option>
-                            {squad.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={c.playerName}
+                          onChange={(e) => handleCardNameDirectChange('red', idx, e.target.value)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
+                        />
                       </div>
                     </div>
                   </div>
@@ -995,23 +827,24 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               })}
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
-              <Button
-                variant="secondary"
-                size="md"
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
                 onClick={() => setStep(1)}
-                icon={<ChevronLeft className="w-4 h-4" />}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
               >
                 Back to Goals
-              </Button>
+              </button>
 
               <button
                 type="button"
-                onClick={handleNextToInjuries}
-                className="min-h-[44px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                onClick={() => {
+                  if (validateStep2()) setStep(3);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#D4AF37] text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>Proceed to Injuries</span>
-                <ChevronRight className="w-4 h-4 text-white" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1019,110 +852,82 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
 
         {/* STEP 3: INJURIES & FINAL SUBMISSION */}
         {step === 3 && (
-          <div className="bg-[#191919] border border-[#2A2A2A] rounded-xl p-5 shadow-lg space-y-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-              Step 3 — Injuries & Final Submission
-            </h3>
-
+          <div className="space-y-6">
             {step3Error && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500" />
                 <span>{step3Error}</span>
               </div>
             )}
 
-            <div className="p-5 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
-                <h4 className="font-bold text-xs text-sky-400 uppercase">Match Injuries</h4>
-              </div>
-
-              <div className="max-w-xs space-y-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">Injuries Count</label>
-                <Input
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 space-y-4">
+              <h4 className="text-xs font-black uppercase tracking-wider text-sky-500">
+                Injury Timeouts Recorded
+              </h4>
+              <div className="max-w-xs">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Injuries Count</label>
+                <input
                   type="number"
                   min="0"
-                  placeholder="Number of injuries"
+                  placeholder="0"
                   value={injuryCountStr}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInjuryCountStr(e.target.value)}
+                  onChange={(e) => setInjuryCountStr(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
                 />
               </div>
 
               {injuries.map((inj, idx) => {
                 const squad = inj.teamTarget === 'home' ? homeLineup : awayLineup;
                 return (
-                  <div key={inj.id} className="p-3 bg-[#191919] rounded-xl border border-[#2A2A2A] space-y-2 text-xs">
+                  <div key={inj.id} className="p-3 rounded-xl bg-white dark:bg-[#0D1322] border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sky-400">Injury Record {idx + 1}</span>
-                      <div className="flex items-center gap-2">
-                        <label className="text-gray-400 text-[11px] font-bold">Team:</label>
-                        <select
-                          value={inj.teamTarget}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            const teamTarget = e.target.value as 'home' | 'away';
-                            setInjuries((prev) =>
-                              prev.map((item, i) => (i === idx ? { ...item, teamTarget, playerName: '', playerId: undefined, jerseyNumber: '' } : item))
-                            );
-                          }}
-                          className="px-2.5 py-1 rounded bg-[#111111] border border-[#2A2A2A] text-xs text-white"
-                        >
-                          <option value="home">{selectedFixture.teamA.name}</option>
-                          <option value="away">{selectedFixture.teamB.name}</option>
-                        </select>
-                      </div>
+                      <span className="font-extrabold text-sky-500">Injury Record #{idx + 1}</span>
+                      <select
+                        value={inj.teamTarget}
+                        onChange={(e) => {
+                          const t = e.target.value as 'home' | 'away';
+                          setInjuries((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, teamTarget: t, playerName: '', jerseyNumber: '' } : item))
+                          );
+                        }}
+                        className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-[#182236] border border-slate-200 dark:border-slate-700 text-xs"
+                      >
+                        <option value="home">{selectedFixture.teamA.name}</option>
+                        <option value="away">{selectedFixture.teamB.name}</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Minute</label>
-                        <Input
+                        <input
                           type="number"
                           placeholder="Min"
                           value={inj.minute}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleInjuryMinuteChange(idx, e.target.value)
+                          onChange={(e) =>
+                            setInjuries((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, minute: parseInt(e.target.value, 10) || '' } : item))
+                            )
                           }
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Jersey #</label>
-                        <Input
+                        <input
                           type="number"
-                          placeholder="Jersey"
+                          placeholder="Jersey #"
                           value={inj.jerseyNumber}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            handleInjuryJerseyChange(idx, e.target.value, squad)
-                          }
+                          onChange={(e) => handleInjuryJerseyChange(idx, e.target.value, squad)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-sky-500/40"
                         />
                       </div>
                       <div className="sm:col-span-6">
-                        <label className="block text-[10px] text-gray-400 font-bold mb-0.5">Player Name</label>
-                        {inj.playerName ? (
-                          <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center justify-between truncate">
-                            <span className="truncate">✓ {inj.playerName}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleInjuryJerseyChange(idx, '', squad)}
-                              className="text-[10px] text-gray-400 hover:text-white underline ml-1 cursor-pointer"
-                            >
-                              Change
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            value={inj.playerId || ''}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                              handleInjuryPlayerSelect(idx, e.target.value, squad)
-                            }
-                            className="w-full p-2.5 rounded-lg bg-[#111111] border border-[#2A2A2A] text-xs text-white min-h-[44px]"
-                          >
-                            <option value="">Use player name instead</option>
-                            {squad.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                #{p.jerseyNumber} {p.name} {p.isSub ? '(Sub)' : '(XI)'}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <input
+                          type="text"
+                          placeholder="Player Name"
+                          value={inj.playerName}
+                          onChange={(e) => handleInjuryNameDirectChange(idx, e.target.value)}
+                          className="w-full p-2 rounded-lg bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-700"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1130,30 +935,28 @@ export const MatchReportWorkflow: React.FC<MatchReportWorkflowProps> = ({
               })}
             </div>
 
-            {/* Single Final Submit Action */}
-            <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
-              <Button
-                variant="secondary"
-                size="md"
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
                 onClick={() => setStep(2)}
-                icon={<ChevronLeft className="w-4 h-4" />}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
               >
                 Back to Cards
-              </Button>
+              </button>
 
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleSubmit}
-                className="min-h-[44px] px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-2"
               >
-                <CheckCircle2 className="w-5 h-5 text-white" />
-                <span>Submit Match Report</span>
+                <CheckCircle2 className="w-5 h-5" />
+                <span>{isSubmitting ? 'Submitting Official Report...' : 'Submit Official Report'}</span>
               </button>
             </div>
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 };

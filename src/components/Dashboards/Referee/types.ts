@@ -1,4 +1,4 @@
-export type RefereeTab = 'home' | 'my_matches' | 'match_details' | 'report' | 'settings' | 'profile';
+export type RefereeTab = 'overview' | 'matches' | 'announcements' | 'profile' | 'report' | 'home' | 'my_matches' | 'match_details' | 'settings';
 
 export interface PlayerLookupItem {
   id: string;
@@ -59,4 +59,11 @@ export interface MatchJournalData {
   title: string;
   fixtureId?: string;
   notes: string;
+}
+
+export interface MatchOfficialsDetail {
+  referee?: string;
+  assistantReferee1?: string;
+  assistantReferee2?: string;
+  fourthOfficial?: string;
 }
