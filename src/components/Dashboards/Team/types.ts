@@ -187,8 +187,8 @@ export interface DBTeam {
 export interface SquadPosition {
     player_id: string;
     position_name: string;
-    bottom_percent: number; // percentage from bottom
-    right_percent: number;  // percentage from right
+    bottom_percent?: number; // percentage from bottom
+    right_percent?: number;  // percentage from right
     x_coordinate?: number;
     y_coordinate?: number;
 }

@@ -422,6 +422,7 @@ export async function updateTeamSettings(
         primary_color?: string;
         secondary_color?: string;
         accent_color?: string;
+        color_code?: string;
     }
 ): Promise<{ success: boolean; data?: any; error?: string }> {
     const teamUuid = toUuid(teamId);
@@ -475,7 +476,7 @@ export async function loadSquadConfiguration(teamId: string): Promise<DBSquadCon
     }
 }
 
-export async function saveSquadConfiguration(config: any): Promise<void> {
+export async function saveSquadConfiguration(config: any): Promise<boolean> {
     if (config.teamId && config.formation) {
         await saveTeamTacticsConfig(config.teamId, {
             formation: config.formation,
@@ -485,7 +486,9 @@ export async function saveSquadConfiguration(config: any): Promise<void> {
             pressingIntensity: 75,
             buildUpStyle: 'Short Pass',
         });
+        return true;
     }
+    return false;
 }
 
 export async function saveMatchLineup(lineup: any): Promise<void> {
