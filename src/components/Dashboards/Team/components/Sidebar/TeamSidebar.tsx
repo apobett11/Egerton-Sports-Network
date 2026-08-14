@@ -45,7 +45,7 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
     },
     {
       view: 'ROSTER',
-      label: 'Players List',
+      label: 'Players List & Kits',
       icon: <Shield className="w-4 h-4" />,
       color: 'text-blue-400'
     },
@@ -54,12 +54,6 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
       label: 'Table & Fixtures',
       icon: <Trophy className="w-4 h-4" />,
       color: 'text-amber-400'
-    },
-    {
-      view: 'KITS',
-      label: 'Team Kits',
-      icon: <Shirt className="w-4 h-4" />,
-      color: 'text-rose-400'
     },
     {
       view: 'NEWS',

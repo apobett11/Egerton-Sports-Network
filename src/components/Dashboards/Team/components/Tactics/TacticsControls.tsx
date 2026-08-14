@@ -109,7 +109,7 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
       <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between border-b border-[#2A3441] pb-3">
           <div className="space-y-1">
-            {isCoach && setActiveSquadType && (
+            {setActiveSquadType && (
               <div className="flex items-center gap-2 mb-1.5">
                 <button
                   onClick={() => {
@@ -335,26 +335,37 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
             </div>
           </div>
 
-          {/* ACTION BUTTONS (CAPTAIN SET PIECES & COACH SQUAD SAVE) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-[#2A3441]">
-            <button
-              onClick={onOpenRolesModal}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer border border-[#2A3441]"
-            >
-              <Crown className="w-4 h-4 text-amber-400" />
-              <span>Set Piece Roles</span>
-            </button>
+          {/* PROMINENT ACTION BUTTONS (CAPTAIN SET PIECES & PROMISCUOUS SAVE SQUAD) */}
+          <div className="space-y-3 pt-3 border-t border-[#2A3441]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={onOpenRolesModal}
+                className="px-4 py-3 rounded-2xl bg-[#0D1117] hover:bg-slate-800 text-white font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#2A3441] shadow-md hover:border-amber-400/50"
+              >
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span>Set Piece Roles</span>
+              </button>
 
+              <button
+                onClick={onSaveFormation}
+                className="px-4 py-3 rounded-2xl bg-[#0D1117] hover:bg-slate-800 text-white font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#2A3441] shadow-md hover:border-blue-400/50"
+              >
+                <Sliders className="w-4 h-4 text-blue-400" />
+                <span>Save Formation & Sliders</span>
+              </button>
+            </div>
+
+            {/* HIGH-PROMINENCE MASTER SQUAD COMMIT BUTTON */}
             <button
               onClick={() => {
                 if (onSaveSquad) onSaveSquad();
                 else handleSubmitMatchSquad();
               }}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:via-teal-400 hover:to-emerald-500 text-white font-black text-sm shadow-2xl shadow-emerald-950/80 ring-2 ring-emerald-400/80 hover:ring-emerald-300 transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-95 transform hover:-translate-y-0.5"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-5 h-5 text-white" />
               <span>
-                {activeSquadType === 'DEFAULT' ? 'Save Default Base Squad' : 'Commit Impending Match Squad'}
+                {activeSquadType === 'DEFAULT' ? 'SAVE DEFAULT BASE SQUAD TO DATABASE' : 'COMMIT IMPENDING MATCH SQUAD (TEMPORARY)'}
               </span>
             </button>
           </div>

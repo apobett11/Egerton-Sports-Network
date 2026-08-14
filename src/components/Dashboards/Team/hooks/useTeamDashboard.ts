@@ -194,18 +194,10 @@ export const useTeamDashboard = () => {
   };
 
   const handleSaveRoles = () => {
-    if (currentRole !== 'CAPTAIN') {
-      showToast('Permission Denied: Only Captain can assign set-piece match roles.');
-      return;
-    }
     showToast('Saved Tactical Match Roles successfully.');
   };
 
   const handleSaveFormation = async () => {
-    if (currentRole !== 'CAPTAIN') {
-      showToast('Permission Denied: Only Captain can update formation layout.');
-      return;
-    }
     await saveTeamTacticsConfig(teamId, {
       ...playstyleSliders,
       formation,
@@ -214,10 +206,6 @@ export const useTeamDashboard = () => {
   };
 
   const handleSaveSquad = async () => {
-    if (currentRole !== 'COACH') {
-      showToast('Permission Denied: Only Coach can save squad configurations.');
-      return;
-    }
     if (isSubmittingSquad) return;
     setIsSubmittingSquad(true);
 
@@ -247,10 +235,6 @@ export const useTeamDashboard = () => {
   };
 
   const handleSwapPlayer = (benchPlayerIdxInRoster: number) => {
-    if (currentRole !== 'COACH') {
-      showToast('Permission Denied: Only Coach can swap substitutes.');
-      return;
-    }
     if (selectedPitchSlot === null) return;
     const updated = [...startingXI];
     const oldPlayerName = roster[updated[selectedPitchSlot]]?.name || 'Player';

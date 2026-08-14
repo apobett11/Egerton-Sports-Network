@@ -188,7 +188,7 @@ export const TeamDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* PAGE 3: PLAYERS LIST & TRADING CARDS */}
+          {/* PAGE 3: PLAYERS LIST & KITS (UNIFIED) */}
           {activeView === 'ROSTER' && (
             <RosterListView
               searchTerm={searchTerm}
@@ -201,6 +201,17 @@ export const TeamDashboard: React.FC = () => {
               startingXI={startingXI}
               roster={roster}
               onUpdatePlayerStatus={handleUpdatePlayerStatus}
+              teamId={teamId}
+              onShowToast={showToast}
+            />
+          )}
+
+          {/* PAGE 4: TABLE AND FIXTURES */}
+          {activeView === 'STANDINGS' && (
+            <StandingsPage
+              standings={standings || initialStandings}
+              fixtures={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
+              teamForm={teamForm}
             />
           )}
 
@@ -221,24 +232,6 @@ export const TeamDashboard: React.FC = () => {
               showToast={showToast}
               onSaveRoles={handleSaveRoles}
               onClose={() => setShowRolesModal(false)}
-            />
-          )}
-
-          {/* PAGE 4: TABLE AND FIXTURES */}
-          {activeView === 'STANDINGS' && (
-            <StandingsPage
-              standings={standings || initialStandings}
-              fixtures={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
-              teamForm={teamForm}
-            />
-          )}
-
-          {/* PAGE 5: TEAM KITS */}
-          {activeView === 'KITS' && (
-            <KitsSection
-              currentRole={currentRole}
-              teamId={teamId}
-              onShowToast={showToast}
             />
           )}
 

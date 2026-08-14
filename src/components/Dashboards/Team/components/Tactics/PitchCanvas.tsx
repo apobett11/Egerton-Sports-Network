@@ -12,6 +12,17 @@ interface PitchCanvasProps {
   isCaptain?: boolean;
 }
 
+export function formatPitchPlayerName(player: Player): string {
+  if (player.nickname && player.nickname.trim()) {
+    return player.nickname.trim();
+  }
+  const parts = player.name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const firstInitial = parts[0].charAt(0).toUpperCase();
+  const lastName = parts[parts.length - 1];
+  return `${firstInitial}. ${lastName}`;
+}
+
 export const PitchCanvas: React.FC<PitchCanvasProps> = ({
   formation,
   nodes,
@@ -112,6 +123,8 @@ export const PitchCanvas: React.FC<PitchCanvasProps> = ({
 
           if (!player) return null;
 
+          const formattedDisplayName = formatPitchPlayerName(player);
+
           return (
             <div
               key={`node_${nodeIdx}`}
@@ -153,13 +166,13 @@ export const PitchCanvas: React.FC<PitchCanvasProps> = ({
                   {player.number}
                 </div>
 
-                {/* Role Pill & Player Name */}
-                <div className="mt-1 bg-slate-950/90 backdrop-blur-md border border-slate-700/80 px-2 py-0.5 rounded-lg text-center max-w-[85px] shadow-lg pointer-events-none">
+                {/* Simplified Label: Nickname or (Initial. LastName) then Number */}
+                <div className="mt-1 bg-slate-950/90 backdrop-blur-md border border-slate-700/80 px-2 py-0.5 rounded-lg text-center max-w-[90px] shadow-lg pointer-events-none">
                   <div className="text-[10px] font-black text-white truncate leading-tight">
-                    {player.name.split(' ').pop()}
+                    {formattedDisplayName}
                   </div>
                   <div className="text-[9px] font-bold text-emerald-400 leading-tight">
-                    {node.roleLabel} • {player.rating}
+                    #{player.number}
                   </div>
                 </div>
 

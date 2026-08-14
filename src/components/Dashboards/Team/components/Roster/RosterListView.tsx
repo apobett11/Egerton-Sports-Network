@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Search, UserPlus, Shield, Activity, Award, Star, Zap, UserCheck, Flame } from 'lucide-react';
+import { Search, UserPlus, Shield, Star } from 'lucide-react';
 import type { Player, UserRole, PlayerPosition } from '../../types';
+import { KitsSection } from '../Kits/KitsSection';
 
 interface RosterListViewProps {
   searchTerm: string;
@@ -14,6 +15,8 @@ interface RosterListViewProps {
   roster: Player[];
   onUpdatePlayerStatus: (playerId: string, status: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => void;
   onUploadPlayerImage?: (playerId: string, imageUrl: string) => void;
+  teamId?: string;
+  onShowToast?: (msg: string) => void;
 }
 
 export const RosterListView: React.FC<RosterListViewProps> = ({
@@ -28,6 +31,8 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   roster,
   onUpdatePlayerStatus,
   onUploadPlayerImage,
+  teamId,
+  onShowToast,
 }) => {
   const isCoach = currentRole === 'COACH';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -70,13 +75,16 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
         onChange={handleImageFileChange}
       />
 
-      {/* 1. INTEGRATED SECTION HEADER */}
+      {/* 1. EMBEDDED CONVENIENTLY COMPACT KITS SECTION */}
+      <KitsSection currentRole={currentRole} teamId={teamId} onShowToast={onShowToast} />
+
+      {/* 2. INTEGRATED PLAYERS LIST SECTION HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#2A3441] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
               <Shield className="w-6 h-6 text-blue-400" />
-              <span>Players List & Roster Cards</span>
+              <span>Players List & Trading Cards</span>
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/30">
               {roster.length} Registered
@@ -87,19 +95,17 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
           </p>
         </div>
 
-        {/* Coach Invite Player Action Button */}
-        {isCoach && (
-          <button
-            onClick={onOpenInviteModal}
-            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 shrink-0 active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Invite New Player</span>
-          </button>
-        )}
+        {/* Invite Player Action Button */}
+        <button
+          onClick={onOpenInviteModal}
+          className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 shrink-0 active:scale-95"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Invite New Player</span>
+        </button>
       </div>
 
-      {/* 2. SEARCH & POSITION FILTER BAR */}
+      {/* 3. SEARCH & POSITION FILTER BAR */}
       <div className="bg-[#161B22] p-4 rounded-2xl border border-[#2A3441] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-md">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -127,7 +133,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
         </div>
       </div>
 
-      {/* 3. AUTHENTIC FOOTBALL PLAYER CARDS GRID */}
+      {/* 4. AUTHENTIC FOOTBALL PLAYER CARDS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredRoster.map((player) => {
           const isStarting = startingXI.includes(roster.findIndex((p) => p.id === player.id));
@@ -204,7 +210,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 </div>
               </div>
 
-              {/* Status Indicator & Coach Actions */}
+              {/* Status Indicator & Actions */}
               <div className="flex items-center justify-between text-xs pt-0.5">
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                   player.status === 'Fit' || player.status === 'Active'
@@ -216,18 +222,16 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   {player.status}
                 </span>
 
-                {isCoach && (
-                  <select
-                    value={player.status}
-                    onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
-                    className="bg-[#0D1117] border border-[#2A3441] text-slate-300 text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                  >
-                    <option value="Fit">Fit / Active</option>
-                    <option value="Recovering">Recovering</option>
-                    <option value="Injured">Injured</option>
-                    <option value="Suspended">Suspended</option>
-                  </select>
-                )}
+                <select
+                  value={player.status}
+                  onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
+                  className="bg-[#0D1117] border border-[#2A3441] text-slate-300 text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                >
+                  <option value="Fit">Fit / Active</option>
+                  <option value="Recovering">Recovering</option>
+                  <option value="Injured">Injured</option>
+                  <option value="Suspended">Suspended</option>
+                </select>
               </div>
             </div>
           );

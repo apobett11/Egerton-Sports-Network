@@ -7,12 +7,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  Activity,
-  CheckCircle2,
-  TrendingUp,
-  Clock,
   MapPin,
-  Flame,
 } from 'lucide-react';
 
 interface StandingsPageProps {
@@ -24,7 +19,6 @@ interface StandingsPageProps {
 export const StandingsPage: React.FC<StandingsPageProps> = ({
   standings,
   fixtures,
-  teamForm = initialTeamForm,
 }) => {
   const [showFullTable, setShowFullTable] = useState<boolean>(false);
   const [activeFixtureFilter, setActiveFixtureFilter] = useState<'ALL' | 'UPCOMING' | 'FINISHED'>('ALL');
@@ -54,11 +48,39 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
     return fixtures;
   }, [fixtures, activeFixtureFilter]);
 
-  // Compute Form Streak stats
-  const formWins = teamForm.filter((f) => f.result === 'W').length;
-  const formDraws = teamForm.filter((f) => f.result === 'D').length;
-  const formLosses = teamForm.filter((f) => f.result === 'L').length;
-  const formPoints = formWins * 3 + formDraws * 1;
+  const renderFormBadge = (outcome: 'W' | 'D' | 'L', idx: number) => {
+    if (outcome === 'W') {
+      return (
+        <span
+          key={idx}
+          className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[9px] md:text-[10px] font-black shadow-xs"
+          title="Win"
+        >
+          ✓
+        </span>
+      );
+    }
+    if (outcome === 'L') {
+      return (
+        <span
+          key={idx}
+          className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[9px] md:text-[10px] font-black shadow-xs"
+          title="Loss"
+        >
+          ✗
+        </span>
+      );
+    }
+    return (
+      <span
+        key={idx}
+        className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[9px] md:text-[10px] font-black shadow-xs"
+        title="Draw"
+      >
+        –
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full select-none pb-12">
@@ -75,7 +97,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400">
-            Official league table snippet, latest 6 match form analytics, and impending matchday schedule.
+            Official league standings with latest 6 matches form status and matchday fixture schedule.
           </p>
         </div>
 
@@ -86,7 +108,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
         </div>
       </div>
 
-      {/* 2. STANDINGS CONTEXTUAL SNIPPET (5 TEAMS CENTERED ON OUR TEAM) */}
+      {/* 2. STANDINGS TABLE WITH LATEST 6 GAMES FORM IN THE TABLE */}
       <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
           <div>
@@ -119,7 +141,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
         {/* TABLE WRAPPER */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[650px] border-collapse">
+          <table className="w-full text-left text-xs min-w-[750px] border-collapse">
             <thead>
               <tr className="border-b border-[#2A3441] text-slate-400 font-mono text-[10px] uppercase font-black tracking-wider">
                 <th className="py-3 px-3 text-center w-12">POS</th>
@@ -131,12 +153,15 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                 <th className="py-3 px-3 text-center">GF</th>
                 <th className="py-3 px-3 text-center">GA</th>
                 <th className="py-3 px-3 text-center">GD</th>
-                <th className="py-3 px-4 text-center font-black">PTS</th>
+                <th className="py-3 px-3 text-center font-black">PTS</th>
+                <th className="py-3 px-4 text-center">FORM (LATEST 6)</th>
               </tr>
             </thead>
             <tbody>
               {contextualStandings.map((team, idx) => {
                 const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
+                const formList = team.recentForm || ['W', 'W', 'D', 'W', 'L', 'W'];
+
                 return (
                   <tr
                     key={idx}
@@ -146,11 +171,11 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                         : 'hover:bg-white/5 text-slate-200'
                     }`}
                   >
-                    <td className="py-3 px-3 text-center font-mono font-black text-xs">
+                    <td className="py-3.5 px-3 text-center font-mono font-black text-xs">
                       {team.position}
                     </td>
 
-                    <td className="py-3 px-4 font-extrabold flex items-center gap-3">
+                    <td className="py-3.5 px-4 font-extrabold flex items-center gap-3">
                       <img src={team.teamLogo} alt={team.teamName} className="w-6 h-6 object-contain rounded-md" />
                       <span className={isOurTeam ? 'text-white font-black text-sm' : ''}>{team.teamName}</span>
                       {isOurTeam && (
@@ -160,17 +185,24 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                       )}
                     </td>
 
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{team.played}</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-300">{team.won}</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{team.drawn}</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{team.lost}</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{team.goalsFor}</td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-400">{team.goalsAgainst}</td>
-                    <td className="py-3 px-3 text-center font-mono font-bold">
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.played}</td>
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-300">{team.won}</td>
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.drawn}</td>
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.lost}</td>
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.goalsFor}</td>
+                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.goalsAgainst}</td>
+                    <td className="py-3.5 px-3 text-center font-mono font-bold">
                       {team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}
                     </td>
-                    <td className="py-3 px-4 text-center font-mono font-black text-sm text-amber-400">
+                    <td className="py-3.5 px-3 text-center font-mono font-black text-sm text-amber-400">
                       {team.points}
+                    </td>
+
+                    {/* FORM COLUMN (LATEST 6 GAMES WITH GREEN TICKS, RED CROSSES, YELLOW DRAWS) */}
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {formList.map((outcome, formIdx) => renderFormBadge(outcome, formIdx))}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -180,72 +212,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
         </div>
       </section>
 
-      {/* 3. LATEST 6 MATCHES FORM TABLE (HORIZONTAL SCROLLABLE STRIP) */}
-      <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
-          <div>
-            <h3 className="font-black text-sm md:text-base text-white tracking-tight flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-400" />
-              <span>Team Form Timeline (Latest 6 Matches)</span>
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              Scrollable match performance strip with outcome indicators and goal differentials.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono font-black text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-xl">
-              {formWins}W - {formDraws}D - {formLosses}L • {formPoints} PTS
-            </span>
-          </div>
-        </div>
-
-        {/* HORIZONTAL SCROLLABLE FORM CARDS */}
-        <div className="overflow-x-auto no-scrollbar pb-2">
-          <div className="flex items-center gap-3.5 min-w-[720px]">
-            {teamForm.map((match) => (
-              <div
-                key={match.matchId}
-                className="flex-1 p-3.5 rounded-2xl bg-[#0D1117] border border-[#2A3441] space-y-2 relative overflow-hidden shadow-md hover:border-purple-500/40 transition-all"
-              >
-                {/* Result Pill & Date */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center text-white shadow-xs ${
-                      match.result === 'W'
-                        ? 'bg-emerald-600'
-                        : match.result === 'D'
-                        ? 'bg-amber-500 text-slate-950 font-black'
-                        : 'bg-rose-600'
-                    }`}
-                  >
-                    {match.result}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono font-semibold">{match.date}</span>
-                </div>
-
-                {/* Opponent & Score */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <img src={match.opponentLogo} alt={match.opponentName} className="w-5 h-5 object-contain rounded-md" />
-                    <span className="font-bold text-xs text-white truncate">{match.opponentName}</span>
-                  </div>
-                  <div className="font-mono font-black text-sm text-emerald-400">
-                    {match.scoreText}
-                  </div>
-                </div>
-
-                {/* Competition Tag */}
-                <div className="text-[10px] text-slate-400 truncate pt-1 border-t border-[#2A3441]/60">
-                  {match.competition}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. TEAM FIXTURES & UPCOMING MATCHES */}
+      {/* 3. TEAM FIXTURES & UPCOMING MATCHES */}
       <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
           <div>

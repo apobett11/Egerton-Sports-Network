@@ -25,6 +25,7 @@ export interface Player {
     physical: number;
     stamina: number;
     // Metadata
+    nickname?: string;
     nationality?: string;
     preferredFoot?: 'left' | 'right' | 'both';
     medicalClearance?: boolean;
@@ -116,6 +117,7 @@ export interface StandingEntry {
     goalDifference: number;
     points: number;
     isCurrent: boolean;
+    recentForm?: ('W' | 'D' | 'L')[];
 }
 
 export interface User {
