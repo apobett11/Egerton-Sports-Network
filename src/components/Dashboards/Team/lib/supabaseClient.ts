@@ -1,14 +1,11 @@
 import { supabase } from '../../../../lib/supabase';
-import { DBPlayer, DBTeam, DBSquadConfiguration, SquadPosition, Player, Match } from '../types';
+import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig } from '../types';
 
 export { supabase };
 
 const SQUAD_CACHE_KEY = 'supabase-squad-coords-cache';
 const LINEUP_CACHE_KEY = 'supabase-match-lineup-cache';
 
-// =========================================================================
-// DETERMINISTIC MOCK-TO-UUID MAPPING (POSTGRESQL COMPLIANCE BRIDGING)
-// =========================================================================
 export const DEFAULT_TEAM_UUID = 'de307384-d113-4956-a5cc-96c20579e0fa';
 export const DEFAULT_COACH_UUID = 'db77e5ab-6195-4a06-bf7c-8e57ce7e370b';
 export const DEFAULT_CAPTAIN_UUID = 'eb77e5ab-6195-4a06-bf7c-8e57ce7e370d';
@@ -35,7 +32,6 @@ export function toUuid(id: string): string {
         return id;
     }
 
-    // Fallback deterministic UUID string generator
     const clean = id.replace(/[^a-f0-9]/gi, '').padEnd(12, '0').slice(0, 12);
     return `00000000-0000-0000-0000-${clean}`;
 }
@@ -53,17 +49,12 @@ export function fromUuid(uuid: string): string {
     return uuid;
 }
 
-// =========================================================================
-// PRODUCTION SUPABASE QUERIES & MUTATIONS (SCHEMA ALIGNED)
-// =========================================================================
-
 /**
  * Resolves the authenticated user's assigned team record from Supabase 'teams' table.
  */
 export async function fetchAuthenticatedUserTeam(userId: string): Promise<DBTeam | null> {
     const userUuid = toUuid(userId);
     try {
-        // First check if user is coach or captain of a team
         const { data: teamData, error: teamError } = await supabase
             .from('teams')
             .select('*')
@@ -148,170 +139,22 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                     dribbling: 70 + (index % 22),
                     defense: 68 + (index % 24),
                     physical: 74 + (index % 15),
-                    stamina: 85 + (index % 12),
+                    stamina: 80 + (index % 15),
                     nationality: item.nationality || 'Kenya',
                     preferredFoot: item.preferred_foot || 'right',
-                    medicalClearance: true,
-                    isInjured: false,
-                    isSuspended: false
+                    formScore: 8.0 + ((index % 20) / 10),
                 };
             });
         }
         return [];
     } catch (err) {
-        console.warn('[Supabase Client] Error reading players table:', err);
+        console.warn('[Supabase Client] Failed to fetch players from DB:', err);
         return [];
     }
 }
 
 /**
- * Saves default squad tactical layout to 'squad_configurations' table in Supabase.
- * Exact Schema: team_id, formation, coordinates (JSONB), updated_by, updated_at
- */
-export async function saveSquadConfiguration(params: {
-    teamId: string;
-    formation: string;
-    coordinates: SquadPosition[];
-    updatedBy: string;
-}): Promise<boolean> {
-    const teamUuid = toUuid(params.teamId);
-    const updatedByUuid = toUuid(params.updatedBy);
-
-    const mappedCoordinates = params.coordinates.map(pos => ({
-        ...pos,
-        player_id: toUuid(pos.player_id)
-    }));
-
-    try {
-        console.log('[Supabase Client] Upserting squad_configurations for team:', teamUuid);
-
-        const { data: existing, error: checkError } = await supabase
-            .from('squad_configurations')
-            .select('id')
-            .eq('team_id', teamUuid)
-            .limit(1);
-
-        if (checkError) throw checkError;
-
-        let dbError;
-        if (existing && existing.length > 0) {
-            const { error: updateError } = await supabase
-                .from('squad_configurations')
-                .update({
-                    formation: params.formation,
-                    coordinates: mappedCoordinates,
-                    updated_by: updatedByUuid,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', existing[0].id);
-            dbError = updateError;
-        } else {
-            const { error: insertError } = await supabase
-                .from('squad_configurations')
-                .insert({
-                    team_id: teamUuid,
-                    formation: params.formation,
-                    coordinates: mappedCoordinates,
-                    updated_by: updatedByUuid
-                });
-            dbError = insertError;
-        }
-
-        if (dbError) throw dbError;
-
-        localStorage.setItem(`${SQUAD_CACHE_KEY}::${params.teamId}`, JSON.stringify({
-            team_id: params.teamId,
-            formation: params.formation,
-            coordinates: params.coordinates,
-            updated_at: new Date().toISOString()
-        }));
-
-        return true;
-    } catch (error) {
-        console.error('[Supabase Client] Save squad_configurations failed:', error);
-        return false;
-    }
-}
-
-/**
- * Loads saved squad tactical configuration from Supabase 'squad_configurations'.
- */
-export async function loadSquadConfiguration(teamId: string): Promise<DBSquadConfiguration | null> {
-    const teamUuid = toUuid(teamId);
-    try {
-        const { data, error } = await supabase
-            .from('squad_configurations')
-            .select('*')
-            .eq('team_id', teamUuid)
-            .order('updated_at', { ascending: false })
-            .limit(1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            return data[0] as DBSquadConfiguration;
-        }
-        return null;
-    } catch (error) {
-        console.warn('[Supabase Client] Read squad_configurations failed:', error);
-        return null;
-    }
-}
-
-/**
- * Saves match-specific lineup (Next Game Squad) to 'match_lineups' table in Supabase.
- * Exact Schema: fixture_id, team_id, formation, starting_xi (JSONB), substitutes (JSONB)
- */
-export async function saveMatchLineup(params: {
-    fixtureId?: string;
-    teamId: string;
-    formation: string;
-    startingXi: any[];
-    substitutes: any[];
-}): Promise<boolean> {
-    const teamUuid = toUuid(params.teamId);
-
-    try {
-        console.log('[Supabase Client] Upserting match_lineups for team:', teamUuid);
-
-        const payload: any = {
-            team_id: teamUuid,
-            formation: params.formation,
-            starting_xi: params.startingXi,
-            substitutes: params.substitutes
-        };
-        if (params.fixtureId && isValidUuid(params.fixtureId)) {
-            payload.fixture_id = params.fixtureId;
-        }
-
-        const { error } = await supabase
-            .from('match_lineups')
-            .upsert(payload, { onConflict: 'fixture_id,team_id' });
-
-        if (error) {
-            const { error: insertError } = await supabase
-                .from('match_lineups')
-                .insert(payload);
-            if (insertError) throw insertError;
-        }
-
-        localStorage.setItem(`${LINEUP_CACHE_KEY}::${params.teamId}`, JSON.stringify({
-            team_id: params.teamId,
-            formation: params.formation,
-            starting_xi: params.startingXi,
-            substitutes: params.substitutes,
-            updated_at: new Date().toISOString()
-        }));
-
-        return true;
-    } catch (error) {
-        console.error('[Supabase Client] Save match_lineups failed:', error);
-        return false;
-    }
-}
-
-/**
- * Fetches team-scoped fixtures from Supabase 'fixtures' table.
+ * Fetches team fixtures and match history filtered by team UUID.
  */
 export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
     const teamUuid = toUuid(teamId);
@@ -326,11 +169,12 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team:home_team_id(id, name, logo_url),
-                away_team:away_team_id(id, name, logo_url)
+                home_team:teams!home_team_id (id, name, logo_url),
+                away_team:teams!away_team_id (id, name, logo_url),
+                competition:competitions!competition_id (name)
             `)
             .or(`home_team_id.eq.${teamUuid},away_team_id.eq.${teamUuid}`)
-            .order('scheduled_time', { ascending: true });
+            .order('scheduled_time', { ascending: false });
 
         if (error) throw error;
 
@@ -338,178 +182,316 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
             return data.map((f: any) => {
                 const isHome = f.home_team?.id === teamUuid;
                 const opponent = isHome ? f.away_team : f.home_team;
-                const oppName = opponent?.name || 'Opponent FC';
-                const oppLogo = opponent?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
+                const ourScore = isHome ? f.score_home : f.score_away;
+                const oppScore = isHome ? f.score_away : f.score_home;
 
-                const scheduledDate = new Date(f.scheduled_time);
-                const dateStr = scheduledDate.toLocaleDateString('en-GB', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short'
-                });
-                const timeStr = scheduledDate.toLocaleTimeString('en-GB', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+                let result: 'W' | 'D' | 'L' | undefined = undefined;
+                if (f.status === 'FT' || f.status === 'FINISHED') {
+                    if (ourScore > oppScore) result = 'W';
+                    else if (ourScore === oppScore) result = 'D';
+                    else result = 'L';
+                }
 
-                let uiStatus: 'UPCOMING' | 'FINISHED' | 'LIVE' = 'UPCOMING';
-                if (f.status === 'FT' || f.status === 'FINISHED') uiStatus = 'FINISHED';
-                else if (f.status === 'LIVE' || f.status === 'HT') uiStatus = 'LIVE';
-
-                const scoreStr = f.score_home !== null && f.score_away !== null
-                    ? `${f.score_home} - ${f.score_away}`
-                    : undefined;
-
+                const d = new Date(f.scheduled_time);
                 return {
                     id: f.id,
-                    opponentName: oppName,
-                    opponentLogo: oppLogo,
-                    date: dateStr,
-                    time: timeStr,
-                    location: f.venue || 'Egerton Main Arena',
-                    league: 'Premier League',
-                    status: uiStatus,
-                    score: scoreStr
+                    opponentName: opponent?.name || 'Opponent Team',
+                    opponentLogo: opponent?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
+                    time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    location: f.venue || 'Pavilion Grounds',
+                    league: f.competition?.name || 'Egerton Premier League',
+                    status: (f.status === 'FT' ? 'FINISHED' : f.status) as any,
+                    score: f.status === 'FT' || f.status === 'FINISHED' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
+                    scoreHome: f.score_home,
+                    scoreAway: f.score_away,
+                    isHome,
+                    result,
                 };
             });
         }
         return [];
     } catch (err) {
-        console.warn('[Supabase Client] Failed to fetch team fixtures:', err);
+        console.warn('[Supabase Client] Failed to fetch fixtures from DB:', err);
         return [];
     }
 }
 
 /**
- * Fetches team announcements from Supabase 'announcements' table.
+ * Saves the First 11 and Substitutes as clean strings in the teams table.
  */
-export async function fetchTeamAnnouncements(teamId: string) {
+export async function saveTeamSquadToStrings(
+    teamId: string,
+    startingXIIds: string[],
+    subsIds: string[]
+): Promise<void> {
     const teamUuid = toUuid(teamId);
-    try {
-        const { data, error } = await supabase
-            .from('announcements')
-            .select(`
-                id,
-                title,
-                content,
-                target_role,
-                target_team_id,
-                created_at,
-                author:author_id(first_name, last_name, role)
-            `)
-            .or(`target_team_id.eq.${teamUuid},target_role.eq.all,target_team_id.is.null`)
-            .order('created_at', { ascending: false });
+    const startingXiStr = startingXIIds.join(',');
+    const substitutesStr = subsIds.join(',');
 
-        if (error) throw error;
-        return data || [];
+    try {
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                starting_xi_str: startingXiStr,
+                substitutes_str: substitutesStr,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid);
+
+        if (error) {
+            console.warn('[Supabase Client] saveTeamSquadToStrings error:', error.message);
+        }
     } catch (err) {
-        console.warn('[Supabase Client] Failed to fetch announcements:', err);
-        return [];
+        console.warn('[Supabase Client] Failed to save squad strings:', err);
     }
 }
 
 /**
- * Updates team settings in Supabase 'teams' table.
+ * Saves team tactical sliders and formation configuration into teams table.
  */
-export async function updateTeamSettings(teamId: string, updates: Partial<DBTeam>): Promise<boolean> {
+export async function saveTeamTacticsConfig(
+    teamId: string,
+    tactics: TacticalSliders & { formation: string }
+): Promise<void> {
     const teamUuid = toUuid(teamId);
     try {
         const { error } = await supabase
             .from('teams')
             .update({
-                ...updates,
-                updated_at: new Date().toISOString()
+                tactics_config: tactics,
+                updated_at: new Date().toISOString(),
             })
             .eq('id', teamUuid);
 
-        if (error) throw error;
-        return true;
+        if (error) {
+            console.warn('[Supabase Client] saveTeamTacticsConfig error:', error.message);
+        }
     } catch (err) {
-        console.error('[Supabase Client] Failed to update team settings:', err);
-        return false;
+        console.warn('[Supabase Client] Failed to save tactics config:', err);
     }
 }
 
 /**
- * Paginated player query helper
+ * Saves temporary match squad (impending fixture only).
  */
-export async function fetchPlayersPaginated(
+export async function saveTemporaryMatchSquad(
     teamId: string,
-    page: number = 1,
-    limit: number = 12
-): Promise<{ data: DBPlayer[]; count: number }> {
+    squadData: {
+        matchId?: string;
+        startingXI: number[];
+        formation: string;
+        sliders: TacticalSliders;
+        timestamp: string;
+    }
+): Promise<void> {
     const teamUuid = toUuid(teamId);
-    const offset = (page - 1) * limit;
-
     try {
-        const { data, error, count } = await supabase
-            .from('players')
-            .select('*', { count: 'exact' })
-            .eq('team_id', teamUuid)
-            .order('jersey_number', { ascending: true })
-            .range(offset, offset + limit - 1);
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                temporary_match_squad: squadData,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid);
 
-        if (error) throw error;
-        return { data: (data || []) as DBPlayer[], count: count || 0 };
-    } catch (error) {
-        console.error('Failed fetching paginated players:', error);
-        return { data: [], count: 0 };
+        if (error) {
+            console.warn('[Supabase Client] saveTemporaryMatchSquad error:', error.message);
+        }
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to save temporary match squad:', err);
     }
 }
 
 /**
- * Publishes a team journal article directly into the 'news_articles' table.
+ * Saves team kits configuration into teams table.
  */
-export async function publishTeamJournal(journal: {
-    title: string;
-    excerpt: string;
-    content: string;
-    category?: string;
-    imageUrl?: string;
-    authorId: string;
-}) {
-    const slug = `${journal.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now()}`;
-    const payload = {
-        title: journal.title.trim(),
-        slug,
-        excerpt: journal.excerpt.trim(),
-        content: journal.content.trim(),
-        image_url: journal.imageUrl?.trim() || null,
-        category: journal.category || 'general',
-        author_id: journal.authorId,
-        status: 'published',
-        published_at: new Date().toISOString()
-    };
+export async function saveTeamKitsConfig(
+    teamId: string,
+    kits: KitConfig[]
+): Promise<void> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                kits_config: kits,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid);
 
-    const { data, error } = await supabase
-        .from('news_articles')
-        .insert(payload)
-        .select()
-        .single();
+        if (error) {
+            console.warn('[Supabase Client] saveTeamKitsConfig error:', error.message);
+        }
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to save kits config:', err);
+    }
+}
+
+/**
+ * Uploads a kit photo into Supabase Storage and returns the public URL.
+ */
+export async function uploadKitImageToStorage(file: File, kitId: string): Promise<string> {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `kits/${kitId}_${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+        .from('news')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
     if (error) {
-        console.error('[Supabase Client] Failed to publish team journal:', error);
-        throw error;
+        // Fallback bucket
+        const { data: fallback, error: fbErr } = await supabase.storage
+            .from('media')
+            .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+        if (fbErr) throw new Error(fbErr.message);
+        return supabase.storage.from('media').getPublicUrl(fallback.path).data.publicUrl;
     }
-    return data;
+
+    return supabase.storage.from('news').getPublicUrl(data.path).data.publicUrl;
 }
 
-/**
- * Fetches published news articles from 'news_articles' table.
- */
-export async function fetchTeamNews() {
+export async function fetchTeamAnnouncements(teamId?: string): Promise<any[]> {
+    try {
+        const { data, error } = await supabase
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (!error && data) return data;
+        return [];
+    } catch (e) {
+        return [];
+    }
+}
+
+export async function fetchTeamNews(): Promise<any[]> {
     try {
         const { data, error } = await supabase
             .from('news_articles')
             .select('*')
             .eq('status', 'published')
-            .order('published_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(5);
 
-        if (error) throw error;
-        return data || [];
-    } catch (err) {
-        console.warn('[Supabase Client] Failed to fetch team news:', err);
+        if (!error && data) return data;
+        return [];
+    } catch (e) {
         return [];
     }
 }
 
+export async function publishTeamJournal(payload: any): Promise<any> {
+    try {
+        const { data, error } = await supabase
+            .from('news_articles')
+            .insert({
+                title: payload.title,
+                slug: `${payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+                excerpt: payload.excerpt || payload.content.slice(0, 100),
+                content: payload.content,
+                category: payload.category || 'club_news',
+                status: 'published',
+                author_id: payload.authorId || null,
+                team_id: payload.teamId ? toUuid(payload.teamId) : null,
+                published_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    } catch (err: any) {
+        throw new Error(err.message || 'Failed to publish team journal');
+    }
+}
+
+// Backward-compatible helpers for other components
+export async function updateTeamSettings(
+    teamId: string,
+    settings: {
+        name?: string;
+        short_name?: string;
+        logo_url?: string;
+        contact_email?: string;
+        contact_phone?: string;
+        stadium?: string;
+        description?: string;
+        primary_color?: string;
+        secondary_color?: string;
+        accent_color?: string;
+    }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data, error } = await supabase
+            .from('teams')
+            .update({
+                name: settings.name,
+                short_name: settings.short_name,
+                logo_url: settings.logo_url,
+                description: settings.description,
+                primary_color: settings.primary_color,
+                secondary_color: settings.secondary_color,
+                accent_color: settings.accent_color,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+export async function loadSquadConfiguration(teamId: string): Promise<DBSquadConfiguration | null> {
+    try {
+        const teamUuid = toUuid(teamId);
+        const { data, error } = await supabase
+            .from('teams')
+            .select('tactics_config, starting_xi_str, substitutes_str')
+            .eq('id', teamUuid)
+            .single();
+
+        if (!error && data?.tactics_config) {
+            return {
+                id: 'squad_config_1',
+                team_id: teamUuid,
+                formation: data.tactics_config.formation || '4-3-3 Attack',
+                player_positions: [],
+                is_starting_xi: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+export async function saveSquadConfiguration(config: any): Promise<void> {
+    if (config.teamId && config.formation) {
+        await saveTeamTacticsConfig(config.teamId, {
+            formation: config.formation,
+            attackingDepth: 55,
+            defensiveLineHeight: 65,
+            teamSupportWidth: 60,
+            pressingIntensity: 75,
+            buildUpStyle: 'Short Pass',
+        });
+    }
+}
+
+export async function saveMatchLineup(lineup: any): Promise<void> {
+    if (lineup.teamId && lineup.startingXi) {
+        const startingIds = lineup.startingXi.map((p: any) => p.id);
+        const subsIds = (lineup.substitutes || []).map((p: any) => p.id);
+        await saveTeamSquadToStrings(lineup.teamId, startingIds, subsIds);
+    }
+}

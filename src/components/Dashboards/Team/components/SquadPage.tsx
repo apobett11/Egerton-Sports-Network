@@ -16,9 +16,9 @@ interface SquadPageProps {
   activePlaystyle: string;
   setActivePlaystyle: (style: string) => void;
   onOpenInviteModal: () => void;
-  onUpdatePlayerStatus: (playerId: string, status: 'Active' | 'Injured' | 'Suspended') => void;
-  onUploadPlayerImage: (playerId: string, imageUrl: string) => void;
-  onSaveSquad: () => void;
+  onUpdatePlayerStatus: (playerId: string, status: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => void;
+  onUploadPlayerImage?: (playerId: string, imageUrl: string) => void;
+  onSaveSquad?: () => void;
   onSaveFormation?: () => void;
 }
 

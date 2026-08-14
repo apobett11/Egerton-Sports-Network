@@ -1,121 +1,136 @@
 import React from 'react';
-import { LayoutDashboard, Users, Trophy, Settings, LogOut, Newspaper } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Shield,
+  Trophy,
+  Newspaper,
+  Settings,
+  Shirt,
+  Calendar,
+  Sparkles,
+  Crown,
+  Briefcase
+} from 'lucide-react';
 import type { DashboardView } from '../../hooks/useTeamDashboard';
+import type { UserRole } from '../../types';
 
 interface TeamSidebarProps {
   activeView: DashboardView;
   setActiveView: (view: DashboardView) => void;
-  handleLogout: () => void;
+  currentRole: UserRole;
 }
 
 export const TeamSidebar: React.FC<TeamSidebarProps> = ({
   activeView,
   setActiveView,
-  handleLogout,
+  currentRole,
 }) => {
+  const isCoach = currentRole === 'COACH';
+  const isCaptain = currentRole === 'CAPTAIN';
+
+  const navItems: { view: DashboardView; label: string; icon: React.ReactNode; badge?: string; color: string }[] = [
+    {
+      view: 'DASHBOARD',
+      label: 'Overview',
+      icon: <LayoutDashboard className="w-4 h-4" />,
+      color: 'text-emerald-400'
+    },
+    {
+      view: 'TACTICS',
+      label: 'Team Squad',
+      icon: <Users className="w-4 h-4" />,
+      badge: '2D Pitch',
+      color: 'text-emerald-400'
+    },
+    {
+      view: 'ROSTER',
+      label: 'Players List',
+      icon: <Shield className="w-4 h-4" />,
+      color: 'text-blue-400'
+    },
+    {
+      view: 'STANDINGS',
+      label: 'Table & Fixtures',
+      icon: <Trophy className="w-4 h-4" />,
+      color: 'text-amber-400'
+    },
+    {
+      view: 'KITS',
+      label: 'Team Kits',
+      icon: <Shirt className="w-4 h-4" />,
+      color: 'text-rose-400'
+    },
+    {
+      view: 'NEWS',
+      label: 'Newsroom & Press',
+      icon: <Newspaper className="w-4 h-4" />,
+      color: 'text-purple-400'
+    },
+    {
+      view: 'SETTINGS',
+      label: 'Team Settings',
+      icon: <Settings className="w-4 h-4" />,
+      color: 'text-slate-400'
+    },
+  ];
+
   return (
-    <aside className="w-64 bg-[#1A1A1A] shrink-0 hidden md:flex flex-col border-r border-[#2A2A2A] h-screen sticky top-0 justify-between select-none">
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-full bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              className="w-full h-full object-cover"
-              alt="Egerton Crest"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN"
-            />
+    <aside className="w-full bg-[#161B22] border border-[#2A3441] rounded-2xl p-4 shadow-xl space-y-4">
+      {/* Role Badge Indicator */}
+      <div className="p-3 rounded-xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black ${
+            isCoach 
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+              : isCaptain
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {isCoach ? <Briefcase className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-tight uppercase">Egerton FC</h2>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">High Performance</span>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Current Role</div>
+            <div className="text-xs font-black text-white">{currentRole} MODE</div>
           </div>
         </div>
-
-        <nav className="space-y-1.5">
-          <button
-            onClick={() => setActiveView('DASHBOARD')}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'DASHBOARD'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Team Home</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('TACTICS')}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'TACTICS'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-            }`}
-          >
-            <span>⚽</span>
-            <span>Tactics & Pitch</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('ROSTER')}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'ROSTER'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Roster & Subs</span>
-          </button>
-
-
-
-          <button
-            onClick={() => setActiveView('STANDINGS')}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'STANDINGS'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-            }`}
-          >
-            <Trophy className="w-4 h-4" />
-            <span>Standings</span>
-          </button>
-
-          <button
-            onClick={() => setActiveView('NEWS')}
-            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-              activeView === 'NEWS'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-            }`}
-          >
-            <Newspaper className="w-4 h-4" />
-            <span>Team News</span>
-          </button>
-        </nav>
+        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+          isCoach ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+        }`}>
+          {isCoach ? 'Manager' : 'On-Pitch Leader'}
+        </span>
       </div>
 
-      <div className="p-6 border-t border-[#2A2A2A] space-y-2">
-        <button
-          onClick={() => setActiveView('SETTINGS')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
-            activeView === 'SETTINGS'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-gray-400 hover:text-gray-100 hover:bg-[#252525]'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
-        </button>
+      {/* Navigation List */}
+      <nav className="space-y-1">
+        {navItems.map((item) => {
+          const isActive = activeView === item.view;
+          return (
+            <button
+              key={item.view}
+              onClick={() => setActiveView(item.view)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40 font-black'
+                  : 'text-slate-300 hover:bg-[#1F2937] hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={isActive ? 'text-white' : item.color}>{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
 
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-950/30 transition-all min-h-[44px] cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
-      </div>
+              {item.badge && (
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-400'
+                }`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
     </aside>
   );
 };

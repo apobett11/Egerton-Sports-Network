@@ -32,6 +32,7 @@ export interface Player {
     yellowCards?: number;
     redCards?: number;
     isSuspended?: boolean;
+    formScore?: number; // 1-10
 }
 
 export interface KitConfig {
@@ -43,6 +44,7 @@ export interface KitConfig {
     accentColor: string;
     collarColor: string;
     imageUrl?: string;
+    updatedAt?: string;
 }
 
 export interface MatchStatusInfo {
@@ -84,6 +86,21 @@ export interface Match {
     league: string;
     status: MatchStatus;
     score?: string;
+    scoreHome?: number;
+    scoreAway?: number;
+    isHome?: boolean;
+    result?: 'W' | 'D' | 'L';
+}
+
+export interface TeamFormEntry {
+    matchId: string;
+    opponentName: string;
+    opponentLogo: string;
+    result: 'W' | 'D' | 'L';
+    scoreText: string;
+    date: string;
+    competition: string;
+    goalDifference: number;
 }
 
 export interface StandingEntry {
@@ -109,6 +126,37 @@ export interface User {
     teamId?: string;
 }
 
+export interface TacticalSliders {
+    attackingDepth: number; // 0 - 100 (e.g. 55)
+    defensiveLineHeight: number; // 0 - 100 (e.g. 65)
+    teamSupportWidth: number; // 0 - 100 (e.g. 60)
+    pressingIntensity: number; // 0 - 100 (e.g. 75)
+    buildUpStyle: string; // 'Short Pass' | 'Direct Play' | 'Fast Counter'
+}
+
+export interface PitchNodeCoordinate {
+    roleLabel: string;
+    bottomPercent: number; // calculated from bottom (0 = goal line, 100 = opponent goal)
+    rightPercent: number;  // calculated from right (0 = right sideline, 100 = left sideline)
+    baseBottom: number;
+    baseRight: number;
+    positionType: 'GK' | 'DF' | 'MD' | 'FW';
+    isWide?: boolean;
+}
+
+export type FormationName =
+    | '4-3-3 Attack'
+    | '4-3-3 Defend'
+    | '4-4-2 Flat'
+    | '4-4-2 Diamond'
+    | '4-2-3-1 Wide'
+    | '4-1-4-1'
+    | '3-5-2'
+    | '3-4-3'
+    | '5-3-2'
+    | '5-4-1'
+    | '4-4-1-1';
+
 // Database-aligned Types representing Supabase Schema
 export interface DBTeam {
     id: string;
@@ -126,47 +174,12 @@ export interface DBTeam {
     accent_color?: string;
     season?: string;
     captain_id?: string;
+    coach_id?: string;
+    starting_xi_str?: string;
+    substitutes_str?: string;
+    temporary_match_squad?: Record<string, any>;
+    tactics_config?: TacticalSliders & { formation: string };
     kits_config?: KitConfig[];
-    created_at: string;
-    updated_at: string;
-}
-
-export interface DBUser {
-    id: string;
-    email: string;
-    role: 'COACH' | 'CAPTAIN' | 'PLAYER' | 'GUEST';
-    team_id?: string;
-    full_name: string;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface DBPlayer {
-    id: string;
-    user_id: string;
-    team_id: string;
-    jersey_number: number;
-    position: string;
-    date_of_birth?: string;
-    nationality?: string;
-    height?: number;
-    weight?: number;
-    status: string;
-    card_details: {
-        rating: number;
-        speed: number;
-        shooting: number;
-        passing: number;
-        dribbling: number;
-        defense: number;
-        physical: number;
-        stamina: number;
-        saves?: number;
-        goals?: number;
-        passPercent?: number;
-        tackles?: number;
-    };
-    image_url?: string;
     created_at: string;
     updated_at: string;
 }
@@ -174,8 +187,10 @@ export interface DBPlayer {
 export interface SquadPosition {
     player_id: string;
     position_name: string;
-    x_coordinate: number; // percentage from left, e.g. 50
-    y_coordinate: number; // percentage from top, e.g. 85
+    bottom_percent: number; // percentage from bottom
+    right_percent: number;  // percentage from right
+    x_coordinate?: number;
+    y_coordinate?: number;
 }
 
 export interface DBSquadConfiguration {
@@ -189,5 +204,3 @@ export interface DBSquadConfiguration {
     created_at: string;
     updated_at: string;
 }
-
-

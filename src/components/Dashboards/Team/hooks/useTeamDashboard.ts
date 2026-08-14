@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Player, UserRole, PracticeSession, Match, DBTeam } from '../types';
-import { initialRoster, initialPracticeSchedule, initialFixtures } from '../mockData';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Player, UserRole, PracticeSession, Match, DBTeam, FormationName, TacticalSliders, PitchNodeCoordinate } from '../types';
+import { initialRoster, initialPracticeSchedule, initialFixtures, initialStandings, initialTeamForm, calculateDynamicPitchCoordinates } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
@@ -9,9 +9,9 @@ import {
   fetchTeamPlayers,
   fetchTeamFixtures,
   fetchTeamAnnouncements,
-  saveSquadConfiguration,
-  loadSquadConfiguration,
-  saveMatchLineup,
+  saveTeamSquadToStrings,
+  saveTeamTacticsConfig,
+  saveTemporaryMatchSquad,
   DEFAULT_TEAM_UUID,
   publishTeamJournal,
   fetchTeamNews
@@ -54,35 +54,26 @@ export const useTeamDashboard = () => {
   const [roster, setRoster] = useState<Player[]>(initialRoster);
   const [practiceSchedule, setPracticeSchedule] = useState<PracticeSession[]>(initialPracticeSchedule);
 
-  // Auto-Save Lineup & Tactics Draft Recovery
-  const {
-    value: squadDraftState,
-    setValue: setSquadDraftState,
-    clearDraft: clearSquadDraft,
-    hasRecoveredDraft,
-  } = useDraftRecovery(
-    {
-      startingXI: [0, 1, 3, 7, 9, 10, 5, 6, 12, 4, 8],
-      formation: '4-4-1-1',
-      activePlaystyle: 'Quick Counter',
-      playstyleSliders: {
-        attackingDepth: 75,
-        defensiveLine: 65,
-        teamWidth: 60,
-        pressingIntensity: 80,
-        buildUpStyle: 'Short Pass',
-      },
-      roleAssignments: {
-        captainId: 'p1',
-        viceCaptainId: 'p2',
-        penaltyTakerId: 'p5',
-        freeKickTakerId: 'p6',
-        leftCornerTakerId: 'p6',
-        rightCornerTakerId: 'p2',
-      },
-    },
-    { key: 'team_lineup_tactics_draft' }
-  );
+  // Formations & Tactical Physics State
+  const [formation, setFormation] = useState<FormationName>('4-3-3 Attack');
+  const [playstyleSliders, setPlaystyleSliders] = useState<TacticalSliders>({
+    attackingDepth: 55,
+    defensiveLineHeight: 65,
+    teamSupportWidth: 60,
+    pressingIntensity: 75,
+    buildUpStyle: 'Short Pass',
+  });
+
+  // Starting XI Indices in Roster
+  const [startingXI, setStartingXI] = useState<number[]>([0, 1, 3, 7, 9, 10, 5, 6, 12, 4, 8]);
+  const [roleAssignments, setRoleAssignments] = useState<RoleAssignments>({
+    captainId: 'p2',
+    viceCaptainId: 'p6',
+    penaltyTakerId: 'p5',
+    freeKickTakerId: 'p6',
+    leftCornerTakerId: 'p6',
+    rightCornerTakerId: 'p2',
+  });
 
   const [isSubmittingSquad, setIsSubmittingSquad] = useState<boolean>(false);
   const [selectedPitchSlot, setSelectedPitchSlot] = useState<number | null>(null);
@@ -111,6 +102,18 @@ export const useTeamDashboard = () => {
         if (isMounted) {
           setTeamInfo(team);
           setTeamId(resolvedTeamId);
+          if (team?.tactics_config?.formation) {
+            setFormation(team.tactics_config.formation as FormationName);
+          }
+          if (team?.tactics_config?.attackingDepth) {
+            setPlaystyleSliders({
+              attackingDepth: team.tactics_config.attackingDepth,
+              defensiveLineHeight: team.tactics_config.defensiveLineHeight || 65,
+              teamSupportWidth: team.tactics_config.teamSupportWidth || 60,
+              pressingIntensity: team.tactics_config.pressingIntensity || 75,
+              buildUpStyle: team.tactics_config.buildUpStyle || 'Short Pass',
+            });
+          }
         }
 
         const dbPlayers = await fetchTeamPlayers(resolvedTeamId);
@@ -123,7 +126,7 @@ export const useTeamDashboard = () => {
           setTeamFixtures(dbFixtures);
         }
 
-        const dbAnnouncements = await fetchTeamAnnouncements(resolvedTeamId);
+        const dbAnnouncements = await fetchTeamAnnouncements();
         if (isMounted && dbAnnouncements.length > 0) {
           setAnnouncements(dbAnnouncements);
         }
@@ -131,14 +134,6 @@ export const useTeamDashboard = () => {
         const dbNews = await fetchTeamNews();
         if (isMounted && dbNews.length > 0) {
           setPublishedNews(dbNews);
-        }
-
-        const dbSquadConfig = await loadSquadConfiguration(resolvedTeamId);
-        if (isMounted && dbSquadConfig?.formation) {
-          setSquadDraftState((prev) => ({
-            ...prev,
-            formation: dbSquadConfig.formation,
-          }));
         }
       } catch (err) {
         console.warn('Data initialization error:', err);
@@ -150,14 +145,15 @@ export const useTeamDashboard = () => {
     return () => { isMounted = false; };
   }, [user]);
 
+  // Compute Dynamic Pitch Coordinates from Tactical Physics Math
+  const pitchNodes: PitchNodeCoordinate[] = useMemo(() => {
+    return calculateDynamicPitchCoordinates(formation, playstyleSliders);
+  }, [formation, playstyleSliders]);
+
   const handleOpenNextGameSquad = () => {
     setActiveSquadType('NEXT_GAME');
     setActiveView('TACTICS');
   };
-
-  // Protect Unsaved Lineup Changes on Tactics tab
-  const isLineupDirty = activeView === 'TACTICS' || showRolesModal;
-  useUnsavedChanges(isLineupDirty);
 
   useEffect(() => {
     if (darkMode) {
@@ -182,34 +178,19 @@ export const useTeamDashboard = () => {
   };
 
   const collectiveRating = Math.round(
-    squadDraftState.startingXI.reduce((sum, idx) => sum + (roster[idx]?.rating || 75), 0) / 11
+    startingXI.reduce((sum, idx) => sum + (roster[idx]?.rating || 75), 0) / 11
   );
-  const collectiveStrength = squadDraftState.startingXI.reduce((sum, idx) => sum + (roster[idx]?.rating || 75), 0) * 2 + 500;
-  const benchPlayers = roster.filter((_, idx) => !squadDraftState.startingXI.includes(idx));
+  const collectiveStrength = startingXI.reduce((sum, idx) => sum + (roster[idx]?.rating || 75), 0) * 2 + 500;
+  const benchPlayers = roster.filter((_, idx) => !startingXI.includes(idx));
 
-  const validateSquad = (): { valid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-    if (squadDraftState.startingXI.length !== 11) {
-      errors.push(`Starting XI must contain exactly 11 players (currently ${squadDraftState.startingXI.length}).`);
-    }
-    const startingPlayers = squadDraftState.startingXI.map((idx) => roster[idx]).filter(Boolean);
-    const gkCount = startingPlayers.filter((p) => p.position === 'GK').length;
-    if (gkCount < 1) {
-      errors.push('Starting XI requires at least 1 Goalkeeper (GK).');
-    }
-    const unavailable = startingPlayers.filter(
-      (p) =>
-        p.status === 'Injured' ||
-        p.status === 'Suspended' ||
-        p.status === 'Unavailable' ||
-        p.isInjured ||
-        p.isSuspended ||
-        p.medicalClearance === false
-    );
-    if (unavailable.length > 0) {
-      errors.push(`Starting XI includes restricted players: ${unavailable.map((p) => p.name).join(', ')}.`);
-    }
-    return { valid: errors.length === 0, errors };
+  // Swap slots directly on the pitch
+  const handleSwapPitchSlots = (sourceSlot: number, targetSlot: number) => {
+    const updated = [...startingXI];
+    const temp = updated[sourceSlot];
+    updated[sourceSlot] = updated[targetSlot];
+    updated[targetSlot] = temp;
+    setStartingXI(updated);
+    showToast(`Swapped ${roster[updated[sourceSlot]]?.name} with ${roster[updated[targetSlot]]?.name}`);
   };
 
   const handleSaveRoles = () => {
@@ -220,65 +201,49 @@ export const useTeamDashboard = () => {
     showToast('Saved Tactical Match Roles successfully.');
   };
 
-  const handleSaveFormation = () => {
+  const handleSaveFormation = async () => {
     if (currentRole !== 'CAPTAIN') {
       showToast('Permission Denied: Only Captain can update formation layout.');
       return;
     }
-    saveSquadConfiguration({
-      teamId,
-      formation: squadDraftState.formation,
-      coordinates: [],
-      updatedBy: user?.id || '',
+    await saveTeamTacticsConfig(teamId, {
+      ...playstyleSliders,
+      formation,
     });
-    showToast(`Saved Formation (${squadDraftState.formation}) successfully to database.`);
+    showToast(`Saved Formation (${formation}) & Tactical Sliders to database.`);
   };
 
-  const handleSaveSquad = () => {
+  const handleSaveSquad = async () => {
     if (currentRole !== 'COACH') {
       showToast('Permission Denied: Only Coach can save squad configurations.');
       return;
     }
     if (isSubmittingSquad) return;
-
-    const { valid, errors } = validateSquad();
-    if (!valid) {
-      showToast(`Squad Warning: ${errors[0]}`);
-    }
     setIsSubmittingSquad(true);
 
-    const startingPlayers = squadDraftState.startingXI.map((idx) => roster[idx]).filter(Boolean);
-    const bench = roster.filter((_, idx) => !squadDraftState.startingXI.includes(idx));
+    try {
+      const startingPlayers = startingXI.map((idx) => roster[idx]).filter(Boolean);
+      const bench = roster.filter((_, idx) => !startingXI.includes(idx));
+      const startingIds = startingPlayers.map((p) => p.id);
+      const subsIds = bench.map((p) => p.id);
 
-    if (activeSquadType === 'DEFAULT') {
-      saveSquadConfiguration({
-        teamId,
-        formation: squadDraftState.formation,
-        coordinates: startingPlayers.map((p) => ({
-          player_id: p.id,
-          position_name: p.position,
-          x_coordinate: 50,
-          y_coordinate: 50,
-        })),
-        updatedBy: user?.id || '',
-      });
-    } else {
-      saveMatchLineup({
-        teamId,
-        formation: squadDraftState.formation,
-        startingXi: startingPlayers,
-        substitutes: bench,
-      });
-    }
-
-    setTimeout(() => {
+      if (activeSquadType === 'DEFAULT') {
+        await saveTeamSquadToStrings(teamId, startingIds, subsIds);
+        showToast('🚀 Saved Default Base Squad (First 11 & Substitutes) to teams table!');
+      } else {
+        await saveTemporaryMatchSquad(teamId, {
+          startingXI,
+          formation,
+          sliders: playstyleSliders,
+          timestamp: new Date().toISOString(),
+        });
+        showToast('⚡ Committed Impending Next-Match Squad to database!');
+      }
+    } catch (err: any) {
+      showToast(`Save notice: ${err.message}`);
+    } finally {
       setIsSubmittingSquad(false);
-      showToast(
-        activeSquadType === 'DEFAULT'
-          ? 'Saved Default Squad successfully to Supabase.'
-          : 'Saved Next-Game Squad selection successfully to Supabase.'
-      );
-    }, 400);
+    }
   };
 
   const handleSwapPlayer = (benchPlayerIdxInRoster: number) => {
@@ -287,20 +252,17 @@ export const useTeamDashboard = () => {
       return;
     }
     if (selectedPitchSlot === null) return;
-    const updated = [...squadDraftState.startingXI];
+    const updated = [...startingXI];
     const oldPlayerName = roster[updated[selectedPitchSlot]]?.name || 'Player';
     const newPlayerName = roster[benchPlayerIdxInRoster]?.name || 'Player';
     updated[selectedPitchSlot] = benchPlayerIdxInRoster;
 
-    setSquadDraftState((prev) => ({
-      ...prev,
-      startingXI: updated,
-    }));
+    setStartingXI(updated);
     setShowSwapModal(false);
     showToast(`Substituted ${newPlayerName} in for ${oldPlayerName}`);
   };
 
-  const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Active' | 'Injured' | 'Suspended') => {
+  const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => {
     if (currentRole !== 'COACH') {
       showToast('Permission Denied: Only Coach can update player availability status.');
       return;
@@ -308,10 +270,9 @@ export const useTeamDashboard = () => {
     setRoster((prev) =>
       prev.map((p) => {
         if (p.id === playerId) {
-          const updatedStatus = newStatus === 'Active' ? 'Fit' : newStatus;
           return {
             ...p,
-            status: updatedStatus as any,
+            status: newStatus,
             isInjured: newStatus === 'Injured',
             isSuspended: newStatus === 'Suspended',
           };
@@ -319,30 +280,23 @@ export const useTeamDashboard = () => {
         return p;
       })
     );
-    showToast(`Player status updated to ${newStatus}`);
+    showToast('Updated player availability status.');
   };
 
-  const handleUploadPlayerImage = (playerId: string, imageUrl: string) => {
-    if (currentRole !== 'COACH') {
-      showToast('Permission Denied: Only Coach can upload player photos.');
+  const handleAssignActivity = (sessionId: string, newActivity: string) => {
+    if (currentRole !== 'CAPTAIN') {
+      showToast('Permission Denied: Only Captain can organize training drills.');
       return;
     }
-    setRoster((prev) =>
-      prev.map((p) => (p.id === playerId ? { ...p, cardImage: imageUrl } : p))
-    );
-    showToast('Player profile image updated successfully');
-  };
-
-  const handleAssignPracticeActivity = (sessionId: string, activity: string) => {
     setPracticeSchedule((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, activity, assignedBy: 'Captain' } : s))
+      prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Captain Leo' } : s))
     );
-    showToast(`Assigned activity: "${activity}" to session`);
+    showToast(`Assigned "${newActivity}" to drill schedule.`);
   };
 
   const handleAddPracticeDay = (day: string, time: string, location: string) => {
-    if (currentRole !== 'COACH') {
-      showToast('Permission Denied: Only Coach can add practice days.');
+    if (currentRole !== 'CAPTAIN') {
+      showToast('Permission Denied: Only Captain can add practice days.');
       return;
     }
     const newSession: PracticeSession = {
@@ -350,55 +304,46 @@ export const useTeamDashboard = () => {
       day,
       time,
       location,
-      activity: 'Pending Activity Assignment',
-      assignedBy: 'Coach',
+      activity: 'Tactical drills',
+      assignedBy: 'Captain Leo',
     };
     setPracticeSchedule((prev) => [...prev, newSession]);
-    showToast(`Added practice day: ${day}`);
+    showToast(`Added ${day} drill session to schedule.`);
   };
 
-  const inviteUrl = `${window.location.origin}/#/login?invite=team-egerton-fc`;
-
-  const handleCopyInviteLink = () => {
-    navigator.clipboard.writeText(inviteUrl);
-    showToast('Invitation link copied to clipboard!');
-  };
-
-  const handleShareWhatsApp = () => {
-    const text = encodeURIComponent(`Join Egerton FC squad on Egerton Sports Network: ${inviteUrl}`);
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-  };
-
-  const handlePublishJournal = async (journalData: {
-    title: string;
-    excerpt: string;
-    content: string;
-    category?: string;
-    imageUrl?: string;
-  }) => {
+  const handlePublishJournal = async (title: string, content: string, category: string) => {
     if (!canPublish) {
-      showToast('Permission denied: Only Coach and Captain may publish team journals.');
+      showToast('Permission Denied: Only Coach or Captain can publish team journals.');
       return;
     }
-
     setIsSubmittingJournal(true);
     try {
       await publishTeamJournal({
-        ...journalData,
-        authorId: user?.id || DEFAULT_TEAM_UUID,
+        title,
+        content,
+        category,
+        authorId: user?.id,
+        teamId,
       });
-      showToast('🚀 Team Journal published live to the Egerton News Desk!');
+      showToast('🚀 Team Press Release published to newsroom!');
       setIsComposeModalOpen(false);
       const updatedNews = await fetchTeamNews();
       setPublishedNews(updatedNews);
     } catch (err: any) {
-      console.error('Failed to publish journal:', err);
-      showToast(`Publishing failed: ${err.message || 'Database error'}`);
-      throw err;
+      showToast(`Publication failed: ${err.message}`);
     } finally {
       setIsSubmittingJournal(false);
     }
   };
+
+  // Filtered Roster for Players List
+  const filteredRoster = roster.filter((player) => {
+    const matchesSearch =
+      player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(player.number).includes(searchTerm);
+    const matchesPos = positionFilter === 'ALL' || player.position === positionFilter;
+    return matchesSearch && matchesPos;
+  });
 
   return {
     isLoggedIn,
@@ -406,34 +351,25 @@ export const useTeamDashboard = () => {
     canPublish,
     teamId,
     teamInfo,
-    teamFixtures,
-    announcements,
-    publishedNews,
-    isComposeModalOpen,
-    setIsComposeModalOpen,
-    isSubmittingJournal,
-    handlePublishJournal,
-    isLoadingData,
     activeView,
     setActiveView,
     darkMode,
     setDarkMode,
+    isLoadingData,
     roster,
-    setRoster,
-    startingXI: squadDraftState.startingXI,
-    setStartingXI: (startingXI: number[]) => setSquadDraftState((prev) => ({ ...prev, startingXI })),
-    formation: squadDraftState.formation,
-    setFormation: (formation: string) => setSquadDraftState((prev) => ({ ...prev, formation })),
-    activePlaystyle: squadDraftState.activePlaystyle,
-    setActivePlaystyle: (activePlaystyle: string) => setSquadDraftState((prev) => ({ ...prev, activePlaystyle })),
-    playstyleSliders: squadDraftState.playstyleSliders,
-    setPlaystyleSliders: (action: React.SetStateAction<typeof squadDraftState.playstyleSliders>) =>
-      setSquadDraftState((prev) => ({
-        ...prev,
-        playstyleSliders: typeof action === 'function' ? action(prev.playstyleSliders) : action,
-      })),
+    practiceSchedule,
+    formation,
+    setFormation,
+    playstyleSliders,
+    setPlaystyleSliders,
+    pitchNodes,
+    startingXI,
+    benchPlayers,
+    collectiveRating,
+    collectiveStrength,
     selectedPitchSlot,
     setSelectedPitchSlot,
+    handleSwapPitchSlots,
     showSwapModal,
     setShowSwapModal,
     showRolesModal,
@@ -441,38 +377,31 @@ export const useTeamDashboard = () => {
     activeSquadType,
     setActiveSquadType,
     handleOpenNextGameSquad,
+    handleSaveSquad,
+    handleSaveFormation,
+    handleSaveRoles,
+    handleSwapPlayer,
+    handleUpdatePlayerStatus,
+    handleAssignActivity,
+    handleAddPracticeDay,
     searchTerm,
     setSearchTerm,
     positionFilter,
     setPositionFilter,
+    filteredRoster,
+    teamFixtures,
+    announcements,
+    publishedNews,
+    isComposeModalOpen,
+    setIsComposeModalOpen,
+    isSubmittingJournal,
+    handlePublishJournal,
     showInviteModal,
     setShowInviteModal,
-    inviteUrl,
-    handleCopyInviteLink,
-    handleShareWhatsApp,
-    roleAssignments: squadDraftState.roleAssignments,
-    setRoleAssignments: (action: React.SetStateAction<RoleAssignments>) =>
-      setSquadDraftState((prev) => ({
-        ...prev,
-        roleAssignments: typeof action === 'function' ? action(prev.roleAssignments) : action,
-      })),
-    practiceSchedule,
-    handleAssignPracticeActivity,
-    handleAddPracticeDay,
     toastMessage,
     showToast,
-    isSubmittingSquad,
-    hasRecoveredDraft,
     handleLogout,
-    collectiveRating,
-    collectiveStrength,
-    benchPlayers,
-    validateSquad,
-    handleSaveRoles,
-    handleSaveFormation,
-    handleSaveSquad,
-    handleSwapPlayer,
-    handleUpdatePlayerStatus,
-    handleUploadPlayerImage,
+    standings: initialStandings,
+    teamForm: initialTeamForm,
   };
 };
