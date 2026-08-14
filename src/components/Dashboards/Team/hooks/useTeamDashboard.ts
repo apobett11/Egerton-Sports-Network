@@ -268,31 +268,39 @@ export const useTeamDashboard = () => {
   };
 
   const handleAssignActivity = (sessionId: string, newActivity: string) => {
-    if (currentRole !== 'CAPTAIN') {
-      showToast('Permission Denied: Only Captain can organize training drills.');
-      return;
-    }
     setPracticeSchedule((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Captain Leo' } : s))
     );
     showToast(`Assigned "${newActivity}" to drill schedule.`);
   };
 
-  const handleAddPracticeDay = (day: string, time: string, location: string) => {
-    if (currentRole !== 'CAPTAIN') {
-      showToast('Permission Denied: Only Captain can add practice days.');
-      return;
-    }
+  const handleAddPracticeDay = (
+    day: string,
+    time: string,
+    location: string,
+    intensity: 'High' | 'Medium' | 'Recovery' = 'High',
+    activity: string = 'Tactical drills'
+  ) => {
     const newSession: PracticeSession = {
       id: `ps_${Date.now()}`,
       day,
       time,
       location,
-      activity: 'Tactical drills',
+      activity,
       assignedBy: 'Captain Leo',
+      coachApproved: false,
+      intensity,
+      focusArea: activity,
     };
     setPracticeSchedule((prev) => [...prev, newSession]);
-    showToast(`Added ${day} drill session to schedule.`);
+    showToast(`Added ${day} (${activity}) drill session to schedule.`);
+  };
+
+  const handleApprovePracticeDay = (sessionId: string) => {
+    setPracticeSchedule((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, coachApproved: true } : s))
+    );
+    showToast('Coach approved training workout.');
   };
 
   const handlePublishJournal = async (title: string, content: string, category: string) => {
@@ -368,6 +376,7 @@ export const useTeamDashboard = () => {
     handleUpdatePlayerStatus,
     handleAssignActivity,
     handleAddPracticeDay,
+    handleApprovePracticeDay,
     searchTerm,
     setSearchTerm,
     positionFilter,

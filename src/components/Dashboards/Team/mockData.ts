@@ -301,7 +301,9 @@ export const initialFixtures: Match[] = [
         time: '16:00',
         location: 'Pavilion Main Stadium',
         league: 'Egerton Premier League',
-        status: 'UPCOMING'
+        status: 'UPCOMING',
+        referee: 'Ref. Hillary Kiplagat',
+        matchday: 24
     },
     {
         id: 'f2',
@@ -311,7 +313,9 @@ export const initialFixtures: Match[] = [
         time: '14:30',
         location: 'Kilimo Grounds',
         league: 'Egerton Premier League',
-        status: 'UPCOMING'
+        status: 'UPCOMING',
+        referee: 'Ref. Evans Omwamba',
+        matchday: 25
     },
     {
         id: 'f3',
@@ -321,7 +325,9 @@ export const initialFixtures: Match[] = [
         time: '18:00',
         location: 'Pavilion Turf B',
         league: 'Campus Championship',
-        status: 'UPCOMING'
+        status: 'UPCOMING',
+        referee: 'Ref. Brenda Wanjiku',
+        matchday: 26
     },
     {
         id: 'f_past_1',
@@ -333,7 +339,9 @@ export const initialFixtures: Match[] = [
         league: 'Egerton Premier League',
         status: 'FINISHED',
         score: '3 - 1',
-        result: 'W'
+        result: 'W',
+        referee: 'Ref. Hillary Kiplagat',
+        matchday: 23
     },
     {
         id: 'f_past_2',
@@ -345,7 +353,47 @@ export const initialFixtures: Match[] = [
         league: 'Egerton Premier League',
         status: 'FINISHED',
         score: '2 - 0',
-        result: 'W'
+        result: 'W',
+        referee: 'Ref. Evans Omwamba',
+        matchday: 22
+    }
+];
+
+// ... FORMATION_CONFIGS unchanged ...
+
+export const initialPracticeSchedule: PracticeSession[] = [
+    {
+        id: 'ps1',
+        day: 'Monday',
+        time: '09:00 - 11:30',
+        location: 'Pavilion Main Stadium',
+        activity: 'Gas Conditioning & Sprints',
+        assignedBy: 'Captain Leo',
+        coachApproved: true,
+        intensity: 'High',
+        focusArea: 'Stamina & Acceleration'
+    },
+    {
+        id: 'ps2',
+        day: 'Wednesday',
+        time: '10:00 - 12:30',
+        location: 'Pavilion Turf B',
+        activity: 'Rondo Passing & Ball Retention',
+        assignedBy: 'Captain Leo',
+        coachApproved: true,
+        intensity: 'Medium',
+        focusArea: 'Midfield Ball Control'
+    },
+    {
+        id: 'ps3',
+        day: 'Friday',
+        time: '15:00 - 17:00',
+        location: 'Kilimo Grounds',
+        activity: 'Tactical Positioning & Set-Piece Routines',
+        assignedBy: 'Captain Leo',
+        coachApproved: false,
+        intensity: 'High',
+        focusArea: 'Corner & Free Kick Defense'
     }
 ];
 

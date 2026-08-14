@@ -73,6 +73,9 @@ export interface PracticeSession {
     location: string;
     activity: string;
     assignedBy?: string;
+    coachApproved?: boolean;
+    intensity?: 'High' | 'Medium' | 'Recovery';
+    focusArea?: string;
 }
 
 export type MatchStatus = 'FINISHED' | 'LIVE' | 'UPCOMING';
@@ -91,6 +94,8 @@ export interface Match {
     scoreAway?: number;
     isHome?: boolean;
     result?: 'W' | 'D' | 'L';
+    referee?: string;
+    matchday?: number;
 }
 
 export interface TeamFormEntry {

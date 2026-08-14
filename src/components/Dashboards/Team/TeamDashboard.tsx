@@ -20,11 +20,11 @@ import { SettingsPage } from './components/SettingsPage';
 import { StandingsPage } from './components/StandingsPage';
 import { TeamSidebar } from './components/Sidebar/TeamSidebar';
 import { TeamHeader } from './components/Header/TeamHeader';
+import { TeamMobileNav } from './components/Mobile/TeamMobileNav';
 import { PitchCanvas } from './components/Tactics/PitchCanvas';
 import { TacticsControls } from './components/Tactics/TacticsControls';
 import { RosterListView } from './components/Roster/RosterListView';
 import { RoleAssignmentsView } from './components/Roles/RoleAssignmentsView';
-import { KitsSection } from './components/Kits/KitsSection';
 import { ComposeJournalModal } from './components/ComposeJournalModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
 
@@ -71,6 +71,7 @@ export const TeamDashboard: React.FC = () => {
     practiceSchedule,
     handleAssignActivity,
     handleAddPracticeDay,
+    handleApprovePracticeDay,
     toastMessage,
     showToast,
     handleLogout,
@@ -126,7 +127,7 @@ export const TeamDashboard: React.FC = () => {
         />
 
         {/* MAIN VIEWS WORKSPACE CANVAS */}
-        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto overflow-y-auto pb-24 lg:pb-8">
           {/* PAGE 1: OVERVIEW / HOMEPAGE */}
           {activeView === 'DASHBOARD' && (
             <Homepage
@@ -139,6 +140,7 @@ export const TeamDashboard: React.FC = () => {
               practiceSchedule={practiceSchedule}
               onAssignActivity={handleAssignActivity}
               onAddPracticeDay={handleAddPracticeDay}
+              onApprovePracticeDay={handleApprovePracticeDay}
               onOpenInviteModal={() => setShowInviteModal(true)}
               matches={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
               standings={standings || initialStandings}
@@ -312,6 +314,13 @@ export const TeamDashboard: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <TeamMobileNav
+        activeView={activeView}
+        setActiveView={setActiveView}
+        currentRole={currentRole}
+      />
 
       {/* COMPOSE JOURNAL MODAL */}
       {isComposeModalOpen && (
