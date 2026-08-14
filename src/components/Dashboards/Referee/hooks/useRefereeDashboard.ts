@@ -36,23 +36,109 @@ export const useRefereeDashboard = () => {
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch Fixtures using the current user's UID
-      const res = await ApiService.getFixtures();
-      const allMatches = res.data || [];
+      // 1. Direct Supabase query with all linesmen and profile relations
+      const { data: dbData, error: fixErr } = await supabase
+        .from('fixtures')
+        .select(`
+          id,
+          status,
+          scheduled_time,
+          score_home,
+          score_away,
+          venue,
+          matchday,
+          attendance,
+          weather,
+          referee_id,
+          assistant_referee_1_id,
+          assistant_referee_2_id,
+          fourth_official_id,
+          verified_by_referee_id,
+          competition:competitions(id, name),
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
+          referee_prof:profiles!referee_id(first_name, last_name),
+          ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
+          ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
+          fo_prof:profiles!fourth_official_id(first_name, last_name)
+        `)
+        .order('scheduled_time', { ascending: true });
+
+      let formattedMatches: Match[] = [];
+
+      if (!fixErr && dbData && dbData.length > 0) {
+        formattedMatches = dbData.map((f: any) => {
+          const comp = Array.isArray(f.competition) ? f.competition[0] : f.competition;
+          const home = Array.isArray(f.team_home) ? f.team_home[0] : f.team_home;
+          const away = Array.isArray(f.team_away) ? f.team_away[0] : f.team_away;
+          const refProf = Array.isArray(f.referee_prof) ? f.referee_prof[0] : f.referee_prof;
+          const ar1Prof = Array.isArray(f.ar1_prof) ? f.ar1_prof[0] : f.ar1_prof;
+          const ar2Prof = Array.isArray(f.ar2_prof) ? f.ar2_prof[0] : f.ar2_prof;
+          const foProf = Array.isArray(f.fo_prof) ? f.fo_prof[0] : f.fo_prof;
+
+          const matchDate = f.scheduled_time ? new Date(f.scheduled_time) : new Date();
+          const timeStr = matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          return {
+            id: f.id,
+            status: f.status as MatchStatus,
+            time: timeStr,
+            minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
+            league: comp?.name || 'Egerton Premier League',
+            teamA: {
+              id: home?.id || 'home-1',
+              name: home?.name || 'Home Team',
+              shortName: home?.short_name || 'HOM',
+              logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+              colorCode: home?.color_code || '#D4AF37',
+            },
+            teamB: {
+              id: away?.id || 'away-1',
+              name: away?.name || 'Away Team',
+              shortName: away?.short_name || 'AWY',
+              logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+              colorCode: away?.color_code || '#2563EB',
+            },
+            scoreA: f.score_home || 0,
+            scoreB: f.score_away || 0,
+            events: [],
+            stats: [],
+            lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
+            venue: f.venue || 'Egerton Pavilion Ground',
+            referee: refProf ? `${refProf.first_name} ${refProf.last_name}` : currentUserName,
+            refereeId: f.referee_id,
+            assistantReferee1: ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}` : 'Official Linesman 1',
+            assistantReferee1Id: f.assistant_referee_1_id,
+            assistantReferee2: ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}` : 'Official Linesman 2',
+            assistantReferee2Id: f.assistant_referee_2_id,
+            fourthOfficial: foProf ? `${foProf.first_name} ${foProf.last_name}` : 'Official Table Judge',
+            fourthOfficialId: f.fourth_official_id,
+            attendance: f.attendance,
+            weather: f.weather,
+            matchday: f.matchday || 1,
+            verifiedByRefereeId: f.verified_by_referee_id,
+            scheduledTime: f.scheduled_time,
+          } as any;
+        });
+      } else {
+        // Fallback to ApiService
+        const res = await ApiService.getFixtures();
+        formattedMatches = res.data || [];
+      }
 
       // Filter matches where referee UID matches the user
-      const myMatches = allMatches.filter((m) => {
+      const myMatches = formattedMatches.filter((m: any) => {
         if (!currentUserId || currentUserId === 'referee-1') return true;
         return (
           m.refereeId === currentUserId ||
           m.verifiedByRefereeId === currentUserId ||
-          (m as any).assistant_referee_1_id === currentUserId ||
-          (m as any).assistant_referee_2_id === currentUserId
+          m.assistantReferee1Id === currentUserId ||
+          m.assistantReferee2Id === currentUserId ||
+          m.fourthOfficialId === currentUserId
         );
       });
 
-      // If user has no matches in dev mode, provide all matches for complete demonstration
-      const finalMatches = myMatches.length > 0 ? myMatches : allMatches;
+      const finalMatches = myMatches.length > 0 ? myMatches : formattedMatches;
       setFixtures(finalMatches);
 
       if (finalMatches.length > 0 && !selectedFixtureId) {
@@ -70,7 +156,7 @@ export const useRefereeDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUserId, selectedFixtureId]);
+  }, [currentUserId, currentUserName, selectedFixtureId]);
 
   useEffect(() => {
     loadDashboardData();
@@ -83,18 +169,23 @@ export const useRefereeDashboard = () => {
 
   // Today's matches (filtered by selected date or current date, sorted chronologically by kickoff time)
   const todayMatches = useMemo(() => {
-    const selectedDateStr = selectedDate.toDateString();
-    const todayMatchesList = fixtures.filter((f) => {
-      if (!f.id) return false;
-      // Match against selectedDate or check if scheduled for today
-      if (f.id && f.id.length > 10 && !isNaN(Date.parse(f.id))) {
-        return new Date(f.id).toDateString() === selectedDateStr;
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+    const selectedDateLocaleStr = selectedDate.toDateString();
+
+    const filtered = fixtures.filter((f: any) => {
+      if (f.scheduledTime) {
+        return f.scheduledTime.startsWith(selectedDateStr);
       }
-      return true; // default include in today's active pool
+      if (f.id && f.id.length > 10 && !isNaN(Date.parse(f.id))) {
+        return new Date(f.id).toDateString() === selectedDateLocaleStr;
+      }
+      return true;
     });
 
+    const activeList = filtered.length > 0 ? filtered : fixtures;
+
     // Sort by time ascending (e.g. 14:00, 16:00, 18:00)
-    return [...todayMatchesList].sort((a, b) => {
+    return [...activeList].sort((a, b) => {
       const timeA = a.time || '16:00';
       const timeB = b.time || '16:00';
       return timeA.localeCompare(timeB);
@@ -105,9 +196,11 @@ export const useRefereeDashboard = () => {
   const matchesByMonth = useMemo(() => {
     const groups: { [key: string]: Match[] } = {};
 
-    fixtures.forEach((match) => {
+    fixtures.forEach((match: any) => {
       let dateObj = new Date();
-      if (match.id && match.id.length > 10 && !isNaN(Date.parse(match.id))) {
+      if (match.scheduledTime) {
+        dateObj = new Date(match.scheduledTime);
+      } else if (match.id && match.id.length > 10 && !isNaN(Date.parse(match.id))) {
         dateObj = new Date(match.id);
       }
       const monthKey = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
