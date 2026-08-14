@@ -137,6 +137,7 @@ export const useJournalistDashboard = () => {
           kickoff: f.time || '16:00',
           time: f.time || 'Today',
           venue: f.venue || 'Pavilion Grounds',
+          matchday: (f as any).matchday || 1,
         }));
         setMatches(dbMatches);
         if (dbMatches.length > 0) {
@@ -164,8 +165,8 @@ export const useJournalistDashboard = () => {
         setTeams(dbTeams);
       }
 
-      // 5. Fetch News Articles from production Database
-      const dbArticles = await fetchNewsArticlesFromDB();
+      // 5. Fetch News Articles / Journals from production Database (own articles prioritized if profile exists)
+      const dbArticles = await fetchNewsArticlesFromDB(prof?.id);
       setArticles(dbArticles);
 
       // 6. Calculate Performance Analytics from production data
@@ -250,6 +251,7 @@ export const useJournalistDashboard = () => {
           category: composeType,
           status: articleStatus,
           imageUrl: uploadedPublicUrl,
+          fixtureId: currentEvent.id.startsWith('match-') ? null : currentEvent.id,
         });
         triggerToast(isDraftStatus ? 'Draft article updated in database.' : '🚀 Article published live!');
       } else {
@@ -263,6 +265,7 @@ export const useJournalistDashboard = () => {
           authorId: currentUserProfile?.id || null,
           imageUrl: uploadedPublicUrl,
           imageStoragePath: uploadedPath,
+          fixtureId: currentEvent.id.startsWith('match-') ? null : currentEvent.id,
         });
         triggerToast(
           isDraftStatus
@@ -272,7 +275,7 @@ export const useJournalistDashboard = () => {
       }
 
       // Step 3: Refresh centralized article list and analytics
-      const updatedArticles = await fetchNewsArticlesFromDB();
+      const updatedArticles = await fetchNewsArticlesFromDB(currentUserProfile?.id);
       setArticles(updatedArticles);
       const updatedAnalytics = await calculateAnalyticsFromDB(updatedArticles);
       setPerformanceMetrics(updatedAnalytics);
@@ -296,7 +299,7 @@ export const useJournalistDashboard = () => {
       await deleteNewsArticleDB(id, targetArticle.imageStoragePath);
       triggerToast('Article deleted from database and Storage.');
 
-      const updatedArticles = await fetchNewsArticlesFromDB();
+      const updatedArticles = await fetchNewsArticlesFromDB(currentUserProfile?.id);
       setArticles(updatedArticles);
       const updatedAnalytics = await calculateAnalyticsFromDB(updatedArticles);
       setPerformanceMetrics(updatedAnalytics);

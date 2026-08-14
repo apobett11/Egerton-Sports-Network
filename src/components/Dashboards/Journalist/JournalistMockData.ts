@@ -291,6 +291,17 @@ export const INITIAL_PERFORMANCE: PerformanceMetrics = {
   topArticle: 'Tatton FC Edge Njoro City 2-1 in Derby Thriller',
   topCompetition: 'Egerton Premier League',
   mostCoveredTeam: 'Tatton FC',
+  monthlyStats: [
+    { monthKey: '2026-08', monthLabel: 'Aug 2026', count: 18, views: 52400 },
+    { monthKey: '2026-07', monthLabel: 'Jul 2026', count: 16, views: 48200 },
+    { monthKey: '2026-06', monthLabel: 'Jun 2026', count: 14, views: 39800 },
+  ],
+  matchdayStats: [
+    { matchday: 1, label: 'Matchday 1', count: 8, views: 24000 },
+    { matchday: 2, label: 'Matchday 2', count: 12, views: 36500 },
+    { matchday: 3, label: 'Matchday 3', count: 9, views: 29000 },
+    { matchday: 4, label: 'Matchday 4', count: 11, views: 34200 },
+  ],
 };
 
 export const INITIAL_NOTIFICATIONS: NotificationItem[] = [

@@ -60,6 +60,9 @@ export interface ArticlePost {
   isYesterday?: boolean;
   isThisWeek?: boolean;
   isThisMonth?: boolean;
+  monthKey?: string; // e.g. "2026-08"
+  monthLabel?: string; // e.g. "August 2026"
+  matchday?: number; // e.g. 1, 2, 3
   authorId?: string; // UUID references profiles(id)
   authorName: string;
   authorHandle?: string;
@@ -98,6 +101,7 @@ export interface CurrentMatchEvent {
   time: string;
   venue: string;
   countdown?: string;
+  matchday?: number;
 }
 
 export interface AnonymousTip {
@@ -120,6 +124,20 @@ export interface NotificationItem {
   isRead: boolean;
 }
 
+export interface MonthlyStatsItem {
+  monthKey: string;
+  monthLabel: string;
+  count: number;
+  views: number;
+}
+
+export interface MatchdayStatsItem {
+  matchday: number;
+  label: string;
+  count: number;
+  views: number;
+}
+
 export interface PerformanceMetrics {
   articlesToday: number;
   articlesThisWeek: number;
@@ -135,6 +153,8 @@ export interface PerformanceMetrics {
   topArticle: string;
   topCompetition: string;
   mostCoveredTeam: string;
+  monthlyStats: MonthlyStatsItem[];
+  matchdayStats: MatchdayStatsItem[];
 }
 
 export interface OptionItem {
