@@ -359,44 +359,6 @@ export const initialFixtures: Match[] = [
     }
 ];
 
-// ... FORMATION_CONFIGS unchanged ...
-
-export const initialPracticeSchedule: PracticeSession[] = [
-    {
-        id: 'ps1',
-        day: 'Monday',
-        time: '09:00 - 11:30',
-        location: 'Pavilion Main Stadium',
-        activity: 'Gas Conditioning & Sprints',
-        assignedBy: 'Captain Leo',
-        coachApproved: true,
-        intensity: 'High',
-        focusArea: 'Stamina & Acceleration'
-    },
-    {
-        id: 'ps2',
-        day: 'Wednesday',
-        time: '10:00 - 12:30',
-        location: 'Pavilion Turf B',
-        activity: 'Rondo Passing & Ball Retention',
-        assignedBy: 'Captain Leo',
-        coachApproved: true,
-        intensity: 'Medium',
-        focusArea: 'Midfield Ball Control'
-    },
-    {
-        id: 'ps3',
-        day: 'Friday',
-        time: '15:00 - 17:00',
-        location: 'Kilimo Grounds',
-        activity: 'Tactical Positioning & Set-Piece Routines',
-        assignedBy: 'Captain Leo',
-        coachApproved: false,
-        intensity: 'High',
-        focusArea: 'Corner & Free Kick Defense'
-    }
-];
-
 // Complete 11 tactical formations with baseline coordinates from bottom (goal line) & right (sideline)
 export const FORMATION_CONFIGS: Record<FormationName, PitchNodeCoordinate[]> = {
     '4-3-3 Attack': [
@@ -621,30 +583,39 @@ export function calculateDynamicPitchCoordinates(
     });
 }
 
-export const initialPracticeSchedule = [
+export const initialPracticeSchedule: PracticeSession[] = [
     {
         id: 'ps1',
         day: 'Monday',
         time: '09:00 - 11:30',
         location: 'Pavilion Main Stadium',
-        activity: 'Gas drills & Footwork',
-        assignedBy: 'Captain Leo'
+        activity: 'Gas Conditioning & Sprints',
+        assignedBy: 'Captain Leo',
+        coachApproved: true,
+        intensity: 'High',
+        focusArea: 'Stamina & Acceleration'
     },
     {
         id: 'ps2',
         day: 'Wednesday',
         time: '10:00 - 12:30',
         location: 'Pavilion Turf B',
-        activity: 'Football control & Passing',
-        assignedBy: 'Captain Leo'
+        activity: 'Rondo Passing & Ball Retention',
+        assignedBy: 'Captain Leo',
+        coachApproved: true,
+        intensity: 'Medium',
+        focusArea: 'Midfield Ball Control'
     },
     {
         id: 'ps3',
         day: 'Friday',
         time: '15:00 - 17:00',
         location: 'Kilimo Grounds',
-        activity: 'Pitch positioning & Tactical drills',
-        assignedBy: 'Captain Leo'
+        activity: 'Tactical Positioning & Set-Piece Routines',
+        assignedBy: 'Captain Leo',
+        coachApproved: false,
+        intensity: 'High',
+        focusArea: 'Corner & Free Kick Defense'
     }
 ];
 
