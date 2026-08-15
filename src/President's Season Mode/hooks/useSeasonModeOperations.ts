@@ -23,6 +23,7 @@ import {
 } from '../constants/seasonConstants';
 
 import { PresidentActionBridge } from '../../services/presidentAgent0Bridge';
+import { ApiService } from '../../services/api';
 
 export function useSeasonModeOperations() {
   const [seasonId, setSeasonId] = useState<string>('season-2026-official');
@@ -279,31 +280,31 @@ export function useSeasonModeOperations() {
   const handleExecuteSwapReferee = useCallback(
     async (matchId: string, newRefereeId: string) => {
       try {
-        const res = await PresidentActionBridge.replaceReferee(seasonId, newRefereeId);
-        if (res.success) {
-          setFixtures((prev) =>
-            prev.map((f) => (f.id === matchId ? { ...f, referee_id: newRefereeId } : f))
-          );
+        const dbRes = await seasonOperationsService.swapReferee(matchId, newRefereeId, fixtures, referees);
+        await PresidentActionBridge.replaceReferee(seasonId, newRefereeId);
+        if (dbRes.success) {
+          setFixtures(dbRes.updatedFixtures);
           setRefereeSwapMatch(null);
-          showToast('Referee successfully replaced.');
+          showToast('Referee successfully replaced in database.');
           await loadData();
         } else {
-          showToast(res.error?.message || 'Failed to swap referee.');
+          showToast(dbRes.error || 'Failed to swap referee.');
         }
       } catch (err: any) {
         showToast(err.message || 'Failed to replace referee.');
       }
     },
-    [seasonId, showToast, loadData]
+    [seasonId, fixtures, referees, showToast, loadData]
   );
 
   const handleExecuteRemoveReferee = useCallback(
     async (refereeId: string) => {
       try {
+        await ApiService.updateRefereeStatus(refereeId, 'Deactivated');
         const res = await PresidentActionBridge.removeReferee(seasonId, refereeId);
         if (res.success) {
           setReferees((prev) => prev.map((r) => (r.id === refereeId ? { ...r, status: 'Deactivated' } : r)));
-          showToast('Referee removed from future assignments.');
+          showToast('Referee removed and deactivated in database.');
           await loadData();
         } else {
           showToast(res.error?.message || 'Failed to remove referee.');
@@ -322,7 +323,8 @@ export function useSeasonModeOperations() {
         if (res.success) {
           setFixtures(res.updatedFixtures);
           setShiftTargetMatch(null);
-          showToast('Match rescheduled successfully.');
+          showToast('Match rescheduled in database.');
+          await loadData();
         } else {
           showToast(res.error || 'Failed to shift match.');
         }
@@ -330,7 +332,7 @@ export function useSeasonModeOperations() {
         showToast(err.message || 'Failed to shift match.');
       }
     },
-    [fixtures, showToast]
+    [fixtures, showToast, loadData]
   );
 
   const handleExecuteCancelMatch = useCallback(
@@ -340,7 +342,8 @@ export function useSeasonModeOperations() {
         if (res.success) {
           setFixtures(res.updatedFixtures);
           setCancelTargetMatch(null);
-          showToast('Match cancelled successfully.');
+          showToast('Match cancelled in database.');
+          await loadData();
         } else {
           showToast(res.error || 'Failed to cancel match.');
         }
@@ -348,7 +351,7 @@ export function useSeasonModeOperations() {
         showToast(err.message || 'Failed to cancel match.');
       }
     },
-    [fixtures, showToast]
+    [fixtures, showToast, loadData]
   );
 
   const handleExecuteFlagLinesmanDefault = useCallback(
@@ -357,7 +360,8 @@ export function useSeasonModeOperations() {
         const res = await seasonOperationsService.flagLinesmanDefault(matchId, team, fixtures);
         if (res.success) {
           setFixtures(res.updatedFixtures);
-          showToast(`Linesman default flagged for team ${team}.`);
+          showToast(`Linesman default flagged for team ${team} in database.`);
+          await loadData();
         } else {
           showToast(res.error || 'Failed to flag linesman default.');
         }
@@ -365,7 +369,7 @@ export function useSeasonModeOperations() {
         showToast(err.message || 'Failed to flag linesman default.');
       }
     },
-    [fixtures, showToast]
+    [fixtures, showToast, loadData]
   );
 
   const handleExecuteUpdatePitchAvailability = useCallback(
@@ -377,7 +381,7 @@ export function useSeasonModeOperations() {
           if (res.affectedMatches.length > 0) {
             setPitchConflictModalData({ pitch: res.updatedPitches.find((p) => p.id === pitchId)!, mode, affected: res.affectedMatches });
           }
-          showToast('Pitch availability updated.');
+          showToast('Pitch availability updated in database.');
           await loadData();
         } else {
           showToast(res.error || 'Failed to update pitch availability.');
@@ -390,13 +394,14 @@ export function useSeasonModeOperations() {
   );
 
   const handleExecuteMarkRefUnavailable = useCallback(
-    async (refereeId: string, status: 'Unavailable' | 'Suspended' | 'Deactivated' | 'Active', reason: string) => {
+    async (refereeId: string, status: 'Unavailable' | 'Suspended' | 'Deactivated' | 'Active', _reason: string) => {
       try {
+        await ApiService.updateRefereeStatus(refereeId, status === 'Active' ? 'Active' : 'Suspended');
         const res = await PresidentActionBridge.removeReferee(seasonId, refereeId);
         if (res.success) {
           setReferees((prev) => prev.map((r) => (r.id === refereeId ? { ...r, status } : r)));
           setRefUnavailableTarget(null);
-          showToast(`Referee status updated to ${status}.`);
+          showToast(`Referee status updated to ${status} in database.`);
           await loadData();
         } else {
           showToast(res.error?.message || 'Failed to update referee status.');
@@ -409,7 +414,7 @@ export function useSeasonModeOperations() {
   );
 
   const handleExecuteAddFriendly = useCallback(
-    (payload: FriendlyMatchPayload): { success: boolean; error?: string } => {
+    async (payload: FriendlyMatchPayload): Promise<{ success: boolean; error?: string }> => {
       // 1. Conflict Check
       const conflict = seasonOperationsService.validateFriendlyConflicts(payload, fixtures, referees, pitches);
       if (conflict.has_conflict) {
@@ -418,17 +423,18 @@ export function useSeasonModeOperations() {
       }
 
       // 2. Create friendly
-      const createRes = seasonOperationsService.createFriendly(payload, teams, referees, pitches);
+      const createRes = await seasonOperationsService.createFriendly(payload, teams, referees, pitches);
       if (createRes.success && createRes.friendlyMatch) {
         setFixtures((prev) => [createRes.friendlyMatch!, ...prev]);
         setAddFriendlyModalOpen(false);
-        showToast(`Friendly match "${payload.friendly_name}" created successfully.`);
+        showToast(`Friendly match "${payload.friendly_name}" saved to database!`);
+        await loadData();
         return { success: true };
       }
 
       return { success: false, error: createRes.error || 'Failed to create friendly match.' };
     },
-    [fixtures, referees, pitches, teams, showToast]
+    [fixtures, referees, pitches, teams, showToast, loadData]
   );
 
   return {

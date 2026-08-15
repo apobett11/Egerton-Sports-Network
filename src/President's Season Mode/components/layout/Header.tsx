@@ -9,6 +9,7 @@ interface HeaderProps {
   setActiveView: (view: SeasonModeView) => void;
   onOpenAddFriendly: () => void;
   onOpenCalendar: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveView,
   onOpenAddFriendly,
   onOpenCalendar,
+  onLogout,
 }) => {
   return (
     <header

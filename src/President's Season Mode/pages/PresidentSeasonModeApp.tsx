@@ -14,7 +14,7 @@ export interface PresidentSeasonModeAppProps {
   onLogout?: () => void;
 }
 
-export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () => {
+export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ onLogout }) => {
   const {
     activeView,
     setActiveView,
@@ -79,6 +79,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = () 
         setActiveView={setActiveView}
         onOpenAddFriendly={() => {}}
         onOpenCalendar={() => setIsCalendarOpen(true)}
+        onLogout={onLogout}
       />
 
       {/* NAVIGATION BAR (5 OPERATIONAL TABS) */}

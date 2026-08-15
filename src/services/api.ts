@@ -1316,11 +1316,6 @@ export const ApiService = {
 
   // --- TEAMS PUBLIC SERVICE ---
   async getTeams(): Promise<ApiResponse<any[]>> {
-    const now = Date.now();
-    if (cachedTeams && now - cacheTimestamp < CACHE_TTL_MS) {
-      return { success: true, data: cachedTeams };
-    }
-
     try {
       const { data, error } = await supabase
         .from('teams')
@@ -1330,6 +1325,8 @@ export const ApiService = {
           short_name,
           logo_url,
           color_code,
+          status,
+          rejection_reason,
           coach:profiles!coach_id(first_name, last_name),
           captain:profiles!captain_id(first_name, last_name),
           competition:competitions(name)
@@ -1353,8 +1350,6 @@ export const ApiService = {
           };
         });
 
-        cachedTeams = formatted;
-        cacheTimestamp = now;
         return { success: true, data: formatted };
       }
 
@@ -1549,16 +1544,28 @@ export const ApiService = {
     }
   },
 
-  async getLeagues(): Promise<ApiResponse<any[]>> {
-    const now = Date.now();
-    if (cachedLeagues && now - cacheTimestamp < CACHE_TTL_MS) {
-      return { success: true, data: cachedLeagues };
-    }
-
+  async updateSeasonStatus(seasonId: string, status: 'active' | 'inactive' | 'archived'): Promise<ApiResponse<any>> {
     try {
-      const { data, error } = await supabase.from('competitions').select('*');
+      const { data, error } = await supabase
+        .from('seasons')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', seasonId)
+        .select()
+        .single();
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, data: null, message: classifyError(err).userMessage };
+    }
+  },
+
+  async getLeagues(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('competitions')
+        .select('*')
+        .order('created_at', { ascending: true });
       if (error || !data) return { success: true, data: [] };
-      cachedLeagues = data;
       return { success: true, data };
     } catch (e) {
       return { success: true, data: [] };
@@ -1583,6 +1590,78 @@ export const ApiService = {
     }
   },
 
+  async updateLeagueStatus(leagueId: string, isActive: boolean): Promise<ApiResponse<any>> {
+    try {
+      this.invalidateCache();
+      const { data, error } = await supabase
+        .from('competitions')
+        .update({ is_active: isActive })
+        .eq('id', leagueId)
+        .select()
+        .single();
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, data: null, message: classifyError(err).userMessage };
+    }
+  },
+
+  async deleteLeague(leagueId: string): Promise<ApiResponse<any>> {
+    try {
+      this.invalidateCache();
+      const { error } = await supabase.from('competitions').delete().eq('id', leagueId);
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data: { id: leagueId } };
+    } catch (err: any) {
+      return { success: false, data: null, message: classifyError(err).userMessage };
+    }
+  },
+
+  async getPendingTeams(): Promise<ApiResponse<any[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select(`
+          id,
+          name,
+          short_name,
+          logo_url,
+          color_code,
+          status,
+          competition_id,
+          coach:profiles!coach_id(first_name, last_name),
+          captain:profiles!captain_id(first_name, last_name),
+          competition:competitions(name)
+        `)
+        .eq('status', 'pending');
+
+      if (!error && data) {
+        const formatted = data.map((t: any) => {
+          const coachProf = unwrap(t.coach);
+          const captainProf = unwrap(t.captain);
+          const comp = unwrap(t.competition);
+          return {
+            id: t.id,
+            name: t.name,
+            code: t.short_name || 'EGA',
+            requestedLeague: comp?.name?.toLowerCase().includes('championship') ? 'championship' : 'premier',
+            division: comp?.name || 'Egerton Premier League',
+            coachName: coachProf ? `${coachProf.first_name} ${coachProf.last_name}` : 'Registered Head Coach',
+            coachAssigned: true,
+            captainAssigned: Boolean(captainProf),
+            playerCount: 18,
+            doctorAssigned: true,
+            submittedAt: 'Recently'
+          };
+        });
+        return { success: true, data: formatted };
+      }
+      return { success: true, data: [] };
+    } catch (err) {
+      return { success: true, data: [] };
+    }
+  },
+
   async approveTeam(teamId: string, leagueId: string, _division?: string): Promise<ApiResponse<any>> {
     try {
       this.invalidateCache();
@@ -1590,20 +1669,22 @@ export const ApiService = {
       if (leagueId && leagueId !== 'premier' && leagueId !== 'championship') {
         updatePayload.competition_id = leagueId;
       }
-      const { data } = await supabase.from('teams').update(updatePayload).eq('id', teamId).select().single();
-      return { success: true, data: data || { id: teamId, status: 'approved' } };
-    } catch (err) {
-      return { success: true, data: { id: teamId, status: 'approved' } };
+      const { data, error } = await supabase.from('teams').update(updatePayload).eq('id', teamId).select().single();
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 
   async rejectTeam(teamId: string, reason: string): Promise<ApiResponse<any>> {
     try {
       this.invalidateCache();
-      await supabase.from('teams').update({ status: 'rejected', rejection_reason: sanitizeHtmlText(reason) }).eq('id', teamId);
-      return { success: true, data: { id: teamId, status: 'rejected' } };
-    } catch (err) {
-      return { success: true, data: { id: teamId, status: 'rejected' } };
+      const { data, error } = await supabase.from('teams').update({ status: 'rejected', rejection_reason: sanitizeHtmlText(reason) }).eq('id', teamId).select().single();
+      if (error) return { success: false, data: null, message: error.message };
+      return { success: true, data };
+    } catch (err: any) {
+      return { success: false, data: null, message: classifyError(err).userMessage };
     }
   },
 

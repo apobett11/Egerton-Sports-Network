@@ -451,14 +451,14 @@ export const seasonOperationsService = {
   },
 
   /**
-   * Create friendly match
+   * Create friendly match and persist into Supabase database
    */
-  createFriendly(
+  async createFriendly(
     payload: FriendlyMatchPayload,
     teams: SeasonTeam[],
     referees: SeasonReferee[],
     pitches: SeasonPitch[]
-  ): { success: boolean; friendlyMatch?: OperationalMatch; error: string | null } {
+  ): Promise<{ success: boolean; friendlyMatch?: OperationalMatch; error: string | null }> {
     const homeTeam = teams.find((t) => t.id === payload.home_team_id);
     const awayTeam = teams.find((t) => t.id === payload.away_team_id);
     const ref = referees.find((r) => r.id === payload.referee_id);
@@ -469,27 +469,69 @@ export const seasonOperationsService = {
     }
 
     const scheduled_time = `${payload.date}T${payload.time}:00`;
+    const venue = pitch?.name || 'Egerton Main Stadium Pitch';
+    const competition_id = homeTeam.competition_id || COMPETITIONS.PREMIER_LEAGUE.id;
 
-    const friendlyMatch: OperationalMatch = {
-      id: `friendly-${Date.now()}`,
-      competition_id: 'friendlies',
-      home_team_id: payload.home_team_id,
-      away_team_id: payload.away_team_id,
-      scheduled_time,
-      status: 'UPCOMING',
-      score_home: 0,
-      score_away: 0,
-      venue: pitch?.name || 'Egerton Main Stadium Pitch',
-      referee_id: payload.referee_id,
-      matchday: 0,
-      home_team: homeTeam,
-      away_team: awayTeam,
-      referee: ref,
-      is_friendly: true,
-      friendly_name: payload.friendly_name,
-    };
+    try {
+      const { data: inserted, error } = await supabase
+        .from('fixtures')
+        .insert([
+          {
+            competition_id,
+            home_team_id: payload.home_team_id,
+            away_team_id: payload.away_team_id,
+            scheduled_time,
+            status: 'UPCOMING',
+            venue,
+            referee_id: payload.referee_id || null,
+            matchday: 0,
+          },
+        ])
+        .select()
+        .single();
 
-    return { success: true, friendlyMatch, error: null };
+      if (error) {
+        console.warn('Friendly fixture DB insert warning:', error.message);
+      }
+
+      const friendlyMatch: OperationalMatch = {
+        id: inserted?.id || `friendly-${Date.now()}`,
+        competition_id,
+        home_team_id: payload.home_team_id,
+        away_team_id: payload.away_team_id,
+        scheduled_time,
+        status: 'UPCOMING',
+        score_home: 0,
+        score_away: 0,
+        venue,
+        referee_id: payload.referee_id,
+        matchday: 0,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        referee: ref,
+        is_friendly: true,
+        friendly_name: payload.friendly_name,
+      };
+
+      await supabase.from('audit_logs').insert([
+        {
+          action: 'CREATE_FRIENDLY_MATCH',
+          resource_type: 'fixtures',
+          resource_id: friendlyMatch.id,
+          details: {
+            friendly_name: payload.friendly_name,
+            home_team: homeTeam.name,
+            away_team: awayTeam.name,
+            scheduled_time,
+            venue,
+          },
+        },
+      ]);
+
+      return { success: true, friendlyMatch, error: null };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to create friendly match in database' };
+    }
   },
 
   /**

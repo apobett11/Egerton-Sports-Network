@@ -10,6 +10,7 @@ import { FixtureEngineView } from './components/Fixtures/FixtureEngineView';
 import { BroadcastView } from './components/Megaphone/BroadcastView';
 import { PresidentProfileView } from './components/Profile/PresidentProfileView';
 import { SeasonLaunchModal } from './components/Fixtures/SeasonLaunchModal';
+import { PresidentSeasonModeApp } from "../../../President's Season Mode/pages/PresidentSeasonModeApp";
 
 export interface PresidentDashboardProps {
   onLogout?: () => void;
@@ -23,6 +24,10 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     setIsSidebarOpen,
     activeView,
     setActiveView,
+    isSeasonMode,
+    setIsSeasonMode,
+    handleFixturesConfirmed,
+    handleResetToPreSeason,
     toastMessage,
     showToast,
     seasons,
@@ -88,6 +93,20 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     handleBroadcastAnnouncement,
   } = usePresidentDashboard();
 
+  // =========================================================================
+  // PROTECTED SEASON MODE RENDERER
+  // When fixtures have been locked and confirmed into the database via Agent 0,
+  // the President Dashboard strictly renders Season Mode.
+  // =========================================================================
+  if (isSeasonMode) {
+    return <PresidentSeasonModeApp onLogout={onLogout} />;
+  }
+
+  // =========================================================================
+  // PRE-SEASON MODE RENDERER
+  // Default operational state before official double round-robin fixtures
+  // are mathematically computed, verified, and locked to the database.
+  // =========================================================================
   return (
     <div className={`min-h-screen font-sans relative ${isDark ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-800'} transition-colors duration-300 select-none pb-24`}>
       <div className="stadium-bg-overlay fixed inset-0 pointer-events-none z-0" />
@@ -404,7 +423,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         </div>
       </nav>
 
-      {/* SEASON LAUNCH WORKFLOW MODAL */}
+      {/* STREAMLINED 4-STEP SEASON LAUNCH WORKFLOW MODAL */}
       <SeasonLaunchModal
         isOpen={isSeasonLaunchModalOpen}
         onClose={() => setIsSeasonLaunchModalOpen(false)}
@@ -414,6 +433,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         pitches={pitches}
         showToast={showToast}
         onSuccessSave={reloadSavedFixtures}
+        onFixturesConfirmed={handleFixturesConfirmed}
       />
     </div>
   );
