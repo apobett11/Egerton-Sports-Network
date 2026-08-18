@@ -27,6 +27,8 @@ export const useAdminOperationsData = () => {
     totalUsers: 0,
     activeUsersToday: 0,
     onlineUsers: 0,
+    revokedUsers: 0,
+    uptimePercentage: 99.98,
     totalTeams: 0,
     totalPlayers: 0,
     totalReferees: 0,
@@ -99,6 +101,7 @@ export const useAdminOperationsData = () => {
 
   // Performance Telemetry
   const [performanceMetrics, setPerformanceMetrics] = useState<PlatformPerformanceMetrics>({
+    avgUserUptimePercentage: 99.98,
     avgLoginTimeMs: 180,
     avgApiResponseMs: 34,
     dbLatencyMs: 19,
@@ -108,6 +111,7 @@ export const useAdminOperationsData = () => {
     uploadsToday: 18,
     avgSessionDurationMins: 14.5,
     peakConcurrentUsers: 142,
+    activeSessionsCount: 12,
   });
 
   // Action / Search / Filter states
@@ -221,12 +225,15 @@ export const useAdminOperationsData = () => {
       const captains = allProfiles.filter((p) => p.role === 'captain');
       const scheduledFix = allFixtures.filter((f) => f.status === 'UPCOMING' || f.status === 'LIVE');
       const completedFix = allFixtures.filter((f) => f.status === 'FT');
+      const revokedCount = allProfiles.filter((p) => p.bio?.includes('[SUSPENDED]')).length;
 
       // Platform Health
       setPlatformHealth({
         totalUsers: allProfiles.length,
         activeUsersToday: Math.max(1, Math.round(allProfiles.length * 0.65)),
         onlineUsers: Math.max(1, Math.round(allProfiles.length * 0.22)),
+        revokedUsers: revokedCount,
+        uptimePercentage: 99.98,
         totalTeams: allTeams.length,
         totalPlayers: allPlayers.length,
         totalReferees: referees.length,
@@ -328,93 +335,92 @@ export const useAdminOperationsData = () => {
       feedItems.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
       setActivityFeed(feedItems.slice(0, 15));
 
-      // Platform Errors sample
-      setPlatformErrors([
-        {
-          id: 'err-101',
-          timestamp: '10 mins ago',
-          source: 'Storage Engine',
-          errorType: 'Media Storage Limit',
-          message: 'Avatar thumbnail upload exceeded 5MB max payload',
-          severity: 'medium',
-          details: 'Client attempted uploading 8.4MB raw uncompressed PNG image.',
-          resolved: false,
-        },
-        {
-          id: 'err-102',
-          timestamp: '2 hours ago',
-          source: 'Authentication',
-          errorType: 'Invalid Credentials',
-          message: 'Repeated failed login attempts for referee account',
-          severity: 'low',
-          details: '3 consecutive password failures from IP 197.232.88.14',
-          resolved: true,
-        },
-        {
-          id: 'err-103',
-          timestamp: '5 hours ago',
-          source: 'Match Engine',
-          errorType: 'Unsubmitted Report Timeout',
-          message: 'Referee official report pending for over 24 hours',
-          severity: 'high',
-          details: 'Fixture #EGL-2026-08 match report not finalized by referee.',
-          resolved: false,
-        },
-      ]);
+      // Platform Errors computed dynamically from real database audit logs
+      const errorLogs = allAuditLogs.filter(
+        (l) => l.action?.includes('ERROR') || l.action?.includes('FAIL') || l.action?.includes('SUSPEND')
+      );
+
+      const computedErrors: PlatformErrorItem[] = errorLogs.map((errLog, idx) => ({
+        id: errLog.id || `err-${idx}`,
+        timestamp: new Date(errLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: errLog.resource_type || 'System Engine',
+        errorType: errLog.action,
+        message: errLog.details ? (typeof errLog.details === 'string' ? errLog.details : JSON.stringify(errLog.details)) : `Event logged for ${errLog.action}`,
+        severity: errLog.action?.includes('SUSPEND') ? 'medium' : 'high',
+        details: `Audit ID: ${errLog.id} | User: ${errLog.user_id || 'System'} | Action: ${errLog.action}`,
+        resolved: false,
+      }));
+
+      setPlatformErrors(computedErrors);
 
       // Journalist Overview Summary
       const publishedArt = allArticles.filter((a) => a.status === 'published');
       const draftsArt = allArticles.filter((a) => a.status === 'draft');
       const topArt = publishedArt[0] || null;
+      const totalArticleViews = allArticles.reduce((sum, a) => sum + (Number((a as any).views) || 0), 0);
 
       setJournalistOverview({
         totalJournalists: journalists.length,
         articlesToday: publishedArt.length,
         draftsCount: draftsArt.length,
         publishedCount: publishedArt.length,
-        flaggedCount: Math.max(0, allArticles.filter((a) => a.title.includes('🔥')).length),
-        totalViews: 48920,
+        flaggedCount: allArticles.filter((a) => a.title?.includes('🔥') || a.status === 'flagged').length,
+        totalViews: totalArticleViews,
         mostViewedArticle: topArt
           ? {
               id: topArt.id,
               title: topArt.title,
-              views: 14200,
-              author: journalists[0] ? `${journalists[0].first_name} ${journalists[0].last_name}` : 'Journalist',
+              views: Number((topArt as any).views) || 0,
+              author: journalists.find((j) => j.id === topArt.author_id)
+                ? `${journalists.find((j) => j.id === topArt.author_id)!.first_name} ${journalists.find((j) => j.id === topArt.author_id)!.last_name}`
+                : 'Journalist',
             }
           : null,
         latestPublication: topArt
           ? {
               id: topArt.id,
               title: topArt.title,
-              author: journalists[0] ? `${journalists[0].first_name} ${journalists[0].last_name}` : 'Journalist',
+              author: journalists.find((j) => j.id === topArt.author_id)
+                ? `${journalists.find((j) => j.id === topArt.author_id)!.first_name} ${journalists.find((j) => j.id === topArt.author_id)!.last_name}`
+                : 'Journalist',
               publishedAt: new Date(topArt.created_at).toLocaleDateString(),
             }
           : null,
-        journalistsList: journalists.map((j) => ({
-          id: j.id,
-          name: `${j.first_name} ${j.last_name}`,
-          email: j.email,
-          articlesCount: allArticles.filter((a) => a.author_id === j.id).length,
-          totalViews: Math.floor(Math.random() * 8000) + 1200,
-          impressions: Math.floor(Math.random() * 24000) + 5000,
-          status: j.bio?.includes('[SUSPENDED]') ? 'suspended' : 'active',
-          latestPublishDate: new Date(j.updated_at || j.created_at).toLocaleDateString(),
-        })),
+        journalistsList: journalists.map((j) => {
+          const authorArticles = allArticles.filter((a) => a.author_id === j.id);
+          const views = authorArticles.reduce((s, a) => s + (Number((a as any).views) || 0), 0);
+          return {
+            id: j.id,
+            name: `${j.first_name || ''} ${j.last_name || ''}`.trim() || j.email,
+            email: j.email,
+            articlesCount: authorArticles.length,
+            totalViews: views,
+            impressions: views * 3,
+            status: j.bio?.includes('[SUSPENDED]') ? 'suspended' : 'active',
+            latestPublishDate: authorArticles[0]
+              ? new Date(authorArticles[0].created_at).toLocaleDateString()
+              : 'No articles yet',
+          };
+        }),
       });
 
       // Team Overview Summary
       const avgP = allTeams.length > 0 ? Math.round(allPlayers.length / allTeams.length) : 0;
+      const squadCompPercent = allTeams.length > 0 ? Math.min(100, Math.round((allPlayers.length / (allTeams.length * 11)) * 100)) : 0;
+
       setTeamOverview({
         totalTeams: allTeams.length,
         avgPlayersPerTeam: avgP,
-        avgSquadCompletion: 92,
-        practiceSchedulesCount: allTeams.length * 3,
+        avgSquadCompletion: squadCompPercent,
+        practiceSchedulesCount: allTeams.length * 2,
         upcomingFixturesCount: scheduledFix.length,
         latestSquadSubmission: allTeams[0]
           ? {
               teamName: allTeams[0].name,
-              submittedAt: 'Today 09:30 AM',
-              coachName: 'Head Coach',
+              submittedAt: new Date(allTeams[0].created_at).toLocaleDateString(),
+              coachName: allProfiles.find((p) => p.id === allTeams[0].coach_id)
+                ? `${allProfiles.find((p) => p.id === allTeams[0].coach_id)!.first_name} ${allProfiles.find((p) => p.id === allTeams[0].coach_id)!.last_name}`
+                : 'Unassigned Coach',
             }
           : null,
         teamsNeedingAttentionCount: allTeams.filter((t) => !t.coach_id || !t.captain_id).length,
@@ -437,26 +443,36 @@ export const useAdminOperationsData = () => {
       });
 
       // Referee Overview Summary
+      const unassignedRefs = referees.filter(
+        (r) => !allFixtures.some((f) => f.referee_id === r.id && (f.status === 'LIVE' || f.status === 'UPCOMING'))
+      );
+      const pendingMatchReports = completedFix.filter(
+        (f) => !allMatchReports.some((rep) => rep.fixture_id === f.id)
+      ).length;
+
       setRefereeOverview({
         totalReferees: referees.length,
-        availableReferees: Math.max(1, referees.length - 2),
-        assignedToday: Math.min(referees.length, scheduledFix.length),
+        availableReferees: unassignedRefs.length,
+        assignedToday: referees.length - unassignedRefs.length,
         completedMatches: completedFix.length,
-        pendingReportsCount: Math.max(0, completedFix.length - allMatchReports.length),
-        cancelledMatchesCount: 0,
-        avgReportCompletionTimeMins: 28,
+        pendingReportsCount: pendingMatchReports,
+        cancelledMatchesCount: allFixtures.filter((f) => f.status === 'POSTPONED' || f.status === 'CANCELLED').length,
+        avgReportCompletionTimeMins: allMatchReports.length > 0 ? 25 : 0,
         refereesList: referees.map((r) => {
           const assignedCount = allFixtures.filter((f) => f.referee_id === r.id).length;
           const reportsCount = allMatchReports.filter((m) => m.official_id === r.id).length;
+          const pendingCount = allFixtures.filter(
+            (f) => f.referee_id === r.id && f.status === 'FT' && !allMatchReports.some((m) => m.fixture_id === f.id)
+          ).length;
           return {
             id: r.id,
-            name: `${r.first_name} ${r.last_name}`,
+            name: `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email,
             email: r.email,
             assignedFixturesCount: assignedCount,
             completedFixturesCount: reportsCount,
-            pendingReportsCount: Math.max(0, assignedCount - reportsCount),
+            pendingReportsCount: pendingCount,
             status: assignedCount > 0 ? 'assigned' : 'available',
-            performanceRating: 4.8,
+            performanceRating: 5.0,
           };
         }),
       });
@@ -464,7 +480,7 @@ export const useAdminOperationsData = () => {
       // President Overview Summary
       setPresidentOverview({
         totalAnnouncements: allAnnouncements.length,
-        fixtureGenerationsCount: 4,
+        fixtureGenerationsCount: allFixtures.length > 0 ? Math.ceil(allFixtures.length / 10) : 0,
         currentCompetition: 'Egerton Campus Premier League',
         latestBroadcastsCount: allAnnouncements.length,
         latestActions: allAnnouncements.map((a) => ({
@@ -477,6 +493,7 @@ export const useAdminOperationsData = () => {
 
       // Performance Telemetry
       setPerformanceMetrics({
+        avgUserUptimePercentage: 99.98,
         avgLoginTimeMs: 165,
         avgApiResponseMs: pingMs,
         dbLatencyMs: Math.max(8, Math.round(pingMs * 0.4)),
@@ -486,6 +503,7 @@ export const useAdminOperationsData = () => {
         uploadsToday: 24,
         avgSessionDurationMins: 15.2,
         peakConcurrentUsers: 186,
+        activeSessionsCount: Math.max(1, Math.round(allProfiles.length * 0.22)),
       });
 
     } catch (err: any) {
@@ -565,6 +583,40 @@ export const useAdminOperationsData = () => {
       showToast(`Failed to activate user: ${err.message}`);
     }
   }, [userDirectory, showToast]);
+
+  // 4. Action: Change User Role
+  const handleChangeUserRole = useCallback(async (userId: string, newRole: string) => {
+    try {
+      const user = userDirectory.find((u) => u.id === userId);
+      if (!user) return;
+      const oldRole = user.role;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        user_id: userId,
+        user_role: newRole,
+        action: 'CHANGE_USER_ROLE',
+        resource_type: 'profiles',
+        resource_id: userId,
+        details: { oldRole, newRole, updated_by: 'admin' },
+      });
+
+      setUserDirectory((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole as any } : u))
+      );
+      showToast(`User ${user.name} role changed to ${newRole.toUpperCase()}`);
+      fetchOperationsData();
+    } catch (err: any) {
+      console.error('Error changing user role:', err);
+      showToast(`Failed to change role: ${err.message}`);
+    }
+  }, [userDirectory, showToast, fetchOperationsData]);
 
   // 4. Action: Reset Password Trigger
   const handleResetPassword = useCallback(async (email: string) => {
@@ -776,6 +828,7 @@ export const useAdminOperationsData = () => {
     setSelectedItemForModal,
     handleSuspendUser,
     handleActivateUser,
+    handleChangeUserRole,
     handleResetPassword,
     handlePostAnnouncement,
     handleExportAuditLogsCSV,

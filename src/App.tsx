@@ -229,7 +229,7 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <RefereeDashboard />
+          <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -270,8 +270,8 @@ export const AppContent: React.FC = () => {
     <HerdMentalityProvider>
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 relative ${
-        darkMode ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'
+      <div className={`relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans antialiased transition-colors duration-200 ${
+        darkMode ? 'bg-slate-950 text-slate-50' : 'bg-slate-50 text-slate-900'
       }`}>
         <div className="apple-layered-bg" aria-hidden="true" />
         {/* Sidebar Drawer overlay */}
@@ -284,13 +284,13 @@ export const AppContent: React.FC = () => {
             aria-label="Mobile navigation drawer"
           >
             <div
-              className="w-72 max-w-[80vw] h-full bg-white dark:bg-[#0E1424] shadow-2xl p-6 flex flex-col justify-between"
+              className="w-72 max-w-[80vw] h-full bg-white dark:bg-slate-900 shadow-2xl p-6 flex flex-col justify-between"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white shadow-sm ring-1 ring-emerald-500/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-amber-500/20">
                       E
                     </div>
                     <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
@@ -311,15 +311,15 @@ export const AppContent: React.FC = () => {
                 <div className="space-y-4">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Campus Competitions</div>
                   <ul className="space-y-2">
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                       <Activity className="w-4 h-4 text-emerald-600" />
                       <span>Egerton Premier League</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                       <Award className="w-4 h-4 text-amber-500" />
                       <span>Egerton Championships</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-250 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
                       <Trophy className="w-4 h-4 text-blue-500" />
                       <span>Friendlies</span>
                     </li>
@@ -330,7 +330,7 @@ export const AppContent: React.FC = () => {
                 <div className="space-y-4">
                   <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Authentication</div>
                   <ul className="space-y-1.5">
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white cursor-pointer shadow-sm transition-colors">
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-xs font-bold text-white cursor-pointer shadow-sm transition-colors">
                       <LogIn className="w-4 h-4" />
                       <span>Login to Platform</span>
                     </li>
@@ -385,7 +385,7 @@ export const AppContent: React.FC = () => {
               favoritesCount={favorites.length}
             />
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-0 py-0 relative z-10">
+            <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-24 md:pb-12 pt-6">
               {activeTab === 'scores' && (
                 <HomePage
                   onNavigate={(path) => {

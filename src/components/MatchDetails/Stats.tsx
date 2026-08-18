@@ -49,38 +49,35 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             </div>
 
             {/* Grouped Metric Cards */}
-            <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm p-6 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none p-6 space-y-4">
                 {stats.map((stat, idx) => {
                     const total = stat.teamAValue + stat.teamBValue;
                     const widthA = total > 0 ? (stat.teamAValue / total) * 100 : 50;
                     const widthB = total > 0 ? (stat.teamBValue / total) * 100 : 50;
 
-                    const isHigherA = stat.teamAValue > stat.teamBValue;
-                    const isHigherB = stat.teamBValue > stat.teamAValue;
-
                     return (
-                        <div key={`${stat.label}-${idx}`} className="space-y-2">
-                            {/* Numeric Values & Stat Title */}
-                            <div className="flex justify-between items-center text-xs font-extrabold">
-                                <span className={`w-12 text-left font-mono text-sm ${isHigherA ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-slate-500'}`}>
+                        <div key={`${stat.label}-${idx}`} className="flex flex-col gap-2 w-full py-3">
+                            {/* Header: Home Val, Stat Label, Away Val */}
+                            <div className="flex justify-between items-center text-xs font-bold">
+                                <span className="font-mono text-sm text-slate-900 dark:text-white">
                                     {stat.teamAValue}
                                 </span>
-                                <span className="text-[11px] uppercase font-black text-slate-700 dark:text-slate-300 tracking-wider text-center flex-1">
+                                <span className="uppercase tracking-widest text-[10px] text-slate-400">
                                     {stat.label}
                                 </span>
-                                <span className={`w-12 text-right font-mono text-sm ${isHigherB ? 'text-blue-600 dark:text-blue-400 font-black' : 'text-slate-500'}`}>
+                                <span className="font-mono text-sm text-slate-900 dark:text-white">
                                     {stat.teamBValue}
                                 </span>
                             </div>
 
-                            {/* Dual Visual Progress Bars */}
-                            <div className="h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 flex overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-750">
+                            {/* Bar Track & Left/Right Bars */}
+                            <div className="flex h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-emerald-600 to-teal-400 rounded-l-full transition-all duration-500"
+                                    className="bg-blue-900 dark:bg-blue-500 rounded-l-full transition-all duration-500"
                                     style={{ width: `${widthA}%` }}
                                 />
                                 <div
-                                    className="h-full bg-gradient-to-r from-blue-400 to-indigo-600 rounded-r-full transition-all duration-500"
+                                    className="bg-amber-500 rounded-r-full transition-all duration-500"
                                     style={{ width: `${widthB}%` }}
                                 />
                             </div>

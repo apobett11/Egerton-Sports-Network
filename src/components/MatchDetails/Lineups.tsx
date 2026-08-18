@@ -41,33 +41,33 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
         return (
             <div
                 key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-15 transition-all duration-300 pointer-events-auto"
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-10 cursor-pointer hover:scale-110 transition-transform"
                 style={{ left: `${xPct}%`, top: `${yPct}%` }}
             >
-                {/* Jersey Circle */}
+                {/* Jersey Node */}
                 <div
-                    className="relative w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black text-white shadow-md ring-2 ring-white/30 hover:scale-115 transition-transform"
-                    style={{ backgroundColor: teamColor }}
+                    className="relative w-8 h-8 rounded-full border-2 border-white/80 flex items-center justify-center font-black font-mono text-xs text-white shadow-lg"
+                    style={{ backgroundColor: teamColor || '#059669' }}
                 >
                     {player.number}
 
                     {/* Captain Badge */}
                     {player.isCaptain && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-yellow-405 border border-yellow-700 text-yellow-900 rounded-full flex items-center justify-center font-extrabold text-[8px] select-none shadow">
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-400 border border-amber-600 text-slate-950 rounded-full flex items-center justify-center font-black text-[8px] select-none shadow-xs">
                             C
                         </span>
                     )}
 
                     {/* Event indicators */}
-                    <div className="absolute -bottom-1 -right-1.5 flex gap-0.5">
-                        {hasGoal && <span className="text-[10px] drop-shadow-sm">⚽</span>}
+                    <div className="absolute -bottom-1 -right-1 flex gap-0.5">
+                        {hasGoal && <span className="text-[10px]">⚽</span>}
                         {hasYellow && <span className="w-2.5 h-3.5 bg-amber-400 border border-amber-500 rounded-xs block shadow-xs" />}
-                        {hasRed && <span className="w-2.5 h-3.5 bg-red-650 border border-red-750 rounded-xs block shadow-xs" />}
+                        {hasRed && <span className="w-2.5 h-3.5 bg-red-600 border border-red-700 rounded-xs block shadow-xs" />}
                     </div>
                 </div>
 
-                {/* Player Name Tag */}
-                <div className="mt-1 bg-black/60 dark:bg-black/85 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-bold text-white max-w-[80px] truncate text-center shadow-sm">
+                {/* Name Pill */}
+                <div className="px-2 py-0.5 rounded-md bg-black/70 text-white text-[9px] font-bold uppercase tracking-wide truncate max-w-[60px] text-center shadow-xs">
                     {player.name.split(' ').pop()}
                 </div>
             </div>
@@ -125,12 +125,12 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     return (
         <div className="w-full max-w-3xl mx-auto py-6 select-none flex flex-col gap-6">
             {/* Controls */}
-            <div className="flex justify-center bg-slate-100 dark:bg-[#0E1424] p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 self-center shadow-xs">
+            <div className="flex justify-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200/80 dark:border-white/10 self-center shadow-xs">
                 <button
                     type="button"
                     onClick={() => setActiveTeamView('both')}
                     className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'both'
-                        ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
+                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                 >
@@ -141,7 +141,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     type="button"
                     onClick={() => setActiveTeamView('teamA')}
                     className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'teamA'
-                        ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
+                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                 >
@@ -152,7 +152,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     type="button"
                     onClick={() => setActiveTeamView('teamB')}
                     className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'teamB'
-                        ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/30'
+                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                 >
@@ -161,7 +161,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
             </div>
 
             {/* Formations layout label */}
-            <div className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-300 font-extrabold uppercase tracking-wider bg-white dark:bg-[#0E1424] px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+            <div className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-300 font-extrabold uppercase tracking-wider bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-xs">
                 <span className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
                     {teamA.name} ({lineups.formationA})
@@ -172,34 +172,26 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                 </span>
             </div>
 
-            {/* Pitch Diagram */}
-            <div className="relative w-full aspect-[2/3] sm:aspect-[3/4] bg-gradient-to-b from-emerald-900 via-emerald-950 to-slate-950 border border-emerald-800/60 rounded-3xl overflow-hidden shadow-2xl select-none pointer-events-none">
+            {/* Pitch Container & Markings */}
+            <div className="relative w-full max-w-md mx-auto aspect-[2/3] sm:aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-100 dark:border-slate-800 bg-[linear-gradient(to_bottom,#064e3b_0%,#064e3b_10%,#065f46_10%,#065f46_20%,#064e3b_20%,#064e3b_30%,#065f46_30%,#065f46_40%,#064e3b_40%,#064e3b_50%,#065f46_50%,#065f46_60%,#064e3b_60%,#064e3b_70%,#065f46_70%,#065f46_80%,#064e3b_80%,#064e3b_90%,#065f46_90%,#065f46_100%)] select-none">
+                {/* Outer Bounds */}
+                <div className="absolute inset-4 border-2 border-white/30 pointer-events-none" />
 
-                {/* Pitch Lines Grass Textures */}
-                <div className="absolute inset-0 bg-linear-to-b from-white/[0.03] to-transparent bg-[size:100%_15%]" />
+                {/* Center Line */}
+                <div className="absolute top-1/2 left-4 right-4 h-[2px] bg-white/30 -translate-y-1/2 pointer-events-none" />
 
-                {/* Boundary border */}
-                <div className="absolute inset-3 border-2 border-white/20 rounded-xl" />
+                {/* Center Circle */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border-2 border-white/30 rounded-full pointer-events-none" />
 
-                {/* Center circle */}
-                <div className="absolute top-1/2 left-1/2 w-32 h-32 border-2 border-white/20 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-white/30 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/20" />
+                {/* Penalty Box (Top - Away) */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-1/2 h-[15%] border-2 border-white/30 pointer-events-none" />
 
-                {/* Penalty box - TOP */}
-                <div className="absolute top-3 left-1/2 w-[55%] h-[16%] border-b-2 border-l-2 border-r-2 border-white/20 transform -translate-x-1/2" />
-                <div className="absolute top-3 left-1/2 w-[22%] h-[6%] border-b-2 border-l-2 border-r-2 border-white/20 transform -translate-x-1/2" />
-                <div className="absolute top-[16%] left-1/2 w-1.5 h-1.5 bg-white/20 rounded-full transform -translate-x-1/2" />
-
-                {/* Penalty box - BOTTOM */}
-                <div className="absolute bottom-3 left-1/2 w-[55%] h-[16%] border-t-2 border-l-2 border-r-2 border-white/20 transform -translate-x-1/2" />
-                <div className="absolute bottom-3 left-1/2 w-[22%] h-[6%] border-t-2 border-l-2 border-r-2 border-white/20 transform -translate-x-1/2" />
-                <div className="absolute bottom-[16%] left-1/2 w-1.5 h-1.5 bg-white/20 rounded-full transform -translate-x-1/2" />
+                {/* Penalty Box (Bottom - Home) */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-1/2 h-[15%] border-2 border-white/30 pointer-events-none" />
 
                 {/* Render Players */}
                 {(activeTeamView === 'both' || activeTeamView === 'teamA') && renderTeamAStarters()}
                 {(activeTeamView === 'both' || activeTeamView === 'teamB') && renderTeamBStarters()}
-
             </div>
 
             {/* Substitutes Section */}

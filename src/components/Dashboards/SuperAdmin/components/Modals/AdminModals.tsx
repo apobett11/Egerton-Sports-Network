@@ -37,6 +37,7 @@ interface AdminModalsProps {
   selectedItem: any;
   onSuspendUser?: (id: string) => void;
   onActivateUser?: (id: string) => void;
+  onChangeUserRole?: (id: string, newRole: string) => void;
   onResetPassword?: (email: string) => void;
   onPostAnnouncement?: (title: string, content: string, targetRole: string) => void;
   showToast: (msg: string) => void;
@@ -52,6 +53,7 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
   selectedItem,
   onSuspendUser,
   onActivateUser,
+  onChangeUserRole,
   onResetPassword,
   onPostAnnouncement,
   showToast,
@@ -154,33 +156,41 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
-                      {journalistOverview.journalistsList.map((j) => (
-                        <tr key={j.id} className="hover:bg-[#1F1F1F]">
-                          <td className="p-3 font-semibold text-white">
-                            <div>{j.name}</div>
-                            <div className="text-[10px] text-gray-400">{j.email}</div>
-                          </td>
-                          <td className="p-3 font-mono text-gray-300">{j.articlesCount}</td>
-                          <td className="p-3 font-mono text-purple-400 font-bold">
-                            {j.totalViews.toLocaleString()}
-                          </td>
-                          <td className="p-3 font-mono text-gray-400">
-                            {j.impressions.toLocaleString()}
-                          </td>
-                          <td className="p-3 text-gray-400">{j.latestPublishDate}</td>
-                          <td className="p-3 text-right">
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                j.status === 'active'
-                                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
-                              }`}
-                            >
-                              {j.status}
-                            </span>
+                      {journalistOverview.journalistsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-xs text-gray-400">
+                            No journalist accounts registered in database.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        journalistOverview.journalistsList.map((j) => (
+                          <tr key={j.id} className="hover:bg-[#1F1F1F]">
+                            <td className="p-3 font-semibold text-white">
+                              <div>{j.name}</div>
+                              <div className="text-[10px] text-gray-400">{j.email}</div>
+                            </td>
+                            <td className="p-3 font-mono text-gray-300">{j.articlesCount}</td>
+                            <td className="p-3 font-mono text-purple-400 font-bold">
+                              {j.totalViews.toLocaleString()}
+                            </td>
+                            <td className="p-3 font-mono text-gray-400">
+                              {j.impressions.toLocaleString()}
+                            </td>
+                            <td className="p-3 text-gray-400">{j.latestPublishDate}</td>
+                            <td className="p-3 text-right">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                  j.status === 'active'
+                                    ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
+                                }`}
+                              >
+                                {j.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -228,29 +238,37 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
-                      {teamOverview.teamsList.map((t) => (
-                        <tr key={t.id} className="hover:bg-[#1F1F1F]">
-                          <td className="p-3 font-extrabold text-white">{t.name}</td>
-                          <td className="p-3 text-gray-300">{t.coachName}</td>
-                          <td className="p-3 text-gray-300">{t.captainName}</td>
-                          <td className="p-3 font-mono font-bold text-emerald-400">
-                            {t.playersCount} players
-                          </td>
-                          <td className="p-3 text-right">
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                t.status === 'complete'
-                                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                                  : t.status === 'incomplete'
-                                  ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
-                                  : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
-                              }`}
-                            >
-                              {t.status.replace('_', ' ')}
-                            </span>
+                      {teamOverview.teamsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-xs text-gray-400">
+                            No football clubs registered in database.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        teamOverview.teamsList.map((t) => (
+                          <tr key={t.id} className="hover:bg-[#1F1F1F]">
+                            <td className="p-3 font-extrabold text-white">{t.name}</td>
+                            <td className="p-3 text-gray-300">{t.coachName}</td>
+                            <td className="p-3 text-gray-300">{t.captainName}</td>
+                            <td className="p-3 font-mono font-bold text-emerald-400">
+                              {t.playersCount} players
+                            </td>
+                            <td className="p-3 text-right">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                  t.status === 'complete'
+                                    ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                                    : t.status === 'incomplete'
+                                    ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
+                                }`}
+                              >
+                                {t.status.replace('_', ' ')}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -305,29 +323,37 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
-                      {refereeOverview.refereesList.map((r) => (
-                        <tr key={r.id} className="hover:bg-[#1F1F1F]">
-                          <td className="p-3 font-semibold text-white">
-                            <div>{r.name}</div>
-                            <div className="text-[10px] text-gray-400">{r.email}</div>
-                          </td>
-                          <td className="p-3 font-mono text-gray-300">{r.assignedFixturesCount}</td>
-                          <td className="p-3 font-mono text-emerald-400 font-bold">{r.completedFixturesCount}</td>
-                          <td className="p-3 font-mono text-rose-400 font-bold">{r.pendingReportsCount}</td>
-                          <td className="p-3 font-mono text-amber-400">⭐ {r.performanceRating}</td>
-                          <td className="p-3 text-right">
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                r.status === 'available'
-                                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                              }`}
-                            >
-                              {r.status}
-                            </span>
+                      {refereeOverview.refereesList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-xs text-gray-400">
+                            No referee profiles registered in database.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        refereeOverview.refereesList.map((r) => (
+                          <tr key={r.id} className="hover:bg-[#1F1F1F]">
+                            <td className="p-3 font-semibold text-white">
+                              <div>{r.name}</div>
+                              <div className="text-[10px] text-gray-400">{r.email}</div>
+                            </td>
+                            <td className="p-3 font-mono text-gray-300">{r.assignedFixturesCount}</td>
+                            <td className="p-3 font-mono text-emerald-400 font-bold">{r.completedFixturesCount}</td>
+                            <td className="p-3 font-mono text-rose-400 font-bold">{r.pendingReportsCount}</td>
+                            <td className="p-3 font-mono text-amber-400">⭐ {r.performanceRating}</td>
+                            <td className="p-3 text-right">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                  r.status === 'available'
+                                    ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                                }`}
+                              >
+                                {r.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -348,15 +374,21 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                   Presidential Broadcast & Announcement Log
                 </h3>
                 <div className="space-y-2">
-                  {presidentOverview.latestActions.map((act) => (
-                    <div key={act.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-white">{act.action}</div>
-                        <div className="text-[11px] text-gray-400 mt-0.5">By {act.user}</div>
-                      </div>
-                      <span className="text-[10px] font-mono text-gray-400">{act.timestamp}</span>
+                  {presidentOverview.latestActions.length === 0 ? (
+                    <div className="p-6 bg-[#111111] rounded-xl border border-[#2A2A2A] text-center text-xs text-gray-400">
+                      No presidential announcements or broadcasts recorded in database.
                     </div>
-                  ))}
+                  ) : (
+                    presidentOverview.latestActions.map((act) => (
+                      <div key={act.id} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-white">{act.action}</div>
+                          <div className="text-[11px] text-gray-400 mt-0.5">By {act.user}</div>
+                        </div>
+                        <span className="text-[10px] font-mono text-gray-400">{act.timestamp}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -398,12 +430,31 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                   <div className="font-semibold text-white">{selectedItem.phone}</div>
                 </div>
                 <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-1">
-                  <div className="text-gray-400 text-[11px]">Associated Team</div>
+                  <div className="text-gray-400 text-[11px]">Associated Team / Unit</div>
                   <div className="font-semibold text-emerald-400">{selectedItem.teamName}</div>
                 </div>
                 <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-1">
-                  <div className="text-gray-400 text-[11px]">Last Activity / Login</div>
-                  <div className="font-semibold text-white">{selectedItem.lastLogin}</div>
+                  <div className="text-gray-400 text-[11px]">Reassign User Role</div>
+                  <select
+                    value={selectedItem.role}
+                    onChange={(e) => {
+                      const newR = e.target.value;
+                      onChangeUserRole?.(selectedItem.id, newR);
+                      selectedItem.role = newR;
+                      onClose();
+                    }}
+                    className="w-full bg-[#181818] border border-[#333333] rounded-lg p-1 text-xs text-emerald-400 font-bold uppercase outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="player">Player</option>
+                    <option value="coach">Coach</option>
+                    <option value="captain">Captain</option>
+                    <option value="referee">Referee</option>
+                    <option value="linesman">Linesman</option>
+                    <option value="journalist">Journalist</option>
+                    <option value="doctor">Doctor</option>
+                    <option value="president">President</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
               </div>
 
@@ -414,9 +465,9 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       onSuspendUser?.(selectedItem.id);
                       onClose();
                     }}
-                    className="flex-1 py-2.5 px-4 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl border border-rose-500/30 text-xs font-bold transition-all min-h-[44px]"
+                    className="flex-1 py-2.5 px-4 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl border border-rose-500/30 text-xs font-bold transition-all min-h-[44px] cursor-pointer"
                   >
-                    Suspend User Account
+                    Revoke Dashboard Access (Suspend)
                   </button>
                 ) : (
                   <button
@@ -424,9 +475,9 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       onActivateUser?.(selectedItem.id);
                       onClose();
                     }}
-                    className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all min-h-[44px]"
+                    className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all min-h-[44px] cursor-pointer"
                   >
-                    Activate Account
+                    Restore Dashboard Access (Activate)
                   </button>
                 )}
 
@@ -435,7 +486,7 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                     onResetPassword?.(selectedItem.email);
                     onClose();
                   }}
-                  className="flex-1 py-2.5 px-4 bg-[#252525] hover:bg-[#303030] text-gray-200 rounded-xl border border-[#3A3A3A] text-xs font-bold transition-all min-h-[44px]"
+                  className="flex-1 py-2.5 px-4 bg-[#252525] hover:bg-[#303030] text-gray-200 rounded-xl border border-[#3A3A3A] text-xs font-bold transition-all min-h-[44px] cursor-pointer"
                 >
                   Trigger Password Reset
                 </button>

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useAdminOperationsData } from './hooks/useAdminOperationsData';
 import { AdminSidebar } from './components/Navigation/AdminSidebar';
 import { AdminBottomNav } from './components/Navigation/AdminBottomNav';
@@ -15,6 +15,7 @@ import { AdminProfileView } from './components/Views/AdminProfileView';
 import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
+  const { logout } = useAuth();
   const {
     activeTab,
     setActiveTab,
@@ -54,13 +55,15 @@ export const SuperAdminDashboard: React.FC = () => {
     setSelectedItemForModal,
     handleSuspendUser,
     handleActivateUser,
+    handleChangeUserRole,
     handleResetPassword,
     handlePostAnnouncement,
     handleExportAuditLogsCSV,
     refreshData,
   } = useAdminOperationsData();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     window.location.hash = '/home';
   };
 
@@ -106,28 +109,40 @@ export const SuperAdminDashboard: React.FC = () => {
 
       {/* Main Content Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile Header Bar */}
-        <header className="md:hidden bg-[#181818] border-b border-[#2A2A2A] p-4 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-2.5">
+        {/* Desktop & Mobile Header Bar */}
+        <header className="bg-[#161616] border-b border-[#2A2A2A] px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleLogout}
-              className="p-2 bg-[#222222] text-gray-400 rounded-lg min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
+              className="md:hidden p-2 bg-[#222222] text-gray-400 rounded-lg min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
               title="Return Home"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="text-xs font-black text-white uppercase tracking-tight">Operations Center</h1>
-              <div className="text-[10px] text-emerald-400 font-bold">Admin Console</div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <h1 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider">
+                  {activeTab.replace('_', ' ')}
+                </h1>
+              </div>
+              <p className="text-[11px] text-gray-400 hidden sm:block">
+                Live Supabase connection • Synced at {systemHealth.lastChecked}
+              </p>
             </div>
           </div>
 
-          <button
-            onClick={refreshData}
-            className="p-2 text-gray-400 hover:text-white rounded-lg cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshData}
+              disabled={isLoading}
+              className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
+              title="Re-query all Supabase database tables"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh Data</span>
+            </button>
+          </div>
         </header>
 
         {/* Workspace Body */}
@@ -188,6 +203,7 @@ export const SuperAdminDashboard: React.FC = () => {
               onOpenUserModal={(user) => handleOpenModal('user_detail', user)}
               onSuspendUser={handleSuspendUser}
               onActivateUser={handleActivateUser}
+              onChangeUserRole={handleChangeUserRole}
               onResetPassword={handleResetPassword}
               setActiveTab={setActiveTab}
               setAuditSearchTerm={setAuditSearchTerm}
@@ -255,6 +271,7 @@ export const SuperAdminDashboard: React.FC = () => {
         selectedItem={selectedItemForModal}
         onSuspendUser={handleSuspendUser}
         onActivateUser={handleActivateUser}
+        onChangeUserRole={handleChangeUserRole}
         onResetPassword={handleResetPassword}
         onPostAnnouncement={handlePostAnnouncement}
         showToast={showToast}

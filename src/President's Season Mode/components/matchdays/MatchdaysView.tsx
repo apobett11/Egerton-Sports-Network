@@ -346,15 +346,28 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                if (onChangeCapacity) onChangeCapacity(eplCap, champCap);
-                setOpenControlSection(null);
-              }}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer min-h-[44px]"
-            >
-              Apply Capacity Change
-            </button>
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-[11px] font-medium text-slate-400">
+                {eplCap !== (capacity.EPL || 3) || champCap !== (capacity.Championship || 3) ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Setting modified: EPL ({capacity.EPL || 3} → {eplCap}), Championship ({capacity.Championship || 3} → {champCap})
+                  </span>
+                ) : (
+                  <span>Modify matches per matchday to enable saving to Agent 0.</span>
+                )}
+              </div>
+
+              <button
+                disabled={eplCap === (capacity.EPL || 3) && champCap === (capacity.Championship || 3)}
+                onClick={() => {
+                  if (onChangeCapacity) onChangeCapacity(eplCap, champCap);
+                  setOpenControlSection(null);
+                }}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
+              >
+                Confirm & Save Changes
+              </button>
+            </div>
           </div>
         )}
 
@@ -397,9 +410,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     if (onAddPlayday && addPlaydayDate) onAddPlayday(addPlaydayDate, addPlaydayMode);
                     setOpenControlSection(null);
                   }}
-                  className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-xs cursor-pointer min-h-[44px]"
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
                 >
-                  Add Playday
+                  Confirm & Add Playday
                 </button>
               </div>
 
@@ -438,9 +451,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     if (onRemovePlayday && removePlaydayDate) onRemovePlayday(removePlaydayDate, removePlaydayMode);
                     setOpenControlSection(null);
                   }}
-                  className="w-full py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-extrabold text-xs cursor-pointer min-h-[44px]"
+                  className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
                 >
-                  Remove Playday
+                  Confirm & Remove Playday
                 </button>
               </div>
             </div>
@@ -466,7 +479,6 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                         onClick={() => {
                           const nextState = { ...state, am: !state.am };
                           setPitchAvailabilityState((prev) => ({ ...prev, [p.id]: nextState }));
-                          if (onChangePitchState) onChangePitchState(p.id, nextState.am, nextState.pm);
                         }}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-black cursor-pointer ${
                           state.am ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
@@ -481,7 +493,6 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                         onClick={() => {
                           const nextState = { ...state, pm: !state.pm };
                           setPitchAvailabilityState((prev) => ({ ...prev, [p.id]: nextState }));
-                          if (onChangePitchState) onChangePitchState(p.id, nextState.am, nextState.pm);
                         }}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-black cursor-pointer ${
                           state.pm ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
@@ -493,6 +504,34 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-[11px] font-medium text-slate-400">
+                {Object.keys(pitchAvailabilityState).length > 0 ? (
+                  <span className="text-teal-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Pitch states modified. Click confirm to trigger Algorithm 3.
+                  </span>
+                ) : (
+                  <span>Modify AM/PM pitch availability to enable saving to Agent 0.</span>
+                )}
+              </div>
+
+              <button
+                disabled={Object.keys(pitchAvailabilityState).length === 0}
+                onClick={() => {
+                  if (onChangePitchState) {
+                    // Apply all updated pitch states
+                    for (const [pId, st] of Object.entries(pitchAvailabilityState)) {
+                      onChangePitchState(pId, st.am, st.pm);
+                    }
+                  }
+                  setOpenControlSection(null);
+                }}
+                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
+              >
+                Confirm & Save Pitch Changes
+              </button>
             </div>
           </div>
         )}
@@ -518,15 +557,22 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (onChangeTimeConfiguration) onChangeTimeConfiguration();
-                setOpenControlSection(null);
-              }}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer min-h-[44px]"
-            >
-              Apply Recommended Match Times
-            </button>
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-[11px] font-medium text-slate-400">
+                <span>Standard campus competition match slots (3 slots per pitch per playday).</span>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (onChangeTimeConfiguration) onChangeTimeConfiguration();
+                  setOpenControlSection(null);
+                }}
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
+              >
+                Confirm & Save Match Times
+              </button>
+            </div>
           </div>
         )}
 
@@ -554,9 +600,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   if (onCancelMatchdayNum) onCancelMatchdayNum(cancelMdNum);
                   setOpenControlSection(null);
                 }}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs cursor-pointer min-h-[44px]"
+                className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
               >
-                Confirm Cancel Matchday {cancelMdNum}
+                Confirm & Cancel Matchday
               </button>
             </div>
           </div>
@@ -792,9 +838,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   onShiftMatch(shiftTargetMatch.id, proposedShiftTime);
                   setShiftTargetMatch(null);
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
               >
-                Shift Match Time
+                Confirm & Shift Match Slot
               </button>
             </div>
           </div>

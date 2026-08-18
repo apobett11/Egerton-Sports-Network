@@ -345,70 +345,73 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
               </div>
 
               {eplFixtures.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 text-center text-xs text-slate-400 font-medium">
+                <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
                   No active Egerton Premier League fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
-                <div className="bg-white dark:bg-[#090D16] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs">
+                <div className="flex flex-col gap-3">
                   {eplFixtures.map((match) => {
                     const isFav = favourites.includes(match.id);
+                    const isMatchLive = match.status === 'LIVE';
+
                     return (
                       <div 
                         key={match.id} 
                         onClick={() => onSelectMatch && onSelectMatch(match)}
-                        className="flex items-center justify-between px-4 sm:px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group active:scale-[0.99]"
+                        className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
                       >
-                        {/* Favourite Toggle Button */}
+                        {/* Favourite Star (Absolute Top-Left) */}
                         <button 
+                          type="button"
                           onClick={(e) => toggleFavourite(match.id, e)}
-                          title={isFav ? "Remove from Favourites" : "Add to Favourites"}
-                          className="pr-3 text-slate-300 hover:text-orange-500 transition-colors"
+                          aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                          className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
                         >
-                          <Star className={`w-4 h-4 ${isFav ? 'fill-orange-500 text-orange-500' : ''}`} />
+                          <Star className={`w-5 h-5 transition-all duration-200 ${
+                            isFav 
+                              ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
+                              : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                          }`} />
                         </button>
 
-                        {/* Left: Time & Status */}
-                        <div className="w-20 sm:w-24 flex flex-col items-start pr-3 border-r border-slate-100 dark:border-slate-800">
-                          {match.status === 'LIVE' ? (
-                            <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-md animate-pulse">
-                              LIVE {match.minute}
-                            </span>
-                          ) : match.status === 'FT' ? (
-                            <span className="text-xs font-black text-slate-400 font-mono">FT</span>
-                          ) : (
-                            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 font-mono">{match.time}</span>
-                          )}
-                          <span className="text-[10px] text-slate-400 font-sans truncate max-w-[75px]">{match.venue}</span>
-                        </div>
-
-                        {/* Center: Teams & Scores */}
-                        <div className="flex-1 flex items-center justify-between px-3 sm:px-5">
-                          <div className="flex flex-col gap-2 flex-1">
-                            <div className="flex items-center gap-2.5">
-                              <img src={match.teamA.logo} alt={match.teamA.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors">{match.teamA.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              <img src={match.teamB.logo} alt={match.teamB.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors">{match.teamB.name}</span>
-                            </div>
+                        {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
+                          {/* Team A (Home - Left) */}
+                          <div className="flex items-center gap-3 justify-start min-w-0">
+                            <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                           </div>
 
-                          <div className="flex flex-col gap-2 items-end justify-center font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 pr-1">
-                            {match.status !== 'UPCOMING' ? (
-                              <>
-                                <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreA}</span>
-                                <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreB}</span>
-                              </>
+                          {/* Center Box (Score/Time) */}
+                          <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                            {isMatchLive ? (
+                              <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                LIVE {match.minute}
+                              </span>
+                            ) : match.status === 'HT' ? (
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                            ) : match.status === 'FT' ? (
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
                             ) : (
-                              <span className="text-[11px] font-bold text-slate-400">VS</span>
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
                             )}
-                          </div>
-                        </div>
 
-                        {/* Right Arrow */}
-                        <div className="text-slate-400 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors pl-2">
-                          <ChevronRight className="w-4 h-4" />
+                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                              {match.status !== 'UPCOMING' ? (
+                                <span>{match.scoreA} - {match.scoreB}</span>
+                              ) : (
+                                <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                              )}
+                            </div>
+
+                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
+                          </div>
+
+                          {/* Team B (Away - Right) */}
+                          <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                            <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -430,70 +433,73 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
               </div>
 
               {champFixtures.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 text-center text-xs text-slate-400 font-medium">
+                <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
                   No active Egerton Championships fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
-                <div className="bg-white dark:bg-[#090D16] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs">
+                <div className="flex flex-col gap-3">
                   {champFixtures.map((match) => {
                     const isFav = favourites.includes(match.id);
+                    const isMatchLive = match.status === 'LIVE';
+
                     return (
                       <div 
                         key={match.id} 
                         onClick={() => onSelectMatch && onSelectMatch(match)}
-                        className="flex items-center justify-between px-4 sm:px-5 py-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group active:scale-[0.99]"
+                        className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
                       >
-                        {/* Favourite Toggle Button */}
+                        {/* Favourite Star (Absolute Top-Left) */}
                         <button 
+                          type="button"
                           onClick={(e) => toggleFavourite(match.id, e)}
-                          title={isFav ? "Remove from Favourites" : "Add to Favourites"}
-                          className="pr-3 text-slate-300 hover:text-orange-500 transition-colors"
+                          aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                          className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
                         >
-                          <Star className={`w-4 h-4 ${isFav ? 'fill-orange-500 text-orange-500' : ''}`} />
+                          <Star className={`w-5 h-5 transition-all duration-200 ${
+                            isFav 
+                              ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
+                              : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                          }`} />
                         </button>
 
-                        {/* Left: Time & Status */}
-                        <div className="w-20 sm:w-24 flex flex-col items-start pr-3 border-r border-slate-100 dark:border-slate-800">
-                          {match.status === 'LIVE' ? (
-                            <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-md animate-pulse">
-                              LIVE {match.minute}
-                            </span>
-                          ) : match.status === 'FT' ? (
-                            <span className="text-xs font-black text-slate-400 font-mono">FT</span>
-                          ) : (
-                            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 font-mono">{match.time}</span>
-                          )}
-                          <span className="text-[10px] text-slate-400 font-sans truncate max-w-[75px]">{match.venue}</span>
-                        </div>
-
-                        {/* Center: Teams & Scores */}
-                        <div className="flex-1 flex items-center justify-between px-3 sm:px-5">
-                          <div className="flex flex-col gap-2 flex-1">
-                            <div className="flex items-center gap-2.5">
-                              <img src={match.teamA.logo} alt={match.teamA.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors">{match.teamA.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              <img src={match.teamB.logo} alt={match.teamB.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors">{match.teamB.name}</span>
-                            </div>
+                        {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
+                          {/* Team A (Home - Left) */}
+                          <div className="flex items-center gap-3 justify-start min-w-0">
+                            <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                           </div>
 
-                          <div className="flex flex-col gap-2 items-end justify-center font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 pr-1">
-                            {match.status !== 'UPCOMING' ? (
-                              <>
-                                <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreA}</span>
-                                <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreB}</span>
-                              </>
+                          {/* Center Box (Score/Time) */}
+                          <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                            {isMatchLive ? (
+                              <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                LIVE {match.minute}
+                              </span>
+                            ) : match.status === 'HT' ? (
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                            ) : match.status === 'FT' ? (
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
                             ) : (
-                              <span className="text-[11px] font-bold text-slate-400">VS</span>
+                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
                             )}
-                          </div>
-                        </div>
 
-                        {/* Right Arrow */}
-                        <div className="text-slate-400 group-hover:text-amber-500 dark:group-hover:text-[#D4AF37] transition-colors pl-2">
-                          <ChevronRight className="w-4 h-4" />
+                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                              {match.status !== 'UPCOMING' ? (
+                                <span>{match.scoreA} - {match.scoreB}</span>
+                              ) : (
+                                <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                              )}
+                            </div>
+
+                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
+                          </div>
+
+                          {/* Team B (Away - Right) */}
+                          <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                            <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -803,37 +809,45 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16] overflow-hidden shadow-xs">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
-                    <tr>
-                      <th className="p-3 text-center w-8">Pos</th>
-                      <th className="p-3">Club</th>
-                      <th className="p-3 text-center">P</th>
-                      <th className="p-3 text-center">GD</th>
-                      <th className="p-3 text-center font-black text-amber-500 dark:text-[#D4AF37]">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {standingsState.epl.slice(0, 4).map((row) => (
-                      <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
-                          <span>{row.teamName}</span>
-                        </td>
-                        <td className="p-3 text-center text-slate-500">{row.played}</td>
-                        <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                        <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
-                        ...
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Pseudo-Thead */}
+                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="text-center">#</div>
+                  <div>Club</div>
+                  <div className="text-center">P</div>
+                  <div className="text-center">GD</div>
+                  <div className="text-right">Pts</div>
+                </div>
+
+                {/* Pseudo-Tbody */}
+                <div>
+                  {standingsState.epl.slice(0, 4).map((row) => (
+                    <div
+                      key={row.teamId}
+                      className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 border-b border-slate-50 dark:border-white/5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 last:border-0"
+                    >
+                      <div className="flex justify-center">
+                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                          {row.position}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                        <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
+                      </div>
+                      <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                      <div className="text-center font-mono text-xs text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</div>
+                      <div className="flex items-center justify-end font-mono font-black text-sm text-slate-900 dark:text-white">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-slate-900 dark:text-white px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/30">
+                          {row.points}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="py-2 text-center text-slate-400 font-black text-xs bg-slate-50/40 dark:bg-slate-800/20">
+                    ...
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -849,37 +863,45 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16] overflow-hidden shadow-xs">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-100/80 dark:bg-[#0D121F]/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800/80">
-                    <tr>
-                      <th className="p-3 text-center w-8">Pos</th>
-                      <th className="p-3">Club</th>
-                      <th className="p-3 text-center">P</th>
-                      <th className="p-3 text-center">GD</th>
-                      <th className="p-3 text-center font-black text-amber-500 dark:text-[#D4AF37]">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {standingsState.champ.slice(0, 4).map((row) => (
-                      <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="p-3 text-center font-bold text-slate-400">{row.position}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain" />
-                          <span>{row.teamName}</span>
-                        </td>
-                        <td className="p-3 text-center text-slate-500">{row.played}</td>
-                        <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</td>
-                        <td className="p-3 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td colSpan={5} className="p-2.5 text-center text-slate-400 font-black text-sm bg-slate-50/40 dark:bg-slate-900/40">
-                        ...
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Pseudo-Thead */}
+                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="text-center">#</div>
+                  <div>Club</div>
+                  <div className="text-center">P</div>
+                  <div className="text-center">GD</div>
+                  <div className="text-right">Pts</div>
+                </div>
+
+                {/* Pseudo-Tbody */}
+                <div>
+                  {standingsState.champ.slice(0, 4).map((row) => (
+                    <div
+                      key={row.teamId}
+                      className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 border-b border-slate-50 dark:border-white/5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 last:border-0"
+                    >
+                      <div className="flex justify-center">
+                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                          {row.position}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-5 h-5 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                        <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
+                      </div>
+                      <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                      <div className="text-center font-mono text-xs text-slate-600 dark:text-slate-400">{row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}</div>
+                      <div className="flex items-center justify-end font-mono font-black text-sm text-slate-900 dark:text-white">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-slate-900 dark:text-white px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-900/30">
+                          {row.points}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="py-2 text-center text-slate-400 font-black text-xs bg-slate-50/40 dark:bg-slate-800/20">
+                    ...
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -51,27 +51,24 @@ export const FixturesList: React.FC<FixturesListProps> = ({
     }
 
     return (
-        <div className="flex flex-col gap-4 select-none">
+        <div className="flex flex-col gap-6 select-none">
             {Object.entries(matchesByLeague).map(([leagueName, leagueMatches]) => (
-                <div
-                    key={leagueName}
-                    className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-md overflow-hidden transition-all duration-200 hover:border-[#D4AF37]/40"
-                >
+                <div key={leagueName} className="space-y-3">
                     {/* League Header */}
-                    <div className="bg-slate-50 dark:bg-[#0D121F]/90 px-4 py-3 border-b border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
+                    <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-[#D4AF37]">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                 {leagueName}
                             </span>
                         </div>
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black tracking-wide">
+                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-black tracking-wide">
                             CAMPUS LEAGUE
                         </span>
                     </div>
 
-                    {/* Match Rows */}
-                    <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+                    {/* Match Cards List */}
+                    <div className="flex flex-col gap-3">
                         {leagueMatches.map((match) => {
                             const isMatchLive = match.status === 'LIVE';
                             const isFav = isFavorite(match.id);
@@ -80,116 +77,85 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                 <div
                                     key={match.id}
                                     onClick={() => onMatchClick(match)}
-                                    className="flex flex-col gap-2.5 px-4 py-4 hover:bg-emerald-500/[0.03] dark:hover:bg-emerald-500/[0.05] transition-all duration-200 cursor-pointer relative group active:scale-[0.99]"
+                                    className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        {/* Left Column: Match Status & Time */}
-                                        <div className="w-[68px] flex flex-col items-start justify-center pr-3 border-r border-gray-100 dark:border-gray-800/80">
+                                    {/* Favorite Star (Absolute Top-Left) */}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleFavorite(match.id);
+                                        }}
+                                        aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                                        className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
+                                    >
+                                        <Star
+                                            className={`w-5 h-5 transition-all duration-200 ${
+                                                isFav
+                                                    ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                                                    : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                                            }`}
+                                        />
+                                    </button>
+
+                                    {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
+                                        {/* Team A (Home - Left) */}
+                                        <div className="flex items-center gap-3 justify-start min-w-0">
+                                            <img
+                                                src={match.teamA.logo}
+                                                alt={match.teamA.name}
+                                                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0"
+                                            />
+                                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">
+                                                {match.teamA.name}
+                                            </span>
+                                        </div>
+
+                                        {/* Center Box (Score/Time) */}
+                                        <div className="flex flex-col items-center justify-center px-2 md:px-6">
                                             {isMatchLive ? (
-                                                <div className="flex flex-col items-start gap-1">
-                                                    <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10 ring-1 ring-amber-500/30 animate-pulse">
-                                                        LIVE
-                                                    </span>
-                                                    <span className="text-xs font-black text-amber-500">
-                                                        {match.minute}
-                                                    </span>
-                                                </div>
+                                                <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                                    LIVE {match.minute}
+                                                </span>
                                             ) : match.status === 'HT' ? (
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[9px] font-black text-amber-500 tracking-widest px-1.5 py-0.5 rounded-md bg-amber-500/10">
-                                                        HT
-                                                    </span>
-                                                    <span className="text-[10px] text-gray-400 font-bold">Half Time</span>
-                                                </div>
+                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">
+                                                    HT
+                                                </span>
                                             ) : match.status === 'FT' ? (
-                                                <span className="text-xs font-black text-gray-400 dark:text-gray-500">
+                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">
                                                     FT
                                                 </span>
                                             ) : (
-                                                // UPCOMING
-                                                <span className="text-xs font-extrabold text-gray-600 dark:text-gray-400">
-                                                    {match.time}
+                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">
+                                                    {match.time || 'UPCOMING'}
                                                 </span>
                                             )}
-                                        </div>
 
-                                        {/* Center Column: Teams, Logos, and Scores */}
-                                        <div className="flex-1 flex items-center justify-between px-4" title="Click to view squad details, line-ups & H2H stats">
-                                            <div className="flex flex-col gap-3 flex-1 pr-3">
-                                                <div className="flex items-center gap-3">
-                                                    <img
-                                                        src={match.teamA.logo}
-                                                        alt={match.teamA.name}
-                                                        className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
-                                                    />
-                                                    <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                                        {match.teamA.name}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-3">
-                                                    <img
-                                                        src={match.teamB.logo}
-                                                        alt={match.teamB.name}
-                                                        className="w-6 h-6 rounded-full object-contain bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/80 p-0.5 shadow-xs group-hover:scale-110 transition-transform duration-300"
-                                                    />
-                                                    <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                                        {match.teamB.name}
-                                                    </span>
-                                                </div>
+                                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                                                {match.status !== 'UPCOMING' ? (
+                                                    <span>{match.scoreA} - {match.scoreB}</span>
+                                                ) : (
+                                                    <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                                                )}
                                             </div>
 
-                                            {/* Score Display & Subtle Hover Tooltip */}
-                                            <div className="relative flex items-center gap-2">
-                                                {/* Lightweight Tooltip */}
-                                                <div className="hidden group-hover:flex absolute right-full mr-3 top-1/2 -translate-y-1/2 items-center gap-1 bg-slate-900/90 text-white dark:bg-slate-800 dark:text-slate-200 text-[10px] font-semibold px-2 py-1 rounded-md shadow-sm whitespace-nowrap pointer-events-none transition-opacity duration-200 z-20">
-                                                    <span>View Squad & Details</span>
-                                                </div>
-
-                                                <div className="flex flex-col gap-3 items-end justify-center min-w-[24px]">
-                                                    {match.status !== 'UPCOMING' ? (
-                                                        <>
-                                                            <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                                {match.scoreA}
-                                                            </span>
-                                                            <span className={`text-base font-black tracking-tight ${isMatchLive ? 'text-amber-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                                                                {match.scoreB}
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-xs font-bold text-gray-400 font-mono">VS</span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">
+                                                {match.venue}
+                                            </span>
                                         </div>
 
-                                        {/* Right Column: Actions (Favorite Star) */}
-                                        <div className="pl-3 border-l border-gray-100 dark:border-gray-800/80">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleFavorite(match.id);
-                                                }}
-                                                aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
-                                                className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all duration-200 active:scale-80 cursor-pointer"
-                                            >
-                                                <Star
-                                                    className={`w-5 h-5 transition-all duration-300 ${isFav
-                                                        ? 'fill-amber-400 text-amber-400 scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-                                                        : 'hover:text-amber-400 hover:scale-110'
-                                                        }`}
-                                                />
-                                            </button>
+                                        {/* Team B (Away - Right) */}
+                                        <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                                            <img
+                                                src={match.teamB.logo}
+                                                alt={match.teamB.name}
+                                                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0"
+                                            />
+                                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">
+                                                {match.teamB.name}
+                                            </span>
                                         </div>
-                                    </div>
-
-                                    {/* Inline Details: Pitch & Referee */}
-                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800/60 px-1 font-medium">
-                                        <span>Pitch: <strong className="text-gray-700 dark:text-gray-300">{match.venue}</strong></span>
-                                        {match.referee && (
-                                            <span>Referee: <strong className="text-gray-700 dark:text-gray-300">{match.referee}</strong></span>
-                                        )}
                                     </div>
                                 </div>
                             );

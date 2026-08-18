@@ -75,44 +75,54 @@ export const AdminPlatformInsightsView: React.FC<AdminPlatformInsightsViewProps>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {insights.map((item) => {
-          const style = getSeverityBadge(item.severity);
-          const Icon = style.icon;
+      {insights.length === 0 ? (
+        <div className="p-12 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] text-center space-y-3">
+          <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto opacity-80" />
+          <h3 className="text-sm font-bold text-white uppercase">All Systems Operating Normally</h3>
+          <p className="text-xs text-gray-400 max-w-md mx-auto">
+            No critical system alerts, moderation flags, or pending operational actions requiring administrator intervention at this time.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {insights.map((item) => {
+            const style = getSeverityBadge(item.severity);
+            const Icon = style.icon;
 
-          return (
-            <div
-              key={item.id}
-              className={`p-5 rounded-2xl ${style.bgColor} border ${style.borderColor} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all shadow-lg`}
-            >
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-xl bg-[#111111] border ${style.borderColor} ${style.textColor} shrink-0`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${style.textColor}`}>
-                      {style.badgeText}
-                    </span>
+            return (
+              <div
+                key={item.id}
+                className={`p-5 rounded-2xl ${style.bgColor} border ${style.borderColor} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all shadow-lg`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-3 rounded-xl bg-[#111111] border ${style.borderColor} ${style.textColor} shrink-0`}>
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="text-sm font-extrabold text-white">{item.title}</h3>
-                  <p className="text-xs text-gray-300 leading-relaxed">{item.message}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-black uppercase tracking-wider ${style.textColor}`}>
+                        {style.badgeText}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-extrabold text-white">{item.title}</h3>
+                    <p className="text-xs text-gray-300 leading-relaxed">{item.message}</p>
+                  </div>
                 </div>
-              </div>
 
-              {item.targetTab && item.actionRequired && (
-                <button
-                  onClick={() => setActiveTab(item.targetTab!)}
-                  className={`py-2.5 px-4 bg-[#111111] hover:bg-[#1E1E1E] ${style.textColor} font-bold text-xs rounded-xl border ${style.borderColor} transition-all flex items-center gap-2 shrink-0 cursor-pointer min-h-[44px]`}
-                >
-                  <span>{item.actionRequired}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                {item.targetTab && item.actionRequired && (
+                  <button
+                    onClick={() => setActiveTab(item.targetTab!)}
+                    className={`py-2.5 px-4 bg-[#111111] hover:bg-[#1E1E1E] ${style.textColor} font-bold text-xs rounded-xl border ${style.borderColor} transition-all flex items-center gap-2 shrink-0 cursor-pointer min-h-[44px]`}
+                  >
+                    <span>{item.actionRequired}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

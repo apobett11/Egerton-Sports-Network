@@ -335,7 +335,7 @@ export const RefereesView: React.FC<RefereesViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="pt-2 flex items-center gap-3">
               <button
                 onClick={() => setSelectedRefForUnavailable(null)}
                 className="w-1/2 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-slate-800 min-h-[44px]"
@@ -346,7 +346,7 @@ export const RefereesView: React.FC<RefereesViewProps> = ({
                 onClick={handleConfirmMarkUnavailable}
                 className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs cursor-pointer shadow-md min-h-[44px]"
               >
-                Confirm Unavailable
+                Confirm & Save Referee Status
               </button>
             </div>
           </div>

@@ -24,6 +24,7 @@ interface AdminUserDirectoryViewProps {
   onOpenUserModal: (user: UserProfileRow) => void;
   onSuspendUser: (id: string) => void;
   onActivateUser: (id: string) => void;
+  onChangeUserRole?: (id: string, newRole: string) => void;
   onResetPassword: (email: string) => void;
   setActiveTab: (tab: AdminTabType) => void;
   setAuditSearchTerm: (s: string) => void;
@@ -40,6 +41,7 @@ export const AdminUserDirectoryView: React.FC<AdminUserDirectoryViewProps> = ({
   onOpenUserModal,
   onSuspendUser,
   onActivateUser,
+  onChangeUserRole,
   onResetPassword,
   setActiveTab,
   setAuditSearchTerm,
@@ -50,14 +52,16 @@ export const AdminUserDirectoryView: React.FC<AdminUserDirectoryViewProps> = ({
     'ALL',
     'journalist',
     'referee',
+    'linesman',
     'coach',
     'captain',
     'president',
     'admin',
     'player',
+    'doctor',
   ];
 
-  const groupedRoles = ['journalist', 'referee', 'coach', 'captain', 'president', 'admin', 'player'];
+  const groupedRoles = ['journalist', 'referee', 'linesman', 'coach', 'captain', 'president', 'admin', 'player', 'doctor'];
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role.toLowerCase()) {
@@ -71,6 +75,10 @@ export const AdminUserDirectoryView: React.FC<AdminUserDirectoryViewProps> = ({
         return 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30';
       case 'referee':
         return 'bg-amber-600/20 text-amber-400 border-amber-500/30';
+      case 'linesman':
+        return 'bg-lime-600/20 text-lime-400 border-lime-500/30';
+      case 'doctor':
+        return 'bg-rose-500/20 text-rose-300 border-rose-400/30';
       case 'journalist':
         return 'bg-purple-600/20 text-purple-400 border-purple-500/30';
       default:
@@ -234,7 +242,7 @@ export const AdminUserDirectoryView: React.FC<AdminUserDirectoryViewProps> = ({
                                       className="w-full px-3 py-2 text-rose-400 hover:bg-rose-950/30 rounded-lg flex items-center gap-2 cursor-pointer"
                                     >
                                       <UserX className="w-3.5 h-3.5" />
-                                      <span>Suspend Account</span>
+                                      <span>Revoke Access (Suspend)</span>
                                     </button>
                                   ) : (
                                     <button
@@ -245,7 +253,7 @@ export const AdminUserDirectoryView: React.FC<AdminUserDirectoryViewProps> = ({
                                       className="w-full px-3 py-2 text-emerald-400 hover:bg-emerald-950/30 rounded-lg flex items-center gap-2 cursor-pointer"
                                     >
                                       <UserCheck className="w-3.5 h-3.5" />
-                                      <span>Activate Account</span>
+                                      <span>Restore Access</span>
                                     </button>
                                   )}
 

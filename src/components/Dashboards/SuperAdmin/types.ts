@@ -13,6 +13,8 @@ export interface PlatformHealthMetrics {
   totalUsers: number;
   activeUsersToday: number;
   onlineUsers: number;
+  revokedUsers: number;
+  uptimePercentage: number;
   totalTeams: number;
   totalPlayers: number;
   totalReferees: number;
@@ -150,7 +152,7 @@ export interface UserProfileRow {
   firstName: string;
   lastName: string;
   name: string;
-  role: 'admin' | 'president' | 'coach' | 'captain' | 'referee' | 'linesman' | 'journalist' | 'player' | 'guest';
+  role: 'admin' | 'president' | 'coach' | 'captain' | 'referee' | 'linesman' | 'journalist' | 'player' | 'doctor' | 'guest';
   email: string;
   phone: string;
   teamName?: string;
@@ -183,6 +185,7 @@ export interface PlatformInsightItem {
 }
 
 export interface PlatformPerformanceMetrics {
+  avgUserUptimePercentage: number;
   avgLoginTimeMs: number;
   avgApiResponseMs: number;
   dbLatencyMs: number;
@@ -192,6 +195,7 @@ export interface PlatformPerformanceMetrics {
   uploadsToday: number;
   avgSessionDurationMins: number;
   peakConcurrentUsers: number;
+  activeSessionsCount: number;
 }
 
 // Backward Compatibility Interfaces for Legacy Widgets

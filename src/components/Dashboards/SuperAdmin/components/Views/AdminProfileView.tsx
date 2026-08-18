@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../../../../contexts/AuthContext';
 import {
   UserCheck,
   Lock,
@@ -20,26 +21,28 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
   onLogout,
   showToast,
 }) => {
+  const { user, profile } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'System Administrator';
+  const email = profile?.email || user?.email || 'admin@egerton.ac.ke';
+  const initials = fullName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'AD';
+
   const activeSessions = [
     {
-      device: 'Windows PC — Chrome 127.0',
-      location: 'Njoro, Kenya',
-      ip: '197.232.88.14',
+      device: 'Current Browser Session',
+      location: 'Active Console',
+      ip: '127.0.0.1 (Authenticated)',
       status: 'Current Session (Active Now)',
       isCurrent: true,
       icon: Laptop,
-    },
-    {
-      device: 'Android Phone — Firefox Mobile',
-      location: 'Nakuru, Kenya',
-      ip: '102.215.52.88',
-      status: 'Last active 3 hours ago',
-      isCurrent: false,
-      icon: Smartphone,
     },
   ];
 
@@ -51,7 +54,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
             System Administrator Security Profile
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Personal information, active sessions, and access credentials.
+            Personal information, active sessions, and access credentials from live database profile.
           </p>
         </div>
       </div>
@@ -61,12 +64,12 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
         <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-lg">
-              AD
+              {initials}
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-white">System Administrator</h3>
+              <h3 className="text-base font-extrabold text-white">{fullName}</h3>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
-                Super Admin
+                {profile?.role?.toUpperCase() || 'SUPER ADMIN'}
               </span>
             </div>
           </div>
@@ -74,7 +77,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
           <div className="space-y-3 pt-3 border-t border-[#2A2A2A] text-xs">
             <div>
               <span className="text-gray-400 block text-[10px] uppercase font-bold">Email Address</span>
-              <span className="font-semibold text-white font-mono">admin@egerton.ac.ke</span>
+              <span className="font-semibold text-white font-mono">{email}</span>
             </div>
             <div>
               <span className="text-gray-400 block text-[10px] uppercase font-bold">Organization</span>
@@ -82,7 +85,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
             </div>
             <div>
               <span className="text-gray-400 block text-[10px] uppercase font-bold">Security Clearance</span>
-              <span className="font-semibold text-emerald-400">Level 5 (Full Platform Operations)</span>
+              <span className="font-semibold text-emerald-400">Level 5 (Full Database Operations)</span>
             </div>
           </div>
         </div>

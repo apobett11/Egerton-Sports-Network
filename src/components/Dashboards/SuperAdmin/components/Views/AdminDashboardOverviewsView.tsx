@@ -85,7 +85,7 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
               </div>
             </div>
 
-            {journalistOverview.mostViewedArticle && (
+            {journalistOverview.mostViewedArticle ? (
               <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-1">
                 <div className="text-[10px] text-purple-400 font-bold uppercase">🔥 Most Viewed Article</div>
                 <div className="text-xs font-bold text-white line-clamp-1">
@@ -94,6 +94,10 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
                 <div className="text-[10px] text-gray-400">
                   By {journalistOverview.mostViewedArticle.author} • {journalistOverview.mostViewedArticle.views.toLocaleString()} views
                 </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] text-center text-xs text-gray-500">
+                No articles published in database yet.
               </div>
             )}
           </div>
@@ -142,7 +146,7 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
               </div>
             </div>
 
-            {teamOverview.latestSquadSubmission && (
+            {teamOverview.latestSquadSubmission ? (
               <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] space-y-1">
                 <div className="text-[10px] text-emerald-400 font-bold uppercase">📋 Latest Squad Submission</div>
                 <div className="text-xs font-bold text-white">
@@ -151,6 +155,10 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
                 <div className="text-[10px] text-gray-400">
                   Submitted {teamOverview.latestSquadSubmission.submittedAt} by {teamOverview.latestSquadSubmission.coachName}
                 </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] text-center text-xs text-gray-500">
+                No active squads submitted in database.
               </div>
             )}
           </div>

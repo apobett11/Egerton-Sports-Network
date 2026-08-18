@@ -40,6 +40,7 @@ interface AdminOverviewViewProps {
   platformErrors: PlatformErrorItem[];
   setActiveTab: (tab: AdminTabType) => void;
   onOpenModal: (type: any, item?: any) => void;
+  onRefresh?: () => void;
 }
 
 export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
@@ -49,6 +50,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
   platformErrors,
   setActiveTab,
   onOpenModal,
+  onRefresh,
 }) => {
   const healthIndicators = [
     { label: 'API Engine', status: systemHealth.apiStatus, latency: `${systemHealth.apiLatencyMs}ms`, icon: Server },
@@ -192,6 +194,24 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
             </div>
             <div className="text-2xl font-black text-white font-mono">{platformHealth.totalArticles}</div>
             <div className="text-[10px] text-rose-400 font-semibold">News Stories</div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] hover:border-emerald-500/40 transition-all space-y-1">
+            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-tight flex items-center justify-between">
+              <span>System Uptime</span>
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            </div>
+            <div className="text-2xl font-black text-emerald-400 font-mono">{platformHealth.uptimePercentage || 99.98}%</div>
+            <div className="text-[10px] text-emerald-400 font-semibold">SLA Availability</div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] hover:border-rose-500/40 transition-all space-y-1">
+            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-tight flex items-center justify-between">
+              <span>Revoked Access</span>
+              <Lock className="w-3.5 h-3.5 text-rose-400" />
+            </div>
+            <div className="text-2xl font-black text-rose-400 font-mono">{platformHealth.revokedUsers}</div>
+            <div className="text-[10px] text-rose-400 font-semibold">Suspended Users</div>
           </div>
 
           <div className="p-4 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] hover:border-emerald-500/40 transition-all space-y-1">
@@ -343,36 +363,44 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           </div>
 
           <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-            {platformErrors.map((err) => (
-              <div
-                key={err.id}
-                onClick={() => onOpenModal('error_detail', err)}
-                className="p-3.5 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-rose-500/40 transition-all cursor-pointer flex items-center justify-between group"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                        err.severity === 'high' || err.severity === 'critical'
-                          ? 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
-                          : 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      {err.severity}
-                    </span>
-                    <span className="text-xs font-bold text-white group-hover:text-rose-400 transition-colors">
-                      {err.source} — {err.errorType}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-gray-400">{err.message}</div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[10px] font-mono text-gray-400">{err.timestamp}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-rose-400" />
-                </div>
+            {platformErrors.length === 0 ? (
+              <div className="text-center py-10 text-xs text-gray-400 space-y-2">
+                <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto opacity-70" />
+                <p className="font-semibold text-white">No Active Platform Errors</p>
+                <p className="text-[11px] text-gray-400">All live database services and auth subsystems operating nominally.</p>
               </div>
-            ))}
+            ) : (
+              platformErrors.map((err) => (
+                <div
+                  key={err.id}
+                  onClick={() => onOpenModal('error_detail', err)}
+                  className="p-3.5 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-rose-500/40 transition-all cursor-pointer flex items-center justify-between group"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                          err.severity === 'high' || err.severity === 'critical'
+                            ? 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
+                            : 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
+                        }`}
+                      >
+                        {err.severity}
+                      </span>
+                      <span className="text-xs font-bold text-white group-hover:text-rose-400 transition-colors">
+                        {err.source} — {err.errorType}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-400">{err.message}</div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-mono text-gray-400">{err.timestamp}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-rose-400" />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

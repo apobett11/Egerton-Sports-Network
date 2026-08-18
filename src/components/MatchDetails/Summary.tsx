@@ -52,8 +52,8 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
     };
 
     return (
-        <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
+        <div className="relative w-full max-w-3xl mx-auto py-12 px-4 select-none">
+            <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-200/80 dark:border-white/10">
                 <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
                         Chronological Log
@@ -76,53 +76,100 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
             </div>
 
             <div className="relative">
-                {/* Center vertical line */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-slate-200 dark:bg-slate-800/80" />
+                {/* The Spine (Center Line) */}
+                <div className="absolute left-[24px] md:left-1/2 top-0 bottom-0 w-[2px] md:-translate-x-1/2 bg-slate-200 dark:bg-slate-800 rounded-full" />
 
                 {/* Kickoff Marker */}
-                <div className="flex justify-center mb-8 relative">
+                <div className="flex justify-start md:justify-center mb-8 relative pl-12 md:pl-0">
                     <span className="bg-slate-900 dark:bg-slate-800 text-[#D4AF37] text-[10px] font-black uppercase px-4 py-1.5 rounded-full z-10 border border-slate-700 shadow-md tracking-widest">
                         MATCH KICKOFF
                     </span>
                 </div>
 
                 {/* Timeline Items */}
-                <div className="space-y-6">
+                <div className="space-y-8 md:space-y-12">
                     {sortedEvents.map((event) => {
                         const isTeamA = event.teamId === teamA.id;
 
                         return (
-                            <div
-                                key={event.id}
-                                className={`flex w-full items-center relative ${isTeamA ? 'flex-row' : 'flex-row-reverse'}`}
-                            >
-                                {/* Event details card */}
-                                <div className={`w-[45%] flex ${isTeamA ? 'justify-end text-right' : 'justify-start text-left'}`}>
-                                    <div className={`p-4 rounded-2xl bg-white dark:bg-[#0E1424] border border-slate-200/90 dark:border-slate-800/90 shadow-sm hover:shadow-md transition-all space-y-1 max-w-[260px] w-full ${isTeamA ? 'mr-2' : 'ml-2'}`}>
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
-                                            <span>{event.type.replace('_', ' ')}</span>
-                                            <span className="font-mono text-emerald-500 font-bold">{event.minute}'</span>
+                            <div key={event.id}>
+                                {/* Desktop Layout (>= 768px): Alternating Left/Right */}
+                                <div className="hidden md:block">
+                                    {isTeamA ? (
+                                        // Home Team Event: w-1/2 pr-12 text-right
+                                        <div className="relative flex justify-end items-center w-1/2 pr-12 text-right">
+                                            {/* Minute Badge on Spine */}
+                                            <div className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-4 border-slate-50 dark:border-slate-950 flex items-center justify-center font-black font-mono text-[10px] z-10 shadow-sm bg-emerald-600 text-white">
+                                                {event.minute}'
+                                            </div>
+
+                                            {/* Event Card */}
+                                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-white/5 w-full max-w-[280px]">
+                                                <div className="flex items-start gap-3 flex-row-reverse">
+                                                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                        {renderEventIcon(event.type)}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wide">
+                                                            {event.type.replace('_', ' ')}
+                                                        </h4>
+                                                        <p className="font-medium text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                                            {event.detailText || teamA.name}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p className="text-xs font-black text-slate-900 dark:text-slate-100 leading-snug">
-                                            {event.detailText || 'Match Action'}
-                                        </p>
-                                        <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                            {isTeamA ? teamA.name : teamB.name}
+                                    ) : (
+                                        // Away Team Event: w-1/2 pl-12 ml-auto text-left
+                                        <div className="relative flex justify-start items-center w-1/2 pl-12 ml-auto text-left">
+                                            {/* Minute Badge on Spine */}
+                                            <div className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-4 border-slate-50 dark:border-slate-950 flex items-center justify-center font-black font-mono text-[10px] z-10 shadow-sm bg-emerald-600 text-white">
+                                                {event.minute}'
+                                            </div>
+
+                                            {/* Event Card */}
+                                            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-white/5 w-full max-w-[280px]">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                        {renderEventIcon(event.type)}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wide">
+                                                            {event.type.replace('_', ' ')}
+                                                        </h4>
+                                                        <p className="font-medium text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                                            {event.detailText || teamB.name}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                {/* Center minute badge */}
-                                <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
-                                    <div className="w-8 h-8 rounded-full bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-xs font-black text-white border-2 border-white dark:border-[#090D16] shadow-md ring-2 ring-emerald-500/20">
+                                {/* Mobile Layout (< 768px): Left-aligned row with left-[4px] minute badge */}
+                                <div className="md:hidden relative flex justify-start items-center w-full pl-16">
+                                    {/* Minute Badge on left Spine */}
+                                    <div className="absolute left-[4px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border-4 border-slate-50 dark:border-slate-950 flex items-center justify-center font-black font-mono text-[10px] z-10 shadow-sm bg-emerald-600 text-white">
                                         {event.minute}'
                                     </div>
-                                </div>
 
-                                {/* Icon visual indicator side */}
-                                <div className={`w-[45%] flex items-center px-4 ${isTeamA ? 'justify-start' : 'justify-end'}`}>
-                                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center shadow-xs border border-slate-200 dark:border-slate-700/80">
-                                        {renderEventIcon(event.type)}
+                                    {/* Event Card */}
+                                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 dark:border-white/5 w-full max-w-[280px]">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                {renderEventIcon(event.type)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wide">
+                                                    {event.type.replace('_', ' ')}
+                                                </h4>
+                                                <p className="font-medium text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                                    {event.detailText || (isTeamA ? teamA.name : teamB.name)}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -131,7 +178,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                 </div>
 
                 {/* Match End Marker */}
-                <div className="flex justify-center mt-8 relative">
+                <div className="flex justify-start md:justify-center mt-8 relative pl-12 md:pl-0">
                     <span className="bg-slate-900 dark:bg-slate-800 text-slate-200 text-[10px] font-black uppercase px-4 py-1.5 rounded-full z-10 border border-slate-700 shadow-md tracking-widest">
                         {match.status === 'FT' ? 'FULL TIME CONCLUDED' : match.status === 'HT' ? 'HALF TIME BREAK' : 'MATCH IN PROGRESS'}
                     </span>

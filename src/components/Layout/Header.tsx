@@ -137,43 +137,43 @@ export const Header: React.FC<HeaderProps> = ({
     }, [dbFixtures]);
 
     return (
-        <header className="sticky top-0 z-50 w-full shadow-xl backdrop-blur-xl select-none bg-white/95 dark:bg-[#0A0E1A]/95 text-slate-800 dark:text-slate-200 border-b border-slate-200/90 dark:border-slate-800/90 transition-all duration-300">
+        <header className="sticky top-0 z-50 w-full select-none bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-2xl border-b border-slate-200/50 dark:border-b dark:border-white/5 shadow-sm transition-all duration-300">
             {/* Row 1: Logo & Top controls */}
-            <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between w-full px-4 py-3 md:px-8 max-w-7xl mx-auto">
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={onMenuClick}
-                        className="p-2 rounded-xl bg-slate-100/80 dark:bg-[#161F30] text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700/80 active:scale-95 transition-all duration-200 border border-slate-200/60 dark:border-slate-700/50 outline-none cursor-pointer"
+                        className="flex md:hidden items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
                         aria-label="Toggle navigation menu"
                     >
                         <Menu className="w-5 h-5" />
                     </button>
 
-                    <div className="flex items-center gap-2.5 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37] via-amber-500 to-emerald-600 flex items-center justify-center font-black text-slate-950 shadow-md ring-1 ring-[#D4AF37]/50 group-hover:scale-105 transition-transform duration-300">
+                    <div className="flex items-center gap-3 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform duration-300">
                             E
                         </div>
-                        <div className="flex flex-col">
-                            <span className="font-black text-lg tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">
+                        <div className="hidden md:flex flex-col">
+                            <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white group-hover:text-amber-500 transition-colors">
                                 Egerton Sports
                             </span>
-                            <span className="text-[9px] font-extrabold tracking-widest text-[#D4AF37] uppercase -mt-0.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                 Official Campus Hub
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right-side Action Controls: Visually distinct rounded action container */}
-                <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-[#162032]/90 p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-700/70 shadow-inner">
+                {/* Right-side Action Controls */}
+                <div className="flex items-center gap-2 md:gap-4">
                     {showSearch && (
                         <input
                             type="text"
                             placeholder="Search campus teams..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="px-3 py-1 text-xs bg-white dark:bg-[#0D1322] border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-slate-800 dark:text-slate-100 max-w-[150px] transition-all duration-200"
+                            className="px-3.5 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 max-w-[170px] transition-all duration-200 shadow-xs"
                         />
                     )}
 
@@ -181,10 +181,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={onNavigateNews || (() => { window.location.hash = '/news'; })}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] font-bold text-xs border border-[#D4AF37]/40 active:scale-95 transition-all cursor-pointer shadow-xs"
+                        className="flex items-center justify-center gap-1.5 px-3.5 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300 font-bold text-xs"
                         aria-label="Campus News"
                     >
-                        <Newspaper className="w-4 h-4 text-[#D4AF37]" />
+                        <Newspaper className="w-4 h-4 text-amber-500" />
                         <span className="hidden sm:inline">News</span>
                     </button>
 
@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={() => setShowSearch(!showSearch)}
-                        className="p-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/70 active:scale-90 transition-all cursor-pointer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
                         aria-label="Search"
                     >
                         <Search className="w-4.5 h-4.5" />
@@ -202,7 +202,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={toggleDarkMode}
-                        className="p-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700/70 active:scale-90 transition-all cursor-pointer"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
                         aria-label="Toggle Dark Mode"
                     >
                         {darkMode ? (
@@ -216,11 +216,11 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={onNavigateLogin || (() => { window.location.hash = '/login'; })}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer"
+                        className="hidden sm:flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-blue-900 text-white hover:bg-blue-800 shadow-lg shadow-blue-900/20 dark:bg-blue-600 dark:hover:bg-blue-500 transition-all cursor-pointer active:scale-95"
                         aria-label="Login"
                     >
-                        <LogIn className="w-4 h-4 text-slate-950" />
-                        <span className="hidden sm:inline">Login</span>
+                        <LogIn className="w-4 h-4 text-white" />
+                        <span>Login</span>
                     </button>
                 </div>
             </div>

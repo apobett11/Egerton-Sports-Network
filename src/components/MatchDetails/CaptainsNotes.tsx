@@ -23,7 +23,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                 </h3>
             </div>
 
-            <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm p-6 divide-y divide-slate-100 dark:divide-slate-800 space-y-6 transition-colors">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none p-6 divide-y divide-slate-100 dark:divide-white/5 space-y-6 transition-colors">
                 
                 {/* Captain A Note */}
                 <div className="space-y-3">
@@ -41,7 +41,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                         </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
                         {captainNotesA ? `"${captainNotesA}"` : "No official captain's notes published for this fixture."}
                     </p>
                 </div>
@@ -62,7 +62,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                         </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed italic bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
                         {captainNotesB ? `"${captainNotesB}"` : "No official captain's notes published for this fixture."}
                     </p>
                 </div>

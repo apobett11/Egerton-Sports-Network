@@ -75,8 +75,8 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status 
     }
 
     return (
-        <div className="sticky top-0 z-40 bg-white/95 dark:bg-[#0B101E]/95 backdrop-blur-2xl border-b border-amber-500/30 dark:border-[#D4AF37]/30 select-none shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_25px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-4 sm:px-6 py-2.5 max-w-4xl mx-auto">
+        <div className="sticky top-[64px] z-40 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-2xl border-b border-slate-200/50 dark:border-white/5 select-none">
+            <div className="w-full flex items-center justify-start md:justify-center overflow-x-auto no-scrollbar gap-2 py-4 px-4 max-w-5xl mx-auto">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
 
@@ -86,10 +86,10 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status 
                             ref={isActive ? activeTabRef : null}
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-xl font-black text-xs tracking-wide whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                            className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
                                 isActive
-                                    ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-[#D4AF37] text-slate-950 shadow-[0_4px_16px_rgba(212,175,55,0.4)] ring-2 ring-amber-400 scale-[1.03]'
-                                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 font-bold border border-transparent'
+                                    ? 'bg-blue-900 text-white dark:bg-white dark:text-slate-950 shadow-md'
+                                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
                             }`}
                         >
                             {tab.label}

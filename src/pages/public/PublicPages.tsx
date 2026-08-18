@@ -128,7 +128,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-14 bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm space-y-2">
+        <div className="text-center py-14 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto">
             <Calendar className="w-6 h-6" />
           </div>
@@ -136,58 +136,58 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <p className="text-xs text-slate-500 max-w-sm mx-auto">Try adjusting your filter preferences or search term.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/90 dark:border-slate-800/90 divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs">
-          {filtered.map((match) => (
-            <div 
-              key={match.id} 
-              onClick={() => onSelectMatch && onSelectMatch(match)}
-              className="flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group active:scale-[0.99]"
-            >
-              {/* Left: Time & Status */}
-              <div className="w-20 sm:w-24 flex flex-col items-start pr-3 border-r border-slate-100 dark:border-slate-800">
-                {match.status === 'LIVE' ? (
-                  <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-md animate-pulse">
-                    LIVE {match.minute}
-                  </span>
-                ) : match.status === 'FT' ? (
-                  <span className="text-xs font-black text-slate-400 font-mono">FT</span>
-                ) : (
-                  <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 font-mono">{match.time}</span>
-                )}
-                <span className="text-[10px] text-slate-400 font-sans truncate max-w-[75px]">{match.venue}</span>
-              </div>
+        <div className="flex flex-col gap-3">
+          {filtered.map((match) => {
+            const isMatchLive = match.status === 'LIVE';
 
-              {/* Center: Teams & Scores */}
-              <div className="flex-1 flex items-center justify-between px-3 sm:px-5">
-                <div className="flex flex-col gap-2 flex-1">
-                  <div className="flex items-center gap-2.5">
-                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">{match.teamA.name}</span>
+            return (
+              <div 
+                key={match.id} 
+                onClick={() => onSelectMatch && onSelectMatch(match)}
+                className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
+              >
+                {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4">
+                  {/* Team A (Home - Left) */}
+                  <div className="flex items-center gap-3 justify-start min-w-0">
+                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                    <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-5 h-5 object-contain rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5" />
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors">{match.teamB.name}</span>
+
+                  {/* Center Box (Score/Time) */}
+                  <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                    {isMatchLive ? (
+                      <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                        LIVE {match.minute}
+                      </span>
+                    ) : match.status === 'HT' ? (
+                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                    ) : match.status === 'FT' ? (
+                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
+                    ) : (
+                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
+                    )}
+
+                    <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                      {match.status !== 'UPCOMING' ? (
+                        <span>{match.scoreA} - {match.scoreB}</span>
+                      ) : (
+                        <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                      )}
+                    </div>
+
+                    <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
+                  </div>
+
+                  {/* Team B (Away - Right) */}
+                  <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                    <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-2 items-end justify-center font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 pr-1">
-                  {match.status !== 'UPCOMING' ? (
-                    <>
-                      <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreA}</span>
-                      <span className={match.status === 'LIVE' ? 'text-rose-500' : ''}>{match.scoreB}</span>
-                    </>
-                  ) : (
-                    <span className="text-[11px] font-bold text-slate-400">VS</span>
-                  )}
-                </div>
               </div>
-
-              {/* Right Arrow */}
-              <div className="text-slate-400 group-hover:text-[#D4AF37] transition-colors pl-2">
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -506,29 +506,29 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
       {/* ARTICLE READER MODAL */}
       {selectedArticle && (
         <div 
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" 
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200" 
           onClick={() => setSelectedArticle(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Article Details"
         >
-          <div className="bg-white dark:bg-[#1A1E20] max-w-2xl w-full rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="bg-white dark:bg-slate-900 max-w-2xl w-full rounded-3xl p-6 md:p-8 border border-slate-100 dark:border-white/10 shadow-2xl space-y-6 my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
               <Badge variant="gold">{selectedArticle.category}</Badge>
               <button 
                 onClick={() => setSelectedArticle(null)} 
-                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] transition-colors"
+                className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                 aria-label="Close article modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <img src={selectedArticle.imageUrl} alt={selectedArticle.title} className="w-full h-64 object-cover rounded-xl shadow-md" />
+            <img src={selectedArticle.imageUrl} alt={selectedArticle.title} className="w-full h-64 object-cover rounded-2xl shadow-md border border-slate-100 dark:border-white/5" />
 
             <div className="space-y-3">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 leading-tight">{selectedArticle.title}</h2>
-              <div className="flex items-center justify-between text-xs text-slate-400 border-y border-slate-100 dark:border-slate-800/80 py-2">
+              <div className="flex items-center justify-between text-xs text-slate-400 border-y border-slate-100 dark:border-white/5 py-2.5">
                 <span>By <strong>{selectedArticle.author}</strong> ({selectedArticle.authorRole})</span>
                 <span>Published: {selectedArticle.publishedAt}</span>
               </div>
@@ -538,7 +538,7 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
               </p>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
               <button 
                 onClick={() => {
                   if (navigator.share) {
@@ -547,12 +547,12 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
                     alert('Article link copied to clipboard!');
                   }
                 }}
-                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-md px-1.5 py-1"
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 hover:underline rounded-md px-1.5 py-1 cursor-pointer"
                 aria-label="Share article link"
               >
                 <Share2 className="w-4 h-4" /> Share Article
               </button>
-              <Button variant="primary" size="sm" onClick={() => setSelectedArticle(null)} className="active:scale-[0.98] transition-transform">
+              <Button variant="primary" size="sm" onClick={() => setSelectedArticle(null)} className="active:scale-[0.98] transition-transform cursor-pointer">
                 Done Reading
               </Button>
             </div>

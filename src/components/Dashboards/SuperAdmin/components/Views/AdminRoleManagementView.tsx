@@ -25,7 +25,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
   const rolePermissions = [
     {
       role: 'Admin',
-      count: platformHealth.totalUsers > 0 ? 2 : 1,
+      count: userDirectory.filter((u) => u.role === 'admin').length || 1,
       description: 'Platform infrastructure, user moderation, telemetry & system configuration.',
       canSubmitSquads: false,
       canSubmitReports: false,
@@ -36,7 +36,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
     },
     {
       role: 'President',
-      count: 1,
+      count: userDirectory.filter((u) => u.role === 'president').length || 1,
       description: 'League governance, fixture generation, executive broadcasts, rules alignment.',
       canSubmitSquads: false,
       canSubmitReports: false,
@@ -47,7 +47,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
     },
     {
       role: 'Coach',
-      count: platformHealth.totalCoaches,
+      count: userDirectory.filter((u) => u.role === 'coach').length,
       description: 'Team tactics, starting XI selection, roster management, squad submissions.',
       canSubmitSquads: true,
       canSubmitReports: false,
@@ -58,7 +58,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
     },
     {
       role: 'Captain',
-      count: platformHealth.totalCaptains,
+      count: userDirectory.filter((u) => u.role === 'captain').length,
       description: 'On-field leadership, roster backup management, practice coordination.',
       canSubmitSquads: true,
       canSubmitReports: false,
@@ -69,7 +69,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
     },
     {
       role: 'Referee',
-      count: platformHealth.totalReferees,
+      count: userDirectory.filter((u) => u.role === 'referee').length,
       description: 'Match officiating, event recording, official match report submissions.',
       canSubmitSquads: false,
       canSubmitReports: true,
@@ -79,8 +79,19 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
       canReadTelemetry: false,
     },
     {
+      role: 'Linesman',
+      count: userDirectory.filter((u) => u.role === 'linesman').length,
+      description: 'Touchline assistant officiating, offside tracking, incident recording.',
+      canSubmitSquads: false,
+      canSubmitReports: true,
+      canPublishNews: false,
+      canGenerateFixtures: false,
+      canModerateUsers: false,
+      canReadTelemetry: false,
+    },
+    {
       role: 'Journalist',
-      count: platformHealth.totalJournalists,
+      count: userDirectory.filter((u) => u.role === 'journalist').length,
       description: 'Press coverage, article creation, campus sports editorial publishing.',
       canSubmitSquads: false,
       canSubmitReports: false,
@@ -90,8 +101,19 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
       canReadTelemetry: false,
     },
     {
+      role: 'Doctor',
+      count: userDirectory.filter((u) => u.role === 'doctor').length,
+      description: 'Player medical clearance, injury assessments, matchday medical logs.',
+      canSubmitSquads: false,
+      canSubmitReports: false,
+      canPublishNews: false,
+      canGenerateFixtures: false,
+      canModerateUsers: false,
+      canReadTelemetry: false,
+    },
+    {
       role: 'Player',
-      count: platformHealth.totalPlayers,
+      count: userDirectory.filter((u) => u.role === 'player').length,
       description: 'Individual player profile, stats tracking, match performance records.',
       canSubmitSquads: false,
       canSubmitReports: false,

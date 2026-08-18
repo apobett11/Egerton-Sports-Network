@@ -22,16 +22,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
   const [error, setError] = useState('');
   const [redirectingMessage, setRedirectingMessage] = useState<string | null>(null);
 
-  // Auto-redirect if already authenticated with Supabase
+  // Clean state when arriving at login page
   useEffect(() => {
-    if (!isLoading && user && role !== 'guest') {
-      const savedRoute = getRedirectRoute();
-      clearRedirectRoute();
-      const targetHash = savedRoute || getRouteForRole(role);
-      setRedirectingMessage('Authenticating and redirecting...');
-      window.location.hash = targetHash;
-    }
-  }, [user, role, isLoading, getRedirectRoute, clearRedirectRoute]);
+    // Clear any previous error on mount
+    setError('');
+  }, []);
 
   const submitAction = async () => {
     if (!email || !password) {

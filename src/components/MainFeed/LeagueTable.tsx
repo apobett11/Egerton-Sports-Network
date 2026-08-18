@@ -122,101 +122,93 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </span>
         </div>
 
-        {/* Table Content */}
-        <div className="overflow-x-auto p-4 sm:p-6">
+        {/* Anti-Table CSS Grid Content */}
+        <div className="p-2 sm:p-4">
           {data.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs font-semibold bg-white dark:bg-[#090D16] rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
+            <div className="p-8 text-center text-slate-400 text-xs font-semibold bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5">
               No completed match statistics available for this league table yet.
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16] overflow-hidden shadow-xs">
-              <table className="w-full text-left font-sans text-xs">
-                <thead>
-                  <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
-                    <th className="py-3.5 px-3 text-center w-8">#</th>
-                    <th className="py-3.5 px-1 text-center w-6">Pos</th>
-                    <th className="py-3.5 px-3">Team</th>
-                    <th className="py-3.5 px-2 text-center w-8">P</th>
-                    <th className="py-3.5 px-2 text-center w-8">W</th>
-                    <th className="py-3.5 px-2 text-center w-8">D</th>
-                    <th className="py-3.5 px-2 text-center w-8">L</th>
-                    <th className="py-3.5 px-2 text-center w-10">GF</th>
-                    <th className="py-3.5 px-2 text-center w-10">GA</th>
-                    <th className="py-3.5 px-2 text-center w-10">GD</th>
-                    <th className="py-3.5 px-3 text-center font-black text-amber-500 dark:text-[#D4AF37] bg-amber-500/10 w-12 border-l border-r border-amber-500/20">Pts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-                  {data.map((row) => {
-                    const isTop = row.position <= 2;
-                    const isBottom = row.position >= data.length;
+            <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+              {/* Pseudo-Thead */}
+              <div className="grid grid-cols-[40px_30px_3fr_1fr_1fr_1fr_1fr_2fr] items-center px-4 md:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="text-center">#</div>
+                <div className="text-center">Pos</div>
+                <div>Team</div>
+                <div className="text-center">P</div>
+                <div className="text-center">W</div>
+                <div className="text-center">D</div>
+                <div className="text-center">L</div>
+                <div className="text-right">Pts</div>
+              </div>
 
-                    let rowClass = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors';
-                    let positionBadgeClass = 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800';
+              {/* Pseudo-Tbody */}
+              <div>
+                {data.map((row) => {
+                  const isTop = row.position <= 2;
+                  const isBottom = row.position >= data.length;
 
-                    if (isTop) {
-                      rowClass += ' bg-emerald-500/[0.03] dark:bg-emerald-500/[0.015] border-l-4 border-l-emerald-500';
-                      positionBadgeClass = 'text-white bg-emerald-600';
-                    } else if (isBottom) {
-                      rowClass += ' bg-rose-500/[0.03] dark:bg-rose-500/[0.015] border-l-4 border-l-rose-500';
-                      positionBadgeClass = 'text-white bg-rose-600';
-                    }
+                  let posBadge = "w-6 h-6 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 flex items-center justify-center font-bold text-xs";
+                  if (isTop) {
+                    posBadge = "w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 flex items-center justify-center font-bold text-xs";
+                  } else if (isBottom) {
+                    posBadge = "w-6 h-6 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 flex items-center justify-center font-bold text-xs";
+                  }
 
-                    return (
-                      <tr key={row.teamId} className={rowClass}>
-                        <td className="py-3 px-3 text-center">
-                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${positionBadgeClass}`}>
-                            {row.position}
+                  return (
+                    <div
+                      key={row.teamId}
+                      className="grid grid-cols-[40px_30px_3fr_1fr_1fr_1fr_1fr_2fr] items-center px-4 md:px-6 py-4 border-b border-slate-50 dark:border-white/5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 last:border-0"
+                    >
+                      <div className="flex justify-center">
+                        <span className={posBadge}>
+                          {row.position}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-center">
+                        {row.movement === 'up' && (
+                          <span className="inline-flex items-center text-emerald-500 font-bold" title="Climbed position">
+                            <ArrowUp className="w-3.5 h-3.5" />
                           </span>
-                        </td>
-
-                        <td className="py-3 px-1 text-center">
-                          {row.movement === 'up' && (
-                            <span className="inline-flex items-center text-emerald-500 font-bold" title="Climbed position">
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                          {row.movement === 'down' && (
-                            <span className="inline-flex items-center text-rose-500 font-bold" title="Dropped position">
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                          {(!row.movement || row.movement === 'same') && (
-                            <span className="inline-flex items-center text-slate-400" title="Position unchanged">
-                              <Minus className="w-3 h-3" />
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-2 font-semibold">
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={row.teamLogo}
-                              alt={row.teamName}
-                              className="w-5 h-5 rounded-full object-contain bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5"
-                            />
-                            <span className="truncate max-w-[160px] font-bold text-slate-900 dark:text-slate-100">{row.teamName}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 text-center text-slate-500 dark:text-slate-400">{row.played}</td>
-                        <td className="py-3 px-2 text-center font-bold text-emerald-600 dark:text-emerald-400">{row.won}</td>
-                        <td className="py-3 px-2 text-center text-slate-400">{row.drawn}</td>
-                        <td className="py-3 px-2 text-center text-rose-500">{row.lost}</td>
-                        <td className="py-3 px-2 text-center text-slate-500">{row.goalsFor}</td>
-                        <td className="py-3 px-2 text-center text-slate-500">{row.goalsAgainst}</td>
-                        <td className="py-3 px-2 text-center font-mono font-bold">
-                          <span className={row.goalDifference > 0 ? 'text-emerald-600 dark:text-emerald-400' : row.goalDifference < 0 ? 'text-rose-600 dark:text-rose-400' : ''}>
-                            {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                        )}
+                        {row.movement === 'down' && (
+                          <span className="inline-flex items-center text-rose-500 font-bold" title="Dropped position">
+                            <ArrowDown className="w-3.5 h-3.5" />
                           </span>
-                        </td>
-                        <td className="py-3 px-3 text-center font-black font-mono text-amber-500 text-sm">
+                        )}
+                        {(!row.movement || row.movement === 'same') && (
+                          <span className="inline-flex items-center text-slate-400" title="Position unchanged">
+                            <Minus className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0 pr-2">
+                        <img
+                          src={row.teamLogo}
+                          alt={row.teamName}
+                          className="w-6 h-6 rounded-full object-contain bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 shrink-0"
+                        />
+                        <span className="truncate font-bold text-sm text-slate-900 dark:text-white">
+                          {row.teamName}
+                        </span>
+                      </div>
+
+                      <div className="text-center text-xs font-semibold text-slate-500 dark:text-slate-400">{row.played}</div>
+                      <div className="text-center text-xs font-bold text-emerald-600 dark:text-emerald-400">{row.won}</div>
+                      <div className="text-center text-xs font-medium text-slate-400">{row.drawn}</div>
+                      <div className="text-center text-xs font-medium text-rose-500">{row.lost}</div>
+
+                      <div className="flex items-center justify-end font-mono font-black text-base md:text-lg">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 text-slate-900 dark:text-white px-3 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">
                           {row.points}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -473,49 +465,49 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 </h4>
                 <span className="text-[10px] font-mono text-slate-400">Position Order</span>
               </div>
-              <div className="overflow-x-auto rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16]">
-                <table className="w-full text-left font-sans text-xs">
-                  <thead>
-                    <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
-                      <th className="py-2.5 px-3 text-center w-8">Pos</th>
-                      <th className="py-2.5 px-2">Club</th>
-                      <th className="py-2.5 px-2 text-center w-8">P</th>
-                      <th className="py-2.5 px-2 text-center">Form (Last 6 Games)</th>
-                      <th className="py-2.5 px-2 text-center font-black text-amber-500 dark:text-[#D4AF37] w-10">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {(eplStandings.length > 0 ? eplStandings : tableData).map((row) => {
-                      const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
+              <div className="rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 overflow-hidden">
+                {/* Form Pseudo-Thead */}
+                <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-white/10">
+                  <div className="text-center">Pos</div>
+                  <div>Club</div>
+                  <div className="text-center">P</div>
+                  <div className="text-center">Form (Last 6)</div>
+                  <div className="text-right">Pts</div>
+                </div>
 
-                      return (
-                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}</td>
-                          <td className="py-2.5 px-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
-                            <span className="truncate max-w-[120px]">{row.teamName}</span>
-                          </td>
-                          <td className="py-2.5 px-2 text-center text-slate-500">{row.played}</td>
-                          <td className="py-2.5 px-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {form6.map((res, i) => (
-                                <span
-                                  key={i}
-                                  className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
-                                    res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
-                                  }`}
-                                >
-                                  {res}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-2 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Form Pseudo-Tbody */}
+                <div>
+                  {(eplStandings.length > 0 ? eplStandings : tableData).map((row) => {
+                    const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
+
+                    return (
+                      <div
+                        key={row.teamId}
+                        className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 border-b border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors last:border-0"
+                      >
+                        <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
+                        <div className="flex items-center gap-2 min-w-0 pr-1">
+                          <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                          <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
+                        </div>
+                        <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                        <div className="flex items-center justify-center gap-1">
+                          {form6.map((res, i) => (
+                            <span
+                              key={i}
+                              className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
+                                res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
+                              }`}
+                            >
+                              {res}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -528,49 +520,49 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 </h4>
                 <span className="text-[10px] font-mono text-slate-400">Position Order</span>
               </div>
-              <div className="overflow-x-auto rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-[#090D16]">
-                <table className="w-full text-left font-sans text-xs">
-                  <thead>
-                    <tr className="bg-slate-100/90 dark:bg-[#0D121F] text-slate-500 dark:text-slate-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200/90 dark:border-slate-800/80">
-                      <th className="py-2.5 px-3 text-center w-8">Pos</th>
-                      <th className="py-2.5 px-2">Club</th>
-                      <th className="py-2.5 px-2 text-center w-8">P</th>
-                      <th className="py-2.5 px-2 text-center">Form (Last 6 Games)</th>
-                      <th className="py-2.5 px-2 text-center font-black text-amber-500 dark:text-[#D4AF37] w-10">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {champStandings.map((row) => {
-                      const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
+              <div className="rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 overflow-hidden">
+                {/* Form Pseudo-Thead */}
+                <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-white/10">
+                  <div className="text-center">Pos</div>
+                  <div>Club</div>
+                  <div className="text-center">P</div>
+                  <div className="text-center">Form (Last 6)</div>
+                  <div className="text-right">Pts</div>
+                </div>
 
-                      return (
-                        <tr key={row.teamId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}</td>
-                          <td className="py-2.5 px-2 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain" />
-                            <span className="truncate max-w-[120px]">{row.teamName}</span>
-                          </td>
-                          <td className="py-2.5 px-2 text-center text-slate-500">{row.played}</td>
-                          <td className="py-2.5 px-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {form6.map((res, i) => (
-                                <span
-                                  key={i}
-                                  className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
-                                    res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
-                                  }`}
-                                >
-                                  {res}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-2 text-center font-extrabold font-mono text-amber-500">{row.points}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Form Pseudo-Tbody */}
+                <div>
+                  {champStandings.map((row) => {
+                    const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
+
+                    return (
+                      <div
+                        key={row.teamId}
+                        className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 border-b border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors last:border-0"
+                      >
+                        <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
+                        <div className="flex items-center gap-2 min-w-0 pr-1">
+                          <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                          <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
+                        </div>
+                        <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                        <div className="flex items-center justify-center gap-1">
+                          {form6.map((res, i) => (
+                            <span
+                              key={i}
+                              className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
+                                res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
+                              }`}
+                            >
+                              {res}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

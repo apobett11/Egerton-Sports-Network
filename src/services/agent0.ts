@@ -43,6 +43,7 @@ import {
   allocateMatches,
   type Algorithm3Signal,
   type Algorithm3Output,
+  type SlotTime,
 } from "../algorithms/algorithm3";
 
 import {
@@ -176,8 +177,8 @@ function buildExecutionPlan(event: PresidentEvent): ExecutionPlan {
       return {
         requiresAlgorithm1: false,
         requiresAlgorithm2: true,
-        requiresAlgorithm3: true,
-        requiresAlgorithm45: true,
+        requiresAlgorithm3: true, // Algo 2 automatically triggers rerun of Algo 3
+        requiresAlgorithm45: false, // Referees hold to match ID; Algo 4 & 5 not rerun
       };
 
     case "CHANGE_PITCH_STATE":
@@ -185,8 +186,8 @@ function buildExecutionPlan(event: PresidentEvent): ExecutionPlan {
       return {
         requiresAlgorithm1: false,
         requiresAlgorithm2: false,
-        requiresAlgorithm3: true,
-        requiresAlgorithm45: true,
+        requiresAlgorithm3: true, // Algo 3 runs independently
+        requiresAlgorithm45: false,
       };
 
     case "REFEREE_ADDED":
@@ -197,7 +198,7 @@ function buildExecutionPlan(event: PresidentEvent): ExecutionPlan {
         requiresAlgorithm1: false,
         requiresAlgorithm2: false,
         requiresAlgorithm3: false,
-        requiresAlgorithm45: true,
+        requiresAlgorithm45: true, // Re-runs Algo 4 ONLY; Algo 5 never reruns
       };
 
     default:
@@ -885,7 +886,13 @@ function buildAlgorithm2Signal(
       throw new Agent0Error("MISSING_EVENT_DATE", "Playday add event requires a date.");
     }
     const mode = event.type === "ADD_PLAYDAY_ONCE" ? "ONE_TIME" : "PERMANENT";
-    playdays = [...playdays, { date: event.date, mode, active: true }];
+    const existingIndex = playdays.findIndex((p) => p.date === event.date);
+    if (existingIndex >= 0) {
+      playdays[existingIndex] = { date: event.date, mode, active: true };
+    } else {
+      playdays.push({ date: event.date, mode, active: true });
+    }
+    playdays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   if (event.type === "REMOVE_PLAYDAY_ONCE" || event.type === "REMOVE_PLAYDAY_PERMANENT") {
@@ -976,9 +983,14 @@ function buildAlgorithm3Signal(
   let pitches = [...state.pitches];
 
   if (event.type === "CHANGE_PITCH_STATE" && event.pitchId) {
+    const isAvailable = (event.amAvailable ?? true) || (event.pmAvailable ?? true);
+    const pid = event.pitchId;
     pitches = pitches.map((p) =>
-      p.pitch_id === event.pitchId
-        ? { ...p, state: (event.amAvailable ?? true) ? "available" : "unavailable" }
+      p.pitch_id === pid ||
+      (p.pitch_id === "pitch-1" && pid.includes("1")) ||
+      (p.pitch_id === "pitch-2" && pid.includes("2")) ||
+      (p.pitch_id === "pitch-3" && pid.includes("3"))
+        ? { ...p, state: isAvailable ? "available" : "unavailable" }
         : p,
     );
   }
@@ -1068,21 +1080,31 @@ function buildAlgorithm3TimeConfig(
   event: PresidentEvent,
   state: DBState,
 ): Algorithm3Signal["time_configuration"] {
+  const defaultEpl: SlotTime[] = [
+    { slot_number: 1, start_time: "09:00", end_time: "11:00" },
+    { slot_number: 2, start_time: "11:30", end_time: "13:30" },
+    { slot_number: 3, start_time: "14:30", end_time: "16:30" },
+  ];
+  const defaultChamp: SlotTime[] = [
+    { slot_number: 1, start_time: "09:00", end_time: "11:00" },
+    { slot_number: 2, start_time: "11:30", end_time: "13:30" },
+    { slot_number: 3, start_time: "14:30", end_time: "16:30" },
+  ];
+
+  const existingEpl = state.timeConfiguration?.find((tc) => tc.league_id === "epl")?.slots || defaultEpl;
+  const existingChamp = state.timeConfiguration?.find((tc) => tc.league_id === "championship")?.slots || defaultChamp;
+
   if (event.type === "CHANGE_TIME_CONFIGURATION") {
-    const config: Algorithm3Signal["time_configuration"] = [];
-
-    if (event.eplSlots) {
-      config.push({ league_id: "epl", slots: event.eplSlots });
-    }
-
-    if (event.championshipSlots) {
-      config.push({ league_id: "championship", slots: event.championshipSlots });
-    }
-
-    return config.length > 0 ? config : state.timeConfiguration;
+    return [
+      { league_id: "epl", slots: event.eplSlots || existingEpl },
+      { league_id: "championship", slots: event.championshipSlots || existingChamp },
+    ];
   }
 
-  return state.timeConfiguration;
+  return [
+    { league_id: "epl", slots: existingEpl },
+    { league_id: "championship", slots: existingChamp },
+  ];
 }
 
 /* ============================================================================

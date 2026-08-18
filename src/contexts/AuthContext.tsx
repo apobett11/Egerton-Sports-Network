@@ -103,6 +103,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole('guest');
         return null;
       } else {
+        const isRevoked = data.bio?.includes('[SUSPENDED]');
+        if (isRevoked) {
+          // Revoked user - block access and reset
+          setProfile({ ...(data as UserProfile), role: 'guest' });
+          setRole('guest');
+          return { ...(data as UserProfile), role: 'guest' };
+        }
         const resolvedRole = normalizeRole(data.role);
         const userProf = { ...(data as UserProfile), role: resolvedRole };
         setProfile(userProf);
@@ -110,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return userProf;
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.error('Error fetching profile from database:', err);
       setProfile(null);
       setRole('guest');
       return null;
@@ -134,7 +141,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          await fetchProfile(initialSession.user.id);
+          const prof = await fetchProfile(initialSession.user.id);
+          if (prof?.bio?.includes('[SUSPENDED]')) {
+            await supabase.auth.signOut();
+            setUser(null);
+            setProfile(null);
+            setRole('guest');
+          }
         } else {
           setRole('guest');
           setProfile(null);
@@ -165,7 +178,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Avoid duplicate profile queries if profile is already loaded for this user
         setProfile((prevProfile) => {
           if (!prevProfile || prevProfile.id !== currentSession.user.id) {
-            fetchProfile(currentSession.user.id);
+            fetchProfile(currentSession.user.id).then((p) => {
+              if (p?.bio?.includes('[SUSPENDED]')) {
+                supabase.auth.signOut();
+                setUser(null);
+                setProfile(null);
+                setRole('guest');
+              }
+            });
           }
           return prevProfile;
         });
@@ -213,6 +233,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return { error: 'Authentication succeeded, but user profile could not be loaded from the database.', role: 'guest', profile: null };
         }
+
+        // Access Revocation Check
+        if (fetchedProf.bio?.includes('[SUSPENDED]')) {
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+          setRole('guest');
+          setIsLoading(false);
+          return {
+            error: 'Access Denied: Your account access has been revoked by an administrator. Please contact operations support.',
+            role: 'guest',
+            profile: null,
+          };
+        }
+
         setIsLoading(false);
         return { error: null, role: fetchedProf.role, profile: fetchedProf };
       }
@@ -268,6 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('auth_logout_event', String(Date.now()));
       localStorage.removeItem('livescore-session');
       localStorage.removeItem('livescore-role');
+      sessionStorage.removeItem('intended_redirect_route');
       setIsLoading(false);
     }
   };
