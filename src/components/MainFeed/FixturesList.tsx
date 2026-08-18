@@ -38,25 +38,34 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
     if (matches.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-[#1E1E1E] rounded-xl border border-gray-150 dark:border-gray-800 transition-colors">
-                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                    <Star className="w-6 h-6 text-gray-400" />
+            <div className="w-full rounded-3xl p-8 md:p-12 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none flex flex-col items-center justify-center select-none">
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/10 animate-pulse">
+                    <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">No Match Fixtures</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-                    There are no fixtures matching the current filters or date. Try selecting another date.
+                <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                    No Favorite Matches Added
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
+                    Track live scores, match events, and real-time updates for your favorite teams. Tap the star icon on any fixture card to add it to your personal watchlist.
                 </p>
+                <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span>Starred fixtures will be saved locally & synchronized live</span>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-6 select-none">
+        <div className="flex flex-col gap-8 select-none">
             {Object.entries(matchesByLeague).map(([leagueName, leagueMatches]) => (
-                <div key={leagueName} className="space-y-3">
-                    {/* League Header */}
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2">
+                <div
+                    key={leagueName}
+                    className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none"
+                >
+                    {/* Unified League Section Header */}
+                    <div className="flex items-center justify-between px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+                        <div className="flex items-center gap-2.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
                             <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                 {leagueName}
@@ -67,8 +76,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                         </span>
                     </div>
 
-                    {/* Match Cards List */}
-                    <div className="flex flex-col gap-3">
+                    {/* Solidified Match List with neat columns and lateral scroll */}
+                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                         {leagueMatches.map((match) => {
                             const isMatchLive = match.status === 'LIVE';
                             const isFav = isFavorite(match.id);
@@ -77,9 +86,9 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                 <div
                                     key={match.id}
                                     onClick={() => onMatchClick(match)}
-                                    className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
+                                    className="relative flex items-center justify-between px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group min-w-[500px]"
                                 >
-                                    {/* Favorite Star (Absolute Top-Left) */}
+                                    {/* Favorite Star Button */}
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -87,19 +96,19 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                             toggleFavorite(match.id);
                                         }}
                                         aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
-                                        className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
+                                        className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer mr-2 shrink-0"
                                     >
                                         <Star
                                             className={`w-5 h-5 transition-all duration-200 ${
                                                 isFav
                                                     ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-                                                    : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                                                    : 'text-slate-300 dark:text-slate-600 opacity-60 group-hover:opacity-100 hover:text-amber-400'
                                             }`}
                                         />
                                     </button>
 
                                     {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
-                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-2">
                                         {/* Team A (Home - Left) */}
                                         <div className="flex items-center gap-3 justify-start min-w-0">
                                             <img
@@ -140,7 +149,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                 )}
                                             </div>
 
-                                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">
+                                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[120px] mt-1">
                                                 {match.venue}
                                             </span>
                                         </div>

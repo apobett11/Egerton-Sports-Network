@@ -349,73 +349,75 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                   No active Egerton Premier League fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {eplFixtures.map((match) => {
-                    const isFav = favourites.includes(match.id);
-                    const isMatchLive = match.status === 'LIVE';
+                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                  <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                    {eplFixtures.map((match) => {
+                      const isFav = favourites.includes(match.id);
+                      const isMatchLive = match.status === 'LIVE';
 
-                    return (
-                      <div 
-                        key={match.id} 
-                        onClick={() => onSelectMatch && onSelectMatch(match)}
-                        className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
-                      >
-                        {/* Favourite Star (Absolute Top-Left) */}
-                        <button 
-                          type="button"
-                          onClick={(e) => toggleFavourite(match.id, e)}
-                          aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
-                          className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
+                      return (
+                        <div 
+                          key={match.id} 
+                          onClick={() => onSelectMatch && onSelectMatch(match)}
+                          className="relative flex items-center justify-between px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group min-w-[500px]"
                         >
-                          <Star className={`w-5 h-5 transition-all duration-200 ${
-                            isFav 
-                              ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
-                              : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
-                          }`} />
-                        </button>
+                          {/* Favourite Star Button */}
+                          <button 
+                            type="button"
+                            onClick={(e) => toggleFavourite(match.id, e)}
+                            aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer mr-2 shrink-0"
+                          >
+                            <Star className={`w-5 h-5 transition-all duration-200 ${
+                              isFav 
+                                ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
+                                : 'text-slate-300 dark:text-slate-600 opacity-60 group-hover:opacity-100 hover:text-amber-400'
+                            }`} />
+                          </button>
 
-                        {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
-                          {/* Team A (Home - Left) */}
-                          <div className="flex items-center gap-3 justify-start min-w-0">
-                            <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
-                          </div>
-
-                          {/* Center Box (Score/Time) */}
-                          <div className="flex flex-col items-center justify-center px-2 md:px-6">
-                            {isMatchLive ? (
-                              <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
-                                LIVE {match.minute}
-                              </span>
-                            ) : match.status === 'HT' ? (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
-                            ) : match.status === 'FT' ? (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
-                            ) : (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
-                            )}
-
-                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
-                              {match.status !== 'UPCOMING' ? (
-                                <span>{match.scoreA} - {match.scoreB}</span>
-                              ) : (
-                                <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
-                              )}
+                          {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                          <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-2">
+                            {/* Team A (Home - Left) */}
+                            <div className="flex items-center gap-3 justify-start min-w-0">
+                              <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                              <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                             </div>
 
-                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
-                          </div>
+                            {/* Center Box (Score/Time) */}
+                            <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                              {isMatchLive ? (
+                                <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                  LIVE {match.minute}
+                                </span>
+                              ) : match.status === 'HT' ? (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                              ) : match.status === 'FT' ? (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
+                              ) : (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
+                              )}
 
-                          {/* Team B (Away - Right) */}
-                          <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
-                            <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                              <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                                {match.status !== 'UPCOMING' ? (
+                                  <span>{match.scoreA} - {match.scoreB}</span>
+                                ) : (
+                                  <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                                )}
+                              </div>
+
+                              <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[120px] mt-1">{match.venue}</span>
+                            </div>
+
+                            {/* Team B (Away - Right) */}
+                            <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                              <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                              <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -437,73 +439,75 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                   No active Egerton Championships fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {champFixtures.map((match) => {
-                    const isFav = favourites.includes(match.id);
-                    const isMatchLive = match.status === 'LIVE';
+                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                  <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                    {champFixtures.map((match) => {
+                      const isFav = favourites.includes(match.id);
+                      const isMatchLive = match.status === 'LIVE';
 
-                    return (
-                      <div 
-                        key={match.id} 
-                        onClick={() => onSelectMatch && onSelectMatch(match)}
-                        className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
-                      >
-                        {/* Favourite Star (Absolute Top-Left) */}
-                        <button 
-                          type="button"
-                          onClick={(e) => toggleFavourite(match.id, e)}
-                          aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
-                          className="absolute top-4 left-4 z-20 cursor-pointer focus:outline-none"
+                      return (
+                        <div 
+                          key={match.id} 
+                          onClick={() => onSelectMatch && onSelectMatch(match)}
+                          className="relative flex items-center justify-between px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group min-w-[500px]"
                         >
-                          <Star className={`w-5 h-5 transition-all duration-200 ${
-                            isFav 
-                              ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
-                              : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
-                          }`} />
-                        </button>
+                          {/* Favourite Star Button */}
+                          <button 
+                            type="button"
+                            onClick={(e) => toggleFavourite(match.id, e)}
+                            aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer mr-2 shrink-0"
+                          >
+                            <Star className={`w-5 h-5 transition-all duration-200 ${
+                              isFav 
+                                ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]' 
+                                : 'text-slate-300 dark:text-slate-600 opacity-60 group-hover:opacity-100 hover:text-amber-400'
+                            }`} />
+                          </button>
 
-                        {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
-                        <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-4 md:pl-6">
-                          {/* Team A (Home - Left) */}
-                          <div className="flex items-center gap-3 justify-start min-w-0">
-                            <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
-                          </div>
-
-                          {/* Center Box (Score/Time) */}
-                          <div className="flex flex-col items-center justify-center px-2 md:px-6">
-                            {isMatchLive ? (
-                              <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
-                                LIVE {match.minute}
-                              </span>
-                            ) : match.status === 'HT' ? (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
-                            ) : match.status === 'FT' ? (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
-                            ) : (
-                              <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
-                            )}
-
-                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
-                              {match.status !== 'UPCOMING' ? (
-                                <span>{match.scoreA} - {match.scoreB}</span>
-                              ) : (
-                                <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
-                              )}
+                          {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                          <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-2">
+                            {/* Team A (Home - Left) */}
+                            <div className="flex items-center gap-3 justify-start min-w-0">
+                              <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                              <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                             </div>
 
-                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
-                          </div>
+                            {/* Center Box (Score/Time) */}
+                            <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                              {isMatchLive ? (
+                                <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                  LIVE {match.minute}
+                                </span>
+                              ) : match.status === 'HT' ? (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                              ) : match.status === 'FT' ? (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
+                              ) : (
+                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
+                              )}
 
-                          {/* Team B (Away - Right) */}
-                          <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
-                            <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                              <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                                {match.status !== 'UPCOMING' ? (
+                                  <span>{match.scoreA} - {match.scoreB}</span>
+                                ) : (
+                                  <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                                )}
+                              </div>
+
+                              <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[120px] mt-1">{match.venue}</span>
+                            </div>
+
+                            {/* Team B (Away - Right) */}
+                            <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                              <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                              <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -532,18 +536,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
 
         {perfState.loading ? (
           <div className="space-y-6" aria-busy="true" aria-label="Loading player performance">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3 animate-pulse">
-                  <div className="w-16 h-3 bg-slate-200 dark:bg-slate-800 rounded" />
-                  <div className="flex items-center justify-between">
-                    <div className="w-28 h-4 bg-slate-200 dark:bg-slate-800 rounded" />
-                    <div className="w-12 h-5 bg-slate-200 dark:bg-slate-800 rounded" />
-                  </div>
-                  <div className="w-20 h-3 bg-slate-200 dark:bg-slate-800 rounded" />
-                </div>
-              ))}
-            </div>
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-32" />
           </div>
         ) : perfState.error ? (
           <div className="p-4 rounded-xl bg-rose-500/10 text-xs font-bold text-rose-500 text-center">
@@ -552,110 +545,126 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         ) : perfState.data && (
           <div className="space-y-8">
             {/* SUBSECTION 1: Egerton Premier League */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 px-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>Egerton Premier League</span>
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Top Scorer</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.epl.topScorer.playerName}</span>
-                    <span className="text-xl font-black font-mono text-amber-500">{perfState.data.epl.topScorer.goals} G</span>
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                  {/* Top Scorer */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Top Scorer</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.topScorer.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.topScorer.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.epl.topScorer.goals} Goals</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.epl.topScorer.teamName}</p>
-                </div>
 
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Most Assists</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.epl.mostAssists.playerName}</span>
-                    <span className="text-xl font-black font-mono text-emerald-500">{perfState.data.epl.mostAssists.assists} A</span>
+                  {/* Most Assists */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Most Assists</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.mostAssists.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.mostAssists.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.epl.mostAssists.assists} Assists</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.epl.mostAssists.teamName}</p>
-                </div>
 
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Most Clean Sheets</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.epl.mostCleanSheets.playerName}</span>
-                    <span className="text-xl font-black font-mono text-blue-500">{perfState.data.epl.mostCleanSheets.cleanSheets} CS</span>
+                  {/* Most Clean Sheets */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Clean Sheets</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.mostCleanSheets.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.mostCleanSheets.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.epl.mostCleanSheets.cleanSheets} Shutouts</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.epl.mostCleanSheets.teamName}</p>
                 </div>
               </div>
             </div>
 
             {/* SUBSECTION 2: Egerton Championships */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2 px-1">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span>Egerton Championships</span>
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Top Scorer</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.championship.topScorer.playerName}</span>
-                    <span className="text-xl font-black font-mono text-amber-500">{perfState.data.championship.topScorer.goals} G</span>
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                  {/* Top Scorer */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Top Scorer</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.topScorer.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.topScorer.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.championship.topScorer.goals} Goals</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.championship.topScorer.teamName}</p>
-                </div>
 
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Most Assists</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.championship.mostAssists.playerName}</span>
-                    <span className="text-xl font-black font-mono text-emerald-500">{perfState.data.championship.mostAssists.assists} A</span>
+                  {/* Most Assists */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Most Assists</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.mostAssists.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.mostAssists.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.championship.mostAssists.assists} Assists</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.championship.mostAssists.teamName}</p>
-                </div>
 
-                <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-3 shadow-xs">
-                  <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Most Clean Sheets</span>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">{perfState.data.championship.mostCleanSheets.playerName}</span>
-                    <span className="text-xl font-black font-mono text-blue-500">{perfState.data.championship.mostCleanSheets.cleanSheets} CS</span>
+                  {/* Most Clean Sheets */}
+                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Clean Sheets</span>
+                    <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.mostCleanSheets.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.mostCleanSheets.teamName}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.championship.mostCleanSheets.cleanSheets} Shutouts</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500">{perfState.data.championship.mostCleanSheets.teamName}</p>
                 </div>
               </div>
             </div>
 
             {/* SUBSECTION 3: The GOATS (Both Leagues) */}
-            <div className="space-y-4 pt-2">
-              <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-[#D4AF37]/15 to-emerald-500/10 border border-amber-500/30 dark:border-[#D4AF37]/40 shadow-md space-y-5">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-500 dark:text-[#D4AF37]" />
-                  <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 uppercase">
-                    The GOATS (Both Leagues)
-                  </h3>
-                </div>
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2 px-1">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                  The GOATS (Both Leagues)
+                </h3>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-amber-500/30 dark:border-[#D4AF37]/30 space-y-2 shadow-xs">
-                    <div className="text-[10px] font-black text-amber-600 dark:text-[#D4AF37] uppercase tracking-widest">Top Scorer (Both Leagues)</div>
-                    <div className="font-black text-base text-slate-900 dark:text-slate-100">{perfState.data.goats.topScorer.playerName}</div>
-                    <div className="text-xs text-slate-500 font-medium">Team: <strong className="text-slate-700 dark:text-slate-300">{perfState.data.goats.topScorer.teamName}</strong></div>
-                    <div className="text-xs text-slate-500 font-medium">League: <strong className="text-amber-500 dark:text-[#D4AF37]">{perfState.data.goats.topScorer.league}</strong></div>
-                    <div className="pt-1 text-lg font-black font-mono text-amber-500">{perfState.data.goats.topScorer.goals} Goals</div>
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Top Scorer (Overall)</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.topScorer.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.topScorer.teamName}</span>
+                    <span className="text-[10px] font-bold text-amber-500 truncate">{perfState.data.goats.topScorer.league}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.goats.topScorer.goals} G</span>
+                    </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-amber-500/30 dark:border-[#D4AF37]/30 space-y-2 shadow-xs">
-                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Most Assists (Both Leagues)</div>
-                    <div className="font-black text-base text-slate-900 dark:text-slate-100">{perfState.data.goats.mostAssists.playerName}</div>
-                    <div className="text-xs text-slate-500 font-medium">Team: <strong className="text-slate-700 dark:text-slate-300">{perfState.data.goats.mostAssists.teamName}</strong></div>
-                    <div className="text-xs text-slate-500 font-medium">League: <strong className="text-emerald-500">{perfState.data.goats.mostAssists.league}</strong></div>
-                    <div className="pt-1 text-lg font-black font-mono text-emerald-500">{perfState.data.goats.mostAssists.assists} Assists</div>
+                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Most Assists (Overall)</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.mostAssists.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.mostAssists.teamName}</span>
+                    <span className="text-[10px] font-bold text-emerald-500 truncate">{perfState.data.goats.mostAssists.league}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.goats.mostAssists.assists} A</span>
+                    </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-amber-500/30 dark:border-[#D4AF37]/30 space-y-2 shadow-xs">
-                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Most Clean Sheets (Both Leagues)</div>
-                    <div className="font-black text-base text-slate-900 dark:text-slate-100">{perfState.data.goats.mostCleanSheets.playerName}</div>
-                    <div className="text-xs text-slate-500 font-medium">Team: <strong className="text-slate-700 dark:text-slate-300">{perfState.data.goats.mostCleanSheets.teamName}</strong></div>
-                    <div className="text-xs text-slate-500 font-medium">League: <strong className="text-blue-500">{perfState.data.goats.mostCleanSheets.league}</strong></div>
-                    <div className="pt-1 text-lg font-black font-mono text-blue-500">{perfState.data.goats.mostCleanSheets.cleanSheets} Clean Sheets</div>
+                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Clean Sheets (Overall)</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.mostCleanSheets.playerName}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.mostCleanSheets.teamName}</span>
+                    <span className="text-[10px] font-bold text-blue-500 truncate">{perfState.data.goats.mostCleanSheets.league}</span>
+                    <div className="flex justify-end">
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.goats.mostCleanSheets.cleanSheets} CS</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -684,63 +693,57 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         </div>
 
         {milestonesState.loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5" aria-busy="true" aria-label="Loading milestones">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-2 text-center animate-pulse">
-                <div className="w-24 h-3 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
-                <div className="w-20 h-6 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
-                <div className="w-16 h-3 bg-slate-200 dark:bg-slate-800 rounded mx-auto" />
-              </div>
-            ))}
-          </div>
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-28" />
         ) : milestonesState.data && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-2 shadow-xs text-center">
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Highest Scoring Match</span>
-              {milestonesState.data.highestScoringMatch ? (
-                <div>
-                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
-                    {milestonesState.data.highestScoringMatch.totalGoals} Goals
+          <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-50 dark:divide-white/5">
+              <div className="p-5 space-y-1 text-center">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Highest Scoring Match</span>
+                {milestonesState.data.highestScoringMatch ? (
+                  <div>
+                    <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
+                      {milestonesState.data.highestScoringMatch.totalGoals} Goals
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      {milestonesState.data.highestScoringMatch.homeTeam} vs {milestonesState.data.highestScoringMatch.awayTeam}
+                    </div>
                   </div>
-                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">
-                    {milestonesState.data.highestScoringMatch.homeTeam} {milestonesState.data.highestScoringMatch.scoreHome} - {milestonesState.data.highestScoringMatch.scoreAway} {milestonesState.data.highestScoringMatch.awayTeam}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-slate-400 font-medium">Pending match completion</div>
-              )}
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-2 shadow-xs text-center">
-              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Largest Win Margin</span>
-              {milestonesState.data.largestWinMargin ? (
-                <div>
-                  <div className="text-xl font-black text-emerald-500 font-mono">
-                    +{milestonesState.data.largestWinMargin.margin} Goals
-                  </div>
-                  <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1">
-                    {milestonesState.data.largestWinMargin.winner}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-slate-400 font-medium">Pending match completion</div>
-              )}
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-2 shadow-xs text-center">
-              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Total Goals Scored</span>
-              <div className="text-xl font-black text-blue-500 font-mono">
-                {milestonesState.data.totalGoalsScored} Goals
+                ) : (
+                  <div className="text-xs text-slate-400">Pending completion</div>
+                )}
               </div>
-              <div className="text-xs text-slate-400">Across {milestonesState.data.completedMatchesCount} completed matches</div>
-            </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/90 dark:border-slate-800/90 space-y-2 shadow-xs text-center">
-              <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">Clean Sheet Games</span>
-              <div className="text-xl font-black text-purple-500 font-mono">
-                {milestonesState.data.cleanSheetsTotal} Matches
+              <div className="p-5 space-y-1 text-center">
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Largest Win Margin</span>
+                {milestonesState.data.largestWinMargin ? (
+                  <div>
+                    <div className="text-xl font-black text-emerald-500 font-mono">
+                      +{milestonesState.data.largestWinMargin.margin} Goals
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      {milestonesState.data.largestWinMargin.winner}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400">Pending completion</div>
+                )}
               </div>
-              <div className="text-xs text-slate-400">Shutout fixtures</div>
+
+              <div className="p-5 space-y-1 text-center">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Total Goals Scored</span>
+                <div className="text-xl font-black text-blue-500 font-mono">
+                  {milestonesState.data.totalGoalsScored} Goals
+                </div>
+                <div className="text-xs text-slate-400">Across {milestonesState.data.completedMatchesCount} fixtures</div>
+              </div>
+
+              <div className="p-5 space-y-1 text-center">
+                <span className="text-[10px] font-black text-purple-500 uppercase tracking-wider">Clean Sheet Games</span>
+                <div className="text-xl font-black text-purple-500 font-mono">
+                  {milestonesState.data.cleanSheetsTotal} Matches
+                </div>
+                <div className="text-xs text-slate-400">Shutout games</div>
+              </div>
             </div>
           </div>
         )}

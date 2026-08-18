@@ -62,19 +62,19 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                 </h3>
             </div>
 
-            {/* Main Form Card */}
-            <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm p-6 divide-y divide-slate-100 dark:divide-slate-800 space-y-6 transition-colors">
+            {/* Main Form Card (Solidified Section Card) */}
+            <div className="w-full rounded-3xl p-6 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none divide-y divide-slate-100 dark:divide-white/5 space-y-6 transition-colors">
                 
                 {/* Team A Form */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
-                            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white">
                                 {teamA.name}
                             </h4>
                         </div>
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             Last Five Fixtures
                         </span>
                     </div>
@@ -97,11 +97,11 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
-                            <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white">
                                 {teamB.name}
                             </h4>
                         </div>
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             Last Five Fixtures
                         </span>
                     </div>

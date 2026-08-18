@@ -128,7 +128,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-14 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm space-y-2">
+        <div className="text-center py-14 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto">
             <Calendar className="w-6 h-6" />
           </div>
@@ -136,158 +136,155 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
           <p className="text-xs text-slate-500 max-w-sm mx-auto">Try adjusting your filter preferences or search term.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {filtered.map((match) => {
-            const isMatchLive = match.status === 'LIVE';
+        <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+            {filtered.map((match) => {
+              const isMatchLive = match.status === 'LIVE';
 
-            return (
-              <div 
-                key={match.id} 
-                onClick={() => onSelectMatch && onSelectMatch(match)}
-                className="relative w-full flex items-center justify-between p-4 md:p-6 rounded-2xl group cursor-pointer transition-all duration-300 overflow-hidden bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-blue-900/20 dark:bg-slate-900 dark:border-white/5 dark:hover:border-white/15 dark:hover:bg-slate-800/80"
-              >
-                {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4">
-                  {/* Team A (Home - Left) */}
-                  <div className="flex items-center gap-3 justify-start min-w-0">
-                    <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                    <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
-                  </div>
-
-                  {/* Center Box (Score/Time) */}
-                  <div className="flex flex-col items-center justify-center px-2 md:px-6">
-                    {isMatchLive ? (
-                      <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
-                        LIVE {match.minute}
-                      </span>
-                    ) : match.status === 'HT' ? (
-                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
-                    ) : match.status === 'FT' ? (
-                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
-                    ) : (
-                      <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
-                    )}
-
-                    <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
-                      {match.status !== 'UPCOMING' ? (
-                        <span>{match.scoreA} - {match.scoreB}</span>
-                      ) : (
-                        <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
-                      )}
+              return (
+                <div 
+                  key={match.id} 
+                  onClick={() => onSelectMatch && onSelectMatch(match)}
+                  className="relative flex items-center justify-between px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group min-w-[500px]"
+                >
+                  {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4">
+                    {/* Team A (Home - Left) */}
+                    <div className="flex items-center gap-3 justify-start min-w-0">
+                      <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                      <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                     </div>
 
-                    <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[100px] mt-1">{match.venue}</span>
-                  </div>
+                    {/* Center Box (Score/Time) */}
+                    <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                      {isMatchLive ? (
+                        <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                          LIVE {match.minute}
+                        </span>
+                      ) : match.status === 'HT' ? (
+                        <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">HT</span>
+                      ) : match.status === 'FT' ? (
+                        <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">FT</span>
+                      ) : (
+                        <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">{match.time || 'UPCOMING'}</span>
+                      )}
 
-                  {/* Team B (Away - Right) */}
-                  <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
-                    <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
-                    <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                      <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                        {match.status !== 'UPCOMING' ? (
+                          <span>{match.scoreA} - {match.scoreB}</span>
+                        ) : (
+                          <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                        )}
+                      </div>
+
+                      <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[120px] mt-1">{match.venue}</span>
+                    </div>
+
+                    {/* Team B (Away - Right) */}
+                    <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                      <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                      <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* CONTINUOUS DISCOVERY SECTIONS FOR FIXTURES PAGE */}
+      {/* CONTINUOUS DISCOVERY SECTIONS FOR FIXTURES PAGE (Solidified Unified Cards) */}
       <div className="mt-10 space-y-8 select-none">
         {/* 1. TOMORROW */}
-        <section aria-label="Tomorrow's Schedule" className="p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
-          <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-            <h2 className="text-xs font-black uppercase tracking-wider text-[#D4AF37]">
+        <section aria-label="Tomorrow's Schedule" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+            <h2 className="text-xs font-black uppercase tracking-wider text-amber-500">
               Tomorrow's Schedule Preview
             </h2>
-            <p className="text-[11px] text-slate-500">Upcoming fixtures scheduled for tomorrow</p>
+            <p className="text-[11px] text-slate-400">Upcoming fixtures scheduled for tomorrow</p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-4 md:p-6 text-xs flex items-center justify-between">
             <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts vs Egerton Sharklets</span>
-            <span className="text-[11px] font-bold text-[#D4AF37]">16:00 (Egerton Pavilion Stadium)</span>
+            <span className="text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-md border border-amber-100 dark:border-amber-900/30">16:00 (Egerton Pavilion Stadium)</span>
           </div>
         </section>
 
         {/* 2. YESTERDAY */}
-        <section aria-label="Yesterday's Results" className="p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
-          <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+        <section aria-label="Yesterday's Results" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-500">
               Yesterday's Final Results
             </h2>
-            <p className="text-[11px] text-slate-500">Official finalized results from previous matchday</p>
+            <p className="text-[11px] text-slate-400">Official finalized results from previous matchday</p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-4 md:p-6 text-xs flex items-center justify-between">
             <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Staff FC 1 - 1 Njoro FC</span>
-            <span className="text-[10px] font-bold text-slate-400">FT</span>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">FT</span>
           </div>
         </section>
 
         {/* 3. LIVE MATCHES */}
-        <section aria-label="Ongoing Live Action" className="p-6 rounded-3xl bg-rose-950/20 dark:bg-rose-950/30 border border-rose-500/30 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b border-rose-500/20">
+        <section aria-label="Ongoing Live Action" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="flex items-center gap-2.5 px-4 md:px-6 py-3.5 bg-rose-500/10 border-b border-rose-500/20">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-            <div>
-              <h2 className="text-xs font-black uppercase tracking-wider text-rose-500">
-                Ongoing Live Fixtures
-              </h2>
-              <p className="text-[11px] text-slate-400">Real-time pitch momentum updates</p>
-            </div>
+            <h2 className="text-xs font-black uppercase tracking-wider text-rose-500">
+              Ongoing Live Fixtures
+            </h2>
           </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[#182030] border border-rose-500/20 text-xs flex items-center justify-between shadow-xs">
+          <div className="p-4 md:p-6 text-xs flex items-center justify-between">
             <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts 2 - 1 Faculty of Science</span>
-            <span className="text-[10px] font-bold text-rose-500">LIVE (82')</span>
+            <span className="text-[10px] font-mono font-black text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-md border border-rose-200 dark:border-rose-900/40 animate-pulse">LIVE (82')</span>
           </div>
         </section>
 
-        {/* 4. FINISHED MATCHES */}
-        <section aria-label="Completed Results" className="p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
-          <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-            <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Completed Match Results
-            </h2>
-            <p className="text-[11px] text-slate-500">Verified scorelines certified by referee match reports</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-[#182030] border border-slate-200/90 dark:border-slate-800/90 text-xs flex items-center justify-between shadow-xs">
-            <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets 3 - 0 Njoro FC</span>
-            <span className="text-[10px] font-bold text-emerald-500">Official Result</span>
-          </div>
-        </section>
-
-        {/* 5. MOST DRAMATIC RESULT */}
-        <section aria-label="Match Spotlight" className="p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
-          <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-            <h2 className="text-xs font-black uppercase tracking-wider text-amber-500">
-              Matchday Highlight Spotlight
-            </h2>
-            <p className="text-[11px] text-slate-500">Most dramatic late comeback finish</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#182030] border border-amber-500/30 text-xs space-y-1 shadow-xs">
-            <span className="text-[10px] font-bold text-amber-500 uppercase">Late Winner</span>
-            <div className="font-bold text-slate-900 dark:text-slate-100">
-              Faculty of Arts 2 - 1 Faculty of Science (88' Penalty Winner)
+        {/* 4. FINISHED MATCHES & SPOTLIGHT (Side by Side) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section aria-label="Completed Results" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+              <h2 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Completed Match Results
+              </h2>
             </div>
-          </div>
-        </section>
+            <div className="p-4 md:p-6 text-xs flex items-center justify-between">
+              <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets 3 - 0 Njoro FC</span>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-900/40">Official Result</span>
+            </div>
+          </section>
 
-        {/* 6. FIXTURE STATISTICS */}
-        <section aria-label="Schedule Statistics" className="p-6 rounded-3xl bg-slate-100/70 dark:bg-[#121824]/70 border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-3">
-          <div className="pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
-            <h2 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+          <section aria-label="Match Spotlight" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+              <h2 className="text-xs font-black uppercase tracking-wider text-amber-500">
+                Matchday Highlight Spotlight
+              </h2>
+            </div>
+            <div className="p-4 md:p-6 text-xs space-y-1">
+              <span className="text-[10px] font-bold text-amber-500 uppercase">Late Winner</span>
+              <div className="font-bold text-slate-900 dark:text-slate-100">
+                Faculty of Arts 2 - 1 Faculty of Science (88' Penalty Winner)
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* 5. FIXTURE STATISTICS */}
+        <section aria-label="Schedule Statistics" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Fixture Schedule Statistics
             </h2>
-            <p className="text-[11px] text-slate-500">Comprehensive schedule analytics</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center text-xs">
-            <div className="p-3 bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <div className="font-black text-slate-900 dark:text-slate-100 text-base">2.8</div>
-              <div className="text-[10px] text-slate-500">Avg Goals/Match</div>
+          <div className="grid grid-cols-3 divide-x divide-slate-50 dark:divide-white/5 text-center text-xs p-2">
+            <div className="p-4">
+              <div className="font-black text-slate-900 dark:text-slate-100 text-lg font-mono">2.8</div>
+              <div className="text-[10px] text-slate-400 mt-1">Avg Goals/Match</div>
             </div>
-            <div className="p-3 bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <div className="font-black text-emerald-500 text-base">65%</div>
-              <div className="text-[10px] text-slate-500">Home Wins</div>
+            <div className="p-4">
+              <div className="font-black text-emerald-500 text-lg font-mono">65%</div>
+              <div className="text-[10px] text-slate-400 mt-1">Home Wins</div>
             </div>
-            <div className="p-3 bg-white dark:bg-[#182030] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <div className="font-black text-amber-500 text-base">12</div>
-              <div className="text-[10px] text-slate-500">Matches Played</div>
+            <div className="p-4">
+              <div className="font-black text-amber-500 text-lg font-mono">12</div>
+              <div className="text-[10px] text-slate-400 mt-1">Matches Played</div>
             </div>
           </div>
         </section>
@@ -395,111 +392,144 @@ export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> =
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D4AF37] ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 ${
                 selectedCategory === cat
-                  ? 'bg-[#D4AF37] text-slate-950 font-black shadow-md shadow-amber-500/10'
-                  : 'bg-white dark:bg-[#182030] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-[#D4AF37]/40'
+                  ? 'bg-blue-900 text-white dark:bg-white dark:text-slate-950 font-black shadow-md'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:border-blue-900/30 dark:hover:border-white/30'
               }`}
             >
-              {cat === 'match_report' ? 'Match Reports' : cat === 'transfer' ? 'Transfers' : cat === 'injury' ? 'Injuries' : cat}
+              {cat === 'match_report' ? 'Match Reports' : cat === 'transfer' ? 'Transfers' : cat === 'injury' ? 'Injuries' : cat === 'ALL' ? 'All Stories' : cat}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredArticles.map((item) => (
-          <Card key={item.id} onClick={() => setSelectedArticle(item)} className="group cursor-pointer bg-white dark:bg-[#182030] border-slate-200/90 dark:border-slate-800/90 hover:border-[#D4AF37]/50 shadow-sm hover:shadow-xl hover:shadow-black/20 rounded-2xl p-5 md:p-6 transition-all duration-200">
-            <div className="space-y-4">
-              <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 group-hover:scale-[1.01] transition-transform duration-300" />
-              <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                <Badge variant="gold">{item.category}</Badge>
-                <span>{item.publishedAt}</span>
+      {filteredArticles.length === 0 ? (
+        <div className="w-full rounded-3xl p-8 md:p-12 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none flex flex-col items-center justify-center select-none">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/10">
+            <Newspaper className="w-8 h-8 text-amber-500" />
+          </div>
+          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+            No News Articles Found
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
+            There are no sports articles or match reports matching the "{selectedCategory}" category.
+          </p>
+          {selectedCategory !== 'ALL' && (
+            <button
+              onClick={() => setSelectedCategory('ALL')}
+              className="mt-6 px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-900 text-white dark:bg-white dark:text-slate-950 shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              View All Articles
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredArticles.map((item) => (
+            <div 
+              key={item.id} 
+              onClick={() => setSelectedArticle(item)} 
+              className="group cursor-pointer bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 hover:border-amber-500/40 dark:hover:border-white/20 shadow-xl shadow-slate-200/40 dark:shadow-none hover:shadow-2xl rounded-3xl p-5 md:p-6 transition-all duration-300 flex flex-col justify-between overflow-hidden"
+            >
+              <div className="space-y-3.5">
+                <div className="overflow-hidden rounded-2xl aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    {item.category.replace('_', ' ')}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">{item.publishedAt}</span>
+                </div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors leading-snug line-clamp-2">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed font-sans">{item.excerpt}</p>
               </div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 group-hover:text-[#D4AF37] transition-colors leading-snug">
-                {item.title}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{item.excerpt}</p>
-              <div className="pt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800/80 font-medium">
-                <span>By <strong className="text-slate-700 dark:text-slate-300">{item.author}</strong> ({item.authorRole})</span>
-                <span className="font-bold text-[#D4AF37] flex items-center gap-1">Read Article <ExternalLink className="w-3 h-3" /></span>
+
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>By <strong className="text-slate-700 dark:text-slate-200">{item.author}</strong></span>
+                <span className="font-bold text-amber-500 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  Read Article <ExternalLink className="w-3 h-3" />
+                </span>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* CONTINUOUS DISCOVERY SECTIONS FOR NEWS PAGE */}
-      <div className="mt-8 space-y-8 select-none">
-        {/* 1. BREAKING NEWS */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+      {/* CONTINUOUS DISCOVERY SECTIONS FOR NEWS PAGE (Solidified Unified Cards) */}
+      <div className="mt-10 space-y-8 select-none">
+        {/* 1. BREAKING NEWS FLASH */}
+        <section aria-label="Breaking News" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="flex items-center gap-2.5 px-4 md:px-6 py-3.5 bg-rose-500/10 border-b border-rose-500/20">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
             <h4 className="text-xs font-black uppercase tracking-wider text-rose-500">
               Breaking News Flash
             </h4>
           </div>
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs">
-            <p className="font-bold text-slate-900 dark:text-slate-100">
+          <div className="p-4 md:p-6 text-xs space-y-1">
+            <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
               Egerton Pavilion Stadium floodlights commissioned for upcoming night derby fixture!
             </p>
-            <span className="text-[10px] text-slate-500">Published 30 mins ago</span>
+            <span className="text-[10px] text-slate-400 block pt-1">Published 30 mins ago • Official Sports Press Release</span>
           </div>
-        </div>
+        </section>
 
-        {/* 2. MATCH REPORTS */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <h4 className="text-xs font-black uppercase tracking-wider text-[#D4AF37] mb-3">
-            Official Match Reports
-          </h4>
-          <div className="space-y-2 text-xs">
-            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        {/* 2. MATCH REPORTS (Solidified list in one container card) */}
+        <section aria-label="Official Match Reports" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+            <h4 className="text-xs font-black uppercase tracking-wider text-amber-500">
+              Official Match Reports
+            </h4>
+            <span className="text-[10px] text-slate-400 font-semibold">Latest Match Analyses</span>
+          </div>
+          <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+            <div className="flex items-center justify-between px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[400px]">
               <span className="font-bold text-slate-900 dark:text-slate-100">Faculty of Arts 2 - 1 Faculty of Science</span>
-              <span className="text-[10px] font-bold text-[#D4AF37]">Full Report</span>
+              <span className="text-[10px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-md border border-amber-100 dark:border-amber-900/30">Full Report</span>
             </div>
-            <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[400px]">
               <span className="font-bold text-slate-900 dark:text-slate-100">Egerton Sharklets 3 - 0 Njoro FC</span>
-              <span className="text-[10px] font-bold text-[#D4AF37]">Full Report</span>
+              <span className="text-[10px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-md border border-amber-100 dark:border-amber-900/30">Full Report</span>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* 3. TRANSFERS */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3">
-            Mid-Season Transfer Wire
-          </h4>
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 text-xs space-y-1">
-            <span className="text-[10px] font-bold text-emerald-500 uppercase">Transfer Rumour</span>
-            <p className="font-bold text-slate-900 dark:text-slate-100">
-              Njoro FC preparing scholarship package to sign Faculty of Agriculture's top striker.
-            </p>
-          </div>
-        </div>
+        {/* 3. TRANSFERS & FEATURE STORIES (Solidified Side by Side) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section aria-label="Transfer Wire" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+              <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Mid-Season Transfer Wire
+              </h4>
+            </div>
+            <div className="p-4 md:p-6 text-xs space-y-1.5">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase">Transfer Rumour</span>
+              <p className="font-bold text-slate-900 dark:text-slate-100 leading-relaxed">
+                Njoro FC preparing scholarship package to sign Faculty of Agriculture's top striker.
+              </p>
+            </div>
+          </section>
 
-        {/* 4. LEAGUE STORIES */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3">
-            Campus League Features
-          </h4>
-          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
-            <span className="text-[10px] font-bold text-amber-500 uppercase">Feature Story</span>
-            <p className="font-bold text-slate-900 dark:text-slate-100 mt-1">
-              How tactical discipline turned Egerton Sharklets into campus championship favorites.
-            </p>
-          </div>
-        </div>
-
-        {/* 5. ARCHIVE */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
-            News Archive
-          </h4>
-          <div className="flex gap-2 text-xs text-slate-500 font-semibold">
-            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">August 2026</span>
-            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">July 2026</span>
-            <span className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 cursor-pointer">June 2026</span>
-          </div>
+          <section aria-label="Campus Features" className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Campus League Features
+              </h4>
+            </div>
+            <div className="p-4 md:p-6 text-xs space-y-1.5">
+              <span className="text-[10px] font-bold text-amber-500 uppercase">Feature Story</span>
+              <p className="font-bold text-slate-900 dark:text-slate-100 leading-relaxed">
+                How tactical discipline turned Egerton Sharklets into campus championship favorites.
+              </p>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -610,22 +640,26 @@ export const PublicSearchPage: React.FC = () => {
           </div>
 
           {results.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-xs text-slate-500">No matching records found for "{query}". Try another search keyword.</p>
-            </Card>
+            <div className="w-full rounded-3xl p-8 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none">
+              <p className="text-xs text-slate-500 dark:text-slate-400">No matching records found for "{query}". Try another search keyword.</p>
+            </div>
           ) : (
-            results.map((res, i) => (
-              <Card key={i} className="p-4 hover:border-[#D4AF37]/50 transition-all">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Badge variant="info">{res.entity_type || 'record'}</Badge>
-                    <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-1">{res.title}</h4>
-                    <p className="text-xs text-slate-500">{res.subtitle}</p>
+            <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+              <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                {results.map((res, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-white/5">
+                        {res.entity_type || 'record'}
+                      </span>
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white mt-1 group-hover:text-amber-500 transition-colors">{res.title}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{res.subtitle}</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </div>
-              </Card>
-            ))
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

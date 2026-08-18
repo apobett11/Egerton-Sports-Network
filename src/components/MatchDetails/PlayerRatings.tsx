@@ -86,58 +86,60 @@ export const PlayerRatings: React.FC<PlayerRatingsProps> = ({ match }) => {
                 </div>
             </div>
 
-            {/* Ratings Card */}
+            {/* Ratings Card (Solidified unified card) */}
             {currentPlayers.length === 0 ? (
-                <div className="bg-white dark:bg-[#0E1424] p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 text-center text-xs text-slate-400">
+                <div className="w-full rounded-3xl p-8 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none text-xs text-slate-400">
                     No match lineup players available for performance rating.
                 </div>
             ) : (
-                <div className="bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden transition-colors">
-                    {currentPlayers.map((player) => {
-                        const ratingNum = player.ratingVal;
-                        const isHigh = ratingNum >= 8.0;
-                        const isMedium = ratingNum >= 7.0 && ratingNum < 8.0;
+                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                        {currentPlayers.map((player) => {
+                            const ratingNum = player.ratingVal;
+                            const isHigh = ratingNum >= 8.0;
+                            const isMedium = ratingNum >= 7.0 && ratingNum < 8.0;
 
-                        return (
-                            <div key={player.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-900/40 transition-colors">
-                                <div className="flex items-center gap-3.5">
-                                    <div
-                                        className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-black text-xs text-white shadow-xs shrink-0"
-                                        style={{ backgroundColor: currentTeam.colorCode }}
-                                    >
-                                        {player.number}
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-xs font-black text-slate-900 dark:text-slate-100">
-                                                {player.name}
-                                            </h4>
-                                            {player.isMotm && (
-                                                <span className="bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/30 text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider">
-                                                    <Award className="w-3 h-3" /> MOTM
-                                                </span>
-                                            )}
+                            return (
+                                <div key={player.id} className="px-4 md:px-6 py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <div className="flex items-center gap-3.5">
+                                        <div
+                                            className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-black text-xs text-white shadow-xs shrink-0"
+                                            style={{ backgroundColor: currentTeam.colorCode }}
+                                        >
+                                            {player.number}
                                         </div>
-                                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                                            {player.position} {player.isSub ? '(Sub)' : '(Starter)'}
-                                        </span>
+
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                                                    {player.name}
+                                                </h4>
+                                                {player.isMotm && (
+                                                    <span className="bg-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/30 text-[9px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider">
+                                                        <Award className="w-3 h-3" /> MOTM
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                                                {player.position} {player.isSub ? '(Sub)' : '(Starter)'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Rating badge */}
+                                    <div className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs ${isHigh
+                                            ? 'bg-emerald-500 text-white'
+                                            : isMedium
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                                        }`}>
+                                        <Star className="w-3.5 h-3.5 fill-current" />
+                                        <span className="font-mono">{player.ratingStr}</span>
                                     </div>
                                 </div>
-
-                                {/* Rating badge */}
-                                <div className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs ${isHigh
-                                        ? 'bg-emerald-500 text-white'
-                                        : isMedium
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-                                    }`}>
-                                    <Star className="w-3.5 h-3.5 fill-current" />
-                                    <span className="font-mono">{player.ratingStr}</span>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>

@@ -201,49 +201,49 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     Official Substitutes & Bench
                 </h4>
 
-                {/* Team A Bench */}
-                <div className="bg-white dark:bg-[#0E1424] p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
-                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
-                        <span className="text-sm font-black text-slate-900 dark:text-slate-100">{teamA.name} Substitutes</span>
+                {/* Team A Bench (Solidified Card) */}
+                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                    <div className="flex items-center gap-2.5 px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">{teamA.name} Substitutes</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                         {subsA.map(player => (
-                            <div key={player.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/70 text-xs">
-                                <div className="flex items-center gap-3">
-                                    <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
-                                        {player.number}
-                                    </span>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">{player.name}</span>
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                    {player.position}
+                            <div key={player.id} className="grid grid-cols-[40px_1fr_80px] items-center px-4 md:px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[300px]">
+                                <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
+                                    {player.number}
                                 </span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{player.name}</span>
+                                <div className="flex justify-end">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                        {player.position}
+                                    </span>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Team B Bench */}
-                <div className="bg-white dark:bg-[#0E1424] p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
-                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
-                        <span className="text-sm font-black text-slate-900 dark:text-slate-100">{teamB.name} Substitutes</span>
+                {/* Team B Bench (Solidified Card) */}
+                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                    <div className="flex items-center gap-2.5 px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">{teamB.name} Substitutes</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                         {subsB.map(player => (
-                            <div key={player.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/70 text-xs">
-                                <div className="flex items-center gap-3">
-                                    <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
-                                        {player.number}
-                                    </span>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">{player.name}</span>
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                    {player.position}
+                            <div key={player.id} className="grid grid-cols-[40px_1fr_80px] items-center px-4 md:px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[300px]">
+                                <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
+                                    {player.number}
                                 </span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{player.name}</span>
+                                <div className="flex justify-end">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                        {player.position}
+                                    </span>
+                                </div>
                             </div>
                         ))}
                     </div>

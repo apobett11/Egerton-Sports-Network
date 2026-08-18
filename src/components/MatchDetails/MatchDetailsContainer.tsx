@@ -144,42 +144,48 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
 
             case 'h2h':
                 return (
-                    <div className="w-full max-w-2xl mx-auto py-6 px-4 select-none space-y-4">
-                        <div className="bg-white dark:bg-[#1E1E1E] p-4 rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm transition-colors text-center">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">History</span>
-                            <h4 className="text-xs font-extrabold text-gray-850 dark:text-gray-200 mt-1">
-                                Historical Head-to-Head Matches
-                            </h4>
-                        </div>
-
-                        {h2hRecords.length === 0 ? (
-                            <div className="bg-white dark:bg-[#1E1E1E] p-8 rounded-xl border border-gray-150 dark:border-gray-800 text-center text-xs text-gray-400">
-                                No prior completed head-to-head fixtures recorded in the database between these two teams.
+                    <div className="w-full max-w-2xl mx-auto py-6 select-none space-y-4">
+                        <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                            <div className="px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10 text-center">
+                                <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block">History</span>
+                                <h4 className="text-xs font-black text-slate-900 dark:text-white mt-0.5">
+                                    Historical Head-to-Head Matches
+                                </h4>
                             </div>
-                        ) : (
-                            <div className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-[#1E1E1E] rounded-xl border border-gray-150 dark:border-gray-800 shadow-sm overflow-hidden transition-colors">
-                                {h2hRecords.map((h2h) => (
-                                    <div key={h2h.id} className="flex items-center justify-between px-4 py-3 text-xs font-semibold">
-                                        <div className="flex items-center gap-2 text-gray-400">
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            <span>{h2h.date}</span>
-                                        </div>
 
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-gray-500 dark:text-gray-400">{currentMatch.teamA.shortName}</span>
-                                            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-bold text-gray-800 dark:text-white">
-                                                {h2h.scoreA} - {h2h.scoreB}
+                            {h2hRecords.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-slate-400">
+                                    No prior completed head-to-head fixtures recorded in the database between these two teams.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                                    {h2hRecords.map((h2h) => (
+                                        <div key={h2h.id} className="flex items-center justify-between px-4 md:px-6 py-3.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <div className="flex items-center gap-2 text-slate-400">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span>{h2h.date}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-slate-600 dark:text-slate-300 font-bold">{currentMatch.teamA.shortName}</span>
+                                                <span className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg font-mono font-black text-slate-900 dark:text-white">
+                                                    {h2h.scoreA} - {h2h.scoreB}
+                                                </span>
+                                                <span className="text-slate-600 dark:text-slate-300 font-bold">{currentMatch.teamB.shortName}</span>
+                                            </div>
+
+                                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                                h2h.winner === 'Draw' 
+                                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' 
+                                                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                            }`}>
+                                                {h2h.winner === 'Draw' ? 'Draw' : `${h2h.winner} Win`}
                                             </span>
-                                            <span className="text-gray-500 dark:text-gray-400">{currentMatch.teamB.shortName}</span>
                                         </div>
-
-                                        <span className={`text-[10px] font-bold uppercase ${h2h.winner === 'Draw' ? 'text-gray-400' : 'text-emerald-600 dark:text-emerald-500'}`}>
-                                            {h2h.winner === 'Draw' ? 'Draw' : `${h2h.winner} Win`}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 );
 
