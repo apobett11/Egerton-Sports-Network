@@ -26,23 +26,28 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
     return (
         <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
             {/* Header & Teams Legend */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
-                <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
-                        Performance Analytics
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white">
-                        Match Statistics Comparison
-                    </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                        <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                            Performance Analytics
+                        </span>
+                        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                            Match Statistics Comparison
+                        </h3>
+                    </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-bold">
+                <div className="self-start sm:self-auto flex items-center gap-3 text-xs font-bold bg-slate-100/80 dark:bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10">
                     <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamA.colorCode || '#10B981' }} />
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode || '#10B981' }} />
                         {teamA.name}
                     </span>
                     <span className="text-slate-400">•</span>
                     <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamB.colorCode || '#3B82F6' }} />
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamB.colorCode || '#3B82F6' }} />
                         {teamB.name}
                     </span>
                 </div>

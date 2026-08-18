@@ -257,16 +257,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         aria-label="Fixtures Section" 
         className="rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 p-6 md:p-8 shadow-xl space-y-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20 shadow-xs">
-              <Calendar className="w-6 h-6" aria-hidden="true" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+              <Calendar className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-                Fixtures
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                Matchday Schedule
+              </span>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Campus Match Fixtures
               </h2>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
                 Scheduled matches, live scores, and verified kickoff results
               </p>
             </div>
@@ -278,11 +281,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-[#090D16] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <button 
               onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className="text-xs font-bold text-amber-600 dark:text-[#D4AF37] hover:bg-amber-500/20 flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 rounded-xl px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+              className="text-xs font-black text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 rounded-xl px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95"
             >
               <span>Today</span>
             </button>
@@ -292,32 +295,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         {/* INDEPENDENT FIXTURES LOADING / ERROR / SUCCESS */}
         {fixturesState.loading ? (
           <div className="space-y-4" aria-busy="true" aria-label="Loading fixtures">
-            <div className="space-y-3">
-              <div className="h-4 w-36 bg-slate-200 dark:bg-slate-800 rounded-md animate-pulse" />
-              <div className="bg-white dark:bg-[#090D16] rounded-2xl border border-slate-200/80 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 animate-pulse">
-                    <div className="flex items-center gap-3 w-28">
-                      <div className="w-10 h-3.5 bg-slate-200 dark:bg-slate-800 rounded" />
-                      <div className="w-12 h-3 bg-slate-200 dark:bg-slate-800 rounded" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between px-4">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-800" />
-                          <div className="w-24 h-3.5 bg-slate-200 dark:bg-slate-800 rounded" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-800" />
-                          <div className="w-20 h-3.5 bg-slate-200 dark:bg-slate-800 rounded" />
-                        </div>
-                      </div>
-                      <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-32" />
           </div>
         ) : fixturesState.error ? (
           <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center space-y-2">
@@ -333,23 +311,31 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         ) : (
           <div className="space-y-8">
             {/* SUBSECTION 1: Egerton Premier League */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                  Egerton Premier League
-                </h3>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  Division 1
-                </span>
-              </div>
-
+            <div className="space-y-3">
               {eplFixtures.length === 0 ? (
                 <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
                   No active Egerton Premier League fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
                 <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                  {/* Apple Accent Header Bar */}
+                  <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)] animate-pulse" />
+                      <h3 className="text-sm md:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                        Egerton Premier League
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full font-extrabold tracking-wider uppercase shadow-xs">
+                        Division 1
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                        {eplFixtures.length} {eplFixtures.length === 1 ? 'Match' : 'Matches'}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                     {eplFixtures.map((match) => {
                       const isFav = favourites.includes(match.id);
@@ -423,23 +409,31 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
             </div>
 
             {/* SUBSECTION 2: Egerton Championships */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <h3 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                  Egerton Championships
-                </h3>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                  Division 2
-                </span>
-              </div>
-
+            <div className="space-y-3 pt-2">
               {champFixtures.length === 0 ? (
                 <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
                   No active Egerton Championships fixtures scheduled for {selectedDate}.
                 </div>
               ) : (
                 <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                  {/* Apple Accent Header Bar */}
+                  <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)] animate-pulse" />
+                      <h3 className="text-sm md:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                        Egerton Championships
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full font-extrabold tracking-wider uppercase shadow-xs">
+                        Division 2
+                      </span>
+                      <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                        {champFixtures.length} {champFixtures.length === 1 ? 'Match' : 'Matches'}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                     {champFixtures.map((match) => {
                       const isFav = favourites.includes(match.id);
@@ -520,15 +514,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         aria-label="Player Performance Section"
         className="rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 p-6 md:p-8 shadow-xl space-y-6"
       >
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
-            <Award className="w-6 h-6" aria-hidden="true" />
+        <div className="flex items-center gap-3.5 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+            <Award className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+              Leaderboards & Individual Stats
+            </span>
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Player Performance
             </h2>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
               Individual player leaderboards across both competitions and department-wide GOATS
             </p>
           </div>
@@ -546,39 +543,48 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
           <div className="space-y-8">
             {/* SUBSECTION 1: Egerton Premier League */}
             <div className="space-y-3">
-              <h3 className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 px-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>Egerton Premier League</span>
-              </h3>
               <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Apple Accent Header Bar */}
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Premier League • Player Metrics
+                    </h3>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                    Division 1
+                  </span>
+                </div>
+
                 <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                   {/* Top Scorer */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Top Scorer</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.topScorer.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.topScorer.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.epl.topScorer.goals} Goals</span>
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.epl.topScorer.goals} Goals</span>
                     </div>
                   </div>
 
                   {/* Most Assists */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Most Assists</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.mostAssists.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.mostAssists.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.epl.mostAssists.assists} Assists</span>
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.epl.mostAssists.assists} Assists</span>
                     </div>
                   </div>
 
                   {/* Most Clean Sheets */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Clean Sheets</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.epl.mostCleanSheets.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.epl.mostCleanSheets.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.epl.mostCleanSheets.cleanSheets} Shutouts</span>
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.epl.mostCleanSheets.cleanSheets} Shutouts</span>
                     </div>
                   </div>
                 </div>
@@ -586,40 +592,49 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
             </div>
 
             {/* SUBSECTION 2: Egerton Championships */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-2 px-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>Egerton Championships</span>
-              </h3>
+            <div className="space-y-3 pt-2">
               <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Apple Accent Header Bar */}
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Championships • Player Metrics
+                    </h3>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                    Division 2
+                  </span>
+                </div>
+
                 <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
                   {/* Top Scorer */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Top Scorer</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.topScorer.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.topScorer.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.championship.topScorer.goals} Goals</span>
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.championship.topScorer.goals} Goals</span>
                     </div>
                   </div>
 
                   {/* Most Assists */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Most Assists</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.mostAssists.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.mostAssists.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.championship.mostAssists.assists} Assists</span>
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.championship.mostAssists.assists} Assists</span>
                     </div>
                   </div>
 
                   {/* Most Clean Sheets */}
-                  <div className="grid grid-cols-[120px_1fr_1fr_100px] items-center px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
+                  <div className="grid grid-cols-[130px_1fr_1fr_120px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[500px]">
                     <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Clean Sheets</span>
                     <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">{perfState.data.championship.mostCleanSheets.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.championship.mostCleanSheets.teamName}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.championship.mostCleanSheets.cleanSheets} Shutouts</span>
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.championship.mostCleanSheets.cleanSheets} Shutouts</span>
                     </div>
                   </div>
                 </div>
@@ -628,42 +643,48 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
 
             {/* SUBSECTION 3: The GOATS (Both Leagues) */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 px-1">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">
-                  The GOATS (Both Leagues)
-                </h3>
-              </div>
-
               <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Apple Accent Header Bar */}
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      The GOATS • Department-wide Leaders
+                    </h3>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                    Campus GOATS
+                  </span>
+                </div>
+
                 <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
-                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                  <div className="grid grid-cols-[150px_1fr_1fr_120px_100px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
                     <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Top Scorer (Overall)</span>
                     <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.topScorer.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.topScorer.teamName}</span>
                     <span className="text-[10px] font-bold text-amber-500 truncate">{perfState.data.goats.topScorer.league}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.goats.topScorer.goals} G</span>
+                      <span className="font-mono font-black text-sm text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">{perfState.data.goats.topScorer.goals} G</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                  <div className="grid grid-cols-[150px_1fr_1fr_120px_100px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
                     <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Most Assists (Overall)</span>
                     <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.mostAssists.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.mostAssists.teamName}</span>
                     <span className="text-[10px] font-bold text-emerald-500 truncate">{perfState.data.goats.mostAssists.league}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.goats.mostAssists.assists} A</span>
+                      <span className="font-mono font-black text-sm text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/30">{perfState.data.goats.mostAssists.assists} A</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-[140px_1fr_1fr_120px_100px] items-center px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
+                  <div className="grid grid-cols-[150px_1fr_1fr_120px_100px] items-center px-5 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors min-w-[560px]">
                     <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Clean Sheets (Overall)</span>
                     <span className="font-black text-sm text-slate-900 dark:text-white truncate">{perfState.data.goats.mostCleanSheets.playerName}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{perfState.data.goats.mostCleanSheets.teamName}</span>
                     <span className="text-[10px] font-bold text-blue-500 truncate">{perfState.data.goats.mostCleanSheets.league}</span>
                     <div className="flex justify-end">
-                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.goats.mostCleanSheets.cleanSheets} CS</span>
+                      <span className="font-mono font-black text-sm text-blue-500 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-900/30">{perfState.data.goats.mostCleanSheets.cleanSheets} CS</span>
                     </div>
                   </div>
                 </div>
@@ -678,15 +699,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         aria-label="League Milestones Section"
         className="rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 p-6 md:p-8 shadow-xl space-y-6"
       >
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
-            <Zap className="w-6 h-6" aria-hidden="true" />
+        <div className="flex items-center gap-3.5 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+            <Zap className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+              Verified Records & Streaks
+            </span>
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               League Milestones
             </h2>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
               Verified records, streak achievements, and milestones derived from completed database fixtures
             </p>
           </div>
@@ -696,6 +720,16 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
           <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-28" />
         ) : milestonesState.data && (
           <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+            {/* Apple Accent Header Bar */}
+            <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                All-Time Campus Milestones & Records
+              </span>
+              <span className="text-[10px] bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full font-extrabold tracking-wider uppercase shadow-xs">
+                Official Certification
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-50 dark:divide-white/5">
               <div className="p-5 space-y-1 text-center">
                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Highest Scoring Match</span>
@@ -754,16 +788,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         aria-label="Standings Snapshot Section" 
         className="rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 p-6 md:p-8 shadow-xl space-y-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
-              <Trophy className="w-6 h-6" aria-hidden="true" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+              <Trophy className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                Campus Division Rankings
+              </span>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Standings Snapshot
               </h2>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
                 Top four clubs leading each campus division table
               </p>
             </div>
@@ -781,17 +818,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         {standingsState.loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" aria-busy="true" aria-label="Loading standings">
             {[1, 2].map((i) => (
-              <div key={i} className="space-y-4">
-                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#090D16] p-4 space-y-3 animate-pulse">
-                  {[1, 2, 3, 4].map((j) => (
-                    <div key={j} className="flex justify-between items-center py-2">
-                      <div className="w-28 h-3.5 bg-slate-200 dark:bg-slate-800 rounded" />
-                      <div className="w-8 h-3.5 bg-slate-200 dark:bg-slate-800 rounded" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div key={i} className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-48" />
             ))}
           </div>
         ) : standingsState.error ? (
@@ -801,20 +828,23 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* SUBSECTION 1: Egerton Premier League (Top 4) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Egerton Premier League</span>
-                </h3>
-                <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-amber-600 dark:text-[#D4AF37] hover:underline cursor-pointer">
-                  (View Full Table)
-                </button>
-              </div>
-
+            <div className="space-y-3">
               <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Apple Accent Header Bar */}
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Premier League
+                    </h3>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                    Division 1
+                  </span>
+                </div>
+
                 {/* Pseudo-Thead */}
-                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-800/20">
                   <div className="text-center">#</div>
                   <div>Club</div>
                   <div className="text-center">P</div>
@@ -847,28 +877,28 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                       </div>
                     </div>
                   ))}
-                  <div className="py-2 text-center text-slate-400 font-black text-xs bg-slate-50/40 dark:bg-slate-800/20">
-                    ...
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* SUBSECTION 2: Egerton Championships (Top 4) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span>Egerton Championships</span>
-                </h3>
-                <button onClick={() => onNavigate('/league')} className="text-xs font-bold text-amber-600 dark:text-[#D4AF37] hover:underline cursor-pointer">
-                  (View Full Table)
-                </button>
-              </div>
-
+            <div className="space-y-3">
               <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                {/* Apple Accent Header Bar */}
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Championships
+                    </h3>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                    Division 2
+                  </span>
+                </div>
+
                 {/* Pseudo-Thead */}
-                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="grid grid-cols-[36px_2fr_36px_44px_50px] items-center px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
                   <div className="text-center">#</div>
                   <div>Club</div>
                   <div className="text-center">P</div>
@@ -901,9 +931,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                       </div>
                     </div>
                   ))}
-                  <div className="py-2 text-center text-slate-400 font-black text-xs bg-slate-50/40 dark:bg-slate-800/20">
-                    ...
-                  </div>
                 </div>
               </div>
             </div>
@@ -916,16 +943,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
         aria-label="Featured Today Section" 
         className="rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 p-6 md:p-8 shadow-xl space-y-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
-              <Newspaper className="w-6 h-6" aria-hidden="true" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+              <Newspaper className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                Editorial & Press Coverage
+              </span>
+              <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Featured Today
               </h2>
-              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-sans">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
                 Today's latest published campus sports journalism
               </p>
             </div>

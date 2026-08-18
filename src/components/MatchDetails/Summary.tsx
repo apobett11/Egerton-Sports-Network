@@ -53,16 +53,21 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
 
     return (
         <div className="relative w-full max-w-3xl mx-auto py-12 px-4 select-none">
-            <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-200/80 dark:border-white/10">
-                <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
-                        Chronological Log
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white">
-                        Match Event Timeline
-                    </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/80 dark:border-white/10">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                        <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                            Chronological Log
+                        </span>
+                        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                            Match Event Timeline
+                        </h3>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs font-bold">
+                <div className="self-start sm:self-auto flex items-center gap-3 text-xs font-bold bg-slate-100/80 dark:bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10">
                     <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
                         {teamA.name}

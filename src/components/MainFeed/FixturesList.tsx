@@ -63,17 +63,22 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                     key={leagueName}
                     className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none"
                 >
-                    {/* Unified League Section Header */}
-                    <div className="flex items-center justify-between px-4 md:px-6 py-3.5 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-white/10">
-                        <div className="flex items-center gap-2.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    {/* Unified League Section Header with Apple-accent styling */}
+                    <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                        <div className="flex items-center gap-3">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)] animate-pulse" />
+                            <span className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                 {leagueName}
                             </span>
                         </div>
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-black tracking-wide">
-                            CAMPUS LEAGUE
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full font-extrabold tracking-wider uppercase shadow-xs">
+                                {leagueMatches.length} {leagueMatches.length === 1 ? 'Fixture' : 'Fixtures'}
+                            </span>
+                            <span className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-black tracking-wide uppercase">
+                                Campus League
+                            </span>
+                        </div>
                     </div>
 
                     {/* Solidified Match List with neat columns and lateral scroll */}

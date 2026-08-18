@@ -103,21 +103,24 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     return (
       <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden select-none space-y-0">
         {/* Table Header: Seamlessly attached to table section */}
-        <div className="bg-white/80 dark:bg-[#0E1526]/90 px-6 py-4 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20 shadow-xs">
+        <div className="bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl px-5 md:px-6 py-4 border-b border-slate-200/80 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
               <Trophy className={`w-5 h-5 ${badgeColor}`} />
             </div>
             <div>
-              <h3 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                Official Standings
+              </span>
+              <h3 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 {title}
               </h3>
-              <p className="text-[11px] font-semibold text-amber-600 dark:text-[#D4AF37]">
+              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
                 Live Standings • Updated: {latestTimestamp}
               </p>
             </div>
           </div>
-          <span className="self-start sm:self-auto text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-[#D4AF37] border border-amber-500/30 shadow-xs">
+          <span className="self-start sm:self-auto text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-white/10 shadow-xs">
             OFFICIAL LEAGUE TABLE
           </span>
         </div>
@@ -131,7 +134,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           ) : (
             <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
               {/* Pseudo-Thead */}
-              <div className="grid grid-cols-[40px_30px_3fr_1fr_1fr_1fr_1fr_2fr] items-center px-4 md:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
+              <div className="grid grid-cols-[40px_30px_3fr_1fr_1fr_1fr_1fr_2fr] items-center px-4 md:px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-slate-800/20">
                 <div className="text-center">#</div>
                 <div className="text-center">Pos</div>
                 <div>Team</div>
@@ -354,83 +357,94 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       <div className="space-y-12 select-none">
         {/* 1. GOLDEN BOOT (ONE UNIFIED CARD CONTAINING BOTH LEAGUES) */}
         <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 dark:text-[#D4AF37] border border-amber-500/20">
-                <Trophy className="w-6 h-6" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/80 dark:border-slate-800/80">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                <Trophy className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight uppercase">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                  Scoring Honours
+                </span>
+                <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
                   Official Golden Boot Leaderboards
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-sans">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
                   Top goalscorers across Egerton Premier League and Egerton Championships united in one ranking
                 </p>
               </div>
             </div>
-            <span className="self-start sm:self-auto text-[10px] font-black text-slate-950 uppercase tracking-widest px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-[#D4AF37] shadow-sm">
+            <span className="self-start sm:self-auto text-[10px] font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 shadow-xs">
               Verified Top Scorers
             </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* EPL Golden Boot Subsection */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Egerton Premier League</span>
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">Goals</span>
-              </h4>
+            <div className="space-y-3">
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+                    <h4 className="text-xs md:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Premier League
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Goals</span>
+                </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-white dark:bg-[#090D16]">
-                {topScorers.length === 0 ? (
-                  <p className="text-xs text-slate-400 p-4">No goal events recorded for Premier League yet.</p>
-                ) : (
-                  topScorers.slice(0, 5).map((scorer, idx) => (
-                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
-                        <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-900 dark:text-slate-100">{scorer.playerName}</span>
-                          <span className="text-[11px] text-slate-500 font-medium">Team: {scorer.teamName} • <strong className="text-emerald-600 dark:text-emerald-400">Premier League</strong></span>
+                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                  {topScorers.length === 0 ? (
+                    <p className="text-xs text-slate-400 p-5 text-center">No goal events recorded for Premier League yet.</p>
+                  ) : (
+                    topScorers.slice(0, 5).map((scorer, idx) => (
+                      <div key={scorer.playerId || idx} className="flex items-center justify-between px-5 md:px-6 py-3.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-slate-900 dark:text-white">{scorer.playerName}</span>
+                            <span className="text-[11px] text-slate-500 font-medium">Team: {scorer.teamName} • <strong className="text-emerald-600 dark:text-emerald-400">Premier League</strong></span>
+                          </div>
                         </div>
+                        <span className="text-base font-black font-mono text-emerald-500">{scorer.goals} G</span>
                       </div>
-                      <span className="text-base font-black font-mono text-emerald-500">{scorer.goals} G</span>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Championship Golden Boot Subsection */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span>Egerton Championships</span>
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">Goals</span>
-              </h4>
+            <div className="space-y-3">
+              <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+                <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
+                    <h4 className="text-xs md:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Egerton Championships
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Goals</span>
+                </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden bg-white dark:bg-[#090D16]">
-                {champTopScorers.length === 0 ? (
-                  <p className="text-xs text-slate-400 p-4">No goal events recorded for Championships yet.</p>
-                ) : (
-                  champTopScorers.slice(0, 5).map((scorer, idx) => (
-                    <div key={scorer.playerId || idx} className="flex items-center justify-between px-4 py-3 text-xs font-semibold hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
-                        <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-900 dark:text-slate-100">{scorer.playerName}</span>
-                          <span className="text-[11px] text-slate-500 font-medium">Team: {scorer.teamName} • <strong className="text-amber-500">Championships</strong></span>
+                <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                  {champTopScorers.length === 0 ? (
+                    <p className="text-xs text-slate-400 p-5 text-center">No goal events recorded for Championships yet.</p>
+                  ) : (
+                    champTopScorers.slice(0, 5).map((scorer, idx) => (
+                      <div key={scorer.playerId || idx} className="flex items-center justify-between px-5 md:px-6 py-3.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-slate-900 dark:text-white">{scorer.playerName}</span>
+                            <span className="text-[11px] text-slate-500 font-medium">Team: {scorer.teamName} • <strong className="text-amber-500">Championships</strong></span>
+                          </div>
                         </div>
+                        <span className="text-base font-black font-mono text-amber-500">{scorer.goals} G</span>
                       </div>
-                      <span className="text-base font-black font-mono text-amber-500">{scorer.goals} G</span>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -438,131 +452,138 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
         {/* 2. FULL 6-GAME FORM TABLES (EPL & CHAMPIONSHIP — POSITION PRESERVING) */}
         <div id="full-form-tables" className="space-y-6 pt-2 select-none">
-          <div className="pb-3 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 dark:text-[#D4AF37]">
-                  <Trophy className="w-4 h-4" />
+          <div className="pb-5 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                  Momentum & Sequences
                 </span>
-                <span>Official Form Tables (Last 6 Matches)</span>
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Full 6-game result sequence strictly preserving primary standings position ordering
-              </p>
+                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Official Form Tables (Last 6 Matches)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Full 6-game result sequence strictly preserving primary standings position ordering
+                </p>
+              </div>
             </div>
-            <span className="text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase tracking-wider font-mono">
+            <span className="self-start sm:self-auto text-[10px] font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full shadow-xs">
               6-Game Window
             </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* EPL Form Table */}
-            <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden space-y-0 p-4 sm:p-6">
-              <div className="bg-white dark:bg-[#0E1526] px-4 py-3 rounded-t-2xl border-t border-l border-r border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Egerton Premier League — Form Table</span>
-                </h4>
-                <span className="text-[10px] font-mono text-slate-400">Position Order</span>
+            <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+              <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+                  <h4 className="text-xs md:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Egerton Premier League — Form Table
+                  </h4>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-slate-400">Position Order</span>
               </div>
-              <div className="rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 overflow-hidden">
-                {/* Form Pseudo-Thead */}
-                <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-white/10">
-                  <div className="text-center">Pos</div>
-                  <div>Club</div>
-                  <div className="text-center">P</div>
-                  <div className="text-center">Form (Last 6)</div>
-                  <div className="text-right">Pts</div>
-                </div>
+              
+              {/* Form Pseudo-Thead */}
+              <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-4 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-400 font-black text-[10px] uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                <div className="text-center">Pos</div>
+                <div>Club</div>
+                <div className="text-center">P</div>
+                <div className="text-center">Form (Last 6)</div>
+                <div className="text-right">Pts</div>
+              </div>
 
-                {/* Form Pseudo-Tbody */}
-                <div>
-                  {(eplStandings.length > 0 ? eplStandings : tableData).map((row) => {
-                    const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
+              {/* Form Pseudo-Tbody */}
+              <div className="divide-y divide-slate-50 dark:divide-white/5">
+                {(eplStandings.length > 0 ? eplStandings : tableData).map((row) => {
+                  const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'L', 'W', 'D', 'W'];
 
-                    return (
-                      <div
-                        key={row.teamId}
-                        className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 border-b border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors last:border-0"
-                      >
-                        <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
-                        <div className="flex items-center gap-2 min-w-0 pr-1">
-                          <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
-                          <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
-                        </div>
-                        <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
-                        <div className="flex items-center justify-center gap-1">
-                          {form6.map((res, i) => (
-                            <span
-                              key={i}
-                              className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
-                                res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
-                              }`}
-                            >
-                              {res}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                  return (
+                    <div
+                      key={row.teamId}
+                      className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                        <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                      <div className="flex items-center justify-center gap-1">
+                        {form6.map((res, i) => (
+                          <span
+                            key={i}
+                            className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
+                              res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
+                            }`}
+                          >
+                            {res}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Championship Form Table */}
-            <div className="bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl overflow-hidden space-y-0 p-4 sm:p-6">
-              <div className="bg-white dark:bg-[#0E1526] px-4 py-3 rounded-t-2xl border-t border-l border-r border-slate-200/90 dark:border-slate-800/90 flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span>Egerton Championships — Form Table</span>
-                </h4>
-                <span className="text-[10px] font-mono text-slate-400">Position Order</span>
+            <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
+              <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
+                  <h4 className="text-xs md:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Egerton Championships — Form Table
+                  </h4>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-slate-400">Position Order</span>
               </div>
-              <div className="rounded-b-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 overflow-hidden">
-                {/* Form Pseudo-Thead */}
-                <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider border-b border-slate-100 dark:border-white/10">
-                  <div className="text-center">Pos</div>
-                  <div>Club</div>
-                  <div className="text-center">P</div>
-                  <div className="text-center">Form (Last 6)</div>
-                  <div className="text-right">Pts</div>
-                </div>
+              
+              {/* Form Pseudo-Thead */}
+              <div className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-4 py-2.5 bg-slate-50/50 dark:bg-slate-800/20 text-slate-400 font-black text-[10px] uppercase tracking-widest border-b border-slate-100 dark:border-white/5">
+                <div className="text-center">Pos</div>
+                <div>Club</div>
+                <div className="text-center">P</div>
+                <div className="text-center">Form (Last 6)</div>
+                <div className="text-right">Pts</div>
+              </div>
 
-                {/* Form Pseudo-Tbody */}
-                <div>
-                  {champStandings.map((row) => {
-                    const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
+              {/* Form Pseudo-Tbody */}
+              <div className="divide-y divide-slate-50 dark:divide-white/5">
+                {champStandings.map((row) => {
+                  const form6 = teamFormsMap[row.teamId] || ['W', 'D', 'W', 'L', 'W', 'D'];
 
-                    return (
-                      <div
-                        key={row.teamId}
-                        className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-3 py-2.5 border-b border-slate-50 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors last:border-0"
-                      >
-                        <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
-                        <div className="flex items-center gap-2 min-w-0 pr-1">
-                          <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
-                          <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
-                        </div>
-                        <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
-                        <div className="flex items-center justify-center gap-1">
-                          {form6.map((res, i) => (
-                            <span
-                              key={i}
-                              className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
-                                res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
-                              }`}
-                            >
-                              {res}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                  return (
+                    <div
+                      key={row.teamId}
+                      className="grid grid-cols-[36px_2fr_36px_3fr_44px] items-center px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <div className="text-center font-bold text-xs text-slate-400">{row.position}</div>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 object-contain rounded-full bg-slate-100 dark:bg-slate-800 shrink-0" />
+                        <span className="truncate font-bold text-xs text-slate-900 dark:text-white">{row.teamName}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-center text-xs text-slate-500 dark:text-slate-400">{row.played}</div>
+                      <div className="flex items-center justify-center gap-1">
+                        {form6.map((res, i) => (
+                          <span
+                            key={i}
+                            className={`w-4.5 h-4.5 rounded-md flex items-center justify-center font-mono font-black text-[9px] text-white shadow-2xs ${
+                              res === 'W' ? 'bg-emerald-600' : res === 'D' ? 'bg-amber-500' : 'bg-rose-600'
+                            }`}
+                          >
+                            {res}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-right font-extrabold font-mono text-xs text-amber-500">{row.points}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -570,28 +591,33 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
         {/* 3. UNIFIED MATCHDAY DISTRIBUTION CARD (TODAY, PER MATCHDAY, ALL TIME) */}
         <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-6 shadow-xl">
-          <div className="pb-4 border-b border-slate-200/60 dark:border-slate-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 dark:text-[#D4AF37]">
-                  <ChevronRight className="w-4 h-4" />
+          <div className="pb-5 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                <ChevronRight className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                  Campus Analytics
                 </span>
-                <span>Matchday Distribution & League Statistics</span>
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Unified statistics breakdown covering current matchday, per-gameweek distributions, and all-time records
-              </p>
+                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Matchday Distribution & League Statistics
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Unified statistics breakdown covering current matchday, per-gameweek distributions, and all-time records
+                </p>
+              </div>
             </div>
-            <span className="self-start sm:self-auto text-[10px] font-bold text-amber-600 dark:text-[#D4AF37] uppercase tracking-widest font-mono">
+            <span className="self-start sm:self-auto text-[10px] font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-widest bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 px-3 py-1 rounded-full shadow-xs">
               Campus Metrics
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Today / Current Matchday */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3">
               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Today / Current Matchday</span>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">Matchday Active</div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">Matchday Active</div>
               <div className="space-y-1.5 text-xs text-slate-500">
                 <div className="flex justify-between"><span>Scheduled Fixtures:</span><strong className="text-slate-800 dark:text-slate-200 font-mono">4 Matches</strong></div>
                 <div className="flex justify-between"><span>Goals Scored Today:</span><strong className="text-emerald-500 font-mono">9 Goals</strong></div>
@@ -600,9 +626,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             {/* Per Matchday */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3">
               <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Per Matchday Averages</span>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">2.8 Goals / GW</div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">2.8 Goals / GW</div>
               <div className="space-y-1.5 text-xs text-slate-500">
                 <div className="flex justify-between"><span>Highest Scoring GW:</span><strong className="text-amber-500 font-mono">GW 3 (14 Goals)</strong></div>
                 <div className="flex justify-between"><span>Clean Sheet Rate:</span><strong className="text-blue-500 font-mono">35% of Games</strong></div>
@@ -611,12 +637,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             {/* All Time */}
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
-              <span className="text-[10px] font-black text-amber-500 dark:text-[#D4AF37] uppercase tracking-widest">All Time Campus Records</span>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">142 Goals</div>
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3">
+              <span className="text-[10px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest">All Time Campus Records</span>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">142 Goals</div>
               <div className="space-y-1.5 text-xs text-slate-500">
                 <div className="flex justify-between"><span>Total Official Fixtures:</span><strong className="text-slate-800 dark:text-slate-200 font-mono">52 Matches</strong></div>
-                <div className="flex justify-between"><span>All-Time Top Scorer:</span><strong className="text-amber-500 dark:text-[#D4AF37] font-mono">Brian Ochieng (12)</strong></div>
+                <div className="flex justify-between"><span>All-Time Top Scorer:</span><strong className="text-amber-500 dark:text-amber-400 font-mono">Brian Ochieng (12)</strong></div>
                 <div className="flex justify-between"><span>Most Unbeaten Games:</span><strong className="text-emerald-500 font-mono">Sharklets FC (8)</strong></div>
               </div>
             </div>
@@ -625,27 +651,35 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
         {/* 4. OFFICIAL REFEREE MATCH REPORTS HIGHLIGHTS */}
         <div className="p-6 md:p-8 bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-700/50 space-y-5 shadow-xl">
-          <div className="pb-3 border-b border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Verified Match Reports & Referee Overviews
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Official reports submitted by accredited campus match officials
-              </p>
+          <div className="pb-5 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
+                  Officiating & Fair Play
+                </span>
+                <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                  Verified Match Reports & Referee Overviews
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Official reports submitted by accredited campus match officials
+                </p>
+              </div>
             </div>
-            <span className="text-[10px] bg-blue-500/10 text-blue-500 border border-blue-500/30 px-2.5 py-1 rounded-full font-bold uppercase">
+            <span className="text-[10px] bg-blue-500/10 text-blue-500 border border-blue-500/30 px-3 py-1 rounded-full font-extrabold uppercase shadow-xs">
               Certified Audit
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-black text-emerald-500 uppercase">Matchday 4 Derby</span>
                 <span className="text-slate-400 font-mono text-[11px]">Ref: Official #102</span>
               </div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                 Sharklets FC (2) vs Faculty of Science (1)
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
@@ -653,12 +687,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#090D16] border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-black text-amber-500 uppercase">Championship Matchday 3</span>
                 <span className="text-slate-400 font-mono text-[11px]">Ref: Official #108</span>
               </div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                 Championship FC Gamma (3) vs Championship FC Delta (0)
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
