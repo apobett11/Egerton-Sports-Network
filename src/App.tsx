@@ -383,6 +383,14 @@ export const AppContent: React.FC = () => {
                 }
               }}
               favoritesCount={favorites.length}
+              selectedDate={selectedDate}
+              setSelectedDate={(newDate) => {
+                setSelectedDate(newDate);
+                if (activeTab !== 'scores') {
+                  setActiveTab('scores');
+                }
+              }}
+              onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
             <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-24 md:pb-12 pt-6">

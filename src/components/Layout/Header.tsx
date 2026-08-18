@@ -75,9 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
 
     React.useEffect(() => {
       if (isCalendarOpen) {
+        setViewDate(new Date(selectedDate));
         setShowCalendarModal(true);
       }
-    }, [isCalendarOpen]);
+    }, [isCalendarOpen, selectedDate]);
     const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
 
     const handlePrevYear = () => {
@@ -244,54 +245,6 @@ export const Header: React.FC<HeaderProps> = ({
                         <span className="text-[10px] sm:text-[11px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
                             Championships
                         </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Row 3: DATE NAVIGATOR STRIP WITH EXPLICIT DAY MOVEMENT */}
-            <div className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-[#0E1524]/90 backdrop-blur-md">
-                <div className="flex items-center justify-between px-4 py-2 max-w-7xl mx-auto">
-                    <button
-                        type="button"
-                        onClick={() => changeDate(-1)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#182236] hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/60"
-                        title="Move to previous day"
-                        aria-label="Move to previous day"
-                    >
-                        <ChevronLeft className="w-4 h-4 text-[#D4AF37]" />
-                        <span className="hidden sm:inline">Previous Day</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#D4AF37] flex items-center gap-2">
-                            {formatDateLabel(selectedDate)}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => changeDate(1)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-[#182236] hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/60"
-                            title="Move to next day"
-                            aria-label="Move to next day"
-                        >
-                            <span className="hidden sm:inline">Next Day</span>
-                            <ChevronRight className="w-4 h-4 text-[#D4AF37]" />
-                        </button>
-                        <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setViewDate(new Date(selectedDate));
-                                setShowCalendarModal(true);
-                            }}
-                            className="p-1.5 rounded-xl bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-[#D4AF37] active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-xs"
-                            title="Database-Driven Monday-First Calendar"
-                        >
-                            <Calendar className="w-4 h-4 text-[#D4AF37]" />
-                            <span className="hidden sm:inline">Full Calendar</span>
-                        </button>
                     </div>
                 </div>
             </div>

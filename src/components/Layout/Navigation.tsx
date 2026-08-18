@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Trophy, Newspaper, Star, LogIn } from 'lucide-react';
+import { CalendarDays, Trophy, Newspaper, Star, LogIn, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type MainTabType = 'scores' | 'table' | 'news' | 'favorites' | 'login';
 
@@ -7,12 +7,18 @@ interface NavigationProps {
     activeTab: MainTabType;
     setActiveTab: (tab: MainTabType) => void;
     favoritesCount: number;
+    selectedDate?: Date;
+    setSelectedDate?: (date: Date) => void;
+    onOpenCalendar?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
     activeTab,
     setActiveTab,
-    favoritesCount
+    favoritesCount,
+    selectedDate,
+    setSelectedDate,
+    onOpenCalendar
 }) => {
     const tabs = [
         { id: 'scores' as MainTabType, label: 'Scores', icon: CalendarDays },
@@ -21,6 +27,50 @@ export const Navigation: React.FC<NavigationProps> = ({
         { id: 'favorites' as MainTabType, label: 'Favorites', icon: Star, badge: favoritesCount },
         { id: 'login' as MainTabType, label: 'Portal', icon: LogIn }
     ];
+
+    const formatDateLabel = (date: Date) => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else if (date.toDateString() === tomorrow.toDateString()) {
+            return 'Tomorrow, ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else {
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    };
+
+    const changeDate = (days: number) => {
+        if (!selectedDate || !setSelectedDate) return;
+        const newDate = new Date(selectedDate);
+        newDate.setDate(selectedDate.getDate() + days);
+        setSelectedDate(newDate);
+        if (activeTab !== 'scores') {
+            setActiveTab('scores');
+        }
+    };
+
+    const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.value || !setSelectedDate) return;
+        const parts = e.target.value.split('-');
+        if (parts.length === 3) {
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            setSelectedDate(d);
+            if (activeTab !== 'scores') {
+                setActiveTab('scores');
+            }
+        }
+    };
+
+    const formattedDateStr = selectedDate ? (
+        `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    ) : '';
 
     return (
         <>
@@ -90,6 +140,78 @@ export const Navigation: React.FC<NavigationProps> = ({
                     })}
                 </div>
             </nav>
+
+            {/* CALENDAR DATE STRIP DIRECTLY BELOW TOP NAVIGATION */}
+            {selectedDate && setSelectedDate && (
+                <div className="w-full bg-slate-100/70 dark:bg-[#0E1524]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 py-2.5 px-4 select-none">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+                        <button
+                            type="button"
+                            onClick={() => changeDate(-1)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200/80 dark:border-white/10 shadow-xs"
+                            title="Move to previous day"
+                            aria-label="Previous Day"
+                        >
+                            <ChevronLeft className="w-4 h-4 text-amber-500" />
+                            <span className="hidden sm:inline">Prev Day</span>
+                        </button>
+
+                        {/* Active Date Badge & Quick Picker */}
+                        <div className="flex items-center gap-2.5">
+                            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
+                                <span>{formatDateLabel(selectedDate)}</span>
+                            </span>
+
+                            <input 
+                                type="date"
+                                value={formattedDateStr}
+                                onChange={handleDateInputChange}
+                                className="hidden sm:inline-block text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                aria-label="Choose specific date"
+                            />
+                        </div>
+
+                        {/* Next Day, Today, and Full Calendar */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => changeDate(1)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200/80 dark:border-white/10 shadow-xs"
+                                title="Move to next day"
+                                aria-label="Next Day"
+                            >
+                                <span className="hidden sm:inline">Next Day</span>
+                                <ChevronRight className="w-4 h-4 text-amber-500" />
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedDate(new Date());
+                                    if (activeTab !== 'scores') setActiveTab('scores');
+                                }}
+                                className="hidden md:flex items-center px-3 py-1.5 rounded-xl text-xs font-black text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-white/10 shadow-xs active:scale-95 transition-all cursor-pointer"
+                            >
+                                Today
+                            </button>
+
+                            {onOpenCalendar && (
+                                <button
+                                    type="button"
+                                    onClick={onOpenCalendar}
+                                    className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-xs"
+                                    title="Open Full Gameweek Calendar"
+                                    aria-label="Open Full Calendar"
+                                >
+                                    <Calendar className="w-4 h-4 text-amber-500" />
+                                    <span className="hidden sm:inline">Full Calendar</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
