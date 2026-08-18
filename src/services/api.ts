@@ -194,11 +194,12 @@ export const ApiService = {
         }
 
         if (selectedDate) {
-          const startOfDay = new Date(selectedDate);
-          startOfDay.setUTCHours(0, 0, 0, 0);
-          const endOfDay = new Date(selectedDate);
-          endOfDay.setUTCHours(23, 59, 59, 999);
-          query = query.gte('scheduled_time', startOfDay.toISOString()).lte('scheduled_time', endOfDay.toISOString());
+          const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
+            ? selectedDate
+            : new Date(selectedDate).toISOString().split('T')[0];
+          const startIso = `${dateStr}T00:00:00.000Z`;
+          const endIso = `${dateStr}T23:59:59.999Z`;
+          query = query.gte('scheduled_time', startIso).lte('scheduled_time', endIso);
         }
 
         const { data, error } = await query.order('scheduled_time', { ascending: true });

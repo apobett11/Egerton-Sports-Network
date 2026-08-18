@@ -11,7 +11,11 @@ import {
 import { supabase } from '../../lib/supabase';
 
 // --- FIXTURES LIST & RESULTS PAGE ---
-export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => void }> = ({ onSelectMatch }) => {
+export const PublicFixturesPage: React.FC<{ 
+  onSelectMatch?: (match: Match) => void;
+  selectedDate?: Date;
+  onOpenCalendar?: () => void;
+}> = ({ onSelectMatch, selectedDate }) => {
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [selectedCompetition, setSelectedCompetition] = useState<string>('ALL');
@@ -19,8 +23,13 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
+  const formattedDateStr = selectedDate ? (
+    selectedDate instanceof Date ? selectedDate.toISOString().split('T')[0] : String(selectedDate)
+  ) : undefined;
+
   useEffect(() => {
-    ApiService.getFixtures().then((res) => {
+    setIsLoading(true);
+    ApiService.getFixtures(undefined, formattedDateStr).then((res) => {
       setFixtures(res.data || []);
       setIsLoading(false);
     });
@@ -53,7 +62,7 @@ export const PublicFixturesPage: React.FC<{ onSelectMatch?: (match: Match) => vo
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [formattedDateStr]);
 
   if (isLoading) return <LoadingSpinner label="Fetching official fixture schedule..." />;
 

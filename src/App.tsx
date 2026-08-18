@@ -388,6 +388,9 @@ export const AppContent: React.FC = () => {
             <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-24 md:pb-12 pt-6">
               {activeTab === 'scores' && (
                 <HomePage
+                  selectedDate={selectedDate}
+                  setSelectedDate={setSelectedDate}
+                  selectedCompetitionId={selectedCompetitionId}
                   onNavigate={(path) => {
                     if (path.includes('news')) setActiveTab('news');
                     else if (path.includes('league')) setActiveTab('table');

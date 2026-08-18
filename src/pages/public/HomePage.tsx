@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
 import { Card, Button, Badge, LoadingSpinner } from '../../components/common/UIComponents';
 import { 
   Trophy, Calendar, Newspaper, ArrowRight, Activity, Sparkles, 
-  Flame, Award, X, User, ChevronRight, Zap, Star, AlertCircle, RefreshCw
+  Flame, Award, X, User, ChevronLeft, ChevronRight, Zap, Star, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -12,15 +12,55 @@ interface HomePageProps {
   onNavigate: (path: string) => void;
   onSelectMatch?: (match: Match) => void;
   onOpenCalendar?: () => void;
+  selectedDate?: Date;
+  setSelectedDate?: (date: Date) => void;
+  selectedCompetitionId?: string;
 }
 
 const FAVOURITES_KEY = 'esn_guest_favourites_v1';
 
-export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, onOpenCalendar }) => {
+export const HomePage: React.FC<HomePageProps> = ({ 
+  onNavigate, 
+  onSelectMatch, 
+  onOpenCalendar,
+  selectedDate: propSelectedDate,
+  setSelectedDate: propSetSelectedDate,
+  selectedCompetitionId = 'all'
+}) => {
   // Calendar Date State for Fixtures Reactivity
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const [internalDate, setInternalDate] = useState<Date>(() => new Date());
+  const activeDate = propSelectedDate || internalDate;
+
+  const formattedDateStr = useMemo(() => {
+    const d = activeDate instanceof Date ? activeDate : new Date(activeDate);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, [activeDate]);
+
+  const handleDateChange = (newDate: Date) => {
+    if (propSetSelectedDate) {
+      propSetSelectedDate(newDate);
+    } else {
+      setInternalDate(newDate);
+    }
+  };
+
+  const handleDateStringChange = (dateStr: string) => {
+    if (!dateStr) return;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      handleDateChange(d);
+    }
+  };
+
+  const handleShiftDate = (days: number) => {
+    const next = new Date(activeDate);
+    next.setDate(next.getDate() + days);
+    handleDateChange(next);
+  };
 
   // Independent Section States
   const [fixturesState, setFixturesState] = useState<{ data: Match[]; loading: boolean; error: string | null }>({
@@ -69,12 +109,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
   const EPL_ID = '11111111-1111-1111-1111-111111111111';
   const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
-  // Load Fixtures independently on selectedDate change
+  // Load Fixtures independently on formattedDateStr or selectedCompetitionId change
   useEffect(() => {
     let isMounted = true;
     setFixturesState(prev => ({ ...prev, loading: true, error: null }));
 
-    ApiService.getFixtures(undefined, selectedDate)
+    const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+
+    ApiService.getFixtures(compId, formattedDateStr)
       .then(res => {
         if (!isMounted) return;
         if (res.success && res.data) {
@@ -103,7 +145,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
     return () => {
       isMounted = false;
     };
-  }, [selectedDate]);
+  }, [formattedDateStr, selectedCompetitionId]);
 
   // Load Standings independently
   useEffect(() => {
@@ -270,53 +312,117 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                 Campus Match Fixtures
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-sans mt-0.5">
-                Scheduled matches, live scores, and verified kickoff results
+                Scheduled matches, live scores, and verified kickoff results for <strong className="text-amber-500 font-mono">{formattedDateStr}</strong>
               </p>
             </div>
           </div>
 
-          {/* Inline Calendar Date Picker */}
-          <div className="flex items-center gap-3">
+          {/* Inline Calendar Date Picker and Full Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleShiftDate(-1)}
+              className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-white/10 shadow-xs flex items-center gap-1"
+              title="Previous Day"
+              aria-label="Previous Day"
+            >
+              <ChevronLeft className="w-4 h-4 text-amber-500" />
+              <span className="hidden sm:inline">Prev</span>
+            </button>
+
             <input 
               type="date" 
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              value={formattedDateStr}
+              onChange={(e) => handleDateStringChange(e.target.value)}
               className="text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+              aria-label="Select matchday date"
             />
+
+            <button
+              type="button"
+              onClick={() => handleShiftDate(1)}
+              className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200 dark:border-white/10 shadow-xs flex items-center gap-1"
+              title="Next Day"
+              aria-label="Next Day"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="w-4 h-4 text-amber-500" />
+            </button>
+
             <button 
-              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-              className="text-xs font-black text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 rounded-xl px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95"
+              type="button"
+              onClick={() => handleDateChange(new Date())}
+              className="text-xs font-black text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500 rounded-xl px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer shadow-xs active:scale-95"
             >
               <span>Today</span>
             </button>
+
+            {onOpenCalendar && (
+              <button
+                type="button"
+                onClick={onOpenCalendar}
+                className="p-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-500 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs shadow-xs"
+                title="Open Gameweek Calendar"
+                aria-label="Open Full Calendar"
+              >
+                <Calendar className="w-4 h-4 text-amber-500" />
+                <span className="hidden sm:inline">Full Calendar</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* INDEPENDENT FIXTURES LOADING / ERROR / SUCCESS */}
         {fixturesState.loading ? (
-          <div className="space-y-4" aria-busy="true" aria-label="Loading fixtures">
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 animate-pulse h-32" />
+          <div className="py-8 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none space-y-3" aria-busy="true" aria-label="Loading fixtures">
+            <LoadingSpinner label={`Loading fixtures for ${formattedDateStr}...`} />
           </div>
         ) : fixturesState.error ? (
           <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center space-y-2">
             <AlertCircle className="w-6 h-6 text-rose-500 mx-auto" />
             <p className="text-sm font-bold text-rose-500">{fixturesState.error}</p>
             <button 
-              onClick={() => setSelectedDate(selectedDate)}
-              className="text-xs font-bold text-rose-600 dark:text-rose-400 underline"
+              onClick={() => handleDateChange(new Date(activeDate))}
+              className="text-xs font-bold text-rose-600 dark:text-rose-400 underline cursor-pointer"
             >
               Retry Fixtures Query
             </button>
           </div>
+        ) : (eplFixtures.length === 0 && champFixtures.length === 0) ? (
+          <div className="w-full rounded-3xl p-8 md:p-12 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none flex flex-col items-center justify-center select-none space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/10">
+              <Calendar className="w-7 h-7 text-amber-500" />
+            </div>
+            <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+              No Fixtures Scheduled for {formattedDateStr}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
+              There are no campus league matches or friendlies programmed on this date. Select another date from the calendar or return to today.
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => handleDateChange(new Date())}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 shadow-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Jump to Today
+              </button>
+              {onOpenCalendar && (
+                <button
+                  type="button"
+                  onClick={onOpenCalendar}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 cursor-pointer hover:bg-amber-400 transition-colors"
+                >
+                  Browse Calendar
+                </button>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="space-y-8">
             {/* SUBSECTION 1: Egerton Premier League */}
-            <div className="space-y-3">
-              {eplFixtures.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
-                  No active Egerton Premier League fixtures scheduled for {selectedDate}.
-                </div>
-              ) : (
+            {eplFixtures.length > 0 && (
+              <div className="space-y-3">
                 <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
                   {/* Apple Accent Header Bar */}
                   <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
@@ -405,16 +511,12 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                     })}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* SUBSECTION 2: Egerton Championships */}
-            <div className="space-y-3 pt-2">
-              {champFixtures.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 text-center text-xs text-slate-400 font-medium">
-                  No active Egerton Championships fixtures scheduled for {selectedDate}.
-                </div>
-              ) : (
+            {champFixtures.length > 0 && (
+              <div className="space-y-3 pt-2">
                 <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
                   {/* Apple Accent Header Bar */}
                   <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
@@ -503,8 +605,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectMatch, o
                     })}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </section>
