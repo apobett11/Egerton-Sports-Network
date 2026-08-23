@@ -16,8 +16,8 @@ export interface AppConfig {
 const env = typeof import.meta !== 'undefined' ? import.meta.env || {} : {};
 
 export const config: AppConfig = {
-  supabaseUrl: ((env as any).VITE_SUPABASE_URL || '').trim(),
-  supabaseAnonKey: ((env as any).VITE_SUPABASE_ANON_KEY || '').trim(),
+  supabaseUrl: ((env as any).VITE_SUPABASE_URL || 'https://hizfgvgbsguhduxortrx.supabase.co').trim(),
+  supabaseAnonKey: ((env as any).VITE_SUPABASE_ANON_KEY || 'sb_publishable_GQXQug1evzVkDsPxdYRobA_c7nCszDs').trim(),
   isProduction: (env as any).PROD ?? false,
   isDevelopment: (env as any).DEV ?? true,
   enableAuditLogs: true,
