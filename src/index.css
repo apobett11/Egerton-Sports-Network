@@ -1,180 +1,103 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: var(--color-background);
-  --color-surface: var(--color-surface);
-  --color-surface-dim: var(--color-surface-dim);
-  --color-surface-bright: var(--color-surface-bright);
-  --color-surface-container-lowest: var(--color-surface-container-lowest);
-  --color-surface-container-low: var(--color-surface-container-low);
-  --color-surface-container: var(--color-surface-container);
-  --color-surface-container-high: var(--color-surface-container-high);
-  --color-surface-container-highest: var(--color-surface-container-highest);
-  --color-on-surface: var(--color-on-surface);
-  --color-on-surface-variant: var(--color-on-surface-variant);
-  --color-inverse-surface: var(--color-inverse-surface);
-  --color-inverse-on-surface: var(--color-inverse-on-surface);
-  --color-outline: var(--color-outline);
-  --color-outline-variant: var(--color-outline-variant);
-  --color-primary: var(--color-primary);
-  --color-on-primary: var(--color-on-primary);
-  --color-primary-container: var(--color-primary-container);
-  --color-on-primary-container: var(--color-on-primary-container);
-  --color-secondary: var(--color-secondary);
-  --color-on-secondary: var(--color-on-secondary);
-  --color-secondary-container: var(--color-secondary-container);
-  --color-on-secondary-container: var(--color-on-secondary-container);
-  --color-tertiary: var(--color-tertiary);
-  --color-error: var(--color-error);
-  --color-error-container: var(--color-error-container);
-  --color-on-error-container: var(--color-on-error-container);
-  --color-primary-fixed-dim: var(--color-primary-fixed-dim);
-  --color-primary-fixed: var(--color-primary-fixed);
-
-  --font-family-display-md: "Hanken Grotesk", sans-serif;
-  --font-family-label-md: "Hanken Grotesk", sans-serif;
-  --font-family-headline-lg: "Hanken Grotesk", sans-serif;
-  --font-family-body-lg: "Hanken Grotesk", sans-serif;
-  --font-family-display-lg: "Hanken Grotesk", sans-serif;
-  --font-family-headline-md: "Hanken Grotesk", sans-serif;
-  --font-family-body-md: "Hanken Grotesk", sans-serif;
-  --font-family-label-sm: "Hanken Grotesk", sans-serif;
-  --font-family-title-md: "Hanken Grotesk", sans-serif;
-
-  --spacing-unit: 4px;
-  --spacing-container-padding: 32px;
-  --spacing-gutter: 24px;
-  --spacing-stack-md: 16px;
-  --spacing-stack-lg: 32px;
-  --spacing-stack-sm: 8px;
+  --color-flashscore-red: #ff0046;
+  --color-flashscore-red-hover: #e0003c;
+  --color-flashscore-green: #00b04f;
+  --color-flashscore-amber: #ff9800;
+  --color-flashscore-dark-navy: #0e1e2d;
+  --color-flashscore-card-dark: #0e1c2b;
+  --color-flashscore-bg-dark: #081018;
+  --color-flashscore-border-dark: #16283d;
+  --color-flashscore-text-muted: #8fa1b4;
 }
 
 :root {
-  --color-background: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-surface-dim: #F1F5F9;
-  --color-surface-bright: #FFFFFF;
-  --color-surface-container-lowest: #FFFFFF;
-  --color-surface-container-low: #F8FAFC;
-  --color-surface-container: #FFFFFF;
-  --color-surface-container-high: #F1F5F9;
-  --color-surface-container-highest: #E2E8F0;
-  --color-on-surface: #0F172A;
-  --color-on-surface-variant: #64748B;
-  --color-primary: #2563EB;
-  --color-secondary: #0F172A;
-  --color-accent: #F97316;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
+  --fs-bg: #f2f4f7;
+  --fs-card-bg: #ffffff;
+  --fs-header-bg: #0e1e2d;
+  --fs-subnav-bg: #ffffff;
+  --fs-border: #e6e8ec;
+  --fs-divider: #eef0f3;
+  --fs-text-primary: #0e1726;
+  --fs-text-secondary: #64748b;
+  --fs-row-hover: #f8fafc;
+  --fs-pill-bg: #eef1f5;
+  --fs-pill-active: #ff0046;
+  --fs-red: #ff0046;
+  --fs-green: #00b04f;
+  --fs-amber: #ff9800;
+  --fs-gray: #8fa1b4;
+  --fs-blue-zone: #1565c0;
+  --fs-crimson-zone: #c2185b;
+  --fs-relegation-zone: #d32f2f;
 }
 
 .dark {
-  --color-background: #090D16;
-  --color-surface: #0E1424;
-  --color-surface-dim: #090D16;
-  --color-surface-bright: #1A243B;
-  --color-surface-container-lowest: #060910;
-  --color-surface-container-low: #0D1322;
-  --color-surface-container: #12192C;
-  --color-surface-container-high: #172037;
-  --color-surface-container-highest: #1F2B48;
-  --color-on-surface: #F8FAFC;
-  --color-on-surface-variant: #94A3B8;
-  --color-primary: #3B82F6;
-  --color-secondary: #60A5FA;
-  --color-accent: #F97316;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
+  --fs-bg: #081018;
+  --fs-card-bg: #0e1c2b;
+  --fs-header-bg: #0b1522;
+  --fs-subnav-bg: #0e1c2b;
+  --fs-border: #1a2e45;
+  --fs-divider: #142538;
+  --fs-text-primary: #ffffff;
+  --fs-text-secondary: #8fa1b4;
+  --fs-row-hover: #162a42;
+  --fs-pill-bg: #14263b;
+  --fs-pill-active: #ff0046;
+  --fs-red: #ff0046;
+  --fs-green: #00b04f;
+  --fs-amber: #ff9800;
+  --fs-gray: #73889c;
+  --fs-blue-zone: #1565c0;
+  --fs-crimson-zone: #c2185b;
+  --fs-relegation-zone: #d32f2f;
 }
 
 body {
-  font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
-  color: var(--color-on-surface);
-  background-color: var(--color-background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--fs-text-primary);
+  background-color: var(--fs-bg);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* Apple-style Layered Ambient Backdrop System */
-.stadium-bg-overlay {
-  background-image: radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 60%),
-                    radial-gradient(circle at 100% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
-  pointer-events: none;
+/* Custom scrollbar matching sports feed */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 160, 180, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 160, 180, 0.5);
 }
 
-.dark .stadium-bg-overlay {
-  background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 65%),
-                    radial-gradient(circle at 100% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
-                    radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.04) 0%, transparent 50%);
-  pointer-events: none;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Pitch Turf Ambient Background System */
-.apple-layered-bg,
-.pitch-turf-bg,
-.turf-pitch-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-color: #F0F8F3;
-  background-image: 
-    linear-gradient(to bottom, rgba(240, 249, 244, 0.72), rgba(230, 245, 238, 0.84)),
-    url('/images/stadium-bg.jpg');
-  background-position: center top;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+/* Flashscore font styling */
+.fs-condensed {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.02em;
 }
 
-.dark .apple-layered-bg,
-.dark .pitch-turf-bg,
-.dark .turf-pitch-overlay {
-  background-color: #07120E;
-  background-image: 
-    linear-gradient(to bottom, rgba(6, 17, 13, 0.80), rgba(4, 12, 9, 0.88)),
-    url('/images/stadium-bg.jpg');
-  background-position: center top;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
-
-/* Glassmorphism Elevation System */
-.glass-surface {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.dark .glass-surface {
-  background: rgba(14, 20, 36, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* Apple-style Soft Shadow System */
-.elevation-card {
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.dark .elevation-card {
-  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.4), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
-}
-
-.elevation-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px -4px rgba(37, 99, 235, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
-}
-
-.dark .elevation-card:hover {
-  box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.6), 0 0 20px 0 rgba(59, 130, 246, 0.15);
+/* Flashscore Match Score Typography */
+.fs-score-digit {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }

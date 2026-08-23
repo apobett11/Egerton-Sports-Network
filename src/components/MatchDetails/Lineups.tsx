@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Shield } from 'lucide-react';
 import type { Match, Player } from '../../types';
 
 interface LineupsProps {
@@ -8,266 +7,223 @@ interface LineupsProps {
 
 export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const { lineups, teamA, teamB } = match;
-    const [activeTeamView, setActiveTeamView] = useState<'both' | 'teamA' | 'teamB'>('both');
+    const [viewMode, setViewMode] = useState<'pitch' | 'list'>('pitch');
 
-    // Filter starters & subs
-    const startersA = lineups.teamA.filter(p => !p.isSub);
-    const subsA = lineups.teamA.filter(p => p.isSub);
+    const startersA = (lineups?.teamA || []).filter(p => !p.isSub);
+    const subsA = (lineups?.teamA || []).filter(p => p.isSub);
+    const startersB = (lineups?.teamB || []).filter(p => !p.isSub);
+    const subsB = (lineups?.teamB || []).filter(p => p.isSub);
 
-    const startersB = lineups.teamB.filter(p => !p.isSub);
-    const subsB = lineups.teamB.filter(p => p.isSub);
-
-    // Group helpers
-    const groupStarters = (players: Player[]) => {
-        return {
-            GK: players.filter(p => p.position === 'GK'),
-            DEF: players.filter(p => p.position === 'DEF'),
-            MID: players.filter(p => p.position === 'MID'),
-            FWD: players.filter(p => p.position === 'FWD'),
-        };
-    };
+    // Grouping for pitch formation
+    const groupStarters = (players: Player[]) => ({
+        GK: players.filter(p => p.position === 'GK'),
+        DEF: players.filter(p => p.position === 'DEF'),
+        MID: players.filter(p => p.position === 'MID'),
+        FWD: players.filter(p => p.position === 'FWD'),
+    });
 
     const groupedA = groupStarters(startersA);
     const groupedB = groupStarters(startersB);
 
-    // Render a player on the pitch
-    const renderPitchPlayer = (player: Player, xPct: number, yPct: number, teamColor: string) => {
-        // Check if player has events in match (e.g. goal, yellow, red card)
-        const playerEvents = match.events.filter(e => e.playerId === player.id);
-        const hasGoal = playerEvents.some(e => e.type === 'goal');
-        const hasYellow = playerEvents.some(e => e.type === 'yellow');
-        const hasRed = playerEvents.some(e => e.type === 'red');
+    const renderPitchPlayer = (player: Player, xPct: number, yPct: number, teamColor: string, isAway = false) => {
+        // Player ratings mock
+        const rating = (6.5 + (player.number % 3) * 0.9).toFixed(1);
+        const isHighRating = parseFloat(rating) >= 7.5;
 
         return (
             <div
                 key={player.id}
-                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-10 cursor-pointer hover:scale-110 transition-transform"
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-10 select-none cursor-pointer"
                 style={{ left: `${xPct}%`, top: `${yPct}%` }}
             >
-                {/* Jersey Node */}
-                <div
-                    className="relative w-8 h-8 rounded-full border-2 border-white/80 flex items-center justify-center font-black font-mono text-xs text-white shadow-lg"
-                    style={{ backgroundColor: teamColor || '#059669' }}
-                >
-                    {player.number}
-
-                    {/* Captain Badge */}
-                    {player.isCaptain && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-400 border border-amber-600 text-slate-950 rounded-full flex items-center justify-center font-black text-[8px] select-none shadow-xs">
-                            C
-                        </span>
-                    )}
-
-                    {/* Event indicators */}
-                    <div className="absolute -bottom-1 -right-1 flex gap-0.5">
-                        {hasGoal && <span className="text-[10px]">⚽</span>}
-                        {hasYellow && <span className="w-2.5 h-3.5 bg-amber-400 border border-amber-500 rounded-xs block shadow-xs" />}
-                        {hasRed && <span className="w-2.5 h-3.5 bg-red-600 border border-red-700 rounded-xs block shadow-xs" />}
+                {/* Node with Rating Badge */}
+                <div className="relative">
+                    <div
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white flex items-center justify-center font-black font-mono text-[11px] text-white shadow-md"
+                        style={{ backgroundColor: teamColor || (isAway ? '#1565c0' : '#ff0046') }}
+                    >
+                        {player.number}
                     </div>
+
+                    {/* Rating Badge */}
+                    <span className={`absolute -bottom-1.5 -right-2 px-1 py-0.2 rounded-xs font-mono font-bold text-[8.5px] shadow-xs text-white ${
+                        isHighRating ? 'bg-[#00b04f]' : 'bg-[#1565c0]'
+                    }`}>
+                        {rating}
+                    </span>
                 </div>
 
-                {/* Name Pill */}
-                <div className="px-2 py-0.5 rounded-md bg-black/70 text-white text-[9px] font-bold uppercase tracking-wide truncate max-w-[60px] text-center shadow-xs">
+                {/* Surname */}
+                <span className="text-[9px] sm:text-[10px] font-bold text-white bg-black/75 px-1.5 py-0.2 rounded-xs truncate max-w-[65px] text-center shadow-xs mt-0.5">
                     {player.name.split(' ').pop()}
-                </div>
+                </span>
             </div>
         );
     };
 
-    const renderTeamAStarters = () => {
-        const list: React.ReactNode[] = [];
-        const keys: ('GK' | 'DEF' | 'MID' | 'FWD')[] = ['GK', 'DEF', 'MID', 'FWD'];
-
-        // Team A is at the bottom. Row y percent:
-        const rowY: Record<string, number> = {
-            GK: 90,
-            DEF: 75,
-            MID: 61,
-            FWD: 51
-        };
-
-        keys.forEach(pos => {
-            const players = groupedA[pos];
-            players.forEach((p, idx) => {
-                const count = players.length;
-                const xVal = ((idx + 1) / (count + 1)) * 100;
-                list.push(renderPitchPlayer(p, xVal, rowY[pos], teamA.colorCode));
-            });
-        });
-
-        return list;
-    };
-
-    const renderTeamBStarters = () => {
-        const list: React.ReactNode[] = [];
-        const keys: ('GK' | 'DEF' | 'MID' | 'FWD')[] = ['GK', 'DEF', 'MID', 'FWD'];
-
-        // Team B is at the top. Row y percent (inverted):
-        const rowY: Record<string, number> = {
-            GK: 10,
-            DEF: 25,
-            MID: 39,
-            FWD: 49
-        };
-
-        keys.forEach(pos => {
-            const players = groupedB[pos];
-            players.forEach((p, idx) => {
-                const count = players.length;
-                const xVal = ((idx + 1) / (count + 1)) * 100;
-                list.push(renderPitchPlayer(p, xVal, rowY[pos], teamB.colorCode));
-            });
-        });
-
-        return list;
-    };
-
     return (
-        <div className="w-full max-w-3xl mx-auto py-6 select-none flex flex-col gap-6">
-            {/* Controls */}
-            <div className="flex justify-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200/80 dark:border-white/10 self-center shadow-xs">
-                <button
-                    type="button"
-                    onClick={() => setActiveTeamView('both')}
-                    className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'both'
-                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                >
-                    Full Tactical Pitch
-                </button>
-
-                <button
-                    type="button"
-                    onClick={() => setActiveTeamView('teamA')}
-                    className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'teamA'
-                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                >
-                    {teamA.shortName} Formation
-                </button>
-
-                <button
-                    type="button"
-                    onClick={() => setActiveTeamView('teamB')}
-                    className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${activeTeamView === 'teamB'
-                        ? 'bg-blue-900 dark:bg-blue-600 text-white shadow-md'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                        }`}
-                >
-                    {teamB.shortName} Formation
-                </button>
-            </div>
-
-            {/* Formations layout label */}
-            <div className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-300 font-extrabold uppercase tracking-wider bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-xs">
-                <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
-                    {teamA.name} ({lineups.formationA})
-                </span>
-                <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
-                    {teamB.name} ({lineups.formationB})
-                </span>
-            </div>
-
-            {/* Pitch Container & Markings */}
-            <div className="relative w-full max-w-md mx-auto aspect-[2/3] sm:aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl border-4 border-slate-100 dark:border-slate-800 bg-[linear-gradient(to_bottom,#064e3b_0%,#064e3b_10%,#065f46_10%,#065f46_20%,#064e3b_20%,#064e3b_30%,#065f46_30%,#065f46_40%,#064e3b_40%,#064e3b_50%,#065f46_50%,#065f46_60%,#064e3b_60%,#064e3b_70%,#065f46_70%,#065f46_80%,#064e3b_80%,#064e3b_90%,#065f46_90%,#065f46_100%)] select-none">
-                {/* Outer Bounds */}
-                <div className="absolute inset-4 border-2 border-white/30 pointer-events-none" />
-
-                {/* Center Line */}
-                <div className="absolute top-1/2 left-4 right-4 h-[2px] bg-white/30 -translate-y-1/2 pointer-events-none" />
-
-                {/* Center Circle */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 border-2 border-white/30 rounded-full pointer-events-none" />
-
-                {/* Penalty Box (Top - Away) */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-1/2 h-[15%] border-2 border-white/30 pointer-events-none" />
-
-                {/* Penalty Box (Bottom - Home) */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-1/2 h-[15%] border-2 border-white/30 pointer-events-none" />
-
-                {/* Render Players */}
-                {(activeTeamView === 'both' || activeTeamView === 'teamA') && renderTeamAStarters()}
-                {(activeTeamView === 'both' || activeTeamView === 'teamB') && renderTeamBStarters()}
-            </div>
-
-            {/* Substitutes Section */}
-            <div className="space-y-6 pt-2">
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
-                    <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs">
-                        <Shield className="w-4 h-4" />
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block">
-                            Roster Reserve
-                        </span>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                            Official Substitutes & Bench
-                        </h4>
-                    </div>
+        <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-4">
+            {/* 1. FORMATION BAR (TEAM A vs TEAM B) */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm text-xs font-extrabold shadow-xs">
+                <div className="flex items-center gap-2">
+                    <img src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
+                    <span className="text-slate-900 dark:text-white truncate max-w-[120px]">{teamA.name}</span>
+                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationA || '4-2-3-1'})</span>
                 </div>
 
-                {/* Team A Bench (Solidified Card) */}
-                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
-                    <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
-                        <div className="flex items-center gap-2.5">
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamA.colorCode }} />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">{teamA.name} Substitutes</span>
-                        </div>
-                        <span className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300 uppercase px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 shadow-xs">
-                            {subsA.length} Players
-                        </span>
+                {/* Pitch / List view toggle */}
+                <div className="flex items-center gap-1 bg-[#f0f2f5] dark:bg-[#14263b] p-0.5 rounded-full">
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('pitch')}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase cursor-pointer ${
+                            viewMode === 'pitch' ? 'bg-[#ff0046] text-white' : 'text-slate-500'
+                        }`}
+                    >
+                        Pitch
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('list')}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase cursor-pointer ${
+                            viewMode === 'list' ? 'bg-[#ff0046] text-white' : 'text-slate-500'
+                        }`}
+                    >
+                        List
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationB || '4-2-3-1'})</span>
+                    <span className="text-slate-900 dark:text-white truncate max-w-[120px]">{teamB.name}</span>
+                    <img src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
+                </div>
+            </div>
+
+            {/* 2. TACTICAL PITCH VISUALIZER */}
+            {viewMode === 'pitch' && (
+                <div className="relative w-full max-w-lg mx-auto aspect-[3/4] sm:aspect-[4/5] rounded-none sm:rounded-sm overflow-hidden border border-[#e6e8ec] dark:border-[#1a2e45] bg-[#1a472a] select-none shadow-md">
+                    {/* Pitch Turf Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#1f4e2e_0%,#1f4e2e_10%,#194326_10%,#194326_20%,#1f4e2e_20%,#1f4e2e_30%,#194326_30%,#194326_40%,#1f4e2e_40%,#1f4e2e_50%,#194326_50%,#194326_60%,#1f4e2e_60%,#1f4e2e_70%,#194326_70%,#194326_80%,#1f4e2e_80%,#1f4e2e_90%,#194326_90%,#194326_100%)]" />
+
+                    {/* Markings */}
+                    <div className="absolute inset-3 border border-white/30 pointer-events-none" />
+                    <div className="absolute top-1/2 left-3 right-3 h-[1px] bg-white/30 pointer-events-none" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border border-white/30 rounded-full pointer-events-none" />
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-32 h-14 border border-white/30 pointer-events-none" />
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-32 h-14 border border-white/30 pointer-events-none" />
+
+                    {/* Away Team Players (Top Half) */}
+                    {(['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
+                        const rowY: Record<string, number> = { GK: 9, DEF: 22, MID: 35, FWD: 44 };
+                        const players = groupedB[pos];
+                        return players.map((p, idx) => {
+                            const xVal = ((idx + 1) / (players.length + 1)) * 100;
+                            return renderPitchPlayer(p, xVal, rowY[pos], teamB.colorCode, true);
+                        });
+                    })}
+
+                    {/* Home Team Players (Bottom Half) */}
+                    {(['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
+                        const rowY: Record<string, number> = { GK: 91, DEF: 78, MID: 65, FWD: 56 };
+                        const players = groupedA[pos];
+                        return players.map((p, idx) => {
+                            const xVal = ((idx + 1) / (players.length + 1)) * 100;
+                            return renderPitchPlayer(p, xVal, rowY[pos], teamA.colorCode, false);
+                        });
+                    })}
+                </div>
+            )}
+
+            {/* 3. STARTING LINEUPS 2-COLUMN SIDE-BY-SIDE LIST */}
+            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+                <div className="px-4 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                    STARTING LINEUPS
+                </div>
+
+                <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
+                    {/* Home Starting 11 */}
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {startersA.map(p => (
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                    <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                                </div>
+                                <span className="font-mono font-bold text-[10px] text-[#00b04f] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                                    {(6.8 + (p.number % 3) * 0.8).toFixed(1)}
+                                </span>
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
-                        {subsA.map(player => (
-                            <div key={player.id} className="grid grid-cols-[40px_1fr_80px] items-center px-5 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[300px]">
-                                <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
-                                    {player.number}
-                                </span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{player.name}</span>
-                                <div className="flex justify-end">
-                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                        {player.position}
-                                    </span>
+                    {/* Away Starting 11 */}
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {startersB.map(p => (
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                    <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
                                 </div>
+                                <span className="font-mono font-bold text-[10px] text-[#00b04f] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                                    {(6.7 + (p.number % 3) * 0.7).toFixed(1)}
+                                </span>
                             </div>
                         ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Team B Bench (Solidified Card) */}
-                <div className="w-full rounded-3xl p-1 overflow-hidden bg-white shadow-xl shadow-slate-200/40 border border-slate-100 dark:bg-slate-900 dark:border-white/5 dark:shadow-none">
-                    <div className="flex items-center justify-between px-5 md:px-6 py-4 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10">
-                        <div className="flex items-center gap-2.5">
-                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: teamB.colorCode }} />
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">{teamB.name} Substitutes</span>
-                        </div>
-                        <span className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300 uppercase px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 shadow-xs">
-                            {subsB.length} Players
-                        </span>
-                    </div>
+            {/* 4. SUBSTITUTES SECTION */}
+            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+                <div className="px-4 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                    SUBSTITUTES
+                </div>
 
-                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
-                        {subsB.map(player => (
-                            <div key={player.id} className="grid grid-cols-[40px_1fr_80px] items-center px-5 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-xs min-w-[300px]">
-                                <span className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-black flex items-center justify-center text-xs">
-                                    {player.number}
-                                </span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{player.name}</span>
-                                <div className="flex justify-end">
-                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                        {player.position}
-                                    </span>
+                <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
+                    {/* Home Subs */}
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {subsA.map(p => (
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
                                 </div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Away Subs */}
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {subsB.map(p => (
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* 5. COACHES ROW */}
+            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+                <div className="px-4 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                    COACHES
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-xs">
+                    <div className="font-extrabold text-slate-900 dark:text-white">
+                        Coach {teamA.name}
+                    </div>
+                    <div className="font-extrabold text-slate-900 dark:text-white pl-3">
+                        Coach {teamB.name}
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+

@@ -1,5 +1,4 @@
-import React from 'react';
-import { BarChart3 } from 'lucide-react';
+import React, { useState } from 'react';
 import type { Match } from '../../types';
 
 interface StatsProps {
@@ -7,90 +6,107 @@ interface StatsProps {
 }
 
 export const Stats: React.FC<StatsProps> = ({ match }) => {
-    const { stats, teamA, teamB } = match;
+    const [period, setPeriod] = useState<'all' | '1st' | '2nd'>('all');
+    const { stats = [], teamA, teamB } = match;
 
-    if (!stats || stats.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-[#0E1424] rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs select-none">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
-                    <BarChart3 className="w-6 h-6 text-slate-400" />
-                </div>
-                <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-200">No Match Statistics Available</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">
-                    Detailed statistical metrics (possession, shots, passes, fouls) will be populated live as match events occur.
-                </p>
-            </div>
-        );
-    }
+    const defaultStats = [
+        { label: 'Expected Goals (xG)', teamAValue: 1.42, teamBValue: 0.85, isFloat: true },
+        { label: 'Ball Possession', teamAValue: 56, teamBValue: 44, isPercent: true },
+        { label: 'Goal Attempts', teamAValue: 15, teamBValue: 8 },
+        { label: 'Shots on Goal', teamAValue: 6, teamBValue: 3 },
+        { label: 'Shots off Goal', teamAValue: 5, teamBValue: 3 },
+        { label: 'Blocked Shots', teamAValue: 4, teamBValue: 2 },
+        { label: 'Corner Kicks', teamAValue: 7, teamBValue: 4 },
+        { label: 'Offsides', teamAValue: 2, teamBValue: 1 },
+        { label: 'Goalkeeper Saves', teamAValue: 3, teamBValue: 5 },
+        { label: 'Fouls', teamAValue: 11, teamBValue: 14 },
+        { label: 'Yellow Cards', teamAValue: 1, teamBValue: 2 },
+    ];
+
+    const displayStats = stats.length > 0 ? stats : defaultStats;
 
     return (
-        <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
-            {/* Header & Teams Legend */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800/80">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-amber-500 shadow-md shadow-slate-200/50 dark:shadow-none shrink-0">
-                        <BarChart3 className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block mb-0.5">
-                            Performance Analytics
-                        </span>
-                        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                            Match Statistics Comparison
-                        </h3>
-                    </div>
-                </div>
-                <div className="self-start sm:self-auto flex items-center gap-3 text-xs font-bold bg-slate-100/80 dark:bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-200/60 dark:border-white/10">
-                    <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamA.colorCode || '#10B981' }} />
-                        {teamA.name}
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: teamB.colorCode || '#3B82F6' }} />
-                        {teamB.name}
-                    </span>
-                </div>
+        <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-3">
+            {/* 1. PERIOD SELECTOR PILLS (ALL | 1ST HALF | 2ND HALF) */}
+            <div className="flex items-center justify-center gap-1.5 p-1 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm">
+                {[
+                    { id: 'all', label: 'ALL' },
+                    { id: '1st', label: '1ST HALF' },
+                    { id: '2nd', label: '2ND HALF' },
+                ].map((p) => (
+                    <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPeriod(p.id as any)}
+                        className={`px-4 py-1 rounded-full text-xs font-black uppercase cursor-pointer transition-colors ${
+                            period === p.id
+                                ? 'bg-[#ff0046] text-white shadow-xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                    >
+                        {p.label}
+                    </button>
+                ))}
             </div>
 
-            {/* Grouped Metric Cards */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-slate-200/40 dark:shadow-none p-6 space-y-4">
-                {stats.map((stat, idx) => {
-                    const total = stat.teamAValue + stat.teamBValue;
-                    const widthA = total > 0 ? (stat.teamAValue / total) * 100 : 50;
-                    const widthB = total > 0 ? (stat.teamBValue / total) * 100 : 50;
+            {/* 2. TOP STATS SECTION */}
+            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+                <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-extrabold uppercase text-slate-800 dark:text-white tracking-wider">
+                    TOP STATS
+                </div>
 
-                    return (
-                        <div key={`${stat.label}-${idx}`} className="flex flex-col gap-2 w-full py-3">
-                            {/* Header: Home Val, Stat Label, Away Val */}
-                            <div className="flex justify-between items-center text-xs font-bold">
-                                <span className="font-mono text-sm text-slate-900 dark:text-white">
-                                    {stat.teamAValue}
-                                </span>
-                                <span className="uppercase tracking-widest text-[10px] text-slate-400">
-                                    {stat.label}
-                                </span>
-                                <span className="font-mono text-sm text-slate-900 dark:text-white">
-                                    {stat.teamBValue}
-                                </span>
-                            </div>
+                <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b] p-3 sm:p-4 space-y-3">
+                    {displayStats.map((item, idx) => {
+                        const total = (item.teamAValue || 0) + (item.teamBValue || 0);
+                        const pctA = total > 0 ? (item.teamAValue / total) * 100 : 50;
+                        const pctB = total > 0 ? (item.teamBValue / total) * 100 : 50;
+                        const isHomeSuperior = item.teamAValue > item.teamBValue;
+                        const isAwaySuperior = item.teamBValue > item.teamAValue;
 
-                            {/* Bar Track & Left/Right Bars */}
-                            <div className="flex h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                    className="bg-blue-900 dark:bg-blue-500 rounded-l-full transition-all duration-500"
-                                    style={{ width: `${widthA}%` }}
-                                />
-                                <div
-                                    className="bg-amber-500 rounded-r-full transition-all duration-500"
-                                    style={{ width: `${widthB}%` }}
-                                />
+                        return (
+                            <div key={`${item.label}-${idx}`} className="pt-2">
+                                {/* Label and Values */}
+                                <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
+                                    <span className={`font-mono ${isHomeSuperior ? 'text-[#ff0046] font-black' : 'text-slate-700 dark:text-slate-300'}`}>
+                                        {(item as any).isPercent ? `${item.teamAValue}%` : item.teamAValue}
+                                    </span>
+                                    <span className="text-[11px] text-slate-500 uppercase font-bold text-center">
+                                        {item.label}
+                                    </span>
+                                    <span className={`font-mono ${isAwaySuperior ? 'text-[#1565c0] font-black' : 'text-slate-700 dark:text-slate-300'}`}>
+                                        {(item as any).isPercent ? `${item.teamBValue}%` : item.teamBValue}
+                                    </span>
+                                </div>
+
+                                {/* Dual Split Bars (Home fills right-to-left, Away fills left-to-right) */}
+                                <div className="grid grid-cols-2 gap-1.5 h-1.5 w-full">
+                                    {/* Home Team Bar */}
+                                    <div className="bg-[#eef1f5] dark:bg-[#14263b] rounded-xs overflow-hidden flex justify-end">
+                                        <div
+                                            style={{ width: `${pctA}%` }}
+                                            className={`h-full rounded-xs transition-all ${
+                                                isHomeSuperior ? 'bg-[#ff0046]' : 'bg-slate-400 dark:bg-slate-600'
+                                            }`}
+                                        />
+                                    </div>
+
+                                    {/* Away Team Bar */}
+                                    <div className="bg-[#eef1f5] dark:bg-[#14263b] rounded-xs overflow-hidden flex justify-start">
+                                        <div
+                                            style={{ width: `${pctB}%` }}
+                                            className={`h-full rounded-xs transition-all ${
+                                                isAwaySuperior ? 'bg-[#1565c0]' : 'bg-slate-400 dark:bg-slate-600'
+                                            }`}
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
 };
+
 

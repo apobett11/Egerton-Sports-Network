@@ -19,7 +19,7 @@ import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
-import { X, Activity, Trophy, Award, LogIn, Loader2 } from 'lucide-react';
+import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -270,56 +270,68 @@ export const AppContent: React.FC = () => {
     <HerdMentalityProvider>
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <div className={`relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans antialiased transition-colors duration-200 ${
-        darkMode ? 'bg-slate-950 text-slate-50' : 'bg-slate-50 text-slate-900'
+      <div className={`relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans antialiased transition-colors duration-150 ${
+        darkMode ? 'bg-[#081018] text-white' : 'bg-[#f2f4f7] text-[#0e1726]'
       }`}>
-        <div className="apple-layered-bg" aria-hidden="true" />
         {/* Sidebar Drawer overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-100 bg-black/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 z-100 bg-black/70 transition-opacity flex justify-end"
             onClick={() => setSidebarOpen(false)}
             role="dialog"
             aria-modal="true"
             aria-label="Mobile navigation drawer"
           >
             <div
-              className="w-72 max-w-[80vw] h-full bg-white dark:bg-slate-900 shadow-2xl p-6 flex flex-col justify-between"
+              className="w-72 max-w-[80vw] h-full bg-[#ffffff] dark:bg-[#0e1c2b] text-slate-900 dark:text-white shadow-2xl p-6 flex flex-col justify-between border-l border-slate-200 dark:border-[#1a2e45]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-amber-500/20">
-                      E
-                    </div>
-                    <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                      Egerton Athletics
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1a2e45] pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
+                    <span className="font-extrabold text-lg tracking-tight uppercase">
+                      FLASHSCORE
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSidebarOpen(false)}
                     aria-label="Close navigation drawer"
-                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+                    className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#14263b] text-slate-500 cursor-pointer"
                   >
-                    <X className="w-5 h-5 text-slate-500" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
+                {/* Theme Switcher in Sidebar */}
+                <div className="space-y-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Appearance</div>
+                  <button
+                    type="button"
+                    onClick={toggleDarkMode}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#14263b] text-xs font-bold cursor-pointer"
+                  >
+                    <span>Theme</span>
+                    <span className="flex items-center gap-1 text-[#ff0046]">
+                      {darkMode ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                      {darkMode ? 'Dark' : 'Light'}
+                    </span>
+                  </button>
+                </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Campus Competitions</div>
-                  <ul className="space-y-2">
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Activity className="w-4 h-4 text-emerald-600" />
+                  <ul className="space-y-1.5">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <Activity className="w-4 h-4 text-[#ff0046]" />
                       <span>Egerton Premier League</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
                       <Award className="w-4 h-4 text-amber-500" />
                       <span>Egerton Championships</span>
                     </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
                       <Trophy className="w-4 h-4 text-blue-500" />
                       <span>Friendlies</span>
                     </li>
@@ -327,19 +339,19 @@ export const AppContent: React.FC = () => {
                 </div>
 
                 {/* Authentication Entry Point */}
-                <div className="space-y-4">
-                  <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Authentication</div>
+                <div className="space-y-3">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Platform Portal</div>
                   <ul className="space-y-1.5">
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-xs font-bold text-white cursor-pointer shadow-sm transition-colors">
-                      <LogIn className="w-4 h-4" />
-                      <span>Login to Platform</span>
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-[#0e1e2d] hover:bg-[#152e47] dark:bg-[#152e47] dark:hover:bg-[#1c3c5c] text-xs font-bold text-white cursor-pointer shadow-sm transition-colors">
+                      <LogIn className="w-4 h-4 text-[#ff0046]" />
+                      <span>Official Login</span>
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center">
-                Egerton Athletics v1.0.0
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center pt-4 border-t border-slate-100 dark:border-[#1a2e45]">
+                Flashscore Edition v2.0
               </div>
             </div>
           </div>
@@ -369,6 +381,9 @@ export const AppContent: React.FC = () => {
               onMenuClick={() => setSidebarOpen(true)}
               onNavigateNews={() => setActiveTab('news')}
               onNavigateLogin={() => handleNavigateHash('/login')}
+              activeMainTab={['scores', 'news', 'table', 'favorites'].includes(activeTab) ? (activeTab as any) : 'scores'}
+              onSelectMainTab={(tab) => setActiveTab(tab)}
+              favoritesCount={favorites.length}
               isCalendarOpen={isCalendarOpen}
               onCloseCalendar={() => setIsCalendarOpen(false)}
             />
@@ -393,7 +408,7 @@ export const AppContent: React.FC = () => {
               onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
-            <main className="flex-1 w-full max-w-7xl mx-auto px-0.5 sm:px-1.5 md:px-2 pb-24 md:pb-12 pt-3">
+            <main className="flex-1 w-full max-w-5xl mx-auto px-0 sm:px-2 md:px-4 pb-12 pt-2">
               {activeTab === 'scores' && (
                 <HomePage
                   selectedDate={selectedDate}

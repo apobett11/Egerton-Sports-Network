@@ -31,11 +31,11 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
     const [h2hRecords, setH2hRecords] = useState<Array<{ id: string; date: string; scoreA: number; scoreB: number; winner: string; venue: string }>>([]);
     
-    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('squads');
+    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('overview');
 
     useEffect(() => {
         setCurrentMatch(match);
-        setActiveTab('squads');
+        setActiveTab('overview');
 
         // Fetch deep match details from database
         ApiService.getMatchDetails(match.id).then((res) => {
@@ -117,12 +117,8 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                     </div>
                 );
 
-            case 'squads':
             case 'lineups':
                 return <Lineups match={currentMatch} />;
-
-            case 'timeline':
-                return <Summary match={currentMatch} />;
 
             case 'stats':
                 return <Stats match={currentMatch} />;
@@ -130,17 +126,11 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
             case 'ratings':
                 return <PlayerRatings match={currentMatch} />;
 
-            case 'captains_notes':
-                return <CaptainsNotes match={currentMatch} />;
+            case 'timeline':
+                return <Summary match={currentMatch} />;
 
             case 'form':
                 return <FormTab match={currentMatch} />;
-
-            case 'context':
-                return <MatchContext match={currentMatch} />;
-
-            case 'details':
-                return <MatchDetailsCard match={currentMatch} />;
 
             case 'h2h':
                 return (
