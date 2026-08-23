@@ -393,7 +393,7 @@ export const AppContent: React.FC = () => {
               onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
-            <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-24 md:pb-12 pt-6">
+            <main className="flex-1 w-full max-w-7xl mx-auto px-0.5 sm:px-1.5 md:px-2 pb-24 md:pb-12 pt-3">
               {activeTab === 'scores' && (
                 <HomePage
                   selectedDate={selectedDate}

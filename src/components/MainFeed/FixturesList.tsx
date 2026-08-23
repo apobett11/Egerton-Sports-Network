@@ -81,8 +81,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                         </div>
                     </div>
 
-                    {/* Solidified Match List with neat columns and lateral scroll */}
-                    <div className="divide-y divide-slate-50 dark:divide-white/5 overflow-x-auto no-scrollbar">
+                    {/* Solidified Match List with responsive layout */}
+                    <div className="divide-y divide-slate-50 dark:divide-white/5">
                         {leagueMatches.map((match) => {
                             const isMatchLive = match.status === 'LIVE';
                             const isFav = isFavorite(match.id);
@@ -91,7 +91,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                 <div
                                     key={match.id}
                                     onClick={() => onMatchClick(match)}
-                                    className="relative flex items-center justify-between px-4 md:px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group min-w-[500px]"
+                                    className="relative flex items-center justify-between px-2.5 sm:px-4 md:px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group w-full"
                                 >
                                     {/* Favorite Star Button */}
                                     <button
@@ -101,10 +101,10 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                             toggleFavorite(match.id);
                                         }}
                                         aria-label={isFav ? "Remove match from favorites" : "Add match to favorites"}
-                                        className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer mr-2 shrink-0"
+                                        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer mr-1.5 sm:mr-2 shrink-0"
                                     >
                                         <Star
-                                            className={`w-5 h-5 transition-all duration-200 ${
+                                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-200 ${
                                                 isFav
                                                     ? 'text-amber-400 fill-amber-400 opacity-100 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
                                                     : 'text-slate-300 dark:text-slate-600 opacity-60 group-hover:opacity-100 hover:text-amber-400'
@@ -113,60 +113,60 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                     </button>
 
                                     {/* Internal Grid Layout: grid-cols-[1fr_auto_1fr] */}
-                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4 pl-2">
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-1.5 sm:gap-4 pl-1 sm:pl-2">
                                         {/* Team A (Home - Left) */}
-                                        <div className="flex items-center gap-3 justify-start min-w-0">
+                                        <div className="flex items-center gap-2 sm:gap-3 justify-start min-w-0">
                                             <img
                                                 src={match.teamA.logo}
                                                 alt={match.teamA.name}
-                                                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0"
+                                                className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0"
                                             />
-                                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">
+                                            <span className="font-bold text-xs sm:text-sm md:text-base truncate max-w-[85px] sm:max-w-[140px] text-slate-900 dark:text-white">
                                                 {match.teamA.name}
                                             </span>
                                         </div>
 
                                         {/* Center Box (Score/Time) */}
-                                        <div className="flex flex-col items-center justify-center px-2 md:px-6">
+                                        <div className="flex flex-col items-center justify-center px-1 sm:px-4 shrink-0">
                                             {isMatchLive ? (
-                                                <span className="text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-1">
+                                                <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-black tracking-widest text-amber-500 animate-pulse mb-0.5 sm:mb-1">
                                                     LIVE {match.minute}
                                                 </span>
                                             ) : match.status === 'HT' ? (
-                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-1">
+                                                <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-bold tracking-widest text-amber-500 mb-0.5 sm:mb-1">
                                                     HT
                                                 </span>
                                             ) : match.status === 'FT' ? (
-                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">
+                                                <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-0.5 sm:mb-1">
                                                     FT
                                                 </span>
                                             ) : (
-                                                <span className="text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-1">
+                                                <span className="text-[9px] sm:text-[10px] md:text-xs font-mono font-bold tracking-widest text-slate-500 mb-0.5 sm:mb-1">
                                                     {match.time || 'UPCOMING'}
                                                 </span>
                                             )}
 
-                                            <div className="text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
+                                            <div className="text-lg sm:text-2xl md:text-3xl font-black font-mono tracking-tighter text-slate-900 dark:text-white">
                                                 {match.status !== 'UPCOMING' ? (
                                                     <span>{match.scoreA} - {match.scoreB}</span>
                                                 ) : (
-                                                    <span className="text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
+                                                    <span className="text-base sm:text-lg md:text-xl text-slate-400 font-bold tracking-normal font-sans">VS</span>
                                                 )}
                                             </div>
 
-                                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[120px] mt-1">
+                                            <span className="text-[9px] md:text-[10px] text-slate-400 truncate max-w-[90px] sm:max-w-[120px] mt-0.5">
                                                 {match.venue}
                                             </span>
                                         </div>
 
                                         {/* Team B (Away - Right) */}
-                                        <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
+                                        <div className="flex items-center gap-2 sm:gap-3 justify-end flex-row-reverse min-w-0">
                                             <img
                                                 src={match.teamB.logo}
                                                 alt={match.teamB.name}
-                                                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0"
+                                                className="w-7 h-7 sm:w-9 sm:h-9 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-0.5 shrink-0"
                                             />
-                                            <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">
+                                            <span className="font-bold text-xs sm:text-sm md:text-base truncate max-w-[85px] sm:max-w-[140px] text-slate-900 dark:text-white text-right">
                                                 {match.teamB.name}
                                             </span>
                                         </div>

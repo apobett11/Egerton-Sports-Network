@@ -138,14 +138,14 @@ export const Header: React.FC<HeaderProps> = ({
     }, [dbFixtures]);
 
     return (
-        <header className="sticky top-0 z-50 w-full select-none bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-2xl border-b border-slate-200/50 dark:border-b dark:border-white/5 shadow-sm transition-all duration-300">
+        <header className="sticky top-0 z-50 w-full select-none bg-emerald-50/85 dark:bg-[#071a14]/90 backdrop-blur-2xl border-b border-emerald-200/60 dark:border-emerald-500/20 shadow-md shadow-emerald-950/5 dark:shadow-emerald-950/40 transition-all duration-300">
             {/* Row 1: Logo & Top controls */}
             <div className="flex items-center justify-between w-full px-4 py-3 md:px-8 max-w-7xl mx-auto">
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={onMenuClick}
-                        className="flex md:hidden items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
+                        className="flex md:hidden items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white/90 border border-emerald-200/80 hover:shadow-md text-slate-700 dark:bg-[#0b241d] dark:border-emerald-500/20 dark:hover:bg-[#0f3027] dark:text-emerald-100"
                         aria-label="Toggle navigation menu"
                     >
                         <Menu className="w-5 h-5" />
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <span className="font-black text-lg tracking-tight text-slate-900 dark:text-white group-hover:text-amber-500 transition-colors">
                                 Egerton Sports
                             </span>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400/80 uppercase tracking-widest">
                                 Official Campus Hub
                             </span>
                         </div>
@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
                             placeholder="Search campus teams..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="px-3.5 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 max-w-[170px] transition-all duration-200 shadow-xs"
+                            className="px-3.5 py-2 text-xs bg-white/95 dark:bg-[#0b241d] border border-emerald-200 dark:border-emerald-500/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 max-w-[170px] transition-all duration-200 shadow-xs"
                         />
                     )}
 
@@ -182,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={onNavigateNews || (() => { window.location.hash = '/news'; })}
-                        className="flex items-center justify-center gap-1.5 px-3.5 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300 font-bold text-xs"
+                        className="flex items-center justify-center gap-1.5 px-3.5 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white/90 border border-emerald-200/80 hover:shadow-md text-slate-700 dark:bg-[#0b241d] dark:border-emerald-500/20 dark:hover:bg-[#0f3027] dark:text-emerald-100 font-bold text-xs"
                         aria-label="Campus News"
                     >
                         <Newspaper className="w-4 h-4 text-amber-500" />
@@ -193,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={() => setShowSearch(!showSearch)}
-                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white/90 border border-emerald-200/80 hover:shadow-md text-slate-700 dark:bg-[#0b241d] dark:border-emerald-500/20 dark:hover:bg-[#0f3027] dark:text-emerald-100"
                         aria-label="Search"
                     >
                         <Search className="w-4.5 h-4.5" />
@@ -203,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={toggleDarkMode}
-                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white border border-slate-200 hover:shadow-md text-slate-700 dark:bg-slate-900 dark:border-white/10 dark:hover:bg-slate-800 dark:text-slate-300"
+                        className="flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 cursor-pointer bg-white/90 border border-emerald-200/80 hover:shadow-md text-slate-700 dark:bg-[#0b241d] dark:border-emerald-500/20 dark:hover:bg-[#0f3027] dark:text-emerald-100"
                         aria-label="Toggle Dark Mode"
                     >
                         {darkMode ? (
@@ -217,35 +217,12 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                         type="button"
                         onClick={onNavigateLogin || (() => { window.location.hash = '/login'; })}
-                        className="hidden sm:flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-blue-900 text-white hover:bg-blue-800 shadow-lg shadow-blue-900/20 dark:bg-blue-600 dark:hover:bg-blue-500 transition-all cursor-pointer active:scale-95"
+                        className="hidden sm:flex items-center gap-2 px-5 py-2 rounded-xl font-bold text-sm bg-blue-900 text-white hover:bg-blue-800 shadow-lg shadow-blue-900/20 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all cursor-pointer active:scale-95"
                         aria-label="Login"
                     >
                         <LogIn className="w-4 h-4 text-white" />
                         <span>Login</span>
                     </button>
-                </div>
-            </div>
-
-            {/* Row 2: EGERTON SPORTS DEPARTMENT ECOSYSTEM BANNER (CALM CONTINUITY STRIP) */}
-            <div className="border-t border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-100/70 dark:bg-[#12192B]/80 backdrop-blur-md">
-                <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar px-4 py-2 max-w-7xl mx-auto text-xs">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
-                            <Trophy className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="font-extrabold text-slate-900 dark:text-slate-100 tracking-tight text-[11px] sm:text-xs">
-                            Egerton Premier League & Egerton Championships
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] sm:text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                            Premier League
-                        </span>
-                        <span className="text-[10px] sm:text-[11px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                            Championships
-                        </span>
-                    </div>
                 </div>
             </div>
 

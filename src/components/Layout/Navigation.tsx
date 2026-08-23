@@ -75,7 +75,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     return (
         <>
             {/* MOBILE BOTTOM NAVIGATION (< 768px) */}
-            <nav className="fixed bottom-0 left-0 w-full h-[72px] z-[60] flex items-center justify-around pb-safe md:hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border-t border-slate-200 dark:border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] select-none">
+            <nav className="fixed bottom-0 left-0 w-full h-[72px] z-[60] flex items-center justify-around pb-safe md:hidden bg-emerald-50/90 dark:bg-[#071a14]/92 backdrop-blur-3xl border-t border-emerald-200/60 dark:border-emerald-500/20 shadow-[0_-8px_30px_rgba(5,46,22,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.7)] select-none">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -87,14 +87,14 @@ export const Navigation: React.FC<NavigationProps> = ({
                             onClick={() => setActiveTab(tab.id)}
                             className={
                                 isActive
-                                    ? "relative flex flex-col items-center justify-center gap-1 w-16 h-full text-blue-900 dark:text-blue-400 cursor-pointer"
-                                    : "flex flex-col items-center justify-center gap-1 w-16 h-full text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer transition-colors"
+                                    ? "relative flex flex-col items-center justify-center gap-1 w-16 h-full text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                                    : "flex flex-col items-center justify-center gap-1 w-16 h-full text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 cursor-pointer transition-colors"
                             }
                         >
                             <div className="relative flex items-center justify-center">
                                 <Icon className="w-6 h-6" />
                                 {!!tab.badge && tab.badge > 0 && (
-                                    <span className="absolute -top-1 -right-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white ring-2 ring-white dark:ring-slate-900 shadow-sm animate-pulse">
+                                    <span className="absolute -top-1 -right-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white ring-2 ring-white dark:ring-emerald-950 shadow-sm animate-pulse">
                                         {tab.badge}
                                     </span>
                                 )}
@@ -103,7 +103,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                                 {tab.label}
                             </span>
                             {isActive && (
-                                <span className="absolute bottom-2 w-1 h-1 rounded-full bg-blue-900 dark:bg-blue-400" />
+                                <span className="absolute bottom-2 w-1 h-1 rounded-full bg-emerald-700 dark:bg-emerald-400" />
                             )}
                         </button>
                     );
@@ -111,8 +111,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             </nav>
 
             {/* DESKTOP STICKY SUBNAV (>= 768px) */}
-            <nav className="hidden md:flex sticky top-[65px] z-40 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-2xl border-b border-slate-200/50 dark:border-white/5 py-2.5 justify-center items-center gap-3 select-none">
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm">
+            <nav className="hidden md:flex sticky top-[65px] z-40 bg-emerald-50/85 dark:bg-[#071a14]/90 backdrop-blur-2xl border-b border-emerald-200/60 dark:border-emerald-500/20 py-2.5 justify-center items-center gap-3 select-none">
+                <div className="flex items-center gap-2 bg-white/90 dark:bg-[#0b241d]/90 backdrop-blur-md p-1.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-500/30 shadow-sm">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -124,8 +124,8 @@ export const Navigation: React.FC<NavigationProps> = ({
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs transition-all duration-200 cursor-pointer ${
                                     isActive
-                                        ? "bg-blue-900 text-white dark:bg-blue-600 shadow-md shadow-blue-900/20"
-                                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        ? "bg-emerald-700 text-white dark:bg-emerald-600 shadow-md shadow-emerald-700/20"
+                                        : "text-slate-600 dark:text-slate-300 hover:text-emerald-950 dark:hover:text-white hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30"
                                 }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -143,12 +143,12 @@ export const Navigation: React.FC<NavigationProps> = ({
 
             {/* CALENDAR DATE STRIP DIRECTLY BELOW TOP NAVIGATION */}
             {selectedDate && setSelectedDate && (
-                <div className="w-full bg-slate-100/70 dark:bg-[#0E1524]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 py-2.5 px-4 select-none">
+                <div className="w-full bg-emerald-100/60 dark:bg-[#062118]/85 backdrop-blur-xl border-b border-emerald-200/70 dark:border-emerald-900/50 py-2.5 px-4 select-none">
                     <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
                         <button
                             type="button"
                             onClick={() => changeDate(-1)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200/80 dark:border-white/10 shadow-xs"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#0b241d] hover:bg-white dark:hover:bg-[#10342a] text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-emerald-200/80 dark:border-emerald-500/30 shadow-xs"
                             title="Move to previous day"
                             aria-label="Previous Day"
                         >
@@ -167,7 +167,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                                 type="date"
                                 value={formattedDateStr}
                                 onChange={handleDateInputChange}
-                                className="hidden sm:inline-block text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                className="hidden sm:inline-block text-xs font-bold text-slate-800 dark:text-slate-200 bg-white/90 dark:bg-[#0b241d] border border-emerald-200/80 dark:border-emerald-500/30 rounded-xl px-2.5 py-1 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                 aria-label="Choose specific date"
                             />
                         </div>
@@ -177,7 +177,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                             <button
                                 type="button"
                                 onClick={() => changeDate(1)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-slate-200/80 dark:border-white/10 shadow-xs"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#0b241d] hover:bg-white dark:hover:bg-[#10342a] text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all cursor-pointer border border-emerald-200/80 dark:border-emerald-500/30 shadow-xs"
                                 title="Move to next day"
                                 aria-label="Next Day"
                             >
@@ -191,7 +191,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                                     setSelectedDate(new Date());
                                     if (activeTab !== 'scores') setActiveTab('scores');
                                 }}
-                                className="hidden md:flex items-center px-3 py-1.5 rounded-xl text-xs font-black text-slate-900 dark:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-white/10 shadow-xs active:scale-95 transition-all cursor-pointer"
+                                className="hidden md:flex items-center px-3 py-1.5 rounded-xl text-xs font-black text-slate-900 dark:text-white bg-white/90 dark:bg-[#0b241d] hover:bg-white dark:hover:bg-[#10342a] border border-emerald-200/80 dark:border-emerald-500/30 shadow-xs active:scale-95 transition-all cursor-pointer"
                             >
                                 Today
                             </button>
