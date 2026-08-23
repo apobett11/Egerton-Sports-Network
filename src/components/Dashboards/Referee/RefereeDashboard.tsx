@@ -6,6 +6,7 @@ import { RefereeNavigation } from './components/Navigation/RefereeNavigation';
 import { RefereeHomeOverview } from './components/Home/RefereeHomeOverview';
 import { MyMatchesView } from './components/MyMatches/MyMatchesView';
 import { MatchReportWorkflow } from './components/MatchReport/MatchReportWorkflow';
+import { RefereeReconciliationWorkflow } from './components/Reconciliation/RefereeReconciliationWorkflow';
 import { RefereeProfileView } from './components/Profile/RefereeProfileView';
 import { RefereeAnnouncementsView } from './components/Announcements/RefereeAnnouncementsView';
 import { WalkoverModal } from './components/WalkoverModal/WalkoverModal';
@@ -123,14 +124,12 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           />
         )}
 
-        {/* TAB 5: END MATCH OFFICIAL REPORT PORTAL */}
+        {/* TAB 5: END MATCH OFFICIAL RECONCILIATION PORTAL (ALGORITHM 1) */}
         {activeTab === 'report' && (
-          <MatchReportWorkflow
+          <RefereeReconciliationWorkflow
             selectedFixture={selectedFixture}
             homeLineup={homeLineup}
             awayLineup={awayLineup}
-            isSubmitting={isSubmitting}
-            onSubmitReport={submitMatchReport}
             setActiveTab={setActiveTab}
           />
         )}

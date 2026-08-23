@@ -745,13 +745,32 @@ export const ApiService = {
     }
   },
 
-  // --- TEAM RECENT FORM (LAST 5 MATCHES) ---
+  // --- TEAM RECENT FORM (LAST 5 MATCHES - ALGORITHM 2 MATERIALIZED) ---
   async getTeamForm(teamId: string): Promise<ApiResponse<Array<{ result: 'W' | 'D' | 'L'; label: string }>>> {
     if (!teamId) {
       return { success: true, data: [] };
     }
 
     try {
+      // 1. Primary Feed: Algorithm 2 Materialized Team Form Table
+      const { data: formRow, error: formErr } = await supabase
+        .from('team_form')
+        .select('latest_results')
+        .eq('team_id', teamId)
+        .maybeSingle();
+
+      if (!formErr && formRow?.latest_results && formRow.latest_results.length > 0) {
+        const formEntries = formRow.latest_results.map((res: string) => {
+          const letter = (res === 'W' || res === 'D' || res === 'L') ? res : 'D';
+          return {
+            result: letter as 'W' | 'D' | 'L',
+            label: letter === 'W' ? 'Win' : letter === 'D' ? 'Draw' : 'Loss'
+          };
+        });
+        return { success: true, data: formEntries };
+      }
+
+      // 2. Safe Fallback: Completed Fixtures
       const { data, error } = await supabase
         .from('fixtures')
         .select(`
@@ -767,7 +786,7 @@ export const ApiService = {
         .eq('status', 'FT')
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
         .order('scheduled_time', { ascending: false })
-        .limit(6);
+        .limit(5);
 
       if (error || !data) {
         return { success: true, data: [] };
@@ -797,25 +816,62 @@ export const ApiService = {
     }
   },
 
-  // --- LEAGUE TABLE ENGINE ---
+  // --- LEAGUE TABLE ENGINE (ALGORITHM 2 MATERIALIZED FEED) ---
   async getLeagueTable(
     competitionId?: string,
     fixturesOverride?: Match[],
     previousStandings?: LeagueTableEntry[]
   ): Promise<ApiResponse<LeagueTableEntry[]>> {
     try {
-      if (competitionId) {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
-          p_competition_id: competitionId
-        });
+      // 1. Authoritative Feed: Algorithm 2 get_league_standings RPC (reads league_standings table)
+      const targetCompId = competitionId && competitionId !== 'all' ? competitionId : null;
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
+        p_competition_id: targetCompId
+      });
 
-        if (!rpcErr && rpcData && rpcData.length > 0) {
-          const timestamp = new Date().toISOString();
-          const entries: LeagueTableEntry[] = rpcData.map((row: any) => ({
-            position: Number(row.position),
-            teamId: row.team_id,
-            teamName: row.team_name,
-            teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+      if (!rpcErr && rpcData && rpcData.length > 0) {
+        const timestamp = new Date().toISOString();
+        const entries: LeagueTableEntry[] = rpcData.map((row: any) => ({
+          position: Number(row.position),
+          teamId: row.team_id,
+          teamName: row.team_name,
+          teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          played: Number(row.played),
+          won: Number(row.won),
+          drawn: Number(row.drawn),
+          lost: Number(row.lost),
+          goalsFor: Number(row.goals_for),
+          goalsAgainst: Number(row.goals_against),
+          goalDifference: Number(row.goal_difference),
+          points: Number(row.points),
+          lastUpdated: timestamp
+        }));
+
+        return { success: true, data: entries };
+      }
+
+      // 2. Direct Materialized Table Query
+      let query = supabase.from('league_standings').select(`
+        played, won, drawn, lost, goals_for, goals_against, goal_difference, points, last_updated,
+        team:teams!team_id(id, name, logo_url)
+      `);
+      if (targetCompId) {
+        query = query.eq('competition_id', targetCompId);
+      }
+
+      const { data: rawStandings, error: rawErr } = await query
+        .order('points', { ascending: false })
+        .order('goal_difference', { ascending: false })
+        .order('goals_for', { ascending: false });
+
+      if (!rawErr && rawStandings && rawStandings.length > 0) {
+        const entries: LeagueTableEntry[] = rawStandings.map((row: any, idx: number) => {
+          const tm = unwrap(row.team);
+          return {
+            position: idx + 1,
+            teamId: tm?.id || '',
+            teamName: tm?.name || 'Campus Team',
+            teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
             played: Number(row.played),
             won: Number(row.won),
             drawn: Number(row.drawn),
@@ -824,13 +880,13 @@ export const ApiService = {
             goalsAgainst: Number(row.goals_against),
             goalDifference: Number(row.goal_difference),
             points: Number(row.points),
-            lastUpdated: timestamp
-          }));
-
-          return { success: true, data: entries };
-        }
+            lastUpdated: row.last_updated || new Date().toISOString()
+          };
+        });
+        return { success: true, data: entries };
       }
 
+      // 3. Fallback for offline/empty season
       let fixtures = fixturesOverride;
       if (!fixtures || fixtures.length === 0) {
         const fixRes = await this.getFixtures(competitionId);

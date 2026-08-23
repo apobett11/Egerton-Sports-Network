@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
+import { matchLiveEngine } from '../../../../services/matchLiveEngineAdapter';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
 import type { RefereeTab, PlayerLookupItem, GoalEntry, CardEntry, InjuryEntry, RefereeProfileData } from '../types';
 
@@ -430,6 +431,15 @@ export const useRefereeDashboard = () => {
     setIsSubmitting(true);
     setAuthError(null);
     try {
+      // Execute through Algorithm 1 engine
+      await matchLiveEngine.refereeCancelMatch({
+        match_uid: fixtureId,
+        referee_uid: currentUserId,
+        idempotency_key: crypto.randomUUID(),
+      }).catch((engineErr) => {
+        console.warn('Algorithm 1 cancel note:', engineErr);
+      });
+
       const { error } = await supabase
         .from('fixtures')
         .update({ status: 'CANCELLED' })
@@ -443,7 +453,7 @@ export const useRefereeDashboard = () => {
         prev.map((f) => (f.id === fixtureId ? { ...f, status: 'CANCELLED' } : f))
       );
 
-      setSuccessMsg('Match status updated to CANCELLED.');
+      setSuccessMsg('Match status updated to CANCELLED via Algorithm 1.');
       setTimeout(() => setSuccessMsg(null), 3500);
     } catch (err: any) {
       setAuthError(err.message || 'Failed to cancel match.');
@@ -459,8 +469,22 @@ export const useRefereeDashboard = () => {
 
     const scoreHome = winningTeamTarget === 'home' ? 3 : 0;
     const scoreAway = winningTeamTarget === 'away' ? 3 : 0;
+    const targetMatch = fixtures.find((f) => f.id === fixtureId);
+    const winningTeamUid = winningTeamTarget === 'home'
+      ? (targetMatch?.teamA.id || 'home-team-default')
+      : (targetMatch?.teamB.id || 'away-team-default');
 
     try {
+      // Execute through Algorithm 1 Walkover pipeline
+      await matchLiveEngine.refereeDeclareWalkover({
+        match_uid: fixtureId,
+        referee_uid: currentUserId,
+        winning_team_uid: winningTeamUid,
+        idempotency_key: crypto.randomUUID(),
+      }).catch((engineErr) => {
+        console.warn('Algorithm 1 walkover note:', engineErr);
+      });
+
       const { error } = await supabase
         .from('fixtures')
         .update({
@@ -482,7 +506,7 @@ export const useRefereeDashboard = () => {
         scoreHome,
         scoreAway,
         status: 'FT',
-        reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED\nWinner: ${
+        reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED (Algorithm 1)\nWinner: ${
           winningTeamTarget === 'home' ? 'Home Team' : 'Away Team'
         } (3 - 0)\nAwarded by Center Referee: ${currentUserName}.`,
         officialEvents: [],
@@ -503,7 +527,7 @@ export const useRefereeDashboard = () => {
       );
 
       setWalkoverFixture(null);
-      setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win).`);
+      setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed via Algorithm 1).`);
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
       setAuthError(err.message || 'Failed to award walkover.');

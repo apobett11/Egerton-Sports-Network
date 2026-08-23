@@ -24,6 +24,7 @@ import {
   PerformanceMetrics,
   ARTICLE_CATEGORY_LABELS,
 } from '../../JournalistTypes';
+import { JournalistLiveReportingPanel } from '../LiveReporting/JournalistLiveReportingPanel';
 
 interface JournalistHomeViewProps {
   currentEvent: CurrentMatchEvent;
@@ -178,6 +179,14 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
           </button>
         </div>
       </section>
+
+      {/* 1B. ALGORITHM 1 LIVE EVENT INTAKE ENGINE */}
+      <JournalistLiveReportingPanel
+        currentEvent={currentEvent}
+        cardBg={cardBg}
+        hoverBg={hoverBg}
+        triggerToast={triggerToast}
+      />
 
       {/* 2. QUICK ACTIONS COMMAND BAR (STREAMLINED BUTTONS, NOT BRICKS) */}
       <section className="space-y-3">
