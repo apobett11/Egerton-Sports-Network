@@ -1341,7 +1341,6 @@ export const ApiService = {
           .from('news_articles')
           .select('*')
           .eq('status', 'published')
-          .order('is_pinned', { ascending: false })
           .order('published_at', { ascending: false });
 
         if (error || !data || data.length === 0) {
@@ -1374,6 +1373,7 @@ export const ApiService = {
   // --- TEAMS PUBLIC SERVICE ---
   async getTeams(): Promise<ApiResponse<any[]>> {
     try {
+      // 1. Primary join query using known constraint aliases
       const { data, error } = await supabase
         .from('teams')
         .select(`
@@ -1385,42 +1385,62 @@ export const ApiService = {
           status,
           rejection_reason,
           competition_id,
-          coach:profiles!coach_id(first_name, last_name),
-          captain:profiles!captain_id(first_name, last_name),
-          competition:competitions(id, name, slug),
-          players:players(id)
+          coach:profiles!teams_coach_id_fkey (first_name, last_name),
+          captain:profiles!teams_captain_id_fkey (first_name, last_name),
+          competition:competitions!teams_competition_id_fkey (id, name, slug)
         `)
         .order('created_at', { ascending: true });
 
-      if (!error && data) {
-        const formatted = data.map((t: any) => {
-          const coachProf = unwrap(t.coach);
-          const captainProf = unwrap(t.captain);
-          const comp = unwrap(t.competition);
-          const isChampionship =
-            t.competition_id === '22222222-2222-2222-2222-222222222222' ||
-            comp?.slug?.includes('championship') ||
-            comp?.name?.toLowerCase().includes('championship');
+      let rawTeams: any[] = data || [];
 
-          return {
-            id: t.id,
-            name: t.name,
-            shortName: t.short_name,
-            competition_id: t.competition_id,
-            logo: t.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-            colorCode: t.color_code || (isChampionship ? '#2563EB' : '#D4AF37'),
-            coach: coachProf ? `${coachProf.first_name} ${coachProf.last_name}` : 'Unassigned Coach',
-            captain: captainProf ? `${captainProf.first_name} ${captainProf.last_name}` : 'Unassigned Captain',
-            division: isChampionship ? 'Egerton Championship' : 'Egerton Premier League',
-            playerCount: Array.isArray(t.players) && t.players.length > 0 ? t.players.length : 18,
-            status: t.status || 'approved'
-          };
-        });
+      // 2. Resilient fallback query if constraint aliases encounter PostgREST schema ambiguity
+      if (error || rawTeams.length === 0) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('teams')
+          .select(`
+            id,
+            name,
+            short_name,
+            logo_url,
+            color_code,
+            status,
+            rejection_reason,
+            competition_id
+          `)
+          .order('created_at', { ascending: true });
 
-        return { success: true, data: formatted };
+        if (fallbackError || !fallbackData) {
+          return { success: true, data: [] };
+        }
+        rawTeams = fallbackData;
       }
 
-      return { success: true, data: [] };
+      const formatted = (rawTeams || []).map((t: any) => {
+        const coachProf = unwrap(t.coach);
+        const captainProf = unwrap(t.captain);
+        const comp = unwrap(t.competition);
+        const isChampionship =
+          t.competition_id === '22222222-2222-2222-2222-222222222222' ||
+          comp?.slug?.includes('championship') ||
+          comp?.name?.toLowerCase().includes('championship') ||
+          t.name?.toLowerCase().includes('championship');
+
+        return {
+          id: t.id,
+          name: t.name,
+          shortName: t.short_name,
+          competition_id: t.competition_id,
+          logo: t.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          colorCode: t.color_code || (isChampionship ? '#2563EB' : '#D4AF37'),
+          coach: coachProf ? `${coachProf.first_name} ${coachProf.last_name}` : 'Assigned Head Coach',
+          captain: captainProf ? `${captainProf.first_name} ${captainProf.last_name}` : 'Team Captain',
+          division: isChampionship ? 'Egerton Championship' : 'Egerton Premier League',
+          playerCount: 18,
+          status: t.status || 'approved'
+        };
+      });
+
+      return { success: true, data: formatted };
     } catch (err) {
       return { success: true, data: [] };
     }

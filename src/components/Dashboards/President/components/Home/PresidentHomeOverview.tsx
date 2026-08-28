@@ -96,7 +96,13 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
-              onClick={() => setActiveView('fixture_engine')}
+              onClick={() => {
+                if (onOpenSeasonLaunchModal) {
+                  onOpenSeasonLaunchModal();
+                } else {
+                  setActiveView('fixture_engine');
+                }
+              }}
               className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center justify-between cursor-pointer group"
             >
               <span className="flex items-center gap-2">
@@ -268,6 +274,22 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* SEASON READINESS & LAUNCH EVALUATION */}
+      <SeasonReadiness
+        isDark={isDark}
+        premierLeagueTeams={premierLeagueTeams}
+        championshipTeams={championshipTeams}
+        referees={referees}
+        pitches={pitches}
+        onOpenGenerationModal={() => {
+          if (onOpenSeasonLaunchModal) {
+            onOpenSeasonLaunchModal();
+          } else {
+            setActiveView('fixture_engine');
+          }
+        }}
+      />
 
       {/* OFFICIAL CAMPUS PITCHES SECTION */}
       <div className="space-y-4">

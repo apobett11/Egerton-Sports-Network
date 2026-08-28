@@ -136,6 +136,58 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
     }
   }, [isOpen, defaultInitialDate]);
 
+  // Compute preview stats dynamically from actual database teams & agent0GenResult
+  const expectedEplMatches = premierLeagueTeams.length > 1 ? premierLeagueTeams.length * (premierLeagueTeams.length - 1) : 0;
+  const expectedChampMatches = championshipTeams.length > 1 ? championshipTeams.length * (championshipTeams.length - 1) : 0;
+
+  const previewStats = useMemo(() => {
+    if (!agent0GenResult || !agent0GenResult.data) {
+      return {
+        epl1: Math.floor(expectedEplMatches / 2),
+        epl2: Math.floor(expectedEplMatches / 2),
+        champ1: Math.floor(expectedChampMatches / 2),
+        champ2: Math.floor(expectedChampMatches / 2),
+        eplTotal: expectedEplMatches,
+        champTotal: expectedChampMatches,
+        total: expectedEplMatches + expectedChampMatches,
+      };
+    }
+
+    let epl1 = 0;
+    let epl2 = 0;
+    let champ1 = 0;
+    let champ2 = 0;
+
+    for (const [leagueKey, data] of Object.entries(
+      agent0GenResult.data as Record<string, { leg_1: any[]; leg_2: any[] }>
+    )) {
+      const isEPL =
+        leagueKey.toLowerCase().includes('epl') ||
+        leagueKey === '11111111-1111-1111-1111-111111111111' ||
+        leagueKey.includes('premier');
+      if (isEPL) {
+        epl1 = data.leg_1?.length || 0;
+        epl2 = data.leg_2?.length || 0;
+      } else {
+        champ1 = data.leg_1?.length || 0;
+        champ2 = data.leg_2?.length || 0;
+      }
+    }
+
+    const eplTotal = epl1 + epl2;
+    const champTotal = champ1 + champ2;
+
+    return {
+      epl1,
+      epl2,
+      champ1,
+      champ2,
+      eplTotal: eplTotal || expectedEplMatches,
+      champTotal: champTotal || expectedChampMatches,
+      total: eplTotal + champTotal || expectedEplMatches + expectedChampMatches,
+    };
+  }, [agent0GenResult, expectedEplMatches, expectedChampMatches]);
+
   if (!isOpen) return null;
 
   // Month Calendar Navigation
@@ -266,58 +318,6 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
       setStep('PREVIEW_AND_LOCK');
     }
   };
-
-  // Compute preview stats dynamically from actual database teams & agent0GenResult
-  const expectedEplMatches = premierLeagueTeams.length > 1 ? premierLeagueTeams.length * (premierLeagueTeams.length - 1) : 0;
-  const expectedChampMatches = championshipTeams.length > 1 ? championshipTeams.length * (championshipTeams.length - 1) : 0;
-
-  const previewStats = useMemo(() => {
-    if (!agent0GenResult || !agent0GenResult.data) {
-      return {
-        epl1: Math.floor(expectedEplMatches / 2),
-        epl2: Math.floor(expectedEplMatches / 2),
-        champ1: Math.floor(expectedChampMatches / 2),
-        champ2: Math.floor(expectedChampMatches / 2),
-        eplTotal: expectedEplMatches,
-        champTotal: expectedChampMatches,
-        total: expectedEplMatches + expectedChampMatches,
-      };
-    }
-
-    let epl1 = 0;
-    let epl2 = 0;
-    let champ1 = 0;
-    let champ2 = 0;
-
-    for (const [leagueKey, data] of Object.entries(
-      agent0GenResult.data as Record<string, { leg_1: any[]; leg_2: any[] }>
-    )) {
-      const isEPL =
-        leagueKey.toLowerCase().includes('epl') ||
-        leagueKey === '11111111-1111-1111-1111-111111111111' ||
-        leagueKey.includes('premier');
-      if (isEPL) {
-        epl1 = data.leg_1?.length || 0;
-        epl2 = data.leg_2?.length || 0;
-      } else {
-        champ1 = data.leg_1?.length || 0;
-        champ2 = data.leg_2?.length || 0;
-      }
-    }
-
-    const eplTotal = epl1 + epl2;
-    const champTotal = champ1 + champ2;
-
-    return {
-      epl1,
-      epl2,
-      champ1,
-      champ2,
-      eplTotal: eplTotal || expectedEplMatches,
-      champTotal: champTotal || expectedChampMatches,
-      total: eplTotal + champTotal || expectedEplMatches + expectedChampMatches,
-    };
-  }, [agent0GenResult, expectedEplMatches, expectedChampMatches]);
 
   return (
     <div
