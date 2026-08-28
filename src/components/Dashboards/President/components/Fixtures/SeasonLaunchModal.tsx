@@ -176,22 +176,30 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
   // STEP 3 -> 4: Trigger Agent 0 Algorithm 1 Generation
   const handleExecuteAgent0Generation = async () => {
+    if (premierLeagueTeams.length < 2 && championshipTeams.length < 2) {
+      setGenerationError('At least 2 teams are required in at least one division to generate season fixtures.');
+      return;
+    }
+
     setStep('GENERATING_ALGO1');
     setGenerationError(null);
 
     const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
     const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 
-    const leaguesInput: LeagueInput[] = [
-      {
+    const leaguesInput: LeagueInput[] = [];
+    if (premierLeagueTeams.length >= 2) {
+      leaguesInput.push({
         league_id: EPL_COMP_ID,
         teams: premierLeagueTeams.map((t) => t.id),
-      },
-      {
+      });
+    }
+    if (championshipTeams.length >= 2) {
+      leaguesInput.push({
         league_id: CHAMP_COMP_ID,
         teams: championshipTeams.map((t) => t.id),
-      },
-    ];
+      });
+    }
 
     try {
       const res = await PresidentActionBridge.generateFixturesViaAgent0(
@@ -259,10 +267,21 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
     }
   };
 
-  // Compute preview stats from agent0GenResult
+  // Compute preview stats dynamically from actual database teams & agent0GenResult
+  const expectedEplMatches = premierLeagueTeams.length > 1 ? premierLeagueTeams.length * (premierLeagueTeams.length - 1) : 0;
+  const expectedChampMatches = championshipTeams.length > 1 ? championshipTeams.length * (championshipTeams.length - 1) : 0;
+
   const previewStats = useMemo(() => {
     if (!agent0GenResult || !agent0GenResult.data) {
-      return { epl1: 45, epl2: 45, champ1: 78, champ2: 78, eplTotal: 90, champTotal: 156, total: 246 };
+      return {
+        epl1: Math.floor(expectedEplMatches / 2),
+        epl2: Math.floor(expectedEplMatches / 2),
+        champ1: Math.floor(expectedChampMatches / 2),
+        champ2: Math.floor(expectedChampMatches / 2),
+        eplTotal: expectedEplMatches,
+        champTotal: expectedChampMatches,
+        total: expectedEplMatches + expectedChampMatches,
+      };
     }
 
     let epl1 = 0;
@@ -294,11 +313,11 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
       epl2,
       champ1,
       champ2,
-      eplTotal: eplTotal || 90,
-      champTotal: champTotal || 156,
-      total: eplTotal + champTotal || 246,
+      eplTotal: eplTotal || expectedEplMatches,
+      champTotal: champTotal || expectedChampMatches,
+      total: eplTotal + champTotal || expectedEplMatches + expectedChampMatches,
     };
-  }, [agent0GenResult]);
+  }, [agent0GenResult, expectedEplMatches, expectedChampMatches]);
 
   return (
     <div
@@ -720,19 +739,29 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-baseline justify-between">
                       <span className="text-3xl font-black tracking-tight">
-                        {premierLeagueTeams.length || 10} Teams
+                        {premierLeagueTeams.length} Teams
                       </span>
-                      <span className="text-xs font-bold text-amber-400">10 Head Coaches Assigned</span>
+                      <span className="text-xs font-bold text-amber-400">
+                        {premierLeagueTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Head Coaches Assigned
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-center text-xs">
                       <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">18 Matchdays</div>
+                        <div className="text-base font-black">
+                          {premierLeagueTeams.length > 1
+                            ? premierLeagueTeams.length % 2 === 0
+                              ? (premierLeagueTeams.length - 1) * 2
+                              : premierLeagueTeams.length * 2
+                            : 0} Matchdays
+                        </div>
                         <div className="text-[10px] text-slate-400 font-bold">Double Round Robin</div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">90 Matches</div>
-                        <div className="text-[10px] text-slate-400 font-bold">45 Leg 1 + 45 Leg 2</div>
+                        <div className="text-base font-black">{expectedEplMatches} Matches</div>
+                        <div className="text-[10px] text-slate-400 font-bold">
+                          {Math.floor(expectedEplMatches / 2)} Leg 1 + {Math.floor(expectedEplMatches / 2)} Leg 2
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -761,19 +790,31 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-baseline justify-between">
                       <span className="text-3xl font-black tracking-tight">
-                        {championshipTeams.length || 13} Teams
+                        {championshipTeams.length} Teams
                       </span>
-                      <span className="text-xs font-bold text-blue-400">13 Head Coaches Assigned</span>
+                      <span className="text-xs font-bold text-blue-400">
+                        {championshipTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Head Coaches Assigned
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-center text-xs">
                       <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">26 Matchdays</div>
-                        <div className="text-[10px] text-slate-400 font-bold">BYE Auto Handled</div>
+                        <div className="text-base font-black">
+                          {championshipTeams.length > 1
+                            ? championshipTeams.length % 2 === 0
+                              ? (championshipTeams.length - 1) * 2
+                              : championshipTeams.length * 2
+                            : 0} Matchdays
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold">
+                          {championshipTeams.length % 2 !== 0 ? 'BYE Auto Handled' : 'Double Round Robin'}
+                        </div>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">156 Matches</div>
-                        <div className="text-[10px] text-slate-400 font-bold">78 Leg 1 + 78 Leg 2</div>
+                        <div className="text-base font-black">{expectedChampMatches} Matches</div>
+                        <div className="text-[10px] text-slate-400 font-bold">
+                          {Math.floor(expectedChampMatches / 2)} Leg 1 + {Math.floor(expectedChampMatches / 2)} Leg 2
+                        </div>
                       </div>
                     </div>
                   </div>

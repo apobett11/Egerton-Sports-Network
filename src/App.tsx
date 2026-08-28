@@ -31,6 +31,7 @@ const PlayerDashboard = lazy(() => import('./components/Dashboards/Player/Player
 const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/DoctorDashboard'));
 const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
 const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const PasswordResetOnboarding = lazy(() => import('./components/Auth/PasswordResetOnboarding').then(m => ({ default: m.PasswordResetOnboarding })));
 
 const DashboardLoader: React.FC = () => (
   <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center gap-4 text-emerald-500">
@@ -175,7 +176,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'coach') {
+  if (route === 'coach' || route === 'dashboard/coach') {
     return (
       <ProtectedRoute allowedRoles={['coach', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
@@ -225,7 +226,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'referee') {
+  if (route === 'referee' || route === 'dashboard/referee') {
     return (
       <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
@@ -245,13 +246,21 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'player') {
+  if (route === 'player' || route === 'dashboard/player') {
     return (
       <ProtectedRoute allowedRoles={['player', 'captain', 'coach', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
           <PlayerDashboard />
         </Suspense>
       </ProtectedRoute>
+    );
+  }
+
+  if (route === 'reset-password' || route === 'auth/reset-password' || route === 'password-reset') {
+    return (
+      <Suspense fallback={<DashboardLoader />}>
+        <PasswordResetOnboarding />
+      </Suspense>
     );
   }
 

@@ -97,8 +97,8 @@ export const INITIAL_DRAFT_FIXTURES: DraftFixture[] = [
 export const OFFICIAL_PITCHES = [
   {
     id: '91111111-1111-1111-1111-111111111111',
-    name: 'Egerton Main Stadium Pitch',
-    short_code: 'MAIN-STAD',
+    name: 'Pitch A — Main Stadium Pitch',
+    short_code: 'PITCH-A',
     location: 'Main Campus Athletics Complex',
     capacity: 10000,
     surface_type: 'Natural Grass',
@@ -107,8 +107,8 @@ export const OFFICIAL_PITCHES = [
   },
   {
     id: '92222222-2222-2222-2222-222222222222',
-    name: 'Pavilion Grounds Pitch A',
-    short_code: 'PAV-A',
+    name: 'Pitch B — Pavilion Grounds',
+    short_code: 'PITCH-B',
     location: 'Pavilion Sports Complex',
     capacity: 3500,
     surface_type: 'Hybrid Turf',
@@ -117,8 +117,8 @@ export const OFFICIAL_PITCHES = [
   },
   {
     id: '93333333-3333-3333-3333-333333333333',
-    name: 'Tatton Complex Ground',
-    short_code: 'TAT-GRD',
+    name: 'Pitch C — Tatton Complex Ground',
+    short_code: 'PITCH-C',
     location: 'Tatton Campus Ground',
     capacity: 2500,
     surface_type: 'Natural Grass',

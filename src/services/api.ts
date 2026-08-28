@@ -1384,26 +1384,36 @@ export const ApiService = {
           color_code,
           status,
           rejection_reason,
+          competition_id,
           coach:profiles!coach_id(first_name, last_name),
           captain:profiles!captain_id(first_name, last_name),
-          competition:competitions(name)
-        `);
+          competition:competitions(id, name, slug),
+          players:players(id)
+        `)
+        .order('created_at', { ascending: true });
 
       if (!error && data) {
         const formatted = data.map((t: any) => {
           const coachProf = unwrap(t.coach);
           const captainProf = unwrap(t.captain);
           const comp = unwrap(t.competition);
+          const isChampionship =
+            t.competition_id === '22222222-2222-2222-2222-222222222222' ||
+            comp?.slug?.includes('championship') ||
+            comp?.name?.toLowerCase().includes('championship');
 
           return {
             id: t.id,
             name: t.name,
             shortName: t.short_name,
+            competition_id: t.competition_id,
             logo: t.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-            colorCode: t.color_code || '#D4AF37',
+            colorCode: t.color_code || (isChampionship ? '#2563EB' : '#D4AF37'),
             coach: coachProf ? `${coachProf.first_name} ${coachProf.last_name}` : 'Unassigned Coach',
             captain: captainProf ? `${captainProf.first_name} ${captainProf.last_name}` : 'Unassigned Captain',
-            division: comp?.name || 'Egerton Premier League'
+            division: isChampionship ? 'Egerton Championship' : 'Egerton Premier League',
+            playerCount: Array.isArray(t.players) && t.players.length > 0 ? t.players.length : 18,
+            status: t.status || 'approved'
           };
         });
 

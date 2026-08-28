@@ -93,6 +93,9 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
     handleBroadcastAnnouncement,
   } = usePresidentDashboard();
 
+  const premierLeagueTeams = teams.filter((t) => t.league === 'premier' || !t.league);
+  const championshipTeams = teams.filter((t) => t.league === 'championship');
+
   // =========================================================================
   // PROTECTED SEASON MODE RENDERER
   // When fixtures have been locked and confirmed into the database via Agent 0,
@@ -179,6 +182,8 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
           <FixtureEngineView
             isDark={isDark}
             savedFixtures={savedFixtures}
+            premierLeagueTeams={premierLeagueTeams}
+            championshipTeams={championshipTeams}
             onOpenLaunchModal={() => setIsSeasonLaunchModalOpen(true)}
           />
         )}

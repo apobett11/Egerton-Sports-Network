@@ -18,7 +18,7 @@ import {
   type Agent0Adapters,
 } from './agent0';
 import { supabase } from '../lib/supabase';
-import { LOCAL_SEED_EPL_TEAMS, LOCAL_SEED_CHAMP_TEAMS, LOCAL_SEED_REFEREES, OFFICIAL_PITCHES } from "../President's Season Mode/constants/seasonConstants";
+import { OFFICIAL_PITCHES } from "../President's Season Mode/constants/seasonConstants";
 import { generateFixtures as invokeAlgorithm1, type Algo1Output, type LeagueInput } from '../algorithms/algorithm1';
 import { createAlgorithmCommand, validateResultEnvelope } from '../shared/algorithmProtocol';
 
@@ -87,15 +87,8 @@ function initializeDefaultMemory(seasonId: string) {
         amAvailable: true,
         pmAvailable: true,
       })),
-      referees: LOCAL_SEED_REFEREES.map(r => ({
-        referee_id: r.id,
-        tier: r.badgeLevel?.includes('EPL') ? 'EPL_Exclusive' : 'Mixed',
-        status: r.status,
-      })),
-      teams: [
-        ...LOCAL_SEED_EPL_TEAMS.map(t => ({ team_id: t.id, league_type: 'EPL' as const, team_name: t.name })),
-        ...LOCAL_SEED_CHAMP_TEAMS.map(t => ({ team_id: t.id, league_type: 'CHAMPIONSHIP' as const, team_name: t.name })),
-      ],
+      referees: [],
+      teams: [],
       matchdays: [],
       fixtures: [],
       matchAssignments: [],
@@ -127,26 +120,76 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
 
   return {
     async fetchCurrentState(_sid: string) {
-      if (mem.fixtures.length === 0) {
-        try {
-          const { data: dbFixtures } = await supabase.from('fixtures').select('*').is('deleted_at', null);
-          if (dbFixtures && dbFixtures.length > 0) {
-            mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
-              fixture_id: f.id,
-              league_id: f.competition_id || 'epl',
-              home_id: f.home_team_id,
-              away_id: f.away_team_id,
-              leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
-              match_sequence: idx + 1,
-              matchday_number: f.matchday || null,
-              playday: f.scheduled_time || null,
-              completed: f.status === 'Completed' || f.status === 'FT',
-              historical: f.status === 'Completed' || f.status === 'FT',
-            }));
-          }
-        } catch (e) {
-          // Fallback to memory
+      try {
+        // Query live teams from Supabase database
+        const { data: dbTeams } = await supabase
+          .from('teams')
+          .select('id, name, competition_id, status')
+          .neq('status', 'rejected')
+          .is('deleted_at', null);
+
+        if (dbTeams && dbTeams.length > 0) {
+          mem.teams = dbTeams.map((t: any) => {
+            const isChamp = t.competition_id === '22222222-2222-2222-2222-222222222222' || t.name.toLowerCase().includes('championship');
+            return {
+              team_id: t.id,
+              league_type: isChamp ? 'CHAMPIONSHIP' : 'EPL',
+              team_name: t.name,
+            };
+          });
         }
+
+        // Query live referees from Supabase database
+        const { data: dbReferees } = await supabase
+          .from('referees')
+          .select('id, name, status, badge_level')
+          .is('deleted_at', null);
+
+        if (dbReferees && dbReferees.length > 0) {
+          mem.referees = dbReferees.map((r: any) => ({
+            referee_id: r.id,
+            tier: r.badge_level?.includes('FIFA') || r.badge_level?.includes('Level 1') ? 'EPL_Exclusive' : 'Mixed',
+            status: r.status || 'Active',
+          }));
+        }
+
+        // Query live pitches from Supabase database
+        const { data: dbPitches } = await supabase
+          .from('pitches')
+          .select('id, name, status')
+          .order('name');
+
+        if (dbPitches && dbPitches.length > 0) {
+          mem.pitches = dbPitches.map((p: any) => ({
+            pitch_id: p.id,
+            state: p.status === 'Available' ? 'available' : 'unavailable',
+            amAvailable: true,
+            pmAvailable: true,
+          }));
+        }
+
+        // Query live fixtures from Supabase database
+        const { data: dbFixtures } = await supabase
+          .from('fixtures')
+          .select('*')
+          .is('deleted_at', null);
+
+        if (dbFixtures && dbFixtures.length > 0) {
+          mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
+            fixture_id: f.id,
+            league_id: f.competition_id || 'epl',
+            home_id: f.home_team_id,
+            away_id: f.away_team_id,
+            leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
+            match_sequence: idx + 1,
+            matchday_number: f.matchday || null,
+            playday: f.scheduled_time || null,
+            completed: f.status === 'Completed' || f.status === 'FT',
+            historical: f.status === 'Completed' || f.status === 'FT',
+          }));
+        }
+      } catch (e) {
+        console.warn('Agent 0 live adapter fetch note:', e);
       }
 
       return {
@@ -172,7 +215,7 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
             legFixtures.forEach((f) => {
               flatFixtures.push({
                 fixture_id: f.fixture_id || crypto.randomUUID(),
-                league_id: leagueId === 'epl' ? '11111111-1111-4111-8111-000000000001' : leagueId === 'championship' ? '22222222-2222-4222-8222-000000000002' : leagueId,
+                league_id: leagueId === 'epl' ? '11111111-1111-1111-1111-111111111111' : leagueId === 'championship' ? '22222222-2222-2222-2222-222222222222' : leagueId,
                 home_id: f.home_id,
                 away_id: f.away_id,
                 leg: legNumber,
@@ -262,12 +305,27 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
     },
 
     async getLeagueConfigs(_seasonId) {
-      const epl = mem.teams.filter((t) => t.league_type === 'EPL').map((t) => t.team_id);
-      const champ = mem.teams.filter((t) => t.league_type === 'CHAMPIONSHIP').map((t) => t.team_id);
+      // Query registered teams from Supabase database
+      const { data: dbTeams } = await supabase
+        .from('teams')
+        .select('id, name, competition_id, status')
+        .neq('status', 'rejected')
+        .is('deleted_at', null);
+
+      const allTeams = dbTeams || [];
+      const eplTeams = allTeams.filter((t: any) =>
+        t.competition_id === '11111111-1111-1111-1111-111111111111' ||
+        (!t.competition_id && !t.name.toLowerCase().includes('championship')) ||
+        t.name.toLowerCase().includes('premier')
+      );
+      const champTeams = allTeams.filter((t: any) =>
+        t.competition_id === '22222222-2222-2222-2222-222222222222' ||
+        t.name.toLowerCase().includes('championship')
+      );
 
       return [
-        { league_id: 'epl', teams: epl },
-        { league_id: 'championship', teams: champ },
+        { league_id: '11111111-1111-1111-1111-111111111111', teams: eplTeams.map((t: any) => t.id) },
+        { league_id: '22222222-2222-2222-2222-222222222222', teams: champTeams.map((t: any) => t.id) },
       ];
     },
   };

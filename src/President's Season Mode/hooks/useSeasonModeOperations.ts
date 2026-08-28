@@ -16,9 +16,6 @@ import { teamsService } from '../services/teamsService';
 import { seasonOperationsService } from '../services/seasonOperationsService';
 import {
   COMPETITIONS,
-  LOCAL_SEED_EPL_TEAMS,
-  LOCAL_SEED_CHAMP_TEAMS,
-  LOCAL_SEED_REFEREES,
   OFFICIAL_PITCHES,
 } from '../constants/seasonConstants';
 
@@ -72,9 +69,22 @@ export function useSeasonModeOperations() {
   const [addFriendlyModalOpen, setAddFriendlyModalOpen] = useState<boolean>(false);
   const [refUnavailableTarget, setRefUnavailableTarget] = useState<SeasonReferee | null>(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
-  const [pitchConflictModalData, setPitchConflictModalData] = useState<{ pitch: SeasonPitch; mode: PitchAvailabilityMode; affected: OperationalMatch[] } | null>(null);
+  const [pitchConflictModalData, setPitchConflictModalData] = useState<{
+    pitch: SeasonPitch;
+    mode: PitchAvailabilityMode;
+    affected: OperationalMatch[];
+  } | null>(null);
 
-  // Initial Data Fetching
+  // Matchday Filter State
+  const [selectedMatchday, setSelectedMatchday] = useState<number>(1);
+  const [matchdayTabFilter, setMatchdayTabFilter] = useState<'ALL' | 'EPL' | 'CHAMPIONSHIP'>('ALL');
+
+  // Season Generation Wizard Modal State
+  const [isGenerationModalOpen, setIsGenerationModalOpen] = useState<boolean>(false);
+
+  // =========================================================================
+  // LOAD CORE OPERATIONAL DATA
+  // =========================================================================
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -86,47 +96,21 @@ export function useSeasonModeOperations() {
         teamsService.fetchTeams(),
       ]);
 
-      let finalTeams = teamRes.teams && teamRes.teams.length > 0 ? teamRes.teams : [...LOCAL_SEED_EPL_TEAMS, ...LOCAL_SEED_CHAMP_TEAMS];
-      let finalRefs = refRes.referees && refRes.referees.length > 0 ? refRes.referees : LOCAL_SEED_REFEREES;
-      let finalPitches = pitchRes.pitches && pitchRes.pitches.length > 0 ? pitchRes.pitches : OFFICIAL_PITCHES;
-
-      let finalFixtures: OperationalMatch[] = [];
-      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
-        finalFixtures = fixRes.fixtures as OperationalMatch[];
-      } else {
-        // Generate operational season fixtures
-        const epl = finalTeams.filter((t) => t.competition_id === COMPETITIONS.PREMIER_LEAGUE.id);
-        const champ = finalTeams.filter((t) => t.competition_id === COMPETITIONS.CHAMPIONSHIP.id);
-        const genRes = fixturesService.generateSeasonFixtures(epl, champ, finalRefs, finalPitches as any);
-        if (genRes.premierLeagueFixtures || genRes.championshipFixtures) {
-          finalFixtures = [
-            ...(genRes.premierLeagueFixtures?.all_fixtures || []),
-            ...(genRes.championshipFixtures?.all_fixtures || []),
-          ] as OperationalMatch[];
-        }
-      }
+      const finalTeams = teamRes.teams || [];
+      const finalRefs = refRes.referees || [];
+      const finalPitches = pitchRes.pitches && pitchRes.pitches.length > 0 ? pitchRes.pitches : OFFICIAL_PITCHES;
+      const finalFixtures = (fixRes.fixtures || []) as OperationalMatch[];
 
       setTeams(finalTeams);
       setReferees(finalRefs);
       setPitches(finalPitches as any);
       setFixtures(finalFixtures);
     } catch (err: any) {
-      console.warn('Local dev fallback active:', err.message);
-      const defaultTeams = [...LOCAL_SEED_EPL_TEAMS, ...LOCAL_SEED_CHAMP_TEAMS];
-      const defaultRefs = LOCAL_SEED_REFEREES;
-      const defaultPitches = OFFICIAL_PITCHES;
-      const epl = defaultTeams.filter((t) => t.competition_id === COMPETITIONS.PREMIER_LEAGUE.id);
-      const champ = defaultTeams.filter((t) => t.competition_id === COMPETITIONS.CHAMPIONSHIP.id);
-      const genRes = fixturesService.generateSeasonFixtures(epl, champ, defaultRefs, defaultPitches as any);
-      const generatedFixtures = [
-        ...(genRes.premierLeagueFixtures?.all_fixtures || []),
-        ...(genRes.championshipFixtures?.all_fixtures || []),
-      ] as OperationalMatch[];
-
-      setTeams(defaultTeams);
-      setReferees(defaultRefs);
-      setPitches(defaultPitches as any);
-      setFixtures(generatedFixtures);
+      console.warn('Live season mode sync info:', err.message);
+      setTeams([]);
+      setReferees([]);
+      setPitches(OFFICIAL_PITCHES as any);
+      setFixtures([]);
     } finally {
       setIsLoading(false);
     }

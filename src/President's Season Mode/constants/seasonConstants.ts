@@ -17,9 +17,9 @@ export const COMPETITIONS = {
 
 export const OFFICIAL_PITCHES = [
   {
-    id: '91111111-1111-4111-8111-111111111111',
-    name: 'Egerton Main Stadium Pitch',
-    short_code: 'MAIN-STAD',
+    id: '91111111-1111-1111-1111-111111111111',
+    name: 'Pitch A — Main Stadium Pitch',
+    short_code: 'PITCH-A',
     location: 'Main Campus Athletics Complex',
     capacity: 10000,
     surface_type: 'Natural Grass',
@@ -27,9 +27,9 @@ export const OFFICIAL_PITCHES = [
     status: 'Available' as const,
   },
   {
-    id: '92222222-2222-4222-8222-222222222222',
-    name: 'Pavilion Grounds Pitch A',
-    short_code: 'PAV-A',
+    id: '92222222-2222-2222-2222-222222222222',
+    name: 'Pitch B — Pavilion Grounds',
+    short_code: 'PITCH-B',
     location: 'Pavilion Sports Complex',
     capacity: 3500,
     surface_type: 'Hybrid Turf',
@@ -37,9 +37,9 @@ export const OFFICIAL_PITCHES = [
     status: 'Available' as const,
   },
   {
-    id: '93333333-3333-4333-8333-333333333333',
-    name: 'Tatton Complex Ground',
-    short_code: 'TAT-GRD',
+    id: '93333333-3333-3333-3333-333333333333',
+    name: 'Pitch C — Tatton Complex Ground',
+    short_code: 'PITCH-C',
     location: 'Tatton Campus Ground',
     capacity: 2500,
     surface_type: 'Natural Grass',
@@ -77,16 +77,16 @@ export const OPERATIONAL_STATUS_COLORS = {
 
 /**
  * PRODUCTION ROSTER TARGETS
- * EPL: 10 teams -> 90 Leg 1 + 90 Leg 2 = 180 total.
+ * EPL: 12 teams -> 66 Leg 1 + 66 Leg 2 = 132 total.
  * Championship: 13 teams -> 78 Leg 1 + 78 Leg 2 = 156 total.
- * Combined Production Target: 180 + 156 = 336 total fixtures.
+ * Combined Production Target: 132 + 156 = 288 total fixtures.
  */
 export const PRODUCTION_TARGETS = {
   PREMIER_LEAGUE: {
-    teamsCount: 10,
-    leg1Fixtures: 90,
-    leg2Fixtures: 90,
-    totalFixtures: 180,
+    teamsCount: 12,
+    leg1Fixtures: 66,
+    leg2Fixtures: 66,
+    totalFixtures: 132,
   },
   CHAMPIONSHIP: {
     teamsCount: 13,
@@ -94,20 +94,22 @@ export const PRODUCTION_TARGETS = {
     leg2Fixtures: 78,
     totalFixtures: 156,
   },
-  TOTAL_FIXTURES: 336,
+  TOTAL_FIXTURES: 288,
 } as const;
 
 export const LOCAL_SEED_EPL_TEAMS: any[] = [
   { id: '10000000-0000-4000-8000-000000000001', name: 'Sharklets FC', short_name: 'SHK', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000002', name: 'Faculty of Arts', short_name: 'FOA', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000003', name: 'Faculty of Science', short_name: 'FOS', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000004', name: 'Njoro FC', short_name: 'NJR', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000005', name: 'Egerton Strikers', short_name: 'EST', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000006', name: 'Buruburu FC', short_name: 'BRB', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000007', name: 'Tatton Warriors', short_name: 'TAT', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000008', name: 'Main Campus FC', short_name: 'MCF', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000009', name: 'Egerton Athletics', short_name: 'EAT', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
-  { id: '10000000-0000-4000-8000-000000000010', name: 'Kilimo Stars', short_name: 'KLS', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D4AF37' },
+  { id: '10000000-0000-4000-8000-000000000002', name: 'Faculty of Arts', short_name: 'FOA', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#3B82F6' },
+  { id: '10000000-0000-4000-8000-000000000003', name: 'Faculty of Science', short_name: 'FOS', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#10B981' },
+  { id: '10000000-0000-4000-8000-000000000004', name: 'Njoro FC', short_name: 'NJR', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#EF4444' },
+  { id: '10000000-0000-4000-8000-000000000005', name: 'Egerton Strikers', short_name: 'EST', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#F59E0B' },
+  { id: '10000000-0000-4000-8000-000000000006', name: 'Buruburu FC', short_name: 'BRB', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#8B5CF6' },
+  { id: '10000000-0000-4000-8000-000000000007', name: 'Tatton Warriors', short_name: 'TAT', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#EC4899' },
+  { id: '10000000-0000-4000-8000-000000000008', name: 'Main Campus FC', short_name: 'MCF', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#06B6D4' },
+  { id: '10000000-0000-4000-8000-000000000009', name: 'Egerton Athletics', short_name: 'EAT', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#84CC16' },
+  { id: '10000000-0000-4000-8000-000000000010', name: 'Kilimo Stars', short_name: 'KLS', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#6366F1' },
+  { id: '10000000-0000-4000-8000-000000000011', name: 'Engineering Royals', short_name: 'ENG', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#14B8A6' },
+  { id: '10000000-0000-4000-8000-000000000012', name: 'Pavilion Rangers', short_name: 'PVR', competition_id: COMPETITIONS.PREMIER_LEAGUE.id, status: 'approved', color_code: '#D97706' },
 ];
 
 export const LOCAL_SEED_CHAMP_TEAMS: any[] = [

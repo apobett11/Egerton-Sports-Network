@@ -31,16 +31,15 @@ export const usePresidentDashboard = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // --- DUAL MODE MANAGEMENT: PRE-SEASON VS SEASON MODE ---
-  const [isSeasonMode, setIsSeasonMode] = useState<boolean>(() => {
-    return localStorage.getItem('egerton_season_mode_active') === 'true';
-  });
+  // Default to false and let the live database fixtures table determine season status
+  const [isSeasonMode, setIsSeasonMode] = useState<boolean>(false);
 
   // --- TAB 0: CAMPUS PITCHES STATE ---
   const [pitches, setPitches] = useState<PitchItem[]>(OFFICIAL_PITCHES as PitchItem[]);
 
   // --- TAB 1: SEASON & LEAGUE ENGINE STATE ---
-  const [seasons, setSeasons] = useState<SeasonItem[]>(INITIAL_SEASONS);
-  const [leagues, setLeagues] = useState<LeagueItem[]>(INITIAL_LEAGUES);
+  const [seasons, setSeasons] = useState<SeasonItem[]>([]);
+  const [leagues, setLeagues] = useState<LeagueItem[]>([]);
   const [showCreateSeasonModal, setShowCreateSeasonModal] = useState(false);
   const [showCreateLeagueModal, setShowCreateLeagueModal] = useState(false);
   const [editingLeague, setEditingLeague] = useState<LeagueItem | null>(null);
@@ -57,8 +56,8 @@ export const usePresidentDashboard = () => {
   const [newLeagueMaxTeams, setNewLeagueMaxTeams] = useState(16);
 
   // --- TAB 2: TEAM ONBOARDING & APPROVALS STATE ---
-  const [pendingTeams, setPendingTeams] = useState<PendingTeam[]>(INITIAL_PENDING_TEAMS);
-  const [teams, setTeams] = useState<TeamItem[]>(INITIAL_TEAMS);
+  const [pendingTeams, setPendingTeams] = useState<PendingTeam[]>([]);
+  const [teams, setTeams] = useState<TeamItem[]>([]);
   const [leagueTab, setLeagueTab] = useState<LeagueTab>('premier');
   const [selectedTeam, setSelectedTeam] = useState<TeamItem | null>(null);
   const [activeMenuTeamId, setActiveMenuTeamId] = useState<string | null>(null);
@@ -66,7 +65,7 @@ export const usePresidentDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState('');
 
   // --- TAB 3: REFEREE POOL SETUP STATE ---
-  const [referees, setReferees] = useState<RefereeItem[]>(INITIAL_REFEREES);
+  const [referees, setReferees] = useState<RefereeItem[]>([]);
   const [selectedReferee, setSelectedReferee] = useState<RefereeItem | null>(null);
   const [activeMenuRefId, setActiveMenuRefId] = useState<string | null>(null);
   const [showAddRefModal, setShowAddRefModal] = useState(false);
@@ -108,30 +107,11 @@ export const usePresidentDashboard = () => {
   // =========================================================================
   const fetchPresidentData = useCallback(async () => {
     try {
-      // 1. Fetch Referees
-      const refRes = await ApiService.getReferees();
-      if (refRes.success && refRes.data && refRes.data.length > 0) {
-        const formatted: RefereeItem[] = refRes.data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          email: r.email || '',
-          phone: r.phone || '',
-          status: r.status || 'Active',
-          badgeLevel: r.badge_level || 'FKF National Level 2'
-        }));
-        setReferees(formatted);
-      }
-
-      // 2. Fetch Announcements
-      const ancRes = await ApiService.getAnnouncements();
-      if (ancRes.success && ancRes.data) {
-        setAnnouncements(ancRes.data);
-      }
-
-      // 3. Fetch Approved Teams
+      // 1. Fetch Approved Teams
+      let loadedTeams: TeamItem[] = [];
       const teamRes = await ApiService.getTeams();
-      if (teamRes.success && teamRes.data && teamRes.data.length > 0) {
-        const formattedTeams: TeamItem[] = teamRes.data
+      if (teamRes.success && teamRes.data) {
+        loadedTeams = teamRes.data
           .filter((t: any) => t.status !== 'pending' && t.status !== 'rejected')
           .map((t: any) => ({
             id: t.id,
@@ -140,27 +120,53 @@ export const usePresidentDashboard = () => {
             league: t.division?.toLowerCase().includes('championship') ? 'championship' : 'premier',
             coach: t.coach || 'Assigned Head Coach',
             captain: t.captain || 'Team Captain',
-            playerCount: t.squadCount || t.playerCount || 16,
+            playerCount: t.playerCount || 18,
             maxRoster: 25,
             doctorStatus: 'Assigned',
             doctorName: 'Dr. Official',
             hasCoach: true,
-            hasCaptain: true
+            hasCaptain: true,
           }));
-        if (formattedTeams.length > 0) {
-          setTeams(formattedTeams);
-        }
+        setTeams(loadedTeams);
+      } else {
+        setTeams([]);
+      }
+
+      // 2. Fetch Referees
+      const refRes = await ApiService.getReferees();
+      if (refRes.success && refRes.data) {
+        const formatted: RefereeItem[] = refRes.data.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email || '',
+          phone: r.phone || '',
+          status: r.status || 'Active',
+          badgeLevel: r.badge_level || 'FKF National Level 2',
+        }));
+        setReferees(formatted);
+      } else {
+        setReferees([]);
+      }
+
+      // 3. Fetch Announcements
+      const ancRes = await ApiService.getAnnouncements();
+      if (ancRes.success && ancRes.data) {
+        setAnnouncements(ancRes.data);
+      } else {
+        setAnnouncements([]);
       }
 
       // 4. Fetch Pending Teams
       const pendingRes = await ApiService.getPendingTeams();
-      if (pendingRes.success && pendingRes.data && pendingRes.data.length > 0) {
+      if (pendingRes.success && pendingRes.data) {
         setPendingTeams(pendingRes.data);
+      } else {
+        setPendingTeams([]);
       }
 
       // 5. Fetch Seasons
       const seasonsRes = await ApiService.getSeasons();
-      if (seasonsRes.success && seasonsRes.data && seasonsRes.data.length > 0) {
+      if (seasonsRes.success && seasonsRes.data) {
         const formattedSeasons: SeasonItem[] = seasonsRes.data.map((s: any) => ({
           id: s.id,
           name: s.name,
@@ -168,44 +174,64 @@ export const usePresidentDashboard = () => {
           endDate: s.end_date || s.endDate || '2027-05-30',
           registrationCutoff: s.registration_cutoff || s.registrationCutoff || '2026-08-25',
           status: s.status || 'active',
-          isLocked: Boolean(s.is_locked ?? s.isLocked ?? false)
+          isLocked: Boolean(s.is_locked ?? s.isLocked ?? false),
         }));
         setSeasons(formattedSeasons);
+      } else {
+        setSeasons([]);
       }
 
       // 6. Fetch Competitions / Leagues
       const leaguesRes = await ApiService.getLeagues();
-      if (leaguesRes.success && leaguesRes.data && leaguesRes.data.length > 0) {
-        const formattedLeagues: LeagueItem[] = leaguesRes.data.map((l: any) => ({
-          id: l.id,
-          name: l.name,
-          tier: l.slug?.includes('championship') ? 'Division 2' : 'Division 1',
-          maxTeams: 16,
-          currentTeamsCount: teams.filter((t) => t.league === (l.slug?.includes('championship') ? 'championship' : 'premier')).length,
-          status: l.is_active !== false ? 'Active' : 'Inactive',
-          isArchived: Boolean(l.is_archived)
-        }));
+      if (leaguesRes.success && leaguesRes.data) {
+        const formattedLeagues: LeagueItem[] = leaguesRes.data.map((l: any) => {
+          const isChampionship = l.slug?.includes('championship') || l.name?.toLowerCase().includes('championship');
+          const leagueKey = isChampionship ? 'championship' : 'premier';
+          return {
+            id: l.id,
+            name: l.name,
+            tier: isChampionship ? 'Division 2' : 'Division 1',
+            maxTeams: 16,
+            currentTeamsCount: loadedTeams.filter((t) => t.league === leagueKey).length,
+            status: l.is_active !== false ? 'Active' : 'Inactive',
+            isArchived: Boolean(l.is_archived),
+          };
+        });
         setLeagues(formattedLeagues);
+      } else {
+        setLeagues([]);
       }
 
       // 7. Fetch Campus Pitches
       const pitchRes = await pitchesService.fetchPitches();
       if (pitchRes.pitches && pitchRes.pitches.length > 0) {
         setPitches(pitchRes.pitches);
+      } else {
+        setPitches(OFFICIAL_PITCHES as PitchItem[]);
       }
 
       // 8. Fetch Official Saved Season Fixtures & Check Season Mode Lock
       const fixRes = await fixturesService.fetchFixtures();
-      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
+      const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
+      if (hasFixtures) {
         setSavedFixtures(fixRes.fixtures);
         setIsScheduleLocked(true);
         setIsSeasonMode(true);
         localStorage.setItem('egerton_season_mode_active', 'true');
+      } else {
+        setSavedFixtures([]);
+        setIsScheduleLocked(false);
+        setIsSeasonMode(false);
+        localStorage.removeItem('egerton_season_mode_active');
       }
     } catch (err: any) {
       console.warn('Live database sync info:', err.message);
+      setSavedFixtures([]);
+      setIsScheduleLocked(false);
+      setIsSeasonMode(false);
+      localStorage.removeItem('egerton_season_mode_active');
     }
-  }, [teams]);
+  }, []);
 
   // Initial mount load
   useEffect(() => {
@@ -214,24 +240,30 @@ export const usePresidentDashboard = () => {
 
   const reloadSavedFixtures = async () => {
     const fixRes = await fixturesService.fetchFixtures();
-    if (fixRes.fixtures && fixRes.fixtures.length > 0) {
+    const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
+    if (hasFixtures) {
       setSavedFixtures(fixRes.fixtures);
       setIsScheduleLocked(true);
+      setIsSeasonMode(true);
+      localStorage.setItem('egerton_season_mode_active', 'true');
+    } else {
+      setSavedFixtures([]);
+      setIsScheduleLocked(false);
+      setIsSeasonMode(false);
+      localStorage.removeItem('egerton_season_mode_active');
     }
   };
 
   // Called when Season Launch Wizard confirms & locks fixtures to DB
-  const handleFixturesConfirmed = useCallback(() => {
-    setIsSeasonMode(true);
-    setIsScheduleLocked(true);
-    localStorage.setItem('egerton_season_mode_active', 'true');
-    reloadSavedFixtures();
+  const handleFixturesConfirmed = useCallback(async () => {
+    await reloadSavedFixtures();
   }, []);
 
   // Safe manual reset helper for administrative overhaul / test suite
   const handleResetToPreSeason = useCallback(() => {
     setIsSeasonMode(false);
     setIsScheduleLocked(false);
+    setSavedFixtures([]);
     localStorage.removeItem('egerton_season_mode_active');
   }, []);
 

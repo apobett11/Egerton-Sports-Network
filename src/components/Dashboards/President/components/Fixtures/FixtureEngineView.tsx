@@ -5,13 +5,22 @@ import type { SeasonFixture } from '../../types';
 interface FixtureEngineViewProps {
   isDark: boolean;
   savedFixtures?: SeasonFixture[];
+  premierLeagueTeams?: any[];
+  championshipTeams?: any[];
   onOpenLaunchModal?: () => void;
 }
 
 export const FixtureEngineView: React.FC<FixtureEngineViewProps> = ({
   isDark,
+  premierLeagueTeams = [],
+  championshipTeams = [],
   onOpenLaunchModal,
 }) => {
+  const eplCount = premierLeagueTeams.length;
+  const champCount = championshipTeams.length;
+  const eplMatchdays = eplCount > 1 ? (eplCount % 2 === 0 ? (eplCount - 1) * 2 : eplCount * 2) : 0;
+  const champMatchdays = champCount > 1 ? (champCount % 2 === 0 ? (champCount - 1) * 2 : champCount * 2) : 0;
+
   return (
     <div className="space-y-8 animate-fadeIn pb-12">
       {/* HEADER SECTION */}
@@ -74,11 +83,11 @@ export const FixtureEngineView: React.FC<FixtureEngineViewProps> = ({
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800/60 max-w-md mx-auto text-left">
           <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 space-y-1">
             <span className="text-[10px] font-black uppercase text-amber-400">Premier League</span>
-            <div className="text-xs font-bold text-slate-300">10 Clubs • 18 Matchdays</div>
+            <div className="text-xs font-bold text-slate-300">{eplCount} Clubs • {eplMatchdays} Matchdays</div>
           </div>
           <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 space-y-1">
             <span className="text-[10px] font-black uppercase text-blue-400">Championship</span>
-            <div className="text-xs font-bold text-slate-300">13 Clubs • 26 Matchdays</div>
+            <div className="text-xs font-bold text-slate-300">{champCount} Clubs • {champMatchdays} Matchdays</div>
           </div>
         </div>
       </div>

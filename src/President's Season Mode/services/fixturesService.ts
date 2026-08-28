@@ -532,8 +532,8 @@ export const fixturesService = {
     isValid: boolean;
     errors: string[];
   } {
-    // Construct synthetic 10 EPL teams
-    const syntheticEplTeams: SeasonTeam[] = Array.from({ length: 10 }, (_, i) => ({
+    // Construct synthetic 12 EPL teams
+    const syntheticEplTeams: SeasonTeam[] = Array.from({ length: 12 }, (_, i) => ({
       id: `10000000-0000-0000-0000-${(i + 1).toString().padStart(12, '0')}`,
       competition_id: COMPETITIONS.PREMIER_LEAGUE.id,
       name: `Synthetic EPL Team ${i + 1}`,
@@ -571,15 +571,15 @@ export const fixturesService = {
     const totalCount = eplCount + champCount;
 
     return {
-      eplTeamCount: 10,
+      eplTeamCount: 12,
       champTeamCount: 13,
       eplFixturesGenerated: eplCount,
       champFixturesGenerated: champCount,
       totalFixturesGenerated: totalCount,
-      expectedEpl: 90,
+      expectedEpl: 132,
       expectedChamp: 156,
-      expectedTotal: 246,
-      isValid: result.validation.isValid && eplCount === 90 && champCount === 156,
+      expectedTotal: 288,
+      isValid: result.validation.isValid && eplCount === 132 && champCount === 156,
       errors: result.validation.errors,
     };
   },
