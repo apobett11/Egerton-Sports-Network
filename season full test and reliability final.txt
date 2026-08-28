@@ -1,0 +1,1440 @@
+Deterministic Full-Season End-to-End Simulation
+ROLE
+
+Act as a Principal QA Automation Engineer, Senior SDET, Database Reliability Engineer, and Adversarial Systems Tester.
+
+You are testing a complete sports-management platform immediately before production.
+
+This is a production-gate test.
+
+A bug that survives this test may reach production.
+
+Therefore:
+
+Do not optimize for a green test suite. Optimize for discovering the truth.
+
+You are not being asked to repair the application.
+
+You are being asked to determine whether the existing system can successfully operate an entire season.
+
+0. ABSOLUTE RULES
+
+These rules override convenience.
+
+RULE 0.1 — DO NOT MODIFY THE APPLICATION
+
+During this task:
+
+do not modify frontend source code
+do not modify backend source code
+do not modify algorithms
+do not modify Agent 0
+do not modify database migrations
+do not modify database functions
+do not modify RLS policies
+do not modify triggers
+do not modify schema
+do not modify environment configuration
+do not modify production configuration
+do not "temporarily" patch anything
+do not add test hooks to production code
+do not fix failures
+
+The application is the subject under examination.
+
+Do not repair the patient while performing the X-ray.
+
+1. ENVIRONMENT BOUNDARY
+
+The test must run against:
+
+LOCAL FRONTEND
+        ↓
+LOCAL SUPABASE
+        ↓
+LOCAL POSTGRESQL
+        ↓
+LOCAL AUTH / RLS / FUNCTIONS / TRIGGERS
+
+The production Supabase project must NEVER be touched.
+
+Before doing anything:
+
+Prove:
+Supabase CLI is running locally.
+Frontend points to the local Supabase instance.
+Database queries point to local PostgreSQL.
+No production Supabase URL is being used.
+No production service credentials are being used.
+Test data cannot reach production.
+
+If this cannot be proven:
+
+STOP. FAIL THE ENVIRONMENT CHECK.
+
+Do not proceed.
+
+2. FIRST: UNDERSTAND THE SYSTEM
+
+Before writing season-simulation.spec.ts, inspect the repository.
+
+Read:
+
+project documentation
+algorithm documentation
+Agent 0 documentation
+database schema
+migrations
+RLS policies
+database functions
+triggers
+frontend routes
+dashboard components
+relevant services
+Supabase configuration
+existing Playwright configuration
+existing tests
+
+Identify:
+
+Dashboards
+
+At minimum investigate:
+
+President
+Referee
+Journalist
+Guest/Public
+Team
+
+Also identify any additional dashboard that participates in season operations.
+
+3. BUILD A SYSTEM MAP BEFORE TESTING
+
+Do not guess.
+
+Create an internal map:
+
+ACTION
+ ↓
+FRONTEND
+ ↓
+API / SERVICE
+ ↓
+AGENT 0 / ALGORITHM
+ ↓
+DATABASE
+ ↓
+TRIGGER / FUNCTION
+ ↓
+OTHER DASHBOARD
+ ↓
+GUEST/PUBLIC RESULT
+
+For every major operation identify:
+
+initiating dashboard
+initiating UI control
+expected API request
+expected database mutation
+expected trigger/function
+expected downstream effect
+affected dashboards
+permission requirements
+expected final database state
+
+If the repository contradicts the documentation:
+
+record the contradiction.
+
+Do not silently choose one.
+
+4. TEST PHILOSOPHY
+
+The test has two layers.
+
+Layer A — Real User Operation
+
+The AI must operate the application through the UI.
+
+Use:
+
+getByRole()
+getByTestId()
+getByLabel()
+getByText()
+
+where appropriate.
+
+Do not bypass the UI for operational actions.
+
+Layer B — Truth Verification
+
+After the UI action, independently inspect:
+
+API/network response
+PostgreSQL
+relevant tables
+triggers/functions where observable
+other dashboards
+rendered UI
+
+The database is not assumed to be correct.
+
+The frontend is not assumed to be correct.
+
+The algorithm is not assumed to be correct.
+
+Cross-reference all three.
+
+5. NO DIRECT DATABASE SHORTCUTS
+
+Direct database/API access is allowed ONLY for:
+
+Verification
+
+and:
+
+Test-environment initialization
+
+if initialization cannot legitimately be performed through the available UI.
+
+It must NEVER be used to:
+
+create a match result instead of clicking the UI
+mark a fixture played
+submit a referee report
+cancel a match
+confirm a walkover
+create goals
+assign cards
+close a match
+bypass RLS
+force standings
+force statistics
+
+If an action exists in the UI:
+
+USE THE UI.
+
+6. CREATE A DETERMINISTIC TEST UNIVERSE
+
+Build one controlled season dataset.
+
+Use an even team count compatible with the actual scheduling engine.
+
+Prefer:
+
+12 teams
+22 matchdays
+132 total fixtures
+
+if the current algorithm supports this configuration.
+
+If the application's documented configuration requires another team count:
+
+use the documented valid configuration.
+
+Do not alter the algorithm merely to make the test easier.
+
+Create enough:
+
+teams
+coaches
+players
+referees
+pitches
+
+to exercise the complete system.
+
+Every entity receives a deterministic identifier where possible.
+
+Use deterministic:
+
+names
+IDs
+dates
+scores
+test scenario numbers
+
+so failures can be reproduced.
+
+7. PHASE 1 — PRE-SEASON
+
+Start from the beginning.
+
+Simulate:
+
+7.1 Coach registration
+
+Through the actual supported workflow.
+
+Verify:
+
+coach appears in database
+coach appears in appropriate dashboard
+coach has correct role
+coach has correct team relationship
+7.2 Team registration
+
+Verify:
+
+team exists
+league relationship exists
+coach relationship exists
+squad relationship exists
+7.3 Player registration
+
+Register a realistic squad.
+
+Verify:
+
+players exist
+player/team relationship exists
+player identity remains stable
+no duplicates
+required fields exist
+7.4 Referee registration
+
+Create enough referees to exercise:
+
+normal availability
+unavailable referee
+suspended referee
+reassignment
+multiple referees competing for allocation
+7.5 Pitch registration
+
+Create multiple pitches.
+
+Exercise:
+
+available pitch
+unavailable pitch
+insufficient pitch capacity
+pitch becoming unavailable later
+8. PHASE 2 — PRESIDENT BEGINS SEASON
+
+Use the actual President UI.
+
+Do NOT directly invoke Agent 0.
+
+Do NOT directly invoke Algorithm 1.
+
+Find the real:
+
+Begin Season
+
+flow.
+
+Perform it through the UI.
+
+Verify:
+
+President UI
+ ↓
+Agent 0
+ ↓
+Algorithm 1
+ ↓
+schedule generation
+ ↓
+Agent 0
+ ↓
+database
+
+Confirm that the chain actually occurs.
+
+9. ALGORITHM 1 — FIXTURE GENERATION
+
+Do not assume that fixture generation succeeded because a page displays fixtures.
+
+Independently verify:
+
+Every fixture
+valid home team
+valid away team
+home != away
+valid league
+valid matchday
+valid date
+valid time
+valid pitch
+valid fixture status
+Round-robin invariants
+
+Verify:
+
+every valid team participates
+every required pairing occurs
+no unintended duplicate pairing
+no self-match
+correct number of fixtures
+correct number of matchdays
+first leg satisfies documented constraints
+second leg satisfies documented constraints
+second leg is independently generated according to the documented algorithm behavior
+
+Do not hard-code expected pairings.
+
+Derive the actual schedule and independently verify its mathematical properties.
+
+10. ALGORITHM 2 — MATCHDAY PROGRESSION
+
+For every generated matchday verify:
+
+matchday
+ ↓
+correct date
+ ↓
+correct fixtures
+ ↓
+correct fixture count
+ ↓
+correct progression
+
+The test must detect:
+
+skipped matchday
+duplicate matchday
+wrong date
+wrong fixture assignment
+fixture assigned to wrong day
+fixture appearing twice
+fixture disappearing
+matchday numbering drift
+algorithm stopping
+algorithm running twice
+stale schedule
+stale Agent 0 payload
+11. ALGORITHM 3 — PITCH AND TIME ALLOCATION
+
+For every matchday verify:
+
+pitch assignment
+time assignment
+pitch capacity
+time conflicts
+impossible overlaps
+unavailable pitch usage
+squeezed schedule behavior
+normal schedule behavior
+mid-season changes
+unplayed-match rescheduling
+
+Where a pitch becomes unavailable:
+
+President action
+ ↓
+Agent 0
+ ↓
+Algorithm 3
+ ↓
+new allocation
+ ↓
+database
+ ↓
+dashboards
+
+Verify every stage.
+
+12. ALGORITHMS 4 & 5 — OFFICIATING
+
+Verify:
+
+referee allocation
+linesman allocation
+referee availability
+unavailable referee handling
+suspended referee handling
+duplicate allocation prevention
+conflict prevention
+reassignment
+matchday changes
+referee replacement
+
+Then cross-check:
+
+President
+↕
+Referee
+↕
+Database
+↕
+Guest
+13. FULL 22-MATCHDAY SIMULATION
+
+Now run the actual season.
+
+Do not stop after proving that the first matchday works.
+
+Run:
+
+MATCHDAY 1
+MATCHDAY 2
+...
+MATCHDAY 22
+
+Every matchday must have its own validation checkpoint.
+
+14. DAILY VARIANCE ENGINE
+
+Every matchday must contain controlled variation.
+
+Do not make every day identical.
+
+Use a deterministic scenario schedule.
+
+Example:
+
+Matchday 1
+
+Normal matches.
+
+Matchday 2
+
+Multiple simultaneous match endings.
+
+Matchday 3
+
+High-scoring match.
+
+Matchday 4
+
+Draw-heavy matchday.
+
+Matchday 5
+
+Walkover.
+
+Matchday 6
+
+Match cancellation.
+
+Matchday 7
+
+Match rescheduling.
+
+Matchday 8
+
+Pitch unavailable.
+
+Matchday 9
+
+Referee unavailable.
+
+Matchday 10
+
+Referee suspension.
+
+Matchday 11
+
+Squad update.
+
+Matchday 12
+
+Three rapid match completions.
+
+Matchday 13
+
+Concurrent operations.
+
+Matchday 14
+
+Late operational change.
+
+Matchday 15
+
+Multiple changes to different matches.
+
+Matchday 16
+
+Connectivity interruption/recovery if safely reproducible locally.
+
+Matchday 17
+
+Stale dashboard/session scenario.
+
+Matchday 18
+
+Repeated button interaction / duplicate submission protection.
+
+Matchday 19
+
+Walkover + normal match + draw combination.
+
+Matchday 20
+
+Pitch/time reallocation.
+
+Matchday 21
+
+Late-season pressure test.
+
+Matchday 22
+
+Final matchday and closure.
+
+Adjust these scenarios to the actual capabilities discovered in the repository.
+
+Do not invent nonexistent UI operations.
+
+15. RAPID-CONCURRENCY TEST
+
+One critical scenario:
+
+Attempt to complete three different matches with submission initiations occurring extremely close together.
+
+Use multiple browser contexts/pages if necessary.
+
+Measure:
+
+submission_start_timestamp
+database_insert_timestamp
+database_commit_timestamp
+
+The purpose is to test whether:
+
+triggers race
+duplicate records occur
+standings become inconsistent
+statistics are lost
+one match overwrites another
+Agent 0 receives stale state
+UI shows stale results
+
+Do not manufacture database timestamps.
+
+Record actual timestamps.
+
+If true <40ms initiation/commit spacing cannot be achieved reliably through the browser environment, report that limitation rather than falsifying the requirement.
+
+16. MATCH SIMULATION
+
+For every fixture that is played:
+
+Use the actual referee workflow.
+
+Example:
+
+open match
+ ↓
+enter goals
+ ↓
+assign cards
+ ↓
+make required match changes
+ ↓
+full-time
+ ↓
+submit report
+
+Every action must happen through Playwright.
+
+After completion verify:
+
+fixture result
+standings
+form
+player statistics
+team statistics
+match status
+report
+guest match page
+president dashboard
+17. WALKOVER TEST
+
+Perform an actual walkover through the UI.
+
+Verify:
+
+winning team = +3
+losing team = 0
+appropriate goal treatment
+fixture closed
+standings updated
+form updated
+statistics handled according to documentation
+guest page updated
+
+Do not assume walkover behavior.
+
+Compare against the documented business rule.
+
+18. CANCELLATION TEST
+
+Cancel a match through the President UI.
+
+Then verify:
+
+fixture status
+matchday state
+referee visibility
+referee action availability
+guest visibility
+standings
+form
+statistics
+
+Then test whether the cancelled match can incorrectly receive a report.
+
+This is an important authorization/state-machine test.
+
+19. MATCHDAY CANCELLATION TEST
+
+Cancel an entire matchday through the actual President interface.
+
+Then attempt legitimate referee operations against affected matches.
+
+Determine whether the system correctly distinguishes:
+
+cancelled matchday
+cancelled fixture
+unplayed fixture
+completed fixture
+
+A cancelled match must not accidentally become reportable merely because the referee dashboard still displays a stale action.
+
+20. REFEREE SUSPENSION TEST
+
+President suspends referee.
+
+Then attempt referee operations.
+
+Verify:
+
+President state
+=
+Database state
+=
+Referee permission state
+
+Also verify that unrelated legitimate referee functionality remains available if the documented permissions permit it.
+
+Do not simply expect "everything disabled."
+
+Test the actual authorization model.
+
+21. SQUAD UPDATE TEST
+
+Change a team's squad through the legitimate dashboard.
+
+Verify:
+
+Team dashboard
+ ↓
+Database
+ ↓
+Guest team page
+ ↓
+Match/team references
+
+Check:
+
+player addition
+player removal where supported
+squad ordering
+stale cached squad
+duplicate player
+player belonging to wrong team
+22. CROSS-DASHBOARD REFLECTION MATRIX
+
+For every global action, record:
+
+Action	Origin	Database	President	Referee	Team	Journalist	Guest
+
+Populate this from the actual application behavior and documentation.
+
+Do not assume every action affects every dashboard.
+
+For each expected propagation:
+
+ACTION
+ ↓
+DATABASE STATE
+ ↓
+DASHBOARD A
+ ↓
+DASHBOARD B
+ ↓
+GUEST
+
+verify independently.
+
+23. PERMISSION MATRIX
+
+Test every meaningful action against every relevant role.
+
+For example:
+
+President
+Referee
+Coach/Team
+Journalist
+Guest
+
+Test:
+
+Authorized
+
+The action succeeds.
+
+Unauthorized
+
+The action is rejected.
+
+Stale authorization
+
+Open dashboard first.
+
+Change permission elsewhere.
+
+Attempt operation without refreshing.
+
+Verify server-side authorization rather than trusting the UI.
+
+24. DATABASE CROSS-REFERENCE AFTER EVERY MATCHDAY
+
+At the end of every matchday query the real local PostgreSQL database.
+
+Verify at minimum:
+
+league_standings
+
+Matches the rendered standings.
+
+team_form
+
+Matches rendered form.
+
+player_stats
+
+Matches player statistics shown in the UI.
+
+fixtures
+
+Verify:
+
+status
+result
+scheduled_time
+matchday
+pitch
+referee
+stats_processed
+
+according to the actual schema.
+
+Error logs
+
+Check:
+
+admin_error_logs
+
+or the actual error table discovered in the schema.
+
+Do not merely check that the page has no visible error.
+
+25. MATHEMATICAL RECONCILIATION
+
+Independently calculate expected values from raw fixture/result data.
+
+Do NOT blindly trust:
+
+league_standings
+team_form
+player_stats
+
+Use them as one source of truth to compare against independently calculated expectations.
+
+Check:
+
+Points
+win = documented points
+draw = documented points
+loss = documented points
+walkover = documented result
+Goals
+
+Verify:
+
+goals scored
+goals conceded
+goal difference
+Position
+
+Verify according to the documented tie-break order.
+
+Form
+
+Verify the correct number and ordering of recent results.
+
+Player statistics
+
+Verify:
+
+goals
+assists
+clean sheets
+other documented statistics
+26. CACHE TESTING
+
+Determine what the guest frontend caches.
+
+Test:
+
+load
+ ↓
+disconnect/reconnect
+ ↓
+cached render
+ ↓
+network restoration
+ ↓
+refresh
+
+Verify:
+
+no stale data survives indefinitely
+cache does not overwrite newer database data
+cached fixtures remain structurally valid
+cache does not create duplicate records
+database remains authoritative
+
+Measure cache behavior rather than assuming it works.
+
+27. FRONTEND RELIABILITY
+
+For every critical button test:
+
+visible
+enabled when appropriate
+disabled when appropriate
+clickable
+correct action
+loading state
+error state
+success state
+duplicate-click protection
+stale-state behavior
+
+Find:
+
+dead buttons
+buttons that do nothing
+buttons that require a refresh
+buttons that silently fail
+buttons that trigger the wrong operation
+actions that succeed visually but fail in PostgreSQL
+28. NETWORK/API AUDIT
+
+Capture network traffic for critical operations.
+
+For every important mutation verify:
+
+method
+endpoint
+authorization
+payload
+response status
+response body
+timing
+
+Detect:
+
+401
+403
+404
+409
+422
+500
+unexpected retries
+duplicate requests
+missing authentication
+incorrect payloads
+stale payloads
+requests to production
+29. AGENT 0 / ALGORITHM OBSERVABILITY
+
+Do not modify Agent 0 or the algorithms.
+
+Observe them.
+
+For each algorithm execution determine:
+
+trigger
+ ↓
+input
+ ↓
+execution
+ ↓
+output
+ ↓
+database effect
+
+Verify that the input corresponds to the current database/frontend state.
+
+Detect:
+
+stale payload
+imagined payload
+missing payload fields
+historical data accidentally included
+current state omitted
+algorithm not triggered
+algorithm triggered twice
+algorithm triggered with wrong state
+algorithm stops unexpectedly
+downstream algorithm never wakes
+partial execution
+inconsistent database state
+30. END-OF-SEASON AUDIT
+
+After Matchday 22:
+
+Do not simply check that the page says:
+
+Season Complete.
+
+Perform a complete reconciliation.
+
+Verify:
+
+Fixtures
+
+All expected fixtures are resolved.
+
+Results
+
+Every played fixture has a valid final state.
+
+Standings
+
+Champion correctly determined.
+
+Golden Boot
+
+Correct winner.
+
+Clean Sheets
+
+Correct counts.
+
+Player statistics
+
+No missing player data.
+
+Teams
+
+All teams remain intact.
+
+Referees
+
+Final operational data persists.
+
+Match reports
+
+All required reports persisted.
+
+Form
+
+Final form is correct.
+
+Guest pages
+
+Public-facing results match the database.
+
+President dashboard
+
+Final state matches database.
+
+31. FINAL DATABASE RECONCILIATION
+
+Perform an independent final audit.
+
+Check for:
+
+orphan records
+duplicate fixtures
+duplicate results
+duplicate players
+missing team relationships
+missing referee relationships
+invalid foreign keys
+impossible standings
+impossible statistics
+incomplete reports
+stale match statuses
+unprocessed fixtures
+inconsistent cached state
+32. FAILURE CLASSIFICATION
+
+Every failure must be classified.
+
+Use:
+
+P0 — DATA CORRUPTION / SECURITY
+P1 — CORE SEASON FAILURE
+P2 — CROSS-DASHBOARD FAILURE
+P3 — FUNCTIONAL FAILURE
+P4 — UX / COSMETIC FAILURE
+
+Examples:
+
+P0
+
+Production endpoint touched.
+
+Unauthorized user modifies protected data.
+
+Database corruption.
+
+P1
+
+Algorithm stops.
+
+Season cannot complete.
+
+Fixtures disappear.
+
+Standings become mathematically incorrect.
+
+P2
+
+Referee submits report but Guest remains wrong.
+
+President cancellation not reflected elsewhere.
+
+P3
+
+Button fails.
+
+Modal cannot submit.
+
+P4
+
+Minor visual issue.
+
+33. FAILURE EVIDENCE
+
+Never report:
+
+"Something failed."
+
+Every failure must contain:
+
+TEST ID
+MATCHDAY
+MATCH
+USER ROLE
+ACTION
+EXPECTED
+ACTUAL
+FRONTEND STATE
+API REQUEST
+API RESPONSE
+DATABASE STATE
+AFFECTED DASHBOARDS
+TIMESTAMP
+SCREENSHOT
+PLAYWRIGHT TRACE
+CONSOLE ERROR
+PROBABLE FAILURE BOUNDARY
+
+Do not speculate beyond the evidence.
+
+34. NO FALSE PASSES
+
+A test is PASS only when there is evidence.
+
+Never say:
+
+PASS
+
+because:
+
+the page looked correct
+no error appeared
+the AI assumes the trigger fired
+the database "probably" updated
+the algorithm appeared to run
+
+A PASS requires actual verification.
+
+35. REPRODUCIBILITY
+
+The simulation must be deterministic.
+
+Use:
+
+fixed test data
+deterministic dates
+deterministic scenario IDs
+deterministic expected values
+controlled concurrency
+reproducible random seeds where randomness is involved
+
+If the actual production algorithm intentionally uses cryptographic randomness, do not modify it merely for testing.
+
+Instead:
+
+capture the generated schedule and verify its mathematical invariants independently.
+
+36. STOP CONDITIONS
+
+Immediately stop the simulation if:
+
+STOP A
+
+Production database is detected.
+
+STOP B
+
+Production API endpoint is detected.
+
+STOP C
+
+A test would require modifying production code.
+
+STOP D
+
+A destructive action cannot be safely isolated.
+
+STOP E
+
+Database corruption is detected.
+
+STOP F
+
+A security boundary is violated.
+
+Record the failure and continue only where safe and independent.
+
+37. TEST FILE
+
+Create:
+
+tests/e2e/season-simulation.spec.ts
+
+or the repository's existing Playwright test directory if one already exists.
+
+Do not modify application source code.
+
+Do not create fake application implementations.
+
+Do not mock the core application.
+
+The test must interact with the real local application.
+
+38. TEST ARCHITECTURE
+
+Structure the test into logical stages:
+
+Environment Safety
+System Discovery
+Test Data Initialization
+Pre-Season
+Season Launch
+Algorithm 1
+Algorithm 2
+Algorithm 3
+Algorithms 4/5
+Matchday 1
+Matchday 2
+...
+Matchday 22
+Cross-Dashboard Verification
+Final Season Closure
+Final Database Reconciliation
+Production-Gate Report
+
+Use helper functions inside the test suite where necessary.
+
+Do not create unnecessary framework complexity.
+
+39. ROBUSTNESS
+
+Do not solve flakiness with:
+
+waitForTimeout(5000)
+waitForTimeout(10000)
+
+Avoid arbitrary sleeps.
+
+Prefer:
+
+expect(...).toBeVisible()
+expect(...).toBeEnabled()
+waitForResponse()
+waitForURL()
+locator assertions
+database polling with bounded conditions
+network idle only where appropriate
+
+Every wait must have a reason.
+
+If an operation is asynchronous:
+
+wait for the actual state transition.
+
+Do not wait an arbitrary amount of time and hope.
+
+40. PERFORMANCE
+
+Record timing for important operations:
+
+UI action start
+request start
+request end
+database mutation
+downstream reflection
+
+Identify:
+
+unexpectedly slow calls
+duplicate calls
+repeated queries
+algorithm stalls
+UI operations that never resolve
+
+Do not introduce performance optimizations.
+
+Only measure.
+
+41. FINAL REPORT
+
+When the season simulation finishes, produce:
+
+EXECUTIVE VERDICT
+PRODUCTION READY
+
+or
+
+NOT PRODUCTION READY
+
+Do not use a middle-ground verdict.
+
+Then provide:
+
+1. Environment verification
+2. Season configuration
+3. Algorithms exercised
+4. Matchdays completed
+5. Fixtures completed
+6. Cross-dashboard tests
+7. Database reconciliation
+8. Security/permission results
+9. API/network findings
+10. Performance findings
+11. Failed tests
+12. Severity classification
+13. Evidence for every failure
+14. Final database integrity state
+15. Final season state
+42. CRITICAL FINAL CONDITION
+
+The final verdict may be:
+
+PRODUCTION READY
+
+ONLY IF:
+
+                    ┌──────────────────┐
+                    │ PRE-SEASON      │
+                    │ COMPLETE        │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ SEASON LAUNCH   │
+                    │ VERIFIED        │
+                    └────────┬─────────┘
+                             ↓
+                    ┌──────────────────┐
+                    │ ALGORITHM CHAIN │
+                    │ VERIFIED        │
+                    └────────┬─────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ ALL MATCHDAYS        │
+                  │ COMPLETED            │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ ALL RESULTS          │
+                  │ PERSISTED            │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ STANDINGS            │
+                  │ RECONCILED           │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ PLAYER STATISTICS    │
+                  │ RECONCILED           │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ CROSS-DASHBOARD      │
+                  │ REFLECTION VERIFIED  │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ PERMISSIONS VERIFIED │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ DATABASE INTEGRITY   │
+                  │ VERIFIED             │
+                  └──────────┬───────────┘
+                             ↓
+                  ┌──────────────────────┐
+                  │ SEASON CLOSED       │
+                  │ CORRECTLY           │
+                  └──────────┬───────────┘
+                             ↓
+                     PRODUCTION READY
+
+One unresolved P0/P1 failure means NOT PRODUCTION READY.
+
+A P2/P3 failure must also prevent the final production-ready verdict if it affects a core season workflow.
+
+43. MOST IMPORTANT INSTRUCTION
+
+You are not the developer during this test.
+
+You are the examiner.
+
+Do not fix the application.
+
+Do not make assumptions.
+
+Do not simplify the test because it is inconvenient.
+
+Do not skip a matchday because the first few passed.
+
+Do not replace UI operations with database writes.
+
+Do not manufacture successful results.
+
+Do not declare success because the application "looks right."
+
+Operate the real frontend.
+
+Observe the real API.
+
+Inspect the real database.
+
+Follow the actual trigger chain.
+
+Cross-reference the dashboards.
+
+Run the season.
+
+Then reconcile the entire system.
+
+Your job is not to make the system pass. Your job is to find out whether it passes.
+
+Begin with PHASE 0 — ENVIRONMENT SAFETY AND SYSTEM DISCOVERY.
+
+Do not proceed to the season simulation until Phase 0 has been proven successful.

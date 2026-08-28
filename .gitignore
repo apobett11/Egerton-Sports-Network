@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing and temporary files
+test-results/
+playwright-report/
+blob-report/
+supabase/.temp/
+supabase/.branches/
