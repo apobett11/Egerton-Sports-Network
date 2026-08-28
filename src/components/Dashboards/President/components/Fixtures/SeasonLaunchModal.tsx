@@ -321,13 +321,13 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-100 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-100 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="season-launch-title"
     >
       <div
-        className={`w-full max-w-3xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] transition-all duration-300 ${
+        className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[88vh] transition-all duration-300 ${
           isDark
             ? 'bg-[#090D16] border-slate-800 text-white shadow-black/80'
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
@@ -335,19 +335,19 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
       >
         {/* MODAL HEADER */}
         <div
-          className={`p-5 sm:p-6 border-b flex items-center justify-between shrink-0 ${
+          className={`px-4 py-3 sm:px-5 sm:py-3.5 border-b flex items-center justify-between shrink-0 ${
             isDark ? 'border-slate-800 bg-[#0E1424]' : 'border-slate-200 bg-slate-50'
           }`}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center font-bold">
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h2 id="season-launch-title" className="text-base sm:text-lg font-black tracking-tight">
+              <h2 id="season-launch-title" className="text-sm sm:text-base font-black tracking-tight">
                 Begin Season Launch Wizard
               </h2>
-              <p className="text-xs text-slate-400 font-medium">
+              <p className="text-[11px] text-slate-400 font-medium">
                 Official Season Fixture Setup & Master Scheduling Protocol (Agent 0).
               </p>
             </div>
@@ -357,27 +357,27 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             onClick={handleCancelAndReset}
             disabled={step === 'GENERATING_ALGO1' || step === 'LOCKING_DB'}
             aria-label="Close modal"
-            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* STEP PROGRESS BARS (4 STEPS) */}
         <div
-          className={`px-6 py-3 border-b flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider shrink-0 overflow-x-auto gap-2 ${
+          className={`px-4 py-2 border-b flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider shrink-0 overflow-x-auto gap-1.5 ${
             isDark ? 'bg-slate-950/60 border-slate-800/60' : 'bg-slate-100/80 border-slate-200'
           }`}
         >
           <div
-            className={`flex items-center gap-2 ${
+            className={`flex items-center gap-1.5 ${
               step === 'CALENDAR_SETUP'
                 ? 'text-amber-500 font-black'
                 : 'text-slate-400'
             }`}
           >
             <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 step === 'CALENDAR_SETUP'
                   ? 'bg-amber-500 text-slate-950 font-black'
                   : 'bg-slate-800 text-slate-400'
@@ -388,17 +388,17 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             <span>1. Start Date</span>
           </div>
 
-          <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
 
           <div
-            className={`flex items-center gap-2 ${
+            className={`flex items-center gap-1.5 ${
               step === 'RESOURCE_STATS'
                 ? 'text-amber-500 font-black'
                 : 'text-slate-400'
             }`}
           >
             <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 step === 'RESOURCE_STATS'
                   ? 'bg-amber-500 text-slate-950 font-black'
                   : 'bg-slate-800 text-slate-400'
@@ -409,17 +409,17 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             <span>2. Resources</span>
           </div>
 
-          <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
 
           <div
-            className={`flex items-center gap-2 ${
+            className={`flex items-center gap-1.5 ${
               step === 'TEAM_STATS' || step === 'GENERATING_ALGO1'
                 ? 'text-amber-500 font-black'
                 : 'text-slate-400'
             }`}
           >
             <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 step === 'TEAM_STATS' || step === 'GENERATING_ALGO1'
                   ? 'bg-amber-500 text-slate-950 font-black'
                   : 'bg-slate-800 text-slate-400'
@@ -430,17 +430,17 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             <span>3. Teams</span>
           </div>
 
-          <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
 
           <div
-            className={`flex items-center gap-2 ${
+            className={`flex items-center gap-1.5 ${
               step === 'PREVIEW_AND_LOCK' || step === 'LOCKING_DB' || step === 'LOCKED_SUCCESS'
                 ? 'text-amber-500 font-black'
                 : 'text-slate-400'
             }`}
           >
             <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
                 step === 'PREVIEW_AND_LOCK' || step === 'LOCKING_DB' || step === 'LOCKED_SUCCESS'
                   ? 'bg-amber-500 text-slate-950 font-black'
                   : 'bg-slate-800 text-slate-400'
@@ -453,52 +453,52 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
         </div>
 
         {/* MODAL CONTENT BODY */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
           {/* STEP 1: MONTH CALENDAR & START DATE PICKER */}
           {step === 'CALENDAR_SETUP' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* PRIMARY PROMPT TITLE AS REQUESTED */}
-              <div className="space-y-2">
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1.5">
-                  <CalendarIcon className="w-3.5 h-3.5" />
+              <div className="space-y-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
+                  <CalendarIcon className="w-3 h-3" />
                   <span>Season Matchday Anchor</span>
                 </span>
-                <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+                <h3 className="text-base sm:text-lg font-black tracking-tight">
                   When do you prefer the first matchday to be played?
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                  This anchor date will be supplied to Agent 0 and passed to <span className="text-amber-400 font-bold">Algorithm 2</span> to initialize Matchday 1 allocation. Subsequent matchdays will be automatically scheduled following the standard playday cycle.
+                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
+                  This anchor date will be supplied to Agent 0 and passed to <span className="text-amber-400 font-bold">Algorithm 2</span> to initialize Matchday 1 allocation.
                 </p>
               </div>
 
               {/* MONTH CALENDAR WIDGET */}
-              <div className={`p-5 rounded-3xl border ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-4`}>
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                  <div className="font-black text-sm">
+              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2.5`}>
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                  <div className="font-black text-xs">
                     {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={prevMonth}
                       type="button"
-                      className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
+                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
                       title="Previous Month"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={nextMonth}
                       type="button"
-                      className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
+                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
                       title="Next Month"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Day of week headers */}
-                <div className="grid grid-cols-7 text-center text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                <div className="grid grid-cols-7 text-center text-[9px] font-black uppercase text-slate-500 tracking-wider">
                   <span>Sun</span>
                   <span>Mon</span>
                   <span>Tue</span>
@@ -519,9 +519,9 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                         onClick={() => {
                           setSelectedStartDate(d.dateStr);
                         }}
-                        className={`p-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex flex-col items-center justify-center min-h-[38px] ${
+                        className={`p-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center min-h-[30px] ${
                           isSelected
-                            ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20 scale-105 ring-2 ring-amber-400'
+                            ? 'bg-amber-500 text-slate-950 font-extrabold shadow-md shadow-amber-500/20 scale-105 ring-2 ring-amber-400'
                             : d.isCurrentMonth
                             ? isDark
                               ? 'text-slate-200 hover:bg-slate-800/80'
@@ -536,10 +536,10 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 </div>
 
                 {/* Manual Direct Input Display */}
-                <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400">Selected First Matchday:</span>
-                    <span className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono font-black">
+                    <span className="text-[11px] font-bold text-slate-400">First Matchday:</span>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-mono font-black">
                       {selectedStartDate ? new Date(selectedStartDate).toDateString() : 'None'}
                     </span>
                   </div>
@@ -548,7 +548,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                     type="date"
                     value={selectedStartDate}
                     onChange={(e) => setSelectedStartDate(e.target.value)}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-bold focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-bold focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
                       isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}
                   />
@@ -556,15 +556,15 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               </div>
 
               {/* ACTION BUTTON */}
-              <div className="pt-2 flex justify-end">
+              <div className="pt-1 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setStep('RESOURCE_STATS')}
                   disabled={!selectedStartDate}
-                  className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2 min-h-[44px]"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
                   <span>Approve Date & Continue</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -572,53 +572,53 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
           {/* STEP 2: PITCH & REFEREE STATS (KPI CARDS - NO LONG LISTS) */}
           {step === 'RESOURCE_STATS' && (
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <h3 className="text-xl font-black tracking-tight">
+            <div className="space-y-4">
+              <div className="space-y-0.5">
+                <h3 className="text-base font-black tracking-tight">
                   Step 2: Pitch & Referee Resource Statistics
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">
+                <p className="text-[11px] text-slate-400 font-medium">
                   Summary statistics of campus facilities and accredited match officials prepared for season fixture allocation.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* PITCHES STATS CARD */}
                 <div
-                  className={`p-6 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2.5`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center font-bold">
-                        <MapPin className="w-4 h-4" />
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center font-bold">
+                        <MapPin className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-sm font-black uppercase tracking-wider">
+                      <h4 className="text-xs font-black uppercase tracking-wider">
                         Pitches Available
                       </h4>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-teal-500/10 text-teal-400 border border-teal-500/20">
                       {availablePitches.length} / {pitches.length || 3} Ready
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-3xl font-black tracking-tight">
+                      <span className="text-2xl font-black tracking-tight">
                         {availablePitches.length}
                       </span>
-                      <span className="text-xs font-bold text-teal-400">100% Operational Capacity</span>
+                      <span className="text-[10px] font-bold text-teal-400">100% Operational Capacity</span>
                     </div>
 
-                    <div className="space-y-2 pt-1 text-xs">
+                    <div className="space-y-1.5 pt-0.5 text-xs">
                       {availablePitches.map((p) => (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80"
+                          className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80"
                         >
-                          <span className="font-bold text-slate-300">{p.name}</span>
-                          <span className="text-[10px] font-mono text-teal-400 font-black">
+                          <span className="font-bold text-[11px] text-slate-300">{p.name}</span>
+                          <span className="text-[9px] font-mono text-teal-400 font-black">
                             {p.capacity ? `${p.capacity.toLocaleString()} Cap` : 'Available'}
                           </span>
                         </div>
@@ -629,45 +629,45 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
                 {/* REFEREES STATS CARD */}
                 <div
-                  className={`p-6 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2.5`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
-                        <UserCheck className="w-4 h-4" />
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+                        <UserCheck className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-sm font-black uppercase tracking-wider">
+                      <h4 className="text-xs font-black uppercase tracking-wider">
                         Referee Pool
                       </h4>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       {activeReferees.length} Active Refs
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-3xl font-black tracking-tight">
+                      <span className="text-2xl font-black tracking-tight">
                         {activeReferees.length}
                       </span>
-                      <span className="text-xs font-bold text-emerald-400">Officiating Pool Active</span>
+                      <span className="text-[10px] font-bold text-emerald-400">Officiating Pool Active</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 text-center">
-                        <div className="text-lg font-black">4</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">FIFA / FKF L2</div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-center">
+                        <div className="text-sm font-black">4</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase">FIFA / FKF L2</div>
                       </div>
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 text-center">
-                        <div className="text-lg font-black">2</div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Regional L1</div>
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-center">
+                        <div className="text-sm font-black">2</div>
+                        <div className="text-[9px] font-bold text-slate-400 uppercase">Regional L1</div>
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-[11px] text-emerald-300 font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[10px] text-emerald-300 font-medium flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span>Sufficient center & linesman allocations for dual divisions.</span>
                     </div>
                   </div>
@@ -675,11 +675,11 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="pt-2 flex items-center justify-between">
+              <div className="pt-1 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep('CALENDAR_SETUP')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
                   Back to Calendar
                 </button>
@@ -687,10 +687,10 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep('TEAM_STATS')}
-                  className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2 min-h-[44px]"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
                   <span>Next: Review Team Stats</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -698,68 +698,68 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
           {/* STEP 3: TEAMS STATS (EPL & CHAMPIONSHIP DIVISION STATS) */}
           {step === 'TEAM_STATS' && (
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <h3 className="text-xl font-black tracking-tight">
+            <div className="space-y-4">
+              <div className="space-y-0.5">
+                <h3 className="text-base font-black tracking-tight">
                   Step 3: League Division Team Statistics
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">
+                <p className="text-[11px] text-slate-400 font-medium">
                   Verified registered clubs across both leagues ready for Algorithm 1 mathematical Double Round-Robin generator.
                 </p>
               </div>
 
               {generationError && (
-                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-3 text-rose-400 text-xs font-bold">
-                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 text-rose-400 text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{generationError}</span>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* EPL STATS CARD */}
                 <div
-                  className={`p-6 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2.5`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
-                        <Trophy className="w-4 h-4" />
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
+                        <Trophy className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider">
+                      <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">
                         Egerton Premier League
                       </h4>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       Tier 1 Division
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-3xl font-black tracking-tight">
+                      <span className="text-2xl font-black tracking-tight">
                         {premierLeagueTeams.length} Teams
                       </span>
-                      <span className="text-xs font-bold text-amber-400">
-                        {premierLeagueTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Head Coaches Assigned
+                      <span className="text-[10px] font-bold text-amber-400">
+                        {premierLeagueTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Coaches Assigned
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">
+                    <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                        <div className="text-sm font-black">
                           {premierLeagueTeams.length > 1
                             ? premierLeagueTeams.length % 2 === 0
                               ? (premierLeagueTeams.length - 1) * 2
                               : premierLeagueTeams.length * 2
                             : 0} Matchdays
                         </div>
-                        <div className="text-[10px] text-slate-400 font-bold">Double Round Robin</div>
+                        <div className="text-[9px] text-slate-400 font-bold">Double Round Robin</div>
                       </div>
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">{expectedEplMatches} Matches</div>
-                        <div className="text-[10px] text-slate-400 font-bold">
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                        <div className="text-sm font-black">{expectedEplMatches} Matches</div>
+                        <div className="text-[9px] text-slate-400 font-bold">
                           {Math.floor(expectedEplMatches / 2)} Leg 1 + {Math.floor(expectedEplMatches / 2)} Leg 2
                         </div>
                       </div>
@@ -769,50 +769,50 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
                 {/* CHAMPIONSHIP STATS CARD */}
                 <div
-                  className={`p-6 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2.5`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
-                        <Award className="w-4 h-4" />
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
+                        <Award className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-sm font-black text-blue-400 uppercase tracking-wider">
+                      <h4 className="text-xs font-black text-blue-400 uppercase tracking-wider">
                         Egerton Championship
                       </h4>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       Tier 2 Division
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-3xl font-black tracking-tight">
+                      <span className="text-2xl font-black tracking-tight">
                         {championshipTeams.length} Teams
                       </span>
-                      <span className="text-xs font-bold text-blue-400">
-                        {championshipTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Head Coaches Assigned
+                      <span className="text-[10px] font-bold text-blue-400">
+                        {championshipTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Coaches Assigned
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">
+                    <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                        <div className="text-sm font-black">
                           {championshipTeams.length > 1
                             ? championshipTeams.length % 2 === 0
                               ? (championshipTeams.length - 1) * 2
                               : championshipTeams.length * 2
                             : 0} Matchdays
                         </div>
-                        <div className="text-[10px] text-slate-400 font-bold">
+                        <div className="text-[9px] text-slate-400 font-bold">
                           {championshipTeams.length % 2 !== 0 ? 'BYE Auto Handled' : 'Double Round Robin'}
                         </div>
                       </div>
-                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-base font-black">{expectedChampMatches} Matches</div>
-                        <div className="text-[10px] text-slate-400 font-bold">
+                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
+                        <div className="text-sm font-black">{expectedChampMatches} Matches</div>
+                        <div className="text-[9px] text-slate-400 font-bold">
                           {Math.floor(expectedChampMatches / 2)} Leg 1 + {Math.floor(expectedChampMatches / 2)} Leg 2
                         </div>
                       </div>
@@ -822,21 +822,21 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               </div>
 
               {/* TOTAL KPI BANNER */}
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
-                <span className="text-xs font-black text-amber-300">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-[11px]">
+                <span className="font-black text-amber-300">
                   Total Active Clubs: {premierLeagueTeams.length + championshipTeams.length} Teams
                 </span>
-                <span className="text-xs font-mono font-black">
+                <span className="font-mono font-black">
                   Expected Season Games: 246 Fixtures
                 </span>
               </div>
 
               {/* ACTION BUTTON: GENERATE FIXTURES (CALL AGENT 0) */}
-              <div className="pt-2 flex items-center justify-between">
+              <div className="pt-1 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep('RESOURCE_STATS')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
                   Back to Resources
                 </button>
@@ -844,9 +844,9 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 <button
                   type="button"
                   onClick={handleExecuteAgent0Generation}
-                  className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2 min-h-[44px]"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
-                  <Sparkles className="w-4 h-4 fill-current" />
+                  <Sparkles className="w-3.5 h-3.5 fill-current" />
                   <span>Generate Fixtures (Call Agent 0)</span>
                 </button>
               </div>
@@ -855,13 +855,13 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
           {/* LOADING AGENT 0 ALGORITHM 1 EXECUTION */}
           {step === 'GENERATING_ALGO1' && (
-            <div className="py-16 text-center space-y-5">
-              <Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto" />
-              <div className="space-y-2">
-                <h4 className="text-lg font-black">
+            <div className="py-12 text-center space-y-4">
+              <Loader2 className="w-10 h-10 text-amber-500 animate-spin mx-auto" />
+              <div className="space-y-1.5">
+                <h4 className="text-base font-black">
                   Agent 0 Launching Algorithm 1...
                 </h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                <p className="text-[11px] text-slate-400 max-w-md mx-auto">
                   Computing mathematically immutable Double Round-Robin pairings (Berger Polygon method) with Leg 1 / Leg 2 inverse integrity for both leagues.
                 </p>
               </div>
@@ -870,81 +870,81 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
           {/* STEP 4: PREVIEW OF GENERATED GAMES (STATS SEPARATING 2 LEAGUES) & LOCK BUTTON */}
           {step === 'PREVIEW_AND_LOCK' && (
-            <div className="space-y-6">
-              <div className="space-y-1">
+            <div className="space-y-4">
+              <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Agent 0 Verified
                   </span>
-                  <span className="text-[11px] font-mono text-slate-500">Exec ID: {executionId.slice(0, 8)}...</span>
+                  <span className="text-[10px] font-mono text-slate-500">Exec ID: {executionId.slice(0, 8)}...</span>
                 </div>
-                <h3 className="text-xl font-black tracking-tight">
+                <h3 className="text-base font-black tracking-tight">
                   Step 4: Generated Season Fixtures Preview
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">
+                <p className="text-[11px] text-slate-400 font-medium">
                   Review the mathematical breakdown of generated season matches before locking them to the database.
                 </p>
               </div>
 
               {/* PREVIEW STATS FOR THE 2 SEPARATE LEAGUES */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* EPL PREVIEW CARD */}
                 <div
-                  className={`p-5 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <Trophy className="w-4 h-4" /> Egerton Premier League
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5" /> Egerton Premier League
                     </h4>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       {previewStats.eplTotal} Matches
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                       <span className="text-slate-400">Leg 1 Fixtures (Home):</span>
                       <span className="font-mono font-black">{previewStats.epl1} Matches (MD 1-9)</span>
                     </div>
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                       <span className="text-slate-400">Leg 2 Fixtures (Away Return):</span>
                       <span className="font-mono font-black">{previewStats.epl2} Matches (MD 10-18)</span>
                     </div>
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Matchday Playday Structure:</span>
-                      <span className="font-bold text-amber-400">5 Matches / Matchday</span>
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400">Matchday Structure:</span>
+                      <span className="font-bold text-amber-400">5 Matches / MD</span>
                     </div>
                   </div>
                 </div>
 
                 {/* CHAMPIONSHIP PREVIEW CARD */}
                 <div
-                  className={`p-5 rounded-3xl border ${
+                  className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-4`}
+                  } space-y-2`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h4 className="text-sm font-black text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                      <Award className="w-4 h-4" /> Egerton Championship
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h4 className="text-xs font-black text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5" /> Egerton Championship
                     </h4>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       {previewStats.champTotal} Matches
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                       <span className="text-slate-400">Leg 1 Fixtures (Home):</span>
                       <span className="font-mono font-black">{previewStats.champ1} Matches (MD 1-13)</span>
                     </div>
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                       <span className="text-slate-400">Leg 2 Fixtures (Away Return):</span>
                       <span className="font-mono font-black">{previewStats.champ2} Matches (MD 14-26)</span>
                     </div>
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">BYE Allocation Handling:</span>
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400">BYE Allocation:</span>
                       <span className="font-bold text-blue-400">1 BYE / MD (13 Teams)</span>
                     </div>
                   </div>
@@ -952,31 +952,31 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               </div>
 
               {/* OVERALL SUMMARY & FIRST PLAYDAY NOTIFICATION */}
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
                 <div>
-                  <div className="font-black text-amber-300 uppercase">First Matchday Anchor Date:</div>
+                  <div className="font-black text-amber-300 uppercase text-[10px]">First Matchday Anchor Date:</div>
                   <div className="font-mono font-bold mt-0.5">
                     {new Date(selectedStartDate).toDateString()} (Algorithm 2 Bound)
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-black text-amber-300 uppercase">Total Fixtures to Persist:</div>
-                  <div className="text-xl font-black">{previewStats.total} Matches</div>
+                <div className="text-left sm:text-right">
+                  <div className="font-black text-amber-300 uppercase text-[10px]">Total Fixtures to Persist:</div>
+                  <div className="text-base font-black">{previewStats.total} Matches</div>
                 </div>
               </div>
 
               {lockOutcome?.error && (
-                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold">
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold">
                   {lockOutcome.error}
                 </div>
               )}
 
               {/* ACTION BUTTON: LOCK AND CONFIRM TO DATABASE */}
-              <div className="pt-2 flex items-center justify-between">
+              <div className="pt-1 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep('TEAM_STATS')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
                   Back to Teams
                 </button>
@@ -984,10 +984,10 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCommitAgent0Lock}
-                  className="px-7 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center gap-2 min-h-[44px]"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
-                  <Lock className="w-4 h-4" />
-                  <span>Lock and Confirm to the Database</span>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Lock and Confirm to Database</span>
                 </button>
               </div>
             </div>
