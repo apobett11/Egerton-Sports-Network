@@ -732,7 +732,7 @@ export async function handleEvent(
       if (!algorithm45Result.database.ready_for_write) {
         throw new Agent0Error(
           "ALGORITHM_45_NOT_READY",
-          "Algorithm 4+5 is not ready for database write.",
+          `Algorithm 4+5 is not ready for database write. Logs: ${(algorithm45Result.verification.logs ?? []).join(" | ")}`,
           { verification_logs: algorithm45Result.verification.logs },
         );
       }
@@ -1209,10 +1209,14 @@ function buildTimeSlottedMatches(
 
   return rawList.map((allocation) => {
     const fixture = state.fixtures.find((f) => f.fixture_id === allocation.match_id);
-    const leagueType =
-      allocation.league_id === "epl" || fixture?.league_id === EPL_UUID || fixture?.league_id === "epl"
-        ? "EPL"
-        : "CHAMPIONSHIP";
+    const isEPL =
+      allocation.league_id === "epl" ||
+      allocation.league_id === EPL_UUID ||
+      allocation.league_id?.includes("1111") ||
+      fixture?.league_id === EPL_UUID ||
+      fixture?.league_id === "epl" ||
+      fixture?.league_id?.includes("1111");
+    const leagueType = isEPL ? "EPL" : "CHAMPIONSHIP";
     return {
       match_id: allocation.match_id,
       league_type: leagueType as "EPL" | "CHAMPIONSHIP",
