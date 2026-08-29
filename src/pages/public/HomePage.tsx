@@ -329,79 +329,82 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [activeDate]);
 
   return (
-    <div className="space-y-4 pb-16 px-0 sm:px-1 select-none">
-      {/* 1. UNIFIED FIXTURES CARD: DATE AT TOP -> LEAGUE TITLES -> FIXTURES */}
-      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-        {/* DATE SELECTOR HEADER AT THE VERY TOP OF THE CARD IN WHITE */}
-        <div className="w-full bg-[#0e1e2d] text-white px-3 py-2.5 flex items-center justify-between border-b border-[#14263b]">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-300">⚽ FOOTBALL MATCHDAY</span>
-          </div>
-
-          {/* DATE SELECTOR: < [SATURDAY 3/8/25 📅] > */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleShiftDate(-1)}
-              className="p-1 rounded text-slate-300 hover:text-white hover:bg-[#152a40] transition-colors cursor-pointer"
-              aria-label="Previous day"
-            >
-              <ChevronLeft className="w-4 h-4 text-white" />
-            </button>
-
-            <button 
-              type="button"
-              onClick={onOpenCalendar}
-              className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#152a40] text-white text-xs font-black tracking-wider uppercase cursor-pointer hover:bg-[#1c3857] border border-white/10 shadow-xs"
-            >
-              <span className="text-white font-black">{formattedDateTitle}</span>
-              <Calendar className="w-3.5 h-3.5 text-white" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleShiftDate(1)}
-              className="p-1 rounded text-slate-300 hover:text-white hover:bg-[#152a40] transition-colors cursor-pointer"
-              aria-label="Next day"
-            >
-              <ChevronRight className="w-4 h-4 text-white" />
-            </button>
-          </div>
+    <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
+      {/* 1. STATUS FILTERS ROW (OUTSIDE FIXTURES CARD, BELOW FAVOURITES/FIXTURES/STANDINGS ROW) */}
+      <div className="flex items-center justify-between px-3 sm:px-4 py-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+          {['ALL', 'LIVE', 'ODDS', 'FINISHED', 'SCHEDULED'].map((st) => {
+            const isActive = filterStatus === st;
+            return (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setFilterStatus(st)}
+                className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-[#ff0046] text-white shadow-xs'
+                    : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+                }`}
+              >
+                {st}
+              </button>
+            );
+          })}
         </div>
 
-        {/* STATUS FILTERS SUB-BAR INSIDE THE FIXTURES CARD */}
-        <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45]">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {['ALL', 'LIVE', 'ODDS', 'FINISHED', 'SCHEDULED'].map((st) => {
-              const isActive = filterStatus === st;
-              return (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-0.5 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
-                  }`}
-                >
-                  {st}
-                </button>
-              );
-            })}
-          </div>
+        {/* Sound Toggle */}
+        <button
+          type="button"
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="p-1.5 rounded-full bg-[#eef1f5] dark:bg-[#14263b] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shrink-0 cursor-pointer shadow-xs ml-2"
+          title={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
+          aria-label={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
+        >
+          {soundEnabled ? <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> : <Zap className="w-4 h-4 text-slate-400" />}
+        </button>
+      </div>
 
-          {/* Sound Toggle */}
+      {/* 2. CALENDAR ROW EMBEDDED IN A CAPSULE (10PX MARGIN ON EITHER SIDE, EQUIDISTANT BUTTONS, DAY/DATE/ICON TOGETHER & CLICKABLE) */}
+      <div className="mx-[10px]">
+        <div className="w-full bg-[#0e1e2d] dark:bg-[#102237] text-white border border-[#1a2e45] rounded-full py-1.5 px-3 sm:px-4 shadow-sm flex items-center justify-center gap-3 sm:gap-5">
+          {/* Previous Day Chevron Button */}
           <button
             type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-[#14263b] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shrink-0 cursor-pointer"
-            title={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
+            onClick={() => handleShiftDate(-1)}
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
+            aria-label="Previous day"
           >
-            {soundEnabled ? <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> : <Zap className="w-4 h-4 text-slate-400" />}
+            <ChevronLeft className="w-4 h-4 text-white" />
+          </button>
+
+          {/* Grouped Day, Date & Calendar Icon - All Clickable to open current calendar */}
+          <button
+            type="button"
+            onClick={onOpenCalendar}
+            className="flex items-center gap-2 px-3 sm:px-4 py-1 rounded-full bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-black tracking-wider uppercase cursor-pointer border border-white/10 shadow-xs transition-colors group"
+            title="Open Calendar"
+            aria-label="Open Calendar"
+          >
+            <span className="text-white font-black group-hover:text-amber-400 transition-colors">
+              {formattedDateTitle}
+            </span>
+            <Calendar className="w-3.5 h-3.5 text-white group-hover:text-amber-400 transition-colors" />
+          </button>
+
+          {/* Next Day Chevron Button */}
+          <button
+            type="button"
+            onClick={() => handleShiftDate(1)}
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
+            aria-label="Next day"
+          >
+            <ChevronRight className="w-4 h-4 text-white" />
           </button>
         </div>
+      </div>
 
+      {/* 3. FIXTURES CARD: LEAGUE HEADERS -> FIXTURES CONTENT */}
+      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         {/* FIXTURES CONTENT FEED (LEAGUE TITLES & FIXTURES INSIDE THE CARD) */}
         {fixturesState.loading ? (
           <div className="py-12 flex flex-col items-center justify-center">
