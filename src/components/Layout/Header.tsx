@@ -243,10 +243,10 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
             </div>
 
-            {/* ROW 3: SCORES SUB-MENU (RIGHT ALIGNED: FAVOURITES ICON | FIXTURES | STANDINGS) */}
+            {/* ROW 3: SCORES SUB-MENU (LEFT ALIGNED: FAVOURITES ICON | FIXTURES | STANDINGS) */}
             {isScoresActive && (
                 <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
-                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-0 flex items-center justify-end space-x-3 sm:space-x-6 h-10">
+                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-0 flex items-center justify-start space-x-3 sm:space-x-6 h-10">
                         {/* 1. FAVOURITES (Orange Icon Button) */}
                         <button
                             type="button"

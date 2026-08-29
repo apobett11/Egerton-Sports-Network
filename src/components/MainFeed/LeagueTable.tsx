@@ -172,10 +172,23 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     );
   };
 
-  const getPositionBorderColor = (position: number, totalTeams: number) => {
-    if (position <= 4) return 'border-l-[3px] border-l-[#1565c0]'; // Champions League Blue
-    if (position === 5) return 'border-l-[3px] border-l-[#c2185b]'; // Europa League Crimson
-    if (position >= totalTeams - 2) return 'border-l-[3px] border-l-[#d32f2f]'; // Relegation Red
+  const renderRankBadge = (rank: number) => {
+    if (rank === 1) return <span className="text-sm select-none" title="Gold (1st)">🥇</span>;
+    if (rank === 2) return <span className="text-sm select-none" title="Silver (2nd)">🥈</span>;
+    if (rank === 3) return <span className="text-sm select-none" title="Bronze (3rd)">🥉</span>;
+    return <span className="text-xs font-bold text-slate-400">{rank}.</span>;
+  };
+
+  const getPositionBorderColor = (position: number, totalTeams: number, isChamp: boolean = false) => {
+    if (isChamp) {
+      // Championships: Top 2 promoted to Premier League
+      if (position <= 2) return 'border-l-[3px] border-l-[#00b04f]';
+      return 'border-l-[3px] border-l-transparent';
+    }
+
+    // EPL: Top 4 Inter-University Championships, Bottom 2 Relegation
+    if (position <= 4) return 'border-l-[3px] border-l-[#1565c0]'; // Inter-University Championships Blue
+    if (position >= totalTeams - 1) return 'border-l-[3px] border-l-[#d32f2f]'; // Relegation Red (Bottom 2)
     return 'border-l-[3px] border-l-transparent';
   };
 
@@ -185,7 +198,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     divisionLabel: string,
     data: LeagueTableEntry[],
     accentColor: string,
-    refTarget: React.RefObject<HTMLDivElement | null>
+    refTarget: React.RefObject<HTMLDivElement | null>,
+    isChamp: boolean = false
   ) => {
     const list = data.length > 0 ? data : tableData;
     return (
@@ -226,7 +240,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
               {list.map((row) => {
                 const totalTeams = list.length;
-                const zoneBorder = getPositionBorderColor(row.position, totalTeams);
+                const zoneBorder = getPositionBorderColor(row.position, totalTeams, isChamp);
 
                 return (
                   <tr
@@ -324,7 +338,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     );
   };
 
-  // Reusable Top Scorers Card Component (Top 10 players)
+  // Reusable Top Scorers Card Component (Top 10 players with medals)
   const renderTopScorersTable = (
     title: string,
     badgeLabel: string,
@@ -334,7 +348,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
       <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Flame className="w-4 h-4 text-[#ff0046]" />
+          <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
             {title}
           </h3>
@@ -362,7 +376,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
             {scorers.slice(0, 10).map((sc, idx) => (
               <tr key={sc.playerId || idx} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <td className="py-2 px-3 text-center font-bold text-slate-400">{idx + 1}.</td>
+                <td className="py-2 px-3 text-center font-bold text-slate-400">
+                  {renderRankBadge(idx + 1)}
+                </td>
                 <td className="py-2 px-3 font-extrabold text-slate-900 dark:text-white truncate max-w-[140px]">{sc.playerName}</td>
                 <td className="py-2 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{sc.teamName}</td>
                 <td className="py-2 px-3 text-center font-black font-mono text-[#00b04f]">{sc.goals} G</td>
@@ -470,7 +486,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           'DIVISION 1',
           eplStandings,
           'text-[#ff0046]',
-          eplStandingsRef
+          eplStandingsRef,
+          false
         )}
 
         {/* Championships Standings Table (Below EPL) */}
@@ -479,22 +496,23 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           'DIVISION 2',
           champStandings,
           'text-amber-500',
-          champStandingsRef
+          champStandingsRef,
+          true
         )}
 
-        {/* Promotion / Relegation Legend Bar */}
+        {/* Specific Qualification & Promotion / Relegation Legend Bar */}
         <div className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm flex flex-wrap items-center gap-4 text-[11px] font-semibold text-slate-600 dark:text-slate-400 shadow-xs">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 bg-[#1565c0] rounded-xs inline-block" />
-            <span>Champions League (Top 4)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-[#c2185b] rounded-xs inline-block" />
-            <span>Europa League (5th)</span>
+            <span>Inter-University Championships (Top 4 - EPL)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 bg-[#d32f2f] rounded-xs inline-block" />
-            <span>Relegation Zone</span>
+            <span>Relegation Zone (Bottom 2 - EPL)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 bg-[#00b04f] rounded-xs inline-block" />
+            <span>Promotion to Premier League (Top 2 - Champ)</span>
           </div>
         </div>
       </div>
@@ -542,7 +560,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       <div ref={scorersRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-[#ff0046]" />
+            <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+            <Trophy className="w-4 h-4 text-amber-500" />
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
               GOLDEN BOOT & TOP SCORERS
             </h2>
@@ -566,7 +585,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       <div className="my-8 sm:my-10" />
 
       {/* ======================================================== */}
-      {/* SECTION 4: PLAYER OF THE WEEK (WEEK 1+, LATERAL SPLIT)   */}
+      {/* SECTION 4: PLAYER OF THE WEEK (SINGLE UNIFIED TABLE)    */}
       {/* ======================================================== */}
       <div ref={potwRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
@@ -579,53 +598,72 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           <span className="text-[10px] font-bold text-slate-400 uppercase">Dual-League Weekly Stars</span>
         </div>
 
-        <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-          {playersOfTheWeek.map((item) => (
-            <div key={item.week} className="flex flex-col md:flex-row items-stretch hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-              {/* Left Unified Slot: Week */}
-              <div className="w-full md:w-32 bg-[#f8f9fa] dark:bg-[#112236] p-3 flex md:flex-col items-center justify-between md:justify-center border-b md:border-b-0 md:border-r border-[#e6e8ec] dark:border-[#1a2e45] shrink-0 text-center">
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">MATCHDAY</span>
-                <span className="text-sm md:text-base font-black text-slate-900 dark:text-white font-mono">
-                  WEEK {item.week}
-                </span>
-              </div>
+        <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+          <div className="w-full overflow-x-auto no-scrollbar">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase">
+                  <th className="py-2.5 px-3 text-center w-24">WEEK</th>
+                  <th className="py-2.5 px-4 min-w-[200px] border-r border-[#e6e8ec] dark:border-[#1a2e45]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#ff0046]" />
+                      <span>EPL PLAYER OF THE WEEK</span>
+                    </div>
+                  </th>
+                  <th className="py-2.5 px-4 min-w-[200px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span>CHAMPIONSHIPS PLAYER OF THE WEEK</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                {playersOfTheWeek.map((item) => (
+                  <tr key={item.week} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    {/* Column 1: Week Numbered from 1 */}
+                    <td className="py-3 px-3 text-center font-mono font-black text-xs text-slate-900 dark:text-white bg-[#f8f9fa]/50 dark:bg-[#112236]/50">
+                      WEEK {item.week}
+                    </td>
 
-              {/* Right Players Section: Lateral Split covering both EPL & Championships */}
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#f0f2f5] dark:divide-[#14263b] p-2 sm:p-3 gap-2 sm:gap-0">
-                {/* EPL Player of the Week */}
-                <div className="p-2 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-500/10 text-[#ff0046] border border-rose-500/20">
-                      EPL STAR
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono font-bold">{item.eplPlayer.contribution}</span>
-                  </div>
-                  <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                    {item.eplPlayer.name}
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {item.eplPlayer.team}
-                  </div>
-                </div>
+                    {/* Column 2: EPL Player */}
+                    <td className="py-3 px-4 border-r border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                            {item.eplPlayer.name}
+                          </span>
+                          <span className="text-[10px] text-[#ff0046] font-mono font-black shrink-0">
+                            {item.eplPlayer.contribution}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {item.eplPlayer.team}
+                        </div>
+                      </div>
+                    </td>
 
-                {/* Championships Player of the Week */}
-                <div className="p-2 sm:pl-4 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                      CHAMPIONSHIPS STAR
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono font-bold">{item.champPlayer.contribution}</span>
-                  </div>
-                  <div className="font-extrabold text-xs text-slate-900 dark:text-white">
-                    {item.champPlayer.name}
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {item.champPlayer.team}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+                    {/* Column 3: Championships Player */}
+                    <td className="py-3 px-4">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                            {item.champPlayer.name}
+                          </span>
+                          <span className="text-[10px] text-amber-500 font-mono font-black shrink-0">
+                            {item.champPlayer.contribution}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          {item.champPlayer.team}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -668,7 +706,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
                 {assistsList.slice(0, 5).map((ast) => (
                   <tr key={ast.playerId} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                    <td className="py-2 px-3 text-center font-bold text-slate-400">{ast.rank}.</td>
+                    <td className="py-2 px-3 text-center font-bold text-slate-400">
+                      {renderRankBadge(ast.rank)}
+                    </td>
                     <td className="py-2 px-3">
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
                         ast.league === 'EPL'
@@ -724,7 +764,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               {(scorersModalCategory === 'epl' ? eplScorers : scorersModalCategory === 'champ' ? champScorers : allTimeScorers).map((sc, idx) => (
                 <div key={sc.playerId || idx} className="flex items-center justify-between px-3 py-2 text-xs">
                   <div className="flex items-center gap-3">
-                    <span className="w-5 text-center font-bold text-slate-400">{idx + 1}.</span>
+                    <span className="w-5 text-center font-bold text-slate-400">
+                      {renderRankBadge(idx + 1)}
+                    </span>
                     <div>
                       <span className="font-extrabold text-slate-900 dark:text-white block">{sc.playerName}</span>
                       <span className="text-[10px] text-slate-500">{sc.teamName}</span>
@@ -778,7 +820,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               {assistsList.map((ast) => (
                 <div key={ast.playerId} className="flex items-center justify-between px-3 py-2 text-xs">
                   <div className="flex items-center gap-3">
-                    <span className="w-5 text-center font-bold text-slate-400">{ast.rank}.</span>
+                    <span className="w-5 text-center font-bold text-slate-400">
+                      {renderRankBadge(ast.rank)}
+                    </span>
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-extrabold text-slate-900 dark:text-white">{ast.playerName}</span>

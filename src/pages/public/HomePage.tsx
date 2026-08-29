@@ -317,23 +317,61 @@ export const HomePage: React.FC<HomePageProps> = ({
     return list;
   }, [fixturesState.data, filterStatus]);
 
-  // Format short date label for the date bar: e.g. "23/08 SU"
-  const formattedShortDate = useMemo(() => {
+  // Format date label for the fixtures card header: e.g. "SATURDAY 29/8/26"
+  const formattedDateTitle = useMemo(() => {
     const d = activeDate instanceof Date ? activeDate : new Date(activeDate);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const weekdays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    const weekdays = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const weekday = weekdays[d.getDay()];
-    return `${day}/${month} ${weekday}`;
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = String(d.getFullYear()).slice(-2);
+    return `${weekday} ${day}/${month}/${year}`;
   }, [activeDate]);
 
   return (
-    <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
-      {/* FLASHSCORE SCORES CONTROLS BAR: FILTER PILLS & DATE CAROUSEL */}
-      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-2 sm:p-3 space-y-2 shadow-xs">
-        {/* ROW 1: STATUS FILTERS (ALL | LIVE | ODDS | FINISHED | SCHEDULED) + SOUND TOGGLE */}
-        <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1.5 shrink-0">
+    <div className="space-y-4 pb-16 px-0 sm:px-1 select-none">
+      {/* 1. UNIFIED FIXTURES CARD: DATE AT TOP -> LEAGUE TITLES -> FIXTURES */}
+      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+        {/* DATE SELECTOR HEADER AT THE VERY TOP OF THE CARD IN WHITE */}
+        <div className="w-full bg-[#0e1e2d] text-white px-3 py-2.5 flex items-center justify-between border-b border-[#14263b]">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-300">⚽ FOOTBALL MATCHDAY</span>
+          </div>
+
+          {/* DATE SELECTOR: < [SATURDAY 3/8/25 📅] > */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleShiftDate(-1)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-[#152a40] transition-colors cursor-pointer"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4 text-white" />
+            </button>
+
+            <button 
+              type="button"
+              onClick={onOpenCalendar}
+              className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#152a40] text-white text-xs font-black tracking-wider uppercase cursor-pointer hover:bg-[#1c3857] border border-white/10 shadow-xs"
+            >
+              <span className="text-white font-black">{formattedDateTitle}</span>
+              <Calendar className="w-3.5 h-3.5 text-white" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleShiftDate(1)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-[#152a40] transition-colors cursor-pointer"
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* STATUS FILTERS SUB-BAR INSIDE THE FIXTURES CARD */}
+        <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45]">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {['ALL', 'LIVE', 'ODDS', 'FINISHED', 'SCHEDULED'].map((st) => {
               const isActive = filterStatus === st;
               return (
@@ -341,10 +379,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                   key={st}
                   type="button"
                   onClick={() => setFilterStatus(st)}
-                  className={`px-3 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
+                  className={`px-3 py-0.5 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
                     isActive
                       ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'bg-[#f0f2f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+                      : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
                   }`}
                 >
                   {st}
@@ -357,79 +395,50 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-[#14263b] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shrink-0 cursor-pointer"
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-[#14263b] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shrink-0 cursor-pointer"
             title={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
           >
             {soundEnabled ? <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> : <Zap className="w-4 h-4 text-slate-400" />}
           </button>
         </div>
 
-        {/* ROW 2: DATE SELECTOR CAROUSEL (< 23/08 SU >) */}
-        <div className="flex items-center justify-between pt-1 border-t border-[#f0f2f5] dark:border-[#14263b]">
-          <button
-            type="button"
-            onClick={() => handleShiftDate(-1)}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-[#14263b] text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-            aria-label="Previous day"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div 
-            onClick={onOpenCalendar}
-            className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#f0f2f5] dark:bg-[#14263b] text-xs font-black text-slate-900 dark:text-white cursor-pointer hover:bg-slate-200 dark:hover:bg-[#1b3450] transition-colors"
-          >
-            <Calendar className="w-3.5 h-3.5 text-[#ff0046]" />
-            <span>{formattedShortDate}</span>
+        {/* FIXTURES CONTENT FEED (LEAGUE TITLES & FIXTURES INSIDE THE CARD) */}
+        {fixturesState.loading ? (
+          <div className="py-12 flex flex-col items-center justify-center">
+            <LoadingSpinner label="Loading live scores..." />
           </div>
-
-          <button
-            type="button"
-            onClick={() => handleShiftDate(1)}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-[#14263b] text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-            aria-label="Next day"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
+        ) : fixturesState.error ? (
+          <div className="p-6 text-center space-y-2">
+            <AlertCircle className="w-5 h-5 text-rose-500 mx-auto" />
+            <p className="text-xs font-bold text-rose-500">{fixturesState.error}</p>
+          </div>
+        ) : filterStatus === 'ODDS' ? (
+          <div className="py-12 px-6 text-center space-y-2">
+            <span className="text-3xl">📊</span>
+            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Match Odds & Fan Probabilities
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+              The odds is based on fans votes. Coming soon.
+            </p>
+          </div>
+        ) : filteredMatches.length === 0 ? (
+          <div className="py-12 px-6 text-center space-y-1">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+              No {filterStatus.toLowerCase()} matches found for this date.
+            </p>
+          </div>
+        ) : (
+          <FixturesList
+            matches={filteredMatches}
+            onMatchClick={onSelectMatch || (() => {})}
+            favorites={favourites}
+            toggleFavorite={(id: string) => toggleFavourite(id, {} as any)}
+            selectedDate={activeDate}
+            onOpenTable={(_league: string) => onNavigate('/league')}
+          />
+        )}
       </div>
-
-      {/* FIXTURES CONTENT FEED */}
-      {fixturesState.loading ? (
-        <div className="py-12 flex flex-col items-center justify-center bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm shadow-xs">
-          <LoadingSpinner label="Loading live scores..." />
-        </div>
-      ) : fixturesState.error ? (
-        <div className="p-6 rounded-none sm:rounded-sm bg-rose-500/10 border border-rose-500/20 text-center space-y-2">
-          <AlertCircle className="w-5 h-5 text-rose-500 mx-auto" />
-          <p className="text-xs font-bold text-rose-500">{fixturesState.error}</p>
-        </div>
-      ) : filterStatus === 'ODDS' ? (
-        <div className="py-12 px-6 flex flex-col items-center justify-center bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm text-center space-y-2 shadow-xs">
-          <span className="text-3xl">📊</span>
-          <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-            Match Odds & Fan Probabilities
-          </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
-            The odds is based on fans votes. Coming soon.
-          </p>
-        </div>
-      ) : filteredMatches.length === 0 ? (
-        <div className="py-12 px-6 flex flex-col items-center justify-center bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm text-center space-y-1 shadow-xs">
-          <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
-            No {filterStatus.toLowerCase()} matches found for this date.
-          </p>
-        </div>
-      ) : (
-        <FixturesList
-          matches={filteredMatches}
-          onMatchClick={onSelectMatch || (() => {})}
-          favorites={favourites}
-          toggleFavorite={(id: string) => toggleFavourite(id, {} as any)}
-          selectedDate={activeDate}
-          onOpenTable={(_league: string) => onNavigate('/league')}
-        />
-      )}
 
       {/* 2. PLAYER PERFORMANCE & INDIVIDUAL STATS - SEPARATE CARDS FOR EPL & CHAMPIONSHIPS */}
       {perfState.loading ? (
