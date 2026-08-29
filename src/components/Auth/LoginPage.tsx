@@ -22,10 +22,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
   const [error, setError] = useState('');
   const [redirectingMessage, setRedirectingMessage] = useState<string | null>(null);
 
-  // Clean state when arriving at login page
+  // Check for session expiration message or clear previous error
   useEffect(() => {
-    // Clear any previous error on mount
-    setError('');
+    const expiredMsg = sessionStorage.getItem('auth_session_expired');
+    if (expiredMsg) {
+      setError(expiredMsg);
+      sessionStorage.removeItem('auth_session_expired');
+    } else {
+      setError('');
+    }
   }, []);
 
   const submitAction = async () => {

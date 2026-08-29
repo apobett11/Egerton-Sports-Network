@@ -44,6 +44,13 @@ export const getRouteForRole = (role: UserRole): string => {
   }
 };
 
+const INACTIVITY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+const STORAGE_KEY_LAST_ACTIVITY = 'esn_last_activity_timestamp';
+const STORAGE_KEY_SESSION_START = 'esn_session_start_timestamp';
+const STORAGE_KEY_CACHED_USER = 'esn_cached_user';
+const STORAGE_KEY_CACHED_PROFILE = 'esn_cached_profile';
+const STORAGE_KEY_CACHED_ROLE = 'esn_cached_role';
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -56,15 +63,107 @@ interface AuthContextType {
   saveRedirectRoute: (path: string) => void;
   getRedirectRoute: () => string | null;
   clearRedirectRoute: () => void;
+  recordActivity: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [role, setRole] = useState<UserRole>('guest');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Helper to check if last activity is within the 3-hour window
+  const isSessionActive = (): boolean => {
+    try {
+      const lastActiveStr = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
+      if (!lastActiveStr) return true; // fresh
+      const lastActive = parseInt(lastActiveStr, 10);
+      if (isNaN(lastActive)) return true;
+      return Date.now() - lastActive < INACTIVITY_TIMEOUT_MS;
+    } catch {
+      return true;
+    }
+  };
+
+  // Restore cached user and profile on initial render to prevent flash of login on refresh
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      if (!isSessionActive()) return null;
+      const cached = localStorage.getItem(STORAGE_KEY_CACHED_USER);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      if (!isSessionActive()) return null;
+      const cached = localStorage.getItem(STORAGE_KEY_CACHED_PROFILE);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [role, setRole] = useState<UserRole>(() => {
+    try {
+      if (!isSessionActive()) return 'guest';
+      const cached = localStorage.getItem(STORAGE_KEY_CACHED_ROLE);
+      return cached ? (cached as UserRole) : 'guest';
+    } catch {
+      return 'guest';
+    }
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // If we have cached valid user credentials, avoid showing full blocking loader
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY_CACHED_USER);
+      return cached && isSessionActive() ? false : true;
+    } catch {
+      return true;
+    }
+  });
+
+  // Track user activity timestamp (throttled)
+  const lastRecordedActivityRef = React.useRef<number>(Date.now());
+  const recordActivity = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRecordedActivityRef.current > 15000) { // Throttle writes to every 15s
+      lastRecordedActivityRef.current = now;
+      try {
+        localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
+      } catch {}
+    }
+  }, []);
+
+  // Database Session Uptime Collaboration (sync heartbeat and uptime)
+  const syncSessionUptimeToDatabase = useCallback(async (userId: string, currentRole: string) => {
+    try {
+      const sessionStartStr = localStorage.getItem(STORAGE_KEY_SESSION_START);
+      const sessionStart = sessionStartStr ? parseInt(sessionStartStr, 10) : Date.now();
+      const uptimeSeconds = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
+
+      // 1. Update profiles table with active timestamp
+      await supabase
+        .from('profiles')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', userId);
+
+      // 2. Safe audit log collaboration for session telemetry
+      await supabase
+        .from('audit_logs')
+        .insert([{
+          user_id: userId,
+          action: 'SESSION_UPTIME_HEARTBEAT',
+          details: {
+            uptime_seconds: uptimeSeconds,
+            role: currentRole,
+            last_activity: new Date().toISOString()
+          }
+        }]);
+    } catch {
+      // Non-blocking catch to prevent network offline from breaking UI
+    }
+  }, []);
 
   const saveRedirectRoute = useCallback((path: string) => {
     try {
@@ -101,19 +200,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error || !data) {
         setProfile(null);
         setRole('guest');
+        localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+        localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
         return null;
       } else {
         const isRevoked = data.bio?.includes('[SUSPENDED]');
         if (isRevoked) {
-          // Revoked user - block access and reset
           setProfile({ ...(data as UserProfile), role: 'guest' });
           setRole('guest');
+          localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+          localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
           return { ...(data as UserProfile), role: 'guest' };
         }
         const resolvedRole = normalizeRole(data.role);
         const userProf = { ...(data as UserProfile), role: resolvedRole };
         setProfile(userProf);
         setRole(resolvedRole);
+        try {
+          localStorage.setItem(STORAGE_KEY_CACHED_PROFILE, JSON.stringify(userProf));
+          localStorage.setItem(STORAGE_KEY_CACHED_ROLE, resolvedRole);
+        } catch {}
         return userProf;
       }
     } catch (err) {
@@ -124,11 +230,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const logout = useCallback(async (isExpired: boolean = false) => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error signing out:', err);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setRole('guest');
+      localStorage.setItem('auth_logout_event', String(Date.now()));
+      localStorage.removeItem('livescore-session');
+      localStorage.removeItem('livescore-role');
+      localStorage.removeItem(STORAGE_KEY_CACHED_USER);
+      localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+      localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
+      localStorage.removeItem(STORAGE_KEY_LAST_ACTIVITY);
+      localStorage.removeItem(STORAGE_KEY_SESSION_START);
+      sessionStorage.removeItem('intended_redirect_route');
+      if (isExpired) {
+        sessionStorage.setItem('auth_session_expired', 'Session expired after 3 hours of inactivity. Please log in again.');
+      }
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Inactivity Checking Routine (3 Hours timeout)
+  const checkInactivity = useCallback(() => {
+    try {
+      const lastActiveStr = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
+      if (!lastActiveStr) return;
+      const lastActive = parseInt(lastActiveStr, 10);
+      if (isNaN(lastActive)) return;
+      
+      const now = Date.now();
+      if (now - lastActive >= INACTIVITY_TIMEOUT_MS) {
+        console.warn('Session expired due to 3 hours of inactivity.');
+        logout(true);
+        window.location.hash = '/login';
+      }
+    } catch {}
+  }, [logout]);
+
+  // Set up interaction listeners to keep activity timestamp fresh
+  useEffect(() => {
+    const handleUserActivity = () => {
+      recordActivity();
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(evt => {
+      window.addEventListener(evt, handleUserActivity, { passive: true });
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+        recordActivity();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Inactivity interval check every 30 seconds
+    const inactivityInterval = setInterval(checkInactivity, 30000);
+
+    return () => {
+      events.forEach(evt => {
+        window.removeEventListener(evt, handleUserActivity);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(inactivityInterval);
+    };
+  }, [recordActivity, checkInactivity]);
+
+  // Periodic database session uptime heartbeat (every 5 minutes)
+  useEffect(() => {
+    if (!user || role === 'guest') return;
+
+    // Immediate sync on active session
+    syncSessionUptimeToDatabase(user.id, role);
+
+    const heartbeatInterval = setInterval(() => {
+      if (isSessionActive() && user) {
+        syncSessionUptimeToDatabase(user.id, role);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(heartbeatInterval);
+  }, [user, role, syncSessionUptimeToDatabase]);
+
+  // Initial Auth & Session Uptime Verification
   useEffect(() => {
     let isMounted = true;
 
     async function initAuth() {
       try {
+        // First check if 3-hour inactivity expired
+        if (!isSessionActive()) {
+          console.warn('Initial session expired due to 3-hour inactivity.');
+          await logout(true);
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Failed to retrieve auth session:', error);
@@ -138,19 +343,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (!isMounted) return;
 
-        setUser(initialSession?.user ?? null);
-
         if (initialSession?.user) {
+          setUser(initialSession.user);
+          try {
+            localStorage.setItem(STORAGE_KEY_CACHED_USER, JSON.stringify(initialSession.user));
+            if (!localStorage.getItem(STORAGE_KEY_SESSION_START)) {
+              localStorage.setItem(STORAGE_KEY_SESSION_START, String(Date.now()));
+            }
+            localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(Date.now()));
+          } catch {}
+
           const prof = await fetchProfile(initialSession.user.id);
           if (prof?.bio?.includes('[SUSPENDED]')) {
             await supabase.auth.signOut();
             setUser(null);
             setProfile(null);
             setRole('guest');
+          } else if (prof) {
+            syncSessionUptimeToDatabase(initialSession.user.id, prof.role);
           }
         } else {
+          setUser(null);
           setRole('guest');
           setProfile(null);
+          localStorage.removeItem(STORAGE_KEY_CACHED_USER);
+          localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+          localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -173,9 +391,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setRole('guest');
         localStorage.setItem('auth_logout_event', String(Date.now()));
+        localStorage.removeItem(STORAGE_KEY_CACHED_USER);
+        localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+        localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
+        localStorage.removeItem(STORAGE_KEY_LAST_ACTIVITY);
+        localStorage.removeItem(STORAGE_KEY_SESSION_START);
       } else if (currentSession?.user) {
         setUser(currentSession.user);
-        // Avoid duplicate profile queries if profile is already loaded for this user
+        try {
+          localStorage.setItem(STORAGE_KEY_CACHED_USER, JSON.stringify(currentSession.user));
+          if (!localStorage.getItem(STORAGE_KEY_SESSION_START)) {
+            localStorage.setItem(STORAGE_KEY_SESSION_START, String(Date.now()));
+          }
+          localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(Date.now()));
+        } catch {}
+
         setProfile((prevProfile) => {
           if (!prevProfile || prevProfile.id !== currentSession.user.id) {
             fetchProfile(currentSession.user.id).then((p) => {
@@ -184,6 +414,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(null);
                 setProfile(null);
                 setRole('guest');
+              } else if (p) {
+                syncSessionUptimeToDatabase(currentSession.user.id, p.role);
               }
             });
           }
@@ -212,7 +444,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [syncSessionUptimeToDatabase, logout]);
 
   const login = async (email: string, pass: string): Promise<{ error: string | null; role: UserRole; profile: UserProfile | null }> => {
     setIsLoading(true);
@@ -228,6 +460,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
+        const now = Date.now();
+        localStorage.setItem(STORAGE_KEY_SESSION_START, String(now));
+        localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
+        localStorage.setItem(STORAGE_KEY_CACHED_USER, JSON.stringify(data.user));
+
         const fetchedProf = await fetchProfile(data.user.id);
         if (!fetchedProf) {
           setIsLoading(false);
@@ -240,6 +477,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setProfile(null);
           setRole('guest');
+          localStorage.removeItem(STORAGE_KEY_CACHED_USER);
+          localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
+          localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
           setIsLoading(false);
           return {
             error: 'Access Denied: Your account access has been revoked by an administrator. Please contact operations support.',
@@ -247,6 +487,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             profile: null,
           };
         }
+
+        setUser(data.user);
+        setProfile(fetchedProf);
+        setRole(fetchedProf.role);
+        localStorage.setItem(STORAGE_KEY_CACHED_PROFILE, JSON.stringify(fetchedProf));
+        localStorage.setItem(STORAGE_KEY_CACHED_ROLE, fetchedProf.role);
+
+        // Database Session Uptime Collaboration
+        syncSessionUptimeToDatabase(data.user.id, fetchedProf.role);
 
         setIsLoading(false);
         return { error: null, role: fetchedProf.role, profile: fetchedProf };
@@ -290,24 +539,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
-    setIsLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error('Error signing out:', err);
-    } finally {
-      setUser(null);
-      setProfile(null);
-      setRole('guest');
-      localStorage.setItem('auth_logout_event', String(Date.now()));
-      localStorage.removeItem('livescore-session');
-      localStorage.removeItem('livescore-role');
-      sessionStorage.removeItem('intended_redirect_route');
-      setIsLoading(false);
-    }
-  };
-
   const hasPermission = (requiredRoles: UserRole[]): boolean => {
     if (!user || role === 'guest') return false;
     if (requiredRoles.length === 0) return true;
@@ -328,6 +559,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveRedirectRoute,
         getRedirectRoute,
         clearRedirectRoute,
+        recordActivity,
       }}
     >
       {children}

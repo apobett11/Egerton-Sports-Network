@@ -46,7 +46,13 @@ const getHashRoute = (): string => {
 
 export const AppContent: React.FC = () => {
   // Hash route state for direct UI link switching without auth prompt
-  const [route, setRoute] = useState<string>(getHashRoute);
+  const [route, setRoute] = useState<string>(() => {
+    const h = getHashRoute();
+    try {
+      sessionStorage.setItem('esn_current_route', h);
+    } catch {}
+    return h;
+  });
 
   // Appearance & Theme State
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -54,8 +60,16 @@ export const AppContent: React.FC = () => {
     return saved ? saved === 'dark' : true;
   });
 
-  // Navigation & Routing States
-  const [activeTab, setActiveTab] = useState<MainTabType>('scores');
+  // Navigation & Routing States with Session Persistence across accidental refreshes
+  const [activeTab, setActiveTab] = useState<MainTabType>(() => {
+    try {
+      const saved = sessionStorage.getItem('esn_guest_active_tab');
+      if (saved === 'scores' || saved === 'news' || saved === 'table' || saved === 'favorites') {
+        return saved as MainTabType;
+      }
+    } catch {}
+    return 'scores';
+  });
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
@@ -66,13 +80,100 @@ export const AppContent: React.FC = () => {
   });
 
   const [activeSport, setActiveSport] = useState<string>('football');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    try {
+      const saved = sessionStorage.getItem('esn_selected_date');
+      if (saved) {
+        const d = new Date(saved);
+        if (!isNaN(d.getTime())) return d;
+      }
+    } catch {}
+    return new Date();
+  });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+
+  // Competition Switcher State with Session Persistence
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('esn_selected_competition_id') || 'all';
+    } catch {
+      return 'all';
+    }
+  });
+
+  // Persist guest navigation state to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('esn_guest_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('esn_selected_competition_id', selectedCompetitionId);
+    } catch {}
+  }, [selectedCompetitionId]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('esn_selected_date', selectedDate.toISOString());
+    } catch {}
+  }, [selectedDate]);
+
+  // Scroll position preservation and restoration across accidental reloads
+  useEffect(() => {
+    const scrollKey = `esn_scroll_${route}_${activeTab}`;
+    try {
+      const savedScroll = sessionStorage.getItem(scrollKey);
+      if (savedScroll) {
+        const scrollY = parseInt(savedScroll, 10);
+        if (!isNaN(scrollY) && scrollY > 0) {
+          const timer = setTimeout(() => {
+            window.scrollTo({ top: scrollY, behavior: 'instant' });
+          }, 80);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch {}
+  }, [route, activeTab]);
+
+  useEffect(() => {
+    let scrollTimeout: any = null;
+    const handleScroll = () => {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const scrollKey = `esn_scroll_${route}_${activeTab}`;
+        try {
+          sessionStorage.setItem(scrollKey, String(window.scrollY));
+        } catch {}
+      }, 150);
+    };
+
+    const handleBeforeUnload = () => {
+      const scrollKey = `esn_scroll_${route}_${activeTab}`;
+      try {
+        sessionStorage.setItem(scrollKey, String(window.scrollY));
+      } catch {}
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, [route, activeTab]);
 
   // Sync route on hash change
   useEffect(() => {
     const handleHash = () => {
-      setRoute(getHashRoute());
+      const newRoute = getHashRoute();
+      setRoute(newRoute);
+      try {
+        sessionStorage.setItem('esn_current_route', newRoute);
+      } catch {}
       setSelectedMatch(null);
     };
     window.addEventListener('hashchange', handleHash);
@@ -93,7 +194,6 @@ export const AppContent: React.FC = () => {
       };
     }
   }, [sidebarOpen]);
-
 
   useEffect(() => {
     if (darkMode) {
@@ -128,14 +228,15 @@ export const AppContent: React.FC = () => {
 
   const handleNavigateHash = (targetHash: string) => {
     window.location.hash = targetHash;
-    setRoute(targetHash.replace(/^\//, '').toLowerCase());
+    const cleanRoute = targetHash.replace(/^\//, '').toLowerCase();
+    setRoute(cleanRoute);
+    try {
+      sessionStorage.setItem('esn_current_route', cleanRoute);
+    } catch {}
     setSelectedMatch(null);
   };
 
   const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
-
-  // Competition Switcher State
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>('all');
 
   // Dynamically computed standings derived strictly from finalized matches in liveMatches
   const currentStandings = useMemo(() => {
