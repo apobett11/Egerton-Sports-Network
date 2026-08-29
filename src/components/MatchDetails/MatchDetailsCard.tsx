@@ -49,12 +49,12 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Match Officiating Crew
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                            Referee: {match.referee || 'Ref. James Maina'}
+                            Referee: {match.referee || 'Accredited Referee'}
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                            <div><span className="text-slate-400 font-normal">Assistant 1:</span> David K. Njoroge</div>
-                            <div><span className="text-slate-400 font-normal">Assistant 2:</span> Peter M. Mwangi</div>
-                            <div><span className="text-slate-400 font-normal">Fourth Official:</span> Samuel O. Omwamba</div>
+                            <div><span className="text-slate-400 font-normal">Assistant 1:</span> {match.assistantReferee1 || 'Official Assistant 1'}</div>
+                            <div><span className="text-slate-400 font-normal">Assistant 2:</span> {match.assistantReferee2 || 'Official Assistant 2'}</div>
+                            <div><span className="text-slate-400 font-normal">Fourth Official:</span> {match.fourthOfficial || 'Official 4th Ref'}</div>
                         </div>
                     </div>
                 </div>
@@ -69,7 +69,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Weather Conditions
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                            21°C • Clear Skies (Humidity 45%, Wind 8km/h)
+                            {match.weather || 'Clear Skies • Standard Matchday Conditions'}
                         </p>
                     </div>
                 </div>
@@ -84,7 +84,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Competition & Phase
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                            {match.league || 'Egerton Premier League'} • Matchday Official Fixture
+                            {match.league || 'Egerton Premier League'} • Matchday {match.matchday || 1}
                         </p>
                     </div>
                 </div>
@@ -99,7 +99,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Scheduled Kickoff
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100 font-mono">
-                            {match.time ? `${match.time} EAT` : '15:00 EAT'} • Scheduled Matchday
+                            {match.time ? `${match.time} EAT` : 'Scheduled Matchday'}
                         </p>
                     </div>
                 </div>
@@ -115,7 +115,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                                 Match Attendance
                             </span>
                             <p className="text-sm font-black text-slate-900 dark:text-slate-100">
-                                1,850 Supporters in Attendance
+                                {match.attendance ? `${match.attendance.toLocaleString()} Supporters in Attendance` : 'Official Attendance Pending'}
                             </p>
                         </div>
                     </div>

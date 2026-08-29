@@ -44,6 +44,24 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
         );
     };
 
+    // Calculate momentum bars dynamically across 45 bins (2-minute intervals)
+    const momentumBars = Array.from({ length: 45 }).map((_, i) => {
+        const startMin = i * 2;
+        const endMin = startMin + 2;
+        const evtsInBin = events.filter(e => e.minute >= startMin && e.minute <= endMin);
+        const homeScore = evtsInBin.filter(e => e.teamId === teamA.id).length;
+        const awayScore = evtsInBin.filter(e => e.teamId === teamB.id).length;
+
+        if (homeScore > awayScore) {
+            return { isHomeDominant: true, height: Math.min(100, 40 + homeScore * 30), hasAction: true };
+        } else if (awayScore > homeScore) {
+            return { isHomeDominant: false, height: Math.min(100, 40 + awayScore * 30), hasAction: true };
+        } else if (homeScore > 0 && homeScore === awayScore) {
+            return { isHomeDominant: true, height: 50, hasAction: true };
+        }
+        return { isHomeDominant: true, height: 20, hasAction: false };
+    });
+
     return (
         <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-4">
             {/* 1. MATCH MOMENTUM DUAL BAR CARD */}
@@ -55,20 +73,18 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                 
                 {/* Visual Momentum Chart */}
                 <div className="h-16 w-full flex items-end justify-between gap-0.5 pt-2 border-b border-[#f0f2f5] dark:border-[#16283d] pb-2">
-                    {Array.from({ length: 45 }).map((_, i) => {
-                        const isHomeDominant = Math.sin(i * 0.4) > 0;
-                        const height = Math.abs(Math.sin(i * 0.4)) * 100;
-                        return (
-                            <div key={i} className="flex-1 flex flex-col justify-center items-center h-full">
-                                <div
-                                    style={{ height: `${Math.max(15, height)}%` }}
-                                    className={`w-full rounded-xs transition-all ${
-                                        isHomeDominant ? 'bg-[#ff0046]' : 'bg-[#1565c0]'
-                                    }`}
-                                />
-                            </div>
-                        );
-                    })}
+                    {momentumBars.map((bar, i) => (
+                        <div key={i} className="flex-1 flex flex-col justify-center items-center h-full">
+                            <div
+                                style={{ height: `${bar.height}%` }}
+                                className={`w-full rounded-xs transition-all ${
+                                    bar.hasAction
+                                        ? bar.isHomeDominant ? 'bg-[#ff0046]' : 'bg-[#1565c0]'
+                                        : 'bg-slate-200 dark:bg-slate-800'
+                                }`}
+                            />
+                        </div>
+                    ))}
                 </div>
                 <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
                     <span>1'</span>
@@ -157,7 +173,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-slate-600 dark:text-slate-400">
                     <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">Referee:</span> {match.referee || 'Accredited Official'}
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Referee:</span> {match.referee || 'Official Referee'}
                     </div>
                     <div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">Venue:</span> {match.venue || 'Egerton Main Ground'}
@@ -166,7 +182,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                         <span className="font-bold text-slate-800 dark:text-slate-200">Matchday:</span> Round {match.matchday || 1}
                     </div>
                     <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">Kickoff:</span> {match.time || '18:30'}
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Kickoff:</span> {match.time || '15:00 EAT'}
                     </div>
                 </div>
             </div>

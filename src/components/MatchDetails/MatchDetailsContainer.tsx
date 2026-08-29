@@ -29,13 +29,13 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     toggleFavorite
 }) => {
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
-    const [h2hRecords, setH2hRecords] = useState<Array<{ id: string; date: string; scoreA: number; scoreB: number; winner: string; venue: string }>>([]);
+    const [h2hRecords, setH2hRecords] = useState<Array<{ id: string; date: string; scoreA: number; scoreB: number; winner: string; venue: string; comp?: string }>>([]);
     
-    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('overview');
+    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('lineups');
 
     useEffect(() => {
         setCurrentMatch(match);
-        setActiveTab('overview');
+        setActiveTab('lineups');
 
         // Fetch deep match details from database
         ApiService.getMatchDetails(match.id).then((res) => {

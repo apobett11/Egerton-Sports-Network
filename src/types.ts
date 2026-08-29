@@ -38,6 +38,8 @@ export interface Team {
   competition_id?: string;
   coach_id?: string;
   captain_id?: string;
+  coachName?: string;
+  captainName?: string;
 }
 
 export type PlayerPosition = 'GK' | 'DEF' | 'MID' | 'FWD';

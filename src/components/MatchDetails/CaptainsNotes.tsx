@@ -8,8 +8,8 @@ interface CaptainsNotesProps {
 export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
     const { teamA, teamB, lineups, captainNotesA, captainNotesB } = match;
 
-    const captainA = lineups?.teamA?.find(p => p.isCaptain)?.name || 'Team Captain';
-    const captainB = lineups?.teamB?.find(p => p.isCaptain)?.name || 'Team Captain';
+    const captainA = teamA.captainName || lineups?.teamA?.find(p => p.isCaptain)?.name || `${teamA.name} Captain`;
+    const captainB = teamB.captainName || lineups?.teamB?.find(p => p.isCaptain)?.name || `${teamB.name} Captain`;
 
     return (
         <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">

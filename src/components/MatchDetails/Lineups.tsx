@@ -26,17 +26,13 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const groupedB = groupStarters(startersB);
 
     const renderPitchPlayer = (player: Player, xPct: number, yPct: number, teamColor: string, isAway = false) => {
-        // Player ratings mock
-        const rating = (6.5 + (player.number % 3) * 0.9).toFixed(1);
-        const isHighRating = parseFloat(rating) >= 7.5;
-
         return (
             <div
                 key={player.id}
                 className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-10 select-none cursor-pointer"
                 style={{ left: `${xPct}%`, top: `${yPct}%` }}
             >
-                {/* Node with Rating Badge */}
+                {/* Node with Jersey Number & Captain Tag */}
                 <div className="relative">
                     <div
                         className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white flex items-center justify-center font-black font-mono text-[11px] text-white shadow-md"
@@ -45,12 +41,11 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                         {player.number}
                     </div>
 
-                    {/* Rating Badge */}
-                    <span className={`absolute -bottom-1.5 -right-2 px-1 py-0.2 rounded-xs font-mono font-bold text-[8.5px] shadow-xs text-white ${
-                        isHighRating ? 'bg-[#00b04f]' : 'bg-[#1565c0]'
-                    }`}>
-                        {rating}
-                    </span>
+                    {player.isCaptain && (
+                        <span className="absolute -top-1.5 -right-1 px-1 py-0.2 rounded-xs font-mono font-black text-[8px] shadow-xs text-black bg-amber-400">
+                            C
+                        </span>
+                    )}
                 </div>
 
                 {/* Surname */}
@@ -68,7 +63,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                 <div className="flex items-center gap-2">
                     <img src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
                     <span className="text-slate-900 dark:text-white truncate max-w-[120px]">{teamA.name}</span>
-                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationA || '4-2-3-1'})</span>
+                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationA || '4-3-3'})</span>
                 </div>
 
                 {/* Pitch / List view toggle */}
@@ -94,7 +89,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationB || '4-2-3-1'})</span>
+                    <span className="font-mono text-slate-500 font-bold">({lineups?.formationB || '4-3-3'})</span>
                     <span className="text-slate-900 dark:text-white truncate max-w-[120px]">{teamB.name}</span>
                     <img src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
                 </div>
@@ -144,32 +139,46 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                 <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
                     {/* Home Starting 11 */}
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {startersA.map(p => (
-                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
-                                    <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                        {startersA.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-slate-400">No starting XI available</div>
+                        ) : (
+                            startersA.map(p => (
+                                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                        <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                                        {p.isCaptain && (
+                                            <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400 text-black">C</span>
+                                        )}
+                                    </div>
+                                    <span className="font-mono font-bold text-[10px] text-slate-500 uppercase">
+                                        {p.position}
+                                    </span>
                                 </div>
-                                <span className="font-mono font-bold text-[10px] text-[#00b04f] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                                    {(6.8 + (p.number % 3) * 0.8).toFixed(1)}
-                                </span>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     {/* Away Starting 11 */}
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {startersB.map(p => (
-                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
-                                    <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                        {startersB.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-slate-400">No starting XI available</div>
+                        ) : (
+                            startersB.map(p => (
+                                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                        <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                                        {p.isCaptain && (
+                                            <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400 text-black">C</span>
+                                        )}
+                                    </div>
+                                    <span className="font-mono font-bold text-[10px] text-slate-500 uppercase">
+                                        {p.position}
+                                    </span>
                                 </div>
-                                <span className="font-mono font-bold text-[10px] text-[#00b04f] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                                    {(6.7 + (p.number % 3) * 0.7).toFixed(1)}
-                                </span>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
@@ -183,28 +192,42 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                 <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
                     {/* Home Subs */}
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {subsA.map(p => (
-                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
-                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
+                        {subsA.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-slate-400">No substitutes listed</div>
+                        ) : (
+                            subsA.map(p => (
+                                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
+                                        {p.isCaptain && (
+                                            <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400 text-black">C</span>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     {/* Away Subs */}
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {subsB.map(p => (
-                            <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
-                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
+                        {subsB.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-slate-400">No substitutes listed</div>
+                        ) : (
+                            subsB.map(p => (
+                                <div key={p.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-mono font-bold text-slate-400 w-4">{p.number}</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{p.name}</span>
+                                        {p.isCaptain && (
+                                            <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400 text-black">C</span>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase">{p.position}</span>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
@@ -215,11 +238,11 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     COACHES
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-xs">
-                    <div className="font-extrabold text-slate-900 dark:text-white">
-                        Coach {teamA.name}
+                    <div className="font-extrabold text-slate-900 dark:text-white truncate">
+                        {teamA.coachName || `Coach ${teamA.name}`}
                     </div>
-                    <div className="font-extrabold text-slate-900 dark:text-white pl-3">
-                        Coach {teamB.name}
+                    <div className="font-extrabold text-slate-900 dark:text-white pl-3 truncate">
+                        {teamB.coachName || `Coach ${teamB.name}`}
                     </div>
                 </div>
             </div>

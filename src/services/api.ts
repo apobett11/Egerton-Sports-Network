@@ -298,8 +298,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
           referee_prof:profiles!referee_id(first_name, last_name),
           ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
           ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
@@ -375,6 +375,67 @@ export const ApiService = {
         }
       }
 
+      // If lineups are not explicitly saved in match_lineups, fetch team registered squads from DB
+      if (teamAPlayers.length === 0 && home?.id) {
+        const { data: squadA } = await supabase
+          .from('players')
+          .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
+          .eq('team_id', home.id)
+          .order('jersey_number', { ascending: true });
+
+        if (squadA && squadA.length > 0) {
+          teamAPlayers = squadA.map((p: any, idx: number) => {
+            const prof = unwrap(p.profile);
+            const pName = p.first_name && p.last_name 
+              ? `${p.first_name} ${p.last_name}` 
+              : prof?.first_name 
+              ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
+              : `Player #${p.jersey_number || idx + 1}`;
+            const isCap = prof?.role === 'captain' || p.jersey_number === 10 || p.profile_id === home.captain_id;
+            return {
+              id: p.id,
+              name: pName,
+              number: p.jersey_number || idx + 1,
+              position: (p.position as any) || (idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
+              isCaptain: isCap,
+              isSub: idx >= 11,
+              profile_id: p.profile_id,
+              team_id: home.id
+            };
+          });
+        }
+      }
+
+      if (teamBPlayers.length === 0 && away?.id) {
+        const { data: squadB } = await supabase
+          .from('players')
+          .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
+          .eq('team_id', away.id)
+          .order('jersey_number', { ascending: true });
+
+        if (squadB && squadB.length > 0) {
+          teamBPlayers = squadB.map((p: any, idx: number) => {
+            const prof = unwrap(p.profile);
+            const pName = p.first_name && p.last_name 
+              ? `${p.first_name} ${p.last_name}` 
+              : prof?.first_name 
+              ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
+              : `Player #${p.jersey_number || idx + 1}`;
+            const isCap = prof?.role === 'captain' || p.jersey_number === 10 || p.profile_id === away.captain_id;
+            return {
+              id: p.id,
+              name: pName,
+              number: p.jersey_number || idx + 1,
+              position: (p.position as any) || (idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
+              isCaptain: isCap,
+              isSub: idx >= 11,
+              profile_id: p.profile_id,
+              team_id: away.id
+            };
+          });
+        }
+      }
+
       // Calculate Match Statistics from Events
       const goalsA = events.filter((e) => e.teamId === home?.id && (e.type === 'goal' || e.type === 'penalty')).length;
       const goalsB = events.filter((e) => e.teamId === away?.id && (e.type === 'goal' || e.type === 'penalty')).length;
@@ -392,10 +453,20 @@ export const ApiService = {
         { label: 'Substitutions', teamAValue: subsA, teamBValue: subsB }
       ];
 
-      const refName = refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Unassigned Referee';
+      const refName = refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Official Referee';
       const ar1Name = ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}`.trim() : undefined;
       const ar2Name = ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}`.trim() : undefined;
       const foName = foProf ? `${foProf.first_name} ${foProf.last_name}`.trim() : undefined;
+
+      const homeCoach = unwrap(home?.coach);
+      const awayCoach = unwrap(away?.coach);
+      const homeCap = unwrap(home?.captain);
+      const awayCap = unwrap(away?.captain);
+
+      const coachNameA = homeCoach ? `Coach ${homeCoach.first_name} ${homeCoach.last_name}`.trim() : `Coach ${home?.name || ''}`;
+      const coachNameB = awayCoach ? `Coach ${awayCoach.first_name} ${awayCoach.last_name}`.trim() : `Coach ${away?.name || ''}`;
+      const captainNameA = homeCap ? `${homeCap.first_name} ${homeCap.last_name}`.trim() : teamAPlayers.find(p => p.isCaptain)?.name || 'Team Captain';
+      const captainNameB = awayCap ? `${awayCap.first_name} ${awayCap.last_name}`.trim() : teamBPlayers.find(p => p.isCaptain)?.name || 'Team Captain';
 
       const matchDetail: Match = {
         id: f.id,
@@ -409,14 +480,22 @@ export const ApiService = {
           name: home?.name || 'Home Team',
           shortName: home?.short_name || 'HOM',
           logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-          colorCode: home?.color_code || '#D4AF37'
+          colorCode: home?.color_code || '#D4AF37',
+          coach_id: home?.coach_id,
+          captain_id: home?.captain_id,
+          coachName: coachNameA,
+          captainName: captainNameA
         },
         teamB: {
           id: away?.id || '',
           name: away?.name || 'Away Team',
           shortName: away?.short_name || 'AWY',
           logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
-          colorCode: away?.color_code || '#2563EB'
+          colorCode: away?.color_code || '#2563EB',
+          coach_id: away?.coach_id,
+          captain_id: away?.captain_id,
+          coachName: coachNameB,
+          captainName: captainNameB
         },
         scoreA: f.score_home || 0,
         scoreB: f.score_away || 0,
@@ -693,6 +772,9 @@ export const ApiService = {
     scoreB: number;
     winner: string;
     venue: string;
+    comp?: string;
+    homeName?: string;
+    awayName?: string;
   }>>> {
     if (!teamAId || !teamBId) {
       return { success: true, data: [] };
@@ -707,6 +789,7 @@ export const ApiService = {
           score_home,
           score_away,
           venue,
+          competition:competitions(name),
           team_home:teams!home_team_id(id, name),
           team_away:teams!away_team_id(id, name)
         `)
@@ -720,6 +803,7 @@ export const ApiService = {
       }
 
       const h2h = data.map((f: any) => {
+        const comp = unwrap(f.competition);
         const home = unwrap(f.team_home);
         const away = unwrap(f.team_away);
         const isHomeA = home?.id === teamAId;
@@ -729,17 +813,95 @@ export const ApiService = {
         if (scoreA > scoreB) winner = home?.name || 'Team A';
         else if (scoreB > scoreA) winner = away?.name || 'Team B';
 
+        const d = new Date(f.scheduled_time);
+        const dateStr = !isNaN(d.getTime())
+          ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}`
+          : '-';
+
         return {
           id: f.id,
-          date: new Date(f.scheduled_time).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }),
+          date: dateStr,
           scoreA,
           scoreB,
           winner,
-          venue: f.venue || 'Campus Stadium'
+          venue: f.venue || 'Campus Stadium',
+          comp: comp?.name ? (comp.name.includes('Premier') ? 'EPL' : comp.name.includes('Champ') ? 'CHP' : 'FRN') : 'EPL',
+          homeName: home?.name || 'Home Team',
+          awayName: away?.name || 'Away Team'
         };
       });
 
       return { success: true, data: h2h };
+    } catch (err) {
+      return { success: true, data: [] };
+    }
+  },
+
+  // --- TEAM RECENT MATCHES (COMPLETED FIXTURES WITH OPPONENTS & SCORES) ---
+  async getTeamRecentMatches(teamId: string): Promise<ApiResponse<Array<{
+    id: string;
+    date: string;
+    comp: string;
+    opp: string;
+    score: string;
+    res: 'W' | 'D' | 'L';
+  }>>> {
+    if (!teamId) {
+      return { success: true, data: [] };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('fixtures')
+        .select(`
+          id,
+          scheduled_time,
+          score_home,
+          score_away,
+          home_team_id,
+          away_team_id,
+          competition:competitions(name),
+          team_home:teams!home_team_id(name),
+          team_away:teams!away_team_id(name)
+        `)
+        .eq('status', 'FT')
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .order('scheduled_time', { ascending: false })
+        .limit(5);
+
+      if (error || !data) {
+        return { success: true, data: [] };
+      }
+
+      const matches = data.map((f: any) => {
+        const comp = unwrap(f.competition);
+        const home = unwrap(f.team_home);
+        const away = unwrap(f.team_away);
+        const isHome = f.home_team_id === teamId;
+        const goalsFor = isHome ? f.score_home : f.score_away;
+        const goalsAgainst = isHome ? f.score_away : f.score_home;
+        const opponentName = isHome ? away?.name : home?.name;
+
+        let res: 'W' | 'D' | 'L' = 'D';
+        if (goalsFor > goalsAgainst) res = 'W';
+        else if (goalsFor < goalsAgainst) res = 'L';
+
+        const d = new Date(f.scheduled_time);
+        const dateStr = !isNaN(d.getTime())
+          ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`
+          : '-';
+
+        return {
+          id: f.id,
+          date: dateStr,
+          comp: comp?.name ? (comp.name.includes('Premier') ? 'EPL' : comp.name.includes('Champ') ? 'CHP' : 'FRN') : 'EPL',
+          opp: opponentName || 'Opponent',
+          score: `${goalsFor} - ${goalsAgainst}`,
+          res
+        };
+      });
+
+      return { success: true, data: matches };
     } catch (err) {
       return { success: true, data: [] };
     }

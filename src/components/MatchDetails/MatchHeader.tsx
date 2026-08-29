@@ -19,6 +19,9 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
     const isHT = match.status === 'HT';
     const isFT = match.status === 'FT';
 
+    const htScoreA = (match.events || []).filter(e => e.teamId === match.teamA.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
+    const htScoreB = (match.events || []).filter(e => e.teamId === match.teamB.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
+
     return (
         <div className="w-full select-none bg-[#0e1e2d] text-white">
             {/* 1. TOP BREADCRUMB / NAV BAR */}
@@ -38,7 +41,7 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                     <span>&gt;</span>
                     <span>🇰🇪 KENYA</span>
                     <span>&gt;</span>
-                    <span className="text-white font-extrabold uppercase truncate">{match.league || 'PREMIER LEAGUE'}</span>
+                    <span className="text-white font-extrabold uppercase truncate">{match.league || 'EGERTON LEAGUE'}</span>
                 </div>
 
                 {/* Right Action Icons: Star & Share */}
@@ -72,9 +75,9 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                 <div className="text-center mb-4">
                     {isLive ? (
                         <div className="text-xs font-black tracking-widest text-[#ff0046] uppercase flex items-center justify-center gap-1.5 animate-pulse">
-                            <span>2ND HALF</span>
+                            <span>LIVE</span>
                             <span>•</span>
-                            <span>{match.minute || '57'}'</span>
+                            <span>{match.minute && match.minute !== '-' ? match.minute : "65'"}</span>
                         </div>
                     ) : isHT ? (
                         <div className="text-xs font-black tracking-widest text-[#ff0046] uppercase">
@@ -86,7 +89,7 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                         </div>
                     ) : (
                         <div className="text-xs font-bold tracking-widest text-slate-300">
-                            {match.time || '18:30'} • {match.venue || 'Main Stadium'}
+                            {match.time || '15:00 EAT'} • {match.venue || 'Campus Stadium'}
                         </div>
                     )}
                 </div>
@@ -117,10 +120,10 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                             )}
                         </div>
 
-                        {/* Optional HT breakdown */}
+                        {/* Real HT breakdown from database events */}
                         {match.status !== 'UPCOMING' && (
                             <span className="text-[11px] font-semibold text-slate-400 mt-1 font-mono">
-                                ({Math.floor(match.scoreA / 2)} - {Math.floor(match.scoreB / 2)})
+                                (HT: {htScoreA} - {htScoreB})
                             </span>
                         )}
                     </div>

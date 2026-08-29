@@ -1,6 +1,7 @@
-import React from 'react';
-import { Trophy, TrendingUp, Flame, Target } from 'lucide-react';
-import type { Match } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Target, Flame } from 'lucide-react';
+import type { Match, LeagueTableEntry } from '../../types';
+import { ApiService } from '../../services/api';
 
 interface MatchContextProps {
     match: Match;
@@ -8,6 +9,46 @@ interface MatchContextProps {
 
 export const MatchContext: React.FC<MatchContextProps> = ({ match }) => {
     const { teamA, teamB } = match;
+
+    const [standingA, setStandingA] = useState<LeagueTableEntry | null>(null);
+    const [standingB, setStandingB] = useState<LeagueTableEntry | null>(null);
+    const [formA, setFormA] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
+    const [formB, setFormB] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
+
+    useEffect(() => {
+        ApiService.getLeagueTable().then((res) => {
+            if (res.data) {
+                const foundA = res.data.find(e => e.teamId === teamA?.id || e.teamName === teamA?.name);
+                const foundB = res.data.find(e => e.teamId === teamB?.id || e.teamName === teamB?.name);
+                if (foundA) setStandingA(foundA);
+                if (foundB) setStandingB(foundB);
+            }
+        });
+
+        if (teamA?.id) {
+            ApiService.getTeamForm(teamA.id).then(res => {
+                if (res.data) setFormA(res.data);
+            });
+        }
+        if (teamB?.id) {
+            ApiService.getTeamForm(teamB.id).then(res => {
+                if (res.data) setFormB(res.data);
+            });
+        }
+    }, [teamA?.id, teamB?.id, teamA?.name, teamB?.name]);
+
+    const formatStreak = (teamName: string, form: Array<{ result: 'W' | 'D' | 'L'; label: string }>) => {
+        if (form.length === 0) return `${teamName}: No previous matches recorded`;
+        const lastThree = form.slice(0, 3).map(f => f.result).join('-');
+        const wins = form.filter(f => f.result === 'W').length;
+        return `${teamName}: [${lastThree}] (${wins} wins in last ${form.length})`;
+    };
+
+    const getOrdinal = (n: number) => {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
 
     return (
         <div className="w-full max-w-3xl mx-auto py-6 select-none space-y-6">
@@ -34,11 +75,16 @@ export const MatchContext: React.FC<MatchContextProps> = ({ match }) => {
                         </div>
                         <div className="pl-5 space-y-0.5">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-black text-slate-900 dark:text-white">1st</span>
+                                <span className="text-2xl font-black text-slate-900 dark:text-white">
+                                    {standingA ? getOrdinal(standingA.position) : '-'}
+                                </span>
                                 <span className="text-xs font-bold text-slate-400">Position</span>
                             </div>
                             <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-                                24 pts <span className="text-slate-400 font-semibold">• 9 Played</span>
+                                {standingA ? `${standingA.points} pts` : '0 pts'}{' '}
+                                <span className="text-slate-400 font-semibold">
+                                    • {standingA ? `${standingA.played} Played` : '0 Played'}
+                                </span>
                             </p>
                         </div>
                     </div>
@@ -51,11 +97,16 @@ export const MatchContext: React.FC<MatchContextProps> = ({ match }) => {
                         </div>
                         <div className="pl-5 space-y-0.5">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-black text-slate-900 dark:text-white">3rd</span>
+                                <span className="text-2xl font-black text-slate-900 dark:text-white">
+                                    {standingB ? getOrdinal(standingB.position) : '-'}
+                                </span>
                                 <span className="text-xs font-bold text-slate-400">Position</span>
                             </div>
                             <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-                                22 pts <span className="text-slate-400 font-semibold">• 9 Played</span>
+                                {standingB ? `${standingB.points} pts` : '0 pts'}{' '}
+                                <span className="text-slate-400 font-semibold">
+                                    • {standingB ? `${standingB.played} Played` : '0 Played'}
+                                </span>
                             </p>
                         </div>
                     </div>
@@ -71,7 +122,7 @@ export const MatchContext: React.FC<MatchContextProps> = ({ match }) => {
                             What's At Stake
                         </span>
                         <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-0.5 leading-relaxed">
-                            Winner moves top of the Egerton Premier League standings. A draw leaves the title race open.
+                            Official {match.league || 'Campus League'} Matchday {match.matchday || 1} fixture. Every point impacts the tournament table standings and playoff qualification.
                         </p>
                     </div>
                 </div>
@@ -86,11 +137,11 @@ export const MatchContext: React.FC<MatchContextProps> = ({ match }) => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 pt-0.5">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span>{teamA.shortName}: Unbeaten in 6 matches</span>
+                                <span className="truncate">{formatStreak(teamA.shortName || teamA.name, formA)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span>{teamB.shortName}: Won last 3 consecutive</span>
+                                <span className="truncate">{formatStreak(teamB.shortName || teamB.name, formB)}</span>
                             </div>
                         </div>
                     </div>

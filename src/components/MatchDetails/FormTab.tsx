@@ -6,46 +6,49 @@ interface FormTabProps {
     match: Match;
 }
 
+interface MatchHistoryEntry {
+    id: string;
+    date: string;
+    comp: string;
+    opp: string;
+    score: string;
+    res: 'W' | 'D' | 'L';
+}
+
+interface H2HEntry {
+    id: string;
+    date: string;
+    comp?: string;
+    homeName?: string;
+    awayName?: string;
+    scoreA: number;
+    scoreB: number;
+    winner: string;
+}
+
 export const FormTab: React.FC<FormTabProps> = ({ match }) => {
     const { teamA, teamB } = match;
 
-    const [formA, setFormA] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
-    const [formB, setFormB] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
+    const [historyA, setHistoryA] = useState<MatchHistoryEntry[]>([]);
+    const [historyB, setHistoryB] = useState<MatchHistoryEntry[]>([]);
+    const [h2hList, setH2hList] = useState<H2HEntry[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        if (teamA?.id) {
-            ApiService.getTeamForm(teamA.id).then((res) => {
-                if (res.data) setFormA(res.data);
-            });
-        }
-        if (teamB?.id) {
-            ApiService.getTeamForm(teamB.id).then((res) => {
-                if (res.data) setFormB(res.data);
-            });
-        }
+        setLoading(true);
+        const pA = teamA?.id ? ApiService.getTeamRecentMatches(teamA.id) : Promise.resolve({ success: true, data: [] });
+        const pB = teamB?.id ? ApiService.getTeamRecentMatches(teamB.id) : Promise.resolve({ success: true, data: [] });
+        const pH2H = (teamA?.id && teamB?.id) ? ApiService.getHeadToHead(teamA.id, teamB.id) : Promise.resolve({ success: true, data: [] });
+
+        Promise.all([pA, pB, pH2H]).then(([resA, resB, resH2H]) => {
+            if (resA.data) setHistoryA(resA.data);
+            if (resB.data) setHistoryB(resB.data);
+            if (resH2H.data) setH2hList(resH2H.data as any);
+            setLoading(false);
+        }).catch(() => {
+            setLoading(false);
+        });
     }, [teamA?.id, teamB?.id]);
-
-    const defaultHistoryA = [
-        { date: '16.08', comp: 'EPL', opp: 'Nakuru Sharks', score: '3 - 1', res: 'W' },
-        { date: '09.08', comp: 'EPL', opp: 'Rift Valley FC', score: '1 - 1', res: 'D' },
-        { date: '02.08', comp: 'EPL', opp: 'Tatton Kings', score: '2 - 0', res: 'W' },
-        { date: '26.07', comp: 'EPL', opp: 'Pavilion Bulls', score: '0 - 2', res: 'L' },
-        { date: '19.07', comp: 'EPL', opp: 'Engineering FC', score: '4 - 1', res: 'W' },
-    ];
-
-    const defaultHistoryB = [
-        { date: '17.08', comp: 'EPL', opp: 'Pavilion Bulls', score: '2 - 1', res: 'W' },
-        { date: '10.08', comp: 'EPL', opp: 'Engineering FC', score: '1 - 2', res: 'L' },
-        { date: '03.08', comp: 'EPL', opp: 'Nakuru Sharks', score: '3 - 0', res: 'W' },
-        { date: '27.07', comp: 'EPL', opp: 'Rift Valley FC', score: '2 - 2', res: 'D' },
-        { date: '20.07', comp: 'EPL', opp: 'Tatton Kings', score: '1 - 0', res: 'W' },
-    ];
-
-    const defaultH2H = [
-        { date: '24.03.24', comp: 'EPL', home: teamA.name, away: teamB.name, score: '2 - 1', res: 'W' },
-        { date: '12.11.23', comp: 'EPL', home: teamB.name, away: teamA.name, score: '1 - 1', res: 'D' },
-        { date: '18.04.23', comp: 'EPL', home: teamA.name, away: teamB.name, score: '0 - 2', res: 'L' },
-    ];
 
     const renderBadge = (res: string) => {
         const bg = res === 'W' ? 'bg-[#00b04f]' : res === 'D' ? 'bg-[#ff9800]' : 'bg-[#d63031]';
@@ -65,29 +68,37 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                         <img src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamA.name}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        {defaultHistoryA.map((h, i) => (
-                            <span key={i}>{renderBadge(h.res)}</span>
+                    {historyA.length > 0 && (
+                        <div className="flex items-center gap-1">
+                            {historyA.map((h, i) => (
+                                <span key={i}>{renderBadge(h.res)}</span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {historyA.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                        {loading ? 'Loading match history...' : `No prior completed fixtures recorded for ${teamA.name}.`}
+                    </div>
+                ) : (
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {historyA.map((m, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp}</span>
+                                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{teamA.name} vs {m.opp}</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="font-mono font-black text-slate-900 dark:text-white">{m.score}</span>
+                                    {renderBadge(m.res)}
+                                </div>
+                            </div>
                         ))}
                     </div>
-                </div>
-
-                <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                    {defaultHistoryA.map((m, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp}</span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{teamA.name} vs {m.opp}</span>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <span className="font-mono font-black text-slate-900 dark:text-white">{m.score}</span>
-                                {renderBadge(m.res)}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                )}
             </div>
 
             {/* 2. LAST MATCHES: TEAM B */}
@@ -97,29 +108,37 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                         <img src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamB.name}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        {defaultHistoryB.map((h, i) => (
-                            <span key={i}>{renderBadge(h.res)}</span>
+                    {historyB.length > 0 && (
+                        <div className="flex items-center gap-1">
+                            {historyB.map((h, i) => (
+                                <span key={i}>{renderBadge(h.res)}</span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {historyB.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                        {loading ? 'Loading match history...' : `No prior completed fixtures recorded for ${teamB.name}.`}
+                    </div>
+                ) : (
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {historyB.map((m, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp}</span>
+                                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{teamB.name} vs {m.opp}</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="font-mono font-black text-slate-900 dark:text-white">{m.score}</span>
+                                    {renderBadge(m.res)}
+                                </div>
+                            </div>
                         ))}
                     </div>
-                </div>
-
-                <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                    {defaultHistoryB.map((m, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp}</span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[160px]">{teamB.name} vs {m.opp}</span>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <span className="font-mono font-black text-slate-900 dark:text-white">{m.score}</span>
-                                {renderBadge(m.res)}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                )}
             </div>
 
             {/* 3. HEAD-TO-HEAD MATCHES */}
@@ -128,22 +147,38 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                     HEAD-TO-HEAD MATCHES
                 </div>
 
-                <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                    {defaultH2H.map((m, idx) => (
-                        <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp}</span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">{m.home} - {m.away}</span>
-                            </div>
+                {h2hList.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                        {loading ? 'Loading H2H records...' : 'No prior completed head-to-head fixtures recorded in the database between these two teams.'}
+                    </div>
+                ) : (
+                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                        {h2hList.map((m) => {
+                            let resChar: 'W' | 'D' | 'L' = 'D';
+                            if (m.scoreA > m.scoreB) resChar = 'W';
+                            else if (m.scoreB > m.scoreA) resChar = 'L';
 
-                            <div className="flex items-center gap-3">
-                                <span className="font-mono font-black text-slate-900 dark:text-white">{m.score}</span>
-                                {renderBadge(m.res)}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                            return (
+                                <div key={m.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp || 'EPL'}</span>
+                                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                                            {m.homeName || teamA.name} - {m.awayName || teamB.name}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-mono font-black text-slate-900 dark:text-white">
+                                            {m.scoreA} - {m.scoreB}
+                                        </span>
+                                        {renderBadge(resChar)}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
