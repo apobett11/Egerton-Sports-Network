@@ -9,7 +9,7 @@ import { PublicNewsPage } from './pages/public/PublicPages';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { type AllowedRole } from './components/Auth/LoginPage';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { OfflineBanner } from './components/common/OfflineBanner';
@@ -19,6 +19,9 @@ import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
+import { useDeviceIdentity } from './hooks/useDeviceIdentity';
+import { DeviceService } from './services/DeviceService';
+import { OnboardingScreen } from './components/OnboardingScreen';
 import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
@@ -53,6 +56,42 @@ export const AppContent: React.FC = () => {
     } catch {}
     return h;
   });
+
+  const { role, user } = useAuth();
+  const isAuthenticated = Boolean(user && role !== 'guest');
+
+  // Device Identity & Fan Onboarding State
+  const { deviceId, isInitializing: isDeviceInitializing, cachedCompleted, saveLocalPreference } = useDeviceIdentity();
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowOnboarding(false);
+      return;
+    }
+
+    if (!isDeviceInitializing && deviceId) {
+      if (cachedCompleted) {
+        DeviceService.registerOrCheckInDevice(deviceId);
+      } else {
+        setShowOnboarding(true);
+        DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
+          if (profile && profile.has_completed_onboarding) {
+            saveLocalPreference(profile.favorite_team_id);
+            setShowOnboarding(false);
+          }
+        });
+      }
+    }
+  }, [deviceId, isDeviceInitializing, cachedCompleted, isAuthenticated, saveLocalPreference]);
+
+  const handleTeamSelected = (teamId: string | null) => {
+    saveLocalPreference(teamId);
+    setShowOnboarding(false);
+    if (deviceId) {
+      DeviceService.setFavoriteTeam(deviceId, teamId);
+    }
+  };
 
   // Appearance & Theme State
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -380,6 +419,12 @@ export const AppContent: React.FC = () => {
     <HerdMentalityProvider>
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      {!isAuthenticated && !cachedCompleted && showOnboarding && (
+        <OnboardingScreen
+          onTeamSelected={handleTeamSelected}
+          onClose={() => handleTeamSelected(null)}
+        />
+      )}
       <div className={`relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans antialiased transition-colors duration-150 ${
         darkMode ? 'bg-[#081018] text-white' : 'bg-[#f2f4f7] text-[#0e1726]'
       }`}>
