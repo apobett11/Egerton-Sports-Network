@@ -253,13 +253,17 @@ function validateReferees(referees: RefereeInput[]): string | null {
  * CANDIDATE SELECTION
  * ========================================================================== */
 
+const REFEREE_REST_BUFFER_MS = 15 * 60 * 1000; // 15-minute rest/transit buffer
+
 function refereeIsTemporallyAvailable(
   state: RefereeState,
   startMs: number,
   endMs: number,
+  useBuffer: boolean = true,
 ): boolean {
+  const buffer = useBuffer ? REFEREE_REST_BUFFER_MS : 0;
   return !state.assignments.some((existing) =>
-    intervalsOverlap(startMs, endMs, existing.startMs, existing.endMs),
+    intervalsOverlap(startMs, endMs, existing.startMs - buffer, existing.endMs + buffer),
   );
 }
 
@@ -355,14 +359,29 @@ function generateCenterRefereeAllocations(
     let candidates = [...states.values()].filter(
       (state) =>
         state.referee.tier === eligibleTier &&
-        refereeIsTemporallyAvailable(state, startMs, endMs),
+        refereeIsTemporallyAvailable(state, startMs, endMs, true),
     );
 
     if (match.league_type === "EPL" && candidates.length === 0) {
       candidates = [...states.values()].filter(
         (state) =>
           state.referee.tier === "Mixed" &&
-          refereeIsTemporallyAvailable(state, startMs, endMs),
+          refereeIsTemporallyAvailable(state, startMs, endMs, true),
+      );
+    }
+
+    if (match.league_type === "CHAMPIONSHIP" && candidates.length === 0) {
+      candidates = [...states.values()].filter(
+        (state) =>
+          state.referee.tier === "EPL_Exclusive" &&
+          refereeIsTemporallyAvailable(state, startMs, endMs, true),
+      );
+    }
+
+    // If buffer restricts all referees, fallback to direct non-overlapping interval
+    if (candidates.length === 0) {
+      candidates = [...states.values()].filter((state) =>
+        refereeIsTemporallyAvailable(state, startMs, endMs, false),
       );
     }
 
@@ -600,6 +619,12 @@ function generateLinesmanAllocations(
 
   const teamLeague = new Map<string, LeagueType>();
 
+  for (const team of teams) {
+    if ((team as any).league_type) {
+      teamLeague.set(team.team_id, (team as any).league_type);
+    }
+  }
+
   for (const match of matches) {
     const participants = [match.home_team_id, match.away_team_id];
 
@@ -618,6 +643,16 @@ function generateLinesmanAllocations(
       }
 
       teamLeague.set(teamId, match.league_type);
+    }
+  }
+
+  const uniqueLeagueTypesInMatches = new Set(matches.map((m) => m.league_type));
+  if (uniqueLeagueTypesInMatches.size === 1) {
+    const singleType = Array.from(uniqueLeagueTypesInMatches)[0];
+    for (const team of teams) {
+      if (!teamLeague.has(team.team_id)) {
+        teamLeague.set(team.team_id, singleType);
+      }
     }
   }
 
@@ -659,11 +694,35 @@ function generateLinesmanAllocations(
   });
 
   for (const match of chronologicalMatches) {
+    const matchStart = Date.parse(match.start_time);
+    const matchEnd = Date.parse(match.end_time);
+
+    // Find all teams currently playing in ANY match in this exact time window
+    const playingTeamsAtThisTime = new Set<string>();
+    for (const otherMatch of matches) {
+      const otherStart = Date.parse(otherMatch.start_time);
+      const otherEnd = Date.parse(otherMatch.end_time);
+      if (intervalsOverlap(matchStart, matchEnd, otherStart, otherEnd)) {
+        playingTeamsAtThisTime.add(otherMatch.home_team_id);
+        playingTeamsAtThisTime.add(otherMatch.away_team_id);
+      }
+    }
+
     const pool = match.league_type === "EPL" ? eplTeams : championshipTeams;
 
-    const eligible = pool.filter(
-      (team) => team.team_id !== match.home_team_id && team.team_id !== match.away_team_id,
+    // Prefer teams that are not currently playing on any pitch in this time window
+    const nonPlayingEligible = pool.filter(
+      (team) => !playingTeamsAtThisTime.has(team.team_id),
     );
+
+    const eligible =
+      nonPlayingEligible.length >= 2
+        ? nonPlayingEligible
+        : pool.filter(
+            (team) =>
+              team.team_id !== match.home_team_id &&
+              team.team_id !== match.away_team_id,
+          );
 
     if (eligible.length < 2) {
       assignments.push({

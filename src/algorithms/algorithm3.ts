@@ -38,7 +38,19 @@ const CHAMPIONSHIP = "championship";
 
 const LEAGUE_ORDER = [EPL, CHAMPIONSHIP] as const;
 
-type LeagueId = typeof EPL | typeof CHAMPIONSHIP;
+export type LeagueId = string;
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isEplLeague(leagueId: string): boolean {
+  return (
+    leagueId === EPL ||
+    leagueId.includes("1111") ||
+    leagueId.toLowerCase().includes("premier") ||
+    leagueId.toLowerCase().includes("epl")
+  );
+}
 type PitchState = "available" | "unavailable";
 type MatchStatus = "scheduled" | "played" | "completed" | "cancelled" | "postponed" | "unplayed";
 type AllocationStatus = "allocated" | "spillover" | "preserved" | "blocked";
@@ -373,8 +385,9 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
         makeSlotKey(
           allocation.play_date,
           allocation.pitch_id,
-          allocation.league_id,
           allocation.slot_number,
+          allocation.start_time,
+          allocation.end_time,
         ),
       );
     }
@@ -399,7 +412,15 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
 
     const dayMatches = orderMatchesForPlayday([...incoming, ...ownMatches]);
 
-    for (const leagueId of LEAGUE_ORDER) {
+    const dayLeagues = Array.from(new Set(dayMatches.map((m) => m.league_id)));
+    dayLeagues.sort((a, b) => {
+      const isEplA = isEplLeague(a) ? 0 : 1;
+      const isEplB = isEplLeague(b) ? 0 : 1;
+      if (isEplA !== isEplB) return isEplA - isEplB;
+      return a.localeCompare(b);
+    });
+
+    for (const leagueId of dayLeagues) {
       const leagueMatches = dayMatches.filter((match) => match.league_id === leagueId);
 
       if (leagueMatches.length === 0) continue;
@@ -571,7 +592,12 @@ function validateInputStructure(signal: Algorithm3Signal): VerificationResult {
         errors.push(`Self-play detected before Algorithm 3: ${match.match_id}.`);
       }
 
-      if (match.league_id !== EPL && match.league_id !== CHAMPIONSHIP) {
+      if (
+        match.league_id !== EPL &&
+        match.league_id !== CHAMPIONSHIP &&
+        !UUID_PATTERN.test(match.league_id) &&
+        !match.league_id.trim()
+      ) {
         errors.push(`Unknown league for match ${match.match_id}.`);
       }
     }
@@ -650,14 +676,19 @@ function buildSlotsForLeague(
   configuration: Record<LeagueId, SlotTime[]>,
 ): InternalSlot[] {
   const slots: InternalSlot[] = [];
-  const times = configuration[leagueId];
+  const times =
+    configuration[leagueId] ||
+    (isEplLeague(leagueId)
+      ? configuration[EPL] || DEFAULT_TIME_CONFIGURATION[EPL]
+      : configuration[CHAMPIONSHIP] || DEFAULT_TIME_CONFIGURATION[CHAMPIONSHIP]);
 
   const orderedPitches = [...availablePitches].sort((a, b) =>
     a.pitch_id.localeCompare(b.pitch_id),
   );
 
-  for (const pitch of orderedPitches) {
-    for (const time of times) {
+  // Distribute parallel kickoff times horizontally across available pitches
+  for (const time of times) {
+    for (const pitch of orderedPitches) {
       slots.push({
         pitch_id: pitch.pitch_id,
         slot_number: time.slot_number,
@@ -733,10 +764,10 @@ function getEligiblePool(
 
 function orderMatchesForPlayday(matches: InternalMatch[]): InternalMatch[] {
   return [...matches].sort((a, b) => {
-    const leagueA = a.league_id === EPL ? 0 : 1;
-    const leagueB = b.league_id === EPL ? 0 : 1;
+    const isEplA = isEplLeague(a.league_id) ? 0 : 1;
+    const isEplB = isEplLeague(b.league_id) ? 0 : 1;
 
-    if (leagueA !== leagueB) return leagueA - leagueB;
+    if (isEplA !== isEplB) return isEplA - isEplB;
 
     const spillA = a.spillover_priority ? 0 : 1;
     const spillB = b.spillover_priority ? 0 : 1;
@@ -781,8 +812,9 @@ function allocateLeagueMatches(
       const slotKey = makeSlotKey(
         matchday.play_date,
         slot.pitch_id,
-        match.league_id,
         slot.slot_number,
+        slot.start_time,
+        slot.end_time,
       );
 
       if (globalOccupancy.has(slotKey)) continue;
@@ -895,8 +927,8 @@ function verifyIntegrity(
     const key = [
       allocation.play_date,
       allocation.pitch_id,
-      allocation.league_id,
-      allocation.slot_number,
+      allocation.start_time,
+      allocation.end_time,
     ].join("|");
 
     if (occupiedSlots.has(key)) {
@@ -970,12 +1002,12 @@ function verifyIntegrity(
       a.start_time.localeCompare(b.start_time),
     );
 
-    const firstChampionshipIndex = ordered.findIndex((a) => a.league_id === CHAMPIONSHIP);
+    const firstChampionshipIndex = ordered.findIndex((a) => !isEplLeague(a.league_id));
 
     if (firstChampionshipIndex !== -1) {
       const EPLAfterChampionship = ordered
         .slice(firstChampionshipIndex + 1)
-        .some((a) => a.league_id === EPL);
+        .some((a) => isEplLeague(a.league_id));
 
       if (EPLAfterChampionship) {
         errors.push(
@@ -1125,8 +1157,12 @@ function timeToMinutes(value: string): number {
 function makeSlotKey(
   playDate: string,
   pitchId: string,
-  leagueId: string,
   slotNumber: number,
+  startTime?: string,
+  endTime?: string,
 ): string {
-  return `${playDate}|${pitchId}|${leagueId}|${slotNumber}`;
+  if (startTime && endTime) {
+    return `${playDate}|${pitchId}|${startTime}-${endTime}`;
+  }
+  return `${playDate}|${pitchId}|slot-${slotNumber}`;
 }

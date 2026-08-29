@@ -718,14 +718,25 @@ function runMatchdayEngine(
 
     const firstFutureMatchday = findFirstFutureMatchday(leagueFixtures);
     let matchday = firstFutureMatchday;
+    let matchdayCount = 0;
+    const teamsInCurrentMatchday = new Set<string>();
 
     for (let index = 0; index < future.length; index++) {
       const fixture = future[index];
-      const offset = index % capacity;
-      if (offset === 0 && index !== 0) {
+      const teamClash =
+        teamsInCurrentMatchday.has(fixture.home_id) ||
+        teamsInCurrentMatchday.has(fixture.away_id);
+
+      if ((matchdayCount >= capacity || teamClash) && matchdayCount > 0) {
         matchday += 1;
+        matchdayCount = 0;
+        teamsInCurrentMatchday.clear();
       }
+
       fixture.matchday_number = matchday;
+      matchdayCount += 1;
+      teamsInCurrentMatchday.add(fixture.home_id);
+      teamsInCurrentMatchday.add(fixture.away_id);
     }
 
     logs.push(
@@ -805,6 +816,16 @@ function runPlaydayEngine(
  * PLAYDAY RESOLUTION
  * ========================================================================== */
 
+function addDaysToIso(isoDate: string, daysToAdd: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + daysToAdd);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function resolvePlaydayForIndex(
   playdays: PlaydayInput[],
   index: number,
@@ -817,7 +838,18 @@ function resolvePlaydayForIndex(
 
   if (permanent.length === 0) return null;
 
-  return permanent[index % permanent.length];
+  const baseCount = permanent.length;
+  const weekOffset = Math.floor(index / baseCount);
+  const dayIndex = index % baseCount;
+  const baseDay = permanent[dayIndex];
+
+  const calculatedDate = addDaysToIso(baseDay.date, weekOffset * 7);
+
+  return {
+    date: calculatedDate,
+    mode: "PERMANENT",
+    active: true,
+  };
 }
 
 /* ============================================================================
@@ -938,6 +970,54 @@ function verifyFinalSchedule(
         success: false,
         error: `Self-play detected after recalibration: ${fixture.fixture_id}`,
       };
+    }
+  }
+
+  // Ensure no team is scheduled more than once on the same date within a league
+  const teamDateOccupancy = new Map<string, Set<string>>();
+  for (const fixture of working) {
+    if (fixture.completed || fixture.historical) continue;
+    if (fixture.matchday_number === null || !fixture.playday) continue;
+
+    const dateKey = `${fixture.league_id}:${fixture.playday}`;
+    if (!teamDateOccupancy.has(dateKey)) {
+      teamDateOccupancy.set(dateKey, new Set());
+    }
+    const dayTeams = teamDateOccupancy.get(dateKey)!;
+    if (dayTeams.has(fixture.home_id) || dayTeams.has(fixture.away_id)) {
+      return {
+        success: false,
+        error: `Team double-booking detected on playday ${fixture.playday} for fixture ${fixture.fixture_id}`,
+      };
+    }
+    dayTeams.add(fixture.home_id);
+    dayTeams.add(fixture.away_id);
+  }
+
+  // Verify chronological monotonicity across matchdays
+  const matchdayToDate = new Map<string, string>();
+  for (const fixture of working) {
+    if (fixture.matchday_number === null || !fixture.playday) continue;
+    const mdKey = `${fixture.league_id}:${fixture.matchday_number}`;
+    matchdayToDate.set(mdKey, fixture.playday);
+  }
+  for (const leagueId of decision.affectedLeagues) {
+    const leagueMatchdays = Array.from(matchdayToDate.keys())
+      .filter((k) => k.startsWith(`${leagueId}:`))
+      .map((k) => parseInt(k.split(":")[1], 10))
+      .sort((a, b) => a - b);
+
+    for (let i = 1; i < leagueMatchdays.length; i++) {
+      const prevMd = leagueMatchdays[i - 1];
+      const currMd = leagueMatchdays[i];
+      const prevDate = matchdayToDate.get(`${leagueId}:${prevMd}`)!;
+      const currDate = matchdayToDate.get(`${leagueId}:${currMd}`)!;
+      if (currDate < prevDate) {
+        return {
+          success: false,
+          error: `Chronological monotonicity violation in league ${leagueId}: Matchday ${currMd} (${currDate}) is earlier than Matchday ${prevMd} (${prevDate}).`,
+        };
+      }
     }
   }
 

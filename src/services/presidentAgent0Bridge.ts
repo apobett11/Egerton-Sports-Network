@@ -60,19 +60,31 @@ let activeSeasonStateMemory: {
   }>;
 } | null = null;
 
-function generateDefaultPlaydays(startDateStr: string = '2026-09-01', count: number = 90) {
+function generateDefaultPlaydays(startDateStr: string = '2026-09-05', count: number = 90) {
   const playdays: Array<{ date: string; mode: 'ONE_TIME' | 'PERMANENT'; active: boolean }> = [];
   const start = new Date(startDateStr);
-  for (let i = 0; i < count; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i * 2); // Every 2 days
+
+  for (let week = 0; week < Math.ceil(count / 2); week++) {
+    // Saturday (Day 0 of weekly round)
+    const sat = new Date(start);
+    sat.setDate(start.getDate() + week * 7);
     playdays.push({
-      date: d.toISOString().split('T')[0],
+      date: sat.toISOString().split('T')[0],
+      mode: 'PERMANENT',
+      active: true,
+    });
+
+    // Sunday (Day 1 of weekly round)
+    const sun = new Date(start);
+    sun.setDate(start.getDate() + week * 7 + 1);
+    playdays.push({
+      date: sun.toISOString().split('T')[0],
       mode: 'PERMANENT',
       active: true,
     });
   }
-  return playdays;
+
+  return playdays.slice(0, count);
 }
 
 const DEFAULT_EPL_TEAMS = [
@@ -127,12 +139,13 @@ export function toValidUUID(id: string): string {
   return crypto.randomUUID();
 }
 
-function initializeDefaultMemory(seasonId: string) {
+function initializeDefaultMemory(seasonId: string, startDateStr: string = '2026-09-05') {
   if (!activeSeasonStateMemory || activeSeasonStateMemory.seasonId !== seasonId) {
     activeSeasonStateMemory = {
       seasonId,
+      seasonStartDate: startDateStr,
       capacity: { EPL: 3, Championship: 3 },
-      playdays: generateDefaultPlaydays('2026-09-01', 90),
+      playdays: generateDefaultPlaydays(startDateStr, 90),
       pitches: [
         { pitch_id: '91111111-1111-4111-8111-111111111111', state: 'available', amAvailable: true, pmAvailable: true },
         { pitch_id: '92222222-2222-4222-8222-222222222222', state: 'available', amAvailable: true, pmAvailable: true },
@@ -150,17 +163,17 @@ function initializeDefaultMemory(seasonId: string) {
         {
           league_id: 'epl',
           slots: [
-            { slot_number: 1, start_time: '09:00', end_time: '11:00' },
-            { slot_number: 2, start_time: '11:30', end_time: '13:30' },
-            { slot_number: 3, start_time: '14:00', end_time: '16:00' },
+            { slot_number: 1, start_time: '08:30', end_time: '10:30' },
+            { slot_number: 2, start_time: '10:45', end_time: '12:45' },
+            { slot_number: 3, start_time: '13:00', end_time: '15:00' },
           ],
         },
         {
           league_id: 'championship',
           slots: [
-            { slot_number: 1, start_time: '16:30', end_time: '18:30' },
-            { slot_number: 2, start_time: '19:00', end_time: '21:00' },
-            { slot_number: 3, start_time: '21:30', end_time: '23:30' },
+            { slot_number: 1, start_time: '15:15', end_time: '17:15' },
+            { slot_number: 2, start_time: '17:30', end_time: '19:30' },
+            { slot_number: 3, start_time: '19:45', end_time: '21:45' },
           ],
         },
       ],
@@ -552,8 +565,9 @@ export const PresidentActionBridge = {
     if (!seasonId) throw new Error('Season ID is required');
     if (!seasonStartDate) throw new Error('Season start date is required');
 
-    const mem = initializeDefaultMemory(seasonId);
+    const mem = initializeDefaultMemory(seasonId, seasonStartDate);
     mem.seasonStartDate = seasonStartDate;
+    mem.playdays = generateDefaultPlaydays(seasonStartDate, 90);
 
     const event: PresidentEvent = {
       type: 'BEGIN_SEASON',

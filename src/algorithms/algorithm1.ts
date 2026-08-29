@@ -342,11 +342,11 @@ function generateFixturesEngine(leagues: LeagueInput[]): Algo1Output {
 
     generatedData[league.league_id] = {
       leg_1: assignChronologicalSequence(
-        generated.leg1.fixtures,
+        generated.leg1.matchdays,
         createSeed(league.league_id, "LEG_1"),
       ),
       leg_2: assignChronologicalSequence(
-        generated.leg2.fixtures,
+        generated.leg2.matchdays,
         createSeed(league.league_id, "LEG_2"),
       ),
     };
@@ -735,6 +735,33 @@ function verifyIntegrity(
     "Confirming: No team appears twice within any generated matchday...",
   );
 
+  const matchesPerRound = Math.floor(teamCount / 2);
+  const totalRounds = teamCount % 2 === 0 ? teamCount - 1 : teamCount;
+
+  for (let r = 0; r < totalRounds; r++) {
+    const roundMatchesLeg1 = leg1.slice(r * matchesPerRound, (r + 1) * matchesPerRound);
+    const roundTeamsLeg1 = new Set<string>();
+    for (const f of roundMatchesLeg1) {
+      if (roundTeamsLeg1.has(f.home_id) || roundTeamsLeg1.has(f.away_id)) {
+        logs.push(`Failed: Team participation clash in Leg 1, round ${r + 1}.`);
+        return { passed: false, logs };
+      }
+      roundTeamsLeg1.add(f.home_id);
+      roundTeamsLeg1.add(f.away_id);
+    }
+
+    const roundMatchesLeg2 = leg2.slice(r * matchesPerRound, (r + 1) * matchesPerRound);
+    const roundTeamsLeg2 = new Set<string>();
+    for (const f of roundMatchesLeg2) {
+      if (roundTeamsLeg2.has(f.home_id) || roundTeamsLeg2.has(f.away_id)) {
+        logs.push(`Failed: Team participation clash in Leg 2, round ${r + 1}.`);
+        return { passed: false, logs };
+      }
+      roundTeamsLeg2.add(f.home_id);
+      roundTeamsLeg2.add(f.away_id);
+    }
+  }
+
   const firstLegTeamAppearances = new Map<string, number>();
 
   for (const fixture of leg1) {
@@ -836,28 +863,37 @@ function orientationKey(home: string, away: string): string {
  * ========================================================================== */
 
 function assignChronologicalSequence(
-  fixtures: InternalFixture[],
+  matchdays: InternalFixture[][],
   seed: number,
 ): Fixture[] {
-  const shuffled = fixtures.map((fixture) => ({
-    home_id: fixture.home_id,
-    away_id: fixture.away_id,
-  }));
-
   const random = createDeterministicRandom(seed);
+  const result: Fixture[] = [];
+  let sequence = 1;
 
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    const temporary = shuffled[i];
-    shuffled[i] = shuffled[j];
-    shuffled[j] = temporary;
+  for (const round of matchdays) {
+    const roundFixtures = round.map((fixture) => ({
+      home_id: fixture.home_id,
+      away_id: fixture.away_id,
+    }));
+
+    // Deterministically shuffle matches WITHIN the round only (never mixing across rounds)
+    for (let i = roundFixtures.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      const temporary = roundFixtures[i];
+      roundFixtures[i] = roundFixtures[j];
+      roundFixtures[j] = temporary;
+    }
+
+    for (const fixture of roundFixtures) {
+      result.push({
+        home_id: fixture.home_id,
+        away_id: fixture.away_id,
+        match_sequence: sequence++,
+      });
+    }
   }
 
-  return shuffled.map((fixture, index) => ({
-    home_id: fixture.home_id,
-    away_id: fixture.away_id,
-    match_sequence: index + 1,
-  }));
+  return result;
 }
 
 /* ============================================================================

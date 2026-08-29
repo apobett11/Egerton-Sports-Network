@@ -1038,7 +1038,7 @@ function buildAlgorithm3Signal(
             };
           });
 
-    const playDate = mdFixtures[0]?.playday || mdObj?.play_date || "2026-09-05";
+    const playDate = mdFixtures[0]?.playday || mdObj?.play_date || event.seasonStartDate || event.date || "2026-09-05";
 
     return {
       matchday_number: mdNum,
@@ -1081,14 +1081,14 @@ function buildAlgorithm3TimeConfig(
   state: DBState,
 ): Algorithm3Signal["time_configuration"] {
   const defaultEpl: SlotTime[] = [
-    { slot_number: 1, start_time: "09:00", end_time: "11:00" },
-    { slot_number: 2, start_time: "11:30", end_time: "13:30" },
-    { slot_number: 3, start_time: "14:30", end_time: "16:30" },
+    { slot_number: 1, start_time: "08:30", end_time: "10:30" },
+    { slot_number: 2, start_time: "10:45", end_time: "12:45" },
+    { slot_number: 3, start_time: "13:00", end_time: "15:00" },
   ];
   const defaultChamp: SlotTime[] = [
-    { slot_number: 1, start_time: "09:00", end_time: "11:00" },
-    { slot_number: 2, start_time: "11:30", end_time: "13:30" },
-    { slot_number: 3, start_time: "14:30", end_time: "16:30" },
+    { slot_number: 1, start_time: "15:15", end_time: "17:15" },
+    { slot_number: 2, start_time: "17:30", end_time: "19:30" },
+    { slot_number: 3, start_time: "19:45", end_time: "21:45" },
   ];
 
   const existingEpl = state.timeConfiguration?.find((tc) => tc.league_id === "epl")?.slots || defaultEpl;
@@ -1178,20 +1178,12 @@ function buildTimeSlottedMatches(
     start_time: string;
     end_time: string;
   }> = algorithm3Result
-    ? [
-        ...algorithm3Result.payload.database_operations.allocations.map((a) => ({
-          match_id: a.match_id,
-          league_id: a.league_id,
-          start_time: formatToIsoTimestamp(a.play_date, a.start_time),
-          end_time: formatToIsoTimestamp(a.play_date, a.end_time),
-        })),
-        ...algorithm3Result.payload.database_operations.spillovers.map((s) => ({
-          match_id: s.match_id,
-          league_id: s.league_id,
-          start_time: formatToIsoTimestamp(s.current_play_date, "08:00"),
-          end_time: formatToIsoTimestamp(s.current_play_date, "10:00"),
-        })),
-      ]
+    ? algorithm3Result.payload.database_operations.allocations.map((a) => ({
+        match_id: a.match_id,
+        league_id: a.league_id,
+        start_time: formatToIsoTimestamp(a.play_date, a.start_time),
+        end_time: formatToIsoTimestamp(a.play_date, a.end_time),
+      }))
     : state.matchAssignments
         .filter((a) => {
           const fx = state.fixtures.find((f) => f.fixture_id === a.match_id);
