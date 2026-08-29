@@ -431,91 +431,216 @@ export const HomePage: React.FC<HomePageProps> = ({
         />
       )}
 
-      {/* 2. PLAYER PERFORMANCE SECTION CONTAINER */}
-      <section 
-        aria-label="Player Performance Section"
-        className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
-      >
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-[#ff0046]" />
-            <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              PLAYER PERFORMANCE & INDIVIDUAL STATS
-            </h2>
-          </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Season Leaderboards</span>
+      {/* 2. PLAYER PERFORMANCE & INDIVIDUAL STATS - SEPARATE CARDS FOR EPL & CHAMPIONSHIPS */}
+      {perfState.loading ? (
+        <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 animate-pulse shadow-xs">
+          Loading player leaderboards...
         </div>
-
-        {perfState.loading ? (
-          <div className="p-6 text-center text-xs text-slate-400 animate-pulse">Loading leaderboards...</div>
-        ) : perfState.error ? (
-          <div className="p-4 text-xs font-bold text-rose-500 text-center">{perfState.error}</div>
-        ) : perfState.data && (
-          <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-            {/* Division 1: EPL Metrics */}
-            <div className="p-3 sm:p-4 space-y-2">
-              <div className="flex items-center justify-between text-xs font-extrabold pb-1 border-b border-[#f0f2f5] dark:border-[#14263b]">
-                <span className="text-slate-900 dark:text-white">EGERTON PREMIER LEAGUE</span>
-                <span className="text-[10px] text-[#ff0046] uppercase font-bold">DIVISION 1</span>
+      ) : perfState.error ? (
+        <div className="bg-white dark:bg-[#0e1c2b] border border-rose-500/30 rounded-none sm:rounded-sm p-4 text-xs font-bold text-rose-500 text-center shadow-xs">
+          {perfState.error}
+        </div>
+      ) : perfState.data && (
+        <div className="space-y-3">
+          {/* CARD 1: EGERTON PREMIER LEAGUE PLAYER STATS */}
+          <section 
+            aria-label="EPL Player Performance Section"
+            className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+          >
+            <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#ff0046]" />
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  EPL — PLAYER PERFORMANCE & STATS
+                </h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">TOP SCORER</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.epl.topScorer.playerName}</span>
+              <span className="text-[10px] font-extrabold text-[#ff0046] uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                DIVISION 1
+              </span>
+            </div>
+
+            {/* Unified List for EPL */}
+            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              {/* EPL Top Scorer */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
+                    TOP SCORER
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.epl.topScorer.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.epl.topScorer.teamName}
+                    </div>
                   </div>
-                  <span className="font-mono font-black text-xs text-[#00b04f]">{perfState.data.epl.topScorer.goals} G</span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">MOST ASSISTS</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.epl.mostAssists.playerName}</span>
-                  </div>
-                  <span className="font-mono font-black text-xs text-[#1565c0]">{perfState.data.epl.mostAssists.assists} A</span>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                    🔥 {perfState.data.epl.topScorer.streak || 3} match scoring streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
+                    {perfState.data.epl.topScorer.goals} G
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">CLEAN SHEETS</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.epl.mostCleanSheets.playerName}</span>
+              </div>
+
+              {/* EPL Most Assists */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
+                    MOST ASSISTS
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.epl.mostAssists.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.epl.mostAssists.teamName}
+                    </div>
                   </div>
-                  <span className="font-mono font-black text-xs text-purple-500">{perfState.data.epl.mostCleanSheets.cleanSheets} CS</span>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                    🎯 {perfState.data.epl.mostAssists.streak || 2} match assist streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
+                    {perfState.data.epl.mostAssists.assists} A
+                  </span>
+                </div>
+              </div>
+
+              {/* EPL Clean Sheets */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
+                    CLEAN SHEETS
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.epl.mostCleanSheets.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.epl.mostCleanSheets.teamName}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
+                    🛡️ {perfState.data.epl.mostCleanSheets.streak || 4} match clean sheet streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-purple-500 shrink-0">
+                    {perfState.data.epl.mostCleanSheets.cleanSheets} CS
+                  </span>
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Division 2: Championships Metrics */}
-            <div className="p-3 sm:p-4 space-y-2">
-              <div className="flex items-center justify-between text-xs font-extrabold pb-1 border-b border-[#f0f2f5] dark:border-[#14263b]">
-                <span className="text-slate-900 dark:text-white">EGERTON CHAMPIONSHIPS</span>
-                <span className="text-[10px] text-amber-500 uppercase font-bold">DIVISION 2</span>
+          {/* CARD 2: EGERTON CHAMPIONSHIPS PLAYER STATS */}
+          <section 
+            aria-label="Championships Player Performance Section"
+            className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+          >
+            <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  CHAMPIONSHIPS — PLAYER PERFORMANCE & STATS
+                </h2>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">TOP SCORER</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.championship.topScorer.playerName}</span>
+              <span className="text-[10px] font-extrabold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                DIVISION 2
+              </span>
+            </div>
+
+            {/* Unified List for Championships */}
+            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              {/* Championships Top Scorer */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
+                    TOP SCORER
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.championship.topScorer.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.championship.topScorer.teamName}
+                    </div>
                   </div>
-                  <span className="font-mono font-black text-xs text-[#00b04f]">{perfState.data.championship.topScorer.goals} G</span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">MOST ASSISTS</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.championship.mostAssists.playerName}</span>
-                  </div>
-                  <span className="font-mono font-black text-xs text-[#1565c0]">{perfState.data.championship.mostAssists.assists} A</span>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                    🔥 {perfState.data.championship.topScorer.streak || 4} match scoring streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
+                    {perfState.data.championship.topScorer.goals} G
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-[#f8f9fa] dark:bg-[#112236]">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">CLEAN SHEETS</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{perfState.data.championship.mostCleanSheets.playerName}</span>
+              </div>
+
+              {/* Championships Most Assists */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
+                    MOST ASSISTS
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.championship.mostAssists.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.championship.mostAssists.teamName}
+                    </div>
                   </div>
-                  <span className="font-mono font-black text-xs text-purple-500">{perfState.data.championship.mostCleanSheets.cleanSheets} CS</span>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                    🎯 {perfState.data.championship.mostAssists.streak || 3} match assist streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
+                    {perfState.data.championship.mostAssists.assists} A
+                  </span>
+                </div>
+              </div>
+
+              {/* Championships Clean Sheets */}
+              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
+                    CLEAN SHEETS
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                      {perfState.data.championship.mostCleanSheets.playerName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {perfState.data.championship.mostCleanSheets.teamName}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
+                    🛡️ {perfState.data.championship.mostCleanSheets.streak || 2} match clean sheet streak
+                  </span>
+                  <span className="font-mono font-black text-xs text-purple-500 shrink-0">
+                    {perfState.data.championship.mostCleanSheets.cleanSheets} CS
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </section>
+          </section>
+        </div>
+      )}
 
       {/* 3. LEAGUE MILESTONES SECTION */}
       <section 

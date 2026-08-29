@@ -253,7 +253,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                         LIVE
                                                     </span>
                                                 ) : match.status === 'UPCOMING' ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-[#14263b] text-slate-600 dark:text-slate-400">
+                                                    <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs">
                                                         PREVIEW
                                                     </span>
                                                 ) : null}

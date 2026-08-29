@@ -192,103 +192,119 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* ROW 2: PRIMARY TABS (SCORES | NEWS) */}
-            <div className="w-full bg-[#0e1e2d] text-white">
+            <div className="w-full bg-[#0e1e2d] text-white py-2 px-3">
                 <div className="max-w-7xl mx-auto flex items-center justify-center">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (onSelectMainTab) onSelectMainTab('scores');
-                            window.location.hash = '/home';
-                        }}
-                        className={`flex-1 max-w-xs py-2.5 sm:py-3 text-center text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer relative flex items-center justify-center gap-2 ${
-                            isScoresActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-3.5 h-3.5 rounded-sm border border-current flex items-center justify-center text-[9px] font-black leading-none">
-                                10
-                            </span>
-                            <span>SCORES</span>
-                        </div>
-                        {isScoresActive && (
-                            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#ff0046]" />
-                        )}
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (onSelectMainTab) onSelectMainTab('news');
-                            if (onNavigateNews) onNavigateNews();
-                            window.location.hash = '/news';
-                        }}
-                        className={`flex-1 max-w-xs py-2.5 sm:py-3 text-center text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-colors cursor-pointer relative flex items-center justify-center gap-2 ${
-                            isNewsActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-3.5 h-3.5 rounded-sm border border-current flex items-center justify-center text-[9px] font-black leading-none">
-                                ≡
-                            </span>
-                            <span>NEWS</span>
-                        </div>
-                        {isNewsActive && (
-                            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#ff0046]" />
-                        )}
-                    </button>
-                </div>
-            </div>
-
-            {/* ROW 3: SCORES SUB-MENU (FAVOURITES | FIXTURES | STANDINGS) */}
-            {isScoresActive && (
-                <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
-                    <div className="max-w-7xl mx-auto flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar px-3 sm:px-4 py-0 space-x-2 sm:space-x-6">
-                        {/* 1. FAVOURITES */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (onSelectMainTab) onSelectMainTab('favorites');
-                            }}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 ${
-                                activeMainTab === 'favorites'
-                                    ? 'text-[#ff0046] border-[#ff0046]'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-transparent'
-                            }`}
-                        >
-                            <Star className={`w-3.5 h-3.5 ${favoritesCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
-                            <span>FAVOURITES ({favoritesCount})</span>
-                        </button>
-
-                        {/* 2. FIXTURES */}
+                    <div className="inline-flex items-center border border-slate-700/60 dark:border-slate-700/60 rounded-lg p-0.5 bg-[#0a1520]/80 backdrop-blur-xs shadow-xs">
                         <button
                             type="button"
                             onClick={() => {
                                 if (onSelectMainTab) onSelectMainTab('scores');
+                                window.location.hash = '/home';
                             }}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 ${
-                                activeMainTab === 'scores'
-                                    ? 'text-[#ff0046] border-[#ff0046]'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-transparent'
+                            className={`px-6 sm:px-10 py-2 sm:py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-md flex items-center justify-center gap-2 border-r border-slate-700/60 ${
+                                isScoresActive 
+                                    ? 'bg-[#152a40] text-white shadow-xs font-black ring-1 ring-white/10' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span>FIXTURES</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-3.5 h-3.5 rounded-xs border border-current flex items-center justify-center text-[9px] font-black leading-none ${
+                                    isScoresActive ? 'bg-[#ff0046] border-[#ff0046] text-white' : ''
+                                }`}>
+                                    10
+                                </span>
+                                <span>SCORES</span>
+                            </div>
                         </button>
 
-                        {/* 3. STANDINGS */}
                         <button
                             type="button"
                             onClick={() => {
-                                if (onSelectMainTab) onSelectMainTab('table');
+                                if (onSelectMainTab) onSelectMainTab('news');
+                                if (onNavigateNews) onNavigateNews();
+                                window.location.hash = '/news';
                             }}
-                            className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 ${
-                                activeMainTab === 'table'
-                                    ? 'text-[#ff0046] border-[#ff0046]'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-transparent'
+                            className={`px-6 sm:px-10 py-2 sm:py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-md flex items-center justify-center gap-2 ${
+                                isNewsActive 
+                                    ? 'bg-[#152a40] text-white shadow-xs font-black ring-1 ring-white/10' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
-                            <span>STANDINGS</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className={`w-3.5 h-3.5 rounded-xs border border-current flex items-center justify-center text-[9px] font-black leading-none ${
+                                    isNewsActive ? 'bg-[#ff0046] border-[#ff0046] text-white' : ''
+                                }`}>
+                                    ≡
+                                </span>
+                                <span>NEWS</span>
+                            </div>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* ROW 3: SCORES SUB-MENU (FAVOURITES ICON | CENTERED EQUI-DISTANT FIXTURES & STANDINGS) */}
+            {isScoresActive && (
+                <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
+                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-0 flex items-center justify-between relative h-10">
+                        {/* 1. FAVOURITES (Orange Icon Button) */}
+                        <div className="flex items-center z-10">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onSelectMainTab) onSelectMainTab('favorites');
+                                }}
+                                className={`p-1.5 sm:p-2 rounded-md cursor-pointer transition-colors relative flex items-center justify-center ${
+                                    activeMainTab === 'favorites'
+                                        ? 'bg-amber-500/15 ring-1 ring-amber-500/40'
+                                        : 'hover:bg-slate-100 dark:hover:bg-[#14263b]'
+                                }`}
+                                title={`Favourites (${favoritesCount})`}
+                                aria-label={`Favourites (${favoritesCount})`}
+                            >
+                                <Star className="w-4 h-4 text-amber-500 fill-amber-500 transition-transform hover:scale-110" />
+                                {favoritesCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-[#ff0046] text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                                        {favoritesCount}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* 2 & 3. CENTERED & EQUI-DISTANT FIXTURES & STANDINGS */}
+                        <div className="absolute inset-0 flex items-center justify-center space-x-6 sm:space-x-12 pointer-events-none">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onSelectMainTab) onSelectMainTab('scores');
+                                }}
+                                className={`pointer-events-auto flex items-center gap-1.5 h-full px-2 text-xs sm:text-sm font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 ${
+                                    activeMainTab === 'scores'
+                                        ? 'text-[#ff0046] border-[#ff0046]'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-transparent'
+                                }`}
+                            >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>FIXTURES</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onSelectMainTab) onSelectMainTab('table');
+                                }}
+                                className={`pointer-events-auto flex items-center gap-1.5 h-full px-2 text-xs sm:text-sm font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 ${
+                                    activeMainTab === 'table'
+                                        ? 'text-[#ff0046] border-[#ff0046]'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border-transparent'
+                                }`}
+                            >
+                                <span>STANDINGS</span>
+                            </button>
+                        </div>
+
+                        {/* Right balance spacer for symmetry */}
+                        <div className="w-8 shrink-0 pointer-events-none" />
                     </div>
                 </div>
             )}
