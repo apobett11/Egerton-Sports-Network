@@ -23,7 +23,6 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   // Navigation & Filter States
   const [selectedCompFilter, setSelectedCompFilter] = useState<'all' | 'epl' | 'champ'>('all');
   const [activeSection, setActiveSection] = useState<'standings' | 'form' | 'scorers' | 'potw' | 'assists'>('standings');
-  const [formMatchCount, setFormMatchCount] = useState<5 | 10 | 15>(5);
 
   // Data States
   const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>([]);
@@ -140,18 +139,20 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
   };
 
-  const renderFormBadges = (teamId: string, pos: number, count: number = 5) => {
+  const render6FormBadges = (teamId: string, pos: number) => {
     const rawForm = teamFormsMap[teamId] || (
-      pos === 1 ? ['W', 'W', 'D', 'W', 'W', 'W', 'W', 'D', 'W', 'W', 'W', 'W', 'D', 'W', 'W'] :
-      pos === 2 ? ['W', 'D', 'W', 'L', 'W', 'W', 'D', 'W', 'L', 'W', 'W', 'D', 'W', 'L', 'W'] :
-      pos === 3 ? ['W', 'L', 'W', 'D', 'W', 'W', 'L', 'W', 'D', 'W', 'W', 'L', 'W', 'D', 'W'] :
-      ['L', 'W', 'L', 'D', 'W', 'L', 'W', 'L', 'D', 'W', 'L', 'W', 'L', 'D', 'W']
+      pos === 1 ? ['W', 'W', 'D', 'W', 'W', 'W'] :
+      pos === 2 ? ['W', 'D', 'W', 'L', 'W', 'W'] :
+      pos === 3 ? ['W', 'L', 'W', 'D', 'W', 'W'] :
+      pos === 4 ? ['D', 'W', 'W', 'L', 'W', 'D'] :
+      pos === 5 ? ['W', 'L', 'D', 'W', 'L', 'W'] :
+      ['L', 'W', 'L', 'D', 'W', 'L']
     );
-    const formN = rawForm.slice(0, count);
+    const form6 = rawForm.slice(0, 6);
 
     return (
-      <div className="flex items-center gap-0.5 justify-center">
-        {formN.map((res, i) => (
+      <div className="flex items-center gap-1 justify-center">
+        {form6.map((res, i) => (
           <span
             key={i}
             className={`w-4 h-4 rounded-[2px] flex items-center justify-center font-bold text-[9px] text-white select-none ${
@@ -178,7 +179,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     return 'border-l-[3px] border-l-transparent';
   };
 
-  // Reusable Standard Standings Table Component
+  // Reusable Standard Standings Table Component (FORM REMOVED)
   const renderStandingsTable = (
     title: string,
     divisionLabel: string,
@@ -206,21 +207,20 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </span>
         </div>
 
-        {/* Table Content */}
+        {/* Table Content: No Form Column */}
         <div className="w-full overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase">
                 <th className="py-2 px-2 text-center w-8"># ▲</th>
-                <th className="py-2 px-2 min-w-[130px] sm:min-w-[180px]">TEAM</th>
-                <th className="py-2 px-1 text-center w-7">MP</th>
-                <th className="py-2 px-1 text-center w-7">W</th>
-                <th className="py-2 px-1 text-center w-7">D</th>
-                <th className="py-2 px-1 text-center w-7">L</th>
-                <th className="py-2 px-1 text-center w-12 hidden sm:table-cell">G</th>
-                <th className="py-2 px-1 text-center w-8 hidden sm:table-cell">GD</th>
-                <th className="py-2 px-2 text-center w-9 font-black text-slate-900 dark:text-white">PTS</th>
-                <th className="py-2 px-2 text-center w-24">FORM</th>
+                <th className="py-2 px-2 min-w-[140px] sm:min-w-[200px]">TEAM</th>
+                <th className="py-2 px-2 text-center w-8">MP</th>
+                <th className="py-2 px-2 text-center w-8">W</th>
+                <th className="py-2 px-2 text-center w-8">D</th>
+                <th className="py-2 px-2 text-center w-8">L</th>
+                <th className="py-2 px-2 text-center w-14 hidden sm:table-cell">G</th>
+                <th className="py-2 px-2 text-center w-10 hidden sm:table-cell">GD</th>
+                <th className="py-2 px-3 text-center w-12 font-black text-slate-900 dark:text-white">PTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
@@ -233,36 +233,33 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                     key={row.teamId || row.position}
                     className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${zoneBorder}`}
                   >
-                    <td className="py-2 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
+                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
                       {row.position}.
                     </td>
-                    <td className="py-2 px-2">
+                    <td className="py-2.5 px-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <img
                           src={row.teamLogo}
                           alt={row.teamName}
-                          className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                          className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                         />
                         <span className="font-extrabold text-slate-900 dark:text-white truncate">
                           {row.teamName}
                         </span>
                       </div>
                     </td>
-                    <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.played}</td>
-                    <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.won}</td>
-                    <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.drawn}</td>
-                    <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.lost}</td>
-                    <td className="py-2 px-1 text-center font-mono text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.played}</td>
+                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.won}</td>
+                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.drawn}</td>
+                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.lost}</td>
+                    <td className="py-2.5 px-2 text-center font-mono text-slate-500 dark:text-slate-400 hidden sm:table-cell">
                       {row.goalsFor}:{row.goalsAgainst}
                     </td>
-                    <td className="py-2 px-1 text-center font-mono font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                    <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">
                       {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
                     </td>
-                    <td className="py-2 px-2 text-center font-black font-mono text-slate-900 dark:text-white">
+                    <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">
                       {row.points}
-                    </td>
-                    <td className="py-2 px-2 text-center">
-                      {renderFormBadges(row.teamId, row.position, 5)}
                     </td>
                   </tr>
                 );
@@ -274,7 +271,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     );
   };
 
-  // Reusable Form Standings Table Component
+  // Reusable Form Standings Table Component (ONLY PLAYED, 6 RECENT FORMS, POINTS AT END)
   const renderFormTable = (
     title: string,
     divisionLabel: string,
@@ -298,32 +295,26 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase">
-                <th className="py-2 px-2 text-center w-8">#</th>
-                <th className="py-2 px-2 min-w-[130px] sm:min-w-[180px]">TEAM</th>
-                <th className="py-2 px-1 text-center w-7">MP</th>
-                <th className="py-2 px-1 text-center w-7">W</th>
-                <th className="py-2 px-1 text-center w-7">D</th>
-                <th className="py-2 px-1 text-center w-7">L</th>
-                <th className="py-2 px-2 text-center w-9 font-black text-slate-900 dark:text-white">PTS</th>
-                <th className="py-2 px-2 text-center w-36">LAST {formMatchCount} MATCHES</th>
+                <th className="py-2.5 px-3 text-center w-8">#</th>
+                <th className="py-2.5 px-3 min-w-[140px] sm:min-w-[200px]">TEAM</th>
+                <th className="py-2.5 px-3 text-center w-12">PLAYED</th>
+                <th className="py-2.5 px-3 text-center min-w-[140px]">LAST 6 MATCHES</th>
+                <th className="py-2.5 px-4 text-center w-14 font-black text-slate-900 dark:text-white">PTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
               {list.map((row) => (
                 <tr key={row.teamId || row.position} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                  <td className="py-2 px-2 text-center font-bold text-slate-400">{row.position}.</td>
-                  <td className="py-2 px-2">
+                  <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}.</td>
+                  <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0" />
+                      <img src={row.teamLogo} alt={row.teamName} className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0" />
                       <span className="font-extrabold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
                   </td>
-                  <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.played}</td>
-                  <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.won}</td>
-                  <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.drawn}</td>
-                  <td className="py-2 px-1 text-center font-medium text-slate-600 dark:text-slate-300">{row.lost}</td>
-                  <td className="py-2 px-2 text-center font-black font-mono text-slate-900 dark:text-white">{row.points}</td>
-                  <td className="py-2 px-2 text-center">{renderFormBadges(row.teamId, row.position, formMatchCount)}</td>
+                  <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">{row.played}</td>
+                  <td className="py-2.5 px-3 text-center">{render6FormBadges(row.teamId, row.position)}</td>
+                  <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-slate-900 dark:text-white">{row.points}</td>
                 </tr>
               ))}
             </tbody>
@@ -384,60 +375,55 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   );
 
   return (
-    <div className="space-y-4 pb-12 select-none">
-      {/* 1. TOP STICKY NAVIGATION CONTROLS BAR */}
-      <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-2 sm:p-3 space-y-2 shadow-xs">
-        {/* ROW 1: LEAGUE SWITCH (ALL | EPL | CHAMPIONSHIPS) */}
-        <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-black uppercase text-slate-400 mr-1 flex items-center gap-1">
-              <Filter className="w-3 h-3" /> LEAGUE:
-            </span>
-            {[
-              { id: 'all', label: 'ALL LEAGUES' },
-              { id: 'epl', label: 'EPL (PREMIER)' },
-              { id: 'champ', label: 'CHAMPIONSHIPS' },
-            ].map((f) => {
-              const isActive = selectedCompFilter === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => handleCompFilterChange(f.id as any)}
-                  className={`px-3 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'bg-[#f0f2f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
+    <div className="space-y-6 pb-12 select-none">
+      {/* 1. TOP STICKY NAVIGATION CONTROLS BAR (REMAINS STICKY DURING SCROLL) */}
+      <div className="sticky top-[80px] sm:top-[90px] z-30 bg-white/95 dark:bg-[#0e1c2b]/95 backdrop-blur-md border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-2 sm:p-2.5 space-y-2 shadow-md">
+        {/* ROW 1: ALL LEAGUES PRESELECTED (LEFT) & SMALL TOGGLE SWITCH (RIGHT) */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: All Leagues Button */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleCompFilterChange('all')}
+              className={`px-3 py-1 rounded-full text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                selectedCompFilter === 'all'
+                  ? 'bg-[#ff0046] text-white shadow-xs'
+                  : 'bg-[#f0f2f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+              }`}
+            >
+              ALL LEAGUES
+            </button>
           </div>
 
-          {/* Form Match Count Selector (5/10/15) */}
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[10px] font-bold text-slate-400 mr-1">FORM:</span>
-            {[5, 10, 15].map((cnt) => (
-              <button
-                key={cnt}
-                type="button"
-                onClick={() => setFormMatchCount(cnt as any)}
-                className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                  formMatchCount === cnt
-                    ? 'bg-[#0e1e2d] text-white dark:bg-white dark:text-slate-900'
-                    : 'bg-slate-100 dark:bg-[#14263b] text-slate-500 hover:text-slate-900 dark:text-slate-300'
-                }`}
-              >
-                {cnt}m
-              </button>
-            ))}
+          {/* Right (not too far): Small Compact Toggle between EPL and CHAMPIONSHIPS */}
+          <div className="flex items-center gap-1 bg-[#f0f2f5] dark:bg-[#14263b] p-0.5 rounded-lg border border-slate-200 dark:border-[#1a2e45]">
+            <button
+              type="button"
+              onClick={() => handleCompFilterChange('epl')}
+              className={`px-2.5 py-0.5 rounded text-[11px] font-black uppercase transition-colors cursor-pointer ${
+                selectedCompFilter === 'epl'
+                  ? 'bg-[#152e4d] text-[#38bdf8] font-black shadow-xs ring-1 ring-[#38bdf8]/40'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              EPL
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCompFilterChange('champ')}
+              className={`px-2.5 py-0.5 rounded text-[11px] font-black uppercase transition-colors cursor-pointer ${
+                selectedCompFilter === 'champ'
+                  ? 'bg-[#152e4d] text-[#38bdf8] font-black shadow-xs ring-1 ring-[#38bdf8]/40'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Champ
+            </button>
           </div>
         </div>
 
-        {/* ROW 2: SMOOTH-SCROLL QUICK JUMP TABS */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-[#f0f2f5] dark:border-[#14263b] text-xs">
+        {/* ROW 2: SMOOTH-SCROLL QUICK JUMP TABS WITH BORDER-TOP AND ENHANCED ACTIVE BLUE STATE */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-[#e6e8ec] dark:border-[#1a2e45] text-xs">
           {[
             { id: 'standings', label: '📊 STANDINGS', ref: standingsRef },
             { id: 'form', label: '⚡ FORM TABLES', ref: formRef },
@@ -451,10 +437,10 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => scrollToTarget(tab.ref, tab.id)}
-                className={`px-3 py-1 rounded text-[11px] font-extrabold uppercase whitespace-nowrap cursor-pointer transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-[11px] font-extrabold uppercase whitespace-nowrap cursor-pointer transition-all duration-150 ${
                   isActive
-                    ? 'bg-[#152e4d] text-[#38bdf8] dark:bg-[#152e4d] dark:text-[#38bdf8] font-black border border-[#38bdf8]/30'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#14263b]'
+                    ? 'bg-[#152e4d] text-[#38bdf8] dark:bg-[#152e4d] dark:text-[#38bdf8] font-black border border-[#38bdf8]/60 ring-2 ring-[#38bdf8]/20 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#14263b] border border-transparent'
                 }`}
               >
                 {tab.label}
@@ -467,7 +453,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       {/* ======================================================== */}
       {/* SECTION 1: STANDINGS TABLES (EPL TABLE, BELOW IT CHAMP) */}
       {/* ======================================================== */}
-      <div ref={standingsRef} className="space-y-3">
+      <div ref={standingsRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-500" />
@@ -475,7 +461,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               OFFICIAL LEAGUE STANDINGS
             </h2>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Automated Engine</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Algorithm Engine</span>
         </div>
 
         {/* EPL Standings Table */}
@@ -513,13 +499,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
       </div>
 
-      {/* INTER-SECTION SPACE */}
-      <div className="my-4" />
+      {/* DISTINCT INTER-SECTION SPACE */}
+      <div className="my-8 sm:my-10" />
 
       {/* ======================================================== */}
       {/* SECTION 2: FORM TABLES (EPL FORM, BELOW IT CHAMP FORM) */}
       {/* ======================================================== */}
-      <div ref={formRef} className="space-y-3">
+      <div ref={formRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-500" />
@@ -527,7 +513,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               LEAGUE FORM TABLES
             </h2>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Last {formMatchCount} Matches Streak</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Last 6 Matches Streak</span>
         </div>
 
         {/* EPL Form Table */}
@@ -547,13 +533,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         )}
       </div>
 
-      {/* INTER-SECTION SPACE */}
-      <div className="my-4" />
+      {/* DISTINCT INTER-SECTION SPACE */}
+      <div className="my-8 sm:my-10" />
 
       {/* ======================================================== */}
       {/* SECTION 3: TOP SCORERS (EPL, CHAMPIONSHIPS, ALL-TIME)   */}
       {/* ======================================================== */}
-      <div ref={scorersRef} className="space-y-3">
+      <div ref={scorersRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Flame className="w-4 h-4 text-[#ff0046]" />
@@ -576,13 +562,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
       </div>
 
-      {/* INTER-SECTION SPACE */}
-      <div className="my-4" />
+      {/* DISTINCT INTER-SECTION SPACE */}
+      <div className="my-8 sm:my-10" />
 
       {/* ======================================================== */}
       {/* SECTION 4: PLAYER OF THE WEEK (WEEK 1+, LATERAL SPLIT)   */}
       {/* ======================================================== */}
-      <div ref={potwRef} className="space-y-3">
+      <div ref={potwRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
@@ -643,13 +629,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
       </div>
 
-      {/* INTER-SECTION SPACE */}
-      <div className="my-4" />
+      {/* DISTINCT INTER-SECTION SPACE */}
+      <div className="my-8 sm:my-10" />
 
       {/* ======================================================== */}
       {/* SECTION 5: ASSISTS TABLE (5 PLAYERS + SEE ALL POPUP)    */}
       {/* ======================================================== */}
-      <div ref={assistsRef} className="space-y-3">
+      <div ref={assistsRef} className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-[#1565c0] dark:text-[#42a5f5]" />
@@ -825,5 +811,6 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     </div>
   );
 };
+
 
 
