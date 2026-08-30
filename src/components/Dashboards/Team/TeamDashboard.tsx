@@ -21,8 +21,7 @@ import { StandingsPage } from './components/StandingsPage';
 import { TeamSidebar } from './components/Sidebar/TeamSidebar';
 import { TeamHeader } from './components/Header/TeamHeader';
 import { TeamMobileNav } from './components/Mobile/TeamMobileNav';
-import { PitchCanvas } from './components/Tactics/PitchCanvas';
-import { TacticsControls } from './components/Tactics/TacticsControls';
+import { TeamSquadView } from './components/Squad/TeamSquadView';
 import { RosterListView } from './components/Roster/RosterListView';
 import { RoleAssignmentsView } from './components/Roles/RoleAssignmentsView';
 import { ComposeJournalModal } from './components/ComposeJournalModal';
@@ -147,47 +146,13 @@ export const TeamDashboard: React.FC = () => {
             />
           )}
 
-          {/* PAGE 2: TEAM SQUAD & 2D PITCH CANVAS */}
+          {/* PAGE 2: TEAM SQUAD (GAME PLAN) */}
           {activeView === 'TACTICS' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7">
-                <PitchCanvas
-                  formation={formation}
-                  nodes={pitchNodes}
-                  startingXI={startingXI}
-                  roster={roster}
-                  selectedPitchSlot={selectedPitchSlot}
-                  setSelectedPitchSlot={setSelectedPitchSlot}
-                  onSwapSlots={handleSwapPitchSlots}
-                  isCaptain={isCaptain}
-                />
-              </div>
-
-              <div className="lg:col-span-5">
-                <TacticsControls
-                  collectiveRating={collectiveRating}
-                  collectiveStrength={collectiveStrength}
-                  formation={formation}
-                  setFormation={setFormation}
-                  playstyleSliders={playstyleSliders}
-                  setPlaystyleSliders={setPlaystyleSliders}
-                  startingXILength={startingXI.length}
-                  handleSaveSquadDraft={handleSaveSquad}
-                  handleSubmitMatchSquad={handleSaveSquad}
-                  showToast={showToast}
-                  currentRole={currentRole}
-                  onSaveFormation={handleSaveFormation}
-                  onSaveSquad={handleSaveSquad}
-                  onOpenRolesModal={() => setShowRolesModal(true)}
-                  activeSquadType={activeSquadType}
-                  setActiveSquadType={setActiveSquadType}
-                  roster={roster}
-                  startingXI={startingXI}
-                  selectedPitchSlot={selectedPitchSlot}
-                  onSwapPlayer={handleSwapPlayer}
-                />
-              </div>
-            </div>
+            <TeamSquadView
+              currentRole={currentRole}
+              onNavigateBack={() => setActiveView('DASHBOARD')}
+              onShowToast={showToast}
+            />
           )}
 
           {/* PAGE 3: PLAYERS LIST & KITS (UNIFIED) */}
