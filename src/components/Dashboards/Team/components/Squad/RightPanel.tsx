@@ -25,28 +25,28 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   return (
     <aside className="relative z-20 flex flex-col justify-between items-end h-full py-6 pr-6 pl-1 select-none pointer-events-auto flex-shrink-0">
-      {/* Collective Strength Section */}
+      {/* Collective Strength Section matching screenshot WA0046 */}
       <div className="flex flex-col items-start text-left mt-2">
-        <span className="text-[15px] font-normal text-[#9ea8b6] leading-tight">
+        <span className="text-[14.5px] font-normal text-[#8fa0b5] leading-tight font-sans">
           Collective
         </span>
-        <span className="text-[15px] font-normal text-[#9ea8b6] leading-tight">
+        <span className="text-[14.5px] font-normal text-[#8fa0b5] leading-tight font-sans">
           Strength
         </span>
-        <span className="font-efootball-num font-bold text-[42px] tracking-tight text-[#e2f800] drop-shadow-[0_2px_8px_rgba(226,248,0,0.3)] mt-1 transition-all">
+        <span className="font-efootball-num font-bold text-[46px] tracking-tight text-[#e6ff00] drop-shadow-[0_2px_10px_rgba(230,255,0,0.4)] mt-0.5 transition-all">
           {collectiveStrength}
         </span>
       </div>
 
-      {/* Bottom Button: Auto-pick players */}
+      {/* Bottom Button: Auto-pick players matching WA0046 */}
       <div className="mb-2">
         <button
           onClick={handleAutoPickClick}
           className={`${
             isCoach 
-              ? 'bg-[#202530] hover:bg-[#282f3d] text-[#4392e6] hover:text-[#64a9f5] cursor-pointer' 
-              : 'bg-[#181c24] opacity-50 text-gray-500 cursor-not-allowed'
-          } active:scale-95 border border-white/5 text-[13.5px] font-semibold px-4 py-2.5 rounded-[14px] shadow-lg transition-all flex flex-col items-center justify-center leading-tight focus:outline-none`}
+              ? 'bg-[#181d28] hover:bg-[#202736] text-[#3b82f6] hover:text-[#60a5fa] cursor-pointer' 
+              : 'bg-[#12161f] opacity-40 text-gray-500 cursor-not-allowed'
+          } active:scale-95 border border-white/5 text-[13px] font-semibold px-4 py-2.5 rounded-[14px] shadow-lg transition-all flex flex-col items-center justify-center leading-tight focus:outline-none`}
         >
           <span>Auto-pick</span>
           <span>players</span>

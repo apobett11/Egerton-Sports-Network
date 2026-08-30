@@ -19,10 +19,10 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-y-0 left-0 z-40 flex animate-in fade-in duration-200">
-      {/* Sliding Clean White Panel Container */}
-      <div className="w-[175px] sm:w-[190px] h-full bg-white shadow-2xl flex flex-col justify-start pt-3 pb-2 px-2.5 animate-in slide-in-from-left duration-250 drawer-spring border-r border-gray-200 select-none overflow-y-auto">
-        {/* 2-Column Grid of Substitute Players */}
+    <div className="absolute inset-y-0 left-0 z-40 flex animate-in fade-in duration-150">
+      {/* Sliding Clean White Panel Container matching WA0045 */}
+      <div className="w-[180px] sm:w-[195px] h-full bg-white shadow-2xl flex flex-col justify-start pt-3.5 pb-2 px-2.5 animate-in slide-in-from-left duration-200 drawer-spring border-r border-gray-200 select-none overflow-y-auto">
+        {/* 2-Column Grid of Substitute Players matching WA0045 */}
         <div className="grid grid-cols-2 gap-x-2 gap-y-3 auto-rows-max items-start justify-items-center">
           {substitutes.map((sub) => (
             <div key={sub.id} className="flex justify-center">
@@ -41,7 +41,7 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
       {/* Dimmed backdrop area (click to close) */}
       <div
         onClick={onClose}
-        className="flex-1 bg-black/25 backdrop-blur-[2px] cursor-pointer"
+        className="flex-1 bg-black/30 backdrop-blur-[1px] cursor-pointer"
       />
     </div>
   );

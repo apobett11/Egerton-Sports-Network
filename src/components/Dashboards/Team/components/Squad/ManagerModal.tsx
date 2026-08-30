@@ -46,32 +46,14 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
     '3-2-4-1',
   ];
 
-  const handleOpenFormation = () => {
-    if (!isCoach) {
-      if (onPermissionDenied) {
-        onPermissionDenied('Permission Notice: Captain mode can preview tactical formations in read-only mode.');
-      }
-    }
-    setSubView('formation');
-  };
-
-  const handleOpenPlaystyle = () => {
-    if (!isCoach) {
-      if (onPermissionDenied) {
-        onPermissionDenied('Permission Notice: Captain mode can preview team playstyles in read-only mode.');
-      }
-    }
-    setSubView('playstyle');
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[3px] p-4 select-none animate-in fade-in duration-200">
-      {/* Modal Container */}
-      <div className="relative w-full max-w-[620px] bg-white rounded-[20px] overflow-hidden shadow-2xl efootball-modal-shadow text-gray-900 border border-gray-100 flex flex-col animate-in zoom-in-95 duration-200 efootball-spring">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-4 select-none animate-in fade-in duration-150">
+      {/* Modal Container matching screenshot WA0044 */}
+      <div className="relative w-full max-w-[600px] bg-white rounded-[22px] overflow-hidden shadow-2xl efootball-modal-shadow text-gray-900 border border-gray-100 flex flex-col animate-in zoom-in-95 duration-150 efootball-spring">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <h2 className="text-[21px] font-bold tracking-tight text-gray-900 font-sans">
-            {subView === 'formation' ? 'Tactical Formations' : subView === 'playstyle' ? 'Team Playstyle' : manager.name}
+            {subView === 'formation' ? 'Change Formation' : subView === 'playstyle' ? 'Team Playstyle' : manager.name}
           </h2>
           <button
             onClick={() => {
@@ -93,7 +75,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
         {/* Modal Body */}
         {subView === 'main' ? (
           <div className="px-6 pb-6 pt-1 grid grid-cols-12 gap-6 items-center">
-            {/* Left Column: Manager Portrait & Proficiencies */}
+            {/* Left Column: Manager Portrait & Proficiencies matching WA0044 */}
             <div className="col-span-5 flex flex-col items-center">
               {/* Manager Portrait Card */}
               <div className="w-[84px] h-[84px] rounded-[18px] bg-[#0c1a40] border-[2.2px] border-[#8cb0e2] shadow-md overflow-hidden flex items-end justify-center p-0.5 mb-4">
@@ -115,7 +97,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                         style === 'Long Ball' ? 'col-span-2' : ''
                       }`}
                     >
-                      <span className="text-[10.5px] font-semibold text-gray-400 leading-tight">
+                      <span className="text-[10px] font-semibold text-gray-400 leading-tight">
                         {style}
                       </span>
                       <span
@@ -131,10 +113,13 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
               </div>
             </div>
 
-            {/* Right Column: Menu Actions with authentic eFootball icons */}
+            {/* Right Column: Menu Actions with authentic blue icons matching WA0044 */}
             <div className="col-span-7 flex flex-col divide-y divide-gray-100 border-l border-gray-100 pl-6">
               {/* 1. Manager Details */}
-              <div className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+              <button
+                onClick={() => {}}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-[#0077ff] stroke-[2.4]">
                     <line x1="8" y1="6" x2="21" y2="6" strokeLinecap="round" />
@@ -145,41 +130,37 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                     <circle cx="4" cy="18" r="1.5" fill="#0077ff" />
                   </svg>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Manager Details
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Tactical Affinity & Coaching System
-                  </span>
-                </div>
-              </div>
+                <span className="text-[14.5px] font-bold text-[#0077ff]">
+                  Manager Details
+                </span>
+              </button>
 
-              {/* 2. Change Manager (Coach only) */}
-              {isCoach && (
-                <button
-                  onClick={() => {
+              {/* 2. Change Manager */}
+              <button
+                onClick={() => {
+                  if (!isCoach) {
                     if (onPermissionDenied) {
-                      onPermissionDenied('Manager selection active.');
+                      onPermissionDenied('Permission Denied: Only Head Coach can change managers.');
                     }
-                  }}
-                  className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
-                >
-                  <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
-                      <path d="M 17,4 L 21,8 L 17,12 L 17,9 L 7,9 L 7,7 L 17,7 Z" />
-                      <path d="M 7,20 L 3,16 L 7,12 L 7,15 L 17,15 L 17,17 L 7,17 Z" />
-                    </svg>
-                  </div>
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Change Manager
-                  </span>
-                </button>
-              )}
+                    return;
+                  }
+                }}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
+                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
+                    <path d="M 17,4 L 21,8 L 17,12 L 17,9 L 7,9 L 7,7 L 17,7 Z" />
+                    <path d="M 7,20 L 3,16 L 7,12 L 7,15 L 17,15 L 17,17 L 7,17 Z" />
+                  </svg>
+                </div>
+                <span className="text-[14.5px] font-bold text-[#0077ff]">
+                  Change Manager
+                </span>
+              </button>
 
               {/* 3. Change Formation */}
               <button
-                onClick={handleOpenFormation}
+                onClick={() => setSubView('formation')}
                 className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
               >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
@@ -194,7 +175,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    {isCoach ? 'Change Formation' : 'View Formation Schemes'}
+                    Change Formation
                   </span>
                   <span className="text-[11px] text-gray-500 font-medium">
                     Current: {currentFormation}
@@ -204,7 +185,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
 
               {/* 4. Team Playstyle */}
               <button
-                onClick={handleOpenPlaystyle}
+                onClick={() => setSubView('playstyle')}
                 className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
               >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
@@ -214,7 +195,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    {isCoach ? 'Team Playstyle' : 'View Team Playstyle'}
+                    Team Playstyle
                   </span>
                   <span className="text-[11px] text-gray-500 font-medium">
                     Current: {currentPlaystyle}
@@ -223,7 +204,10 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
               </button>
 
               {/* 5. Individual Instructions */}
-              <div className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+              <button
+                onClick={() => {}}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-[#0077ff] stroke-[2.4]">
                     <circle cx="7" cy="17" r="3" />
@@ -231,15 +215,10 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                     <polyline points="13,5 19,5 19,11" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Individual Instructions
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Attacking & Defensive Roles
-                  </span>
-                </div>
-              </div>
+                <span className="text-[14.5px] font-bold text-[#0077ff]">
+                  Individual Instructions
+                </span>
+              </button>
             </div>
           </div>
         ) : subView === 'formation' ? (
@@ -256,7 +235,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                     onClick={() => {
                       if (!isCoach) {
                         if (onPermissionDenied) {
-                          onPermissionDenied('Permission Denied: Only Head Coach can apply a new tactical formation.');
+                          onPermissionDenied('Permission Denied: Only Head Coach can change formations.');
                         }
                         return;
                       }
@@ -312,7 +291,7 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
                     onClick={() => {
                       if (!isCoach) {
                         if (onPermissionDenied) {
-                          onPermissionDenied('Permission Denied: Only Head Coach can change team tactical playstyle.');
+                          onPermissionDenied('Permission Denied: Only Head Coach can change team playstyles.');
                         }
                         return;
                       }

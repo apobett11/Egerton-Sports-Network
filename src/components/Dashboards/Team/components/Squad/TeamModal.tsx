@@ -40,7 +40,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({
   const handleOpenTeams = () => {
     if (!isCoach) {
       if (onPermissionDenied) {
-        onPermissionDenied('Permission Denied: Only Head Coach can switch team presets.');
+        onPermissionDenied('Permission Denied: Only Head Coach can change team presets.');
       }
       return;
     }
@@ -48,9 +48,9 @@ export const TeamModal: React.FC<TeamModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[3px] p-4 select-none animate-in fade-in duration-200">
-      {/* Modal Container */}
-      <div className="relative w-full max-w-[620px] bg-white rounded-[20px] overflow-hidden shadow-2xl efootball-modal-shadow text-gray-900 border border-gray-100 flex flex-col animate-in zoom-in-95 duration-200 efootball-spring">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-4 select-none animate-in fade-in duration-150">
+      {/* Modal Container matching screenshot WA0043 */}
+      <div className="relative w-full max-w-[600px] bg-white rounded-[22px] overflow-hidden shadow-2xl efootball-modal-shadow text-gray-900 border border-gray-100 flex flex-col animate-in zoom-in-95 duration-150 efootball-spring">
         {/* Top Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <h2 className="text-[21px] font-bold tracking-tight text-gray-900 font-sans">
@@ -80,7 +80,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({
         {/* Modal Body */}
         {subView === 'main' ? (
           <div className="px-6 pb-6 pt-1 grid grid-cols-12 gap-6 items-center">
-            {/* Left Column: Crest, Game Plan title, Strength */}
+            {/* Left Column: Crest, Game Plan title, Strength matching WA0043 */}
             <div className="col-span-5 flex flex-col items-center text-center">
               {/* Team Crest */}
               <div className="w-[84px] h-[84px] mb-2 flex items-center justify-center">
@@ -92,22 +92,22 @@ export const TeamModal: React.FC<TeamModalProps> = ({
               </div>
 
               {/* Game Plan Title */}
-              <h3 className="text-[17.5px] font-bold text-gray-900 mb-1 font-sans">
+              <h3 className="text-[18px] font-bold text-gray-900 mb-1 font-sans">
                 Game Plan
               </h3>
 
               {/* Collective Strength */}
-              <span className="text-[11.5px] font-semibold text-gray-400">
+              <span className="text-[11px] font-semibold text-gray-400">
                 Collective Strength
               </span>
-              <span className="font-efootball-num font-bold text-[34px] text-gray-900 leading-tight">
+              <span className="font-efootball-num font-bold text-[36px] text-gray-900 leading-tight">
                 {collectiveStrength}
               </span>
             </div>
 
-            {/* Right Column: Menu Actions */}
+            {/* Right Column: Menu Actions with authentic blue icons matching WA0043 */}
             <div className="col-span-7 flex flex-col divide-y divide-gray-100 border-l border-gray-100 pl-6">
-              {/* 1. In-Match Roles (Flag icon) */}
+              {/* 1. In-Match Roles */}
               <button
                 onClick={() => setSubView('roles')}
                 className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
@@ -127,66 +127,63 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                 </div>
               </button>
 
-              {/* 2. Automatic Match Support (Cog icon) */}
-              <div className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+              {/* 2. Automatic Match Support */}
+              <button
+                onClick={() => {}}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
                     <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
                   </svg>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Automatic Match Support
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Auto-substitutions & tactical presets
-                  </span>
-                </div>
-              </div>
+                <span className="text-[14.5px] font-bold text-[#0077ff]">
+                  Automatic Match Support
+                </span>
+              </button>
 
               {/* 3. Edit Squad Number */}
-              <div className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+              <button
+                onClick={() => {}}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#0077ff]">
                     <path d="M 28,26 L 38,18 C 42,26 58,26 62,18 L 72,26 L 87,38 L 77,53 L 68,45 L 68,83 L 32,83 L 32,45 L 23,53 L 13,38 Z" />
                     <text x="50" y="62" fontSize="28" fontFamily="Arial Black" fontWeight="bold" textAnchor="middle" fill="white">2</text>
                   </svg>
                 </div>
+                <span className="text-[14.5px] font-bold text-[#0077ff]">
+                  Edit Squad Number
+                </span>
+              </button>
+
+              {/* 4. Base Team Settings */}
+              <button
+                onClick={handleOpenTeams}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
+                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#0077ff]">
+                    <path d="M 50,10 L 85,25 L 85,60 C 85,78 50,92 50,92 C 50,92 15,78 15,60 L 15,25 Z" />
+                    <text x="50" y="65" fontSize="34" fontFamily="Arial Black" fontWeight="900" textAnchor="middle" fill="white">A</text>
+                  </svg>
+                </div>
                 <div className="flex flex-col">
                   <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Edit Squad Number
+                    Base Team Settings
                   </span>
                   <span className="text-[11px] text-gray-500 font-medium">
-                    Jersey number management
+                    Select active club or national squad
                   </span>
                 </div>
-              </div>
-
-              {/* 4. Base Team Settings (Coach only) */}
-              {isCoach && (
-                <button
-                  onClick={handleOpenTeams}
-                  className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
-                >
-                  <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                    <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#0077ff]">
-                      <path d="M 50,10 L 85,25 L 85,60 C 85,78 50,92 50,92 C 50,92 15,78 15,60 L 15,25 Z" />
-                      <text x="50" y="65" fontSize="34" fontFamily="Arial Black" fontWeight="900" textAnchor="middle" fill="white">A</text>
-                    </svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[14.5px] font-bold text-[#0077ff]">
-                      Base Team Settings
-                    </span>
-                    <span className="text-[11px] text-gray-500 font-medium">
-                      Select active club or national squad
-                    </span>
-                  </div>
-                </button>
-              )}
+              </button>
 
               {/* 5. Game Plan List */}
-              <div className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group">
+              <button
+                onClick={handleOpenTeams}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+              >
                 <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
                     <path d="M 12,2 L 20,5 L 20,11 C 20,16 12,21 12,21 C 12,21 4,16 4,11 L 4,5 Z" />
@@ -197,10 +194,10 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                     Game Plan List
                   </span>
                   <span className="text-[11px] text-gray-500 font-medium">
-                    Saved tactical formations
+                    Load saved team formations
                   </span>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         ) : subView === 'roles' ? (

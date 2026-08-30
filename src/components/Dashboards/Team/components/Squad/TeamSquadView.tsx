@@ -76,7 +76,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     showToast(`Switched to ${selectedTeam.name} Game Plan`);
   };
 
-  // Collective strength calculator
+  // Collective strength calculation matching WA0046 (2380)
   const calculateCollectiveStrength = (players: Player[]) => {
     const total = players.reduce((sum, p) => sum + p.rating * 2.65, 0);
     return Math.round(total);
@@ -251,16 +251,16 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
   return (
     <LandscapeGuard>
-      <div className="relative w-full h-full min-h-[580px] lg:h-[calc(100vh-110px)] overflow-hidden bg-efootball-pattern rounded-3xl flex items-stretch select-none border border-[#1a2d54] shadow-2xl">
-        {/* Abstract Curved Polygon Background Glows */}
+      <main className="relative w-full h-full overflow-hidden bg-efootball-pattern flex items-stretch select-none">
+        {/* Abstract Curved Navy Glowing Background & Vector Ribbon Graphic */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Top Left Dark Blue Arc */}
           <div className="absolute -left-[10%] -top-[20%] w-[55%] h-[90%] rounded-full bg-gradient-to-br from-[#0c2269]/40 to-transparent blur-3xl" />
           
-          {/* Right Navy Ribbon Graphic */}
+          {/* Right Navy Gradient Overlay */}
           <div className="absolute right-0 top-0 bottom-0 w-[42%] bg-gradient-to-l from-[#061545]/80 via-[#071954]/50 to-transparent" />
           
-          {/* Curved stylized blue ribbon overlay shape on right */}
+          {/* Curved stylized blue ribbon overlay shape on right matching screenshot */}
           <svg
             viewBox="0 0 400 800"
             className="absolute right-0 top-0 h-full w-[35%] opacity-35 pointer-events-none"
@@ -364,13 +364,13 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onPermissionDenied={handlePermissionDenied}
         />
 
-        {/* Local Toast Feedback Notification */}
+        {/* Toast Feedback Notification */}
         {toastMessage && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-[#0085ff]/90 border border-white/40 text-white px-5 py-2 rounded-full text-[13px] font-bold shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150">
             {toastMessage}
           </div>
         )}
-      </div>
+      </main>
     </LandscapeGuard>
   );
 };

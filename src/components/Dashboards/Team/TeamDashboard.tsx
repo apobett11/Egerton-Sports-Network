@@ -95,6 +95,19 @@ export const TeamDashboard: React.FC = () => {
   const isCaptain = currentRole === 'CAPTAIN';
   const isCoach = currentRole === 'COACH';
 
+  // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
+  if (activeView === 'TACTICS') {
+    return (
+      <div className="fixed inset-0 z-[9999] w-screen h-screen overflow-hidden bg-[#030716] select-none touch-none">
+        <TeamSquadView
+          currentRole={currentRole}
+          onNavigateBack={() => setActiveView('DASHBOARD')}
+          onShowToast={showToast}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0D1117] text-slate-100 antialiased flex flex-col md:flex-row font-sans selection:bg-emerald-500 selection:text-white">
       {/* Toast Notification */}
@@ -143,15 +156,6 @@ export const TeamDashboard: React.FC = () => {
               onOpenInviteModal={() => setShowInviteModal(true)}
               matches={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
               standings={standings || initialStandings}
-            />
-          )}
-
-          {/* PAGE 2: TEAM SQUAD (GAME PLAN) */}
-          {activeView === 'TACTICS' && (
-            <TeamSquadView
-              currentRole={currentRole}
-              onNavigateBack={() => setActiveView('DASHBOARD')}
-              onShowToast={showToast}
             />
           )}
 

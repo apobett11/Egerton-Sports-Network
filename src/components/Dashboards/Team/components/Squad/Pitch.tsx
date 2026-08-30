@@ -33,7 +33,6 @@ export const Pitch: React.FC<PitchProps> = ({
 
   // Pointer drag start on any player icon
   const handlePointerDown = (e: React.PointerEvent, player: Player) => {
-    // Only respond to primary click/touch
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     const pitchEl = pitchRef.current;
@@ -79,7 +78,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
     // Check distance to other players on pitch for swap detection
     let target: string | null = null;
-    const minDistance = 11; // swap trigger radius threshold in %
+    const minDistance = 11;
 
     for (const p of players) {
       if (p.id === activeDragId) continue;
@@ -124,7 +123,7 @@ export const Pitch: React.FC<PitchProps> = ({
     dragStartRef.current = null;
   };
 
-  // HTML5 Drag & Drop handlers (for dragging from Substitutes drawer)
+  // HTML5 Drag & Drop handlers
   const handleHTML5DropOnPlayer = (e: React.DragEvent, targetPlayer: Player) => {
     e.preventDefault();
     const sourceId = e.dataTransfer.getData('text/plain');
@@ -151,14 +150,14 @@ export const Pitch: React.FC<PitchProps> = ({
       <div className="relative z-20 flex items-center justify-between px-6 pt-3.5 pb-0 text-white font-bold">
         <button
           onClick={onOpenFormationModal}
-          className="text-[17px] font-sans font-bold tracking-wide hover:text-[#00d2ff] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
+          className="text-[17.5px] font-sans font-bold tracking-wide hover:text-[#00d2ff] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
         >
           <span>{formation}</span>
         </button>
 
         <button
           onClick={onOpenPlaystyleModal}
-          className="text-[16px] font-sans font-semibold tracking-normal text-white/95 hover:text-[#e2f800] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
+          className="text-[16.5px] font-sans font-semibold tracking-normal text-white hover:text-[#e2f800] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
         >
           <span>{playstyle}</span>
         </button>
@@ -176,13 +175,13 @@ export const Pitch: React.FC<PitchProps> = ({
 
         {/* Free Move Tactical Grid Lines Overlay (active when isMoveMode) */}
         {isMoveMode && (
-          <div className="absolute inset-0 mx-4 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#00d2ff_1px,transparent_1px),linear-gradient(to_bottom,#00d2ff_1px,transparent_1px)] bg-[size:40px_40px] animate-in fade-in duration-300" />
+          <div className="absolute inset-0 mx-4 pointer-events-none opacity-25 bg-[linear-gradient(to_right,#00d2ff_1px,transparent_1px),linear-gradient(to_bottom,#00d2ff_1px,transparent_1px)] bg-[size:36px_36px] animate-in fade-in duration-200" />
         )}
 
         {/* Top-down Pitch Markings SVG */}
         <svg
           viewBox="0 0 500 560"
-          className="absolute inset-0 w-full h-full pointer-events-none opacity-45"
+          className="absolute inset-0 w-full h-full pointer-events-none opacity-40"
           preserveAspectRatio="none"
         >
           {/* Pitch Outer Border */}
@@ -241,7 +240,7 @@ export const Pitch: React.FC<PitchProps> = ({
           <path d="M 452 552 A 16 16 0 0 0 468 536" fill="none" stroke="white" strokeWidth="1.6" />
         </svg>
 
-        {/* All Players on Pitch Layer (Movable & Draggable across Field) */}
+        {/* All Players on Pitch Layer */}
         {players.map((player) => {
           const isDraggingThis = activeDragId === player.id;
           const isSwapTargetThis = swapTargetId === player.id;
@@ -283,14 +282,14 @@ export const Pitch: React.FC<PitchProps> = ({
         })}
       </div>
 
-      {/* Bottom Pitch Tactical Bar: [Move ✥ (2px border)] --- [Unobstructed GK Zone] --- [User 👤] [Camera 📷] */}
+      {/* Bottom Pitch Tactical Bar matching screenshot WA0046 */}
       <div className="relative z-30 flex items-center justify-between px-8 pb-3.5 pt-0 pointer-events-none">
-        {/* Left: Reposition / Free Move Toggle Button (Circle with 4-way cross arrows, 2px border) */}
+        {/* Left: Reposition / Free Move Toggle Button (Circle with 4-way cross arrows) */}
         <button
           onClick={() => setIsMoveMode(!isMoveMode)}
           title={isMoveMode ? 'Tactical Grid Active' : 'Toggle Tactical Grid'}
           className={`w-[48px] h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all pointer-events-auto shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
-            isMoveMode ? 'bg-[#0085ff] shadow-[0_0_16px_#0085ff]' : 'bg-[#101522]/90 hover:bg-white/20'
+            isMoveMode ? 'bg-[#0085ff] shadow-[0_0_16px_#0085ff]' : 'bg-[#060b18]/80 hover:bg-white/20'
           }`}
         >
           <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-white pointer-events-none">
@@ -303,26 +302,26 @@ export const Pitch: React.FC<PitchProps> = ({
           </svg>
         </button>
 
-        {/* Center: Transparent area for GoalKeeper card positioned at {x: 49.5%, y: 88%} */}
+        {/* Center: Unobstructed corridor for GK card */}
         <div className="flex-1 pointer-events-none" />
 
-        {/* Right Action Icons Group (2px borders with rounded circle) */}
+        {/* Right Action Icons Group matching WA0046 */}
         <div className="flex items-center gap-3 pointer-events-auto">
-          {/* View Mode Toggle Button (Silhouette in Circle, 2px border) */}
+          {/* View Mode Toggle Button (Silhouette in Circle) */}
           <button
             onClick={() => setViewMode(viewMode === 'standard' ? 'detailed' : 'standard')}
             title="Switch Player View"
             className={`w-[48px] h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
-              viewMode === 'detailed' ? 'bg-[#0085ff] shadow-[0_0_12px_#0085ff]' : 'bg-[#101522]/90 hover:bg-white/20'
+              viewMode === 'detailed' ? 'bg-[#0085ff] shadow-[0_0_12px_#0085ff]' : 'bg-[#060b18]/80 hover:bg-white/20'
             }`}
           >
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[1.8] pointer-events-none">
+            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
               <circle cx="12" cy="8" r="4" />
               <path d="M 4,20 C 4,15 8,14 12,14 C 16,14 20,15 20,20" strokeLinecap="round" />
             </svg>
           </button>
 
-          {/* Camera / Screenshot Button (2px border) */}
+          {/* Camera / Screenshot Button */}
           <button
             onClick={() => {
               const el = document.body;
@@ -330,9 +329,9 @@ export const Pitch: React.FC<PitchProps> = ({
               setTimeout(() => el.classList.remove('brightness-125'), 150);
             }}
             title="Take Tactical Screenshot"
-            className="w-[48px] h-[48px] rounded-full border-2 border-white bg-[#101522]/90 hover:bg-white/20 flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer"
+            className="w-[48px] h-[48px] rounded-full border-2 border-white bg-[#060b18]/80 hover:bg-white/20 flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer"
           >
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[1.8] pointer-events-none">
+            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
               <path d="M 4,7 L 7,7 L 9,4 L 15,4 L 17,7 L 20,7 C 21.1,7 22,7.9 22,9 L 22,19 C 22,20.1 21.1,21 20,21 L 4,21 C 2.9,21 2,20.1 2,19 L 2,9 C 2,7.9 2.9,7 4,7 Z" strokeLinejoin="round" />
               <circle cx="12" cy="14" r="4" />
             </svg>
