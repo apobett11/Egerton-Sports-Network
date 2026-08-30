@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Player, FormationType, Playstyle } from './types';
 import { PlayerCard } from './PlayerCard';
 
@@ -31,12 +31,69 @@ export const Pitch: React.FC<PitchProps> = ({
   const pitchRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ clientX: number; clientY: number; moved: boolean } | null>(null);
 
-  // Pointer drag start on any player icon
+  // Check if currently CSS rotated in mobile portrait mode
+  const getIsRotated = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerHeight > window.innerWidth && window.innerWidth <= 860;
+  }, []);
+
+  // Compute coordinate with orientation intelligence
+  const calculatePitchCoords = useCallback((clientX: number, clientY: number) => {
+    if (!pitchRef.current) return { x: 50, y: 50 };
+    const rect = pitchRef.current.getBoundingClientRect();
+    const isRotated = getIsRotated();
+
+    if (isRotated) {
+      // 90deg clockwise rotated container:
+      // Visual X maps to physical screen Y
+      // Visual Y maps to physical screen right-X
+      const rawX = ((clientY - rect.top) / rect.height) * 100;
+      const rawY = ((rect.right - clientX) / rect.width) * 100;
+      return {
+        x: Math.max(9, Math.min(91, rawX)),
+        y: Math.max(6, Math.min(91, rawY)),
+      };
+    } else {
+      // Standard / Native landscape
+      const rawX = ((clientX - rect.left) / rect.width) * 100;
+      const rawY = ((clientY - rect.top) / rect.height) * 100;
+      return {
+        x: Math.max(9, Math.min(91, rawX)),
+        y: Math.max(6, Math.min(91, rawY)),
+      };
+    }
+  }, [getIsRotated]);
+
+  // Touch Move / Drag Engine
+  const handleDragUpdate = useCallback((clientX: number, clientY: number) => {
+    if (!activeDragId || !pitchRef.current) return;
+
+    const newCoords = calculatePitchCoords(clientX, clientY);
+    setCurrentDragCoord(newCoords);
+
+    // Smart Proximity Hit Testing
+    let target: string | null = null;
+    const minDistance = 12;
+
+    for (const p of players) {
+      if (p.id === activeDragId) continue;
+      const px = p.coord?.x ?? 50;
+      const py = p.coord?.y ?? 50;
+
+      const dist = Math.hypot((px - newCoords.x) * 1.05, (py - newCoords.y) * 0.95);
+      if (dist < minDistance) {
+        target = p.id;
+        break;
+      }
+    }
+
+    setSwapTargetId(target);
+  }, [activeDragId, calculatePitchCoords, players]);
+
+  // Pointer Down handler
   const handlePointerDown = (e: React.PointerEvent, player: Player) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-
-    const pitchEl = pitchRef.current;
-    if (!pitchEl) return;
+    if (!pitchRef.current) return;
 
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -55,9 +112,9 @@ export const Pitch: React.FC<PitchProps> = ({
     setSwapTargetId(null);
   };
 
-  // Pointer move across pitch
+  // Pointer Move handler
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!activeDragId || !pitchRef.current || !dragStartRef.current) return;
+    if (!activeDragId || !dragStartRef.current) return;
 
     const dx = Math.abs(e.clientX - dragStartRef.current.clientX);
     const dy = Math.abs(e.clientY - dragStartRef.current.clientY);
@@ -66,42 +123,17 @@ export const Pitch: React.FC<PitchProps> = ({
       dragStartRef.current.moved = true;
     }
 
-    const rect = pitchRef.current.getBoundingClientRect();
-    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
-    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Clamp within field bounds
-    const clampedX = Math.max(9, Math.min(91, rawX));
-    const clampedY = Math.max(6, Math.min(91, rawY));
-
-    setCurrentDragCoord({ x: clampedX, y: clampedY });
-
-    // Check distance to other players on pitch for swap detection
-    let target: string | null = null;
-    const minDistance = 11;
-
-    for (const p of players) {
-      if (p.id === activeDragId) continue;
-      const px = p.coord?.x ?? 50;
-      const py = p.coord?.y ?? 50;
-
-      const dist = Math.hypot((px - clampedX) * 1.05, (py - clampedY) * 0.95);
-      if (dist < minDistance) {
-        target = p.id;
-      }
-    }
-
-    setSwapTargetId(target);
+    handleDragUpdate(e.clientX, e.clientY);
   };
 
-  // Pointer release / drop
+  // Pointer Up handler
   const handlePointerUp = (e: React.PointerEvent) => {
     if (!activeDragId) return;
 
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
-      // Ignored if capture already released
+      // Ignore
     }
 
     if (swapTargetId && swapTargetId !== activeDragId) {
@@ -116,7 +148,48 @@ export const Pitch: React.FC<PitchProps> = ({
     dragStartRef.current = null;
   };
 
-  const handlePointerCancel = () => {
+  // Touch handlers for mobile devices
+  const handleTouchStart = (e: React.TouchEvent, player: Player) => {
+    const touch = e.touches[0];
+    if (!touch || !pitchRef.current) return;
+
+    dragStartRef.current = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      moved: false,
+    };
+
+    setActiveDragId(player.id);
+    setCurrentDragCoord({
+      x: player.coord?.x ?? 50,
+      y: player.coord?.y ?? 50,
+    });
+    setSwapTargetId(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch || !activeDragId || !dragStartRef.current) return;
+
+    const dx = Math.abs(touch.clientX - dragStartRef.current.clientX);
+    const dy = Math.abs(touch.clientY - dragStartRef.current.clientY);
+
+    if (dx > 3 || dy > 3) {
+      dragStartRef.current.moved = true;
+    }
+
+    handleDragUpdate(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!activeDragId) return;
+
+    if (swapTargetId && swapTargetId !== activeDragId) {
+      onSwapPlayers(activeDragId, swapTargetId);
+    } else if (dragStartRef.current?.moved && currentDragCoord) {
+      onMovePlayer(activeDragId, currentDragCoord);
+    }
+
     setActiveDragId(null);
     setCurrentDragCoord(null);
     setSwapTargetId(null);
@@ -137,27 +210,24 @@ export const Pitch: React.FC<PitchProps> = ({
     const sourceId = e.dataTransfer.getData('text/plain');
     if (!sourceId || !pitchRef.current) return;
 
-    const rect = pitchRef.current.getBoundingClientRect();
-    const x = Math.max(9, Math.min(91, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(6, Math.min(91, ((e.clientY - rect.top) / rect.height) * 100));
-
-    onMovePlayer(sourceId, { x, y });
+    const newCoords = calculatePitchCoords(e.clientX, e.clientY);
+    onMovePlayer(sourceId, newCoords);
   };
 
   return (
     <div className="relative flex-1 h-full max-w-[620px] mx-auto flex flex-col justify-between select-none touch-none">
       {/* Top Labels: Formation (Left) & Playstyle (Right) */}
-      <div className="relative z-20 flex items-center justify-between px-6 pt-3.5 pb-0 text-white font-bold">
+      <div className="relative z-20 flex items-center justify-between px-6 pt-3 pb-0 text-white font-bold">
         <button
           onClick={onOpenFormationModal}
-          className="text-[17.5px] font-sans font-bold tracking-wide hover:text-[#00d2ff] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
+          className="text-[17px] font-sans font-bold tracking-wide hover:text-[#00d2ff] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
         >
           <span>{formation}</span>
         </button>
 
         <button
           onClick={onOpenPlaystyleModal}
-          className="text-[16.5px] font-sans font-semibold tracking-normal text-white hover:text-[#e2f800] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
+          className="text-[16px] font-sans font-semibold tracking-normal text-white hover:text-[#e2f800] transition-colors focus:outline-none drop-shadow-md cursor-pointer"
         >
           <span>{playstyle}</span>
         </button>
@@ -168,9 +238,12 @@ export const Pitch: React.FC<PitchProps> = ({
         ref={pitchRef}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleHTML5DropOnPitch}
-        className="relative flex-1 w-full mx-auto px-2 overflow-hidden"
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        className="relative flex-1 w-full mx-auto px-2 overflow-hidden touch-none"
       >
-        {/* Subtle Pitch Grass Turf Texture & Gradient */}
+        {/* Subtle Pitch Grass Turf Texture */}
         <div className="absolute inset-0 mx-4 pointer-events-none opacity-40 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.03)_10%,transparent_20%,rgba(255,255,255,0.03)_30%,transparent_40%,rgba(255,255,255,0.03)_50%,transparent_60%,rgba(255,255,255,0.03)_70%,transparent_80%,rgba(255,255,255,0.03)_90%,transparent_100%)]" />
 
         {/* Free Move Tactical Grid Lines Overlay (active when isMoveMode) */}
@@ -240,7 +313,7 @@ export const Pitch: React.FC<PitchProps> = ({
           <path d="M 452 552 A 16 16 0 0 0 468 536" fill="none" stroke="white" strokeWidth="1.6" />
         </svg>
 
-        {/* All Players on Pitch Layer */}
+        {/* All Players on Pitch Layer with Touch & Drag Engine */}
         {players.map((player) => {
           const isDraggingThis = activeDragId === player.id;
           const isSwapTargetThis = swapTargetId === player.id;
@@ -254,7 +327,7 @@ export const Pitch: React.FC<PitchProps> = ({
               onPointerDown={(e) => handlePointerDown(e, player)}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
+              onTouchStart={(e) => handleTouchStart(e, player)}
               style={{
                 left: `${xPos}%`,
                 top: `${yPos}%`,
@@ -283,16 +356,16 @@ export const Pitch: React.FC<PitchProps> = ({
       </div>
 
       {/* Bottom Pitch Tactical Bar matching screenshot WA0046 */}
-      <div className="relative z-30 flex items-center justify-between px-8 pb-3.5 pt-0 pointer-events-none">
-        {/* Left: Reposition / Free Move Toggle Button (Circle with 4-way cross arrows) */}
+      <div className="relative z-30 flex items-center justify-between px-8 pb-3 pt-0 pointer-events-none">
+        {/* Left: Reposition / Free Move Toggle Button */}
         <button
           onClick={() => setIsMoveMode(!isMoveMode)}
           title={isMoveMode ? 'Tactical Grid Active' : 'Toggle Tactical Grid'}
-          className={`w-[48px] h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all pointer-events-auto shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
+          className={`w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all pointer-events-auto shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
             isMoveMode ? 'bg-[#0085ff] shadow-[0_0_16px_#0085ff]' : 'bg-[#060b18]/80 hover:bg-white/20'
           }`}
         >
-          <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-white pointer-events-none">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white pointer-events-none">
             <rect x="11" y="4" width="2" height="16" />
             <rect x="4" y="11" width="16" height="2" />
             <polygon points="12,1 8,6 16,6" />
@@ -306,16 +379,16 @@ export const Pitch: React.FC<PitchProps> = ({
         <div className="flex-1 pointer-events-none" />
 
         {/* Right Action Icons Group matching WA0046 */}
-        <div className="flex items-center gap-3 pointer-events-auto">
-          {/* View Mode Toggle Button (Silhouette in Circle) */}
+        <div className="flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
+          {/* View Mode Toggle Button */}
           <button
             onClick={() => setViewMode(viewMode === 'standard' ? 'detailed' : 'standard')}
             title="Switch Player View"
-            className={`w-[48px] h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
+            className={`w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] rounded-full border-2 border-white flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer ${
               viewMode === 'detailed' ? 'bg-[#0085ff] shadow-[0_0_12px_#0085ff]' : 'bg-[#060b18]/80 hover:bg-white/20'
             }`}
           >
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
               <circle cx="12" cy="8" r="4" />
               <path d="M 4,20 C 4,15 8,14 12,14 C 16,14 20,15 20,20" strokeLinecap="round" />
             </svg>
@@ -331,7 +404,7 @@ export const Pitch: React.FC<PitchProps> = ({
             title="Take Tactical Screenshot"
             className="w-[48px] h-[48px] rounded-full border-2 border-white bg-[#060b18]/80 hover:bg-white/20 flex items-center justify-center transition-all shadow-lg active:scale-95 focus:outline-none cursor-pointer"
           >
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-none stroke-white stroke-[2] pointer-events-none">
               <path d="M 4,7 L 7,7 L 9,4 L 15,4 L 17,7 L 20,7 C 21.1,7 22,7.9 22,9 L 22,19 C 22,20.1 21.1,21 20,21 L 4,21 C 2.9,21 2,20.1 2,19 L 2,9 C 2,7.9 2.9,7 4,7 Z" strokeLinejoin="round" />
               <circle cx="12" cy="14" r="4" />
             </svg>

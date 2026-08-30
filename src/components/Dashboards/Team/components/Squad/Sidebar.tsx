@@ -1,13 +1,16 @@
 import React from 'react';
-import { Manager } from './types';
+import { Manager, Player } from './types';
 import { ChevronLeft } from 'lucide-react';
 
 interface SidebarProps {
   manager: Manager;
+  captain?: Player;
+  currentRole?: 'COACH' | 'CAPTAIN' | string;
   teamName: string;
   teamCrest: string;
   onOpenManager: () => void;
   onOpenTeam: () => void;
+  onOpenRoles: () => void;
   onOpenSubstitutes: () => void;
   onOpenReserves: () => void;
   activeDrawer: string;
@@ -16,31 +19,42 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   manager,
+  captain,
+  currentRole = 'COACH',
   teamName,
   teamCrest,
   onOpenManager,
   onOpenTeam,
+  onOpenRoles,
   onOpenSubstitutes,
   onOpenReserves,
   activeDrawer,
   onBack,
 }) => {
+  const isCoach = currentRole === 'COACH';
+
   return (
-    <aside className="relative z-30 flex flex-col items-start justify-between h-full py-4 pl-3.5 pr-1 select-none pointer-events-auto flex-shrink-0">
+    <aside className="relative z-30 flex flex-col items-start justify-between h-full py-3.5 pl-3 sm:pl-4 pr-1 select-none pointer-events-auto flex-shrink-0">
       {/* Top Stack of 4 Action Icons in curved dark dock */}
-      <div className="flex flex-col items-center gap-3 bg-[#03091e]/90 p-1.5 rounded-[22px] border border-[#142352]/70 shadow-2xl backdrop-blur-md">
-        {/* 1. Manager Avatar Button */}
+      <div className="flex flex-col items-center gap-2.5 bg-[#03091e]/90 p-1.5 rounded-[22px] border border-[#142352]/70 shadow-2xl backdrop-blur-md">
+        {/* 1. Dynamic Top Avatar: Coach sees Captain; Captain sees Coach */}
         <button
-          onClick={onOpenManager}
-          title="Manager Details"
-          className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer"
+          onClick={isCoach ? onOpenRoles : onOpenManager}
+          title={isCoach ? `Team Captain: ${captain?.name || 'Captain'}` : `Head Coach: ${manager.name}`}
+          className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer group"
         >
-          <div className="w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-[#0c1a40] border-[2px] border-[#6b8cbe] shadow-md overflow-hidden flex items-end justify-center p-0.5 relative hover:border-white transition-colors">
+          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-[#0c1a40] border-[2px] border-[#6b8cbe] shadow-md overflow-hidden flex items-end justify-center p-0.5 relative hover:border-white transition-colors">
             <img
-              src={manager.photoUrl}
-              alt={manager.name}
+              src={isCoach ? (captain?.photoUrl || manager.photoUrl) : manager.photoUrl}
+              alt={isCoach ? (captain?.name || 'Captain') : manager.name}
               className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
             />
+            {/* Captain Badge if Coach is viewing Captain */}
+            {isCoach && (
+              <div className="absolute bottom-0.5 right-0.5 bg-amber-400 text-black font-black text-[8.5px] px-1 rounded shadow leading-tight">
+                C
+              </div>
+            )}
           </div>
         </button>
 
@@ -50,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title={`${teamName} Game Plan`}
           className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer"
         >
-          <div className="w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-1.5 hover:shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-all">
+          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-1.5 hover:shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-all">
             <img
               src={teamCrest}
               alt={teamName}
@@ -67,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             activeDrawer === 'substitutes' ? 'ring-2 ring-[#00a8ff] rounded-[16px]' : ''
           }`}
         >
-          <div className="w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-2">
+          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-2">
             <svg
               viewBox="0 0 100 100"
               className="w-full h-full text-[#0080ff] fill-current drop-shadow-sm pointer-events-none"
@@ -87,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             activeDrawer === 'reserves' ? 'ring-2 ring-[#00a8ff] rounded-[16px]' : ''
           }`}
         >
-          <div className="w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-2">
+          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-2">
             <svg
               viewBox="0 0 100 100"
               className="w-full h-full text-[#0080ff] fill-current drop-shadow-sm pointer-events-none"
@@ -100,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Back Button */}
-      <div className="mt-auto -ml-3.5 pb-2">
+      <div className="mt-auto -ml-3 sm:-ml-4 pb-1">
         <button
           onClick={() => {
             if (activeDrawer !== 'none') {
@@ -109,10 +123,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onBack();
             }
           }}
-          className="w-[142px] h-[38px] bg-[#00a2ff] hover:bg-[#00b4ff] active:bg-[#0090e0] text-white font-bold rounded-r-[14px] flex items-center justify-start pl-3 gap-1.5 shadow-[0_4px_16px_rgba(0,162,255,0.5)] transition-all focus:outline-none active:scale-95 cursor-pointer"
+          className="w-[136px] sm:w-[146px] h-[38px] bg-[#00a2ff] hover:bg-[#00b4ff] active:bg-[#0090e0] text-white font-bold rounded-r-[14px] flex items-center justify-start pl-3 gap-1 shadow-[0_4px_16px_rgba(0,162,255,0.5)] transition-all focus:outline-none active:scale-95 cursor-pointer"
         >
           <ChevronLeft className="w-5 h-5 stroke-[3.2]" />
-          <span className="text-[16px] font-bold tracking-tight font-sans">Back</span>
+          <span className="text-[15.5px] font-bold tracking-tight font-sans">Back</span>
         </button>
       </div>
     </aside>

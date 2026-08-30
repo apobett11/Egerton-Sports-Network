@@ -69,4 +69,5 @@ export type ActiveModal =
   | 'substitutes' 
   | 'reserves' 
   | 'formation' 
+  | 'playstyle'
   | 'inMatchRoles';

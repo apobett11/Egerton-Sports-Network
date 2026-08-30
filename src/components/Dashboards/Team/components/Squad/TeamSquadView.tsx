@@ -43,6 +43,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const currentTeam: TeamData = TEAMS_DATA[currentTeamId] || initialTeam;
+  const currentCaptain = startingXI.find((p) => p.isCaptain) || startingXI[0];
 
   const showToast = (msg: string) => {
     if (onShowToast) {
@@ -114,7 +115,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       return;
     }
 
-    // Case 2: Subbing from Bench into Pitch (Source in Subs, Target in XI)
+    // Case 2: Subbing from Bench into Pitch
     if (sourceInSub && targetInXI) {
       const targetCoord = targetInXI.coord;
       const targetPos = targetInXI.position;
@@ -139,7 +140,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       return;
     }
 
-    // Case 3: Subbing from Pitch to Bench (Source in XI, Target in Subs)
+    // Case 3: Subbing from Pitch to Bench
     if (sourceInXI && targetInSub) {
       const sourceCoord = sourceInXI.coord;
       const sourcePos = sourceInXI.position;
@@ -164,7 +165,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     }
   };
 
-  // Move player coordinate on pitch
+  // Move player coordinate on pitch in real time
   const handleMovePlayer = (playerId: string, coord: { x: number; y: number }) => {
     setStartingXI((prev) =>
       prev.map((p) => (p.id === playerId ? { ...p, coord } : p))
@@ -283,10 +284,13 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         {/* 1. Left Dock Sidebar */}
         <Sidebar
           manager={manager}
+          captain={currentCaptain}
+          currentRole={currentRole}
           teamName={currentTeam.name}
           teamCrest={currentTeam.crestUrl}
           onOpenManager={() => setActiveModal('manager')}
           onOpenTeam={() => setActiveModal('team')}
+          onOpenRoles={() => setActiveModal('team')}
           onOpenSubstitutes={() =>
             setActiveModal(activeModal === 'substitutes' ? 'none' : 'substitutes')
           }
@@ -297,15 +301,15 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onBack={onNavigateBack}
         />
 
-        {/* 2. Center Pitch Component */}
+        {/* 2. Center Pitch Component with Orientation-Aware Drag Engine */}
         <Pitch
           players={startingXI}
           formation={formation}
           playstyle={playstyle}
           onSwapPlayers={handleSwapPlayers}
           onMovePlayer={handleMovePlayer}
-          onOpenFormationModal={() => setActiveModal('manager')}
-          onOpenPlaystyleModal={() => setActiveModal('manager')}
+          onOpenFormationModal={() => setActiveModal('formation')}
+          onOpenPlaystyleModal={() => setActiveModal('playstyle')}
           isCoach={isCoach}
         />
 
@@ -317,7 +321,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onPermissionDenied={handlePermissionDenied}
         />
 
-        {/* 4. Substitutes Sliding Drawer */}
+        {/* 4. Substitutes Sliding Drawer (with Top-Right X Button) */}
         <SubstitutesDrawer
           isOpen={activeModal === 'substitutes' || activeModal === 'reserves'}
           onClose={() => setActiveModal('none')}
@@ -328,9 +332,10 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onSwapWithPitch={handleSwapPlayers}
         />
 
-        {/* 5. Manager Modal */}
+        {/* 5. Manager Modal (with Formation / Playstyle list modes) */}
         <ManagerModal
-          isOpen={activeModal === 'manager'}
+          isOpen={activeModal === 'manager' || activeModal === 'formation' || activeModal === 'playstyle'}
+          initialSubView={activeModal === 'formation' ? 'formation' : activeModal === 'playstyle' ? 'playstyle' : 'main'}
           onClose={() => setActiveModal('none')}
           manager={manager}
           currentFormation={formation}
