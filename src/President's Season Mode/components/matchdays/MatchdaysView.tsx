@@ -20,8 +20,10 @@ import {
   Eye,
   Shield,
   Layers,
+  X,
+  ExternalLink,
 } from 'lucide-react';
-import type { OperationalMatch, SeasonReferee, SeasonPitch } from '../../types/seasonMode';
+import type { OperationalMatch, SeasonReferee, SeasonPitch, SeasonTeam } from '../../types/seasonMode';
 import { COMPETITIONS } from '../../constants/seasonConstants';
 
 interface MatchdaysViewProps {
@@ -29,6 +31,7 @@ interface MatchdaysViewProps {
   fixtures: OperationalMatch[];
   referees: SeasonReferee[];
   pitches: SeasonPitch[];
+  teams?: SeasonTeam[];
   selectedDateStr?: string;
   onDateChange?: (dateStr: string) => void;
   onCancelMatch: (fixtureId: string, reason: string) => void;
@@ -59,6 +62,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
   fixtures,
   referees,
   pitches,
+  teams = [],
   selectedDateStr,
   onDateChange,
   onCancelMatch,
@@ -73,6 +77,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
   const [viewMode, setViewMode] = useState<'SELECTED' | 'FULL_LIST'>('SELECTED');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // MATCHDAY POPUP MODAL STATE (Opens on clicking any matchday)
+  const [popupMatchday, setPopupMatchday] = useState<MatchdayGroup | null>(null);
+
   // Operational Action Modal States
   const [cancelTargetMatch, setCancelTargetMatch] = useState<OperationalMatch | null>(null);
   const [cancelReasonInput, setCancelReasonInput] = useState<string>('');
@@ -83,9 +90,54 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
   const [shiftTargetMatch, setShiftTargetMatch] = useState<OperationalMatch | null>(null);
   const [proposedShiftTime, setProposedShiftTime] = useState<string>('');
 
+  // Fast Lookups for Teams and Referees to always show actual names
+  const teamsMap = useMemo(() => {
+    const map = new Map<string, SeasonTeam>();
+    teams.forEach((t) => map.set(t.id, t));
+    // Also ingest teams from fixtures if present
+    fixtures.forEach((f) => {
+      if (f.home_team?.id) map.set(f.home_team.id, f.home_team);
+      if (f.away_team?.id) map.set(f.away_team.id, f.away_team);
+    });
+    return map;
+  }, [teams, fixtures]);
+
+  const refereesMap = useMemo(() => {
+    const map = new Map<string, SeasonReferee>();
+    referees.forEach((r) => map.set(r.id, r));
+    fixtures.forEach((f) => {
+      if (f.referee?.id) map.set(f.referee.id, f.referee);
+    });
+    return map;
+  }, [referees, fixtures]);
+
+  // Helper to resolve actual team name
+  const resolveTeamName = (teamId?: string | null, teamObj?: { name?: string } | null, fallback = 'Club'): string => {
+    if (teamObj?.name && teamObj.name !== 'Home Team' && teamObj.name !== 'Away Team' && teamObj.name !== 'Home' && teamObj.name !== 'Away') {
+      return teamObj.name;
+    }
+    if (teamId && teamsMap.has(teamId)) {
+      const found = teamsMap.get(teamId);
+      if (found?.name) return found.name;
+    }
+    return teamObj?.name || fallback;
+  };
+
+  // Helper to resolve actual referee name
+  const resolveReferee = (refId?: string | null, refObj?: { name?: string | null; badge_level?: string | null } | null): { name: string; badge: string } => {
+    if (refObj?.name && refObj.name !== 'Unassigned Referee' && refObj.name !== 'Assigned Official') {
+      return { name: refObj.name, badge: refObj.badge_level || 'Accredited Official' };
+    }
+    if (refId && refereesMap.has(refId)) {
+      const found = refereesMap.get(refId);
+      if (found?.name) return { name: found.name, badge: found.badge_level || 'Accredited Official' };
+    }
+    return { name: refObj?.name || 'Assigned Official', badge: refObj?.badge_level || 'Accredited' };
+  };
+
   // Active Referees pool for swap modal
   const activeReferees = useMemo(
-    () => referees.filter((r) => r.status === 'Active'),
+    () => referees.filter((r) => r.status === 'Active' || !r.status),
     [referees]
   );
 
@@ -132,9 +184,6 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       }
 
       // Check if EPL or Championship to determine Leg
-      // EPL has 18 MDs (1-9 = Leg 1, 10-18 = Leg 2)
-      // Championship has 26 MDs (1-13 = Leg 1, 14-26 = Leg 2)
-      // Unified leg rule: MD <= 9 is always Leg 1 across both; MD 10-13 is Leg 1 for Champ only; MD > 13 is Leg 2
       const isEplOnly = matches.every(
         (m) => m.competition_id === COMPETITIONS.PREMIER_LEAGUE.id || (m as any).competition?.slug === 'epl'
       );
@@ -197,20 +246,22 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const inMd = `matchday ${g.matchdayNumber}`.includes(q) || g.formattedDate.toLowerCase().includes(q);
-        const inMatches = g.matches.some(
-          (m) =>
-            m.home_team?.name?.toLowerCase().includes(q) ||
-            m.away_team?.name?.toLowerCase().includes(q) ||
+        const inMatches = g.matches.some((m) => {
+          const homeName = resolveTeamName(m.home_team_id, m.home_team);
+          const awayName = resolveTeamName(m.away_team_id, m.away_team);
+          const refInfo = resolveReferee(m.referee_id, m.referee);
+          return (
+            homeName.toLowerCase().includes(q) ||
+            awayName.toLowerCase().includes(q) ||
             m.venue?.toLowerCase().includes(q) ||
-            m.referee?.name?.toLowerCase().includes(q) ||
-            m.linesmen?.linesman_team1_name?.toLowerCase().includes(q) ||
-            m.linesmen?.linesman_team2_name?.toLowerCase().includes(q)
-        );
+            refInfo.name.toLowerCase().includes(q)
+          );
+        });
         return inMd || inMatches;
       }
       return true;
     });
-  }, [matchdayGroups, activeLegTab, activeLeagueFilter, searchQuery]);
+  }, [matchdayGroups, activeLegTab, activeLeagueFilter, searchQuery, teamsMap, refereesMap]);
 
   // Current active matchday object
   const activeSelectedMatchday = useMemo(() => {
@@ -218,31 +269,33 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
     return matchdayGroups.find((g) => g.matchdayNumber === selectedMatchdayNum) || matchdayGroups[0];
   }, [matchdayGroups, selectedMatchdayNum]);
 
-  // Handle Matchday Click
-  const handleSelectMatchday = (mdNum: number, dateStr?: string) => {
-    setSelectedMatchdayNum(mdNum);
-    setViewMode('SELECTED');
-    if (dateStr && onDateChange) {
-      onDateChange(dateStr);
+  // Handle Matchday Card Click -> Opens POPUP MODAL and syncs active state
+  const handleSelectMatchday = (group: MatchdayGroup) => {
+    setSelectedMatchdayNum(group.matchdayNumber);
+    setPopupMatchday(group);
+    if (group.dateStr && onDateChange) {
+      onDateChange(group.dateStr);
     }
   };
 
-  // Previous & Next Matchday navigation
-  const handlePrevMatchday = () => {
-    if (!activeSelectedMatchday) return;
-    const currentIndex = matchdayGroups.findIndex((g) => g.matchdayNumber === activeSelectedMatchday.matchdayNumber);
+  // Popup Navigation (Previous / Next Matchday)
+  const handlePopupPrev = () => {
+    if (!popupMatchday) return;
+    const currentIndex = matchdayGroups.findIndex((g) => g.matchdayNumber === popupMatchday.matchdayNumber);
     if (currentIndex > 0) {
       const prev = matchdayGroups[currentIndex - 1];
-      handleSelectMatchday(prev.matchdayNumber, prev.dateStr);
+      setPopupMatchday(prev);
+      setSelectedMatchdayNum(prev.matchdayNumber);
     }
   };
 
-  const handleNextMatchday = () => {
-    if (!activeSelectedMatchday) return;
-    const currentIndex = matchdayGroups.findIndex((g) => g.matchdayNumber === activeSelectedMatchday.matchdayNumber);
+  const handlePopupNext = () => {
+    if (!popupMatchday) return;
+    const currentIndex = matchdayGroups.findIndex((g) => g.matchdayNumber === popupMatchday.matchdayNumber);
     if (currentIndex < matchdayGroups.length - 1) {
       const next = matchdayGroups[currentIndex + 1];
-      handleSelectMatchday(next.matchdayNumber, next.dateStr);
+      setPopupMatchday(next);
+      setSelectedMatchdayNum(next.matchdayNumber);
     }
   };
 
@@ -271,7 +324,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               Matchdays & Official Fixtures
             </h1>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Select any matchday from the roster to review all match details in a neat single row.
+              Click any matchday card to open the fixtures popup and review all match details in a neat single row.
             </p>
           </div>
 
@@ -394,7 +447,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MATCHDAYS & MATCH DATES LIST DIRECTORY / ROSTER SELECTOR */}
+      {/* 3. MATCHDAYS & MATCH DATES DIRECTORY — INLINE CARDS ON MOBILE & GRID ON DESKTOP */}
       {/* ========================================================================= */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
@@ -404,10 +457,13 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               Season Matchdays Directory ({filteredMatchdayGroups.length} Matchdays Available)
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">Click any matchday to view fixtures</span>
+          <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+            Click any matchday card to open popup
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-2">
+        {/* MOBILE VIEW: INLINE HORIZONTAL SCROLLABLE LIST OF CARDS */}
+        <div className="flex sm:hidden overflow-x-auto gap-2.5 pb-2.5 pt-1 px-1 scroll-smooth snap-x snap-mandatory no-scrollbar">
           {filteredMatchdayGroups.map((g) => {
             const isSelected = activeSelectedMatchday?.matchdayNumber === g.matchdayNumber;
             const isLeg1 = g.leg === 1;
@@ -415,9 +471,66 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             return (
               <button
                 key={g.matchdayNumber}
-                onClick={() => handleSelectMatchday(g.matchdayNumber, g.dateStr)}
+                onClick={() => handleSelectMatchday(g)}
                 type="button"
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[72px] relative group ${
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-w-[135px] max-w-[150px] shrink-0 snap-start shadow-xs active:scale-95 ${
+                  isSelected
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400'
+                    : isDark
+                    ? 'bg-[#0E1424] border-slate-800 text-slate-200'
+                    : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className={`text-xs font-black tracking-tight ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                    MD {g.matchdayNumber}
+                  </span>
+                  <span
+                    className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                      isSelected
+                        ? 'bg-slate-950/20 text-slate-950'
+                        : isLeg1
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                    }`}
+                  >
+                    Leg {g.leg}
+                  </span>
+                </div>
+
+                <div className="mt-1.5 space-y-0.5">
+                  <div
+                    className={`text-[10px] font-semibold truncate ${
+                      isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'
+                    }`}
+                  >
+                    {g.formattedDate}
+                  </div>
+                  <div
+                    className={`text-[9px] font-black ${
+                      isSelected ? 'text-slate-950' : 'text-amber-400'
+                    }`}
+                  >
+                    {g.matches.length} Matches
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* DESKTOP VIEW: RESPONSIVE GRID OF MATCHDAY CARDS */}
+        <div className="hidden sm:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-2">
+          {filteredMatchdayGroups.map((g) => {
+            const isSelected = activeSelectedMatchday?.matchdayNumber === g.matchdayNumber;
+            const isLeg1 = g.leg === 1;
+
+            return (
+              <button
+                key={g.matchdayNumber}
+                onClick={() => handleSelectMatchday(g)}
+                type="button"
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[74px] relative group ${
                   isSelected
                     ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/25 ring-2 ring-amber-400 scale-[1.02] z-10'
                     : isDark
@@ -465,7 +578,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. MATCHDAYS FIXTURES ROSTER — SINGLE NEAT ROW PER MATCH */}
+      {/* 4. ON-PAGE MATCHDAYS FIXTURES ROSTER — SINGLE NEAT ROW PER MATCH */}
       {/* ========================================================================= */}
       {viewMode === 'SELECTED' && activeSelectedMatchday ? (
         <div className="space-y-4 animate-fadeIn">
@@ -504,23 +617,15 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               </div>
             </div>
 
-            {/* Prev / Next Matchday buttons */}
+            {/* Actions: Open Popup Dialog & Prev/Next MD */}
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={handlePrevMatchday}
-                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 text-xs font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
-                title="Previous Matchday"
+                onClick={() => setPopupMatchday(activeSelectedMatchday)}
+                className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Open Matchday Popup"
               >
-                <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Prev MD</span>
-              </button>
-              <button
-                onClick={handleNextMatchday}
-                className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 text-xs font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
-                title="Next Matchday"
-              >
-                <span className="hidden sm:inline">Next MD</span>
-                <ChevronRight className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open in Popup</span>
               </button>
             </div>
           </div>
@@ -561,7 +666,94 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       ) : null}
 
       {/* ========================================================================= */}
-      {/* 5. OPERATIONAL MODAL ACTIONS (PRESERVED FUNCTIONALITY) */}
+      {/* 5. MATCHDAY FIXTURES POPUP MODAL (TRIGGERED ON MATCHDAY CLICK) */}
+      {/* ========================================================================= */}
+      {popupMatchday && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div
+            className={`w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden ${
+              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
+            {/* POPUP HEADER */}
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-950/80">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-black text-sm">
+                  #{popupMatchday.matchdayNumber}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                      Matchday {popupMatchday.matchdayNumber} Fixtures
+                    </h2>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        popupMatchday.leg === 1
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      }`}
+                    >
+                      Leg {popupMatchday.leg}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium flex items-center gap-2 mt-0.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{popupMatchday.formattedDate}</span>
+                    <span>•</span>
+                    <span>{popupMatchday.matches.length} Scheduled Matches</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Popup Controls: Prev, Next, Close */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePopupPrev}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Previous Matchday"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Prev MD</span>
+                </button>
+                <button
+                  onClick={handlePopupNext}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Next Matchday"
+                >
+                  <span className="hidden sm:inline">Next MD</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setPopupMatchday(null)}
+                  className="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-rose-600 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                  title="Close popup"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* POPUP BODY: TABLE OF SINGLE NEAT ROWS */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {renderMatchdayTable(popupMatchday)}
+            </div>
+
+            {/* POPUP FOOTER */}
+            <div className="p-3 sm:p-4 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400 px-6">
+              <span>Presidential Operational View • Official Campus Schedule</span>
+              <button
+                onClick={() => setPopupMatchday(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. OPERATIONAL MODAL ACTIONS (PRESERVED FUNCTIONALITY) */}
       {/* ========================================================================= */}
 
       {/* 1. CANCEL MATCH MODAL */}
@@ -578,8 +770,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             </div>
             <p className="text-xs text-slate-300">
               Are you sure you want to cancel the match between{' '}
-              <strong className="text-white">{cancelTargetMatch.home_team?.name || 'Home'}</strong> vs{' '}
-              <strong className="text-white">{cancelTargetMatch.away_team?.name || 'Away'}</strong>?
+              <strong className="text-white">{resolveTeamName(cancelTargetMatch.home_team_id, cancelTargetMatch.home_team, 'Home')}</strong> vs{' '}
+              <strong className="text-white">{resolveTeamName(cancelTargetMatch.away_team_id, cancelTargetMatch.away_team, 'Away')}</strong>?
             </p>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Reason for cancellation</label>
@@ -629,7 +821,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <p className="text-xs text-slate-300">
               Reassign center referee for{' '}
               <strong>
-                {swapTargetMatch.home_team?.name} vs {swapTargetMatch.away_team?.name}
+                {resolveTeamName(swapTargetMatch.home_team_id, swapTargetMatch.home_team, 'Home')} vs{' '}
+                {resolveTeamName(swapTargetMatch.away_team_id, swapTargetMatch.away_team, 'Away')}
               </strong>
             </p>
 
@@ -688,7 +881,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <p className="text-xs text-slate-300">
               Proposed match time shift for{' '}
               <strong>
-                {shiftTargetMatch.home_team?.name} vs {shiftTargetMatch.away_team?.name}
+                {resolveTeamName(shiftTargetMatch.home_team_id, shiftTargetMatch.home_team, 'Home')} vs{' '}
+                {resolveTeamName(shiftTargetMatch.away_team_id, shiftTargetMatch.away_team, 'Away')}
               </strong>
             </p>
 
@@ -780,25 +974,25 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   (match as any).competition?.slug === 'epl';
 
                 // Format kick-off time string
-                const timeStr = match.scheduled_time
+                const timeStr = match.scheduled_time && match.scheduled_time.includes('T') && !match.scheduled_time.endsWith('T00:00:00')
                   ? new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : '09:00';
+                  : 'Time Pending';
+
+                // Real Team Names
+                const homeName = resolveTeamName(match.home_team_id, match.home_team, 'Home Team');
+                const awayName = resolveTeamName(match.away_team_id, match.away_team, 'Away Team');
+
+                // Real Referee Info
+                const refInfo = resolveReferee(match.referee_id, match.referee);
 
                 // Linesmen team names fallback
                 const linesman1Name =
-                  match.linesmen?.linesman_team1_name ||
-                  (match.home_team?.captain_profile
-                    ? `${match.home_team.captain_profile.first_name} (Capt)`
-                    : `${match.home_team?.name || 'Home'} Rep`);
+                  match.linesmen?.linesman_team1_name || `${homeName} Rep`;
 
                 const linesman2Name =
-                  match.linesmen?.linesman_team2_name ||
-                  (match.away_team?.captain_profile
-                    ? `${match.away_team.captain_profile.first_name} (Capt)`
-                    : `${match.away_team?.name || 'Away'} Rep`);
+                  match.linesmen?.linesman_team2_name || `${awayName} Rep`;
 
-                const refereeName = match.referee?.name || 'Assigned Official';
-                const refereeBadge = match.referee?.badge_level || 'Accredited';
+                const venueName = match.venue || 'Pavilion Main Pitch';
 
                 return (
                   <tr
@@ -832,13 +1026,13 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                       </span>
                     </td>
 
-                    {/* 3. FIXTURE (HOME vs AWAY) */}
+                    {/* 3. FIXTURE (HOME vs AWAY — SHOWING ACTUAL TEAM NAMES) */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
                         {/* Home Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-end text-right">
-                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={match.home_team?.name}>
-                            {match.home_team?.name || 'Home Team'}
+                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={homeName}>
+                            {homeName}
                           </span>
                           <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
                         </div>
@@ -855,8 +1049,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                         {/* Away Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-start text-left">
                           <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
-                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={match.away_team?.name}>
-                            {match.away_team?.name || 'Away Team'}
+                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={awayName}>
+                            {awayName}
                           </span>
                         </div>
                       </div>
@@ -866,19 +1060,21 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-slate-200">
                         <MapPin className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                        <span className="truncate max-w-[160px] font-bold text-xs" title={match.venue || 'Main Pitch'}>
-                          {match.venue || 'Pavilion Main Pitch'}
+                        <span className="truncate max-w-[160px] font-bold text-xs" title={venueName}>
+                          {venueName}
                         </span>
                       </div>
                     </td>
 
-                    {/* 5. CENTER REFEREE */}
+                    {/* 5. CENTER REFEREE (SHOWING ACTUAL REFEREE NAME) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <div className="truncate max-w-[160px]">
-                          <div className="font-bold text-xs text-slate-200 truncate">{refereeName}</div>
-                          <div className="text-[9px] text-emerald-400/80 font-semibold">{refereeBadge}</div>
+                          <div className="font-bold text-xs text-slate-200 truncate" title={refInfo.name}>
+                            {refInfo.name}
+                          </div>
+                          <div className="text-[9px] text-emerald-400/80 font-semibold">{refInfo.badge}</div>
                         </div>
                       </div>
                     </td>
@@ -888,7 +1084,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3 h-3 text-purple-400 shrink-0" />
                         <div className="truncate max-w-[140px]">
-                          <div className="font-bold text-xs text-slate-200 truncate">{linesman1Name}</div>
+                          <div className="font-bold text-xs text-slate-200 truncate" title={linesman1Name}>
+                            {linesman1Name}
+                          </div>
                           <div className="text-[9px] text-purple-400/80">Home Linesman</div>
                         </div>
                       </div>
@@ -899,7 +1097,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3 h-3 text-blue-400 shrink-0" />
                         <div className="truncate max-w-[140px]">
-                          <div className="font-bold text-xs text-slate-200 truncate">{linesman2Name}</div>
+                          <div className="font-bold text-xs text-slate-200 truncate" title={linesman2Name}>
+                            {linesman2Name}
+                          </div>
                           <div className="text-[9px] text-blue-400/80">Away Linesman</div>
                         </div>
                       </div>
@@ -937,7 +1137,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                           <button
                             onClick={() => {
                               setShiftTargetMatch(match);
-                              setProposedShiftTime(timeStr);
+                              setProposedShiftTime(timeStr.includes(':') ? timeStr : '09:00');
                             }}
                             title="Shift Kick-Off Time"
                             className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white transition-colors cursor-pointer"

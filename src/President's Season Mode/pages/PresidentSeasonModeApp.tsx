@@ -123,6 +123,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
                 fixtures={fixtures}
                 referees={referees}
                 pitches={pitches}
+                teams={teams}
                 selectedDateStr={selectedDateStr}
                 onDateChange={(d) => setSelectedDateStr(d)}
                 onCancelMatch={handleExecuteCancelMatch}

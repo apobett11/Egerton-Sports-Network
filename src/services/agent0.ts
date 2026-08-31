@@ -1111,8 +1111,8 @@ function buildAlgorithm3TimeConfig(
  * ALGORITHM 1 FIXTURE FLATTENER
  * ========================================================================== */
 
-const EPL_UUID = "11111111-1111-4111-8111-000000000001";
-const CHAMP_UUID = "22222222-2222-4222-8222-000000000002";
+const EPL_UUID = "11111111-1111-1111-1111-111111111111";
+const CHAMP_UUID = "22222222-2222-2222-2222-222222222222";
 
 function flattenAlgorithm1Fixtures(
   output: Algo1Output,

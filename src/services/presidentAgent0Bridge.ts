@@ -122,20 +122,14 @@ const DEFAULT_REFEREES = [
   { referee_id: 'r0000006-0000-4000-8000-000000000006', tier: 'Mixed' as const, status: 'Active' },
 ];
 
-export const EPL_COMP_ID = '11111111-1111-4111-8111-000000000001';
-export const CHAMP_COMP_ID = '22222222-2222-4222-8222-000000000002';
+export const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
+export const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function toValidUUID(id: string): string {
   if (!id) return crypto.randomUUID();
-  if (UUID_V4_REGEX.test(id)) return id;
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    const parts = id.split('-');
-    const p2 = '4' + parts[2].slice(1);
-    const p3 = '8' + parts[3].slice(1);
-    return `${parts[0]}-${parts[1]}-${p2}-${p3}-${parts[4]}`;
-  }
+  if (UUID_REGEX.test(id)) return id;
   return crypto.randomUUID();
 }
 
@@ -147,15 +141,12 @@ function initializeDefaultMemory(seasonId: string, startDateStr: string = '2026-
       capacity: { EPL: 3, Championship: 3 },
       playdays: generateDefaultPlaydays(startDateStr, 90),
       pitches: [
-        { pitch_id: '91111111-1111-4111-8111-111111111111', state: 'available', amAvailable: true, pmAvailable: true },
-        { pitch_id: '92222222-2222-4222-8222-222222222222', state: 'available', amAvailable: true, pmAvailable: true },
-        { pitch_id: '93333333-3333-4333-8333-333333333333', state: 'available', amAvailable: true, pmAvailable: true },
+        { pitch_id: '91111111-1111-1111-1111-111111111111', state: 'available', amAvailable: true, pmAvailable: true },
+        { pitch_id: '92222222-2222-2222-2222-222222222222', state: 'available', amAvailable: true, pmAvailable: true },
+        { pitch_id: '93333333-3333-3333-3333-333333333333', state: 'available', amAvailable: true, pmAvailable: true },
       ],
-      referees: DEFAULT_REFEREES,
-      teams: [
-        ...DEFAULT_EPL_TEAMS.map((t) => ({ team_id: t.id, league_type: 'EPL' as const, team_name: t.name })),
-        ...DEFAULT_CHAMP_TEAMS.map((t) => ({ team_id: t.id, league_type: 'CHAMPIONSHIP' as const, team_name: t.name })),
-      ],
+      referees: [],
+      teams: [],
       matchdays: [],
       fixtures: [],
       matchAssignments: [],
@@ -184,13 +175,13 @@ function initializeDefaultMemory(seasonId: string, startDateStr: string = '2026-
 
 function resolvePitchName(pitchId: string): string {
   const matched = OFFICIAL_PITCHES.find(
-    (p) => p.id === pitchId || p.id.replace(/-1111-/, '-4111-') === pitchId || pitchId.startsWith(p.id.slice(0, 3))
+    (p) => p.id === pitchId || pitchId.startsWith(p.id.slice(0, 3))
   );
   if (matched) return matched.name;
   if (pitchId.includes('91') || pitchId.includes('1')) return 'Pitch A — Main Stadium Pitch';
   if (pitchId.includes('92') || pitchId.includes('2')) return 'Pitch B — Pavilion Grounds';
   if (pitchId.includes('93') || pitchId.includes('3')) return 'Pitch C — Tatton Complex Ground';
-  return 'Egerton Main Stadium Pitch';
+  return 'Pavilion Main Pitch';
 }
 
 export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
@@ -199,19 +190,19 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
   return {
     async fetchCurrentState(_sid: string) {
       try {
-        // Query live teams from Supabase database
+        // Query live active teams from Supabase database
         const { data: dbTeams } = await supabase
           .from('teams')
           .select('id, name, competition_id, status')
           .neq('status', 'rejected')
           .is('deleted_at', null);
 
-        if (dbTeams && dbTeams.length >= 4) {
+        if (dbTeams && dbTeams.length > 0) {
           const eplTeams = dbTeams.filter((t: any) =>
             t.competition_id === EPL_COMP_ID ||
             t.competition_id?.includes('1111') ||
-            (!t.competition_id && !t.name.toLowerCase().includes('championship')) ||
-            t.name.toLowerCase().includes('premier')
+            t.name.toLowerCase().includes('premier') ||
+            (!t.competition_id && !t.name.toLowerCase().includes('championship'))
           );
           const champTeams = dbTeams.filter((t: any) =>
             t.competition_id === CHAMP_COMP_ID ||
@@ -219,20 +210,18 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
             t.name.toLowerCase().includes('championship')
           );
 
-          if (eplTeams.length >= 2 && champTeams.length >= 2) {
-            mem.teams = [
-              ...eplTeams.map((t: any) => ({
-                team_id: toValidUUID(t.id),
-                league_type: 'EPL' as const,
-                team_name: t.name,
-              })),
-              ...champTeams.map((t: any) => ({
-                team_id: toValidUUID(t.id),
-                league_type: 'CHAMPIONSHIP' as const,
-                team_name: t.name,
-              })),
-            ];
-          }
+          mem.teams = [
+            ...eplTeams.map((t: any) => ({
+              team_id: t.id,
+              league_type: 'EPL' as const,
+              team_name: t.name,
+            })),
+            ...champTeams.map((t: any) => ({
+              team_id: t.id,
+              league_type: 'CHAMPIONSHIP' as const,
+              team_name: t.name,
+            })),
+          ];
         }
 
         // Query live referees from Supabase database
@@ -242,11 +231,13 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
           .is('deleted_at', null);
 
         if (dbReferees && dbReferees.length > 0) {
-          mem.referees = dbReferees.map((r: any) => ({
-            referee_id: r.id,
-            tier: r.badge_level?.includes('FIFA') || r.badge_level?.includes('Level 1') ? 'EPL_Exclusive' : 'Mixed',
-            status: r.status || 'Active',
-          }));
+          mem.referees = dbReferees
+            .filter((r: any) => r.status === 'Active' || !r.status)
+            .map((r: any) => ({
+              referee_id: r.id,
+              tier: r.badge_level?.includes('FIFA') || r.badge_level?.includes('Level 1') ? 'EPL_Exclusive' : 'Mixed',
+              status: r.status || 'Active',
+            }));
         }
 
         // Query live pitches from Supabase database
@@ -264,7 +255,7 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
           }));
         }
 
-        // Only bootstrap fixtures from database if memory fixtures are empty
+        // Bootstrap fixtures from database if memory fixtures are empty
         if (mem.fixtures.length === 0) {
           const { data: dbFixtures } = await supabase
             .from('fixtures')
@@ -273,10 +264,10 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
 
           if (dbFixtures && dbFixtures.length > 0) {
             mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
-              fixture_id: toValidUUID(f.id),
+              fixture_id: f.id,
               league_id: f.competition_id === CHAMP_COMP_ID || f.competition_id?.includes('2222') ? CHAMP_COMP_ID : EPL_COMP_ID,
-              home_id: toValidUUID(f.home_team_id),
-              away_id: toValidUUID(f.away_team_id),
+              home_id: f.home_team_id,
+              away_id: f.away_team_id,
               leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
               match_sequence: idx + 1,
               matchday_number: f.matchday || null,
@@ -304,13 +295,13 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
     },
 
     async persistAtomically(args) {
-      // 1. ALGORITHM 1: Base Double Round-Robin Fixtures (Immutable Matches)
+      // 1. PHASE 1: ALGORITHM 1 — Initial Pairings (No hardcoded dates, times, venues or referees)
       if (args.stage === 'ALGORITHM_1' && args.algorithm1Result?.payload?.data) {
         const flatFixtures: typeof mem.fixtures = [];
         let seq = 1;
 
         for (const [leagueId, data] of Object.entries(args.algorithm1Result.payload.data)) {
-          const compId = leagueId === 'epl' || leagueId.includes('1111') || leagueId.includes('premier')
+          const compId = leagueId === 'epl' || leagueId === EPL_COMP_ID || leagueId.includes('1111') || leagueId.includes('premier')
             ? EPL_COMP_ID
             : CHAMP_COMP_ID;
 
@@ -319,8 +310,8 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
               flatFixtures.push({
                 fixture_id: toValidUUID(f.fixture_id),
                 league_id: compId,
-                home_id: toValidUUID(f.home_id),
-                away_id: toValidUUID(f.away_id),
+                home_id: f.home_id,
+                away_id: f.away_id,
                 leg: legNumber,
                 match_sequence: f.match_sequence || seq++,
                 matchday_number: null,
@@ -335,66 +326,42 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
           if (data.leg_2) processLeg(data.leg_2, 2);
         }
 
-        // Check whether fixtures already exist in Supabase database
         try {
-          const { data: existingRows } = await supabase
+          // Clear any previous uncommitted fixtures for these competitions
+          await supabase
             .from('fixtures')
-            .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
-            .is('deleted_at', null);
+            .delete()
+            .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
 
-          if (existingRows && existingRows.length >= flatFixtures.length) {
-            // Preserve existing fixtures without overwriting irrevocable pairings
-            mem.fixtures = flatFixtures.map((f, idx) => {
-              const matched = existingRows.find(
-                (er) =>
-                  er.competition_id === f.league_id &&
-                  er.home_team_id === f.home_id &&
-                  er.away_team_id === f.away_id
-              ) || existingRows[idx];
+          // Write initial unallocated fixtures (all algorithm fields strictly null)
+          const insertPayloads = flatFixtures.map((f) => ({
+            id: f.fixture_id,
+            competition_id: f.league_id,
+            home_team_id: f.home_id,
+            away_team_id: f.away_id,
+            scheduled_time: null, // STRICTLY NULL until Algorithm 2 / 3
+            status: 'UPCOMING',
+            score_home: 0,
+            score_away: 0,
+            venue: null, // STRICTLY NULL until Algorithm 3
+            referee_id: null, // STRICTLY NULL until Algorithm 4
+            matchday: null, // STRICTLY NULL until Algorithm 2
+          }));
 
-              return {
-                ...f,
-                fixture_id: matched?.id || f.fixture_id,
-                matchday_number: matched?.matchday || f.matchday_number,
-                playday: matched?.scheduled_time ? matched.scheduled_time.split('T')[0] : (f.playday ? f.playday.split('T')[0] : null),
-              };
-            });
-          } else {
-            // Write initial immutable base fixtures to Supabase database
-            const insertPayloads = flatFixtures.map((f) => ({
-              id: f.fixture_id,
-              competition_id: f.league_id,
-              home_team_id: f.home_id,
-              away_team_id: f.away_id,
-              scheduled_time: new Date().toISOString(),
-              status: 'UPCOMING',
-              score_home: 0,
-              score_away: 0,
-              venue: 'Pitch A — Main Stadium Pitch',
-              matchday: 1,
-            }));
-
-            const { data: insertedRows, error: insertError } = await supabase
-              .from('fixtures')
-              .insert(insertPayloads)
-              .select('id, competition_id, home_team_id, away_team_id');
-
-            if (!insertError && insertedRows && insertedRows.length > 0) {
-              mem.fixtures = flatFixtures.map((f, idx) => ({
-                ...f,
-                fixture_id: insertedRows[idx]?.id || f.fixture_id,
-              }));
-            } else {
-              mem.fixtures = flatFixtures;
-            }
+          // Insert in batches of 50 to ensure reliable PostgREST execution
+          for (let i = 0; i < insertPayloads.length; i += 50) {
+            const batch = insertPayloads.slice(i, i + 50);
+            await supabase.from('fixtures').insert(batch);
           }
+
+          mem.fixtures = flatFixtures;
         } catch (_dbErr) {
           mem.fixtures = flatFixtures;
         }
       }
 
-      // 2. ALGORITHM 2: Smart Matchday & Playday Scheduling Write
-      if (args.algorithm2Result?.payload?.final_schedule) {
+      // 2. PHASE 2: ALGORITHM 2 — Matchdays and Playday Dates Write
+      if (args.stage === 'ALGORITHM_2' && args.algorithm2Result?.payload?.final_schedule) {
         const schedule = args.algorithm2Result.payload.final_schedule;
         const matchdayMap = new Map<number, { playDate: string; matchIds: string[] }>();
         const updates: Array<{ id: string; matchday: number; scheduled_time: string }> = [];
@@ -409,7 +376,7 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
               updates.push({
                 id: f.fixture_id,
                 matchday: mdNum,
-                scheduled_time: `${item.playday}T09:00:00`,
+                scheduled_time: `${item.playday}T00:00:00`,
               });
             }
             if (!matchdayMap.has(mdNum)) {
@@ -427,18 +394,16 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
           match_ids: info.matchIds,
         }));
 
-        // Write Algorithm 2 updates to Supabase
         try {
-          if (updates.length > 0) {
-            await supabase.from('fixtures').upsert(updates, { onConflict: 'id' });
+          for (let i = 0; i < updates.length; i += 50) {
+            const batch = updates.slice(i, i + 50);
+            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
           }
-        } catch (_err) {
-          // Fallback retained in memory
-        }
+        } catch (_err) {}
       }
 
-      // 3. ALGORITHM 3: Pitch Slot & Time Allocation Write
-      if (args.algorithm3Result?.payload?.database_operations?.allocations) {
+      // 3. PHASE 3: ALGORITHM 3 — Pitch Venue & Slot Time Allocation Write
+      if (args.stage === 'ALGORITHM_3' && args.algorithm3Result?.payload?.database_operations?.allocations) {
         const allocations = args.algorithm3Result.payload.database_operations.allocations;
         const venueUpdates: Array<{ id: string; venue: string; scheduled_time: string }> = [];
 
@@ -467,48 +432,38 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
           };
         });
 
-        // Write Algorithm 3 updates (venue & slot time) to Supabase
         try {
-          if (venueUpdates.length > 0) {
-            await supabase.from('fixtures').upsert(venueUpdates, { onConflict: 'id' });
+          for (let i = 0; i < venueUpdates.length; i += 50) {
+            const batch = venueUpdates.slice(i, i + 50);
+            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
           }
-        } catch (_err) {
-          // Fallback retained in memory
-        }
+        } catch (_err) {}
       }
 
-      // 4. ALGORITHM 4 & 5: Referee & Linesman Allocation Write
-      if (args.algorithm45Result?.payload?.assignments) {
+      // 4. PHASE 4: ALGORITHM 4 & 5 — Center Referee & Linesmen Allocation Write
+      if (args.stage === 'ALGORITHM_4_5' && args.algorithm45Result?.payload?.assignments) {
         const assignments = args.algorithm45Result.payload.assignments;
         const refUpdates: Array<{ id: string; referee_id: string | null }> = [];
 
         for (const assign of assignments) {
           const f = mem.fixtures.find((fix) => fix.fixture_id === assign.match_id);
           if (f) {
-            // Update Center Referee (Algorithm 4 column)
             if (assign.center_referee_id !== undefined) {
               (f as any).referee_id = assign.center_referee_id;
               refUpdates.push({
                 id: assign.match_id,
-                referee_id: assign.center_referee_id,
+                referee_id: assign.center_referee_id || null,
               });
-            }
-            // Update Linesmen (Algorithm 5 column) only if present
-            if (assign.linesman_team_a_id !== undefined && assign.linesman_team_b_id !== undefined) {
-              (f as any).linesman_team_a_id = assign.linesman_team_a_id;
-              (f as any).linesman_team_b_id = assign.linesman_team_b_id;
             }
           }
         }
 
-        // Write Algorithm 4/5 updates to Supabase
         try {
-          if (refUpdates.length > 0) {
-            await supabase.from('fixtures').upsert(refUpdates, { onConflict: 'id' });
+          for (let i = 0; i < refUpdates.length; i += 50) {
+            const batch = refUpdates.slice(i, i + 50);
+            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
           }
-        } catch (_err) {
-          // Fallback retained in memory
-        }
+        } catch (_err) {}
       }
     },
 
@@ -516,38 +471,60 @@ export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
       try {
         const { data: dbFixtures } = await supabase
           .from('fixtures')
-          .select('id, matchday, scheduled_time, venue, referee_id')
+          .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
           .is('deleted_at', null);
 
-        if (dbFixtures && dbFixtures.length > 0 && mem.fixtures.length === 0) {
+        if (dbFixtures && dbFixtures.length > 0) {
           mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
             fixture_id: f.id,
-            league_id: f.competition_id || '11111111-1111-1111-1111-111111111111',
+            league_id: f.competition_id || EPL_COMP_ID,
             home_id: f.home_team_id || '',
             away_id: f.away_team_id || '',
             leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
             match_sequence: idx + 1,
             matchday_number: f.matchday,
-            playday: f.scheduled_time,
+            playday: f.scheduled_time ? f.scheduled_time.split('T')[0] : null,
             completed: false,
             historical: false,
           }));
         }
       } catch (_e) {}
 
-      // Verify state consistency
-      if (mem.fixtures.length === 0 && mem.matchdays.length > 0) {
-        throw new Error('Readback verification failed: empty fixtures with active matchdays.');
+      if (mem.fixtures.length === 0) {
+        throw new Error('Readback verification failed: empty fixtures returned after generation.');
       }
     },
 
     async getLeagueConfigs(_seasonId) {
-      const eplTeams = mem.teams.filter((t) => t.league_type === 'EPL').map((t) => t.team_id);
-      const champTeams = mem.teams.filter((t) => t.league_type === 'CHAMPIONSHIP').map((t) => t.team_id);
+      // Query authoritative active teams from database
+      const { data: dbTeams } = await supabase
+        .from('teams')
+        .select('id, name, competition_id, status')
+        .neq('status', 'rejected')
+        .is('deleted_at', null);
+
+      const allTeams = dbTeams && dbTeams.length > 0 ? dbTeams : mem.teams.map((t) => ({ id: t.team_id, name: t.team_name, competition_id: t.league_type === 'EPL' ? EPL_COMP_ID : CHAMP_COMP_ID }));
+
+      const eplTeamIds = allTeams
+        .filter((t: any) =>
+          t.competition_id === EPL_COMP_ID ||
+          t.competition_id?.includes('1111') ||
+          t.name?.toLowerCase().includes('premier') ||
+          (!t.competition_id && !t.name?.toLowerCase().includes('championship'))
+        )
+        .map((t: any) => t.id);
+
+      const champTeamIds = allTeams
+        .filter((t: any) =>
+          t.competition_id === CHAMP_COMP_ID ||
+          t.competition_id?.includes('2222') ||
+          t.name?.toLowerCase().includes('championship')
+        )
+        .map((t: any) => t.id);
 
       return [
-        { league_id: EPL_COMP_ID, teams: eplTeams },
-        { league_id: CHAMP_COMP_ID, teams: champTeams },
+        { league_id: EPL_COMP_ID, teams: eplTeamIds },
+        { league_id: CHAMP_COMP_ID, teams: champTeamIds },
       ];
     },
   };
