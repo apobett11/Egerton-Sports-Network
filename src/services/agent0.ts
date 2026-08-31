@@ -450,7 +450,7 @@ export async function handleEvent(
     // TASK 1 — Load initial database snapshot (INITIAL SNAPSHOT ONLY)
     // ====================================================================
 
-    const preExecutionState = await adapters.fetchCurrentState(seasonId);
+    const preExecutionState = await reloadActiveSeasonState(seasonId, adapters);
 
     let algorithm1Result: AlgorithmResultEnvelope<Algo1Output> | undefined;
     let algorithm2Result: AlgorithmResultEnvelope<Algorithm2Output> | undefined;
@@ -487,11 +487,16 @@ export async function handleEvent(
 
         validateResultEnvelope(algorithm1Result, "ALGORITHM_1", executionId);
 
-        if (!algorithm1Result.database.ready_for_write) {
+        if (algorithm1Result.status !== "success" || !algorithm1Result.database?.ready_for_write) {
           throw new Agent0Error(
-            "ALGORITHM_1_NOT_READY",
-            "Algorithm 1 is not ready for database write.",
-            { verification_logs: algorithm1Result.verification.logs },
+            "ALGORITHM_1_FAILED",
+            `Algorithm 1 execution did not succeed or is not ready for database write (status=${algorithm1Result.status}, ready_for_write=${algorithm1Result.database?.ready_for_write}).`,
+            {
+              status: algorithm1Result.status,
+              ready_for_write: algorithm1Result.database?.ready_for_write,
+              verification_logs: algorithm1Result.verification?.logs,
+              errors: algorithm1Result.verification?.errors,
+            },
           );
         }
 
@@ -504,7 +509,7 @@ export async function handleEvent(
           event_type: event.type,
           stage: "ALGORITHM_1_DB_WRITE",
           algorithm: "ALGORITHM_1",
-          status: algorithm1Result.status === "success" ? "SUCCESS" : "PARTIAL",
+          status: "SUCCESS",
           message: "Writing Algorithm 1 immutable base fixtures to database",
           envelope: algorithm1Result as unknown as Record<string, unknown>,
           database_payload: {
@@ -533,10 +538,10 @@ export async function handleEvent(
         }
 
         const postAlgorithm1State = await reloadActiveSeasonState(seasonId, adapters);
-        const expectedFixtureCount = flattenAlgorithm1Fixtures(
-          algorithm1Result.payload,
-          seasonId,
-        ).length;
+        let algo1ExpectedCount = 0;
+        for (const d of Object.values(algorithm1Result.payload.data)) {
+          algo1ExpectedCount += (d.leg_1?.length || 0) + (d.leg_2?.length || 0);
+        }
 
         if (postAlgorithm1State.fixtures.length === 0) {
           throw new Agent0Error(
@@ -545,10 +550,10 @@ export async function handleEvent(
           );
         }
 
-        if (postAlgorithm1State.fixtures.length !== expectedFixtureCount) {
+        if (postAlgorithm1State.fixtures.length !== algo1ExpectedCount) {
           throw new Agent0Error(
             "ALGORITHM_1_PERSISTENCE_COUNT_MISMATCH",
-            `Algorithm 1 expected ${expectedFixtureCount} active fixtures, but the database returned ${postAlgorithm1State.fixtures.length}.`,
+            `Algorithm 1 expected ${algo1ExpectedCount} active fixtures, but the database returned ${postAlgorithm1State.fixtures.length}.`,
           );
         }
 
@@ -575,17 +580,11 @@ export async function handleEvent(
         );
       }
 
-      if (plan.requiresAlgorithm1 && algorithm1Result) {
-        const expectedFixtureCount = flattenAlgorithm1Fixtures(
-          algorithm1Result.payload,
-          seasonId,
-        ).length;
-        if (fixtures.length !== expectedFixtureCount) {
-          throw new Agent0Error(
-            "ALGORITHM_2_INPUT_COUNT_MISMATCH",
-            `Algorithm 1 produced ${expectedFixtureCount} active fixtures, but Algorithm 2 received ${fixtures.length}.`,
-          );
-        }
+      if (expectedActiveMatchCount > 0 && fixtures.length !== expectedActiveMatchCount) {
+        throw new Agent0Error(
+          "ALGORITHM_2_INPUT_COUNT_MISMATCH",
+          `Previous stage verified ${expectedActiveMatchCount} active fixtures from database, but Algorithm 2 received ${fixtures.length}.`,
+        );
       }
 
       const signal = buildAlgorithm2Signal(event, algorithm2State);
@@ -603,11 +602,16 @@ export async function handleEvent(
 
       validateResultEnvelope(algorithm2Result, "ALGORITHM_2", executionId);
 
-      if (!algorithm2Result.database.ready_for_write) {
+      if (algorithm2Result.status !== "success" || !algorithm2Result.database?.ready_for_write) {
         throw new Agent0Error(
-          "ALGORITHM_2_NOT_READY",
-          `Algorithm 2 is not ready for database write. Logs: ${algorithm2Result.verification.logs.join(" | ")}`,
-          { verification_logs: algorithm2Result.verification.logs },
+          "ALGORITHM_2_FAILED",
+          `Algorithm 2 execution did not succeed or is not ready for database write (status=${algorithm2Result.status}, ready_for_write=${algorithm2Result.database?.ready_for_write}). Logs: ${(algorithm2Result.verification?.logs ?? []).join(" | ")}`,
+          {
+            status: algorithm2Result.status,
+            ready_for_write: algorithm2Result.database?.ready_for_write,
+            verification_logs: algorithm2Result.verification?.logs,
+            errors: algorithm2Result.verification?.errors,
+          },
         );
       }
 
@@ -620,7 +624,7 @@ export async function handleEvent(
         event_type: event.type,
         stage: "ALGORITHM_2_DB_WRITE",
         algorithm: "ALGORITHM_2",
-        status: algorithm2Result.status === "success" ? "SUCCESS" : "PARTIAL",
+        status: "SUCCESS",
         message: "Writing Algorithm 2 matchday schedules to database",
         envelope: algorithm2Result as unknown as Record<string, unknown>,
         database_payload: {
@@ -699,7 +703,7 @@ export async function handleEvent(
       if (expectedActiveMatchCount !== futureMatchCount) {
         throw new Agent0Error(
           "ALGORITHM_2_TO_3_HANDOFF_COUNT_MISMATCH",
-          `Algorithm 2 verified ${expectedActiveMatchCount} active matches, but Algorithm 3 payload contains ${futureMatchCount}.`,
+          `Previous stage verified ${expectedActiveMatchCount} active matches in database, but Algorithm 3 payload contains ${futureMatchCount}.`,
         );
       }
 
@@ -724,11 +728,16 @@ export async function handleEvent(
 
       validateResultEnvelope(algorithm3Result, "ALGORITHM_3", executionId);
 
-      if (!algorithm3Result.database.ready_for_write) {
+      if (algorithm3Result.status !== "success" || !algorithm3Result.database?.ready_for_write) {
         throw new Agent0Error(
-          "ALGORITHM_3_NOT_READY",
-          `Algorithm 3 is not ready for database write. Errors: ${(algorithm3Result.verification.errors ?? []).join(" | ")} | Logs: ${(algorithm3Result.verification.logs ?? []).join(" | ")}`,
-          { verification_logs: algorithm3Result.verification.logs },
+          "ALGORITHM_3_FAILED",
+          `Algorithm 3 execution did not succeed or is not ready for database write (status=${algorithm3Result.status}, ready_for_write=${algorithm3Result.database?.ready_for_write}). Errors: ${(algorithm3Result.verification?.errors ?? []).join(" | ")} | Logs: ${(algorithm3Result.verification?.logs ?? []).join(" | ")}`,
+          {
+            status: algorithm3Result.status,
+            ready_for_write: algorithm3Result.database?.ready_for_write,
+            verification_logs: algorithm3Result.verification?.logs,
+            errors: algorithm3Result.verification?.errors,
+          },
         );
       }
 
@@ -763,7 +772,7 @@ export async function handleEvent(
         event_type: event.type,
         stage: "ALGORITHM_3_DB_WRITE",
         algorithm: "ALGORITHM_3",
-        status: algorithm3Result.status === "success" ? "SUCCESS" : "PARTIAL",
+        status: "SUCCESS",
         message: "Writing Algorithm 3 pitch allocations to database",
         envelope: algorithm3Result as unknown as Record<string, unknown>,
         database_payload: {
@@ -822,7 +831,7 @@ export async function handleEvent(
       );
 
       if (!plan.requiresAlgorithm3) {
-        expectedActiveMatchCount = matches45.length;
+        expectedActiveMatchCount = officiatingState.fixtures.length;
       }
 
       const officiatingMatchCount = matches45.length;
@@ -831,7 +840,7 @@ export async function handleEvent(
       if (officiatingMatchCount !== expectedActiveMatchCount) {
         throw new Agent0Error(
           "ALGORITHM_3_TO_4_HANDOFF_COUNT_MISMATCH",
-          `Algorithm 3 verified ${expectedActiveMatchCount} active matches, but Algorithm 4 received ${officiatingMatchCount}.`,
+          `Algorithm 3 verified ${expectedActiveMatchCount} active matches from database, but Algorithm 4 received ${officiatingMatchCount}.`,
         );
       }
 
@@ -851,10 +860,22 @@ export async function handleEvent(
         );
       }
 
+      const teamMap = new Map<string, "EPL" | "CHAMPIONSHIP">();
+      for (const t of officiatingState.teams) {
+        teamMap.set(t.team_id, t.league_type);
+      }
+      for (const m of matches45) {
+        if (m.home_team_id) teamMap.set(m.home_team_id, m.league_type);
+        if (m.away_team_id) teamMap.set(m.away_team_id, m.league_type);
+      }
+
       const payload45: Algorithm45Input = {
         matches: matches45,
         referees: officiatingState.referees,
-        teams: officiatingState.teams.map((t) => ({ team_id: t.team_id })),
+        teams: Array.from(teamMap.entries()).map(([team_id, league_type]) => ({
+          team_id,
+          league_type,
+        })) as unknown as Algorithm45Input["teams"],
       };
 
       const command45 = createAlgorithmCommand<Algorithm45Input>({
@@ -870,11 +891,16 @@ export async function handleEvent(
 
       validateResultEnvelope(algorithm45Result, "ALGORITHM_4_5", executionId);
 
-      if (!algorithm45Result.database.ready_for_write) {
+      if (algorithm45Result.status !== "success" || !algorithm45Result.database?.ready_for_write) {
         throw new Agent0Error(
-          "ALGORITHM_45_NOT_READY",
-          `Algorithm 4+5 is not ready for database write. Logs: ${(algorithm45Result.verification.logs ?? []).join(" | ")}`,
-          { verification_logs: algorithm45Result.verification.logs },
+          "ALGORITHM_45_FAILED",
+          `Algorithm 4+5 execution did not succeed or is not ready for database write (status=${algorithm45Result.status}, ready_for_write=${algorithm45Result.database?.ready_for_write}). Logs: ${(algorithm45Result.verification?.logs ?? []).join(" | ")}`,
+          {
+            status: algorithm45Result.status,
+            ready_for_write: algorithm45Result.database?.ready_for_write,
+            verification_logs: algorithm45Result.verification?.logs,
+            errors: algorithm45Result.verification?.errors,
+          },
         );
       }
 
@@ -887,7 +913,7 @@ export async function handleEvent(
         event_type: event.type,
         stage: "ALGORITHM_4_5_DB_WRITE",
         algorithm: "ALGORITHM_4_5",
-        status: algorithm45Result.status === "success" ? "SUCCESS" : "PARTIAL",
+        status: "SUCCESS",
         message: "Writing Algorithm 4 & 5 officiating assignments to database",
         envelope: algorithm45Result as unknown as Record<string, unknown>,
         database_payload: {
@@ -994,12 +1020,14 @@ export async function handleEvent(
       season_id: seasonId,
       event_type: event.type,
       stage: state.pipelineState,
+      algorithm: state.currentAlgorithm,
       status: "FAILED",
       message: agent0Error.message,
       error_details: {
         code: agent0Error.code,
         message: agent0Error.message,
         stage: state.lastSuccessfulStage ?? "PRE_ALGORITHM",
+        algorithm: state.currentAlgorithm,
         details: (agent0Error.details as Record<string, unknown>) ?? null,
       },
     });
@@ -1339,10 +1367,29 @@ const CHAMP_UUID = "22222222-2222-2222-2222-222222222222";
 
 function flattenAlgorithm1Fixtures(
   output: Algo1Output,
-  seasonId: string,
-): Algorithm2Input["fixtures"] {
-  type FixtureItem = Algorithm2Input["fixtures"][number];
-  const fixtures: FixtureItem[] = [];
+  seasonId?: string,
+): Array<{
+  league_id: string;
+  home_id: string;
+  away_id: string;
+  leg: 1 | 2;
+  match_sequence: number;
+  matchday_number: number | null;
+  playday: string | null;
+  completed: boolean;
+  historical: boolean;
+}> {
+  const fixtures: Array<{
+    league_id: string;
+    home_id: string;
+    away_id: string;
+    leg: 1 | 2;
+    match_sequence: number;
+    matchday_number: number | null;
+    playday: string | null;
+    completed: boolean;
+    historical: boolean;
+  }> = [];
 
   for (const [leagueId, data] of Object.entries(output.data)) {
     const validLeagueId =
@@ -1358,7 +1405,6 @@ function flattenAlgorithm1Fixtures(
     ) => {
       leg.forEach((fixture) => {
         fixtures.push({
-          fixture_id: crypto.randomUUID(),
           league_id: validLeagueId,
           home_id: fixture.home_id,
           away_id: fixture.away_id,
@@ -1372,8 +1418,8 @@ function flattenAlgorithm1Fixtures(
       });
     };
 
-    processLeg(data.leg_1, 1);
-    processLeg(data.leg_2, 2);
+    if (data.leg_1) processLeg(data.leg_1, 1);
+    if (data.leg_2) processLeg(data.leg_2, 2);
   }
 
   return fixtures;

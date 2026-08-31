@@ -27,26 +27,8 @@ import { createAlgorithmCommand, validateResultEnvelope } from '../shared/algori
 export const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 export const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 
-const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-
 export function toValidUUID(id: string): string {
-  if (!id) return '11111111-2026-4000-8000-000000000001';
-  if (UUID_REGEX.test(id)) return id.toLowerCase();
-  if (id.toLowerCase().includes('season')) return '11111111-2026-4000-8000-000000000001';
-
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = ((hash << 5) - hash) + id.charCodeAt(i);
-    hash |= 0;
-  }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  const base = id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().padEnd(32, 'a').slice(0, 32);
-  const p1 = hex.slice(0, 8);
-  const p2 = base.slice(8, 12);
-  const p3 = '4' + base.slice(13, 16);
-  const p4 = '8' + base.slice(17, 20);
-  const p5 = base.slice(20, 32);
-  return `${p1}-${p2}-${p3}-${p4}-${p5}`.toLowerCase();
+  return id;
 }
 
 function generateDefaultPlaydays(startDateStr: string = '2026-09-05', count: number = 90) {
@@ -291,25 +273,12 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
       }
 
       const baseRows: Array<{
-        id: string;
         competition_id: string;
         league: 'EPL' | 'CHAMPIONSHIP';
         home_team_id: string;
         away_team_id: string;
         leg: number;
         match_sequence: number;
-      }> = [];
-
-      const legacyFixtures: Array<{
-        id: string;
-        competition_id: string;
-        home_team_id: string;
-        away_team_id: string;
-        scheduled_time: string;
-        status: string;
-        score_home: number;
-        score_away: number;
-        matchday: number;
       }> = [];
 
       let seq = 1;
@@ -324,27 +293,13 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
 
         const processLeg = (legFixtures: any[], legNumber: 1 | 2) => {
           legFixtures.forEach((f) => {
-            const fixtureId = toValidUUID(f.fixture_id || crypto.randomUUID());
             baseRows.push({
-              id: fixtureId,
               competition_id: compId,
               league: leagueType,
               home_team_id: f.home_id,
               away_team_id: f.away_id,
               leg: legNumber,
               match_sequence: f.match_sequence || seq++,
-            });
-
-            legacyFixtures.push({
-              id: fixtureId,
-              competition_id: compId,
-              home_team_id: f.home_id,
-              away_team_id: f.away_id,
-              scheduled_time: '2026-09-01T00:00:00.000Z',
-              status: 'UPCOMING',
-              score_home: 0,
-              score_away: 0,
-              matchday: 1,
             });
           });
         };
@@ -369,21 +324,42 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         .delete()
         .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
 
-      // Direct write into immutable base_fixtures table
+      // Direct write into immutable base_fixtures table (database assigns UUIDs)
+      const insertedBaseFixtures: any[] = [];
       for (let i = 0; i < baseRows.length; i += 50) {
         const batch = baseRows.slice(i, i + 50);
-        const { error: insertErr } = await supabase.from('base_fixtures').insert(batch);
+        const { data: insertedData, error: insertErr } = await supabase
+          .from('base_fixtures')
+          .insert(batch)
+          .select();
         if (insertErr) {
           throw new Error(`Database base_fixtures insert failed: ${insertErr.message}`);
         }
+        if (insertedData) {
+          insertedBaseFixtures.push(...insertedData);
+        }
       }
 
-      // Sync into fixtures table
-      for (let i = 0; i < legacyFixtures.length; i += 50) {
-        const batch = legacyFixtures.slice(i, i + 50);
-        const { error: insertFixErr } = await supabase.from('fixtures').insert(batch);
-        if (insertFixErr) {
-          console.warn('Note on legacy fixtures sync:', insertFixErr.message);
+      // Sync into fixtures table using database-assigned IDs
+      if (insertedBaseFixtures.length > 0) {
+        const legacyFixtures = insertedBaseFixtures.map((bf) => ({
+          id: bf.id,
+          competition_id: bf.competition_id,
+          home_team_id: bf.home_team_id,
+          away_team_id: bf.away_team_id,
+          scheduled_time: '2026-09-01T00:00:00.000Z',
+          status: 'UPCOMING',
+          score_home: 0,
+          score_away: 0,
+          matchday: 1,
+        }));
+
+        for (let i = 0; i < legacyFixtures.length; i += 50) {
+          const batch = legacyFixtures.slice(i, i + 50);
+          const { error: insertFixErr } = await supabase.from('fixtures').insert(batch);
+          if (insertFixErr) {
+            console.warn('Note on legacy fixtures sync:', insertFixErr.message);
+          }
         }
       }
     },
@@ -432,7 +408,7 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         const leagueType: 'EPL' | 'CHAMPIONSHIP' = isEPL ? 'EPL' : 'CHAMPIONSHIP';
 
         for (const item of fixturesList as any[]) {
-          const fixId = toValidUUID(item.fixture_id);
+          const fixId = item.fixture_id;
           const mdNum = Number(item.matchday_number);
           const playDate = item.playday;
 
@@ -521,7 +497,7 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
       }> = [];
 
       for (const a of allocations) {
-        const fixId = toValidUUID(a.match_id);
+        const fixId = a.match_id;
         const venueName = resolvePitchName(a.pitch_id);
         const fullTime = `${a.play_date}T${a.start_time}:00.000Z`;
         const period: 'AM' | 'PM' = isEplLeague(a.league_id) ? 'AM' : 'PM';
@@ -543,25 +519,45 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         });
       }
 
-      await Promise.all(
-        scheduleUpdates.map((item) =>
-          supabase
-            .from('matchday_schedules')
-            .update({
-              pitch_id: item.pitch_id,
-              slot_number: item.slot_number,
-              period: item.period,
-              start_time: item.start_time,
-              end_time: item.end_time,
-              status: item.status,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('fixture_id', item.fixture_id)
-            .then(({ error }) => {
-              if (error) throw new Error(`Database matchday_schedules pitch write failed: ${error.message}`);
-            })
-        )
-      );
+      // Clear prior pitch/slot assignments on these fixtures to prevent transient uq_pitch_date_slot conflicts
+      const fixtureIds = scheduleUpdates.map((u) => u.fixture_id);
+      for (let i = 0; i < fixtureIds.length; i += 50) {
+        const batch = fixtureIds.slice(i, i + 50);
+        await supabase
+          .from('matchday_schedules')
+          .update({
+            pitch_id: null,
+            slot_number: null,
+            period: null,
+            start_time: null,
+            end_time: null,
+            updated_at: new Date().toISOString(),
+          })
+          .in('fixture_id', batch);
+      }
+
+      for (let i = 0; i < scheduleUpdates.length; i += 25) {
+        const batch = scheduleUpdates.slice(i, i + 25);
+        await Promise.all(
+          batch.map((item) =>
+            supabase
+              .from('matchday_schedules')
+              .update({
+                pitch_id: item.pitch_id,
+                slot_number: item.slot_number,
+                period: item.period,
+                start_time: item.start_time,
+                end_time: item.end_time,
+                status: item.status,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('fixture_id', item.fixture_id)
+              .then(({ error }) => {
+                if (error) throw new Error(`Database matchday_schedules pitch write failed: ${error.message}`);
+              })
+          )
+        );
+      }
 
       for (let i = 0; i < fixtureUpdates.length; i += 50) {
         const batch = fixtureUpdates.slice(i, i + 50);
@@ -602,7 +598,7 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
       }> = [];
 
       for (const assign of assignments) {
-        const fixId = toValidUUID(assign.match_id);
+        const fixId = assign.match_id;
 
         scheduleUpdates.push({
           fixture_id: fixId,
@@ -619,22 +615,25 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         }
       }
 
-      await Promise.all(
-        scheduleUpdates.map((item) =>
-          supabase
-            .from('matchday_schedules')
-            .update({
-              center_referee_id: item.center_referee_id,
-              linesman_team_a_id: item.linesman_team_a_id,
-              linesman_team_b_id: item.linesman_team_b_id,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('fixture_id', item.fixture_id)
-            .then(({ error }) => {
-              if (error) throw new Error(`Database matchday_schedules officiating write failed: ${error.message}`);
-            })
-        )
-      );
+      for (let i = 0; i < scheduleUpdates.length; i += 25) {
+        const batch = scheduleUpdates.slice(i, i + 25);
+        await Promise.all(
+          batch.map((item) =>
+            supabase
+              .from('matchday_schedules')
+              .update({
+                center_referee_id: item.center_referee_id,
+                linesman_team_a_id: item.linesman_team_a_id,
+                linesman_team_b_id: item.linesman_team_b_id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('fixture_id', item.fixture_id)
+              .then(({ error }) => {
+                if (error) throw new Error(`Database matchday_schedules officiating write failed: ${error.message}`);
+              })
+          )
+        );
+      }
 
       for (let i = 0; i < fixtureUpdates.length; i += 50) {
         const batch = fixtureUpdates.slice(i, i + 50);
@@ -1070,10 +1069,38 @@ export const PresidentActionBridge = {
         };
       }
 
+      // If generatedResult contains fixture data (e.g. from generateFixturesViaAgent0),
+      // persist them to the database via insertBaseFixtures
+      const hasGeneratedFixtures = Object.values(generatedResult.data).some(
+        (d) => (d.leg_1?.length || 0) > 0 || (d.leg_2?.length || 0) > 0
+      );
+
+      if (hasGeneratedFixtures) {
+        const adapters = createAgent0Adapters(seasonId);
+        if (adapters.insertBaseFixtures) {
+          await adapters.insertBaseFixtures({
+            executionId,
+            seasonId,
+            algorithm1Result: {
+              protocol_version: '1.0',
+              execution_id: executionId,
+              season_id: seasonId,
+              algorithm: 'ALGORITHM_1',
+              status: 'success',
+              completed: true,
+              cycle_count: 1,
+              verification: { passed: true, logs: [], errors: [], warnings: [] },
+              database: { ready_for_write: true, operation: 'INSERT', expected_count: 0 },
+              payload: generatedResult,
+            },
+          });
+        }
+      }
+
       // 1. Read authoritative fixtures from Supabase database to verify persistence succeeded
       const { data: fixturesData, error: fetchErr } = await supabase
         .from('base_fixtures')
-        .select('id, competition_id, home_team_id, away_team_id');
+        .select('id, competition_id, home_team_id, away_team_id, league');
 
       let dbRows: any[] = [];
       if (!fetchErr && fixturesData && fixturesData.length > 0) {
@@ -1118,12 +1145,11 @@ export const PresidentActionBridge = {
 
       // 2. Authoritative Database Season Mode Activation: set seasons.is_locked = true
       let seasonModeConfirmed = false;
-      const validSeasonId = toValidUUID(seasonId);
       try {
         const { error: seasonUpdateErr } = await supabase
           .from('seasons')
           .upsert({
-            id: validSeasonId,
+            id: seasonId,
             name: '2026/2027 Official Season',
             status: 'active',
             is_locked: true,
@@ -1133,7 +1159,7 @@ export const PresidentActionBridge = {
           const { data: verifiedSeason, error: verifyErr } = await supabase
             .from('seasons')
             .select('id, is_locked, status')
-            .eq('id', validSeasonId)
+            .eq('id', seasonId)
             .maybeSingle();
 
           if (!verifyErr && verifiedSeason && (verifiedSeason.is_locked === true || (verifiedSeason as any).season_mode === true)) {
