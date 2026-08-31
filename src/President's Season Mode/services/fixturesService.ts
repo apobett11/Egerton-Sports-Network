@@ -113,8 +113,22 @@ export const fixturesService = {
             s.competition_id?.includes('1111');
 
           const compObj = isEpl
-            ? COMPETITIONS.PREMIER_LEAGUE
-            : COMPETITIONS.CHAMPIONSHIP;
+            ? {
+                id: COMPETITIONS.PREMIER_LEAGUE.id,
+                name: COMPETITIONS.PREMIER_LEAGUE.name,
+                slug: 'epl',
+                country: 'Kenya',
+                season: '2025/2026',
+                is_active: true,
+              }
+            : {
+                id: COMPETITIONS.CHAMPIONSHIP.id,
+                name: COMPETITIONS.CHAMPIONSHIP.name,
+                slug: 'championship',
+                country: 'Kenya',
+                season: '2025/2026',
+                is_active: true,
+              };
 
           return {
             id: s.fixture_id || s.id,

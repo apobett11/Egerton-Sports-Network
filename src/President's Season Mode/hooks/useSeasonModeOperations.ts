@@ -88,6 +88,7 @@ export function useSeasonModeOperations() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    try {
       const [refRes, pitchRes, teamRes] = await Promise.all([
         refereesService.fetchReferees(),
         pitchesService.fetchPitches(),

@@ -10,9 +10,9 @@ import type {
   PreviewValidationResult,
 } from '../types';
 import { COMPETITIONS } from '../constants';
-import { generateFixtures as invokeAlgorithm1, type LeagueInput } from '../../../../../algorithms/algorithm1';
-import { createAlgorithmCommand, validateResultEnvelope } from '../../../../../shared/algorithmProtocol';
-import { PresidentActionBridge } from '../../../../../services/presidentAgent0Bridge';
+import { generateFixtures as invokeAlgorithm1, type LeagueInput } from '../../../../algorithms/algorithm1';
+import { createAlgorithmCommand, validateResultEnvelope } from '../../../../shared/algorithmProtocol';
+import { PresidentActionBridge } from '../../../../services/presidentAgent0Bridge';
 
 export const fixturesService = {
   /**
