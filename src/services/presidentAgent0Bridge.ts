@@ -128,8 +128,9 @@ export const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function toValidUUID(id: string): string {
-  if (!id) return crypto.randomUUID();
+  if (!id) return '11111111-2026-4000-8000-000000000001';
   if (UUID_REGEX.test(id)) return id;
+  if (id.toLowerCase().includes('season')) return '11111111-2026-4000-8000-000000000001';
   return crypto.randomUUID();
 }
 
@@ -943,11 +944,12 @@ export const PresidentActionBridge = {
 
       // 2. Authoritative Database Season Mode Activation: set seasons.is_locked = true
       let seasonModeConfirmed = false;
+      const validSeasonId = toValidUUID(seasonId);
       try {
         const { error: seasonUpdateErr } = await supabase
           .from('seasons')
           .upsert({
-            id: seasonId,
+            id: validSeasonId,
             name: '2026/2027 Official Season',
             status: 'active',
             is_locked: true,
@@ -958,7 +960,7 @@ export const PresidentActionBridge = {
           const { data: verifiedSeason, error: verifyErr } = await supabase
             .from('seasons')
             .select('id, is_locked, status')
-            .eq('id', seasonId)
+            .eq('id', validSeasonId)
             .maybeSingle();
 
           if (!verifyErr && verifiedSeason && (verifiedSeason.is_locked === true || (verifiedSeason as any).season_mode === true)) {

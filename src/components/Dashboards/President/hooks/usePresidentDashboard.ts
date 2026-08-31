@@ -212,16 +212,20 @@ export const usePresidentDashboard = () => {
         setPitches(OFFICIAL_PITCHES as PitchItem[]);
       }
 
-      // 8. Authoritative Database Season State Determination (seasons table is single source of truth)
+      // 8. Authoritative Database Season State Determination (checking fixtures table and seasons table)
+      const fixRes = await fixturesService.fetchFixtures();
+      const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
+
       const activeSeason = formattedSeasons.find((s) => s.status === 'active') || formattedSeasons[0];
-      const authoritativeSeasonMode = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.isLocked);
+      const isSeasonLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.isLocked);
+
+      // Season Mode is ON if fixtures exist in database or season is marked locked
+      const authoritativeSeasonMode = hasFixtures || isSeasonLocked;
 
       setIsSeasonMode(authoritativeSeasonMode);
       setIsScheduleLocked(authoritativeSeasonMode);
 
-      // Fetch saved fixtures for display if in season mode
-      const fixRes = await fixturesService.fetchFixtures();
-      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
+      if (hasFixtures) {
         setSavedFixtures(fixRes.fixtures);
       } else {
         setSavedFixtures([]);
@@ -234,23 +238,56 @@ export const usePresidentDashboard = () => {
     }
   }, []);
 
-  // Continuous reactive checking of authoritative seasons database record
+  // Continuous reactive checking of fixtures table and seasons table
   useEffect(() => {
     fetchPresidentData();
 
-    // Subscribe to authoritative changes on seasons table
+    const checkStatus = async () => {
+      try {
+        const [fixRes, seasonsRes] = await Promise.all([
+          supabase.from('fixtures').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+          supabase.from('seasons').select('id, is_locked, status').is('deleted_at', null),
+        ]);
+
+        const hasFixtures = Boolean(fixRes.count && fixRes.count > 0);
+        const activeSeason = seasonsRes.data?.find((s: any) => s.status === 'active') || seasonsRes.data?.[0];
+        const isLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.is_locked);
+
+        const isModeOn = hasFixtures || isLocked;
+        setIsSeasonMode(isModeOn);
+        setIsScheduleLocked(isModeOn);
+
+        if (!hasFixtures) {
+          setSavedFixtures([]);
+        }
+      } catch (_e) {}
+    };
+
+    const interval = setInterval(checkStatus, 2000);
+
+    // Subscribe to authoritative changes on both fixtures and seasons tables
     const channel = supabase
-      .channel('seasons_authoritative_mode_sync')
+      .channel('season_mode_authoritative_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'fixtures' },
+        () => {
+          checkStatus();
+          fetchPresidentData();
+        }
+      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'seasons' },
         () => {
+          checkStatus();
           fetchPresidentData();
         }
       )
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [fetchPresidentData]);

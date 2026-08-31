@@ -251,8 +251,9 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
     }
 
     try {
+      const canonicalSeasonId = '11111111-2026-4000-8000-000000000001';
       const res = await PresidentActionBridge.generateFixturesViaAgent0(
-        'season-2026-official',
+        canonicalSeasonId,
         leaguesInput
       );
 
@@ -277,12 +278,13 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
     setStep('LOCKING_DB');
 
     try {
+      const canonicalSeasonId = '11111111-2026-4000-8000-000000000001';
       // 1. Send Begin Season command to Agent 0 with anchor date for Algorithm 2
-      await PresidentActionBridge.beginSeason('season-2026-official', selectedStartDate);
+      await PresidentActionBridge.beginSeason(canonicalSeasonId, selectedStartDate);
 
       // 2. Send Confirm & Lock command to Agent 0 (writes to database and verifies)
       const outcome = await PresidentActionBridge.confirmAndLockViaAgent0(
-        'season-2026-official',
+        canonicalSeasonId,
         executionId || crypto.randomUUID(),
         agent0GenResult
       );
