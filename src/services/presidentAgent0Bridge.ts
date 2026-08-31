@@ -901,18 +901,27 @@ export const PresidentActionBridge = {
         await this.beginSeason(seasonId, mem.seasonStartDate || '2026-09-01');
       }
 
-      // Read authoritative fixtures from Supabase database
+      // 1. Read authoritative fixtures from Supabase database to verify persistence succeeded
       let dbRows: any[] = [];
-      try {
-        const { data, error: fetchErr } = await supabase
-          .from('fixtures')
-          .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
-          .is('deleted_at', null);
+      const { data: fixturesData, error: fetchErr } = await supabase
+        .from('fixtures')
+        .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
+        .is('deleted_at', null);
 
-        if (!fetchErr && data && data.length > 0) {
-          dbRows = data;
-        }
-      } catch (_fetchErr) {}
+      if (!fetchErr && fixturesData && fixturesData.length > 0) {
+        dbRows = fixturesData;
+      }
+
+      if (dbRows.length === 0 && mem.fixtures.length === 0) {
+        return {
+          success: false,
+          count: 0,
+          eplCount: 0,
+          champCount: 0,
+          reReadVerified: false,
+          error: 'Fixture persistence failed: no fixtures found in database after generation.',
+        };
+      }
 
       let generatedCount = 0;
       let generatedEplCount = 0;
@@ -924,18 +933,41 @@ export const PresidentActionBridge = {
         if (leagueId.includes('2222') || leagueId.toLowerCase().includes('champ')) generatedChampCount += lCount;
       }
 
-      const totalCount = generatedCount > 0 ? generatedCount : (dbRows.length > 0 ? dbRows.length : mem.fixtures.length);
-      const eplCount = generatedCount > 0
-        ? generatedEplCount
-        : (dbRows.length > 0
-          ? dbRows.filter((f) => f.competition_id === EPL_COMP_ID).length
-          : mem.fixtures.filter((f) => f.league_id === EPL_COMP_ID || f.league_id === 'epl').length);
-      const champCount = generatedCount > 0
-        ? generatedChampCount
-        : (dbRows.length > 0
-          ? dbRows.filter((f) => f.competition_id === CHAMP_COMP_ID).length
-          : mem.fixtures.filter((f) => f.league_id === CHAMP_COMP_ID || f.league_id === 'championship').length);
+      const totalCount = dbRows.length > 0 ? dbRows.length : generatedCount;
+      const eplCount = dbRows.length > 0
+        ? dbRows.filter((f) => f.competition_id === EPL_COMP_ID).length
+        : generatedEplCount;
+      const champCount = dbRows.length > 0
+        ? dbRows.filter((f) => f.competition_id === CHAMP_COMP_ID).length
+        : generatedChampCount;
 
+      // 2. Authoritative Database Season Mode Activation: set seasons.is_locked = true
+      let seasonModeConfirmed = false;
+      try {
+        const { error: seasonUpdateErr } = await supabase
+          .from('seasons')
+          .upsert({
+            id: seasonId,
+            name: '2026/2027 Official Season',
+            status: 'active',
+            is_locked: true,
+          });
+
+        if (!seasonUpdateErr) {
+          // Read-back verification from database
+          const { data: verifiedSeason, error: verifyErr } = await supabase
+            .from('seasons')
+            .select('id, is_locked, status')
+            .eq('id', seasonId)
+            .maybeSingle();
+
+          if (!verifyErr && verifiedSeason && (verifiedSeason.is_locked === true || (verifiedSeason as any).season_mode === true)) {
+            seasonModeConfirmed = true;
+          }
+        }
+      } catch (_sErr) {}
+
+      // Fallback verification if season table is active
       const reReadVerified = totalCount > 0;
 
       try {
@@ -950,13 +982,12 @@ export const PresidentActionBridge = {
               epl_count: eplCount,
               championship_count: champCount,
               re_read_verified: reReadVerified,
+              season_mode_confirmed: seasonModeConfirmed,
               timestamp: new Date().toISOString(),
             },
           },
         ]);
-      } catch (_e) {
-        // Audit log attempt handled
-      }
+      } catch (_e) {}
 
       return {
         success: true,

@@ -166,9 +166,10 @@ export const usePresidentDashboard = () => {
       }
 
       // 5. Fetch Seasons
+      let formattedSeasons: SeasonItem[] = [];
       const seasonsRes = await ApiService.getSeasons();
       if (seasonsRes.success && seasonsRes.data) {
-        const formattedSeasons: SeasonItem[] = seasonsRes.data.map((s: any) => ({
+        formattedSeasons = seasonsRes.data.map((s: any) => ({
           id: s.id,
           name: s.name,
           startDate: s.start_date || s.startDate || '2026-09-01',
@@ -211,103 +212,64 @@ export const usePresidentDashboard = () => {
         setPitches(OFFICIAL_PITCHES as PitchItem[]);
       }
 
-      // 8. Fetch Official Saved Season Fixtures & Check Season Mode Lock
+      // 8. Authoritative Database Season State Determination (seasons table is single source of truth)
+      const activeSeason = formattedSeasons.find((s) => s.status === 'active') || formattedSeasons[0];
+      const authoritativeSeasonMode = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.isLocked);
+
+      setIsSeasonMode(authoritativeSeasonMode);
+      setIsScheduleLocked(authoritativeSeasonMode);
+
+      // Fetch saved fixtures for display if in season mode
       const fixRes = await fixturesService.fetchFixtures();
-      const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
-      if (hasFixtures) {
+      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
         setSavedFixtures(fixRes.fixtures);
-        setIsScheduleLocked(true);
-        setIsSeasonMode(true);
-        localStorage.setItem('egerton_season_mode_active', 'true');
       } else {
         setSavedFixtures([]);
-        setIsScheduleLocked(false);
-        setIsSeasonMode(false);
-        localStorage.removeItem('egerton_season_mode_active');
       }
     } catch (err: any) {
       console.warn('Live database sync info:', err.message);
-      setSavedFixtures([]);
-      setIsScheduleLocked(false);
       setIsSeasonMode(false);
-      localStorage.removeItem('egerton_season_mode_active');
+      setIsScheduleLocked(false);
+      setSavedFixtures([]);
     }
   }, []);
 
-  // Continuous reactive checking of the database fixtures table for Season Mode switch
+  // Continuous reactive checking of authoritative seasons database record
   useEffect(() => {
     fetchPresidentData();
 
-    const checkSeasonStatus = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('fixtures')
-          .select('id', { count: 'exact', head: true })
-          .is('deleted_at', null);
-
-        if (!error) {
-          const hasFixtures = Boolean(count && count > 0);
-          setIsSeasonMode(hasFixtures);
-          setIsScheduleLocked(hasFixtures);
-          if (hasFixtures) {
-            localStorage.setItem('egerton_season_mode_active', 'true');
-          } else {
-            localStorage.removeItem('egerton_season_mode_active');
-            setSavedFixtures([]);
-          }
-        }
-      } catch (_e) {}
-    };
-
-    // Check every 2 seconds to ensure prompt reaction if fixtures are generated or cleared
-    const interval = setInterval(checkSeasonStatus, 2000);
-
-    // Also listen to Supabase Realtime changes on fixtures table
+    // Subscribe to authoritative changes on seasons table
     const channel = supabase
-      .channel('fixtures_season_switch_sync')
+      .channel('seasons_authoritative_mode_sync')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'fixtures' },
+        { event: '*', schema: 'public', table: 'seasons' },
         () => {
-          checkSeasonStatus();
+          fetchPresidentData();
         }
       )
       .subscribe();
 
     return () => {
-      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [fetchPresidentData]);
 
-  const reloadSavedFixtures = async () => {
-    const fixRes = await fixturesService.fetchFixtures();
-    const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
-    if (hasFixtures) {
-      setSavedFixtures(fixRes.fixtures);
-      setIsScheduleLocked(true);
-      setIsSeasonMode(true);
-      localStorage.setItem('egerton_season_mode_active', 'true');
-    } else {
-      setSavedFixtures([]);
-      setIsScheduleLocked(false);
-      setIsSeasonMode(false);
-      localStorage.removeItem('egerton_season_mode_active');
-    }
-  };
-
   // Called when Season Launch Wizard confirms & locks fixtures to DB
   const handleFixturesConfirmed = useCallback(async () => {
-    await reloadSavedFixtures();
-  }, []);
+    await fetchPresidentData();
+  }, [fetchPresidentData]);
 
   // Safe manual reset helper for administrative overhaul / test suite
-  const handleResetToPreSeason = useCallback(() => {
-    setIsSeasonMode(false);
-    setIsScheduleLocked(false);
-    setSavedFixtures([]);
-    localStorage.removeItem('egerton_season_mode_active');
-  }, []);
+  const handleResetToPreSeason = useCallback(async () => {
+    try {
+      await supabase
+        .from('seasons')
+        .update({ is_locked: false })
+        .eq('status', 'active');
+    } catch {}
+    await fetchPresidentData();
+  }, [fetchPresidentData]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -580,11 +542,15 @@ export const usePresidentDashboard = () => {
   };
 
   const handleLockSchedule = async () => {
-    setIsScheduleLocked(true);
-    setIsSeasonMode(true);
-    localStorage.setItem('egerton_season_mode_active', 'true');
+    try {
+      await supabase
+        .from('seasons')
+        .update({ is_locked: true })
+        .eq('status', 'active');
+    } catch {}
     setShowLockWarningModal(false);
-    await ApiService.logAuditAction('LOCK_SEASON_SCHEDULE', 'seasons', 'season-2027', { locked_by: 'president' });
+    await ApiService.logAuditAction('LOCK_SEASON_SCHEDULE', 'seasons', 'season-2026-official', { locked_by: 'president' });
+    await fetchPresidentData();
     showToast('🔒 Season Fixtures Confirmed & Locked! Switch portal to active season view.');
   };
 
@@ -705,7 +671,7 @@ export const usePresidentDashboard = () => {
     announcements,
     pitches,
     savedFixtures,
-    reloadSavedFixtures,
+    reloadSavedFixtures: fetchPresidentData,
     refreshAllData: fetchPresidentData,
     handleCreateSeason,
     handleToggleSeasonStatus,
