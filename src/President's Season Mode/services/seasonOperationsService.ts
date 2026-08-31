@@ -66,14 +66,16 @@ export const seasonOperationsService = {
         return { success: false, updatedFixtures: fixtures, error: 'No active or upcoming matches found for this matchday.' };
       }
 
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-        .in('id', affectedIds);
-
-      if (error) {
-        console.warn('DB update failed, applying in-memory operational state update:', error.message);
-      }
+      await Promise.all([
+        supabase
+          .from('fixtures')
+          .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+          .in('id', affectedIds),
+        supabase
+          .from('matchday_schedules')
+          .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+          .in('fixture_id', affectedIds),
+      ]);
 
       const updatedFixtures = fixtures.map((f) => {
         if (f.matchday === matchdayNumber && f.status !== 'FT') {
@@ -178,14 +180,16 @@ export const seasonOperationsService = {
       const newRef = referees.find((r) => r.id === newRefereeId);
       if (!newRef) return { success: false, updatedFixtures: fixtures, error: 'Selected referee not found' };
 
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ referee_id: newRefereeId, updated_at: new Date().toISOString() })
-        .eq('id', matchId);
-
-      if (error) {
-        console.warn('DB referee update warning:', error.message);
-      }
+      await Promise.all([
+        supabase
+          .from('fixtures')
+          .update({ referee_id: newRefereeId, updated_at: new Date().toISOString() })
+          .eq('id', matchId),
+        supabase
+          .from('matchday_schedules')
+          .update({ center_referee_id: newRefereeId, updated_at: new Date().toISOString() })
+          .eq('fixture_id', matchId),
+      ]);
 
       const updatedFixtures = fixtures.map((f) => {
         if (f.id === matchId) {
@@ -328,12 +332,19 @@ export const seasonOperationsService = {
         };
       }
 
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ scheduled_time: newScheduledTime, venue: venueToUse, updated_at: new Date().toISOString() })
-        .eq('id', matchId);
+      const [shiftDate, shiftTimeWithZ] = newScheduledTime.split('T');
+      const shiftTime = shiftTimeWithZ ? shiftTimeWithZ.slice(0, 5) : '09:00';
 
-      if (error) console.warn('Shift match DB warning:', error.message);
+      await Promise.all([
+        supabase
+          .from('fixtures')
+          .update({ scheduled_time: newScheduledTime, venue: venueToUse, updated_at: new Date().toISOString() })
+          .eq('id', matchId),
+        supabase
+          .from('matchday_schedules')
+          .update({ play_date: shiftDate, start_time: shiftTime, updated_at: new Date().toISOString() })
+          .eq('fixture_id', matchId),
+      ]);
 
       const updatedFixtures = fixtures.map((f) => (f.id === matchId ? { ...f, scheduled_time: newScheduledTime, venue: venueToUse } : f));
 
@@ -361,12 +372,16 @@ export const seasonOperationsService = {
     fixtures: OperationalMatch[]
   ): Promise<{ success: boolean; updatedFixtures: OperationalMatch[]; error: string | null }> {
     try {
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-        .eq('id', matchId);
-
-      if (error) console.warn('Cancel match DB warning:', error.message);
+      await Promise.all([
+        supabase
+          .from('fixtures')
+          .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+          .eq('id', matchId),
+        supabase
+          .from('matchday_schedules')
+          .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+          .eq('fixture_id', matchId),
+      ]);
 
       const updatedFixtures = fixtures.map((f) => (f.id === matchId ? { ...f, status: 'CANCELLED' as const, cancellation_reason: reason } : f));
 

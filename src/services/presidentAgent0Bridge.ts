@@ -480,12 +480,18 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
       // Sync into fixtures table
       for (let i = 0; i < fixtureUpdates.length; i += 50) {
         const batch = fixtureUpdates.slice(i, i + 50);
-        const { error: fixErr } = await supabase
-          .from('fixtures')
-          .upsert(batch, { onConflict: 'id' });
-        if (fixErr) {
-          console.warn('Note on fixtures update in Alg 2:', fixErr.message);
-        }
+        await Promise.all(
+          batch.map((f) =>
+            supabase
+              .from('fixtures')
+              .update({
+                matchday: f.matchday,
+                scheduled_time: f.scheduled_time,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', f.id)
+          )
+        );
       }
     },
 
@@ -559,12 +565,18 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
 
       for (let i = 0; i < fixtureUpdates.length; i += 50) {
         const batch = fixtureUpdates.slice(i, i + 50);
-        const { error: fixErr } = await supabase
-          .from('fixtures')
-          .upsert(batch, { onConflict: 'id' });
-        if (fixErr) {
-          console.warn('Note on fixtures pitch update:', fixErr.message);
-        }
+        await Promise.all(
+          batch.map((f) =>
+            supabase
+              .from('fixtures')
+              .update({
+                venue: f.venue,
+                scheduled_time: f.scheduled_time,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', f.id)
+          )
+        );
       }
     },
 
@@ -626,12 +638,17 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
 
       for (let i = 0; i < fixtureUpdates.length; i += 50) {
         const batch = fixtureUpdates.slice(i, i + 50);
-        const { error: fixErr } = await supabase
-          .from('fixtures')
-          .upsert(batch, { onConflict: 'id' });
-        if (fixErr) {
-          console.warn('Note on fixtures referee update:', fixErr.message);
-        }
+        await Promise.all(
+          batch.map((f) =>
+            supabase
+              .from('fixtures')
+              .update({
+                referee_id: f.referee_id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', f.id)
+          )
+        );
       }
     },
 

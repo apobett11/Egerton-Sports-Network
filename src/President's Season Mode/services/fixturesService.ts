@@ -4,21 +4,156 @@ import type {
   SeasonReferee,
   SeasonPitch,
   SeasonFixture,
+  OperationalMatch,
   GeneratedCompetitionFixtures,
   GeneratedLegFixtures,
   GenerationServiceResult,
   PreviewValidationResult,
 } from '../types/seasonMode';
-import { COMPETITIONS } from '../constants/seasonConstants';
+import { COMPETITIONS, OFFICIAL_PITCHES } from '../constants/seasonConstants';
+
+function resolvePitchName(pitchId?: string | null): string {
+  if (!pitchId) return 'Pavilion Main Pitch';
+  const matched = OFFICIAL_PITCHES.find(
+    (p) => p.id === pitchId || pitchId.startsWith(p.id.slice(0, 3))
+  );
+  if (matched) return matched.name;
+  if (pitchId.includes('91') || pitchId.includes('1')) return 'Pitch A — Main Stadium Pitch';
+  if (pitchId.includes('92') || pitchId.includes('2')) return 'Pitch B — Pavilion Grounds';
+  if (pitchId.includes('93') || pitchId.includes('3')) return 'Pitch C — Tatton Complex Ground';
+  return 'Pavilion Main Pitch';
+}
 
 export const fixturesService = {
   /**
-   * Fetches official saved fixtures from database table `public.fixtures`.
-   * Expands home_team, away_team, and competition relations.
+   * Fetches official saved fixtures from database tables in a single consolidated query.
+   * Primary: public.matchday_schedules + public.base_fixtures (authoritative Agent 0 tables)
+   * Fallback: public.fixtures (legacy / fallback mode)
    */
-  async fetchFixtures(): Promise<{ fixtures: SeasonFixture[]; error: string | null }> {
+  async fetchFixtures(
+    cachedTeams?: SeasonTeam[],
+    cachedReferees?: SeasonReferee[],
+    cachedPitches?: SeasonPitch[]
+  ): Promise<{ fixtures: OperationalMatch[]; error: string | null }> {
     try {
-      const { data, error } = await supabase
+      // 1. Consolidated parallel fetch of schedules, base pairings, and metadata
+      const [schedulesRes, baseRes, teamsRes, refereesRes, pitchesRes] = await Promise.all([
+        supabase
+          .from('matchday_schedules')
+          .select('*')
+          .order('matchday_number', { ascending: true })
+          .order('start_time', { ascending: true }),
+        supabase
+          .from('base_fixtures')
+          .select('*')
+          .order('match_sequence', { ascending: true }),
+        cachedTeams && cachedTeams.length > 0
+          ? Promise.resolve({ data: cachedTeams, error: null })
+          : supabase
+              .from('teams')
+              .select('id, name, short_name, logo_url, color_code, competition_id')
+              .neq('status', 'rejected')
+              .is('deleted_at', null),
+        cachedReferees && cachedReferees.length > 0
+          ? Promise.resolve({ data: cachedReferees, error: null })
+          : supabase
+              .from('referees')
+              .select('id, name, email, phone, status, badge_level')
+              .is('deleted_at', null),
+        cachedPitches && cachedPitches.length > 0
+          ? Promise.resolve({ data: cachedPitches, error: null })
+          : supabase
+              .from('pitches')
+              .select('id, name, short_code, location, capacity, surface_type, has_lighting, status')
+              .order('name'),
+      ]);
+
+      const schedules = schedulesRes.data || [];
+      const baseFixtures = baseRes.data || [];
+      const teamsList = (teamsRes.data || []) as SeasonTeam[];
+      const refereesList = (refereesRes.data || []) as SeasonReferee[];
+      const pitchesList = (pitchesRes.data && pitchesRes.data.length > 0 ? pitchesRes.data : OFFICIAL_PITCHES) as SeasonPitch[];
+
+      // 2. Fast Map Lookups for O(1) correlation
+      const teamsMap = new Map<string, SeasonTeam>();
+      teamsList.forEach((t) => teamsMap.set(t.id, t));
+
+      const refereesMap = new Map<string, SeasonReferee>();
+      refereesList.forEach((r) => refereesMap.set(r.id, r));
+
+      const pitchesMap = new Map<string, SeasonPitch>();
+      pitchesList.forEach((p) => pitchesMap.set(p.id, p));
+
+      const baseMap = new Map<string, any>();
+      baseFixtures.forEach((bf: any) => baseMap.set(bf.id, bf));
+
+      // 3. Primary Path: Matchday Schedules Table (Agent 0 Authoritative Schedules)
+      if (schedules.length > 0) {
+        const formattedMatches: OperationalMatch[] = schedules.map((s: any) => {
+          const bf = baseMap.get(s.fixture_id);
+          const homeTeamId = bf?.home_team_id || '';
+          const awayTeamId = bf?.away_team_id || '';
+
+          const homeTeam = teamsMap.get(homeTeamId) || null;
+          const awayTeam = teamsMap.get(awayTeamId) || null;
+          const referee = s.center_referee_id ? refereesMap.get(s.center_referee_id) || null : null;
+          const pitch = s.pitch_id ? pitchesMap.get(s.pitch_id) || null : null;
+
+          const linesman1Team = s.linesman_team_a_id ? teamsMap.get(s.linesman_team_a_id) : null;
+          const linesman2Team = s.linesman_team_b_id ? teamsMap.get(s.linesman_team_b_id) : null;
+
+          const venueName = pitch?.name || resolvePitchName(s.pitch_id);
+
+          const timeStr = s.start_time
+            ? s.start_time.length === 5 ? `${s.start_time}:00` : s.start_time
+            : '09:00:00';
+          const scheduledTime = s.play_date
+            ? `${s.play_date}T${timeStr}.000Z`
+            : new Date().toISOString();
+
+          const isEpl =
+            s.league === 'EPL' ||
+            s.competition_id === COMPETITIONS.PREMIER_LEAGUE.id ||
+            s.competition_id?.includes('1111');
+
+          const compObj = isEpl
+            ? COMPETITIONS.PREMIER_LEAGUE
+            : COMPETITIONS.CHAMPIONSHIP;
+
+          return {
+            id: s.fixture_id || s.id,
+            competition_id: isEpl ? COMPETITIONS.PREMIER_LEAGUE.id : COMPETITIONS.CHAMPIONSHIP.id,
+            home_team_id: homeTeamId,
+            away_team_id: awayTeamId,
+            scheduled_time: scheduledTime,
+            status: (s.status || 'UPCOMING') as any,
+            score_home: 0,
+            score_away: 0,
+            venue: venueName,
+            referee_id: s.center_referee_id || null,
+            matchday: s.matchday_number || 1,
+            created_at: s.created_at || new Date().toISOString(),
+            updated_at: s.updated_at || new Date().toISOString(),
+            home_team: homeTeam,
+            away_team: awayTeam,
+            referee,
+            competition: compObj,
+            linesmen: {
+              linesman_team1_id: s.linesman_team_a_id || null,
+              linesman_team1_name: linesman1Team?.name || (homeTeam?.name ? `${homeTeam.name} Linesman` : null),
+              linesman_team1_status: s.linesman_team_a_id ? 'Assigned' : 'Pending',
+              linesman_team2_id: s.linesman_team_b_id || null,
+              linesman_team2_name: linesman2Team?.name || (awayTeam?.name ? `${awayTeam.name} Linesman` : null),
+              linesman_team2_status: s.linesman_team_b_id ? 'Assigned' : 'Pending',
+            },
+          };
+        });
+
+        return { fixtures: formattedMatches, error: null };
+      }
+
+      // 4. Fallback Path: Legacy `fixtures` table if matchday_schedules is not yet populated
+      const { data: legacyData, error: legacyErr } = await supabase
         .from('fixtures')
         .select(`
           id,
@@ -49,29 +184,37 @@ export const fixturesService = {
         .order('matchday', { ascending: true })
         .order('scheduled_time', { ascending: true });
 
-      if (error) {
-        // Fallback without explicit FK names if PostgREST alias issues occur
-        const { data: fallbackData, error: fallbackError } = await supabase
+      if (legacyErr) {
+        const { data: simpleData, error: simpleErr } = await supabase
           .from('fixtures')
           .select('*')
           .is('deleted_at', null)
           .order('matchday', { ascending: true });
 
-        if (fallbackError) {
-          return { fixtures: [], error: fallbackError.message };
+        if (simpleErr) {
+          return { fixtures: [], error: simpleErr.message };
         }
 
-        return { fixtures: (fallbackData || []) as SeasonFixture[], error: null };
+        const fallbackFixtures: OperationalMatch[] = (simpleData || []).map((f: any) => ({
+          ...f,
+          home_team: teamsMap.get(f.home_team_id) || null,
+          away_team: teamsMap.get(f.away_team_id) || null,
+          referee: f.referee_id ? refereesMap.get(f.referee_id) || null : null,
+          venue: f.venue || resolvePitchName(null),
+        }));
+
+        return { fixtures: fallbackFixtures, error: null };
       }
 
-      const formattedFixtures: SeasonFixture[] = (data || []).map((f: any) => ({
+      const formattedLegacy: OperationalMatch[] = (legacyData || []).map((f: any) => ({
         ...f,
-        home_team: Array.isArray(f.home_team) ? f.home_team[0] || null : f.home_team || null,
-        away_team: Array.isArray(f.away_team) ? f.away_team[0] || null : f.away_team || null,
+        home_team: Array.isArray(f.home_team) ? f.home_team[0] || null : f.home_team || teamsMap.get(f.home_team_id) || null,
+        away_team: Array.isArray(f.away_team) ? f.away_team[0] || null : f.away_team || teamsMap.get(f.away_team_id) || null,
         competition: Array.isArray(f.competition) ? f.competition[0] || null : f.competition || null,
+        referee: f.referee_id ? refereesMap.get(f.referee_id) || null : null,
       }));
 
-      return { fixtures: formattedFixtures, error: null };
+      return { fixtures: formattedLegacy, error: null };
     } catch (err: any) {
       return { fixtures: [], error: err.message || 'Failed to fetch fixtures' };
     }

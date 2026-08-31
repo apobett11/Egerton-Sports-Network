@@ -88,9 +88,7 @@ export function useSeasonModeOperations() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    try {
-      const [fixRes, refRes, pitchRes, teamRes] = await Promise.all([
-        fixturesService.fetchFixtures(),
+      const [refRes, pitchRes, teamRes] = await Promise.all([
         refereesService.fetchReferees(),
         pitchesService.fetchPitches(),
         teamsService.fetchTeams(),
@@ -99,6 +97,8 @@ export function useSeasonModeOperations() {
       const finalTeams = teamRes.teams || [];
       const finalRefs = refRes.referees || [];
       const finalPitches = pitchRes.pitches && pitchRes.pitches.length > 0 ? pitchRes.pitches : OFFICIAL_PITCHES;
+
+      const fixRes = await fixturesService.fetchFixtures(finalTeams, finalRefs, finalPitches as any);
       const finalFixtures = (fixRes.fixtures || []) as OperationalMatch[];
 
       setTeams(finalTeams);
