@@ -14,9 +14,10 @@ import { PresidentSeasonModeApp } from "../../../President's Season Mode/pages/P
 
 export interface PresidentDashboardProps {
   onLogout?: () => void;
+  onSeasonModeOn?: () => void;
 }
 
-export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout }) => {
+export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout, onSeasonModeOn }) => {
   const {
     isDark,
     toggleTheme,
@@ -96,20 +97,6 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
   const premierLeagueTeams = teams.filter((t) => t.league === 'premier' || !t.league);
   const championshipTeams = teams.filter((t) => t.league === 'championship');
 
-  // =========================================================================
-  // PROTECTED SEASON MODE RENDERER
-  // When fixtures have been locked and confirmed into the database via Agent 0,
-  // the President Dashboard strictly renders Season Mode.
-  // =========================================================================
-  if (isSeasonMode) {
-    return <PresidentSeasonModeApp onLogout={onLogout} />;
-  }
-
-  // =========================================================================
-  // PRE-SEASON MODE RENDERER
-  // Default operational state before official double round-robin fixtures
-  // are mathematically computed, verified, and locked to the database.
-  // =========================================================================
   return (
     <div className={`min-h-screen font-sans relative ${isDark ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-800'} transition-colors duration-300 select-none pb-24`}>
       <div className="stadium-bg-overlay fixed inset-0 pointer-events-none z-0" />
@@ -438,7 +425,10 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         pitches={pitches}
         showToast={showToast}
         onSuccessSave={reloadSavedFixtures}
-        onFixturesConfirmed={handleFixturesConfirmed}
+        onFixturesConfirmed={() => {
+          handleFixturesConfirmed();
+          onSeasonModeOn?.();
+        }}
       />
     </div>
   );

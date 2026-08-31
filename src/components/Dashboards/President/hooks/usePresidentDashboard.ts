@@ -212,118 +212,31 @@ export const usePresidentDashboard = () => {
         setPitches(OFFICIAL_PITCHES as PitchItem[]);
       }
 
-      // 8. Authoritative Database Season State Determination (checking fixtures table and seasons table)
+      // 8. Fetch Saved Fixtures if present
       const fixRes = await fixturesService.fetchFixtures();
-      const hasFixtures = Boolean(fixRes.fixtures && fixRes.fixtures.length > 0);
-
-      const activeSeason = formattedSeasons.find((s) => s.status === 'active') || formattedSeasons[0];
-      const isSeasonLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.isLocked);
-
-      // Season Mode is ON if fixtures exist in database or season is marked locked
-      const authoritativeSeasonMode = hasFixtures || isSeasonLocked;
-
-      setIsSeasonMode(authoritativeSeasonMode);
-      setIsScheduleLocked(authoritativeSeasonMode);
-
-      if (hasFixtures) {
+      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
         setSavedFixtures(fixRes.fixtures);
       } else {
         setSavedFixtures([]);
       }
     } catch (err: any) {
       console.warn('Live database sync info:', err.message);
-      setIsSeasonMode(false);
-      setIsScheduleLocked(false);
       setSavedFixtures([]);
     }
   }, []);
 
-  /**
-   * Check Fixtures Function for the Switch
-   * Has full permissions to query the fixtures table and seasons table,
-   * reactively update isSeasonMode, and switch between pre-season and season mode.
-   */
-  const checkFixtures = useCallback(async (): Promise<boolean> => {
-    try {
-      const [fixRes, seasonsRes] = await Promise.all([
-        supabase
-          .from('fixtures')
-          .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
-          .is('deleted_at', null),
-        supabase.from('seasons').select('id, is_locked, status').is('deleted_at', null),
-      ]);
-
-      const hasFixtures = Boolean(!fixRes.error && fixRes.data && fixRes.data.length > 0);
-      const activeSeason = seasonsRes.data?.find((s: any) => s.status === 'active') || seasonsRes.data?.[0];
-      const isLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.is_locked);
-
-      const isModeOn = hasFixtures || isLocked;
-      setIsSeasonMode(isModeOn);
-      setIsScheduleLocked(isModeOn);
-
-      if (hasFixtures && fixRes.data) {
-        setSavedFixtures(fixRes.data as any);
-      } else if (!hasFixtures && !isLocked) {
-        setSavedFixtures([]);
-      }
-
-      return isModeOn;
-    } catch (err) {
-      console.warn('Check fixtures query error:', err);
-      return isSeasonMode;
-    }
-  }, [isSeasonMode]);
-
-  // Continuous reactive checking of fixtures table and seasons table
+  // Fetch pre-season operational data on initial mount
   useEffect(() => {
     fetchPresidentData();
-    checkFixtures();
-
-    const interval = setInterval(checkFixtures, 2000);
-
-    // Subscribe to authoritative changes on both fixtures and seasons tables
-    const channel = supabase
-      .channel('season_mode_authoritative_sync')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'fixtures' },
-        () => {
-          checkFixtures();
-          fetchPresidentData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'seasons' },
-        () => {
-          checkFixtures();
-          fetchPresidentData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [fetchPresidentData, checkFixtures]);
+  }, [fetchPresidentData]);
 
   // Called when Season Launch Wizard confirms & locks fixtures to DB
   const handleFixturesConfirmed = useCallback(async () => {
-    setIsSeasonMode(true);
-    setIsScheduleLocked(true);
-    await checkFixtures();
     await fetchPresidentData();
-  }, [checkFixtures, fetchPresidentData]);
+  }, [fetchPresidentData]);
 
   // Safe manual reset helper for administrative overhaul / test suite
   const handleResetToPreSeason = useCallback(async () => {
-    try {
-      await supabase
-        .from('seasons')
-        .update({ is_locked: false })
-        .eq('status', 'active');
-    } catch {}
     await fetchPresidentData();
   }, [fetchPresidentData]);
 
@@ -646,7 +559,6 @@ export const usePresidentDashboard = () => {
     setActiveView,
     isSeasonMode,
     setIsSeasonMode,
-    checkFixtures,
     handleFixturesConfirmed,
     handleResetToPreSeason,
     toastMessage,

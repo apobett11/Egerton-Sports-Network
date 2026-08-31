@@ -22,6 +22,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import { DeviceService } from './services/DeviceService';
 import { OnboardingScreen } from './components/OnboardingScreen';
+import { supabase } from './lib/supabase';
 import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
@@ -59,6 +60,34 @@ export const AppContent: React.FC = () => {
 
   const { role, user } = useAuth();
   const isAuthenticated = Boolean(user && role !== 'guest');
+
+  // Season Mode Switch State: Determined strictly on login/mount from database fixtures table
+  const [isSeasonMode, setIsSeasonMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkSeasonModeFromDB = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('fixtures')
+          .select('id', { count: 'exact', head: true })
+          .is('deleted_at', null);
+
+        if (!error && isMounted) {
+          const hasFixtures = Boolean(count && count > 0);
+          setIsSeasonMode(hasFixtures);
+        }
+      } catch (err) {
+        console.warn('Season mode DB check on login:', err);
+      }
+    };
+
+    checkSeasonModeFromDB();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, role]);
 
   // Device Identity & Fan Onboarding State
   const { deviceId, isInitializing: isDeviceInitializing, cachedCompleted, saveLocalPreference } = useDeviceIdentity();
@@ -360,7 +389,14 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <PresidentDashboard onLogout={() => handleNavigateHash('/home')} />
+          {isSeasonMode ? (
+            <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
+          ) : (
+            <PresidentDashboard
+              onLogout={() => handleNavigateHash('/home')}
+              onSeasonModeOn={() => setIsSeasonMode(true)}
+            />
+          )}
         </Suspense>
       </ProtectedRoute>
     );
