@@ -61,8 +61,15 @@ export const AppContent: React.FC = () => {
   const { role, user } = useAuth();
   const isAuthenticated = Boolean(user && role !== 'guest');
 
-  // Season Mode Switch State: Determined strictly from database fixtures table
-  const [isSeasonMode, setIsSeasonMode] = useState<boolean>(false);
+  // Season Mode Switch State: Determined strictly from database fixtures table on each reload/mount
+  const [isSeasonMode, setIsSeasonMode] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('esn_season_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isCheckingSeasonMode, setIsCheckingSeasonMode] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -71,14 +78,22 @@ export const AppContent: React.FC = () => {
         const { data, count, error } = await supabase
           .from('fixtures')
           .select('id', { count: 'exact' })
+          .is('deleted_at', null)
           .limit(1);
 
         if (!error && isMounted) {
           const hasFixtures = Boolean((count !== null && count !== undefined && count > 0) || (data && data.length > 0));
           setIsSeasonMode(hasFixtures);
+          try {
+            sessionStorage.setItem('esn_season_mode', hasFixtures ? 'true' : 'false');
+          } catch {}
         }
       } catch (err) {
-        console.warn('Season mode DB check on login:', err);
+        console.warn('Season mode DB check on load/reload:', err);
+      } finally {
+        if (isMounted) {
+          setIsCheckingSeasonMode(false);
+        }
       }
     };
 
@@ -88,12 +103,21 @@ export const AppContent: React.FC = () => {
     const channel = supabase
       .channel('app_fixtures_season_sync')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fixtures' }, () => {
-        if (isMounted) setIsSeasonMode(true);
+        if (isMounted) {
+          setIsSeasonMode(true);
+          try {
+            sessionStorage.setItem('esn_season_mode', 'true');
+          } catch {}
+        }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'fixtures' }, async () => {
         const { count } = await supabase.from('fixtures').select('id', { count: 'exact', head: true });
         if (isMounted) {
-          setIsSeasonMode(Boolean(count && count > 0));
+          const active = Boolean(count && count > 0);
+          setIsSeasonMode(active);
+          try {
+            sessionStorage.setItem('esn_season_mode', active ? 'true' : 'false');
+          } catch {}
         }
       })
       .subscribe();
@@ -404,12 +428,19 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          {isSeasonMode ? (
+          {isCheckingSeasonMode ? (
+            <DashboardLoader />
+          ) : isSeasonMode ? (
             <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
           ) : (
             <PresidentDashboard
               onLogout={() => handleNavigateHash('/home')}
-              onSeasonModeOn={() => setIsSeasonMode(true)}
+              onSeasonModeOn={() => {
+                setIsSeasonMode(true);
+                try {
+                  sessionStorage.setItem('esn_season_mode', 'true');
+                } catch {}
+              }}
             />
           )}
         </Suspense>
