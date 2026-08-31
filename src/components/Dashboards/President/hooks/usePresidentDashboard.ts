@@ -238,32 +238,46 @@ export const usePresidentDashboard = () => {
     }
   }, []);
 
+  /**
+   * Check Fixtures Function for the Switch
+   * Has full permissions to query the fixtures table and seasons table,
+   * reactively update isSeasonMode, and switch between pre-season and season mode.
+   */
+  const checkFixtures = useCallback(async (): Promise<boolean> => {
+    try {
+      const [fixRes, seasonsRes] = await Promise.all([
+        supabase.from('fixtures').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase.from('seasons').select('id, is_locked, status').is('deleted_at', null),
+      ]);
+
+      const hasFixtures = Boolean(!fixRes.error && fixRes.count && fixRes.count > 0);
+      const activeSeason = seasonsRes.data?.find((s: any) => s.status === 'active') || seasonsRes.data?.[0];
+      const isLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.is_locked);
+
+      const isModeOn = hasFixtures || isLocked;
+      setIsSeasonMode(isModeOn);
+      setIsScheduleLocked(isModeOn);
+
+      if (hasFixtures) {
+        const fullFix = await fixturesService.fetchFixtures();
+        setSavedFixtures(fullFix.fixtures || []);
+      } else {
+        setSavedFixtures([]);
+      }
+
+      return isModeOn;
+    } catch (err) {
+      console.warn('Check fixtures query error:', err);
+      return isSeasonMode;
+    }
+  }, [isSeasonMode]);
+
   // Continuous reactive checking of fixtures table and seasons table
   useEffect(() => {
     fetchPresidentData();
+    checkFixtures();
 
-    const checkStatus = async () => {
-      try {
-        const [fixRes, seasonsRes] = await Promise.all([
-          supabase.from('fixtures').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-          supabase.from('seasons').select('id, is_locked, status').is('deleted_at', null),
-        ]);
-
-        const hasFixtures = Boolean(fixRes.count && fixRes.count > 0);
-        const activeSeason = seasonsRes.data?.find((s: any) => s.status === 'active') || seasonsRes.data?.[0];
-        const isLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.is_locked);
-
-        const isModeOn = hasFixtures || isLocked;
-        setIsSeasonMode(isModeOn);
-        setIsScheduleLocked(isModeOn);
-
-        if (!hasFixtures) {
-          setSavedFixtures([]);
-        }
-      } catch (_e) {}
-    };
-
-    const interval = setInterval(checkStatus, 2000);
+    const interval = setInterval(checkFixtures, 2000);
 
     // Subscribe to authoritative changes on both fixtures and seasons tables
     const channel = supabase
@@ -272,7 +286,7 @@ export const usePresidentDashboard = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fixtures' },
         () => {
-          checkStatus();
+          checkFixtures();
           fetchPresidentData();
         }
       )
@@ -280,7 +294,7 @@ export const usePresidentDashboard = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'seasons' },
         () => {
-          checkStatus();
+          checkFixtures();
           fetchPresidentData();
         }
       )
@@ -290,7 +304,7 @@ export const usePresidentDashboard = () => {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [fetchPresidentData]);
+  }, [fetchPresidentData, checkFixtures]);
 
   // Called when Season Launch Wizard confirms & locks fixtures to DB
   const handleFixturesConfirmed = useCallback(async () => {
@@ -627,6 +641,7 @@ export const usePresidentDashboard = () => {
     setActiveView,
     isSeasonMode,
     setIsSeasonMode,
+    checkFixtures,
     handleFixturesConfirmed,
     handleResetToPreSeason,
     toastMessage,
