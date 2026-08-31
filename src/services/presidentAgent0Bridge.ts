@@ -129,9 +129,22 @@ const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 
 export function toValidUUID(id: string): string {
   if (!id) return '11111111-2026-4000-8000-000000000001';
-  if (UUID_REGEX.test(id)) return id;
+  if (UUID_REGEX.test(id)) return id.toLowerCase();
   if (id.toLowerCase().includes('season')) return '11111111-2026-4000-8000-000000000001';
-  return crypto.randomUUID();
+
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash) + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, '0');
+  const base = id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().padEnd(32, 'a').slice(0, 32);
+  const p1 = hex.slice(0, 8);
+  const p2 = base.slice(8, 12);
+  const p3 = '4' + base.slice(13, 16);
+  const p4 = '8' + base.slice(17, 20);
+  const p5 = base.slice(20, 32);
+  return `${p1}-${p2}-${p3}-${p4}-${p5}`.toLowerCase();
 }
 
 function initializeDefaultMemory(seasonId: string, startDateStr: string = '2026-09-05') {

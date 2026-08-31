@@ -246,11 +246,14 @@ export const usePresidentDashboard = () => {
   const checkFixtures = useCallback(async (): Promise<boolean> => {
     try {
       const [fixRes, seasonsRes] = await Promise.all([
-        supabase.from('fixtures').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase
+          .from('fixtures')
+          .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
+          .is('deleted_at', null),
         supabase.from('seasons').select('id, is_locked, status').is('deleted_at', null),
       ]);
 
-      const hasFixtures = Boolean(!fixRes.error && fixRes.count && fixRes.count > 0);
+      const hasFixtures = Boolean(!fixRes.error && fixRes.data && fixRes.data.length > 0);
       const activeSeason = seasonsRes.data?.find((s: any) => s.status === 'active') || seasonsRes.data?.[0];
       const isLocked = Boolean((activeSeason as any)?.season_mode ?? activeSeason?.is_locked);
 
@@ -258,10 +261,9 @@ export const usePresidentDashboard = () => {
       setIsSeasonMode(isModeOn);
       setIsScheduleLocked(isModeOn);
 
-      if (hasFixtures) {
-        const fullFix = await fixturesService.fetchFixtures();
-        setSavedFixtures(fullFix.fixtures || []);
-      } else {
+      if (hasFixtures && fixRes.data) {
+        setSavedFixtures(fixRes.data as any);
+      } else if (!hasFixtures && !isLocked) {
         setSavedFixtures([]);
       }
 
@@ -308,8 +310,11 @@ export const usePresidentDashboard = () => {
 
   // Called when Season Launch Wizard confirms & locks fixtures to DB
   const handleFixturesConfirmed = useCallback(async () => {
+    setIsSeasonMode(true);
+    setIsScheduleLocked(true);
+    await checkFixtures();
     await fetchPresidentData();
-  }, [fetchPresidentData]);
+  }, [checkFixtures, fetchPresidentData]);
 
   // Safe manual reset helper for administrative overhaul / test suite
   const handleResetToPreSeason = useCallback(async () => {
