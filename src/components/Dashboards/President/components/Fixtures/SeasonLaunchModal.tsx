@@ -58,21 +58,18 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
   // ALL-OR-NONE RULE: Transient state that fully resets upon closing
   const [step, setStep] = useState<ModalStep>('CALENDAR_SETUP');
 
-  // STEP 1: Date Selection State
-  const defaultInitialDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14); // Default to 2 weeks from now
-    // Snap to nearest Saturday
-    const day = d.getDay();
-    const diff = (6 - day + 7) % 7;
-    d.setDate(d.getDate() + diff);
-    return d.toISOString().split('T')[0];
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }, []);
 
-  const [selectedStartDate, setSelectedStartDate] = useState<string>(defaultInitialDate);
+  const [selectedStartDate, setSelectedStartDate] = useState<string>('');
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => new Date());
 
-  // STEP 4: Agent 0 Generation & Lock State
+  // STEP 4: Generation & Lock State
   const [executionId, setExecutionId] = useState<string>('');
   const [agent0GenResult, setAgent0GenResult] = useState<Algo1Output | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -117,7 +114,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
   // Reset ALL modal state when opened or closed (All-or-None rule)
   const handleCancelAndReset = () => {
     setStep('CALENDAR_SETUP');
-    setSelectedStartDate(defaultInitialDate);
+    setSelectedStartDate('');
     setExecutionId('');
     setAgent0GenResult(null);
     setGenerationError(null);
@@ -128,13 +125,13 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setStep('CALENDAR_SETUP');
-      setSelectedStartDate(defaultInitialDate);
+      setSelectedStartDate('');
       setExecutionId('');
       setAgent0GenResult(null);
       setGenerationError(null);
       setLockOutcome(null);
     }
-  }, [isOpen, defaultInitialDate]);
+  }, [isOpen]);
 
   // Compute preview stats dynamically from actual database teams & agent0GenResult
   const expectedEplMatches = premierLeagueTeams.length > 1 ? premierLeagueTeams.length * (premierLeagueTeams.length - 1) : 0;
@@ -348,7 +345,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 Begin Season Launch Wizard
               </h2>
               <p className="text-[11px] text-slate-400 font-medium">
-                Official Season Fixture Setup & Master Scheduling Protocol (Agent 0).
+                Official dual-division season schedule generator & launch wizard.
               </p>
             </div>
           </div>
@@ -406,7 +403,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             >
               2
             </span>
-            <span>2. Resources</span>
+            <span>2. Pitches & Referees</span>
           </div>
 
           <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
@@ -427,7 +424,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
             >
               3
             </span>
-            <span>3. Teams</span>
+            <span>3. Confirmed Teams</span>
           </div>
 
           <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
@@ -457,48 +454,49 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
           {/* STEP 1: MONTH CALENDAR & START DATE PICKER */}
           {step === 'CALENDAR_SETUP' && (
             <div className="space-y-4">
-              {/* PRIMARY PROMPT TITLE AS REQUESTED */}
               <div className="space-y-1">
                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
                   <CalendarIcon className="w-3 h-3" />
-                  <span>Season Matchday Anchor</span>
+                  <span>Season Kickoff Date</span>
                 </span>
                 <h3 className="text-base sm:text-lg font-black tracking-tight">
-                  When do you prefer the first matchday to be played?
+                  When would you like the season to start?
                 </h3>
                 <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  This anchor date will be supplied to Agent 0 and passed to <span className="text-amber-400 font-bold">Algorithm 2</span> to initialize Matchday 1 allocation.
+                  Select the opening matchday date from the calendar below to anchor the full season schedule.
                 </p>
               </div>
 
               {/* MONTH CALENDAR WIDGET */}
-              <div className={`p-3.5 rounded-2xl border ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2.5`}>
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                  <div className="font-black text-xs">
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-3`}>
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                  <div className="font-black text-sm sm:text-base text-slate-100">
                     {calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={prevMonth}
                       type="button"
-                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all border border-slate-700 min-h-[36px]"
                       title="Previous Month"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <ChevronLeft className="w-4 h-4 text-amber-400" />
+                      <span className="hidden sm:inline">Prev</span>
                     </button>
                     <button
                       onClick={nextMonth}
                       type="button"
-                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all border border-slate-700 min-h-[36px]"
                       title="Next Month"
                     >
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="w-4 h-4 text-amber-400" />
                     </button>
                   </div>
                 </div>
 
                 {/* Day of week headers */}
-                <div className="grid grid-cols-7 text-center text-[9px] font-black uppercase text-slate-500 tracking-wider">
+                <div className="grid grid-cols-7 text-center text-[10px] font-black uppercase text-slate-400 tracking-wider">
                   <span>Sun</span>
                   <span>Mon</span>
                   <span>Tue</span>
@@ -509,9 +507,11 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 </div>
 
                 {/* Days Grid */}
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-1.5">
                   {calendarDays().map((d, idx) => {
                     const isSelected = selectedStartDate === d.dateStr;
+                    const isToday = d.dateStr === todayStr;
+
                     return (
                       <button
                         key={idx}
@@ -519,36 +519,51 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                         onClick={() => {
                           setSelectedStartDate(d.dateStr);
                         }}
-                        className={`p-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer flex flex-col items-center justify-center min-h-[30px] ${
+                        className={`p-2 rounded-xl text-xs font-black transition-all cursor-pointer flex flex-col items-center justify-center min-h-[44px] relative ${
                           isSelected
-                            ? 'bg-amber-500 text-slate-950 font-extrabold shadow-md shadow-amber-500/20 scale-105 ring-2 ring-amber-400'
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/25 scale-105 ring-2 ring-amber-400 z-10'
+                            : isToday
+                            ? 'border-2 border-emerald-500 bg-emerald-500/10 text-emerald-400 font-extrabold shadow-sm'
                             : d.isCurrentMonth
                             ? isDark
-                              ? 'text-slate-200 hover:bg-slate-800/80'
-                              : 'text-slate-800 hover:bg-slate-200'
-                            : 'text-slate-600 hover:text-slate-400'
+                              ? 'text-slate-200 hover:bg-slate-800/80 border border-transparent'
+                              : 'text-slate-800 hover:bg-slate-200 border border-transparent'
+                            : 'text-slate-600 hover:text-slate-400 opacity-40 border border-transparent'
                         }`}
                       >
-                        <span>{d.dayNum}</span>
+                        <span className={isSelected ? 'text-slate-950 font-black' : isToday ? 'text-emerald-400 font-black' : ''}>
+                          {d.dayNum}
+                        </span>
+                        {isToday && (
+                          <span className={`text-[8px] font-black leading-none mt-0.5 tracking-tighter uppercase ${isSelected ? 'text-slate-950' : 'text-emerald-400'}`}>
+                            TODAY
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
 
                 {/* Manual Direct Input Display */}
-                <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-slate-400">First Matchday:</span>
-                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-mono font-black">
-                      {selectedStartDate ? new Date(selectedStartDate).toDateString() : 'None'}
-                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">Chosen Start Date:</span>
+                    {selectedStartDate ? (
+                      <span className="px-3 py-1 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-mono font-black">
+                        {new Date(selectedStartDate).toDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-amber-400/80 font-medium italic">
+                        Please select a date from the calendar
+                      </span>
+                    )}
                   </div>
 
                   <input
                     type="date"
                     value={selectedStartDate}
                     onChange={(e) => setSelectedStartDate(e.target.value)}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-bold focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-bold focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
                       isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}
                   />
@@ -561,24 +576,24 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   type="button"
                   onClick={() => setStep('RESOURCE_STATS')}
                   disabled={!selectedStartDate}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
-                  <span>Approve Date & Continue</span>
+                  <span>Confirm Date & Continue</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 2: PITCH & REFEREE STATS (KPI CARDS - NO LONG LISTS) */}
+          {/* STEP 2: PITCH & REFEREE STATS (CLEAR LISTS) */}
           {step === 'RESOURCE_STATS' && (
             <div className="space-y-4">
               <div className="space-y-0.5">
                 <h3 className="text-base font-black tracking-tight">
-                  Step 2: Pitch & Referee Resource Statistics
+                  Step 2: Facilities & Officiating Roster
                 </h3>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Summary statistics of campus facilities and accredited match officials prepared for season fixture allocation.
+                  Confirmed campus pitches and match referees ready to host and officiate fixtures for the season.
                 </p>
               </div>
 
@@ -594,32 +609,35 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center font-bold">
                         <MapPin className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-xs font-black uppercase tracking-wider">
-                        Pitches Available
+                      <h4 className="text-xs font-black uppercase tracking-wider text-teal-400">
+                        Available Pitches
                       </h4>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                      {availablePitches.length} / {pitches.length || 3} Ready
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                      {availablePitches.length} Venues Ready
                     </span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-2xl font-black tracking-tight">
-                        {availablePitches.length}
+                      <span className="text-xl font-black tracking-tight">
+                        {availablePitches.length} Pitches
                       </span>
-                      <span className="text-[10px] font-bold text-teal-400">100% Operational Capacity</span>
+                      <span className="text-[10px] font-bold text-teal-400">Campus Match Venues</span>
                     </div>
 
-                    <div className="space-y-1.5 pt-0.5 text-xs">
+                    <div className="space-y-1.5 pt-0.5 max-h-[220px] overflow-y-auto pr-0.5">
                       {availablePitches.map((p) => (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/80"
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80"
                         >
-                          <span className="font-bold text-[11px] text-slate-300">{p.name}</span>
-                          <span className="text-[9px] font-mono text-teal-400 font-black">
-                            {p.capacity ? `${p.capacity.toLocaleString()} Cap` : 'Available'}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0"></span>
+                            <span className="font-bold text-xs text-slate-200 truncate">{p.name}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-teal-400 font-bold shrink-0 ml-2">
+                            {p.capacity ? `${p.capacity.toLocaleString()} Cap` : 'Ready'}
                           </span>
                         </div>
                       ))}
@@ -638,37 +656,38 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                       <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
                         <UserCheck className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-xs font-black uppercase tracking-wider">
-                        Referee Pool
+                      <h4 className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                        Official Referees
                       </h4>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      {activeReferees.length} Active Refs
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {activeReferees.length} Active Officials
                     </span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-2xl font-black tracking-tight">
-                        {activeReferees.length}
+                      <span className="text-xl font-black tracking-tight">
+                        {activeReferees.length} Referees
                       </span>
-                      <span className="text-[10px] font-bold text-emerald-400">Officiating Pool Active</span>
+                      <span className="text-[10px] font-bold text-emerald-400">Accredited Pool</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-center">
-                        <div className="text-sm font-black">4</div>
-                        <div className="text-[9px] font-bold text-slate-400 uppercase">FIFA / FKF L2</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-center">
-                        <div className="text-sm font-black">2</div>
-                        <div className="text-[9px] font-bold text-slate-400 uppercase">Regional L1</div>
-                      </div>
-                    </div>
-
-                    <div className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[10px] text-emerald-300 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>Sufficient center & linesman allocations for dual divisions.</span>
+                    <div className="space-y-1.5 pt-0.5 max-h-[220px] overflow-y-auto pr-0.5">
+                      {activeReferees.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                            <span className="font-bold text-xs text-slate-200 truncate">{r.name}</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-400 font-bold shrink-0 ml-2 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                            {r.badgeLevel || 'Certified Official'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -681,7 +700,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   onClick={() => setStep('CALENDAR_SETUP')}
                   className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
-                  Back to Calendar
+                  Back to Start Date
                 </button>
 
                 <button
@@ -689,22 +708,22 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   onClick={() => setStep('TEAM_STATS')}
                   className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
-                  <span>Next: Review Team Stats</span>
+                  <span>Next: Confirmed Teams</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 3: TEAMS STATS (EPL & CHAMPIONSHIP DIVISION STATS) */}
+          {/* STEP 3: TEAMS STATS (ONLY SHOW 2 LEAGUES & TEAMS) */}
           {step === 'TEAM_STATS' && (
             <div className="space-y-4">
               <div className="space-y-0.5">
                 <h3 className="text-base font-black tracking-tight">
-                  Step 3: League Division Team Statistics
+                  Step 3: Confirmed League Divisions & Participating Clubs
                 </h3>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Verified registered clubs across both leagues ready for Algorithm 1 mathematical Double Round-Robin generator.
+                  Review all confirmed clubs participating in each division for the upcoming season.
                 </p>
               </div>
 
@@ -716,7 +735,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* EPL STATS CARD */}
+                {/* EPL TEAMS CARD */}
                 <div
                   className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
@@ -731,43 +750,39 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                         Egerton Premier League
                       </h4>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      Tier 1 Division
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {premierLeagueTeams.length} Clubs
                     </span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-2xl font-black tracking-tight">
+                      <span className="text-xl font-black tracking-tight">
                         {premierLeagueTeams.length} Teams
                       </span>
-                      <span className="text-[10px] font-bold text-amber-400">
-                        {premierLeagueTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Coaches Assigned
-                      </span>
+                      <span className="text-[10px] font-bold text-amber-400">Tier 1 Division</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-sm font-black">
-                          {premierLeagueTeams.length > 1
-                            ? premierLeagueTeams.length % 2 === 0
-                              ? (premierLeagueTeams.length - 1) * 2
-                              : premierLeagueTeams.length * 2
-                            : 0} Matchdays
+                    <div className="space-y-1.5 pt-0.5 max-h-[220px] overflow-y-auto pr-0.5">
+                      {premierLeagueTeams.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                            <span className="font-bold text-xs text-slate-200 truncate">{t.name}</span>
+                          </div>
+                          <span className="text-[10px] text-amber-400/80 font-mono font-bold shrink-0 ml-2">
+                            {t.code || `EPL-${idx + 1}`}
+                          </span>
                         </div>
-                        <div className="text-[9px] text-slate-400 font-bold">Double Round Robin</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-sm font-black">{expectedEplMatches} Matches</div>
-                        <div className="text-[9px] text-slate-400 font-bold">
-                          {Math.floor(expectedEplMatches / 2)} Leg 1 + {Math.floor(expectedEplMatches / 2)} Leg 2
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* CHAMPIONSHIP STATS CARD */}
+                {/* CHAMPIONSHIP TEAMS CARD */}
                 <div
                   className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
@@ -782,63 +797,57 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                         Egerton Championship
                       </h4>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      Tier 2 Division
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {championshipTeams.length} Clubs
                     </span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-2xl font-black tracking-tight">
+                      <span className="text-xl font-black tracking-tight">
                         {championshipTeams.length} Teams
                       </span>
-                      <span className="text-[10px] font-bold text-blue-400">
-                        {championshipTeams.filter((t) => t.coach && !t.coach.toLowerCase().includes('unassigned')).length} Coaches Assigned
-                      </span>
+                      <span className="text-[10px] font-bold text-blue-400">Tier 2 Division</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-sm font-black">
-                          {championshipTeams.length > 1
-                            ? championshipTeams.length % 2 === 0
-                              ? (championshipTeams.length - 1) * 2
-                              : championshipTeams.length * 2
-                            : 0} Matchdays
+                    <div className="space-y-1.5 pt-0.5 max-h-[220px] overflow-y-auto pr-0.5">
+                      {championshipTeams.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                            <span className="font-bold text-xs text-slate-200 truncate">{t.name}</span>
+                          </div>
+                          <span className="text-[10px] text-blue-400/80 font-mono font-bold shrink-0 ml-2">
+                            {t.code || `CHP-${idx + 1}`}
+                          </span>
                         </div>
-                        <div className="text-[9px] text-slate-400 font-bold">
-                          {championshipTeams.length % 2 !== 0 ? 'BYE Auto Handled' : 'Double Round Robin'}
-                        </div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                        <div className="text-sm font-black">{expectedChampMatches} Matches</div>
-                        <div className="text-[9px] text-slate-400 font-bold">
-                          {Math.floor(expectedChampMatches / 2)} Leg 1 + {Math.floor(expectedChampMatches / 2)} Leg 2
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* TOTAL KPI BANNER */}
+              {/* TOTAL PARTICIPATING CLUBS BANNER */}
               <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-[11px]">
                 <span className="font-black text-amber-300">
-                  Total Active Clubs: {premierLeagueTeams.length + championshipTeams.length} Teams
+                  Total Registered Clubs: {premierLeagueTeams.length + championshipTeams.length} Teams
                 </span>
-                <span className="font-mono font-black">
-                  Expected Season Games: 246 Fixtures
+                <span className="font-medium text-slate-300">
+                  Dual-Division Format
                 </span>
               </div>
 
-              {/* ACTION BUTTON: GENERATE FIXTURES (CALL AGENT 0) */}
+              {/* ACTION BUTTONS */}
               <div className="pt-1 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep('RESOURCE_STATS')}
                   className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
-                  Back to Resources
+                  Back to Pitches & Referees
                 </button>
 
                 <button
@@ -847,42 +856,41 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
                   <Sparkles className="w-3.5 h-3.5 fill-current" />
-                  <span>Generate Fixtures (Call Agent 0)</span>
+                  <span>Generate Season Schedule</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* LOADING AGENT 0 ALGORITHM 1 EXECUTION */}
+          {/* LOADING SEASON GENERATION */}
           {step === 'GENERATING_ALGO1' && (
             <div className="py-12 text-center space-y-4">
               <Loader2 className="w-10 h-10 text-amber-500 animate-spin mx-auto" />
               <div className="space-y-1.5">
                 <h4 className="text-base font-black">
-                  Agent 0 Launching Algorithm 1...
+                  Generating Season Schedule...
                 </h4>
                 <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-                  Computing mathematically immutable Double Round-Robin pairings (Berger Polygon method) with Leg 1 / Leg 2 inverse integrity for both leagues.
+                  Creating balanced home and away fixtures for all participating clubs across both divisions.
                 </p>
               </div>
             </div>
           )}
 
-          {/* STEP 4: PREVIEW OF GENERATED GAMES (STATS SEPARATING 2 LEAGUES) & LOCK BUTTON */}
+          {/* STEP 4: PREVIEW OF GENERATED GAMES (PER LEAGUE, PER LEG & TOTALS) */}
           {step === 'PREVIEW_AND_LOCK' && (
             <div className="space-y-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> Agent 0 Verified
+                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Schedule Generated
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500">Exec ID: {executionId.slice(0, 8)}...</span>
                 </div>
                 <h3 className="text-base font-black tracking-tight">
-                  Step 4: Generated Season Fixtures Preview
+                  Step 4: Season Fixtures Summary & Confirmation
                 </h3>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Review the mathematical breakdown of generated season matches before locking them to the database.
+                  Review the scheduled games per league and per leg, then confirm the official season schedule.
                 </p>
               </div>
 
@@ -892,30 +900,33 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 <div
                   className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-2`}
+                  } space-y-2.5 flex flex-col justify-between`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Trophy className="w-3.5 h-3.5" /> Egerton Premier League
-                    </h4>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      {previewStats.eplTotal} Matches
-                    </span>
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Trophy className="w-3.5 h-3.5" /> Egerton Premier League
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        {previewStats.eplTotal} Matches
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 text-xs">
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                        <span className="text-slate-400 font-medium">Leg 1 Fixtures (Home):</span>
+                        <span className="font-mono font-black text-slate-200">{previewStats.epl1} Matches</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                        <span className="text-slate-400 font-medium">Leg 2 Fixtures (Away Return):</span>
+                        <span className="font-mono font-black text-slate-200">{previewStats.epl2} Matches</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Leg 1 Fixtures (Home):</span>
-                      <span className="font-mono font-black">{previewStats.epl1} Matches (MD 1-9)</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Leg 2 Fixtures (Away Return):</span>
-                      <span className="font-mono font-black">{previewStats.epl2} Matches (MD 10-18)</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Matchday Structure:</span>
-                      <span className="font-bold text-amber-400">5 Matches / MD</span>
-                    </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                    <span className="text-[11px] font-black text-amber-400">Total Premier League Matches:</span>
+                    <span className="text-sm font-mono font-black text-white">{previewStats.eplTotal} Matches</span>
                   </div>
                 </div>
 
@@ -923,45 +934,48 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                 <div
                   className={`p-3.5 rounded-2xl border ${
                     isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-slate-50 border-slate-200'
-                  } space-y-2`}
+                  } space-y-2.5 flex flex-col justify-between`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h4 className="text-xs font-black text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5" /> Egerton Championship
-                    </h4>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {previewStats.champTotal} Matches
-                    </span>
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <h4 className="text-xs font-black text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5" /> Egerton Championship
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        {previewStats.champTotal} Matches
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2 text-xs">
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                        <span className="text-slate-400 font-medium">Leg 1 Fixtures (Home):</span>
+                        <span className="font-mono font-black text-slate-200">{previewStats.champ1} Matches</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                        <span className="text-slate-400 font-medium">Leg 2 Fixtures (Away Return):</span>
+                        <span className="font-mono font-black text-slate-200">{previewStats.champ2} Matches</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 text-[11px]">
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Leg 1 Fixtures (Home):</span>
-                      <span className="font-mono font-black">{previewStats.champ1} Matches (MD 1-13)</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">Leg 2 Fixtures (Away Return):</span>
-                      <span className="font-mono font-black">{previewStats.champ2} Matches (MD 14-26)</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-400">BYE Allocation:</span>
-                      <span className="font-bold text-blue-400">1 BYE / MD (13 Teams)</span>
-                    </div>
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25">
+                    <span className="text-[11px] font-black text-blue-400">Total Championship Matches:</span>
+                    <span className="text-sm font-mono font-black text-white">{previewStats.champTotal} Matches</span>
                   </div>
                 </div>
               </div>
 
-              {/* OVERALL SUMMARY & FIRST PLAYDAY NOTIFICATION */}
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+              {/* OVERALL SUMMARY BANNER */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div>
-                  <div className="font-black text-amber-300 uppercase text-[10px]">First Matchday Anchor Date:</div>
-                  <div className="font-mono font-bold mt-0.5">
-                    {new Date(selectedStartDate).toDateString()} (Algorithm 2 Bound)
+                  <div className="font-black text-amber-300 uppercase text-[10px]">Opening Matchday Date:</div>
+                  <div className="font-mono font-bold mt-0.5 text-slate-200">
+                    {selectedStartDate ? new Date(selectedStartDate).toDateString() : 'Confirmed Date'}
                   </div>
                 </div>
                 <div className="text-left sm:text-right">
-                  <div className="font-black text-amber-300 uppercase text-[10px]">Total Fixtures to Persist:</div>
-                  <div className="text-base font-black">{previewStats.total} Matches</div>
+                  <div className="font-black text-amber-300 uppercase text-[10px]">Total Season Matches:</div>
+                  <div className="text-base font-black text-white">{previewStats.total} Matches Across Both Leagues</div>
                 </div>
               </div>
 
@@ -978,16 +992,16 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
                   onClick={() => setStep('TEAM_STATS')}
                   className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer min-h-[40px]"
                 >
-                  Back to Teams
+                  Back to Confirmed Teams
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCommitAgent0Lock}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1.5 min-h-[40px]"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Lock and Confirm to Database</span>
+                  <span>Confirm & Lock Season Schedule</span>
                 </button>
               </div>
             </div>
@@ -996,13 +1010,13 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
           {/* LOCKING TO DATABASE LOADING SPINNER */}
           {step === 'LOCKING_DB' && (
             <div className="py-16 text-center space-y-5">
-              <Loader2 className="w-12 h-12 text-rose-500 animate-spin mx-auto" />
+              <Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto" />
               <div className="space-y-2">
                 <h4 className="text-lg font-black">
-                  Agent 0 Locking Fixtures into Database...
+                  Saving Season Schedule...
                 </h4>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Executing atomic insert into official league tables, recording master audit trails, and executing read-back verification across all 246 fixtures.
+                  Finalizing official fixtures in the database and activating the season schedule.
                 </p>
               </div>
             </div>
@@ -1016,7 +1030,7 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
               </div>
               <h3 className="text-2xl font-black">Season Schedule Confirmed & Locked!</h3>
               <p className="text-xs text-slate-300 max-w-md mx-auto">
-                {lockOutcome?.count || 246} fixtures successfully written and read-back verified. The system is transitioning into Active Season Mode...
+                {lockOutcome?.count || previewStats.total} official matches have been confirmed and saved. Transitioning to Active Season Mode...
               </p>
             </div>
           )}
