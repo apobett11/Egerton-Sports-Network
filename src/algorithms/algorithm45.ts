@@ -370,19 +370,18 @@ function generateCenterRefereeAllocations(
       );
     }
 
-    if (match.league_type === "CHAMPIONSHIP" && candidates.length === 0) {
-      candidates = [...states.values()].filter(
-        (state) =>
-          state.referee.tier === "EPL_Exclusive" &&
-          refereeIsTemporallyAvailable(state, startMs, endMs, true),
-      );
-    }
-
-    // If buffer restricts all referees, fallback to direct non-overlapping interval
     if (candidates.length === 0) {
-      candidates = [...states.values()].filter((state) =>
-        refereeIsTemporallyAvailable(state, startMs, endMs, false),
-      );
+      if (match.league_type === "CHAMPIONSHIP") {
+        candidates = [...states.values()].filter(
+          (state) =>
+            state.referee.tier === "Mixed" &&
+            refereeIsTemporallyAvailable(state, startMs, endMs, false),
+        );
+      } else {
+        candidates = [...states.values()].filter((state) =>
+          refereeIsTemporallyAvailable(state, startMs, endMs, false),
+        );
+      }
     }
 
     if (candidates.length === 0) {

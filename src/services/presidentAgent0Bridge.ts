@@ -16,111 +16,13 @@ import {
   type PresidentEvent,
   type Agent0EventResult,
   type Agent0Adapters,
+  type DBState,
+  isEplLeague,
 } from './agent0';
 import { supabase } from '../lib/supabase';
 import { OFFICIAL_PITCHES } from "../President's Season Mode/constants/seasonConstants";
 import { generateFixtures as invokeAlgorithm1, type Algo1Output, type LeagueInput } from '../algorithms/algorithm1';
 import { createAlgorithmCommand, validateResultEnvelope } from '../shared/algorithmProtocol';
-
-// In-memory state store for operational sessions & fallback
-let activeSeasonStateMemory: {
-  seasonId: string;
-  seasonStartDate?: string;
-  capacity: { EPL: number; Championship: number };
-  playdays: Array<{ date: string; mode: "ONE_TIME" | "PERMANENT"; active: boolean }>;
-  pitches: Array<{ pitch_id: string; state: "available" | "unavailable"; amAvailable?: boolean; pmAvailable?: boolean }>;
-  referees: Array<{ referee_id: string; tier: "EPL_Exclusive" | "Mixed"; status?: string }>;
-  teams: Array<{ team_id: string; league_type: "EPL" | "CHAMPIONSHIP"; team_name: string }>;
-  matchdays: Array<{ matchday_id: string; matchday_number: number; play_date: string; playable: boolean; match_ids: string[] }>;
-  fixtures: Array<{
-    fixture_id: string;
-    league_id: string;
-    home_id: string;
-    away_id: string;
-    leg: 1 | 2;
-    match_sequence: number;
-    matchday_number: number | null;
-    playday: string | null;
-    completed: boolean;
-    historical: boolean;
-  }>;
-  matchAssignments: Array<{
-    match_id: string;
-    matchday_id: string;
-    play_date: string;
-    pitch_id: string;
-    slot_id: string;
-    start_time: string;
-    end_time: string;
-    allocation_status: string;
-  }>;
-  timeConfiguration?: Array<{
-    league_id: "epl" | "championship";
-    slots: Array<{ slot_number: 1 | 2 | 3; start_time: string; end_time: string }>;
-  }>;
-} | null = null;
-
-function generateDefaultPlaydays(startDateStr: string = '2026-09-05', count: number = 90) {
-  const playdays: Array<{ date: string; mode: 'ONE_TIME' | 'PERMANENT'; active: boolean }> = [];
-  const start = new Date(startDateStr);
-
-  for (let week = 0; week < Math.ceil(count / 2); week++) {
-    // Saturday (Day 0 of weekly round)
-    const sat = new Date(start);
-    sat.setDate(start.getDate() + week * 7);
-    playdays.push({
-      date: sat.toISOString().split('T')[0],
-      mode: 'PERMANENT',
-      active: true,
-    });
-
-    // Sunday (Day 1 of weekly round)
-    const sun = new Date(start);
-    sun.setDate(start.getDate() + week * 7 + 1);
-    playdays.push({
-      date: sun.toISOString().split('T')[0],
-      mode: 'PERMANENT',
-      active: true,
-    });
-  }
-
-  return playdays.slice(0, count);
-}
-
-const DEFAULT_EPL_TEAMS = [
-  { id: 'e0000001-0000-4000-8000-000000000001', name: 'Egerton Warriors FC' },
-  { id: 'e0000002-0000-4000-8000-000000000002', name: 'Njoro City FC' },
-  { id: 'e0000003-0000-4000-8000-000000000003', name: 'Tatton Rovers FC' },
-  { id: 'e0000004-0000-4000-8000-000000000004', name: 'Science Lions FC' },
-  { id: 'e0000005-0000-4000-8000-000000000005', name: 'Agriculture FC' },
-  { id: 'e0000006-0000-4000-8000-000000000006', name: 'Engineering Strikers FC' },
-  { id: 'e0000007-0000-4000-8000-000000000007', name: 'Medical Strikers FC' },
-  { id: 'e0000008-0000-4000-8000-000000000008', name: 'Arts United FC' },
-  { id: 'e0000009-0000-4000-8000-000000000009', name: 'Law Titans FC' },
-  { id: 'e0000010-0000-4000-8000-000000000010', name: 'Education Kings FC' },
-];
-
-const DEFAULT_CHAMP_TEAMS = [
-  { id: 'c0000001-0000-4000-8000-000000000001', name: 'Championship FC Alpha' },
-  { id: 'c0000002-0000-4000-8000-000000000002', name: 'Championship FC Beta' },
-  { id: 'c0000003-0000-4000-8000-000000000003', name: 'Championship FC Gamma' },
-  { id: 'c0000004-0000-4000-8000-000000000004', name: 'Championship FC Delta' },
-  { id: 'c0000005-0000-4000-8000-000000000005', name: 'Championship FC Epsilon' },
-  { id: 'c0000006-0000-4000-8000-000000000006', name: 'Championship FC Zeta' },
-  { id: 'c0000007-0000-4000-8000-000000000007', name: 'Championship FC Eta' },
-  { id: 'c0000008-0000-4000-8000-000000000008', name: 'Championship FC Theta' },
-  { id: 'c0000009-0000-4000-8000-000000000009', name: 'Championship FC Iota' },
-  { id: 'c0000010-0000-4000-8000-000000000010', name: 'Championship FC Kappa' },
-];
-
-const DEFAULT_REFEREES = [
-  { referee_id: 'r0000001-0000-4000-8000-000000000001', tier: 'EPL_Exclusive' as const, status: 'Active' },
-  { referee_id: 'r0000002-0000-4000-8000-000000000002', tier: 'EPL_Exclusive' as const, status: 'Active' },
-  { referee_id: 'r0000003-0000-4000-8000-000000000003', tier: 'Mixed' as const, status: 'Active' },
-  { referee_id: 'r0000004-0000-4000-8000-000000000004', tier: 'Mixed' as const, status: 'Active' },
-  { referee_id: 'r0000005-0000-4000-8000-000000000005', tier: 'Mixed' as const, status: 'Active' },
-  { referee_id: 'r0000006-0000-4000-8000-000000000006', tier: 'Mixed' as const, status: 'Active' },
-];
 
 export const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 export const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
@@ -147,44 +49,31 @@ export function toValidUUID(id: string): string {
   return `${p1}-${p2}-${p3}-${p4}-${p5}`.toLowerCase();
 }
 
-function initializeDefaultMemory(seasonId: string, startDateStr: string = '2026-09-05') {
-  if (!activeSeasonStateMemory || activeSeasonStateMemory.seasonId !== seasonId) {
-    activeSeasonStateMemory = {
-      seasonId,
-      seasonStartDate: startDateStr,
-      capacity: { EPL: 3, Championship: 3 },
-      playdays: generateDefaultPlaydays(startDateStr, 90),
-      pitches: [
-        { pitch_id: '91111111-1111-1111-1111-111111111111', state: 'available', amAvailable: true, pmAvailable: true },
-        { pitch_id: '92222222-2222-2222-2222-222222222222', state: 'available', amAvailable: true, pmAvailable: true },
-        { pitch_id: '93333333-3333-3333-3333-333333333333', state: 'available', amAvailable: true, pmAvailable: true },
-      ],
-      referees: [],
-      teams: [],
-      matchdays: [],
-      fixtures: [],
-      matchAssignments: [],
-      timeConfiguration: [
-        {
-          league_id: 'epl',
-          slots: [
-            { slot_number: 1, start_time: '08:30', end_time: '10:30' },
-            { slot_number: 2, start_time: '10:45', end_time: '12:45' },
-            { slot_number: 3, start_time: '13:00', end_time: '15:00' },
-          ],
-        },
-        {
-          league_id: 'championship',
-          slots: [
-            { slot_number: 1, start_time: '15:15', end_time: '17:15' },
-            { slot_number: 2, start_time: '17:30', end_time: '19:30' },
-            { slot_number: 3, start_time: '19:45', end_time: '21:45' },
-          ],
-        },
-      ],
-    };
+function generateDefaultPlaydays(startDateStr: string = '2026-09-05', count: number = 90) {
+  const playdays: Array<{ date: string; mode: 'ONE_TIME' | 'PERMANENT'; active: boolean }> = [];
+  const start = new Date(startDateStr);
+
+  for (let week = 0; week < Math.ceil(count / 2); week++) {
+    // Saturday
+    const sat = new Date(start);
+    sat.setDate(start.getDate() + week * 7);
+    playdays.push({
+      date: sat.toISOString().split('T')[0],
+      mode: 'PERMANENT',
+      active: true,
+    });
+
+    // Sunday
+    const sun = new Date(start);
+    sun.setDate(start.getDate() + week * 7 + 1);
+    playdays.push({
+      date: sun.toISOString().split('T')[0],
+      mode: 'PERMANENT',
+      active: true,
+    });
   }
-  return activeSeasonStateMemory;
+
+  return playdays.slice(0, count);
 }
 
 function resolvePitchName(pitchId: string): string {
@@ -198,326 +87,634 @@ function resolvePitchName(pitchId: string): string {
   return 'Pavilion Main Pitch';
 }
 
-export const createAgent0Adapters = (seasonId: string): Agent0Adapters => {
-  const mem = initializeDefaultMemory(seasonId);
-
+export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
   return {
-    async fetchCurrentState(_sid: string) {
-      try {
-        // Query live active teams from Supabase database
-        const { data: dbTeams } = await supabase
-          .from('teams')
-          .select('id, name, competition_id, status')
-          .neq('status', 'rejected')
-          .is('deleted_at', null);
-
-        if (dbTeams && dbTeams.length > 0) {
-          const eplTeams = dbTeams.filter((t: any) =>
-            t.competition_id === EPL_COMP_ID ||
-            t.competition_id?.includes('1111') ||
-            t.name.toLowerCase().includes('premier') ||
-            (!t.competition_id && !t.name.toLowerCase().includes('championship'))
-          );
-          const champTeams = dbTeams.filter((t: any) =>
-            t.competition_id === CHAMP_COMP_ID ||
-            t.competition_id?.includes('2222') ||
-            t.name.toLowerCase().includes('championship')
-          );
-
-          mem.teams = [
-            ...eplTeams.map((t: any) => ({
-              team_id: t.id,
-              league_type: 'EPL' as const,
-              team_name: t.name,
-            })),
-            ...champTeams.map((t: any) => ({
-              team_id: t.id,
-              league_type: 'CHAMPIONSHIP' as const,
-              team_name: t.name,
-            })),
-          ];
-        }
-
-        // Query live referees from Supabase database
-        const { data: dbReferees } = await supabase
-          .from('referees')
-          .select('id, name, status, badge_level')
-          .is('deleted_at', null);
-
-        if (dbReferees && dbReferees.length > 0) {
-          mem.referees = dbReferees
-            .filter((r: any) => r.status === 'Active' || !r.status)
-            .map((r: any) => ({
-              referee_id: r.id,
-              tier: r.badge_level?.includes('FIFA') || r.badge_level?.includes('Level 1') ? 'EPL_Exclusive' : 'Mixed',
-              status: r.status || 'Active',
-            }));
-        }
-
-        // Query live pitches from Supabase database
-        const { data: dbPitches } = await supabase
-          .from('pitches')
-          .select('id, name, status')
-          .order('name');
-
-        if (dbPitches && dbPitches.length > 0) {
-          mem.pitches = dbPitches.map((p: any) => ({
-            pitch_id: p.id,
-            state: p.status === 'Available' ? 'available' : 'unavailable',
-            amAvailable: true,
-            pmAvailable: true,
-          }));
-        }
-
-        // Bootstrap fixtures from database if memory fixtures are empty
-        if (mem.fixtures.length === 0) {
-          const { data: dbFixtures } = await supabase
-            .from('fixtures')
-            .select('*')
-            .is('deleted_at', null);
-
-          if (dbFixtures && dbFixtures.length > 0) {
-            mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
-              fixture_id: f.id,
-              league_id: f.competition_id === CHAMP_COMP_ID || f.competition_id?.includes('2222') ? CHAMP_COMP_ID : EPL_COMP_ID,
-              home_id: f.home_team_id,
-              away_id: f.away_team_id,
-              leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
-              match_sequence: idx + 1,
-              matchday_number: f.matchday || null,
-              playday: f.scheduled_time ? f.scheduled_time.split('T')[0] : null,
-              completed: f.status === 'Completed' || f.status === 'FT',
-              historical: f.status === 'Completed' || f.status === 'FT',
-            }));
-          }
-        }
-      } catch (e) {
-        console.warn('Agent 0 live adapter fetch note:', e);
-      }
-
-      return {
-        fixtures: mem.fixtures,
-        matchdays: mem.matchdays,
-        matchAssignments: mem.matchAssignments,
-        playdays: mem.playdays,
-        capacity: mem.capacity,
-        pitches: mem.pitches as any,
-        referees: mem.referees as any,
-        teams: mem.teams as any,
-        timeConfiguration: mem.timeConfiguration,
-      };
-    },
-
-    async persistAtomically(args) {
-      // 1. PHASE 1: ALGORITHM 1 — Initial Pairings (No hardcoded dates, times, venues or referees)
-      if (args.stage === 'ALGORITHM_1' && args.algorithm1Result?.payload?.data) {
-        const flatFixtures: typeof mem.fixtures = [];
-        let seq = 1;
-
-        for (const [leagueId, data] of Object.entries(args.algorithm1Result.payload.data)) {
-          const compId = leagueId === 'epl' || leagueId === EPL_COMP_ID || leagueId.includes('1111') || leagueId.includes('premier')
-            ? EPL_COMP_ID
-            : CHAMP_COMP_ID;
-
-          const processLeg = (legFixtures: any[], legNumber: 1 | 2) => {
-            legFixtures.forEach((f) => {
-              flatFixtures.push({
-                fixture_id: toValidUUID(f.fixture_id),
-                league_id: compId,
-                home_id: f.home_id,
-                away_id: f.away_id,
-                leg: legNumber,
-                match_sequence: f.match_sequence || seq++,
-                matchday_number: null,
-                playday: null,
-                completed: false,
-                historical: false,
-              });
-            });
-          };
-
-          if (data.leg_1) processLeg(data.leg_1, 1);
-          if (data.leg_2) processLeg(data.leg_2, 2);
-        }
-
-        try {
-          // Clear any previous uncommitted fixtures for these competitions
-          await supabase
-            .from('fixtures')
-            .delete()
-            .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
-
-          // Write initial unallocated fixtures (all algorithm fields strictly null)
-          const insertPayloads = flatFixtures.map((f) => ({
-            id: f.fixture_id,
-            competition_id: f.league_id,
-            home_team_id: f.home_id,
-            away_team_id: f.away_id,
-            scheduled_time: null, // STRICTLY NULL until Algorithm 2 / 3
-            status: 'UPCOMING',
-            score_home: 0,
-            score_away: 0,
-            venue: null, // STRICTLY NULL until Algorithm 3
-            referee_id: null, // STRICTLY NULL until Algorithm 4
-            matchday: null, // STRICTLY NULL until Algorithm 2
-          }));
-
-          // Insert in batches of 50 to ensure reliable PostgREST execution
-          for (let i = 0; i < insertPayloads.length; i += 50) {
-            const batch = insertPayloads.slice(i, i + 50);
-            await supabase.from('fixtures').insert(batch);
-          }
-
-          mem.fixtures = flatFixtures;
-        } catch (_dbErr) {
-          mem.fixtures = flatFixtures;
-        }
-      }
-
-      // 2. PHASE 2: ALGORITHM 2 — Matchdays and Playday Dates Write
-      if (args.stage === 'ALGORITHM_2' && args.algorithm2Result?.payload?.final_schedule) {
-        const schedule = args.algorithm2Result.payload.final_schedule;
-        const matchdayMap = new Map<number, { playDate: string; matchIds: string[] }>();
-        const updates: Array<{ id: string; matchday: number; scheduled_time: string }> = [];
-
-        for (const [_leagueId, fixturesList] of Object.entries(schedule)) {
-          for (const item of fixturesList) {
-            const mdNum = Number(item.matchday_number);
-            const f = mem.fixtures.find((fix) => fix.fixture_id === item.fixture_id);
-            if (f) {
-              f.matchday_number = mdNum;
-              f.playday = item.playday;
-              updates.push({
-                id: f.fixture_id,
-                matchday: mdNum,
-                scheduled_time: `${item.playday}T00:00:00`,
-              });
-            }
-            if (!matchdayMap.has(mdNum)) {
-              matchdayMap.set(mdNum, { playDate: item.playday, matchIds: [] });
-            }
-            matchdayMap.get(mdNum)!.matchIds.push(item.fixture_id);
-          }
-        }
-
-        mem.matchdays = Array.from(matchdayMap.entries()).map(([mdNum, info]) => ({
-          matchday_id: `md-${mdNum}`,
-          matchday_number: Number(mdNum),
-          play_date: info.playDate,
-          playable: true,
-          match_ids: info.matchIds,
-        }));
-
-        try {
-          for (let i = 0; i < updates.length; i += 50) {
-            const batch = updates.slice(i, i + 50);
-            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
-          }
-        } catch (_err) {}
-      }
-
-      // 3. PHASE 3: ALGORITHM 3 — Pitch Venue & Slot Time Allocation Write
-      if (args.stage === 'ALGORITHM_3' && args.algorithm3Result?.payload?.database_operations?.allocations) {
-        const allocations = args.algorithm3Result.payload.database_operations.allocations;
-        const venueUpdates: Array<{ id: string; venue: string; scheduled_time: string }> = [];
-
-        mem.matchAssignments = allocations.map((a) => {
-          const venueName = resolvePitchName(a.pitch_id);
-          const fullTime = `${a.play_date}T${a.start_time}:00`;
-          const f = mem.fixtures.find((fix) => fix.fixture_id === a.match_id);
-          if (f) {
-            f.playday = a.play_date;
-          }
-          venueUpdates.push({
-            id: a.match_id,
-            venue: venueName,
-            scheduled_time: fullTime,
-          });
-
-          return {
-            match_id: a.match_id,
-            matchday_id: `md-${a.matchday_number || 1}`,
-            play_date: a.play_date,
-            pitch_id: a.pitch_id,
-            slot_id: `slot-${a.slot_number}`,
-            start_time: a.start_time,
-            end_time: a.end_time,
-            allocation_status: 'ALLOCATED',
-          };
-        });
-
-        try {
-          for (let i = 0; i < venueUpdates.length; i += 50) {
-            const batch = venueUpdates.slice(i, i + 50);
-            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
-          }
-        } catch (_err) {}
-      }
-
-      // 4. PHASE 4: ALGORITHM 4 & 5 — Center Referee & Linesmen Allocation Write
-      if (args.stage === 'ALGORITHM_4_5' && args.algorithm45Result?.payload?.assignments) {
-        const assignments = args.algorithm45Result.payload.assignments;
-        const refUpdates: Array<{ id: string; referee_id: string | null }> = [];
-
-        for (const assign of assignments) {
-          const f = mem.fixtures.find((fix) => fix.fixture_id === assign.match_id);
-          if (f) {
-            if (assign.center_referee_id !== undefined) {
-              (f as any).referee_id = assign.center_referee_id;
-              refUpdates.push({
-                id: assign.match_id,
-                referee_id: assign.center_referee_id || null,
-              });
-            }
-          }
-        }
-
-        try {
-          for (let i = 0; i < refUpdates.length; i += 50) {
-            const batch = refUpdates.slice(i, i + 50);
-            await supabase.from('fixtures').upsert(batch, { onConflict: 'id' });
-          }
-        } catch (_err) {}
-      }
-    },
-
-    async readBackAndVerify(_args) {
-      try {
-        const { data: dbFixtures } = await supabase
-          .from('fixtures')
-          .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
-          .is('deleted_at', null);
-
-        if (dbFixtures && dbFixtures.length > 0) {
-          mem.fixtures = dbFixtures.map((f: any, idx: number) => ({
-            fixture_id: f.id,
-            league_id: f.competition_id || EPL_COMP_ID,
-            home_id: f.home_team_id || '',
-            away_id: f.away_team_id || '',
-            leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
-            match_sequence: idx + 1,
-            matchday_number: f.matchday,
-            playday: f.scheduled_time ? f.scheduled_time.split('T')[0] : null,
-            completed: false,
-            historical: false,
-          }));
-        }
-      } catch (_e) {}
-
-      if (mem.fixtures.length === 0) {
-        throw new Error('Readback verification failed: empty fixtures returned after generation.');
-      }
-    },
-
-    async getLeagueConfigs(_seasonId) {
-      // Query authoritative active teams from database
-      const { data: dbTeams } = await supabase
+    async fetchCurrentState(_sid: string): Promise<DBState> {
+      // 1. Authoritative Teams from database
+      const { data: dbTeams, error: teamsErr } = await supabase
         .from('teams')
         .select('id, name, competition_id, status')
         .neq('status', 'rejected')
         .is('deleted_at', null);
 
-      const allTeams = dbTeams && dbTeams.length > 0 ? dbTeams : mem.teams.map((t) => ({ id: t.team_id, name: t.team_name, competition_id: t.league_type === 'EPL' ? EPL_COMP_ID : CHAMP_COMP_ID }));
+      if (teamsErr) {
+        throw new Error(`Failed to load teams from database: ${teamsErr.message}`);
+      }
+
+      const allTeams = dbTeams || [];
+      const eplTeams = allTeams.filter((t: any) =>
+        t.competition_id === EPL_COMP_ID ||
+        t.competition_id?.includes('1111') ||
+        t.name?.toLowerCase().includes('premier') ||
+        (!t.competition_id && !t.name?.toLowerCase().includes('championship'))
+      );
+      const champTeams = allTeams.filter((t: any) =>
+        t.competition_id === CHAMP_COMP_ID ||
+        t.competition_id?.includes('2222') ||
+        t.name?.toLowerCase().includes('championship')
+      );
+
+      const teams = [
+        ...eplTeams.map((t: any) => ({
+          team_id: t.id,
+          league_type: 'EPL' as const,
+          team_name: t.name,
+        })),
+        ...champTeams.map((t: any) => ({
+          team_id: t.id,
+          league_type: 'CHAMPIONSHIP' as const,
+          team_name: t.name,
+        })),
+      ];
+
+      // 2. Authoritative Referees from database
+      const { data: dbReferees, error: refErr } = await supabase
+        .from('referees')
+        .select('id, name, status, badge_level')
+        .is('deleted_at', null);
+
+      if (refErr) {
+        throw new Error(`Failed to load referees from database: ${refErr.message}`);
+      }
+
+      const referees = (dbReferees || [])
+        .filter((r: any) => r.status === 'Active' || !r.status)
+        .map((r: any) => ({
+          referee_id: r.id,
+          tier: (r.badge_level?.includes('FIFA') || r.badge_level?.includes('Level 1')
+            ? 'EPL_Exclusive'
+            : 'Mixed') as 'EPL_Exclusive' | 'Mixed',
+        }));
+
+      // 3. Authoritative Pitches from database
+      const { data: dbPitches, error: pitchErr } = await supabase
+        .from('pitches')
+        .select('id, name, status')
+        .order('name');
+
+      if (pitchErr) {
+        throw new Error(`Failed to load pitches from database: ${pitchErr.message}`);
+      }
+
+      const pitches = (dbPitches || []).map((p: any) => ({
+        pitch_id: p.id,
+        state: (p.status === 'Available' ? 'available' : 'unavailable') as 'available' | 'unavailable',
+      }));
+
+      // 4. Authoritative Base Fixtures & Matchday Schedules from database
+      const { data: dbBaseFixtures } = await supabase
+        .from('base_fixtures')
+        .select('*')
+        .order('match_sequence');
+
+      const { data: dbSchedules } = await supabase
+        .from('matchday_schedules')
+        .select('*');
+
+      const schedulesMap = new Map<string, any>();
+      if (dbSchedules) {
+        for (const s of dbSchedules) {
+          schedulesMap.set(s.fixture_id, s);
+        }
+      }
+
+      let fixtures: DBState['fixtures'] = [];
+
+      if (dbBaseFixtures && dbBaseFixtures.length > 0) {
+        fixtures = dbBaseFixtures.map((bf: any) => {
+          const sched = schedulesMap.get(bf.id);
+          return {
+            fixture_id: bf.id,
+            league_id: bf.competition_id || (bf.league === 'EPL' ? EPL_COMP_ID : CHAMP_COMP_ID),
+            home_id: bf.home_team_id,
+            away_id: bf.away_team_id,
+            leg: (bf.leg || 1) as 1 | 2,
+            match_sequence: bf.match_sequence,
+            matchday_number: sched?.matchday_number ?? null,
+            playday: sched?.play_date ?? null,
+            completed: false,
+            historical: false,
+          };
+        });
+      } else {
+        const { data: dbFixtures } = await supabase
+          .from('fixtures')
+          .select('*')
+          .is('deleted_at', null);
+
+        if (dbFixtures && dbFixtures.length > 0) {
+          fixtures = dbFixtures.map((f: any, idx: number) => ({
+            fixture_id: f.id,
+            league_id: f.competition_id === CHAMP_COMP_ID || f.competition_id?.includes('2222') ? CHAMP_COMP_ID : EPL_COMP_ID,
+            home_id: f.home_team_id,
+            away_id: f.away_team_id,
+            leg: (f.matchday && f.matchday > 9 ? 2 : 1) as 1 | 2,
+            match_sequence: idx + 1,
+            matchday_number: f.matchday || null,
+            playday: f.scheduled_time ? f.scheduled_time.split('T')[0] : null,
+            completed: f.status === 'Completed' || f.status === 'FT',
+            historical: f.status === 'Completed' || f.status === 'FT',
+          }));
+        }
+      }
+
+      // Group matchdays
+      const matchdayMap = new Map<number, { play_date: string; match_ids: string[] }>();
+      if (dbSchedules && dbSchedules.length > 0) {
+        for (const s of dbSchedules) {
+          const mdNum = s.matchday_number;
+          if (!matchdayMap.has(mdNum)) {
+            matchdayMap.set(mdNum, { play_date: s.play_date, match_ids: [] });
+          }
+          matchdayMap.get(mdNum)!.match_ids.push(s.fixture_id);
+        }
+      }
+
+      const matchdays = Array.from(matchdayMap.entries()).map(([mdNum, info]) => ({
+        matchday_id: `md-${mdNum}`,
+        matchday_number: mdNum,
+        play_date: info.play_date,
+        playable: true,
+        match_ids: info.match_ids,
+      }));
+
+      // Match assignments
+      const matchAssignments = (dbSchedules || [])
+        .filter((s: any) => s.pitch_id && s.start_time)
+        .map((s: any) => ({
+          match_id: s.fixture_id,
+          matchday_id: `md-${s.matchday_number}`,
+          play_date: s.play_date,
+          pitch_id: s.pitch_id,
+          slot_id: `slot-${s.slot_number || 1}`,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          allocation_status: s.status || 'ALLOCATED',
+        }));
+
+      return {
+        fixtures,
+        matchdays,
+        matchAssignments,
+        playdays: generateDefaultPlaydays('2026-09-05', 90),
+        capacity: { EPL: 3, Championship: 3 },
+        pitches,
+        referees,
+        teams,
+        timeConfiguration: [
+          {
+            league_id: 'epl',
+            slots: [
+              { slot_number: 1, start_time: '08:30', end_time: '10:30' },
+              { slot_number: 2, start_time: '10:45', end_time: '12:45' },
+              { slot_number: 3, start_time: '13:00', end_time: '15:00' },
+            ],
+          },
+          {
+            league_id: 'championship',
+            slots: [
+              { slot_number: 1, start_time: '15:15', end_time: '17:15' },
+              { slot_number: 2, start_time: '17:30', end_time: '19:30' },
+              { slot_number: 3, start_time: '19:45', end_time: '21:45' },
+            ],
+          },
+        ],
+      };
+    },
+
+    /**
+     * Stage 1: Insert immutable base fixtures (Algorithm 1)
+     */
+    async insertBaseFixtures(args) {
+      if (!args.algorithm1Result?.payload?.data) {
+        throw new Error('Algorithm 1 result payload is missing data.');
+      }
+
+      const baseRows: Array<{
+        id: string;
+        competition_id: string;
+        league: 'EPL' | 'CHAMPIONSHIP';
+        home_team_id: string;
+        away_team_id: string;
+        leg: number;
+        match_sequence: number;
+      }> = [];
+
+      const legacyFixtures: Array<{
+        id: string;
+        competition_id: string;
+        home_team_id: string;
+        away_team_id: string;
+        scheduled_time: string;
+        status: string;
+        score_home: number;
+        score_away: number;
+        matchday: number;
+      }> = [];
+
+      let seq = 1;
+      for (const [leagueId, data] of Object.entries(args.algorithm1Result.payload.data)) {
+        const isEPL =
+          leagueId === 'epl' ||
+          leagueId === EPL_COMP_ID ||
+          leagueId.includes('1111') ||
+          leagueId.includes('premier');
+        const compId = isEPL ? EPL_COMP_ID : CHAMP_COMP_ID;
+        const leagueType: 'EPL' | 'CHAMPIONSHIP' = isEPL ? 'EPL' : 'CHAMPIONSHIP';
+
+        const processLeg = (legFixtures: any[], legNumber: 1 | 2) => {
+          legFixtures.forEach((f) => {
+            const fixtureId = toValidUUID(f.fixture_id || crypto.randomUUID());
+            baseRows.push({
+              id: fixtureId,
+              competition_id: compId,
+              league: leagueType,
+              home_team_id: f.home_id,
+              away_team_id: f.away_id,
+              leg: legNumber,
+              match_sequence: f.match_sequence || seq++,
+            });
+
+            legacyFixtures.push({
+              id: fixtureId,
+              competition_id: compId,
+              home_team_id: f.home_id,
+              away_team_id: f.away_id,
+              scheduled_time: '2026-09-01T00:00:00.000Z',
+              status: 'UPCOMING',
+              score_home: 0,
+              score_away: 0,
+              matchday: 1,
+            });
+          });
+        };
+
+        if (data.leg_1) processLeg(data.leg_1, 1);
+        if (data.leg_2) processLeg(data.leg_2, 2);
+      }
+
+      // Cleanup prior operational schedule if re-initializing
+      await supabase
+        .from('matchday_schedules')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      await supabase
+        .from('base_fixtures')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      await supabase
+        .from('fixtures')
+        .delete()
+        .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
+
+      // Direct write into immutable base_fixtures table
+      for (let i = 0; i < baseRows.length; i += 50) {
+        const batch = baseRows.slice(i, i + 50);
+        const { error: insertErr } = await supabase.from('base_fixtures').insert(batch);
+        if (insertErr) {
+          throw new Error(`Database base_fixtures insert failed: ${insertErr.message}`);
+        }
+      }
+
+      // Sync into fixtures table
+      for (let i = 0; i < legacyFixtures.length; i += 50) {
+        const batch = legacyFixtures.slice(i, i + 50);
+        const { error: insertFixErr } = await supabase.from('fixtures').insert(batch);
+        if (insertFixErr) {
+          console.warn('Note on legacy fixtures sync:', insertFixErr.message);
+        }
+      }
+    },
+
+    /**
+     * Stage 2: Insert matchday calendar groupings (Algorithm 2)
+     */
+    async insertMatchdaySchedules(args) {
+      if (!args.algorithm2Result?.payload?.final_schedule) {
+        throw new Error('Algorithm 2 result payload is missing final_schedule.');
+      }
+
+      const schedule = args.algorithm2Result.payload.final_schedule;
+      const scheduleRows: Array<{
+        id?: string;
+        fixture_id: string;
+        competition_id: string;
+        league: 'EPL' | 'CHAMPIONSHIP';
+        matchday_number: number;
+        play_date: string;
+        is_weekend: boolean;
+        pitch_id: string | null;
+        slot_number: number | null;
+        period: 'AM' | 'PM' | null;
+        start_time: string | null;
+        end_time: string | null;
+        center_referee_id: string | null;
+        linesman_team_a_id: string | null;
+        linesman_team_b_id: string | null;
+        status: string;
+      }> = [];
+
+      const fixtureUpdates: Array<{
+        id: string;
+        matchday: number;
+        scheduled_time: string;
+      }> = [];
+
+      for (const [leagueId, fixturesList] of Object.entries(schedule)) {
+        const isEPL =
+          leagueId === 'epl' ||
+          leagueId === EPL_COMP_ID ||
+          leagueId.includes('1111') ||
+          leagueId.includes('premier');
+        const compId = isEPL ? EPL_COMP_ID : CHAMP_COMP_ID;
+        const leagueType: 'EPL' | 'CHAMPIONSHIP' = isEPL ? 'EPL' : 'CHAMPIONSHIP';
+
+        for (const item of fixturesList as any[]) {
+          const fixId = toValidUUID(item.fixture_id);
+          const mdNum = Number(item.matchday_number);
+          const playDate = item.playday;
+
+          const d = new Date(playDate);
+          const dayOfWeek = d.getUTCDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+          scheduleRows.push({
+            fixture_id: fixId,
+            competition_id: compId,
+            league: leagueType,
+            matchday_number: mdNum,
+            play_date: playDate,
+            is_weekend: isWeekend,
+            pitch_id: null,
+            slot_number: null,
+            period: null,
+            start_time: null,
+            end_time: null,
+            center_referee_id: null,
+            linesman_team_a_id: null,
+            linesman_team_b_id: null,
+            status: 'SCHEDULED',
+          });
+
+          fixtureUpdates.push({
+            id: fixId,
+            matchday: mdNum,
+            scheduled_time: `${playDate}T00:00:00.000Z`,
+          });
+        }
+      }
+
+      // Upsert into matchday_schedules
+      for (let i = 0; i < scheduleRows.length; i += 50) {
+        const batch = scheduleRows.slice(i, i + 50);
+        const { error: upsertErr } = await supabase
+          .from('matchday_schedules')
+          .upsert(batch, { onConflict: 'fixture_id' });
+        if (upsertErr) {
+          throw new Error(`Database matchday_schedules write failed: ${upsertErr.message}`);
+        }
+      }
+
+      // Sync into fixtures table
+      for (let i = 0; i < fixtureUpdates.length; i += 50) {
+        const batch = fixtureUpdates.slice(i, i + 50);
+        const { error: fixErr } = await supabase
+          .from('fixtures')
+          .upsert(batch, { onConflict: 'id' });
+        if (fixErr) {
+          console.warn('Note on fixtures update in Alg 2:', fixErr.message);
+        }
+      }
+    },
+
+    /**
+     * Stage 3: Put pitch allocations & time slots (Algorithm 3)
+     */
+    async putPitchAllocations(args) {
+      if (!args.algorithm3Result?.payload?.database_operations?.allocations) {
+        throw new Error('Algorithm 3 result payload is missing allocations.');
+      }
+
+      const allocations = args.algorithm3Result.payload.database_operations.allocations;
+      const scheduleUpdates: Array<{
+        fixture_id: string;
+        pitch_id: string;
+        slot_number: number;
+        period: 'AM' | 'PM';
+        start_time: string;
+        end_time: string;
+        status: string;
+      }> = [];
+
+      const fixtureUpdates: Array<{
+        id: string;
+        venue: string;
+        scheduled_time: string;
+      }> = [];
+
+      for (const a of allocations) {
+        const fixId = toValidUUID(a.match_id);
+        const venueName = resolvePitchName(a.pitch_id);
+        const fullTime = `${a.play_date}T${a.start_time}:00.000Z`;
+        const period: 'AM' | 'PM' = isEplLeague(a.league_id) ? 'AM' : 'PM';
+
+        scheduleUpdates.push({
+          fixture_id: fixId,
+          pitch_id: a.pitch_id,
+          slot_number: a.slot_number,
+          period,
+          start_time: a.start_time,
+          end_time: a.end_time,
+          status: 'SCHEDULED',
+        });
+
+        fixtureUpdates.push({
+          id: fixId,
+          venue: venueName,
+          scheduled_time: fullTime,
+        });
+      }
+
+      await Promise.all(
+        scheduleUpdates.map((item) =>
+          supabase
+            .from('matchday_schedules')
+            .update({
+              pitch_id: item.pitch_id,
+              slot_number: item.slot_number,
+              period: item.period,
+              start_time: item.start_time,
+              end_time: item.end_time,
+              status: item.status,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('fixture_id', item.fixture_id)
+            .then(({ error }) => {
+              if (error) throw new Error(`Database matchday_schedules pitch write failed: ${error.message}`);
+            })
+        )
+      );
+
+      for (let i = 0; i < fixtureUpdates.length; i += 50) {
+        const batch = fixtureUpdates.slice(i, i + 50);
+        const { error: fixErr } = await supabase
+          .from('fixtures')
+          .upsert(batch, { onConflict: 'id' });
+        if (fixErr) {
+          console.warn('Note on fixtures pitch update:', fixErr.message);
+        }
+      }
+    },
+
+    /**
+     * Stage 4: Put officiating assignments (Algorithm 4 & 5)
+     */
+    async putOfficiatingAssignments(args) {
+      if (!args.algorithm45Result?.payload?.assignments) {
+        throw new Error('Algorithm 4 & 5 result payload is missing assignments.');
+      }
+
+      const assignments = args.algorithm45Result.payload.assignments;
+      const scheduleUpdates: Array<{
+        fixture_id: string;
+        center_referee_id: string | null;
+        linesman_team_a_id: string | null;
+        linesman_team_b_id: string | null;
+      }> = [];
+
+      const fixtureUpdates: Array<{
+        id: string;
+        referee_id: string | null;
+      }> = [];
+
+      for (const assign of assignments) {
+        const fixId = toValidUUID(assign.match_id);
+
+        scheduleUpdates.push({
+          fixture_id: fixId,
+          center_referee_id: assign.center_referee_id || null,
+          linesman_team_a_id: assign.linesman_team_a_id || null,
+          linesman_team_b_id: assign.linesman_team_b_id || null,
+        });
+
+        if (assign.center_referee_id) {
+          fixtureUpdates.push({
+            id: fixId,
+            referee_id: assign.center_referee_id,
+          });
+        }
+      }
+
+      await Promise.all(
+        scheduleUpdates.map((item) =>
+          supabase
+            .from('matchday_schedules')
+            .update({
+              center_referee_id: item.center_referee_id,
+              linesman_team_a_id: item.linesman_team_a_id,
+              linesman_team_b_id: item.linesman_team_b_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('fixture_id', item.fixture_id)
+            .then(({ error }) => {
+              if (error) throw new Error(`Database matchday_schedules officiating write failed: ${error.message}`);
+            })
+        )
+      );
+
+      for (let i = 0; i < fixtureUpdates.length; i += 50) {
+        const batch = fixtureUpdates.slice(i, i + 50);
+        const { error: fixErr } = await supabase
+          .from('fixtures')
+          .upsert(batch, { onConflict: 'id' });
+        if (fixErr) {
+          console.warn('Note on fixtures referee update:', fixErr.message);
+        }
+      }
+    },
+
+    async persistAtomically(args) {
+      if (args.stage === 'ALGORITHM_1' && args.algorithm1Result) {
+        await this.insertBaseFixtures!({
+          executionId: args.executionId,
+          seasonId: args.seasonId,
+          algorithm1Result: args.algorithm1Result,
+        });
+      } else if (args.stage === 'ALGORITHM_2' && args.algorithm2Result) {
+        await this.insertMatchdaySchedules!({
+          executionId: args.executionId,
+          seasonId: args.seasonId,
+          algorithm1Result: args.algorithm1Result,
+          algorithm2Result: args.algorithm2Result,
+        });
+      } else if (args.stage === 'ALGORITHM_3' && args.algorithm3Result) {
+        await this.putPitchAllocations!({
+          executionId: args.executionId,
+          seasonId: args.seasonId,
+          algorithm1Result: args.algorithm1Result,
+          algorithm2Result: args.algorithm2Result,
+          algorithm3Result: args.algorithm3Result,
+        });
+      } else if (args.stage === 'ALGORITHM_4_5' && args.algorithm45Result) {
+        await this.putOfficiatingAssignments!({
+          executionId: args.executionId,
+          seasonId: args.seasonId,
+          algorithm1Result: args.algorithm1Result,
+          algorithm2Result: args.algorithm2Result,
+          algorithm3Result: args.algorithm3Result,
+          algorithm45Result: args.algorithm45Result,
+        });
+      }
+    },
+
+    async readBackAndVerify(_args) {
+      const { data: dbBase, error: baseErr } = await supabase
+        .from('base_fixtures')
+        .select('id, competition_id, home_team_id, away_team_id, leg, match_sequence');
+
+      if (baseErr) {
+        throw new Error(`Readback verification query failed on base_fixtures: ${baseErr.message}`);
+      }
+
+      let count = dbBase?.length || 0;
+
+      if (count === 0) {
+        const { data: dbFix, error: fixErr } = await supabase
+          .from('fixtures')
+          .select('id');
+        if (fixErr || !dbFix || dbFix.length === 0) {
+          throw new Error('Readback verification failed: zero fixtures found in database.');
+        }
+        count = dbFix.length;
+      }
+
+      const { data: dbSched, error: schedErr } = await supabase
+        .from('matchday_schedules')
+        .select('id, fixture_id, matchday_number, play_date, pitch_id, slot_number, center_referee_id');
+
+      if (schedErr) {
+        throw new Error(`Readback verification query failed on matchday_schedules: ${schedErr.message}`);
+      }
+
+      if (!dbSched || dbSched.length === 0) {
+        throw new Error('Readback verification failed: zero matchday schedules found in database.');
+      }
+    },
+
+    async getLeagueConfigs(_seasonId) {
+      const { data: dbTeams, error: teamErr } = await supabase
+        .from('teams')
+        .select('id, name, competition_id, status')
+        .neq('status', 'rejected')
+        .is('deleted_at', null);
+
+      if (teamErr) {
+        throw new Error(`Failed to load teams for league configs: ${teamErr.message}`);
+      }
+
+      const allTeams = dbTeams || [];
 
       const eplTeamIds = allTeams
         .filter((t: any) =>
@@ -556,10 +753,6 @@ export const PresidentActionBridge = {
     if (!seasonId) throw new Error('Season ID is required');
     if (!seasonStartDate) throw new Error('Season start date is required');
 
-    const mem = initializeDefaultMemory(seasonId, seasonStartDate);
-    mem.seasonStartDate = seasonStartDate;
-    mem.playdays = generateDefaultPlaydays(seasonStartDate, 90);
-
     const event: PresidentEvent = {
       type: 'BEGIN_SEASON',
       seasonId,
@@ -581,10 +774,6 @@ export const PresidentActionBridge = {
       throw new Error('Championship matches per matchday must be a positive integer.');
     }
 
-    const mem = initializeDefaultMemory(seasonId);
-    if (epl !== undefined) mem.capacity.EPL = epl;
-    if (championship !== undefined) mem.capacity.Championship = championship;
-
     const event: PresidentEvent = {
       type: 'CHANGE_MATCH_CAPACITY',
       seasonId,
@@ -602,15 +791,6 @@ export const PresidentActionBridge = {
   async addPlaydayOnce(seasonId: string, date: string): Promise<Agent0EventResult> {
     if (!date) throw new Error('Playday date is required.');
 
-    const mem = initializeDefaultMemory(seasonId);
-    const existingIndex = mem.playdays.findIndex((p) => p.date === date);
-    if (existingIndex >= 0) {
-      mem.playdays[existingIndex] = { date, mode: 'ONE_TIME', active: true };
-    } else {
-      mem.playdays.push({ date, mode: 'ONE_TIME', active: true });
-    }
-    mem.playdays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
     const event: PresidentEvent = {
       type: 'ADD_PLAYDAY_ONCE',
       seasonId,
@@ -626,15 +806,6 @@ export const PresidentActionBridge = {
    */
   async addPlaydayPermanent(seasonId: string, date: string): Promise<Agent0EventResult> {
     if (!date) throw new Error('Playday date is required.');
-
-    const mem = initializeDefaultMemory(seasonId);
-    const existingIndex = mem.playdays.findIndex((p) => p.date === date);
-    if (existingIndex >= 0) {
-      mem.playdays[existingIndex] = { date, mode: 'PERMANENT', active: true };
-    } else {
-      mem.playdays.push({ date, mode: 'PERMANENT', active: true });
-    }
-    mem.playdays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const event: PresidentEvent = {
       type: 'ADD_PLAYDAY_PERMANENT',
@@ -652,9 +823,6 @@ export const PresidentActionBridge = {
   async removePlaydayOnce(seasonId: string, date: string): Promise<Agent0EventResult> {
     if (!date) throw new Error('Playday date is required.');
 
-    const mem = initializeDefaultMemory(seasonId);
-    mem.playdays = mem.playdays.filter(p => p.date !== date || p.mode !== 'ONE_TIME');
-
     const event: PresidentEvent = {
       type: 'REMOVE_PLAYDAY_ONCE',
       seasonId,
@@ -670,9 +838,6 @@ export const PresidentActionBridge = {
    */
   async removePlaydayPermanent(seasonId: string, date: string): Promise<Agent0EventResult> {
     if (!date) throw new Error('Playday date is required.');
-
-    const mem = initializeDefaultMemory(seasonId);
-    mem.playdays = mem.playdays.filter(p => p.date !== date);
 
     const event: PresidentEvent = {
       type: 'REMOVE_PLAYDAY_PERMANENT',
@@ -713,14 +878,6 @@ export const PresidentActionBridge = {
   ): Promise<Agent0EventResult> {
     if (!pitchId) throw new Error('Pitch ID is required.');
 
-    const mem = initializeDefaultMemory(seasonId);
-    const target = mem.pitches.find(p => p.pitch_id === pitchId);
-    if (target) {
-      target.amAvailable = amAvailable;
-      target.pmAvailable = pmAvailable;
-      target.state = amAvailable || pmAvailable ? 'available' : 'unavailable';
-    }
-
     const event: PresidentEvent = {
       type: 'CHANGE_PITCH_STATE',
       seasonId,
@@ -741,16 +898,6 @@ export const PresidentActionBridge = {
     eplSlots?: Array<{ slot_number: 1 | 2 | 3; start_time: string; end_time: string }>,
     championshipSlots?: Array<{ slot_number: 1 | 2 | 3; start_time: string; end_time: string }>
   ): Promise<Agent0EventResult> {
-    const mem = initializeDefaultMemory(seasonId);
-    if (eplSlots) {
-      const eplConfig = mem.timeConfiguration?.find(tc => tc.league_id === 'epl');
-      if (eplConfig) eplConfig.slots = eplSlots;
-    }
-    if (championshipSlots) {
-      const champConfig = mem.timeConfiguration?.find(tc => tc.league_id === 'championship');
-      if (champConfig) champConfig.slots = championshipSlots;
-    }
-
     const event: PresidentEvent = {
       type: 'CHANGE_TIME_CONFIGURATION',
       seasonId,
@@ -906,27 +1053,24 @@ export const PresidentActionBridge = {
         };
       }
 
-      const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
-      const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
-      const mem = initializeDefaultMemory(seasonId);
-
-      // If Agent 0 pipeline hasn't scheduled matchdays/allocations, run beginSeason
-      if (mem.fixtures.length === 0 || mem.matchdays.length === 0 || mem.matchAssignments.length === 0) {
-        await this.beginSeason(seasonId, mem.seasonStartDate || '2026-09-01');
-      }
-
       // 1. Read authoritative fixtures from Supabase database to verify persistence succeeded
-      let dbRows: any[] = [];
       const { data: fixturesData, error: fetchErr } = await supabase
-        .from('fixtures')
-        .select('id, competition_id, home_team_id, away_team_id, matchday, scheduled_time, venue, referee_id')
-        .is('deleted_at', null);
+        .from('base_fixtures')
+        .select('id, competition_id, home_team_id, away_team_id');
 
+      let dbRows: any[] = [];
       if (!fetchErr && fixturesData && fixturesData.length > 0) {
         dbRows = fixturesData;
+      } else {
+        const { data: legacyData } = await supabase
+          .from('fixtures')
+          .select('id, competition_id, home_team_id, away_team_id');
+        if (legacyData && legacyData.length > 0) {
+          dbRows = legacyData;
+        }
       }
 
-      if (dbRows.length === 0 && mem.fixtures.length === 0) {
+      if (dbRows.length === 0) {
         return {
           success: false,
           count: 0,
@@ -949,10 +1093,10 @@ export const PresidentActionBridge = {
 
       const totalCount = dbRows.length > 0 ? dbRows.length : generatedCount;
       const eplCount = dbRows.length > 0
-        ? dbRows.filter((f) => f.competition_id === EPL_COMP_ID).length
+        ? dbRows.filter((f) => f.competition_id === EPL_COMP_ID || f.league === 'EPL').length
         : generatedEplCount;
       const champCount = dbRows.length > 0
-        ? dbRows.filter((f) => f.competition_id === CHAMP_COMP_ID).length
+        ? dbRows.filter((f) => f.competition_id === CHAMP_COMP_ID || f.league === 'CHAMPIONSHIP').length
         : generatedChampCount;
 
       // 2. Authoritative Database Season Mode Activation: set seasons.is_locked = true
@@ -969,7 +1113,6 @@ export const PresidentActionBridge = {
           });
 
         if (!seasonUpdateErr) {
-          // Read-back verification from database
           const { data: verifiedSeason, error: verifyErr } = await supabase
             .from('seasons')
             .select('id, is_locked, status')
@@ -982,7 +1125,6 @@ export const PresidentActionBridge = {
         }
       } catch (_sErr) {}
 
-      // Fallback verification if season table is active
       const reReadVerified = totalCount > 0;
 
       try {

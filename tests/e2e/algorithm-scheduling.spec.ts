@@ -5,6 +5,8 @@ import { allocateMatches, type Algorithm3Signal } from '../../src/algorithms/alg
 import { generateOfficiatingAssignments, type Algorithm45Input } from '../../src/algorithms/algorithm45';
 import { createAlgorithmCommand } from '../../src/shared/algorithmProtocol';
 import { handleEvent as handleAgent0Event, type Agent0Adapters, type PresidentEvent } from '../../src/services/agent0';
+import { PresidentActionBridge, EPL_COMP_ID, CHAMP_COMP_ID } from '../../src/services/presidentAgent0Bridge';
+import { supabase } from '../../src/lib/supabase';
 
 test.describe('Rigorous Scheduling Algorithm & Agent 0 Invariant Suite', () => {
   const EPL_LEAGUE_UID = '11111111-1111-4111-8111-000000000001';
@@ -26,6 +28,8 @@ test.describe('Rigorous Scheduling Algorithm & Agent 0 Invariant Suite', () => {
     { referee_id: 'r0000004-0000-4000-8000-000000000004', tier: 'Mixed' as const },
     { referee_id: 'r0000005-0000-4000-8000-000000000005', tier: 'Mixed' as const },
     { referee_id: 'r0000006-0000-4000-8000-000000000006', tier: 'Mixed' as const },
+    { referee_id: 'r0000007-0000-4000-8000-000000000007', tier: 'Mixed' as const },
+    { referee_id: 'r0000008-0000-4000-8000-000000000008', tier: 'Mixed' as const },
   ];
 
   test('Algorithm 1: Mathematical Fixture Generation & Round-Robin Invariants', () => {
@@ -276,14 +280,22 @@ test.describe('Rigorous Scheduling Algorithm & Agent 0 Invariant Suite', () => {
   });
 
   test('Agent 0 End-to-End Orchestration & Database Integrity', async () => {
+    const playdays = Array.from({ length: 45 }, (_, w) => {
+      const sat = new Date('2026-09-05');
+      sat.setDate(sat.getDate() + w * 7);
+      const sun = new Date(sat);
+      sun.setDate(sat.getDate() + 1);
+      return [
+        { date: sat.toISOString().split('T')[0], mode: 'PERMANENT' as const, active: true },
+        { date: sun.toISOString().split('T')[0], mode: 'PERMANENT' as const, active: true },
+      ];
+    }).flat();
+
     const inMemoryDB = {
       fixtures: [] as any[],
       matchdays: [] as any[],
       matchAssignments: [] as any[],
-      playdays: [
-        { date: '2026-09-05', mode: 'PERMANENT' as const, active: true },
-        { date: '2026-09-06', mode: 'PERMANENT' as const, active: true },
-      ],
+      playdays,
       capacity: { EPL: 5, Championship: 6 },
       pitches: pitchIds.map((id) => ({ pitch_id: id, state: 'available' as const })),
       referees,
@@ -297,76 +309,71 @@ test.describe('Rigorous Scheduling Algorithm & Agent 0 Invariant Suite', () => {
       async fetchCurrentState(_sid: string) {
         return inMemoryDB;
       },
-      async persistAtomically(args) {
-        if (args.stage === 'ALGORITHM_1' && args.algorithm1Result) {
-          const flat: any[] = [];
-          let seqNo = 1;
-          for (const [leagueId, d] of Object.entries(args.algorithm1Result.payload.data)) {
-            for (const m of [...d.leg_1, ...d.leg_2]) {
-              flat.push({
-                fixture_id: crypto.randomUUID(),
-                league_id: leagueId,
-                home_id: m.home_id,
-                away_id: m.away_id,
-                leg: m.match_sequence <= d.leg_1.length ? 1 : 2,
-                match_sequence: seqNo++,
-                matchday_number: null,
-                playday: null,
-                completed: false,
-                historical: false,
-              });
-            }
+      async insertBaseFixtures(args) {
+        const flat: any[] = [];
+        let seqNo = 1;
+        for (const [leagueId, d] of Object.entries(args.algorithm1Result.payload.data)) {
+          for (const m of [...d.leg_1, ...d.leg_2]) {
+            flat.push({
+              fixture_id: m.fixture_id || crypto.randomUUID(),
+              league_id: leagueId,
+              home_id: m.home_id,
+              away_id: m.away_id,
+              leg: m.match_sequence <= d.leg_1.length ? 1 : 2,
+              match_sequence: seqNo++,
+              matchday_number: null,
+              playday: null,
+              completed: false,
+              historical: false,
+            });
           }
-          inMemoryDB.fixtures = flat;
         }
-
-        if (args.stage === 'ALGORITHM_2' && args.algorithm2Result) {
-          const schedule = args.algorithm2Result.payload.final_schedule;
-          const mdMap = new Map<number, { playDate: string; matchIds: string[] }>();
-          for (const [_lid, list] of Object.entries(schedule)) {
-            for (const item of list) {
-              const f = inMemoryDB.fixtures.find((fix) => fix.fixture_id === item.fixture_id);
-              if (f) {
-                f.matchday_number = item.matchday_number;
-                f.playday = item.playday;
-              }
-              if (!mdMap.has(item.matchday_number)) {
-                mdMap.set(item.matchday_number, { playDate: item.playday, matchIds: [] });
-              }
-              mdMap.get(item.matchday_number)!.matchIds.push(item.fixture_id);
-            }
-          }
-          inMemoryDB.matchdays = Array.from(mdMap.entries()).map(([mdNum, info]) => ({
-            matchday_id: `md-${mdNum}`,
-            matchday_number: mdNum,
-            play_date: info.playDate,
-            playable: true,
-            match_ids: info.matchIds,
-          }));
-        }
-
-        if (args.stage === 'ALGORITHM_3' && args.algorithm3Result) {
-          const allocations = args.algorithm3Result.payload.database_operations.allocations;
-          inMemoryDB.matchAssignments = allocations.map((a) => ({
-            match_id: a.match_id,
-            matchday_id: `md-${a.matchday_number}`,
-            play_date: a.play_date,
-            pitch_id: a.pitch_id,
-            slot_id: `slot-${a.slot_number}`,
-            start_time: a.start_time,
-            end_time: a.end_time,
-            allocation_status: 'ALLOCATED',
-          }));
-        }
-
-        if (args.stage === 'ALGORITHM_4_5' && args.algorithm45Result) {
-          for (const assign of args.algorithm45Result.payload.assignments) {
-            const f = inMemoryDB.fixtures.find((fix) => fix.fixture_id === assign.match_id);
+        inMemoryDB.fixtures = flat;
+      },
+      async insertMatchdaySchedules(args) {
+        const schedule = args.algorithm2Result.payload.final_schedule;
+        const mdMap = new Map<number, { playDate: string; matchIds: string[] }>();
+        for (const [_lid, list] of Object.entries(schedule)) {
+          for (const item of list) {
+            const f = inMemoryDB.fixtures.find((fix) => fix.fixture_id === item.fixture_id);
             if (f) {
-              f.referee_id = assign.center_referee_id;
-              f.linesman_team_a_id = assign.linesman_team_a_id;
-              f.linesman_team_b_id = assign.linesman_team_b_id;
+              f.matchday_number = item.matchday_number;
+              f.playday = item.playday;
             }
+            if (!mdMap.has(item.matchday_number)) {
+              mdMap.set(item.matchday_number, { playDate: item.playday, matchIds: [] });
+            }
+            mdMap.get(item.matchday_number)!.matchIds.push(item.fixture_id);
+          }
+        }
+        inMemoryDB.matchdays = Array.from(mdMap.entries()).map(([mdNum, info]) => ({
+          matchday_id: `md-${mdNum}`,
+          matchday_number: mdNum,
+          play_date: info.playDate,
+          playable: true,
+          match_ids: info.matchIds,
+        }));
+      },
+      async putPitchAllocations(args) {
+        const allocations = args.algorithm3Result.payload.database_operations.allocations;
+        inMemoryDB.matchAssignments = allocations.map((a) => ({
+          match_id: a.match_id,
+          matchday_id: `md-${a.matchday_number}`,
+          play_date: a.play_date,
+          pitch_id: a.pitch_id,
+          slot_id: `slot-${a.slot_number}`,
+          start_time: a.start_time,
+          end_time: a.end_time,
+          allocation_status: 'ALLOCATED',
+        }));
+      },
+      async putOfficiatingAssignments(args) {
+        for (const assign of args.algorithm45Result.payload.assignments) {
+          const f = inMemoryDB.fixtures.find((fix) => fix.fixture_id === assign.match_id);
+          if (f) {
+            f.referee_id = assign.center_referee_id;
+            f.linesman_team_a_id = assign.linesman_team_a_id;
+            f.linesman_team_b_id = assign.linesman_team_b_id;
           }
         }
       },
@@ -396,5 +403,178 @@ test.describe('Rigorous Scheduling Algorithm & Agent 0 Invariant Suite', () => {
     expect(agent0Result.stage).toBe('COMPLETED');
     expect(inMemoryDB.fixtures.length).toBe(246);
     expect(inMemoryDB.matchAssignments.length).toBe(246);
+  });
+
+  test('Agent 0 Live Database Integration: base_fixtures (immutable), matchday_schedules, and verification', async () => {
+    const seasonId = '11111111-2026-4000-8000-000000000001';
+    const seasonStartDate = '2026-09-05';
+
+    // 1. Run Agent 0 pipeline with real database adapters
+    const result = await PresidentActionBridge.beginSeason(seasonId, seasonStartDate);
+    if (!result.success) {
+      console.error('Live database beginSeason result:', result);
+    }
+    expect(result.success).toBe(true);
+    expect(result.stage).toBe('COMPLETED');
+
+    // 2. Direct PostgreSQL query on immutable base_fixtures table
+    const { data: dbBase, error: baseErr } = await supabase
+      .from('base_fixtures')
+      .select('id, competition_id, league, home_team_id, away_team_id, leg, match_sequence');
+
+    expect(baseErr).toBeNull();
+    expect(dbBase).not.toBeNull();
+    expect(dbBase!.length).toBeGreaterThan(0);
+
+    for (const row of dbBase!) {
+      expect(row.id).toBeDefined();
+      expect(row.home_team_id).toBeDefined();
+      expect(row.away_team_id).toBeDefined();
+      expect(row.home_team_id).not.toBe(row.away_team_id);
+      expect(row.leg === 1 || row.leg === 2).toBe(true);
+      expect(row.match_sequence).toBeGreaterThan(0);
+    }
+
+    // 3. Direct PostgreSQL query on matchday_schedules table
+    const { data: dbSched, error: schedErr } = await supabase
+      .from('matchday_schedules')
+      .select('id, fixture_id, competition_id, league, matchday_number, play_date, pitch_id, slot_number, center_referee_id');
+
+    expect(schedErr).toBeNull();
+    expect(dbSched).not.toBeNull();
+    expect(dbSched!.length).toBe(dbBase!.length);
+
+    for (const s of dbSched!) {
+      expect(s.fixture_id).toBeDefined();
+      expect(s.matchday_number).toBeGreaterThan(0);
+      expect(s.play_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(s.pitch_id).toBeDefined();
+      expect([1, 2, 3]).toContain(s.slot_number);
+    }
+
+    // 4. Confirm & Lock Season Mode via Agent 0
+    const lockResult = await PresidentActionBridge.confirmAndLockViaAgent0(
+      seasonId,
+      result.executionId,
+      {
+        status: 'success',
+        execution_id: result.executionId,
+        season_id: seasonId,
+        verification_logs: [],
+        data: {},
+      }
+    );
+
+    expect(lockResult.success).toBe(true);
+    expect(lockResult.count).toBe(dbBase!.length);
+    expect(lockResult.reReadVerified).toBe(true);
+
+    // 5. Verify Immutability Trigger: Attempting to update base_fixtures MUST be rejected by database
+    const testFixtureId = dbBase![0].id;
+    const { error: updateErr } = await supabase
+      .from('base_fixtures')
+      .update({ leg: 2 })
+      .eq('id', testFixtureId);
+
+    expect(updateErr).not.toBeNull();
+    expect(updateErr!.message.toLowerCase()).toContain('immutable');
+  });
+
+  test('Agent 0 Safety Invariant: Never Regenerates Base Fixtures Twice (Idempotency Guard)', async () => {
+    const seasonId = '11111111-2026-4000-8000-000000000001';
+    const seasonStartDate = '2026-09-05';
+
+    // 1. First run generates and persists base fixtures
+    const firstResult = await PresidentActionBridge.beginSeason(seasonId, seasonStartDate);
+    expect(firstResult.success).toBe(true);
+
+    const { data: fixturesBefore } = await supabase
+      .from('base_fixtures')
+      .select('id, home_team_id, away_team_id, leg, match_sequence')
+      .order('match_sequence');
+
+    expect(fixturesBefore).not.toBeNull();
+    expect(fixturesBefore!.length).toBeGreaterThan(0);
+
+    // 2. Second run on same season MUST NOT regenerate base fixtures (Algorithm 1 skipped)
+    const secondResult = await PresidentActionBridge.beginSeason(seasonId, seasonStartDate);
+    expect(secondResult.success).toBe(true);
+    expect(secondResult.algorithms.algorithm1?.used).toBe(false);
+    expect(secondResult.algorithms.algorithm1?.status).toBe('skipped');
+
+    const { data: fixturesAfter } = await supabase
+      .from('base_fixtures')
+      .select('id, home_team_id, away_team_id, leg, match_sequence')
+      .order('match_sequence');
+
+    // Fixtures must remain identical with 0 duplications
+    expect(fixturesAfter!.length).toBe(fixturesBefore!.length);
+    expect(fixturesAfter![0].id).toBe(fixturesBefore![0].id);
+  });
+
+  test('Agent 0 Safety Invariant: Failure State Safety & Exact Error Code Reporting', async () => {
+    // 1. Calling Agent 0 with invalid event parameters fails fast without mutation
+    const invalidEvent = {
+      type: 'CHANGE_PITCH_STATE' as const,
+      seasonId: '', // Invalid empty season ID
+      pitchId: 'invalid-pitch',
+    };
+
+    const dummyAdapters: Agent0Adapters = {
+      async fetchCurrentState() { return {} as any; },
+      async getLeagueConfigs() { return []; },
+    };
+
+    const failResult = await handleAgent0Event(invalidEvent as any, dummyAdapters);
+    expect(failResult.success).toBe(false);
+    expect(failResult.stage).toBe('STOPPED');
+    expect(failResult.error?.code).toBe('INVALID_SEASON_ID');
+
+    // 2. Calling Agent 0 with impossible pitch constraints halts pipeline safely
+    const impossibleEvent = {
+      type: 'CHANGE_PITCH_STATE' as const,
+      seasonId: 'season-fail-test',
+      pitchId: '91111111-1111-4111-8111-111111111111',
+      amAvailable: false,
+      pmAvailable: false,
+    };
+
+    const zeroPitchAdapters: Agent0Adapters = {
+      async fetchCurrentState() {
+        return {
+          fixtures: [{
+            fixture_id: 'fix-1',
+            league_id: EPL_LEAGUE_UID,
+            home_id: eplTeams[0],
+            away_id: eplTeams[1],
+            leg: 1,
+            match_sequence: 1,
+            matchday_number: 1,
+            playday: '2026-09-05',
+            completed: false,
+            historical: false,
+          }],
+          matchdays: [{
+            matchday_id: 'md-1',
+            matchday_number: 1,
+            play_date: '2026-09-05',
+            playable: true,
+            match_ids: ['fix-1'],
+          }],
+          matchAssignments: [],
+          playdays: [{ date: '2026-09-05', mode: 'PERMANENT', active: true }],
+          capacity: { EPL: 1, Championship: 1 },
+          pitches: [], // 0 pitches supplied -> Algorithm 3 must reject
+          referees: [],
+          teams: [],
+        };
+      },
+      async getLeagueConfigs() { return []; },
+    };
+
+    const pitchFailResult = await handleAgent0Event(impossibleEvent, zeroPitchAdapters);
+    expect(pitchFailResult.success).toBe(false);
+    expect(pitchFailResult.stage).toBe('STOPPED');
+    expect(pitchFailResult.error?.code).toBe('INVALID_PITCH_COUNT_FOR_ALGORITHM_3');
   });
 });
