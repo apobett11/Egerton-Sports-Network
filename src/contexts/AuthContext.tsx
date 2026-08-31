@@ -153,7 +153,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('audit_logs')
         .insert([{
           user_id: userId,
+          user_role: currentRole,
           action: 'SESSION_UPTIME_HEARTBEAT',
+          resource_type: 'session',
+          resource_id: userId,
           details: {
             uptime_seconds: uptimeSeconds,
             role: currentRole,
