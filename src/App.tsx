@@ -61,20 +61,20 @@ export const AppContent: React.FC = () => {
   const { role, user } = useAuth();
   const isAuthenticated = Boolean(user && role !== 'guest');
 
-  // Season Mode Switch State: Determined strictly on login/mount from database fixtures table
+  // Season Mode Switch State: Determined strictly from database fixtures table
   const [isSeasonMode, setIsSeasonMode] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
     const checkSeasonModeFromDB = async () => {
       try {
-        const { count, error } = await supabase
+        const { data, count, error } = await supabase
           .from('fixtures')
-          .select('id', { count: 'exact', head: true })
-          .is('deleted_at', null);
+          .select('id', { count: 'exact' })
+          .limit(1);
 
         if (!error && isMounted) {
-          const hasFixtures = Boolean(count && count > 0);
+          const hasFixtures = Boolean((count !== null && count !== undefined && count > 0) || (data && data.length > 0));
           setIsSeasonMode(hasFixtures);
         }
       } catch (err) {
@@ -84,8 +84,23 @@ export const AppContent: React.FC = () => {
 
     checkSeasonModeFromDB();
 
+    // Listen to real-time additions or removals in the fixtures table
+    const channel = supabase
+      .channel('app_fixtures_season_sync')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fixtures' }, () => {
+        if (isMounted) setIsSeasonMode(true);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'fixtures' }, async () => {
+        const { count } = await supabase.from('fixtures').select('id', { count: 'exact', head: true });
+        if (isMounted) {
+          setIsSeasonMode(Boolean(count && count > 0));
+        }
+      })
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [user, role]);
 
