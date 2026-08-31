@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Layers,
   Sparkles,
+  Cpu,
   Users,
   FileText,
   Activity,
@@ -22,6 +23,7 @@ export const AdminBottomNav: React.FC<AdminBottomNavProps> = ({
 }) => {
   const bottomItems = [
     { id: 'overview' as AdminTabType, label: 'Overview', icon: LayoutDashboard },
+    { id: 'agent0' as AdminTabType, label: 'Agent 0', icon: Cpu },
     { id: 'overviews' as AdminTabType, label: 'Roles', icon: Layers },
     {
       id: 'insights' as AdminTabType,

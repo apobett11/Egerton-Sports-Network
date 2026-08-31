@@ -2,6 +2,7 @@ export type AdminTabType =
   | 'overview'
   | 'overviews'
   | 'insights'
+  | 'agent0'
   | 'users'
   | 'roles'
   | 'audit_logs'

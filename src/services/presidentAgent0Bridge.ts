@@ -369,12 +369,6 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         .delete()
         .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
 
-      // console log: Writing base fixtures batch to Supabase base_fixtures table
-      console.log('[AGENT 0 ADAPTER DB WRITE - base_fixtures]', {
-        totalRows: baseRows.length,
-        baseRows,
-      });
-
       // Direct write into immutable base_fixtures table
       for (let i = 0; i < baseRows.length; i += 50) {
         const batch = baseRows.slice(i, i + 50);
@@ -383,12 +377,6 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
           throw new Error(`Database base_fixtures insert failed: ${insertErr.message}`);
         }
       }
-
-      // console log: Writing legacy fixtures sync batch to Supabase fixtures table
-      console.log('[AGENT 0 ADAPTER DB WRITE - fixtures sync]', {
-        totalRows: legacyFixtures.length,
-        legacyFixtures,
-      });
 
       // Sync into fixtures table
       for (let i = 0; i < legacyFixtures.length; i += 50) {
@@ -478,14 +466,6 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         }
       }
 
-      // console log: Upserting matchday schedules to Supabase matchday_schedules table
-      console.log('[AGENT 0 ADAPTER DB WRITE - matchday_schedules upsert]', {
-        totalRows: scheduleRows.length,
-        scheduleRows,
-        totalFixtureUpdates: fixtureUpdates.length,
-        fixtureUpdates,
-      });
-
       // Upsert into matchday_schedules
       for (let i = 0; i < scheduleRows.length; i += 50) {
         const batch = scheduleRows.slice(i, i + 50);
@@ -563,14 +543,6 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         });
       }
 
-      // console log: Updating pitch allocations in Supabase matchday_schedules and fixtures
-      console.log('[AGENT 0 ADAPTER DB WRITE - pitch allocations update]', {
-        totalScheduleUpdates: scheduleUpdates.length,
-        scheduleUpdates,
-        totalFixtureUpdates: fixtureUpdates.length,
-        fixtureUpdates,
-      });
-
       await Promise.all(
         scheduleUpdates.map((item) =>
           supabase
@@ -646,14 +618,6 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
           });
         }
       }
-
-      // console log: Updating officiating assignments in Supabase matchday_schedules and fixtures
-      console.log('[AGENT 0 ADAPTER DB WRITE - officiating assignments update]', {
-        totalScheduleUpdates: scheduleUpdates.length,
-        scheduleUpdates,
-        totalFixtureUpdates: fixtureUpdates.length,
-        fixtureUpdates,
-      });
 
       await Promise.all(
         scheduleUpdates.map((item) =>

@@ -4,6 +4,7 @@ import { AdminSidebar } from './components/Navigation/AdminSidebar';
 import { AdminBottomNav } from './components/Navigation/AdminBottomNav';
 import { AdminModals } from './components/Modals/AdminModals';
 import { AdminOverviewView } from './components/Views/AdminOverviewView';
+import { AdminAgent0View } from './components/Views/AdminAgent0View';
 import { AdminDashboardOverviewsView } from './components/Views/AdminDashboardOverviewsView';
 import { AdminPlatformInsightsView } from './components/Views/AdminPlatformInsightsView';
 import { AdminUserDirectoryView } from './components/Views/AdminUserDirectoryView';
@@ -171,6 +172,12 @@ export const SuperAdminDashboard: React.FC = () => {
               platformErrors={platformErrors}
               setActiveTab={setActiveTab}
               onOpenModal={handleOpenModal}
+            />
+          )}
+
+          {activeTab === 'agent0' && (
+            <AdminAgent0View
+              showToast={showToast}
             />
           )}
 

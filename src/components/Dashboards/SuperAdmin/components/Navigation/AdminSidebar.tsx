@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Layers,
   Sparkles,
+  Cpu,
   Users,
   ShieldCheck,
   FileText,
@@ -35,6 +36,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'overview' as AdminTabType,
       label: 'Operations Overview',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'agent0' as AdminTabType,
+      label: 'Agent 0 Controller',
+      icon: Cpu,
     },
     {
       id: 'overviews' as AdminTabType,
