@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
+  CalendarDays,
   Clock,
   MapPin,
   UserCheck,
@@ -342,6 +343,48 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       setSelectedMatchdayNum(next.matchdayNumber);
     }
   };
+
+  if (!fixtures || fixtures.length === 0) {
+    return (
+      <div className="space-y-6 animate-fadeIn pb-16">
+        <div
+          className={`p-10 sm:p-16 rounded-3xl border text-center space-y-6 max-w-2xl mx-auto ${
+            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}
+        >
+          <div className="w-20 h-20 rounded-3xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg shadow-amber-500/5">
+            <CalendarDays className="w-10 h-10" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              No Season Matchdays Generated
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
+              The database currently contains 0 scheduled matches or matchdays. Launch the season wizard to compute and save official fixtures via <strong className="text-amber-400">Agent 0</strong>.
+            </p>
+          </div>
+
+          <div className={`p-4 rounded-2xl border text-left max-w-md mx-auto space-y-2 ${
+            isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}>
+            <div className="text-[11px] font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>Registered Teams: {teams.length} clubs</span>
+            </div>
+            <div className="text-[11px] font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>Accredited Referees: {referees.length} officials</span>
+            </div>
+            <div className="text-[11px] font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>Available Pitches: {pitches.length} venues</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn pb-16">

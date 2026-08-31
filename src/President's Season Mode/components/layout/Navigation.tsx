@@ -28,12 +28,12 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeView,
   setActiveView,
   isDark,
-  matchdaysCount = 18,
+  matchdaysCount = 0,
   fixturesCount = 0,
   refereesCount = 0,
   pitchesCount = 0,
   friendliesCount = 0,
-  teamsCount = 23,
+  teamsCount = 0,
 }) => {
   const navItems = [
     {

@@ -128,11 +128,13 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
             }`}
           >
             <option value="ALL">All Matchdays</option>
-            {Array.from({ length: 18 }, (_, i) => i + 1).map((md) => (
-              <option key={md} value={md}>
-                Matchday {md}
-              </option>
-            ))}
+            {Array.from(new Set(fixtures.map((f) => f.matchday).filter(Boolean)))
+              .sort((a, b) => (a as number) - (b as number))
+              .map((md) => (
+                <option key={md} value={String(md)}>
+                  Matchday {md}
+                </option>
+              ))}
           </select>
         </div>
       </div>

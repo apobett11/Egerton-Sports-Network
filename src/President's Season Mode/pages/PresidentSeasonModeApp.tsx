@@ -60,6 +60,10 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
     setActiveView('matchdays');
   };
 
+  const matchdaysCount = React.useMemo(() => {
+    return new Set(fixtures.map((f) => f.matchday).filter(Boolean)).size;
+  }, [fixtures]);
+
   return (
     <div
       className={`min-h-screen font-sans relative ${
@@ -87,7 +91,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
         activeView={activeView}
         setActiveView={setActiveView}
         isDark={isDark}
-        matchdaysCount={18}
+        matchdaysCount={matchdaysCount}
         fixturesCount={fixtures.length}
         refereesCount={referees.length}
         pitchesCount={pitches.length}

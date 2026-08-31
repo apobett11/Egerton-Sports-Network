@@ -74,12 +74,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   const todayPostponed = todayMatches.filter((f) => f.status === 'POSTPONED').length;
 
   // Active Matchday calculations
-  const activeMatchdayNumber = 4; // Current active matchday
+  const activeMatchdayNumber = fixtures.length > 0 ? (fixtures.find((f) => f.status === 'LIVE' || f.status === 'UPCOMING')?.matchday || fixtures[0]?.matchday || 1) : 0;
   const activeMatchdayFixtures = fixtures.filter((f) => f.matchday === activeMatchdayNumber);
-  const mdTotal = activeMatchdayFixtures.length || 15;
-  const mdCompleted = activeMatchdayFixtures.filter((f) => f.status === 'FT').length || 10;
-  const mdRemaining = mdTotal - mdCompleted;
-  const mdPercentage = Math.round((mdCompleted / mdTotal) * 100);
+  const mdTotal = activeMatchdayFixtures.length;
+  const mdCompleted = activeMatchdayFixtures.filter((f) => f.status === 'FT').length;
+  const mdRemaining = Math.max(0, mdTotal - mdCompleted);
+  const mdPercentage = mdTotal > 0 ? Math.round((mdCompleted / mdTotal) * 100) : 0;
 
   const activeReferees = referees.filter((r) => r.status === 'Active').length;
   const availablePitches = pitches.filter((p) => p.status === 'Available').length;
