@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '../../../../services/api';
 import { pitchesService } from '../services/pitchesService';
 import { fixturesService } from '../services/fixturesService';
+import { supabase } from '../../../../lib/supabase';
 import type {
   PresidentTab,
   LeagueTab,
@@ -31,7 +32,7 @@ export const usePresidentDashboard = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // --- DUAL MODE MANAGEMENT: PRE-SEASON VS SEASON MODE ---
-  // Default to false and let the live database fixtures table determine season status
+  // Default to false and let the live database fixtures table determine season status strictly
   const [isSeasonMode, setIsSeasonMode] = useState<boolean>(false);
 
   // --- TAB 0: CAMPUS PITCHES STATE ---
@@ -233,10 +234,51 @@ export const usePresidentDashboard = () => {
     }
   }, []);
 
-  // Initial mount load
+  // Continuous reactive checking of the database fixtures table for Season Mode switch
   useEffect(() => {
     fetchPresidentData();
-  }, []);
+
+    const checkSeasonStatus = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('fixtures')
+          .select('id', { count: 'exact', head: true })
+          .is('deleted_at', null);
+
+        if (!error) {
+          const hasFixtures = Boolean(count && count > 0);
+          setIsSeasonMode(hasFixtures);
+          setIsScheduleLocked(hasFixtures);
+          if (hasFixtures) {
+            localStorage.setItem('egerton_season_mode_active', 'true');
+          } else {
+            localStorage.removeItem('egerton_season_mode_active');
+            setSavedFixtures([]);
+          }
+        }
+      } catch (_e) {}
+    };
+
+    // Check every 2 seconds to ensure prompt reaction if fixtures are generated or cleared
+    const interval = setInterval(checkSeasonStatus, 2000);
+
+    // Also listen to Supabase Realtime changes on fixtures table
+    const channel = supabase
+      .channel('fixtures_season_switch_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'fixtures' },
+        () => {
+          checkSeasonStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchPresidentData]);
 
   const reloadSavedFixtures = async () => {
     const fixRes = await fixturesService.fetchFixtures();

@@ -21,8 +21,9 @@ import {
 
 import { PresidentActionBridge } from '../../services/presidentAgent0Bridge';
 import { ApiService } from '../../services/api';
+import { supabase } from '../../lib/supabase';
 
-export function useSeasonModeOperations() {
+export function useSeasonModeOperations({ onSeasonModeOff }: { onSeasonModeOff?: () => void } = {}) {
   const [seasonId, setSeasonId] = useState<string>('season-2026-official');
   const [activeView, setActiveView] = useState<SeasonModeView>('overview');
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -105,20 +106,56 @@ export function useSeasonModeOperations() {
       setReferees(finalRefs);
       setPitches(finalPitches as any);
       setFixtures(finalFixtures);
+
+      if (finalFixtures.length === 0) {
+        onSeasonModeOff?.();
+      }
     } catch (err: any) {
       console.warn('Live season mode sync info:', err.message);
       setTeams([]);
       setReferees([]);
       setPitches(OFFICIAL_PITCHES as any);
       setFixtures([]);
+      onSeasonModeOff?.();
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [onSeasonModeOff]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+
+    const checkFixturesStatus = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('fixtures')
+          .select('id', { count: 'exact', head: true })
+          .is('deleted_at', null);
+
+        if (!error && (count === 0 || count === null)) {
+          onSeasonModeOff?.();
+        }
+      } catch (_e) {}
+    };
+
+    const interval = setInterval(checkFixturesStatus, 2000);
+
+    const channel = supabase
+      .channel('season_ops_fixtures_listener')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'fixtures' },
+        () => {
+          checkFixturesStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [loadData, onSeasonModeOff]);
 
   // Derived teams split
   const premierLeagueTeams = useMemo(

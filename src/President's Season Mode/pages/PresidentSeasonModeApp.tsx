@@ -12,9 +12,10 @@ import { LoadingState, ErrorState, OperationalToast } from '../components/shared
 
 export interface PresidentSeasonModeAppProps {
   onLogout?: () => void;
+  onSeasonModeOff?: () => void;
 }
 
-export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ onLogout }) => {
+export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ onLogout, onSeasonModeOff }) => {
   const {
     activeView,
     setActiveView,
@@ -47,7 +48,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
     handleExecuteUpdatePitchAvailability,
     handleExecuteMarkRefUnavailable,
     refreshData,
-  } = useSeasonModeOperations();
+  } = useSeasonModeOperations({ onSeasonModeOff });
 
   // Calendar Modal & Selected Date States
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);

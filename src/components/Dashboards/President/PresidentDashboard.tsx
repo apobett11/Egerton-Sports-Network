@@ -102,7 +102,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
   // the President Dashboard strictly renders Season Mode.
   // =========================================================================
   if (isSeasonMode) {
-    return <PresidentSeasonModeApp onLogout={onLogout} />;
+    return <PresidentSeasonModeApp onLogout={onLogout} onSeasonModeOff={() => setIsSeasonMode(false)} />;
   }
 
   // =========================================================================
