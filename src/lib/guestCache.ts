@@ -27,13 +27,23 @@ const DEFAULT_TTLS: Record<string, number> = {
   performance: 3 * 60 * 1000 // 3 minutes
 };
 
-const STORAGE_PREFIX = 'esn_guest_cache_v1_';
+const STORAGE_PREFIX = 'esn_guest_cache_v2_';
 
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
 
   constructor() {
     if (typeof window !== 'undefined') {
+      try {
+        // Purge legacy v1 cache keys on startup
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('esn_guest_cache_v1_')) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch {}
+
       window.addEventListener('online', () => {
         // Revalidate stale cache on network recovery
         this.clearStaleMemory();
