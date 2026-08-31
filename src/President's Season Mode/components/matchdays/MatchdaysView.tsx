@@ -90,11 +90,10 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
   const [shiftTargetMatch, setShiftTargetMatch] = useState<OperationalMatch | null>(null);
   const [proposedShiftTime, setProposedShiftTime] = useState<string>('');
 
-  // Fast Lookups for Teams and Referees to always show actual names
+  // Fast Map Lookups strictly by UID without premeditated/prefilled fallbacks
   const teamsMap = useMemo(() => {
     const map = new Map<string, SeasonTeam>();
     teams.forEach((t) => map.set(t.id, t));
-    // Also ingest teams from fixtures if present
     fixtures.forEach((f) => {
       if (f.home_team?.id) map.set(f.home_team.id, f.home_team);
       if (f.away_team?.id) map.set(f.away_team.id, f.away_team);
@@ -111,28 +110,72 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
     return map;
   }, [referees, fixtures]);
 
-  // Helper to resolve actual team name
-  const resolveTeamName = (teamId?: string | null, teamObj?: { name?: string } | null, fallback = 'Club'): string => {
+  const pitchesMap = useMemo(() => {
+    const map = new Map<string, SeasonPitch>();
+    pitches.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [pitches]);
+
+  // Strict UID resolver for Playing Teams (Home / Away)
+  const resolvePlayingTeam = (
+    teamId?: string | null,
+    teamObj?: { name?: string } | null
+  ): { name: string | null; uid: string | null } => {
     if (teamObj?.name && teamObj.name !== 'Home Team' && teamObj.name !== 'Away Team' && teamObj.name !== 'Home' && teamObj.name !== 'Away') {
-      return teamObj.name;
+      return { name: teamObj.name, uid: teamId || null };
     }
     if (teamId && teamsMap.has(teamId)) {
       const found = teamsMap.get(teamId);
-      if (found?.name) return found.name;
+      if (found?.name) return { name: found.name, uid: teamId };
     }
-    return teamObj?.name || fallback;
+    return { name: null, uid: teamId || null };
   };
 
-  // Helper to resolve actual referee name
-  const resolveReferee = (refId?: string | null, refObj?: { name?: string | null; badge_level?: string | null } | null): { name: string; badge: string } => {
+  // Strict UID resolver for Center Referees
+  const resolveCenterReferee = (
+    refId?: string | null,
+    refObj?: { name?: string | null; badge_level?: string | null } | null
+  ): { name: string | null; badge: string | null; uid: string | null } => {
     if (refObj?.name && refObj.name !== 'Unassigned Referee' && refObj.name !== 'Assigned Official') {
-      return { name: refObj.name, badge: refObj.badge_level || 'Accredited Official' };
+      return { name: refObj.name, badge: refObj.badge_level || null, uid: refId || null };
     }
     if (refId && refereesMap.has(refId)) {
       const found = refereesMap.get(refId);
-      if (found?.name) return { name: found.name, badge: found.badge_level || 'Accredited Official' };
+      if (found?.name) return { name: found.name, badge: found.badge_level || null, uid: refId };
     }
-    return { name: refObj?.name || 'Assigned Official', badge: refObj?.badge_level || 'Accredited' };
+    return { name: null, badge: null, uid: refId || null };
+  };
+
+  // Strict UID resolver for Pitch Venue
+  const resolvePitchVenue = (
+    pitchId?: string | null,
+    venueStr?: string | null
+  ): { name: string | null; uid: string | null } => {
+    if (pitchId && pitchesMap.has(pitchId)) {
+      return { name: pitchesMap.get(pitchId)!.name, uid: pitchId };
+    }
+    if (venueStr && pitchesMap.has(venueStr)) {
+      return { name: pitchesMap.get(venueStr)!.name, uid: venueStr };
+    }
+    if (venueStr && venueStr.trim().length > 0 && !venueStr.startsWith('91') && !venueStr.startsWith('92') && !venueStr.startsWith('93')) {
+      return { name: venueStr, uid: pitchId || null };
+    }
+    return { name: null, uid: pitchId || venueStr || null };
+  };
+
+  // Strict UID resolver for Linesman Clubs (distinct from playing teams)
+  const resolveLinesmanTeam = (
+    linesmanClubId?: string | null,
+    linesmanNameStr?: string | null
+  ): { name: string | null; uid: string | null } => {
+    if (linesmanNameStr && !linesmanNameStr.includes('Rep') && !linesmanNameStr.includes('Linesman')) {
+      return { name: linesmanNameStr, uid: linesmanClubId || null };
+    }
+    if (linesmanClubId && teamsMap.has(linesmanClubId)) {
+      const found = teamsMap.get(linesmanClubId);
+      if (found?.name) return { name: found.name, uid: linesmanClubId };
+    }
+    return { name: linesmanNameStr || null, uid: linesmanClubId || null };
   };
 
   // Active Referees pool for swap modal
@@ -247,21 +290,22 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
         const q = searchQuery.toLowerCase();
         const inMd = `matchday ${g.matchdayNumber}`.includes(q) || g.formattedDate.toLowerCase().includes(q);
         const inMatches = g.matches.some((m) => {
-          const homeName = resolveTeamName(m.home_team_id, m.home_team);
-          const awayName = resolveTeamName(m.away_team_id, m.away_team);
-          const refInfo = resolveReferee(m.referee_id, m.referee);
+          const homeName = resolvePlayingTeam(m.home_team_id, m.home_team).name || '';
+          const awayName = resolvePlayingTeam(m.away_team_id, m.away_team).name || '';
+          const refInfo = resolveCenterReferee(m.referee_id, m.referee);
+          const venueInfo = resolvePitchVenue(null, m.venue);
           return (
             homeName.toLowerCase().includes(q) ||
             awayName.toLowerCase().includes(q) ||
-            m.venue?.toLowerCase().includes(q) ||
-            refInfo.name.toLowerCase().includes(q)
+            (venueInfo.name || '').toLowerCase().includes(q) ||
+            (refInfo.name || '').toLowerCase().includes(q)
           );
         });
         return inMd || inMatches;
       }
       return true;
     });
-  }, [matchdayGroups, activeLegTab, activeLeagueFilter, searchQuery, teamsMap, refereesMap]);
+  }, [matchdayGroups, activeLegTab, activeLeagueFilter, searchQuery, teamsMap, refereesMap, pitchesMap]);
 
   // Current active matchday object
   const activeSelectedMatchday = useMemo(() => {
@@ -770,8 +814,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             </div>
             <p className="text-xs text-slate-300">
               Are you sure you want to cancel the match between{' '}
-              <strong className="text-white">{resolveTeamName(cancelTargetMatch.home_team_id, cancelTargetMatch.home_team, 'Home')}</strong> vs{' '}
-              <strong className="text-white">{resolveTeamName(cancelTargetMatch.away_team_id, cancelTargetMatch.away_team, 'Away')}</strong>?
+              <strong className="text-white">{resolvePlayingTeam(cancelTargetMatch.home_team_id, cancelTargetMatch.home_team).name || 'null'}</strong> vs{' '}
+              <strong className="text-white">{resolvePlayingTeam(cancelTargetMatch.away_team_id, cancelTargetMatch.away_team).name || 'null'}</strong>?
             </p>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Reason for cancellation</label>
@@ -821,8 +865,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <p className="text-xs text-slate-300">
               Reassign center referee for{' '}
               <strong>
-                {resolveTeamName(swapTargetMatch.home_team_id, swapTargetMatch.home_team, 'Home')} vs{' '}
-                {resolveTeamName(swapTargetMatch.away_team_id, swapTargetMatch.away_team, 'Away')}
+                {resolvePlayingTeam(swapTargetMatch.home_team_id, swapTargetMatch.home_team).name || 'null'} vs{' '}
+                {resolvePlayingTeam(swapTargetMatch.away_team_id, swapTargetMatch.away_team).name || 'null'}
               </strong>
             </p>
 
@@ -881,8 +925,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <p className="text-xs text-slate-300">
               Proposed match time shift for{' '}
               <strong>
-                {resolveTeamName(shiftTargetMatch.home_team_id, shiftTargetMatch.home_team, 'Home')} vs{' '}
-                {resolveTeamName(shiftTargetMatch.away_team_id, shiftTargetMatch.away_team, 'Away')}
+                {resolvePlayingTeam(shiftTargetMatch.home_team_id, shiftTargetMatch.home_team).name || 'null'} vs{' '}
+                {resolvePlayingTeam(shiftTargetMatch.away_team_id, shiftTargetMatch.away_team).name || 'null'}
               </strong>
             </p>
 
@@ -959,8 +1003,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 <th className="py-3 px-4 min-w-[280px]">Match Fixture (Home vs Away)</th>
                 <th className="py-3 px-4 min-w-[180px]">Pitch / Venue</th>
                 <th className="py-3 px-4 min-w-[180px]">Center Referee</th>
-                <th className="py-3 px-4 min-w-[160px]">Linesman Team 1 (Home)</th>
-                <th className="py-3 px-4 min-w-[160px]">Linesman Team 2 (Away)</th>
+                <th className="py-3 px-4 min-w-[160px]">Linesman Team 1 (Home Rep)</th>
+                <th className="py-3 px-4 min-w-[160px]">Linesman Team 2 (Away Rep)</th>
                 <th className="py-3 px-3 w-[100px] text-center">Status</th>
                 <th className="py-3 px-4 w-[110px] text-right">Actions</th>
               </tr>
@@ -973,26 +1017,32 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   match.competition_id === COMPETITIONS.PREMIER_LEAGUE.id ||
                   (match as any).competition?.slug === 'epl';
 
-                // Format kick-off time string
-                const timeStr = match.scheduled_time && match.scheduled_time.includes('T') && !match.scheduled_time.endsWith('T00:00:00')
+                // Format kick-off time string (strict null if unassigned/pending)
+                const hasValidTime = match.scheduled_time && match.scheduled_time.includes('T') && !match.scheduled_time.endsWith('T00:00:00') && !match.scheduled_time.endsWith('T00:00:00.000Z');
+                const timeStr = hasValidTime
                   ? new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : 'Time Pending';
+                  : null;
 
-                // Real Team Names
-                const homeName = resolveTeamName(match.home_team_id, match.home_team, 'Home Team');
-                const awayName = resolveTeamName(match.away_team_id, match.away_team, 'Away Team');
+                // Real Playing Teams strictly resolved from UIDs
+                const homeInfo = resolvePlayingTeam(match.home_team_id, match.home_team);
+                const awayInfo = resolvePlayingTeam(match.away_team_id, match.away_team);
 
-                // Real Referee Info
-                const refInfo = resolveReferee(match.referee_id, match.referee);
+                // Real Center Referee strictly resolved from referee UID
+                const refInfo = resolveCenterReferee(match.referee_id, match.referee);
 
-                // Linesmen team names fallback
-                const linesman1Name =
-                  match.linesmen?.linesman_team1_name || `${homeName} Rep`;
+                // Real Pitch Venue strictly resolved from pitch UID
+                const pitchInfo = resolvePitchVenue(null, match.venue);
 
-                const linesman2Name =
-                  match.linesmen?.linesman_team2_name || `${awayName} Rep`;
+                // Real Linesman Clubs strictly resolved from linesmaning club UIDs
+                const linesman1Info = resolveLinesmanTeam(
+                  match.linesmen?.linesman_team1_id,
+                  match.linesmen?.linesman_team1_name
+                );
 
-                const venueName = match.venue || 'Pavilion Main Pitch';
+                const linesman2Info = resolveLinesmanTeam(
+                  match.linesmen?.linesman_team2_id,
+                  match.linesmen?.linesman_team2_name
+                );
 
                 return (
                   <tr
@@ -1005,12 +1055,19 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                         : ''
                     }`}
                   >
-                    {/* 1. TIME */}
+                    {/* 1. TIME (Strictly formatted or null) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200">
-                        <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span>{timeStr}</span>
-                      </div>
+                      {timeStr ? (
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200">
+                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>{timeStr}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-slate-500 font-mono text-[11px]">
+                          <Clock className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                          <span>null (Pending)</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* 2. DIVISION */}
@@ -1026,15 +1083,21 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                       </span>
                     </td>
 
-                    {/* 3. FIXTURE (HOME vs AWAY — SHOWING ACTUAL TEAM NAMES) */}
+                    {/* 3. FIXTURE (HOME vs AWAY — SHOWING ACTUAL TEAM NAMES OR NULL) */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
-                        {/* Home Team */}
+                        {/* Home Playing Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-end text-right">
-                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={homeName}>
-                            {homeName}
-                          </span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                          {homeInfo.name ? (
+                            <span className="font-black text-xs text-white truncate max-w-[130px]" title={`${homeInfo.name} (${homeInfo.uid || ''})`}>
+                              {homeInfo.name}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-mono text-slate-500 italic" title={`UID: ${homeInfo.uid || 'null'}`}>
+                              {homeInfo.uid ? `null (${homeInfo.uid.slice(0, 8)}...)` : 'null'}
+                            </span>
+                          )}
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${homeInfo.name ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
                         </div>
 
                         {/* Score / VS Pill */}
@@ -1046,63 +1109,105 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                           )}
                         </div>
 
-                        {/* Away Team */}
+                        {/* Away Playing Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-start text-left">
-                          <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
-                          <span className="font-black text-xs text-white truncate max-w-[130px]" title={awayName}>
-                            {awayName}
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${awayInfo.name ? 'bg-blue-400' : 'bg-slate-600'}`}></span>
+                          {awayInfo.name ? (
+                            <span className="font-black text-xs text-white truncate max-w-[130px]" title={`${awayInfo.name} (${awayInfo.uid || ''})`}>
+                              {awayInfo.name}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-mono text-slate-500 italic" title={`UID: ${awayInfo.uid || 'null'}`}>
+                              {awayInfo.uid ? `null (${awayInfo.uid.slice(0, 8)}...)` : 'null'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* 4. PITCH / VENUE (Strictly resolved from Pitch UID) */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      {pitchInfo.name ? (
+                        <div className="flex items-center gap-1.5 text-slate-200">
+                          <MapPin className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                          <span className="truncate max-w-[160px] font-bold text-xs" title={`${pitchInfo.name} (${pitchInfo.uid || ''})`}>
+                            {pitchInfo.name}
                           </span>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* 4. PITCH / VENUE */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-slate-200">
-                        <MapPin className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                        <span className="truncate max-w-[160px] font-bold text-xs" title={venueName}>
-                          {venueName}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* 5. CENTER REFEREE (SHOWING ACTUAL REFEREE NAME) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <div className="truncate max-w-[160px]">
-                          <div className="font-bold text-xs text-slate-200 truncate" title={refInfo.name}>
-                            {refInfo.name}
-                          </div>
-                          <div className="text-[9px] text-emerald-400/80 font-semibold">{refInfo.badge}</div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+                          <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                          <span title={`Pitch UID: ${pitchInfo.uid || 'null'}`}>
+                            {pitchInfo.uid ? `null (${pitchInfo.uid.slice(0, 8)}...)` : 'null (Unassigned)'}
+                          </span>
                         </div>
-                      </div>
+                      )}
                     </td>
 
-                    {/* 6. LINESMAN TEAM 1 (HOME) */}
+                    {/* 5. CENTER REFEREE (Strictly resolved from Referee UID) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-purple-400 shrink-0" />
-                        <div className="truncate max-w-[140px]">
-                          <div className="font-bold text-xs text-slate-200 truncate" title={linesman1Name}>
-                            {linesman1Name}
+                      {refInfo.name ? (
+                        <div className="flex items-center gap-1.5">
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <div className="truncate max-w-[160px]">
+                            <div className="font-bold text-xs text-slate-200 truncate" title={`${refInfo.name} (${refInfo.uid || ''})`}>
+                              {refInfo.name}
+                            </div>
+                            {refInfo.badge && <div className="text-[9px] text-emerald-400/80 font-semibold">{refInfo.badge}</div>}
                           </div>
-                          <div className="text-[9px] text-purple-400/80">Home Linesman</div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+                          <UserCheck className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                          <span title={`Referee UID: ${refInfo.uid || 'null'}`}>
+                            {refInfo.uid ? `null (${refInfo.uid.slice(0, 8)}...)` : 'null (Unassigned)'}
+                          </span>
+                        </div>
+                      )}
                     </td>
 
-                    {/* 7. LINESMAN TEAM 2 (AWAY) */}
+                    {/* 6. LINESMAN TEAM 1 (Strictly resolved from Linesman Club A UID) */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3 h-3 text-blue-400 shrink-0" />
-                        <div className="truncate max-w-[140px]">
-                          <div className="font-bold text-xs text-slate-200 truncate" title={linesman2Name}>
-                            {linesman2Name}
+                      {linesman1Info.name ? (
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3 h-3 text-purple-400 shrink-0" />
+                          <div className="truncate max-w-[140px]">
+                            <div className="font-bold text-xs text-slate-200 truncate" title={`${linesman1Info.name} Linesman (${linesman1Info.uid || ''})`}>
+                              {linesman1Info.name}
+                            </div>
+                            <div className="text-[9px] text-purple-400/80">Club Linesman</div>
                           </div>
-                          <div className="text-[9px] text-blue-400/80">Away Linesman</div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+                          <Users className="w-3 h-3 text-slate-600 shrink-0" />
+                          <span title={`Linesman Club UID: ${linesman1Info.uid || 'null'}`}>
+                            {linesman1Info.uid ? `null (${linesman1Info.uid.slice(0, 8)}...)` : 'null (Unassigned)'}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 7. LINESMAN TEAM 2 (Strictly resolved from Linesman Club B UID) */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      {linesman2Info.name ? (
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3 h-3 text-blue-400 shrink-0" />
+                          <div className="truncate max-w-[140px]">
+                            <div className="font-bold text-xs text-slate-200 truncate" title={`${linesman2Info.name} Linesman (${linesman2Info.uid || ''})`}>
+                              {linesman2Info.name}
+                            </div>
+                            <div className="text-[9px] text-blue-400/80">Club Linesman</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+                          <Users className="w-3 h-3 text-slate-600 shrink-0" />
+                          <span title={`Linesman Club UID: ${linesman2Info.uid || 'null'}`}>
+                            {linesman2Info.uid ? `null (${linesman2Info.uid.slice(0, 8)}...)` : 'null (Unassigned)'}
+                          </span>
+                        </div>
+                      )}
                     </td>
 
                     {/* 8. STATUS */}
@@ -1137,7 +1242,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                           <button
                             onClick={() => {
                               setShiftTargetMatch(match);
-                              setProposedShiftTime(timeStr.includes(':') ? timeStr : '09:00');
+                              setProposedShiftTime(timeStr && timeStr.includes(':') ? timeStr : '09:00');
                             }}
                             title="Shift Kick-Off Time"
                             className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white transition-colors cursor-pointer"

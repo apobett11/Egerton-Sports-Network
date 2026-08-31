@@ -96,7 +96,7 @@ export function useSeasonModeOperations() {
 
       const finalTeams = teamRes.teams || [];
       const finalRefs = refRes.referees || [];
-      const finalPitches = pitchRes.pitches && pitchRes.pitches.length > 0 ? pitchRes.pitches : OFFICIAL_PITCHES;
+      const finalPitches = pitchRes.pitches || [];
 
       const fixRes = await fixturesService.fetchFixtures(finalTeams, finalRefs, finalPitches as any);
       const finalFixtures = (fixRes.fixtures || []) as OperationalMatch[];
@@ -109,7 +109,7 @@ export function useSeasonModeOperations() {
       console.warn('Live season mode sync info:', err.message);
       setTeams([]);
       setReferees([]);
-      setPitches(OFFICIAL_PITCHES as any);
+      setPitches([]);
       setFixtures([]);
     } finally {
       setIsLoading(false);

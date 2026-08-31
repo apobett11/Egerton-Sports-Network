@@ -10,25 +10,14 @@ import type {
   GenerationServiceResult,
   PreviewValidationResult,
 } from '../types/seasonMode';
-import { COMPETITIONS, OFFICIAL_PITCHES } from '../constants/seasonConstants';
-
-function resolvePitchName(pitchId?: string | null): string {
-  if (!pitchId) return 'Pavilion Main Pitch';
-  const matched = OFFICIAL_PITCHES.find(
-    (p) => p.id === pitchId || pitchId.startsWith(p.id.slice(0, 3))
-  );
-  if (matched) return matched.name;
-  if (pitchId.includes('91') || pitchId.includes('1')) return 'Pitch A — Main Stadium Pitch';
-  if (pitchId.includes('92') || pitchId.includes('2')) return 'Pitch B — Pavilion Grounds';
-  if (pitchId.includes('93') || pitchId.includes('3')) return 'Pitch C — Tatton Complex Ground';
-  return 'Pavilion Main Pitch';
-}
+import { COMPETITIONS } from '../constants/seasonConstants';
 
 export const fixturesService = {
   /**
    * Fetches official saved fixtures from database tables in a single consolidated query.
    * Primary: public.matchday_schedules + public.base_fixtures (authoritative Agent 0 tables)
    * Fallback: public.fixtures (legacy / fallback mode)
+   * Strict UID decoding: returns null if an entity is unassigned or missing in the DB.
    */
   async fetchFixtures(
     cachedTeams?: SeasonTeam[],
@@ -72,9 +61,9 @@ export const fixturesService = {
       const baseFixtures = baseRes.data || [];
       const teamsList = (teamsRes.data || []) as SeasonTeam[];
       const refereesList = (refereesRes.data || []) as SeasonReferee[];
-      const pitchesList = (pitchesRes.data && pitchesRes.data.length > 0 ? pitchesRes.data : OFFICIAL_PITCHES) as SeasonPitch[];
+      const pitchesList = (pitchesRes.data || []) as SeasonPitch[];
 
-      // 2. Fast Map Lookups for O(1) correlation
+      // 2. Fast Map Lookups for O(1) correlation by UID
       const teamsMap = new Map<string, SeasonTeam>();
       teamsList.forEach((t) => teamsMap.set(t.id, t));
 
@@ -94,22 +83,25 @@ export const fixturesService = {
           const homeTeamId = bf?.home_team_id || '';
           const awayTeamId = bf?.away_team_id || '';
 
-          const homeTeam = teamsMap.get(homeTeamId) || null;
-          const awayTeam = teamsMap.get(awayTeamId) || null;
+          const homeTeam = homeTeamId ? teamsMap.get(homeTeamId) || null : null;
+          const awayTeam = awayTeamId ? teamsMap.get(awayTeamId) || null : null;
           const referee = s.center_referee_id ? refereesMap.get(s.center_referee_id) || null : null;
           const pitch = s.pitch_id ? pitchesMap.get(s.pitch_id) || null : null;
 
-          const linesman1Team = s.linesman_team_a_id ? teamsMap.get(s.linesman_team_a_id) : null;
-          const linesman2Team = s.linesman_team_b_id ? teamsMap.get(s.linesman_team_b_id) : null;
+          const linesman1Team = s.linesman_team_a_id ? teamsMap.get(s.linesman_team_a_id) || null : null;
+          const linesman2Team = s.linesman_team_b_id ? teamsMap.get(s.linesman_team_b_id) || null : null;
 
-          const venueName = pitch?.name || resolvePitchName(s.pitch_id);
+          // Strict venue name from pitch UID or null if not allocated
+          const venueName = pitch?.name || null;
 
           const timeStr = s.start_time
             ? s.start_time.length === 5 ? `${s.start_time}:00` : s.start_time
-            : '09:00:00';
-          const scheduledTime = s.play_date
+            : null;
+          const scheduledTime = s.play_date && timeStr
             ? `${s.play_date}T${timeStr}.000Z`
-            : new Date().toISOString();
+            : s.play_date
+            ? `${s.play_date}T00:00:00.000Z`
+            : null;
 
           const isEpl =
             s.league === 'EPL' ||
@@ -125,11 +117,11 @@ export const fixturesService = {
             competition_id: isEpl ? COMPETITIONS.PREMIER_LEAGUE.id : COMPETITIONS.CHAMPIONSHIP.id,
             home_team_id: homeTeamId,
             away_team_id: awayTeamId,
-            scheduled_time: scheduledTime,
+            scheduled_time: scheduledTime || new Date().toISOString(),
             status: (s.status || 'UPCOMING') as any,
             score_home: 0,
             score_away: 0,
-            venue: venueName,
+            venue: venueName || '',
             referee_id: s.center_referee_id || null,
             matchday: s.matchday_number || 1,
             created_at: s.created_at || new Date().toISOString(),
@@ -140,10 +132,10 @@ export const fixturesService = {
             competition: compObj,
             linesmen: {
               linesman_team1_id: s.linesman_team_a_id || null,
-              linesman_team1_name: linesman1Team?.name || (homeTeam?.name ? `${homeTeam.name} Linesman` : null),
+              linesman_team1_name: linesman1Team?.name || null,
               linesman_team1_status: s.linesman_team_a_id ? 'Assigned' : 'Pending',
               linesman_team2_id: s.linesman_team_b_id || null,
-              linesman_team2_name: linesman2Team?.name || (awayTeam?.name ? `${awayTeam.name} Linesman` : null),
+              linesman_team2_name: linesman2Team?.name || null,
               linesman_team2_status: s.linesman_team_b_id ? 'Assigned' : 'Pending',
             },
           };
@@ -197,10 +189,10 @@ export const fixturesService = {
 
         const fallbackFixtures: OperationalMatch[] = (simpleData || []).map((f: any) => ({
           ...f,
-          home_team: teamsMap.get(f.home_team_id) || null,
-          away_team: teamsMap.get(f.away_team_id) || null,
+          home_team: f.home_team_id ? teamsMap.get(f.home_team_id) || null : null,
+          away_team: f.away_team_id ? teamsMap.get(f.away_team_id) || null : null,
           referee: f.referee_id ? refereesMap.get(f.referee_id) || null : null,
-          venue: f.venue || resolvePitchName(null),
+          venue: f.venue || '',
         }));
 
         return { fixtures: fallbackFixtures, error: null };
@@ -208,8 +200,8 @@ export const fixturesService = {
 
       const formattedLegacy: OperationalMatch[] = (legacyData || []).map((f: any) => ({
         ...f,
-        home_team: Array.isArray(f.home_team) ? f.home_team[0] || null : f.home_team || teamsMap.get(f.home_team_id) || null,
-        away_team: Array.isArray(f.away_team) ? f.away_team[0] || null : f.away_team || teamsMap.get(f.away_team_id) || null,
+        home_team: Array.isArray(f.home_team) ? f.home_team[0] || null : f.home_team || (f.home_team_id ? teamsMap.get(f.home_team_id) || null : null),
+        away_team: Array.isArray(f.away_team) ? f.away_team[0] || null : f.away_team || (f.away_team_id ? teamsMap.get(f.away_team_id) || null : null),
         competition: Array.isArray(f.competition) ? f.competition[0] || null : f.competition || null,
         referee: f.referee_id ? refereesMap.get(f.referee_id) || null : null,
       }));
