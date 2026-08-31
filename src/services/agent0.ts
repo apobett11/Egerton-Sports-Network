@@ -429,6 +429,14 @@ export async function handleEvent(
     validateEvent(event);
     state.pipelineState = "LOADING_STATE";
 
+    // console log: Agent 0 Event Received & Orchestration Initiated
+    console.log("[AGENT 0] Event received and orchestration initiated:", {
+      executionId,
+      seasonId,
+      eventType: event.type,
+      event,
+    });
+
     // ====================================================================
     // STEP 2 — Determine execution plan
     // ====================================================================
@@ -486,6 +494,24 @@ export async function handleEvent(
 
         resultSummary.algorithm1 = { used: true, status: algorithm1Result.status };
         state.lastSuccessfulStage = "ALGORITHM_1";
+
+        // console log: Algorithm 1 Result Envelope & Database Write Payload
+        console.log("[AGENT 0 DB WRITE - STAGE 1 / ALGORITHM_1] Writing Algorithm 1 base fixtures to database:", {
+          executionId,
+          seasonId,
+          algorithm: "ALGORITHM_1",
+          envelope: algorithm1Result,
+          envelope_status: algorithm1Result.status,
+          database_metadata: algorithm1Result.database,
+          verification: algorithm1Result.verification,
+          payload: algorithm1Result.payload,
+          database_write_contents: {
+            flattened_fixtures: flattenAlgorithm1Fixtures(
+              algorithm1Result.payload,
+              seasonId,
+            ),
+          },
+        });
 
         // TASK 3: ALGORITHM 1 SUCCESS -> INSERT IMMUTABLE FIXTURES & FRESH READ
         if (adapters.insertBaseFixtures) {
@@ -584,6 +610,24 @@ export async function handleEvent(
 
       resultSummary.algorithm2 = { used: true, status: algorithm2Result.status };
       state.lastSuccessfulStage = "ALGORITHM_2";
+
+      // console log: Algorithm 2 Result Envelope & Database Write Payload
+      console.log("[AGENT 0 DB WRITE - STAGE 2 / ALGORITHM_2] Writing Algorithm 2 matchday schedules to database:", {
+        executionId,
+        seasonId,
+        algorithm: "ALGORITHM_2",
+        envelope: algorithm2Result,
+        envelope_status: algorithm2Result.status,
+        database_metadata: algorithm2Result.database,
+        verification: algorithm2Result.verification,
+        payload: algorithm2Result.payload,
+        database_write_contents: {
+          final_schedule: algorithm2Result.payload.final_schedule,
+          mutations: algorithm2Result.payload.database?.mutations,
+          preserved: algorithm2Result.payload.database?.preserved,
+          expected_update_count: algorithm2Result.payload.database?.expected_update_count,
+        },
+      });
 
       // TASK 5: ALGORITHM 2 SUCCESS -> INSERT MATCHDAY SCHEDULES & FRESH READ
       if (adapters.insertMatchdaySchedules) {
@@ -710,6 +754,23 @@ export async function handleEvent(
       resultSummary.algorithm3 = { used: true, status: algorithm3Result.status };
       state.lastSuccessfulStage = "ALGORITHM_3";
 
+      // console log: Algorithm 3 Result Envelope & Database Write Payload
+      console.log("[AGENT 0 DB WRITE - STAGE 3 / ALGORITHM_3] Writing Algorithm 3 pitch allocations to database:", {
+        executionId,
+        seasonId,
+        algorithm: "ALGORITHM_3",
+        envelope: algorithm3Result,
+        envelope_status: algorithm3Result.status,
+        database_metadata: algorithm3Result.database,
+        verification: algorithm3Result.verification,
+        payload: algorithm3Result.payload,
+        database_write_contents: {
+          allocations: algorithm3Result.payload.database_operations.allocations,
+          spillovers: algorithm3Result.payload.database_operations.spillovers,
+          summary: algorithm3Result.payload.summary,
+        },
+      });
+
       // TASK 12: POST ALGORITHM 3 PUT PITCH ALLOCATIONS & FRESH READ
       if (adapters.putPitchAllocations) {
         await adapters.putPitchAllocations({
@@ -817,6 +878,22 @@ export async function handleEvent(
       resultSummary.algorithm45 = { used: true, status: algorithm45Result.status };
       state.lastSuccessfulStage = "ALGORITHM_4_5";
 
+      // console log: Algorithm 4 & 5 Result Envelope & Database Write Payload
+      console.log("[AGENT 0 DB WRITE - STAGE 4 / ALGORITHM_4_5] Writing Algorithm 4 & 5 officiating assignments to database:", {
+        executionId,
+        seasonId,
+        algorithm: "ALGORITHM_4_5",
+        envelope: algorithm45Result,
+        envelope_status: algorithm45Result.status,
+        database_metadata: algorithm45Result.database,
+        verification: algorithm45Result.verification,
+        payload: algorithm45Result.payload,
+        database_write_contents: {
+          assignments: algorithm45Result.payload.assignments,
+          verification_logs: algorithm45Result.payload.verification_logs,
+        },
+      });
+
       // TASK 16: FINAL PUT OFFICIATING ALLOCATIONS & DATABASE READ
       if (adapters.putOfficiatingAssignments) {
         await adapters.putOfficiatingAssignments({
@@ -865,6 +942,14 @@ export async function handleEvent(
     state.pipelineState = "READ_BACK";
     state.pipelineState = "VERIFYING_DATABASE";
 
+    // console log: Readback & Verification
+    console.log("[AGENT 0 DB READ-BACK & VERIFY] Performing read-back and verification from database:", {
+      executionId,
+      seasonId,
+      stage: state.pipelineState,
+      algorithmsExecuted: resultSummary,
+    });
+
     await adapters.readBackAndVerify({ executionId, seasonId });
 
     state.pipelineState = "COMPLETED";
@@ -888,6 +973,15 @@ export async function handleEvent(
             "UNHANDLED_AGENT0_ERROR",
             error instanceof Error ? error.message : String(error),
           );
+
+    // console log: Agent 0 Pipeline Failure
+    console.error("[AGENT 0 ERROR] Pipeline failed at stage:", {
+      executionId,
+      seasonId,
+      stage: state.pipelineState,
+      lastSuccessfulStage: state.lastSuccessfulStage,
+      error: agent0Error,
+    });
 
     return {
       success: false,
