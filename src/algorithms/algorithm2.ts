@@ -162,7 +162,7 @@ interface WorkingFixture extends FixtureInput {
  * CONSTANTS
  * ========================================================================== */
 
-const DEFAULT_MATCHES_PER_MATCHDAY = 3;
+const DEFAULT_MATCHES_PER_MATCHDAY = 9;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

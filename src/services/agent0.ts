@@ -1137,8 +1137,8 @@ function buildAlgorithm2Signal(
 
   const matchesPerMatchday: Record<string, number> = {};
 
-  const eplCap = event.eplMatchesPerMatchday ?? state.capacity?.EPL ?? 2;
-  const champCap = event.championshipMatchesPerMatchday ?? state.capacity?.Championship ?? 2;
+  const eplCap = event.eplMatchesPerMatchday ?? state.capacity?.EPL ?? 9;
+  const champCap = event.championshipMatchesPerMatchday ?? state.capacity?.Championship ?? 9;
 
   const distinctLeagueIds = Array.from(
     new Set(state.fixtures.map((f) => f.league_id).filter(Boolean))
@@ -1146,29 +1146,23 @@ function buildAlgorithm2Signal(
 
   if (distinctLeagueIds.length > 0) {
     for (const lid of distinctLeagueIds) {
-      const isEPL =
-        lid === EPL_UUID ||
-        lid.includes("1111") ||
-        lid.toLowerCase().includes("epl") ||
-        lid.toLowerCase().includes("premier");
+      const isEPL = isEplLeague(lid);
       matchesPerMatchday[lid] = isEPL ? eplCap : champCap;
     }
-  } else {
-    matchesPerMatchday[EPL_UUID] = eplCap;
-    matchesPerMatchday[CHAMP_UUID] = champCap;
   }
 
   const cancelledMatchdays: Array<{ league_id: string; matchday_number: number }> = [];
 
   if (event.type === "CANCEL_MATCHDAY" && event.matchdayNumber !== undefined) {
-    cancelledMatchdays.push({
-      league_id: "epl",
-      matchday_number: event.matchdayNumber,
-    });
-    cancelledMatchdays.push({
-      league_id: "championship",
-      matchday_number: event.matchdayNumber,
-    });
+    const distinctLeagues = Array.from(
+      new Set(state.fixtures.map((f) => f.league_id).filter(Boolean)),
+    );
+    for (const leagueId of distinctLeagues) {
+      cancelledMatchdays.push({
+        league_id: leagueId,
+        matchday_number: event.matchdayNumber,
+      });
+    }
   }
 
   return {
@@ -1186,7 +1180,7 @@ function buildAlgorithm2Signal(
 export function isEplLeague(leagueId?: string | null): boolean {
   if (!leagueId) return false;
   const l = leagueId.toLowerCase();
-  return l === "epl" || l.includes("1111") || l.includes("premier");
+  return l === "epl";
 }
 
 /* ============================================================================
@@ -1238,10 +1232,7 @@ function buildAlgorithm3Signal(
     const isAvailable = (event.amAvailable ?? true) || (event.pmAvailable ?? true);
     const pid = event.pitchId;
     pitches = pitches.map((p) =>
-      p.pitch_id === pid ||
-      (p.pitch_id === "pitch-1" && pid.includes("1")) ||
-      (p.pitch_id === "pitch-2" && pid.includes("2")) ||
-      (p.pitch_id === "pitch-3" && pid.includes("3"))
+      p.pitch_id === pid
         ? { ...p, state: isAvailable ? "available" : "unavailable" }
         : p,
     );
@@ -1290,7 +1281,13 @@ function buildAlgorithm3Signal(
             };
           });
 
-    const playDate = mdFixtures[0]?.playday || mdObj?.play_date || event.seasonStartDate || event.date || "2026-09-05";
+    const playDate = mdFixtures[0]?.playday || mdObj?.play_date || event.seasonStartDate || event.date;
+    if (!playDate) {
+      throw new Agent0Error(
+        "MISSING_PLAY_DATE",
+        `Cannot determine play date for matchday ${mdNum}. No playday, matchday date, season start date, or event date available.`,
+      );
+    }
 
     return {
       matchday_number: mdNum,
@@ -1331,39 +1328,41 @@ function buildAlgorithm3TimeConfig(
   event: PresidentEvent,
   state: DBState,
 ): Algorithm3Signal["time_configuration"] {
-  const defaultEpl: SlotTime[] = [
-    { slot_number: 1, start_time: "08:30", end_time: "10:30" },
-    { slot_number: 2, start_time: "10:45", end_time: "12:45" },
-    { slot_number: 3, start_time: "13:00", end_time: "15:00" },
-  ];
-  const defaultChamp: SlotTime[] = [
-    { slot_number: 1, start_time: "15:15", end_time: "17:15" },
-    { slot_number: 2, start_time: "17:30", end_time: "19:30" },
-    { slot_number: 3, start_time: "19:45", end_time: "21:45" },
-  ];
-
-  const existingEpl = state.timeConfiguration?.find((tc) => tc.league_id === "epl")?.slots || defaultEpl;
-  const existingChamp = state.timeConfiguration?.find((tc) => tc.league_id === "championship")?.slots || defaultChamp;
-
+  // If the event is a time configuration change, use the event values
   if (event.type === "CHANGE_TIME_CONFIGURATION") {
-    return [
-      { league_id: "epl", slots: event.eplSlots || existingEpl },
-      { league_id: "championship", slots: event.championshipSlots || existingChamp },
-    ];
+    const configs: NonNullable<Algorithm3Signal["time_configuration"]> = [];
+    const distinctLeagues = Array.from(
+      new Set(state.fixtures.map((f) => f.league_id).filter(Boolean)),
+    ).sort();
+    for (const leagueId of distinctLeagues) {
+      const existing = state.timeConfiguration?.find(
+        (tc) => tc.league_id === leagueId || tc.league_id === leagueId.toLowerCase(),
+      );
+      const isFirstLeague = leagueId === distinctLeagues[0];
+      const eventSlots = isFirstLeague ? event.eplSlots : event.championshipSlots;
+      configs.push({
+        league_id: leagueId,
+        slots: eventSlots || existing?.slots || [],
+      });
+    }
+    return configs.length > 0 ? configs : undefined;
   }
 
-  return [
-    { league_id: "epl", slots: existingEpl },
-    { league_id: "championship", slots: existingChamp },
-  ];
+  // If database has time configuration, pass it through
+  if (state.timeConfiguration && state.timeConfiguration.length > 0) {
+    return state.timeConfiguration.map((tc) => ({
+      league_id: tc.league_id,
+      slots: tc.slots,
+    }));
+  }
+
+  // No time configuration available — let Algorithm 3's own defaults handle it
+  return undefined;
 }
 
 /* ============================================================================
  * ALGORITHM 1 FIXTURE FLATTENER
  * ========================================================================== */
-
-const EPL_UUID = "11111111-1111-1111-1111-111111111111";
-const CHAMP_UUID = "22222222-2222-2222-2222-222222222222";
 
 function flattenAlgorithm1Fixtures(
   output: Algo1Output,
@@ -1392,12 +1391,7 @@ function flattenAlgorithm1Fixtures(
   }> = [];
 
   for (const [leagueId, data] of Object.entries(output.data)) {
-    const validLeagueId =
-      leagueId === "epl" || isEplLeague(leagueId)
-        ? EPL_UUID
-        : leagueId === "championship" || leagueId.includes("2222")
-        ? CHAMP_UUID
-        : leagueId;
+    const validLeagueId = leagueId;
 
     const processLeg = (
       leg: typeof data.leg_1,
@@ -1429,10 +1423,27 @@ function flattenAlgorithm1Fixtures(
  * TIME-SLOTTED MATCH BUILDER (for Algorithm 4+5)
  * ========================================================================== */
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24;
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function formatToIsoTimestamp(playDate: string, timeStr: string): string {
   if (!timeStr) return new Date().toISOString();
   if (timeStr.includes("T")) return timeStr;
-  const datePart = playDate || "2026-09-05";
+  if (!playDate) {
+    throw new Agent0Error(
+      "MISSING_PLAY_DATE",
+      "Cannot format timestamp: no play date available.",
+    );
+  }
+  const datePart = playDate;
   const cleanTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
   return `${datePart}T${cleanTime}.000Z`;
 }
@@ -1458,11 +1469,21 @@ function buildTimeSlottedMatches(
       });
     }
     for (const s of algorithm3Result.payload.database_operations.spillovers) {
+      // Derive spillover time from the last allocated slot on the same play date
+      const sameDayAllocations = algorithm3Result.payload.database_operations.allocations
+        .filter((a) => a.play_date === s.current_play_date)
+        .sort((a, b) => a.end_time.localeCompare(b.end_time));
+      const lastEndTime = sameDayAllocations.length > 0
+        ? sameDayAllocations[sameDayAllocations.length - 1].end_time
+        : "17:00";
+      const spilloverStartMinutes = timeToMinutes(lastEndTime);
+      const spilloverStart = minutesToTime(spilloverStartMinutes);
+      const spilloverEnd = minutesToTime(spilloverStartMinutes + 120);
       rawList.push({
         match_id: s.match_id,
         league_id: s.league_id,
-        start_time: formatToIsoTimestamp(s.current_play_date, "18:00"),
-        end_time: formatToIsoTimestamp(s.current_play_date, "20:00"),
+        start_time: formatToIsoTimestamp(s.current_play_date, spilloverStart),
+        end_time: formatToIsoTimestamp(s.current_play_date, spilloverEnd),
       });
     }
   } else {

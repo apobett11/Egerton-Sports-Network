@@ -106,7 +106,7 @@ export function generateFixtures(
   const leagues = command.payload;
 
   // Run the EXISTING Algorithm 1 mathematical engine (unchanged)
-  const nativeOutput = generateFixturesEngine(leagues);
+  const nativeOutput = generateFixturesEngine(leagues, command.season_id);
 
   // Part 4C: Wrap the native output in the result envelope
   return createAlgorithmResult({
@@ -169,7 +169,10 @@ export function generateFixtures(
  *   - Verification executes exactly once per supplied league.
  * ========================================================================== */
 
-function generateFixturesEngine(leagues: LeagueInput[]): Algo1Output {
+function generateFixturesEngine(
+  leagues: LeagueInput[],
+  seasonId: string,
+): Algo1Output {
   const verification_logs: string[] = [];
 
   /*
@@ -343,11 +346,11 @@ function generateFixturesEngine(leagues: LeagueInput[]): Algo1Output {
     generatedData[league.league_id] = {
       leg_1: assignChronologicalSequence(
         generated.leg1.matchdays,
-        createSeed(league.league_id, "LEG_1"),
+        createSeed(seasonId, league.league_id, "LEG_1"),
       ),
       leg_2: assignChronologicalSequence(
         generated.leg2.matchdays,
-        createSeed(league.league_id, "LEG_2"),
+        createSeed(seasonId, league.league_id, "LEG_2"),
       ),
     };
   }
@@ -900,8 +903,12 @@ function assignChronologicalSequence(
  * PURE HASH SEED
  * ========================================================================== */
 
-function createSeed(leagueId: string, leg: "LEG_1" | "LEG_2"): number {
-  const input = `${leagueId}::${leg}`;
+function createSeed(
+  seasonId: string,
+  leagueId: string,
+  leg: "LEG_1" | "LEG_2",
+): number {
+  const input = `${seasonId}::${leagueId}::${leg}`;
   let hash = 2166136261;
 
   for (let i = 0; i < input.length; i++) {
