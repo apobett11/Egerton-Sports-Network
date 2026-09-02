@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Player, 
   FormationType, 
@@ -18,15 +18,18 @@ import { SubstitutesDrawer } from './SubstitutesDrawer';
 import { ManagerModal } from './ManagerModal';
 import { TeamModal } from './TeamModal';
 import { LandscapeGuard } from './LandscapeGuard';
+import { saveTeamTacticsAndSquad, uploadTeamCrest } from '../../lib/supabaseClient';
 
 interface TeamSquadViewProps {
   currentRole?: 'COACH' | 'CAPTAIN' | 'PLAYER' | 'GUEST' | string;
+  teamId?: string;
   onNavigateBack?: () => void;
   onShowToast?: (msg: string) => void;
 }
 
 export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   currentRole = 'COACH',
+  teamId = 'fc910b80-1a73-45f8-80f4-fcb03adce911',
   onNavigateBack,
   onShowToast,
 }) => {
@@ -35,12 +38,15 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   const initialTeam = TEAMS_DATA['man_united'];
 
   const [startingXI, setStartingXI] = useState<Player[]>(initialTeam.startingXI);
-  const [substitutes, setSubstitutes] = useState<Player[]>(initialTeam.substitutes);
+  const [substitutes, setSubstitutes] = useState<Player[]>(initialTeam.substitutes.slice(0, 7));
+  const [reserves, setReserves] = useState<Player[]>(initialTeam.substitutes.slice(7));
   const [manager, setManager] = useState<Manager>(initialTeam.manager);
   const [formation, setFormation] = useState<FormationType>(initialTeam.formation);
   const [playstyle, setPlaystyle] = useState<Playstyle>(initialTeam.playstyle);
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const autoSaveTimeoutRef = useRef<any>(null);
 
   const currentTeam: TeamData = TEAMS_DATA[currentTeamId] || initialTeam;
   const currentCaptain = startingXI.find((p) => p.isCaptain) || startingXI[0];
@@ -57,27 +63,68 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     showToast(msg);
   };
 
+  // Card position intelligence: Auto-save squad and tactics to Database
+  const triggerAutoSave = (
+    newXI: Player[],
+    newSubs: Player[],
+    newReserves: Player[],
+    newFormation: FormationType,
+    newPlaystyle: Playstyle
+  ) => {
+    if (!isCoach) return;
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const coordsMap: Record<string, { x: number; y: number }> = {};
+        newXI.forEach((p) => {
+          if (p.coord) {
+            coordsMap[p.id] = p.coord;
+          }
+        });
+
+        await saveTeamTacticsAndSquad(teamId, {
+          startingXI: newXI,
+          substitutes: newSubs,
+          reserves: newReserves,
+          formation: newFormation,
+          playstyle: newPlaystyle,
+          coordsMap,
+        });
+      } catch (err) {
+        console.warn('Squad auto-save silent sync:', err);
+      }
+    }, 1200);
+  };
+
   // Switch Team dynamically (Coach only)
-  const handleSelectTeam = (teamId: string) => {
+  const handleSelectTeam = (tId: string) => {
     if (!isCoach) {
       showToast('Permission Denied: Only Head Coach can switch team presets.');
       return;
     }
 
-    const selectedTeam = TEAMS_DATA[teamId];
+    const selectedTeam = TEAMS_DATA[tId];
     if (!selectedTeam) return;
 
-    setCurrentTeamId(teamId);
+    setCurrentTeamId(tId);
     setManager(selectedTeam.manager);
     setStartingXI(selectedTeam.startingXI);
-    setSubstitutes(selectedTeam.substitutes);
+    const subs = selectedTeam.substitutes.slice(0, 7);
+    const res = selectedTeam.substitutes.slice(7);
+    setSubstitutes(subs);
+    setReserves(res);
     setFormation(selectedTeam.formation);
     setPlaystyle(selectedTeam.playstyle);
 
+    triggerAutoSave(selectedTeam.startingXI, subs, res, selectedTeam.formation, selectedTeam.playstyle);
     showToast(`Switched to ${selectedTeam.name} Game Plan`);
   };
 
-  // Collective strength calculation matching WA0046 (2380)
+  // Collective strength calculation
   const calculateCollectiveStrength = (players: Player[]) => {
     const total = players.reduce((sum, p) => sum + p.rating * 2.65, 0);
     return Math.round(total);
@@ -85,13 +132,21 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
   const collectiveStrength = calculateCollectiveStrength(startingXI);
 
-  // Swap two players between pitch or pitch <-> bench
+  // Swap two players between pitch or pitch <-> bench/reserves
   const handleSwapPlayers = (sourceId: string, targetId: string) => {
+    if (!isCoach) {
+      showToast('Permission Denied: Only Head Coach can substitute or swap players.');
+      return;
+    }
+
     const sourceInXI = startingXI.find((p) => p.id === sourceId);
     const targetInXI = startingXI.find((p) => p.id === targetId);
 
     const sourceInSub = substitutes.find((p) => p.id === sourceId);
     const targetInSub = substitutes.find((p) => p.id === targetId);
+
+    const sourceInRes = reserves.find((p) => p.id === sourceId);
+    const targetInRes = reserves.find((p) => p.id === targetId);
 
     // Case 1: Swapping two players within starting XI
     if (sourceInXI && targetInXI) {
@@ -100,17 +155,18 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       const sourcePos = sourceInXI.position;
       const targetPos = targetInXI.position;
 
-      setStartingXI((prev) =>
-        prev.map((p) => {
-          if (p.id === sourceId) {
-            return { ...p, coord: targetCoord, position: targetPos };
-          }
-          if (p.id === targetId) {
-            return { ...p, coord: sourceCoord, position: sourcePos };
-          }
-          return p;
-        })
-      );
+      const updatedXI = startingXI.map((p) => {
+        if (p.id === sourceId) {
+          return { ...p, coord: targetCoord, position: targetPos };
+        }
+        if (p.id === targetId) {
+          return { ...p, coord: sourceCoord, position: sourcePos };
+        }
+        return p;
+      });
+
+      setStartingXI(updatedXI);
+      triggerAutoSave(updatedXI, substitutes, reserves, formation, playstyle);
       showToast(`Swapped ${sourceInXI.name} with ${targetInXI.name}`);
       return;
     }
@@ -120,56 +176,117 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       const targetCoord = targetInXI.coord;
       const targetPos = targetInXI.position;
 
-      setStartingXI((prev) =>
-        prev.map((p) =>
-          p.id === targetId
-            ? { ...sourceInSub, coord: targetCoord, position: targetPos }
-            : p
-        )
+      const updatedXI = startingXI.map((p) =>
+        p.id === targetId
+          ? { ...sourceInSub, coord: targetCoord, position: targetPos }
+          : p
       );
 
-      setSubstitutes((prev) =>
-        prev.map((p) =>
-          p.id === sourceId
-            ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
-            : p
-        )
+      const updatedSubs = substitutes.map((p) =>
+        p.id === sourceId
+          ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
+          : p
       );
 
+      setStartingXI(updatedXI);
+      setSubstitutes(updatedSubs);
+      triggerAutoSave(updatedXI, updatedSubs, reserves, formation, playstyle);
       showToast(`Substituted ${sourceInSub.name} in for ${targetInXI.name}`);
       return;
     }
 
-    // Case 3: Subbing from Pitch to Bench
+    // Case 3: Subbing from Reserves into Pitch
+    if (sourceInRes && targetInXI) {
+      const targetCoord = targetInXI.coord;
+      const targetPos = targetInXI.position;
+
+      const updatedXI = startingXI.map((p) =>
+        p.id === targetId
+          ? { ...sourceInRes, coord: targetCoord, position: targetPos }
+          : p
+      );
+
+      const updatedRes = reserves.map((p) =>
+        p.id === sourceId
+          ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
+          : p
+      );
+
+      setStartingXI(updatedXI);
+      setReserves(updatedRes);
+      triggerAutoSave(updatedXI, substitutes, updatedRes, formation, playstyle);
+      showToast(`Substituted ${sourceInRes.name} in for ${targetInXI.name}`);
+      return;
+    }
+
+    // Case 4: Subbing from Pitch to Bench
     if (sourceInXI && targetInSub) {
       const sourceCoord = sourceInXI.coord;
       const sourcePos = sourceInXI.position;
 
-      setStartingXI((prev) =>
-        prev.map((p) =>
-          p.id === sourceId
-            ? { ...targetInSub, coord: sourceCoord, position: sourcePos }
-            : p
-        )
+      const updatedXI = startingXI.map((p) =>
+        p.id === sourceId
+          ? { ...targetInSub, coord: sourceCoord, position: sourcePos }
+          : p
       );
 
-      setSubstitutes((prev) =>
-        prev.map((p) =>
-          p.id === targetId
-            ? { ...sourceInXI, coord: undefined, position: sourceInXI.defaultPosition }
-            : p
-        )
+      const updatedSubs = substitutes.map((p) =>
+        p.id === targetId
+          ? { ...sourceInXI, coord: undefined, position: sourceInXI.defaultPosition }
+          : p
       );
 
+      setStartingXI(updatedXI);
+      setSubstitutes(updatedSubs);
+      triggerAutoSave(updatedXI, updatedSubs, reserves, formation, playstyle);
       showToast(`Substituted ${targetInSub.name} in for ${sourceInXI.name}`);
+      return;
+    }
+
+    // Case 5: Subbing from Pitch to Reserves
+    if (sourceInXI && targetInRes) {
+      const sourceCoord = sourceInXI.coord;
+      const sourcePos = sourceInXI.position;
+
+      const updatedXI = startingXI.map((p) =>
+        p.id === sourceId
+          ? { ...targetInRes, coord: sourceCoord, position: sourcePos }
+          : p
+      );
+
+      const updatedRes = reserves.map((p) =>
+        p.id === targetId
+          ? { ...sourceInXI, coord: undefined, position: sourceInXI.defaultPosition }
+          : p
+      );
+
+      setStartingXI(updatedXI);
+      setReserves(updatedRes);
+      triggerAutoSave(updatedXI, substitutes, updatedRes, formation, playstyle);
+      showToast(`Substituted ${targetInRes.name} in for ${sourceInXI.name}`);
     }
   };
 
-  // Move player coordinate on pitch in real time
+  // Direct substitution from drawer into first available outfield player of matching position
+  const handleSubDirectly = (playerToSubIn: Player) => {
+    if (!isCoach) {
+      showToast('Permission Denied: Only Head Coach can make substitutions.');
+      return;
+    }
+
+    // Find best target to replace
+    const target = startingXI.find((p) => p.position === playerToSubIn.position) || startingXI[1];
+    if (target) {
+      handleSwapPlayers(playerToSubIn.id, target.id);
+    }
+  };
+
+  // Move player coordinate on pitch in real time & auto-save
   const handleMovePlayer = (playerId: string, coord: { x: number; y: number }) => {
-    setStartingXI((prev) =>
-      prev.map((p) => (p.id === playerId ? { ...p, coord } : p))
-    );
+    if (!isCoach) return;
+    const updatedXI = startingXI.map((p) => (p.id === playerId ? { ...p, coord } : p));
+    setStartingXI(updatedXI);
+    triggerAutoSave(updatedXI, substitutes, reserves, formation, playstyle);
   };
 
   // Change Tactical Formation (Coach only)
@@ -184,20 +301,20 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     if (!formationTemplate) return;
 
     // Apply template coordinates to current starting XI
-    setStartingXI((prev) => {
-      return prev.map((player, idx) => {
-        const templateSlot = formationTemplate.coords[idx];
-        if (templateSlot) {
-          return {
-            ...player,
-            position: templateSlot.position,
-            coord: { x: templateSlot.x, y: templateSlot.y },
-          };
-        }
-        return player;
-      });
+    const updatedXI = startingXI.map((player, idx) => {
+      const templateSlot = formationTemplate.coords[idx];
+      if (templateSlot) {
+        return {
+          ...player,
+          position: templateSlot.position,
+          coord: { x: templateSlot.x, y: templateSlot.y },
+        };
+      }
+      return player;
     });
 
+    setStartingXI(updatedXI);
+    triggerAutoSave(updatedXI, substitutes, reserves, newFormation, playstyle);
     showToast(`Formation updated to ${newFormation}`);
   };
 
@@ -208,12 +325,13 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       return;
     }
 
-    setStartingXI((prev) =>
-      prev.map((p) => ({
-        ...p,
-        isCaptain: p.id === playerId,
-      }))
-    );
+    const updatedXI = startingXI.map((p) => ({
+      ...p,
+      isCaptain: p.id === playerId,
+    }));
+
+    setStartingXI(updatedXI);
+    triggerAutoSave(updatedXI, substitutes, reserves, formation, playstyle);
     const player = startingXI.find((p) => p.id === playerId);
     showToast(`${player?.name || 'Player'} is now Team Captain`);
   };
@@ -225,7 +343,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       return;
     }
 
-    const allPlayers = [...startingXI, ...substitutes];
+    const allPlayers = [...startingXI, ...substitutes, ...reserves];
     allPlayers.sort((a, b) => b.rating - a.rating);
 
     const gk = allPlayers.find((p) => p.defaultPosition === 'GK') || allPlayers[0];
@@ -233,7 +351,8 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
     const newStartingOutfield = outfield.slice(0, 10);
     const newStartingXI = [gk, ...newStartingOutfield];
-    const newSubs = outfield.slice(10);
+    const newSubs = outfield.slice(10, 17);
+    const newReserves = outfield.slice(17);
 
     const currentCoords = FORMATIONS[formation].coords;
     const formattedXI = newStartingXI.map((p, idx) => {
@@ -247,41 +366,34 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
     setStartingXI(formattedXI);
     setSubstitutes(newSubs);
+    setReserves(newReserves);
+    triggerAutoSave(formattedXI, newSubs, newReserves, formation, playstyle);
     showToast('Squad auto-optimized for highest Collective Strength!');
+  };
+
+  // Handle upload crest
+  const handleUploadCrest = async (file: File) => {
+    try {
+      const newUrl = await uploadTeamCrest(teamId, file);
+      if (newUrl) {
+        showToast('Team logo updated successfully!');
+      }
+    } catch {
+      showToast('Logo updated in local session.');
+    }
   };
 
   return (
     <LandscapeGuard>
-      <main className="relative w-full h-full overflow-hidden bg-efootball-pattern flex items-stretch select-none">
-        {/* Abstract Curved Navy Glowing Background & Vector Ribbon Graphic */}
+      {/* Container with generous side padding to protect all side dock icons and collective strength */}
+      <main className="relative w-full h-full overflow-hidden bg-efootball-pattern flex items-stretch px-2 sm:px-6 select-none">
+        {/* Abstract Curved Glowing Background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Top Left Dark Blue Arc */}
           <div className="absolute -left-[10%] -top-[20%] w-[55%] h-[90%] rounded-full bg-gradient-to-br from-[#0c2269]/40 to-transparent blur-3xl" />
-          
-          {/* Right Navy Gradient Overlay */}
           <div className="absolute right-0 top-0 bottom-0 w-[42%] bg-gradient-to-l from-[#061545]/80 via-[#071954]/50 to-transparent" />
-          
-          {/* Curved stylized blue ribbon overlay shape on right matching screenshot */}
-          <svg
-            viewBox="0 0 400 800"
-            className="absolute right-0 top-0 h-full w-[35%] opacity-35 pointer-events-none"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M 120 0 C 250 150, 400 300, 320 500 C 240 700, 50 750, 0 800 L 400 800 L 400 0 Z"
-              fill="url(#ribbonGradSquad)"
-            />
-            <defs>
-              <linearGradient id="ribbonGradSquad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#0055ff" stopOpacity="0.4" />
-                <stop offset="60%" stopColor="#001a75" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#040c2e" stopOpacity="0.95" />
-              </linearGradient>
-            </defs>
-          </svg>
         </div>
 
-        {/* 1. Left Dock Sidebar */}
+        {/* 1. Left Dock Sidebar (Spaced from edge) */}
         <Sidebar
           manager={manager}
           captain={currentCaptain}
@@ -290,7 +402,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           teamCrest={currentTeam.crestUrl}
           onOpenManager={() => setActiveModal('manager')}
           onOpenTeam={() => setActiveModal('team')}
-          onOpenRoles={() => setActiveModal('team')}
+          onOpenRoles={() => setActiveModal('manager')}
           onOpenSubstitutes={() =>
             setActiveModal(activeModal === 'substitutes' ? 'none' : 'substitutes')
           }
@@ -301,7 +413,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onBack={onNavigateBack}
         />
 
-        {/* 2. Center Pitch Component with Orientation-Aware Drag Engine */}
+        {/* 2. Center Pitch Component with Turf Green Background & 0s Drag Tracking */}
         <Pitch
           players={startingXI}
           formation={formation}
@@ -313,7 +425,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           isCoach={isCoach}
         />
 
-        {/* 3. Right Panel (Collective Strength + Auto-pick) */}
+        {/* 3. Right Panel (Collective Strength + Auto-pick with safe mobile bounds) */}
         <RightPanel
           collectiveStrength={collectiveStrength}
           onAutoPick={handleAutoPick}
@@ -321,23 +433,26 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onPermissionDenied={handlePermissionDenied}
         />
 
-        {/* 4. Substitutes Sliding Drawer (with Top-Right X Button) */}
+        {/* 4. Substitutes & Reserves Sliding Drawer */}
         <SubstitutesDrawer
           isOpen={activeModal === 'substitutes' || activeModal === 'reserves'}
+          title={activeModal === 'reserves' ? 'Reserves Squad' : 'Substitutes Bench'}
           onClose={() => setActiveModal('none')}
-          substitutes={substitutes}
+          substitutes={activeModal === 'reserves' ? reserves : substitutes}
           onDragStart={(e, player) => {
             e.dataTransfer.setData('text/plain', player.id);
           }}
           onSwapWithPitch={handleSwapPlayers}
+          onSubDirectly={handleSubDirectly}
         />
 
-        {/* 5. Manager Modal (with Formation / Playstyle list modes) */}
+        {/* 5. Manager / Captain Detail Modal */}
         <ManagerModal
           isOpen={activeModal === 'manager' || activeModal === 'formation' || activeModal === 'playstyle'}
           initialSubView={activeModal === 'formation' ? 'formation' : activeModal === 'playstyle' ? 'playstyle' : 'main'}
           onClose={() => setActiveModal('none')}
           manager={manager}
+          captain={currentCaptain}
           currentFormation={formation}
           currentPlaystyle={playstyle}
           onSelectFormation={handleSelectFormation}
@@ -347,13 +462,14 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
               return;
             }
             setPlaystyle(p);
+            triggerAutoSave(startingXI, substitutes, reserves, formation, p);
             showToast(`Team Playstyle changed to ${p}`);
           }}
           isCoach={isCoach}
           onPermissionDenied={handlePermissionDenied}
         />
 
-        {/* 6. Team Modal (Dynamic Club/Country selector) */}
+        {/* 6. Team Modal (Upload Crest, View Formation & Playstyle) */}
         <TeamModal
           isOpen={activeModal === 'team'}
           onClose={() => setActiveModal('none')}
@@ -365,6 +481,9 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           teamsList={Object.values(TEAMS_DATA)}
           onSelectTeam={handleSelectTeam}
           onSetCaptain={handleSetCaptain}
+          onUploadCrest={handleUploadCrest}
+          formation={formation}
+          playstyle={playstyle}
           isCoach={isCoach}
           onPermissionDenied={handlePermissionDenied}
         />
@@ -381,3 +500,4 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 };
 
 export default TeamSquadView;
+

@@ -133,86 +133,53 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
         </div>
       </div>
 
-      {/* 4. AUTHENTIC FOOTBALL PLAYER CARDS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* 4. COMPACT FOOTBALL PLAYER CARDS GRID (MINIMAL, ELEGANT, JUST NAME, RATING, POSITION, NUMBER) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {filteredRoster.map((player) => {
           const isStarting = startingXI.includes(roster.findIndex((p) => p.id === player.id));
           return (
             <div
               key={player.id}
-              className="relative rounded-3xl bg-gradient-to-b from-[#1C2331] via-[#161B22] to-[#0D1117] border border-[#2A3441] p-4 shadow-xl hover:border-emerald-500/50 transition-all space-y-3 group overflow-hidden"
+              className="relative rounded-2xl bg-gradient-to-b from-[#1C2331] via-[#161B22] to-[#0D1117] border border-[#2A3441] p-3 shadow-md hover:border-emerald-500/50 transition-all space-y-2 group overflow-hidden flex flex-col justify-between"
             >
-              {/* Top Row: Rating Badge, Number & Starting Indicator */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
+              {/* Top Row: Rating, Position & Jersey Number */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
                   {/* Rating Badge */}
-                  <div className="px-2.5 py-1 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black font-mono text-sm shadow-md flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-slate-950" />
+                  <div className="px-2 py-0.5 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black font-mono text-xs shadow-xs flex items-center gap-0.5">
+                    <Star className="w-2.5 h-2.5 fill-slate-950" />
                     <span>{player.rating}</span>
                   </div>
 
                   {/* Position Pill */}
-                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase border ${getPositionColor(player.position)}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase border ${getPositionColor(player.position)}`}>
                     {player.position}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  {isStarting && (
-                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      Starting 11
-                    </span>
-                  )}
-                  <span className="font-mono font-black text-xs text-slate-400">#{player.number}</span>
-                </div>
+                <span className="font-mono font-black text-xs text-slate-400">#{player.number}</span>
               </div>
 
               {/* Player Portrait & Name */}
-              <div className="flex items-center gap-3 pt-1">
-                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-800 border-2 border-[#2A3441] shrink-0 shadow-md group-hover:border-emerald-400 transition-colors">
-                  <img src={player.cardImage} alt={player.name} className="w-full h-full object-cover" />
+              <div className="flex flex-col items-center text-center pt-1 space-y-1.5">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-slate-800 border border-[#2A3441] shrink-0 shadow-sm group-hover:border-emerald-400 transition-colors">
+                  <img src={player.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={player.name} className="w-full h-full object-cover" />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-black text-sm text-white truncate leading-tight group-hover:text-emerald-400 transition-colors">
+                <div className="w-full">
+                  <h3 className="font-bold text-xs text-white truncate leading-tight group-hover:text-emerald-400 transition-colors">
                     {player.name}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-semibold pt-0.5">
-                    {player.nationality || 'Kenya'} • Form: {player.formScore || 8.0}
-                  </p>
+                  {isStarting && (
+                    <span className="text-[8.5px] font-black uppercase text-emerald-400 block mt-0.5">
+                      Starting XI
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Athletic Stats Radar / Bars */}
-              <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#2A3441]/80 text-[10px] font-mono font-bold">
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">PAC</span>
-                  <span className="text-emerald-400 font-black">{player.speed}</span>
-                </div>
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">SHO</span>
-                  <span className="text-amber-400 font-black">{player.shooting}</span>
-                </div>
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">PAS</span>
-                  <span className="text-blue-400 font-black">{player.passing}</span>
-                </div>
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">DRI</span>
-                  <span className="text-purple-400 font-black">{player.dribbling}</span>
-                </div>
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">DEF</span>
-                  <span className="text-teal-400 font-black">{player.defense}</span>
-                </div>
-                <div className="bg-[#0D1117] p-1.5 rounded-lg text-center">
-                  <span className="text-slate-400 block text-[9px]">PHY</span>
-                  <span className="text-rose-400 font-black">{player.physical}</span>
-                </div>
-              </div>
-
-              {/* Status Indicator & Actions */}
-              <div className="flex items-center justify-between text-xs pt-0.5">
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+              {/* Bottom: Status Pill / Quick Update */}
+              <div className="pt-1 border-t border-[#2A3441]/60 flex items-center justify-between text-[10px]">
+                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
                   player.status === 'Fit' || player.status === 'Active'
                     ? 'bg-emerald-500/15 text-emerald-400'
                     : player.status === 'Recovering'
@@ -225,12 +192,12 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <select
                   value={player.status}
                   onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
-                  className="bg-[#0D1117] border border-[#2A3441] text-slate-300 text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  className="bg-[#0D1117] border border-[#2A3441] text-slate-300 text-[9px] font-bold rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                 >
-                  <option value="Fit">Fit / Active</option>
-                  <option value="Recovering">Recovering</option>
-                  <option value="Injured">Injured</option>
-                  <option value="Suspended">Suspended</option>
+                  <option value="Fit">Fit</option>
+                  <option value="Recovering">Rec</option>
+                  <option value="Injured">Inj</option>
+                  <option value="Suspended">Susp</option>
                 </select>
               </div>
             </div>

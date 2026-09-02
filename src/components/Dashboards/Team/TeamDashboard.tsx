@@ -101,6 +101,7 @@ export const TeamDashboard: React.FC = () => {
       <div className="fixed inset-0 z-[9999] w-screen h-screen overflow-hidden bg-[#030716] select-none touch-none">
         <TeamSquadView
           currentRole={currentRole}
+          teamId={teamId}
           onNavigateBack={() => setActiveView('DASHBOARD')}
           onShowToast={showToast}
         />
@@ -154,8 +155,8 @@ export const TeamDashboard: React.FC = () => {
               onAddPracticeDay={handleAddPracticeDay}
               onApprovePracticeDay={handleApprovePracticeDay}
               onOpenInviteModal={() => setShowInviteModal(true)}
-              matches={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
-              standings={standings || initialStandings}
+              matches={teamFixtures}
+              standings={standings}
             />
           )}
 
@@ -180,8 +181,8 @@ export const TeamDashboard: React.FC = () => {
           {/* PAGE 4: TABLE AND FIXTURES */}
           {activeView === 'STANDINGS' && (
             <StandingsPage
-              standings={standings || initialStandings}
-              fixtures={teamFixtures && teamFixtures.length > 0 ? teamFixtures : initialFixtures}
+              standings={standings}
+              fixtures={teamFixtures}
               teamForm={teamForm}
             />
           )}

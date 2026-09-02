@@ -19,6 +19,9 @@ import {
   AlertCircle,
   Check,
   UserCheck,
+  ArrowRight,
+  BarChart3,
+  TrendingUp,
 } from 'lucide-react';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 
@@ -67,8 +70,8 @@ export const Homepage: React.FC<HomepageProps> = ({
   const [newActivity, setNewActivity] = useState('Set-Piece Routines & Penalty Drills');
   const [newIntensity, setNewIntensity] = useState<'High' | 'Medium' | 'Recovery'>('High');
 
-  // Next fixture data
-  const nextMatch: Match = matches.find((m) => m.status === 'UPCOMING') || {
+  // Next fixture data (Strictly prioritizing live upcoming matches)
+  const nextMatch: Match = (matches && matches.find((m) => m.status === 'UPCOMING')) || (matches && matches[0]) || {
     id: 'next1',
     opponentName: 'Engineering XI',
     opponentLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
@@ -96,8 +99,8 @@ export const Homepage: React.FC<HomepageProps> = ({
 
   const fd = (num: number) => String(num).padStart(2, '0');
 
-  // Standing data
-  const currentStanding: StandingEntry = standings.find((s) => s.isCurrent || s.teamName.toLowerCase().includes('egerton')) || {
+  // Live Database Standing data
+  const currentStanding: StandingEntry = (standings && standings.find((s) => s.isCurrent || (s.teamName && s.teamName.toLowerCase().includes('egerton')))) || (standings && standings[0]) || {
     position: 4,
     teamName: 'Egerton FC',
     teamLogo: '',
@@ -110,6 +113,7 @@ export const Homepage: React.FC<HomepageProps> = ({
     points: 48,
     goalDifference: 20,
     isCurrent: true,
+    recentForm: ['W', 'W', 'D', 'W', 'L', 'W'],
   };
 
   const totalPlayers = roster.length;
@@ -118,184 +122,328 @@ export const Homepage: React.FC<HomepageProps> = ({
   ).length;
   const fitPercentage = totalPlayers > 0 ? Math.round((activePlayers / totalPlayers) * 100) : 100;
 
+  const recentFormList: ('W' | 'D' | 'L')[] = currentStanding.recentForm && currentStanding.recentForm.length > 0
+    ? currentStanding.recentForm.slice(-6)
+    : ['W', 'W', 'D', 'W', 'D', 'W'];
+
   const handleCreatePractice = (e: React.FormEvent) => {
     e.preventDefault();
     onAddPracticeDay(newDay, newTime, newLocation, newIntensity, newActivity);
     setShowAddPracticeModal(false);
   };
 
+  const renderFormBadge = (outcome: 'W' | 'D' | 'L', idx: number) => {
+    if (outcome === 'W') {
+      return (
+        <span
+          key={idx}
+          className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] sm:text-xs font-black shadow-xs"
+          title="Win"
+        >
+          ✓
+        </span>
+      );
+    }
+    if (outcome === 'L') {
+      return (
+        <span
+          key={idx}
+          className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] sm:text-xs font-black shadow-xs"
+          title="Loss"
+        >
+          ✗
+        </span>
+      );
+    }
+    return (
+      <span
+        key={idx}
+        className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[10px] sm:text-xs font-black shadow-xs"
+        title="Draw"
+      >
+        –
+      </span>
+    );
+  };
+
   return (
     <div className="w-full space-y-6 max-w-7xl mx-auto pb-16 select-none">
-      {/* 1. HERO FOCUS: NEXT FIXTURE CARD (INLINE LOGOS, UNOBSTRUCTED METADATA, CENTERED BOTTOM BUTTON) */}
-      <section className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-b from-[#1C2330] via-[#161B22] to-[#0D1117] border border-[#2A3441] p-4 sm:p-6 shadow-2xl space-y-4">
-        {/* Ambient Top Glows */}
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* 1. HERO SECTION: SPACIOUS, BALANCED, WITH CLEAN CONTROLS */}
+      <section className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-b from-[#18202F] via-[#141A24] to-[#0D1117] border border-[#2A3441] p-5 sm:p-7 shadow-2xl space-y-5">
+        {/* Subtle Ambient Glows */}
+        <div className="absolute -right-24 -top-24 w-72 h-72 bg-amber-500/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-24 -bottom-24 w-72 h-72 bg-emerald-500/8 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Top Header Badge & Countdown */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2A3441] pb-3 relative z-10">
-          <div className="flex items-center gap-2">
+        {/* Top Header Row: Match Focus Badge & Live Countdown */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2A3441]/80 pb-4 relative z-10">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded-xl border border-amber-500/30">
+            <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 bg-amber-950/60 px-3 py-1 rounded-xl border border-amber-500/30 shadow-inner">
               Impending Matchday Focus
             </span>
-            <span className="text-xs font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">
+            <span className="text-xs font-bold text-slate-300 bg-[#161B22] px-2.5 py-1 rounded-xl border border-[#2A3441]">
               {nextMatch.league} • MD {nextMatch.matchday || 24}
             </span>
           </div>
 
-          {/* Clock Ticker */}
-          <div className="flex items-center gap-1.5 font-mono text-xs font-black text-amber-400 bg-[#0D1117] border border-[#2A3441] px-3 py-1 rounded-xl shadow-inner">
-            <Clock className="w-3.5 h-3.5" />
+          {/* Clock Countdown Ticker */}
+          <div className="flex items-center gap-2 font-mono text-xs font-black text-amber-400 bg-[#0D1117] border border-[#2A3441] px-3.5 py-1.5 rounded-xl shadow-inner">
+            <Clock className="w-3.5 h-3.5 text-amber-400/80" />
             <span>
               {fd(timeLeft.days)}d : {fd(timeLeft.hours)}h : {fd(timeLeft.minutes)}m : {fd(timeLeft.seconds)}s
             </span>
           </div>
         </div>
 
-        {/* INLINE MATCHUP BOARD (COMPACT & INLINE IN MOBILE & DESKTOP) */}
-        <div className="flex items-center justify-between gap-2 sm:gap-6 py-1 relative z-10">
-          {/* OUR TEAM (INLINE LOGO + NAME) */}
-          <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 sm:p-3 flex items-center justify-center border border-emerald-400/50 shadow-lg shrink-0">
-              <span className="font-black text-xs sm:text-base text-white">EFC</span>
+        {/* INLINE MATCHUP BOARD (SPACIOUS & UNOBSTRUCTED) */}
+        <div className="flex items-center justify-between gap-3 sm:gap-8 py-2 relative z-10">
+          {/* HOME CLUB */}
+          <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
+              <span className="font-black text-sm sm:text-lg text-white">EFC</span>
             </div>
             <div className="min-w-0 text-left">
-              <h3 className="font-black text-xs sm:text-base text-white truncate leading-tight">Egerton FC</h3>
-              <span className="text-[9px] sm:text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Home Team</span>
+              <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
+              <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
             </div>
           </div>
 
-          {/* CENTER VS BADGE */}
-          <div className="px-3 sm:px-4 py-1.5 rounded-xl bg-[#0D1117] text-white border border-amber-500/40 text-center shrink-0 shadow-lg">
+          {/* VS / SCORE BADGE */}
+          <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
             <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-            <span className="text-[10px] sm:text-xs font-mono font-black text-amber-400">{nextMatch.time}</span>
+            <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
           </div>
 
-          {/* OPPONENT TEAM (INLINE NAME + LOGO) */}
-          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-3 min-w-0">
+          {/* AWAY CLUB */}
+          <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
             <div className="min-w-0 text-right">
-              <h3 className="font-black text-xs sm:text-base text-white truncate leading-tight">{nextMatch.opponentName}</h3>
-              <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Away Club</span>
+              <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
+              <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
             </div>
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-[#0D1117] p-1.5 sm:p-2 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
               <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
             </div>
           </div>
         </div>
 
-        {/* METADATA INFO: VENUE & REFEREE UNOBSTRUCTED */}
-        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-[#2A3441]/60 text-xs text-slate-400 gap-2 relative z-10">
+        {/* METADATA INFO: VENUE & REFEREE */}
+        <div className="flex flex-wrap items-center justify-between pt-3 border-t border-[#2A3441]/60 text-xs text-slate-400 gap-3 relative z-10">
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
               <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               {nextMatch.location}
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
               <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               {nextMatch.date}
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
               <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>{nextMatch.referee || 'Ref. Hillary Kiplagat'}</span>
             </span>
           </div>
         </div>
 
-        {/* BOTTOM HORIZONTALLY CENTERED CONFIGURE BUTTON (NEVER CONCEALING INFO, HIGH-CONTRAST AMBER) */}
-        <div className="pt-2 border-t border-[#2A3441] flex justify-center w-full relative z-10">
+        {/* HERO ACTION BUTTONS: TASTEFUL CONFIGURE BUTTON + FUNCTIONAL FIXTURES & STANDINGS BUTTONS */}
+        <div className="pt-3 border-t border-[#2A3441] flex flex-wrap items-center justify-between gap-3 relative z-10">
+          {/* Configure Impending Match button: Clean, tasteful, not too shouting */}
           <button
             onClick={() => onNavigateView('TACTICS')}
-            className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:via-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-amber-950/70 ring-2 ring-amber-300 transition-all flex items-center gap-2 cursor-pointer active:scale-95 transform hover:-translate-y-0.5"
+            className="px-5 py-2.5 bg-[#1F2937] hover:bg-[#2B3545] text-amber-300 hover:text-amber-200 border border-amber-500/40 hover:border-amber-400/60 font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
           >
-            <Flame className="w-4 h-4 fill-slate-950" />
-            <span>CONFIGURE IMPENDING MATCH SQUAD</span>
+            <Flame className="w-4 h-4 text-amber-400" />
+            <span>Configure Impending Match Squad</span>
           </button>
+
+          {/* Functional Buttons beside it: See Our Fixtures & See Our Standings */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => onNavigateView('STANDINGS')}
+              className="px-4 py-2.5 bg-[#161B22] hover:bg-[#1E2633] text-slate-200 hover:text-white border border-[#2A3441] hover:border-slate-500 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+              <span>See Our Fixtures</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+            </button>
+
+            <button
+              onClick={() => onNavigateView('STANDINGS')}
+              className="px-4 py-2.5 bg-[#161B22] hover:bg-[#1E2633] text-slate-200 hover:text-white border border-[#2A3441] hover:border-slate-500 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span>See Our Standings</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 2. TEAM ACTION SHORTCUTS (AT LEAST 2 SIDE-BY-SIDE ON MOBILE: GRID-COLS-2) */}
+      {/* 2. QUICK ACTIONS (BETWEEN HERO MATCH CARD AND TABLE SNAPSHOT) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="font-black text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Team Actions & Shortcuts</span>
+            <Zap className="w-3.5 h-3.5 text-slate-400" />
+            <span>Team Quick Actions</span>
           </h2>
           <span className="text-[10px] font-mono text-slate-500 uppercase">Coach & Captain Commands</span>
         </div>
 
-        {/* 2 SIDE-BY-SIDE ON MOBILE, 3 OR 4 ON DESKTOP */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* BUTTON 1: SQUAD 2D PITCH (EMERALD) */}
+        {/* Subdued, elegant shaded cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* ACTION 1: SQUAD 2D PITCH */}
           <button
             onClick={() => onNavigateView('TACTICS')}
-            className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-lg shadow-emerald-950/40 border border-emerald-400/40 flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
+            className="p-3.5 sm:p-4 rounded-2xl bg-[#161B22]/90 hover:bg-[#1E2633] border border-emerald-900/40 hover:border-emerald-500/50 text-slate-100 shadow-md flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0 group-hover:rotate-6 transition-transform shadow-xs">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
               <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <div className="font-black text-xs sm:text-sm tracking-tight flex items-center gap-1">
+              <div className="font-bold text-xs sm:text-sm tracking-tight text-white flex items-center gap-1">
                 <span>Team Squad</span>
-                <Sparkles className="w-3 h-3 text-amber-300 hidden sm:inline" />
               </div>
-              <p className="text-[10px] text-emerald-100 font-medium truncate">2D Pitch & Physics</p>
+              <p className="text-[10px] text-emerald-400/80 font-medium truncate">2D Pitch & Physics</p>
             </div>
           </button>
 
-          {/* BUTTON 2: PLAYERS LIST & KITS (SKY BLUE) */}
+          {/* ACTION 2: PLAYERS & KITS */}
           <button
             onClick={() => onNavigateView('ROSTER')}
-            className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white shadow-lg shadow-blue-950/40 border border-sky-400/40 flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
+            className="p-3.5 sm:p-4 rounded-2xl bg-[#161B22]/90 hover:bg-[#1E2633] border border-blue-900/40 hover:border-blue-500/50 text-slate-100 shadow-md flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0 group-hover:rotate-6 transition-transform shadow-xs">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
               <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <div className="font-black text-xs sm:text-sm tracking-tight flex items-center gap-1">
+              <div className="font-bold text-xs sm:text-sm tracking-tight text-white flex items-center gap-1">
                 <span>Players & Kits</span>
               </div>
-              <p className="text-[10px] text-sky-100 font-medium truncate">Cards & Uniforms</p>
+              <p className="text-[10px] text-blue-400/80 font-medium truncate">Cards & Uniforms</p>
             </div>
           </button>
 
-          {/* BUTTON 3: TABLE & FIXTURES (AMBER) */}
+          {/* ACTION 3: TABLE & FIXTURES */}
           <button
             onClick={() => onNavigateView('STANDINGS')}
-            className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-amber-950/40 border border-amber-300/40 flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left col-span-2 sm:col-span-1"
+            className="p-3.5 sm:p-4 rounded-2xl bg-[#161B22]/90 hover:bg-[#1E2633] border border-amber-900/40 hover:border-amber-500/50 text-slate-100 shadow-md flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0 group-hover:rotate-6 transition-transform shadow-xs">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
               <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <div className="font-black text-xs sm:text-sm tracking-tight flex items-center gap-1">
+              <div className="font-bold text-xs sm:text-sm tracking-tight text-white flex items-center gap-1">
                 <span>Table & Fixtures</span>
-                <span className="text-[10px] text-amber-200">#4</span>
               </div>
-              <p className="text-[10px] text-amber-100 font-medium truncate">Standings & Form</p>
+              <p className="text-[10px] text-amber-400/80 font-medium truncate">Standings & Form</p>
+            </div>
+          </button>
+
+          {/* ACTION 4: NEWSROOM / PRESS */}
+          <button
+            onClick={() => onNavigateView('NEWS')}
+            className="p-3.5 sm:p-4 rounded-2xl bg-[#161B22]/90 hover:bg-[#1E2633] border border-purple-900/40 hover:border-purple-500/50 text-slate-100 shadow-md flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
+          >
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+              <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-xs sm:text-sm tracking-tight text-white flex items-center gap-1">
+                <span>Newsroom</span>
+              </div>
+              <p className="text-[10px] text-purple-400/80 font-medium truncate">Bulletins & Press</p>
             </div>
           </button>
         </div>
       </section>
 
-      {/* 3. EXECUTIVE KPI ANALYTICS STRIP */}
+      {/* 3. TEAM TABLE SNAPSHOT & RECENT FORM (LIVE DATABASE AGGREGATED) */}
+      <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-amber-400" />
+            <h2 className="font-black text-base tracking-tight text-white">
+              Team League Snapshot & Recent Form
+            </h2>
+          </div>
+
+          <button
+            onClick={() => onNavigateView('STANDINGS')}
+            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <span>Full Standings Page</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Snapshot Summary Strip */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-[#0D1117] p-4 rounded-2xl border border-[#2A3441]">
+          {/* Team Identity & League Rank */}
+          <div className="md:col-span-4 flex items-center gap-3.5 border-b md:border-b-0 md:border-r border-[#2A3441] pb-3 md:pb-0 md:pr-4">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md">
+              EFC
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base text-white">{currentStanding.teamName}</h3>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  Rank #{currentStanding.position}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Egerton Premier League 2026/27</p>
+            </div>
+          </div>
+
+          {/* Recent 6 Games Form */}
+          <div className="md:col-span-4 flex flex-col sm:flex-row sm:items-center justify-start md:justify-center gap-2.5 border-b md:border-b-0 md:border-r border-[#2A3441] pb-3 md:pb-0 md:px-3">
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Recent Form</span>
+              <span className="text-[9px] text-slate-500 block">(Last 6 Games)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {recentFormList.map((res, idx) => renderFormBadge(res, idx))}
+            </div>
+          </div>
+
+          {/* Table Details: Played, Points, Goal Difference */}
+          <div className="md:col-span-4 grid grid-cols-4 gap-2 text-center text-xs">
+            <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">PL</span>
+              <span className="font-mono font-black text-white text-sm">{currentStanding.played}</span>
+            </div>
+            <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">W-D-L</span>
+              <span className="font-mono font-bold text-slate-300 text-xs">{currentStanding.won}-{currentStanding.drawn}-{currentStanding.lost}</span>
+            </div>
+            <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
+              <span className="text-[10px] text-slate-400 block uppercase font-bold">GD</span>
+              <span className="font-mono font-black text-emerald-400 text-sm">{currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}</span>
+            </div>
+            <div className="bg-[#161B22] p-2 rounded-xl border border-amber-500/30">
+              <span className="text-[10px] text-amber-400 block uppercase font-bold">PTS</span>
+              <span className="font-mono font-black text-amber-400 text-sm">{currentStanding.points}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. PERFORMANCE METRICS (IN MOBILE VIEW: DIRECT PART OF HERO STREAM) */}
       <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
           <div>
             <h2 className="font-black text-base tracking-tight text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-emerald-400" />
-              <span>Team Performance & League Metrics</span>
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              <span>Team Performance & Database Metrics</span>
             </h2>
             <p className="text-xs text-slate-400">
-              Real-time database aggregated standing statistics and squad fitness.
+              Real-time database aggregated standing statistics and squad availability.
             </p>
           </div>
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            Active Season Metrics
+            Live Database Feed
           </span>
         </div>
 
-        {/* PRIMARY TILES GRID (2X2 ON MOBILE) */}
+        {/* TILES GRID (2X2 ON MOBILE) */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* TILE 1: LEAGUE POSITION */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-1.5">
@@ -305,10 +453,10 @@ export const Homepage: React.FC<HomepageProps> = ({
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl sm:text-3xl font-black text-white font-mono">#{currentStanding.position}</span>
-              <span className="text-[10px] sm:text-xs font-bold text-slate-400">/ 20</span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400">/ {standings.length || 20}</span>
             </div>
             <div className="text-[10px] font-extrabold text-amber-400">
-              {currentStanding.points} PTS • GD: +{currentStanding.goalDifference}
+              {currentStanding.points} PTS • GD: {currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}
             </div>
           </div>
 
@@ -323,14 +471,14 @@ export const Homepage: React.FC<HomepageProps> = ({
               <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">{currentStanding.drawn}D-{currentStanding.lost}L</span>
             </div>
             <div className="text-[10px] font-extrabold text-emerald-400">
-              {currentStanding.played} Matches
+              {currentStanding.played} Matches Played
             </div>
           </div>
 
           {/* TILE 3: SQUAD READINESS */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 space-y-1.5">
             <div className="flex items-center justify-between text-xs font-black text-blue-400 uppercase tracking-wider">
-              <span>Fitness</span>
+              <span>Squad Fitness</span>
               <Shield className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
@@ -349,7 +497,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               <Sparkles className="w-4 h-4 text-purple-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-purple-400 font-mono">+{currentStanding.goalDifference}</span>
+              <span className="text-2xl sm:text-3xl font-black text-purple-400 font-mono">{currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}</span>
               <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">{currentStanding.goalsFor} GF</span>
             </div>
             <div className="text-[10px] font-extrabold text-purple-400">
@@ -359,7 +507,7 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* 4. TRAINING DAYS & DRILL SESSIONS (STRICT ROLE DIFFERENTIATION) */}
+      {/* 5. TRAINING DAYS & DRILL SESSIONS (STRICT ROLE DIFFERENTIATION) */}
       <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
           <div>
@@ -406,7 +554,7 @@ export const Homepage: React.FC<HomepageProps> = ({
           </div>
         </div>
 
-        {/* PRACTICE DAYS CARDS WITH ROLE-SPECIFIC BADGES & ACTIONS */}
+        {/* PRACTICE DAYS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {practiceSchedule.map((session) => (
             <div
@@ -567,3 +715,5 @@ export const Homepage: React.FC<HomepageProps> = ({
     </div>
   );
 };
+
+export default Homepage;

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { StandingEntry, Match, TeamFormEntry } from '../types';
-import { initialTeamForm } from '../mockData';
 import {
   Trophy,
   Calendar,

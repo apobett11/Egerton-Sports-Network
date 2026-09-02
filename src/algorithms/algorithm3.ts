@@ -283,8 +283,8 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
     return failedOutput(signal, logs, errors);
   }
 
-  const timeConfiguration = resolveTimeConfiguration(signal.time_configuration);
   const leaguePriorityOrder = getLeaguePriorityOrder(signal);
+  const timeConfiguration = resolveTimeConfiguration(signal.time_configuration, leaguePriorityOrder);
 
   logs.push("Confirming: President time configuration resolved successfully.");
 
@@ -616,19 +616,35 @@ function validateInputStructure(signal: Algorithm3Signal): VerificationResult {
 }
 
 /* ============================================================================
+ * DEFAULT TIME BLOCKS (Initial Creation Defaults)
+ * League 1 (EPL): 08:00-09:30, 09:30-11:00, 11:00-12:30
+ * League 2 (Championship): 13:00-14:30, 14:30-16:00, 16:00-17:30
+ * ========================================================================== */
+
+const DEFAULT_TIME_BLOCKS: SlotTime[][] = [
+  [
+    { slot_number: 1, start_time: "08:00", end_time: "09:30" },
+    { slot_number: 2, start_time: "09:30", end_time: "11:00" },
+    { slot_number: 3, start_time: "11:00", end_time: "12:30" },
+  ],
+  [
+    { slot_number: 1, start_time: "13:00", end_time: "14:30" },
+    { slot_number: 2, start_time: "14:30", end_time: "16:00" },
+    { slot_number: 3, start_time: "16:00", end_time: "17:30" },
+  ],
+];
+
+/* ============================================================================
  * TIME CONFIGURATION
  * ========================================================================== */
 
 function resolveTimeConfiguration(
   supplied?: LeagueTimeConfiguration[],
+  leaguePriorityOrder: LeagueId[] = [],
 ): Record<LeagueId, SlotTime[]> {
-  if (!supplied || !Array.isArray(supplied) || supplied.length === 0) {
-    throw new Error("Missing required time_configuration.");
-  }
-
   const result: Record<LeagueId, SlotTime[]> = {};
 
-  for (const configuration of supplied) {
+  for (const configuration of supplied ?? []) {
     if (!configuration.league_id || !configuration.league_id.trim()) {
       throw new Error("LeagueTimeConfiguration has an empty league_id.");
     }
@@ -639,6 +655,19 @@ function resolveTimeConfiguration(
     const slots = [...configuration.slots].sort((a, b) => a.slot_number - b.slot_number);
     validateTimeSlots(slots, configuration.league_id);
     result[configuration.league_id] = slots;
+  }
+
+  // If leagues lack a configuration, dynamically assign from initial default blocks in priority order
+  for (let i = 0; i < leaguePriorityOrder.length; i++) {
+    const leagueId = leaguePriorityOrder[i];
+    if (!result[leagueId]) {
+      const defaultBlock = DEFAULT_TIME_BLOCKS[i % DEFAULT_TIME_BLOCKS.length];
+      result[leagueId] = [...defaultBlock];
+    }
+  }
+
+  if (Object.keys(result).length === 0 && (!supplied || supplied.length === 0)) {
+    throw new Error("Missing required time_configuration and no league priority order could be derived.");
   }
 
   return result;

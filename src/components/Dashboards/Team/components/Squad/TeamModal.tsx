@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Player, TeamData } from './types';
-import { Crown, Check } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Player, TeamData, FormationType, Playstyle } from './types';
+import { Crown, Check, Upload, Shield, Zap, Sparkles, Activity } from 'lucide-react';
 
 interface TeamModalProps {
   isOpen: boolean;
@@ -13,6 +13,9 @@ interface TeamModalProps {
   teamsList: TeamData[];
   onSelectTeam: (teamId: string) => void;
   onSetCaptain: (playerId: string) => void;
+  onUploadCrest?: (file: File) => Promise<void>;
+  formation?: FormationType | string;
+  playstyle?: Playstyle | string;
   isCoach?: boolean;
   onPermissionDenied?: (msg: string) => void;
 }
@@ -28,10 +31,15 @@ export const TeamModal: React.FC<TeamModalProps> = ({
   teamsList,
   onSelectTeam,
   onSetCaptain,
+  onUploadCrest,
+  formation = '4-3-3',
+  playstyle = 'Possession Game',
   isCoach = true,
   onPermissionDenied,
 }) => {
-  const [subView, setSubView] = useState<'main' | 'roles' | 'teams'>('main');
+  const [subView, setSubView] = useState<'main' | 'roles' | 'teams' | 'tactics'>('main');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -47,18 +55,50 @@ export const TeamModal: React.FC<TeamModalProps> = ({
     setSubView('teams');
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isCoach) {
+      if (onPermissionDenied) {
+        onPermissionDenied('Permission Denied: Only Head Coach can upload team crest.');
+      }
+      return;
+    }
+    const file = e.target.files?.[0];
+    if (file && onUploadCrest) {
+      setIsUploading(true);
+      try {
+        await onUploadCrest(file);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[2px] p-4 select-none animate-in fade-in duration-150">
-      {/* Modal Container matching screenshot WA0043 */}
-      <div className="relative w-full max-w-[600px] bg-white rounded-[22px] overflow-hidden shadow-2xl efootball-modal-shadow text-gray-900 border border-gray-100 flex flex-col animate-in zoom-in-95 duration-150 efootball-spring">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 select-none animate-in fade-in duration-100">
+      {/* Hidden file input for crest upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Modal Container */}
+      <div className="relative w-full max-w-[620px] bg-[#0F172A] rounded-[24px] overflow-hidden shadow-2xl text-slate-100 border border-[#2A3B5C] flex flex-col animate-in zoom-in-95 duration-150">
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
-          <h2 className="text-[21px] font-bold tracking-tight text-gray-900 font-sans">
-            {subView === 'roles'
-              ? 'In-Match Roles'
-              : subView === 'teams'
-              ? 'Select Team Game Plan'
-              : teamName}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#1E293B]">
+          <h2 className="text-[20px] font-black tracking-tight text-white font-sans flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-400" />
+            <span>
+              {subView === 'roles'
+                ? 'In-Match Roles & Captaincy'
+                : subView === 'teams'
+                ? 'Select Team Preset'
+                : subView === 'tactics'
+                ? 'Tactical Game Plan & Playstyle'
+                : `${teamName} Game Plan`}
+            </span>
           </h2>
           <button
             onClick={() => {
@@ -68,9 +108,9 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                 onClose();
               }
             }}
-            className="w-8 h-8 rounded-full bg-[#dbeafe] hover:bg-[#bfdbfe] text-[#0077ff] flex items-center justify-center transition-colors shadow-sm focus:outline-none active:scale-90 cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#1E293B] hover:bg-[#334155] text-blue-400 flex items-center justify-center transition-colors shadow-sm focus:outline-none active:scale-90 cursor-pointer"
           >
-            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-[#0077ff] stroke-[2.8]">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-blue-400 stroke-[2.8]">
               <line x1="6" y1="6" x2="18" y2="18" />
               <line x1="6" y1="18" x2="18" y2="6" />
             </svg>
@@ -79,122 +119,119 @@ export const TeamModal: React.FC<TeamModalProps> = ({
 
         {/* Modal Body */}
         {subView === 'main' ? (
-          <div className="px-6 pb-6 pt-1 grid grid-cols-12 gap-6 items-center">
-            {/* Left Column: Crest, Game Plan title, Strength matching WA0043 */}
+          <div className="px-6 pb-6 pt-3 grid grid-cols-12 gap-6 items-center">
+            {/* Left Column: Crest, Game Plan title, Strength, Upload Option */}
             <div className="col-span-5 flex flex-col items-center text-center">
-              {/* Team Crest */}
-              <div className="w-[84px] h-[84px] mb-2 flex items-center justify-center">
+              {/* Team Crest with hover upload overlay */}
+              <div className="relative group w-[90px] h-[90px] mb-2 p-1.5 rounded-2xl bg-[#1E293B] border border-[#334155] flex items-center justify-center shadow-md">
                 <img
                   src={teamCrest}
                   alt={teamName}
                   className="w-full h-full object-contain drop-shadow-md pointer-events-none"
                 />
+                {isCoach && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload new crest image"
+                    className="absolute inset-0 bg-black/70 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold gap-1"
+                  >
+                    <Upload className="w-4 h-4 text-amber-400" />
+                    <span>{isUploading ? 'Uploading...' : 'Change Logo'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Game Plan Title */}
-              <h3 className="text-[18px] font-bold text-gray-900 mb-1 font-sans">
-                Game Plan
+              <h3 className="text-[17px] font-black text-white mb-0.5 font-sans">
+                {teamName}
               </h3>
+              <p className="text-[11px] text-emerald-400 font-bold mb-2">
+                {formation} • {playstyle}
+              </p>
 
               {/* Collective Strength */}
-              <span className="text-[11px] font-semibold text-gray-400">
-                Collective Strength
-              </span>
-              <span className="font-efootball-num font-bold text-[36px] text-gray-900 leading-tight">
-                {collectiveStrength}
-              </span>
+              <div className="bg-[#1E293B]/70 p-2.5 rounded-xl border border-[#334155] w-full">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Collective Strength
+                </span>
+                <span className="font-efootball-num font-black text-[32px] text-[#e6ff00] leading-none block mt-0.5">
+                  {collectiveStrength}
+                </span>
+              </div>
             </div>
 
-            {/* Right Column: Menu Actions with authentic blue icons matching WA0043 */}
-            <div className="col-span-7 flex flex-col divide-y divide-gray-100 border-l border-gray-100 pl-6">
+            {/* Right Column: Menu Actions */}
+            <div className="col-span-7 flex flex-col divide-y divide-[#1E293B] border-l border-[#1E293B] pl-6">
               {/* 1. In-Match Roles */}
               <button
                 onClick={() => setSubView('roles')}
-                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-[#1E293B]/60 rounded-xl px-2.5 -mx-2.5 transition-colors group active:scale-98 cursor-pointer"
               >
-                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
-                    <path d="M 5,2 L 5,22 L 7,22 L 7,14 L 19,10 L 7,6 L 7,2 Z" />
-                  </svg>
+                <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-4 h-4 text-amber-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    In-Match Roles
+                  <span className="text-[14px] font-black text-white group-hover:text-blue-400 transition-colors">
+                    In-Match Roles & Captaincy
                   </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Captain: {currentCaptain?.name || 'None'}
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Captain: {currentCaptain?.name || 'None appointed'}
                   </span>
                 </div>
               </button>
 
-              {/* 2. Automatic Match Support */}
+              {/* 2. Tactical Game Plan Info */}
               <button
-                onClick={() => {}}
-                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+                onClick={() => setSubView('tactics')}
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-[#1E293B]/60 rounded-xl px-2.5 -mx-2.5 transition-colors group active:scale-98 cursor-pointer"
               >
-                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
-                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-                  </svg>
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4 h-4 text-emerald-400" />
                 </div>
-                <span className="text-[14.5px] font-bold text-[#0077ff]">
-                  Automatic Match Support
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-[14px] font-black text-white group-hover:text-emerald-400 transition-colors">
+                    Formation & Playstyle Details
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {formation} ({playstyle})
+                  </span>
+                </div>
               </button>
 
-              {/* 3. Edit Squad Number */}
-              <button
-                onClick={() => {}}
-                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
-              >
-                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#0077ff]">
-                    <path d="M 28,26 L 38,18 C 42,26 58,26 62,18 L 72,26 L 87,38 L 77,53 L 68,45 L 68,83 L 32,83 L 32,45 L 23,53 L 13,38 Z" />
-                    <text x="50" y="62" fontSize="28" fontFamily="Arial Black" fontWeight="bold" textAnchor="middle" fill="white">2</text>
-                  </svg>
-                </div>
-                <span className="text-[14.5px] font-bold text-[#0077ff]">
-                  Edit Squad Number
-                </span>
-              </button>
+              {/* 3. Upload Club Crest / Badge */}
+              {isCoach && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-3.5 py-3 text-left hover:bg-[#1E293B]/60 rounded-xl px-2.5 -mx-2.5 transition-colors group active:scale-98 cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Upload className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-black text-white group-hover:text-amber-400 transition-colors">
+                      Upload Team Icon / Crest
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      PNG / JPG Club Badge
+                    </span>
+                  </div>
+                </button>
+              )}
 
-              {/* 4. Base Team Settings */}
+              {/* 4. Switch Team Preset */}
               <button
                 onClick={handleOpenTeams}
-                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
+                className="flex items-center gap-3.5 py-3 text-left hover:bg-[#1E293B]/60 rounded-xl px-2.5 -mx-2.5 transition-colors group active:scale-98 cursor-pointer"
               >
-                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#0077ff]">
-                    <path d="M 50,10 L 85,25 L 85,60 C 85,78 50,92 50,92 C 50,92 15,78 15,60 L 15,25 Z" />
-                    <text x="50" y="65" fontSize="34" fontFamily="Arial Black" fontWeight="900" textAnchor="middle" fill="white">A</text>
-                  </svg>
+                <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Base Team Settings
+                  <span className="text-[14px] font-black text-white group-hover:text-purple-400 transition-colors">
+                    Base Team Presets
                   </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Select active club or national squad
-                  </span>
-                </div>
-              </button>
-
-              {/* 5. Game Plan List */}
-              <button
-                onClick={handleOpenTeams}
-                className="flex items-center gap-3.5 py-3 text-left hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors group active:scale-98 cursor-pointer"
-              >
-                <div className="w-6 h-6 text-[#0077ff] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#0077ff]">
-                    <path d="M 12,2 L 20,5 L 20,11 C 20,16 12,21 12,21 C 12,21 4,16 4,11 L 4,5 Z" />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[14.5px] font-bold text-[#0077ff]">
-                    Game Plan List
-                  </span>
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    Load saved team formations
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Load tactical setups & formations
                   </span>
                 </div>
               </button>
@@ -203,10 +240,10 @@ export const TeamModal: React.FC<TeamModalProps> = ({
         ) : subView === 'roles' ? (
           /* In-Match Roles: Assign Captain */
           <div className="px-6 pb-6 pt-2">
-            <h4 className="text-[13px] font-bold text-gray-500 mb-3 uppercase tracking-wider">
-              {isCoach ? 'Select Captain' : 'Current Captain'}
+            <h4 className="text-[12px] font-black text-slate-400 mb-3 uppercase tracking-wider">
+              {isCoach ? 'Select Team Captain (Coach Authority)' : 'Team Captain'}
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto pr-1">
               {players.map((p) => {
                 const isCap = p.isCaptain;
                 return (
@@ -224,27 +261,54 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                     }}
                     className={`p-2.5 rounded-xl border flex items-center gap-2.5 text-left transition-all active:scale-95 cursor-pointer ${
                       isCap
-                        ? 'border-[#0077ff] bg-[#ebf5ff] text-[#0077ff] font-bold shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-800 hover:bg-gray-50'
+                        ? 'border-orange-500 bg-orange-500/15 text-orange-400 font-bold shadow-sm'
+                        : 'border-[#1E293B] hover:border-slate-500 bg-[#1E293B]/50 text-slate-200 hover:bg-[#1E293B]'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
                       <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[12px] font-bold truncate">{p.name}</span>
-                      <span className="text-[10px] text-gray-500">{p.position} • {p.rating}</span>
+                      <span className="text-[12px] font-bold truncate text-white">{p.name}</span>
+                      <span className="text-[10px] text-slate-400">{p.position} • {p.rating}</span>
                     </div>
-                    {isCap && <Crown className="w-4 h-4 ml-auto text-amber-500 fill-amber-500 flex-shrink-0" />}
+                    {isCap && <Crown className="w-4 h-4 ml-auto text-orange-400 fill-orange-400 flex-shrink-0" />}
                   </button>
                 );
               })}
             </div>
           </div>
+        ) : subView === 'tactics' ? (
+          /* Tactics & Playstyle Details */
+          <div className="px-6 pb-6 pt-2 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-[#1E293B]/80 border border-[#334155] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Current Formation</span>
+                <span className="text-lg font-black text-white block">{formation}</span>
+                <p className="text-[11px] text-emerald-400">Balanced dynamic pitch coordinates</p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#1E293B]/80 border border-[#334155] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Active Playstyle</span>
+                <span className="text-lg font-black text-white block">{playstyle}</span>
+                <p className="text-[11px] text-blue-400">High-tempo tactical build-up</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#1E293B]/80 border border-[#334155] space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                <span>Pitch Dimensions & Auto-Save</span>
+                <span className="text-emerald-400">Database Synced</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                All changes to player coordinates, starting 11 selections, and substitutions are instantly committed to the database.
+              </p>
+            </div>
+          </div>
         ) : (
-          /* Base Team Settings: Select Team Game Plan */
+          /* Base Team Presets */
           <div className="px-6 pb-6 pt-2">
-            <h4 className="text-[13px] font-bold text-gray-500 mb-3 uppercase tracking-wider">
+            <h4 className="text-[12px] font-black text-slate-400 mb-3 uppercase tracking-wider">
               Choose Team Preset
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[280px] overflow-y-auto pr-1">
@@ -260,23 +324,23 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                     }}
                     className={`p-3 rounded-xl border flex items-center gap-3 text-left transition-all active:scale-95 cursor-pointer ${
                       isSelected
-                        ? 'border-[#0077ff] bg-[#ebf5ff] text-[#0077ff] font-bold shadow-md ring-2 ring-[#0077ff]/20'
-                        : 'border-gray-200 hover:border-gray-300 bg-white text-gray-800 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-500/15 text-blue-400 font-bold shadow-md'
+                        : 'border-[#1E293B] hover:border-slate-500 bg-[#1E293B]/40 text-slate-200 hover:bg-[#1E293B]'
                     }`}
                   >
                     {/* Club Crest */}
-                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center p-1 bg-slate-800 rounded-lg">
                       <img src={t.crestUrl} alt={t.name} className="w-full h-full object-contain" />
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-[14px] font-bold truncate text-gray-900">{t.name}</span>
-                      <span className="text-[11px] text-gray-500">
+                      <span className="text-[14px] font-bold truncate text-white">{t.name}</span>
+                      <span className="text-[11px] text-slate-400">
                         {t.manager.name} • {t.formation}
                       </span>
                     </div>
 
-                    {isSelected && <Check className="w-5 h-5 text-[#0077ff] flex-shrink-0 ml-auto" />}
+                    {isSelected && <Check className="w-5 h-5 text-blue-400 flex-shrink-0 ml-auto" />}
                   </button>
                 );
               })}
@@ -287,3 +351,4 @@ export const TeamModal: React.FC<TeamModalProps> = ({
     </div>
   );
 };
+

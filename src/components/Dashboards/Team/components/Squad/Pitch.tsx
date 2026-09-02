@@ -21,6 +21,7 @@ export const Pitch: React.FC<PitchProps> = ({
   onMovePlayer,
   onOpenFormationModal,
   onOpenPlaystyleModal,
+  isCoach = true,
 }) => {
   const [viewMode, setViewMode] = useState<'standard' | 'detailed'>('standard');
   const [isMoveMode, setIsMoveMode] = useState(false);
@@ -90,10 +91,11 @@ export const Pitch: React.FC<PitchProps> = ({
     setSwapTargetId(target);
   }, [activeDragId, calculatePitchCoords, players]);
 
-  // Pointer Down handler
+  // Pointer Down handler (0s instant drag response)
   const handlePointerDown = (e: React.PointerEvent, player: Player) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if (!pitchRef.current) return;
+    if (!isCoach) return; // Only Coach can drag/modify starting 11
 
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -101,7 +103,7 @@ export const Pitch: React.FC<PitchProps> = ({
     dragStartRef.current = {
       clientX: e.clientX,
       clientY: e.clientY,
-      moved: false,
+      moved: true, // 0s drag threshold
     };
 
     setActiveDragId(player.id);
@@ -114,15 +116,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
   // Pointer Move handler
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!activeDragId || !dragStartRef.current) return;
-
-    const dx = Math.abs(e.clientX - dragStartRef.current.clientX);
-    const dy = Math.abs(e.clientY - dragStartRef.current.clientY);
-
-    if (dx > 3 || dy > 3) {
-      dragStartRef.current.moved = true;
-    }
-
+    if (!isCoach || !activeDragId || !dragStartRef.current) return;
     handleDragUpdate(e.clientX, e.clientY);
   };
 
@@ -138,7 +132,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
     if (swapTargetId && swapTargetId !== activeDragId) {
       onSwapPlayers(activeDragId, swapTargetId);
-    } else if (dragStartRef.current?.moved && currentDragCoord) {
+    } else if (currentDragCoord) {
       onMovePlayer(activeDragId, currentDragCoord);
     }
 
@@ -148,15 +142,16 @@ export const Pitch: React.FC<PitchProps> = ({
     dragStartRef.current = null;
   };
 
-  // Touch handlers for mobile devices
+  // Touch handlers for mobile devices (0s drag start)
   const handleTouchStart = (e: React.TouchEvent, player: Player) => {
+    if (!isCoach) return;
     const touch = e.touches[0];
     if (!touch || !pitchRef.current) return;
 
     dragStartRef.current = {
       clientX: touch.clientX,
       clientY: touch.clientY,
-      moved: false,
+      moved: true,
     };
 
     setActiveDragId(player.id);
@@ -168,16 +163,9 @@ export const Pitch: React.FC<PitchProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isCoach || !activeDragId || !dragStartRef.current) return;
     const touch = e.touches[0];
-    if (!touch || !activeDragId || !dragStartRef.current) return;
-
-    const dx = Math.abs(touch.clientX - dragStartRef.current.clientX);
-    const dy = Math.abs(touch.clientY - dragStartRef.current.clientY);
-
-    if (dx > 3 || dy > 3) {
-      dragStartRef.current.moved = true;
-    }
-
+    if (!touch) return;
     handleDragUpdate(touch.clientX, touch.clientY);
   };
 
@@ -186,7 +174,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
     if (swapTargetId && swapTargetId !== activeDragId) {
       onSwapPlayers(activeDragId, swapTargetId);
-    } else if (dragStartRef.current?.moved && currentDragCoord) {
+    } else if (currentDragCoord) {
       onMovePlayer(activeDragId, currentDragCoord);
     }
 
@@ -198,6 +186,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
   // HTML5 Drag & Drop handlers
   const handleHTML5DropOnPlayer = (e: React.DragEvent, targetPlayer: Player) => {
+    if (!isCoach) return;
     e.preventDefault();
     const sourceId = e.dataTransfer.getData('text/plain');
     if (sourceId && sourceId !== targetPlayer.id) {
@@ -206,6 +195,7 @@ export const Pitch: React.FC<PitchProps> = ({
   };
 
   const handleHTML5DropOnPitch = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!isCoach) return;
     e.preventDefault();
     const sourceId = e.dataTransfer.getData('text/plain');
     if (!sourceId || !pitchRef.current) return;
@@ -233,22 +223,25 @@ export const Pitch: React.FC<PitchProps> = ({
         </button>
       </div>
 
-      {/* Main Pitch Field Graphic Area */}
+      {/* Main Pitch Field Graphic Area: Green Pitch Background with Grass Turf Lines */}
       <div
         ref={pitchRef}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => isCoach && e.preventDefault()}
         onDrop={handleHTML5DropOnPitch}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
-        className="relative flex-1 w-full mx-auto px-2 overflow-hidden touch-none"
+        className="relative flex-1 w-full mx-auto px-2 overflow-hidden touch-none rounded-2xl bg-gradient-to-b from-[#134e1e] via-[#165c24] to-[#0d3b14] border border-emerald-800/60 shadow-inner"
       >
+        {/* Alternating Lawn Turf Mowing Bands */}
+        <div className="absolute inset-0 pointer-events-none opacity-35 bg-[linear-gradient(0deg,rgba(255,255,255,0.06)_50%,transparent_50%)] bg-[size:100%_44px]" />
+        
         {/* Subtle Pitch Grass Turf Texture */}
-        <div className="absolute inset-0 mx-4 pointer-events-none opacity-40 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.03)_10%,transparent_20%,rgba(255,255,255,0.03)_30%,transparent_40%,rgba(255,255,255,0.03)_50%,transparent_60%,rgba(255,255,255,0.03)_70%,transparent_80%,rgba(255,255,255,0.03)_90%,transparent_100%)]" />
+        <div className="absolute inset-0 mx-2 pointer-events-none opacity-40 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.03)_10%,transparent_20%,rgba(255,255,255,0.03)_30%,transparent_40%,rgba(255,255,255,0.03)_50%,transparent_60%,rgba(255,255,255,0.03)_70%,transparent_80%,rgba(255,255,255,0.03)_90%,transparent_100%)]" />
 
         {/* Free Move Tactical Grid Lines Overlay (active when isMoveMode) */}
         {isMoveMode && (
-          <div className="absolute inset-0 mx-4 pointer-events-none opacity-25 bg-[linear-gradient(to_right,#00d2ff_1px,transparent_1px),linear-gradient(to_bottom,#00d2ff_1px,transparent_1px)] bg-[size:36px_36px] animate-in fade-in duration-200" />
+          <div className="absolute inset-0 mx-2 pointer-events-none opacity-25 bg-[linear-gradient(to_right,#00d2ff_1px,transparent_1px),linear-gradient(to_bottom,#00d2ff_1px,transparent_1px)] bg-[size:36px_36px] animate-in fade-in duration-200" />
         )}
 
         {/* Top-down Pitch Markings SVG */}

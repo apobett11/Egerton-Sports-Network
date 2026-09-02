@@ -239,7 +239,7 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         matchdays,
         matchAssignments,
         playdays: generateDefaultPlaydays('2026-09-05', 90),
-        capacity: { EPL: 3, Championship: 3 },
+        capacity: { EPL: 9, Championship: 9 },
         pitches,
         referees,
         teams,
@@ -247,17 +247,17 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
           {
             league_id: 'epl',
             slots: [
-              { slot_number: 1, start_time: '08:30', end_time: '10:30' },
-              { slot_number: 2, start_time: '10:45', end_time: '12:45' },
-              { slot_number: 3, start_time: '13:00', end_time: '15:00' },
+              { slot_number: 1, start_time: '08:00', end_time: '09:30' },
+              { slot_number: 2, start_time: '09:30', end_time: '11:00' },
+              { slot_number: 3, start_time: '11:00', end_time: '12:30' },
             ],
           },
           {
             league_id: 'championship',
             slots: [
-              { slot_number: 1, start_time: '15:15', end_time: '17:15' },
-              { slot_number: 2, start_time: '17:30', end_time: '19:30' },
-              { slot_number: 3, start_time: '19:45', end_time: '21:45' },
+              { slot_number: 1, start_time: '13:00', end_time: '14:30' },
+              { slot_number: 2, start_time: '14:30', end_time: '16:00' },
+              { slot_number: 3, start_time: '16:00', end_time: '17:30' },
             ],
           },
         ],

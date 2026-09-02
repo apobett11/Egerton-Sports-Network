@@ -14,7 +14,8 @@ import {
   saveTemporaryMatchSquad,
   DEFAULT_TEAM_UUID,
   publishTeamJournal,
-  fetchTeamNews
+  fetchTeamNews,
+  fetchTeamStandings
 } from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
@@ -37,7 +38,9 @@ export const useTeamDashboard = () => {
 
   const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
   const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
-  const [teamFixtures, setTeamFixtures] = useState<Match[]>(initialFixtures);
+  const [teamFixtures, setTeamFixtures] = useState<Match[]>([]);
+  const [standings, setStandings] = useState<any[]>([]);
+  const [teamForm, setTeamForm] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [publishedNews, setPublishedNews] = useState<any[]>([]);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
@@ -124,6 +127,16 @@ export const useTeamDashboard = () => {
         const dbFixtures = await fetchTeamFixtures(resolvedTeamId);
         if (isMounted && dbFixtures.length > 0) {
           setTeamFixtures(dbFixtures);
+        }
+
+        const dbStandings = await fetchTeamStandings(resolvedTeamId);
+        if (isMounted && dbStandings.length > 0) {
+          setStandings(dbStandings);
+          // Calculate team form entries from standings / fixtures
+          const curTeam = dbStandings.find((s) => s.isCurrent) || dbStandings[0];
+          if (curTeam && curTeam.recentForm) {
+            setTeamForm(curTeam.recentForm);
+          }
         }
 
         const dbAnnouncements = await fetchTeamAnnouncements();
@@ -394,7 +407,7 @@ export const useTeamDashboard = () => {
     toastMessage,
     showToast,
     handleLogout,
-    standings: initialStandings,
-    teamForm: initialTeamForm,
+    standings,
+    teamForm,
   };
 };

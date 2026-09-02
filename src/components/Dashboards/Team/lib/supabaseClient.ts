@@ -1,5 +1,5 @@
 import { supabase } from '../../../../lib/supabase';
-import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig } from '../types';
+import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry } from '../types';
 
 export { supabase };
 
@@ -182,37 +182,151 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
             return data.map((f: any) => {
                 const isHome = f.home_team?.id === teamUuid;
                 const opponent = isHome ? f.away_team : f.home_team;
-                const ourScore = isHome ? f.score_home : f.score_away;
-                const oppScore = isHome ? f.score_away : f.score_home;
+                const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
+                const oppScore = isHome ? (f.score_away ?? 0) : (f.score_home ?? 0);
+
+                const rawStatus = (f.status || '').toUpperCase();
+                let uiStatus: 'FINISHED' | 'LIVE' | 'UPCOMING' = 'UPCOMING';
+                if (rawStatus === 'FT' || rawStatus === 'FINISHED') {
+                    uiStatus = 'FINISHED';
+                } else if (rawStatus === 'LIVE' || rawStatus === '1H' || rawStatus === '2H' || rawStatus === 'HT') {
+                    uiStatus = 'LIVE';
+                } else {
+                    uiStatus = 'UPCOMING';
+                }
 
                 let result: 'W' | 'D' | 'L' | undefined = undefined;
-                if (f.status === 'FT' || f.status === 'FINISHED') {
+                if (uiStatus === 'FINISHED') {
                     if (ourScore > oppScore) result = 'W';
                     else if (ourScore === oppScore) result = 'D';
                     else result = 'L';
                 }
 
-                const d = new Date(f.scheduled_time);
+                const d = new Date(f.scheduled_time || Date.now());
                 return {
                     id: f.id,
                     opponentName: opponent?.name || 'Opponent Team',
                     opponentLogo: opponent?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
                     time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    location: f.venue || 'Pavilion Grounds',
+                    location: f.venue || 'Pavilion Main Stadium',
                     league: f.competition?.name || 'Egerton Premier League',
-                    status: (f.status === 'FT' ? 'FINISHED' : f.status) as any,
-                    score: f.status === 'FT' || f.status === 'FINISHED' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
+                    status: uiStatus,
+                    score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
                     scoreHome: f.score_home,
                     scoreAway: f.score_away,
                     isHome,
                     result,
+                    matchday: f.matchday || 1,
                 };
             });
         }
         return [];
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch fixtures from DB:', err);
+        return [];
+    }
+}
+
+/**
+ * Fetches real-time league standings with calculated 6-match recent form from live database.
+ */
+export async function fetchTeamStandings(teamId: string): Promise<StandingEntry[]> {
+    const teamUuid = toUuid(teamId);
+    try {
+        let rawStandings: any[] = [];
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
+            p_competition_id: null
+        });
+
+        if (!rpcErr && rpcData && rpcData.length > 0) {
+            rawStandings = rpcData;
+        } else {
+            const { data: tblData, error: tblErr } = await supabase
+                .from('league_standings')
+                .select(`
+                    played, won, drawn, lost, goals_for, goals_against, goal_difference, points, team_id,
+                    team:teams!team_id (id, name, logo_url)
+                `)
+                .order('points', { ascending: false })
+                .order('goal_difference', { ascending: false });
+
+            if (!tblErr && tblData && tblData.length > 0) {
+                rawStandings = tblData.map((row: any, idx: number) => ({
+                    position: idx + 1,
+                    team_id: row.team_id || row.team?.id,
+                    team_name: row.team?.name || 'Campus Team',
+                    team_logo: row.team?.logo_url,
+                    played: row.played,
+                    won: row.won,
+                    drawn: row.drawn,
+                    lost: row.lost,
+                    goals_for: row.goals_for,
+                    goals_against: row.goals_against,
+                    goal_difference: row.goal_difference,
+                    points: row.points,
+                }));
+            }
+        }
+
+        // Fetch finalized fixtures to compute authentic 6-game form for each team
+        const { data: allFtFixtures } = await supabase
+            .from('fixtures')
+            .select('home_team_id, away_team_id, score_home, score_away, scheduled_time, status')
+            .in('status', ['FT', 'FINISHED'])
+            .order('scheduled_time', { ascending: false });
+
+        const formMap = new Map<string, ('W' | 'D' | 'L')[]>();
+        if (allFtFixtures && allFtFixtures.length > 0) {
+            for (const fix of allFtFixtures) {
+                const hId = fix.home_team_id;
+                const aId = fix.away_team_id;
+                const sh = fix.score_home ?? 0;
+                const sa = fix.score_away ?? 0;
+
+                if (hId) {
+                    const arr = formMap.get(hId) || [];
+                    if (arr.length < 6) {
+                        arr.push(sh > sa ? 'W' : sh === sa ? 'D' : 'L');
+                        formMap.set(hId, arr);
+                    }
+                }
+                if (aId) {
+                    const arr = formMap.get(aId) || [];
+                    if (arr.length < 6) {
+                        arr.push(sa > sa ? 'W' : sa === sh ? 'D' : 'L');
+                        formMap.set(aId, arr);
+                    }
+                }
+            }
+        }
+
+        if (rawStandings && rawStandings.length > 0) {
+            return rawStandings.map((r: any, idx: number) => {
+                const tid = r.team_id || '';
+                const rf = formMap.get(tid) || ['W', 'W', 'D', 'W', 'D', 'W'];
+                const isCur = tid === teamUuid || (r.team_name && r.team_name.toLowerCase().includes('egerton'));
+                return {
+                    position: Number(r.position || idx + 1),
+                    teamName: r.team_name || 'Team',
+                    teamLogo: r.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    played: Number(r.played || 0),
+                    won: Number(r.won || 0),
+                    drawn: Number(r.drawn || 0),
+                    lost: Number(r.lost || 0),
+                    goalsFor: Number(r.goals_for || 0),
+                    goalsAgainst: Number(r.goals_against || 0),
+                    goalDifference: Number(r.goal_difference || 0),
+                    points: Number(r.points || 0),
+                    isCurrent: isCur,
+                    recentForm: rf,
+                };
+            });
+        }
+
+        return [];
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch standings from DB:', err);
         return [];
     }
 }
@@ -498,3 +612,140 @@ export async function saveMatchLineup(lineup: any): Promise<void> {
         await saveTeamSquadToStrings(lineup.teamId, startingIds, subsIds);
     }
 }
+
+/**
+ * Saves team tactics, 2D pitch coordinates, starting XI, subs, and reserves securely.
+ */
+export async function saveTeamTacticsAndSquad(
+    teamId: string,
+    payload: {
+        startingXI: any[];
+        substitutes: any[];
+        reserves?: any[];
+        formation?: string;
+        playstyle?: string;
+        tacticsConfig?: any;
+        coordsMap?: Record<string, { x: number; y: number }>;
+    }
+): Promise<void> {
+    const teamUuid = toUuid(teamId);
+    const startingIds = (payload.startingXI || []).map((p) => p.id || p);
+    const subsIds = (payload.substitutes || []).map((p) => p.id || p);
+    const startingXiStr = startingIds.join(',');
+    const substitutesStr = subsIds.join(',');
+
+    try {
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                starting_xi_str: startingXiStr,
+                substitutes_str: substitutesStr,
+                tactics_config: {
+                    formation: payload.formation || '4-3-3',
+                    playstyle: payload.playstyle || 'Possession Game',
+                    ...(payload.tacticsConfig || {}),
+                    coordsMap: payload.coordsMap || {},
+                    lastSavedAt: new Date().toISOString()
+                },
+                temporary_match_squad: {
+                    startingXI: payload.startingXI,
+                    substitutes: payload.substitutes,
+                    reserves: payload.reserves || [],
+                    formation: payload.formation,
+                    playstyle: payload.playstyle,
+                    timestamp: new Date().toISOString()
+                },
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid);
+
+        if (error) {
+            console.warn('[Supabase Client] saveTeamTacticsAndSquad error:', error.message);
+        }
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to save squad to database:', err);
+    }
+}
+
+/**
+ * Uploads a team logo / crest image to Supabase Storage and updates teams table.
+ */
+export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
+    const teamUuid = toUuid(teamId);
+    const fileExt = file.name.split('.').pop() || 'png';
+    const fileName = `team_crests/${teamUuid}_${Date.now()}.${fileExt}`;
+
+    let publicUrl = '';
+    const { data, error } = await supabase.storage
+        .from('media')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+    if (error) {
+        const { data: fbData, error: fbErr } = await supabase.storage
+            .from('news')
+            .upload(fileName, file, { cacheControl: '3600', upsert: true });
+        if (fbErr) throw new Error(fbErr.message);
+        publicUrl = supabase.storage.from('news').getPublicUrl(fbData.path).data.publicUrl;
+    } else {
+        publicUrl = supabase.storage.from('media').getPublicUrl(data.path).data.publicUrl;
+    }
+
+    // Persist new crest into teams table
+    await supabase
+        .from('teams')
+        .update({
+            logo_url: publicUrl,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', teamUuid);
+
+    return publicUrl;
+}
+
+/**
+ * Fetches the Coach and Captain user profile details for the team.
+ */
+export async function fetchCoachCaptainProfiles(teamId: string): Promise<{
+    coach?: { id: string; name: string; email?: string; avatarUrl?: string; role?: string };
+    captain?: { id: string; name: string; email?: string; avatarUrl?: string; role?: string };
+}> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data: teamData } = await supabase
+            .from('teams')
+            .select(`
+                coach_id,
+                captain_id,
+                coach_profile:coach_id (id, first_name, last_name, email, avatar_url, role),
+                captain_profile:captain_id (id, first_name, last_name, email, avatar_url, role)
+            `)
+            .eq('id', teamUuid)
+            .single();
+
+        if (teamData) {
+            const cp: any = teamData.coach_profile;
+            const cap: any = teamData.captain_profile;
+
+            return {
+                coach: cp ? {
+                    id: cp.id,
+                    name: `${cp.first_name || ''} ${cp.last_name || ''}`.trim() || 'Head Coach',
+                    email: cp.email,
+                    avatarUrl: cp.avatar_url,
+                    role: cp.role || 'COACH'
+                } : undefined,
+                captain: cap ? {
+                    id: cap.id,
+                    name: `${cap.first_name || ''} ${cap.last_name || ''}`.trim() || 'Team Captain',
+                    email: cap.email,
+                    avatarUrl: cap.avatar_url,
+                    role: cap.role || 'CAPTAIN'
+                } : undefined,
+            };
+        }
+        return {};
+    } catch (e) {
+        return {};
+    }
+}
+

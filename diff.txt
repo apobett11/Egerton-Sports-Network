@@ -1,0 +1,487 @@
+diff --git a/src/algorithms/algorithm3.ts b/src/algorithms/algorithm3.ts
+index 5e23ee9..546204e 100644
+--- a/src/algorithms/algorithm3.ts
++++ b/src/algorithms/algorithm3.ts
+@@ -30,26 +30,34 @@ import {
+ 
+ export const ALGORITHM_3_VERSION = "3.0.0";
+ 
+-const EXPECTED_PITCH_COUNT = 3;
+-const SLOTS_PER_PITCH_PER_LEAGUE = 3;
++export type LeagueId = string;
+ 
+-const EPL = "epl";
+-const CHAMPIONSHIP = "championship";
++function getLeaguePriorityOrder(signal: Algorithm3Signal): LeagueId[] {
++  const seen = new Set<string>();
++  const order: LeagueId[] = [];
+ 
+-const LEAGUE_ORDER = [EPL, CHAMPIONSHIP] as const;
++  for (const tc of signal.time_configuration ?? []) {
++    if (tc.league_id && !seen.has(tc.league_id)) {
++      seen.add(tc.league_id);
++      order.push(tc.league_id);
++    }
++  }
+ 
+-export type LeagueId = string;
++  for (const md of signal.matchdays ?? []) {
++    for (const m of md.matches ?? []) {
++      if (m.league_id && !seen.has(m.league_id)) {
++        seen.add(m.league_id);
++        order.push(m.league_id);
++      }
++    }
++  }
+ 
+-const UUID_PATTERN =
+-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++  return order;
++}
+ 
+-export function isEplLeague(leagueId: string): boolean {
+-  return (
+-    leagueId === EPL ||
+-    leagueId.includes("1111") ||
+-    leagueId.toLowerCase().includes("premier") ||
+-    leagueId.toLowerCase().includes("epl")
+-  );
++function getLeagueRank(leagueId: LeagueId, priorityOrder: LeagueId[]): number {
++  const index = priorityOrder.indexOf(leagueId);
++  return index === -1 ? Infinity : index;
+ }
+ type PitchState = "available" | "unavailable";
+ type MatchStatus = "scheduled" | "played" | "completed" | "cancelled" | "postponed" | "unplayed";
+@@ -68,7 +76,7 @@ export interface PitchInput {
+ }
+ 
+ export interface SlotTime {
+-  slot_number: 1 | 2 | 3;
++  slot_number: number;
+   start_time: string;
+   end_time: string;
+ }
+@@ -102,7 +110,7 @@ export interface ExistingAllocation {
+   matchday_number: number;
+   play_date: string;
+   pitch_id: string;
+-  slot_number: 1 | 2 | 3;
++  slot_number: number;
+   start_time: string;
+   end_time: string;
+   status: AllocationStatus;
+@@ -127,7 +135,7 @@ export interface DatabaseAllocationWrite {
+   matchday_number: number;
+   play_date: string;
+   pitch_id: string;
+-  slot_number: 1 | 2 | 3;
++  slot_number: number;
+   start_time: string;
+   end_time: string;
+   status: "scheduled";
+@@ -164,10 +172,7 @@ export interface Algorithm3Output {
+     total_completed_matches_preserved: number;
+     total_allocated: number;
+     total_spillover: number;
+-    epl_allocated: number;
+-    championship_allocated: number;
+-    epl_spillover: number;
+-    championship_spillover: number;
++    by_league: Record<LeagueId, { allocated: number; spillover: number }>;
+     pitch_capacity_used: number;
+   };
+   database_operations: {
+@@ -183,7 +188,7 @@ export interface Algorithm3Output {
+ 
+ interface InternalSlot {
+   pitch_id: string;
+-  slot_number: 1 | 2 | 3;
++  slot_number: number;
+   start_time: string;
+   end_time: string;
+ }
+@@ -198,28 +203,11 @@ interface AllocationRecord {
+   matchday_number: number;
+   play_date: string;
+   pitch_id: string;
+-  slot_number: 1 | 2 | 3;
++  slot_number: number;
+   start_time: string;
+   end_time: string;
+ }
+ 
+-/* ============================================================================
+- * DEFAULT PRESIDENT CONFIGURATION
+- * ========================================================================== */
+-
+-const DEFAULT_TIME_CONFIGURATION: Record<LeagueId, SlotTime[]> = {
+-  [EPL]: [
+-    { slot_number: 1, start_time: "08:00", end_time: "09:40" },
+-    { slot_number: 2, start_time: "09:40", end_time: "11:20" },
+-    { slot_number: 3, start_time: "11:20", end_time: "13:00" },
+-  ],
+-  [CHAMPIONSHIP]: [
+-    { slot_number: 1, start_time: "13:00", end_time: "14:30" },
+-    { slot_number: 2, start_time: "14:30", end_time: "16:00" },
+-    { slot_number: 3, start_time: "16:00", end_time: "17:30" },
+-  ],
+-};
+-
+ /* ============================================================================
+  * PROTOCOL ENTRY POINT (Part 6)
+  *
+@@ -296,6 +284,7 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
+   }
+ 
+   const timeConfiguration = resolveTimeConfiguration(signal.time_configuration);
++  const leaguePriorityOrder = getLeaguePriorityOrder(signal);
+ 
+   logs.push("Confirming: President time configuration resolved successfully.");
+ 
+@@ -410,13 +399,16 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
+     const incoming = [...carryOver];
+     carryOver = [];
+ 
+-    const dayMatches = orderMatchesForPlayday([...incoming, ...ownMatches]);
++    const dayMatches = orderMatchesForPlayday(
++      [...incoming, ...ownMatches],
++      leaguePriorityOrder,
++    );
+ 
+     const dayLeagues = Array.from(new Set(dayMatches.map((m) => m.league_id)));
+     dayLeagues.sort((a, b) => {
+-      const isEplA = isEplLeague(a) ? 0 : 1;
+-      const isEplB = isEplLeague(b) ? 0 : 1;
+-      if (isEplA !== isEplB) return isEplA - isEplB;
++      const rankA = getLeagueRank(a, leaguePriorityOrder);
++      const rankB = getLeagueRank(b, leaguePriorityOrder);
++      if (rankA !== rankB) return rankA - rankB;
+       return a.localeCompare(b);
+     });
+ 
+@@ -471,7 +463,13 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
+ 
+   logs.push("Confirming: Allocation completed. Beginning single integrity verification.");
+ 
+-  const verification = verifyIntegrity(signal, allocations, spillovers, historicalMatchIds);
++  const verification = verifyIntegrity(
++    signal,
++    allocations,
++    spillovers,
++    historicalMatchIds,
++    leaguePriorityOrder,
++  );
+ 
+   logs.push(...verification.logs);
+   errors.push(...verification.errors);
+@@ -483,10 +481,21 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
+   logs.push("SUCCESS: All Algorithm 3 integrity checks passed.");
+   logs.push("STOP: One scheduling cycle completed. No second cycle will execute.");
+ 
+-  const eplAllocated = allocations.filter((a) => a.league_id === EPL).length;
+-  const championshipAllocated = allocations.filter((a) => a.league_id === CHAMPIONSHIP).length;
+-  const eplSpillover = spillovers.filter((m) => m.league_id === EPL).length;
+-  const championshipSpillover = spillovers.filter((m) => m.league_id === CHAMPIONSHIP).length;
++  const distinctLeagueIds = Array.from(
++    new Set([
++      ...futureMatches.map((m) => m.league_id),
++      ...allocations.map((a) => a.league_id),
++      ...spillovers.map((m) => m.league_id),
++    ]),
++  );
++
++  const byLeague: Record<LeagueId, { allocated: number; spillover: number }> = {};
++  for (const lid of distinctLeagueIds) {
++    byLeague[lid] = {
++      allocated: allocations.filter((a) => a.league_id === lid).length,
++      spillover: spillovers.filter((m) => m.league_id === lid).length,
++    };
++  }
+ 
+   return {
+     algorithm: "ALGORITHM_3",
+@@ -502,10 +511,7 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
+       total_completed_matches_preserved: historicalMatchIds.size,
+       total_allocated: allocations.length,
+       total_spillover: spillovers.length,
+-      epl_allocated: eplAllocated,
+-      championship_allocated: championshipAllocated,
+-      epl_spillover: eplSpillover,
+-      championship_spillover: championshipSpillover,
++      by_league: byLeague,
+       pitch_capacity_used: allocations.length,
+     },
+     database_operations: {
+@@ -536,32 +542,34 @@ function validateInputStructure(signal: Algorithm3Signal): VerificationResult {
+     errors.push("run_id cannot be empty.");
+   }
+ 
+-  if (!Array.isArray(signal.pitches)) {
+-    errors.push("pitches must be an array.");
+-  }
++  if (!Array.isArray(signal.pitches) || signal.pitches.length === 0) {
++    errors.push("pitches must be a non-empty array.");
++  } else {
++    const pitchIds = new Set<string>();
+ 
+-  if (signal.pitches.length !== EXPECTED_PITCH_COUNT) {
+-    errors.push(
+-      `Exactly ${EXPECTED_PITCH_COUNT} pitches are required. Received ${signal.pitches.length}.`,
+-    );
+-  }
++    for (const pitch of signal.pitches) {
++      if (!pitch.pitch_id.trim()) {
++        errors.push("A pitch has an empty pitch_id.");
++      }
+ 
+-  const pitchIds = new Set<string>();
++      if (pitchIds.has(pitch.pitch_id)) {
++        errors.push(`Duplicate pitch UUID detected: ${pitch.pitch_id}.`);
++      }
+ 
+-  for (const pitch of signal.pitches) {
+-    if (!pitch.pitch_id.trim()) {
+-      errors.push("A pitch has an empty pitch_id.");
+-    }
++      pitchIds.add(pitch.pitch_id);
+ 
+-    if (pitchIds.has(pitch.pitch_id)) {
+-      errors.push(`Duplicate pitch UUID detected: ${pitch.pitch_id}.`);
++      if (pitch.state !== "available" && pitch.state !== "unavailable") {
++        errors.push(`Invalid pitch state for ${pitch.pitch_id}.`);
++      }
+     }
++  }
+ 
+-    pitchIds.add(pitch.pitch_id);
+-
+-    if (pitch.state !== "available" && pitch.state !== "unavailable") {
+-      errors.push(`Invalid pitch state for ${pitch.pitch_id}.`);
+-    }
++  if (
++    !signal.time_configuration ||
++    !Array.isArray(signal.time_configuration) ||
++    signal.time_configuration.length === 0
++  ) {
++    errors.push("time_configuration is required and cannot be empty.");
+   }
+ 
+   if (!Array.isArray(signal.matchdays)) {
+@@ -592,20 +600,15 @@ function validateInputStructure(signal: Algorithm3Signal): VerificationResult {
+         errors.push(`Self-play detected before Algorithm 3: ${match.match_id}.`);
+       }
+ 
+-      if (
+-        match.league_id !== EPL &&
+-        match.league_id !== CHAMPIONSHIP &&
+-        !UUID_PATTERN.test(match.league_id) &&
+-        !match.league_id.trim()
+-      ) {
+-        errors.push(`Unknown league for match ${match.match_id}.`);
++      if (!match.league_id || typeof match.league_id !== "string" || !match.league_id.trim()) {
++        errors.push(`Invalid or missing league_id for match ${match.match_id}.`);
+       }
+     }
+   }
+ 
+   if (errors.length === 0) {
+     logs.push(
+-      "PASS: Input structure, pitch count, UUID uniqueness, and match identity validated.",
++      "PASS: Input structure, pitches, UUID uniqueness, and match identity validated.",
+     );
+   }
+ 
+@@ -619,18 +622,21 @@ function validateInputStructure(signal: Algorithm3Signal): VerificationResult {
+ function resolveTimeConfiguration(
+   supplied?: LeagueTimeConfiguration[],
+ ): Record<LeagueId, SlotTime[]> {
+-  const result: Record<LeagueId, SlotTime[]> = {
+-    [EPL]: [...DEFAULT_TIME_CONFIGURATION[EPL]],
+-    [CHAMPIONSHIP]: [...DEFAULT_TIME_CONFIGURATION[CHAMPIONSHIP]],
+-  };
++  if (!supplied || !Array.isArray(supplied) || supplied.length === 0) {
++    throw new Error("Missing required time_configuration.");
++  }
+ 
+-  for (const configuration of supplied ?? []) {
+-    const slots = [...configuration.slots].sort((a, b) => a.slot_number - b.slot_number);
++  const result: Record<LeagueId, SlotTime[]> = {};
+ 
+-    if (slots.length !== SLOTS_PER_PITCH_PER_LEAGUE) {
+-      throw new Error(`${configuration.league_id} must contain exactly 3 slots.`);
++  for (const configuration of supplied) {
++    if (!configuration.league_id || !configuration.league_id.trim()) {
++      throw new Error("LeagueTimeConfiguration has an empty league_id.");
++    }
++    if (!Array.isArray(configuration.slots) || configuration.slots.length === 0) {
++      throw new Error(`League ${configuration.league_id} must contain at least 1 slot.`);
+     }
+ 
++    const slots = [...configuration.slots].sort((a, b) => a.slot_number - b.slot_number);
+     validateTimeSlots(slots, configuration.league_id);
+     result[configuration.league_id] = slots;
+   }
+@@ -676,11 +682,11 @@ function buildSlotsForLeague(
+   configuration: Record<LeagueId, SlotTime[]>,
+ ): InternalSlot[] {
+   const slots: InternalSlot[] = [];
+-  const times =
+-    configuration[leagueId] ||
+-    (isEplLeague(leagueId)
+-      ? configuration[EPL] || DEFAULT_TIME_CONFIGURATION[EPL]
+-      : configuration[CHAMPIONSHIP] || DEFAULT_TIME_CONFIGURATION[CHAMPIONSHIP]);
++  const times = configuration[leagueId];
++
++  if (!times || times.length === 0) {
++    throw new Error(`No time configuration found for league: ${leagueId}`);
++  }
+ 
+   const orderedPitches = [...availablePitches].sort((a, b) =>
+     a.pitch_id.localeCompare(b.pitch_id),
+@@ -762,12 +768,15 @@ function getEligiblePool(
+   return [...(pools.get(matchdayNumber) ?? [])];
+ }
+ 
+-function orderMatchesForPlayday(matches: InternalMatch[]): InternalMatch[] {
++function orderMatchesForPlayday(
++  matches: InternalMatch[],
++  leagueOrder: LeagueId[],
++): InternalMatch[] {
+   return [...matches].sort((a, b) => {
+-    const isEplA = isEplLeague(a.league_id) ? 0 : 1;
+-    const isEplB = isEplLeague(b.league_id) ? 0 : 1;
++    const rankA = getLeagueRank(a.league_id, leagueOrder);
++    const rankB = getLeagueRank(b.league_id, leagueOrder);
+ 
+-    if (isEplA !== isEplB) return isEplA - isEplB;
++    if (rankA !== rankB) return rankA - rankB;
+ 
+     const spillA = a.spillover_priority ? 0 : 1;
+     const spillB = b.spillover_priority ? 0 : 1;
+@@ -799,12 +808,6 @@ function allocateLeagueMatches(
+ 
+   const teamsScheduledToday = new Set<string>();
+ 
+-  for (const _existing of existingAllocations) {
+-    if (_existing.play_date === matchday.play_date) {
+-      // Existing allocations cannot safely provide team IDs
+-    }
+-  }
+-
+   for (const match of matches) {
+     let selectedSlot: InternalSlot | null = null;
+ 
+@@ -861,6 +864,7 @@ function verifyIntegrity(
+   allocations: AllocationRecord[],
+   spillovers: InternalMatch[],
+   historicalMatchIds: Set<string>,
++  leaguePriorityOrder: LeagueId[],
+ ): VerificationResult {
+   const logs: string[] = [];
+   const errors: string[] = [];
+@@ -881,7 +885,7 @@ function verifyIntegrity(
+   }
+ 
+   logs.push(
+-    "Confirming: Every allocated pitch exists in the authoritative three-pitch set.",
++    "Confirming: Every allocated pitch exists in the authoritative supplied pitch set.",
+   );
+ 
+   const validPitchIds = new Set(signal.pitches.map((pitch) => pitch.pitch_id));
+@@ -898,7 +902,7 @@ function verifyIntegrity(
+     logs.push("Passed: Every pitch allocation references a real supplied pitch UUID.");
+   }
+ 
+-  logs.push("Confirming: No pitch exceeds three slots for a league on a playday.");
++  logs.push("Confirming: No pitch exceeds configured slot capacity for a league on a playday.");
+ 
+   const pitchLeagueDayCounts = new Map<string, number>();
+ 
+@@ -907,16 +911,23 @@ function verifyIntegrity(
+     pitchLeagueDayCounts.set(key, (pitchLeagueDayCounts.get(key) ?? 0) + 1);
+   }
+ 
++  const slotsByLeague = new Map<string, number>();
++  for (const tc of signal.time_configuration ?? []) {
++    slotsByLeague.set(tc.league_id, tc.slots?.length ?? 0);
++  }
++
+   for (const [key, count] of pitchLeagueDayCounts) {
+-    if (count > SLOTS_PER_PITCH_PER_LEAGUE) {
++    const [, , leagueId] = key.split("|");
++    const maxAllowed = slotsByLeague.get(leagueId) ?? Infinity;
++    if (count > maxAllowed) {
+       errors.push(
+-        `Capacity violation: ${key} contains ${count} matches; maximum is ${SLOTS_PER_PITCH_PER_LEAGUE}.`,
++        `Capacity violation: ${key} contains ${count} matches; maximum is ${maxAllowed}.`,
+       );
+     }
+   }
+ 
+-  if ([...pitchLeagueDayCounts.values()].every((count) => count <= SLOTS_PER_PITCH_PER_LEAGUE)) {
+-    logs.push("Passed: Pitch/league/day capacity remains within the three-slot limit.");
++  if (errors.length === 0) {
++    logs.push("Passed: Pitch/league/day capacity remains within configured limits.");
+   }
+ 
+   logs.push("Confirming: No two matches occupy the same pitch slot.");
+@@ -987,7 +998,7 @@ function verifyIntegrity(
+     logs.push("Passed: Spillover state is internally consistent.");
+   }
+ 
+-  logs.push("Confirming: EPL priority precedes Championship allocation.");
++  logs.push("Confirming: League priority ordering is preserved across daily allocations.");
+ 
+   const allocationsByDay = new Map<string, AllocationRecord[]>();
+ 
+@@ -1002,23 +1013,26 @@ function verifyIntegrity(
+       a.start_time.localeCompare(b.start_time),
+     );
+ 
+-    const firstChampionshipIndex = ordered.findIndex((a) => !isEplLeague(a.league_id));
+-
+-    if (firstChampionshipIndex !== -1) {
+-      const EPLAfterChampionship = ordered
+-        .slice(firstChampionshipIndex + 1)
+-        .some((a) => isEplLeague(a.league_id));
+-
+-      if (EPLAfterChampionship) {
+-        errors.push(
+-          `League ordering violation on ${date}: EPL appears after Championship.`,
+-        );
++    let maxRankSeen = -1;
++    let lastStartTime = "";
++    for (const alloc of ordered) {
++      const rank = getLeagueRank(alloc.league_id, leaguePriorityOrder);
++      if (alloc.start_time !== lastStartTime) {
++        if (rank < maxRankSeen) {
++          errors.push(
++            `League ordering violation on ${date}: higher-priority league ${alloc.league_id} scheduled after lower-priority league.`,
++          );
++        }
++        lastStartTime = alloc.start_time;
++      }
++      if (rank > maxRankSeen) {
++        maxRankSeen = rank;
+       }
+     }
+   }
+ 
+   if (errors.length === 0) {
+-    logs.push("Passed: EPL-before-Championship ordering verified.");
++    logs.push("Passed: League priority ordering verified.");
+   }
+ 
+   logs.push("Confirming: Every allocated match has a valid start and end time.");
+@@ -1116,10 +1130,7 @@ function failedOutput(
+       total_completed_matches_preserved: 0,
+       total_allocated: 0,
+       total_spillover: 0,
+-      epl_allocated: 0,
+-      championship_allocated: 0,
+-      epl_spillover: 0,
+-      championship_spillover: 0,
++      by_league: {},
+       pitch_capacity_used: 0,
+     },
+     database_operations: { allocations: [], spillovers: [] },

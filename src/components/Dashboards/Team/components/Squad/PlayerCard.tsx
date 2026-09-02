@@ -26,19 +26,35 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   className = '',
   size = 'md',
 }) => {
-  const getThemeStyles = () => {
+  // Border & Glow styling according to player position
+  const getPositionBorderStyles = () => {
+    const pos = (player.position || player.defaultPosition || '').toUpperCase();
+    if (pos === 'GK') {
+      return 'border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.45)] ring-1 ring-amber-400/40';
+    }
+    if (['LB', 'CB', 'RB', 'DF', 'DEF', 'LWB', 'RWB'].includes(pos)) {
+      return 'border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/40';
+    }
+    if (['DMF', 'CMF', 'AMF', 'LMF', 'RMF', 'MD', 'MID'].includes(pos)) {
+      return 'border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/40';
+    }
+    // Strikers / Forwards
+    return 'border-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.45)] ring-1 ring-rose-400/40';
+  };
+
+  const getThemeBackgroundStyles = () => {
     switch (player.cardTheme) {
       case 'purple':
-        return 'bg-gradient-to-br from-[#351a70] via-[#21246b] to-[#0f3478] border-[#9d80f5] text-white shadow-[0_8px_18px_rgba(0,0,0,0.85)]';
+        return 'bg-gradient-to-br from-[#2a1355] via-[#1a1c52] to-[#0c2452] text-white';
       case 'epic':
-        return 'bg-gradient-to-br from-[#3b0f19] via-[#4d1624] to-[#1f153a] border-[#f59e0b] text-white shadow-[0_8px_18px_rgba(0,0,0,0.85)]';
+        return 'bg-gradient-to-br from-[#3b0f19] via-[#4d1624] to-[#1f153a] text-white';
       case 'blue':
-        return 'bg-gradient-to-br from-[#0c2e66] via-[#163e7c] to-[#091e42] border-[#5ba0f7] text-white shadow-[0_8px_18px_rgba(0,0,0,0.85)]';
+        return 'bg-gradient-to-br from-[#0c2e66] via-[#163e7c] to-[#091e42] text-white';
       case 'gold':
-        return 'bg-gradient-to-br from-[#453616] via-[#5c491e] to-[#211a0b] border-[#f5b81b] text-white shadow-[0_8px_18px_rgba(0,0,0,0.85)]';
+        return 'bg-gradient-to-br from-[#453616] via-[#5c491e] to-[#211a0b] text-white';
       case 'black':
       default:
-        return 'bg-gradient-to-br from-[#1d2024] via-[#15171a] to-[#0c0d0f] border-white/70 text-white shadow-[0_8px_18px_rgba(0,0,0,0.85)]';
+        return 'bg-gradient-to-br from-[#181a1d] via-[#121417] to-[#08090a] text-white';
     }
   };
 
@@ -54,47 +70,46 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       }}
       onDrop={(e) => onDrop && onDrop(e, player)}
       onClick={onClick}
-      className={`relative cursor-grab active:cursor-grabbing transition-all duration-150 hover:scale-105 active:scale-95 group ${
-        isDragging ? 'opacity-30 scale-95' : 'opacity-100'
+      className={`relative cursor-grab active:cursor-grabbing transition-all duration-100 hover:scale-105 active:scale-95 group flex flex-col items-center ${
+        isDragging ? 'opacity-25 scale-95' : 'opacity-100'
       } ${isSwapTarget ? 'scale-110 z-40' : ''} ${className}`}
     >
-      {/* Outer Card Container with authentic eFootball dimensions & borders */}
+      {/* Outer Card Container with Position Border */}
       <div
-        className={`relative overflow-hidden rounded-[7px] border-[1.8px] flex flex-col justify-between efootball-card-shadow card-float transition-all duration-150 ${getThemeStyles()} ${
-          isSmall ? 'w-[48px] h-[56px] p-0.5' : 'w-[54px] h-[64px] sm:w-[57px] sm:h-[67px] p-1'
+        className={`relative overflow-hidden rounded-[8px] border-[2px] flex flex-col justify-between efootball-card-shadow transition-all duration-100 ${getThemeBackgroundStyles()} ${getPositionBorderStyles()} ${
+          isSmall ? 'w-[48px] h-[58px] p-0.5' : 'w-[54px] h-[66px] sm:w-[58px] sm:h-[70px] p-1'
         } ${
           isSwapTarget
-            ? 'ring-2 ring-[#00e5ff] ring-offset-1 ring-offset-black shadow-[0_0_20px_#00e5ff]'
+            ? 'ring-2 ring-[#00e5ff] ring-offset-1 ring-offset-black shadow-[0_0_22px_#00e5ff]'
             : ''
         }`}
       >
-        {/* Holographic light streaks */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/15 to-transparent pointer-events-none opacity-60 card-shimmer-sweep" />
-        <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent pointer-events-none" />
+        {/* Holographic light streak */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none opacity-50 card-shimmer-sweep" />
 
-        {/* Top & Left Data: Position & Rating */}
+        {/* Top Data: Position & Overall Rating */}
         <div className="relative z-10 flex flex-col items-start leading-none pointer-events-none">
           <span
-            className={`font-sans font-bold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${
-              isSmall ? 'text-[8.5px]' : 'text-[9.5px]'
+            className={`font-sans font-black tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${
+              isSmall ? 'text-[8px]' : 'text-[9px]'
             }`}
           >
             {player.position}
           </span>
 
           <span
-            className={`font-efootball-num font-bold tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] ${
-              isSmall ? 'text-[15px] mt-0.5' : 'text-[18px] mt-0.5'
+            className={`font-efootball-num font-black tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] ${
+              isSmall ? 'text-[14px] mt-0.5' : 'text-[17px] mt-0.5'
             }`}
           >
             {player.rating}
           </span>
         </div>
 
-        {/* Player Avatar / Headshot Portrait */}
+        {/* Player Portrait Image */}
         <div
           className={`absolute right-[-2px] bottom-0 z-0 pointer-events-none flex items-end justify-end ${
-            isSmall ? 'w-[36px] h-[44px]' : 'w-[41px] h-[51px] sm:w-[44px] sm:h-[54px]'
+            isSmall ? 'w-[36px] h-[46px]' : 'w-[42px] h-[54px] sm:w-[46px] sm:h-[58px]'
           }`}
         >
           <img
@@ -105,7 +120,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           />
         </div>
 
-        {/* Bottom Left: Flag or Club Badge */}
+        {/* Bottom Left: Flag / Badge */}
         <div className="relative z-10 mt-auto flex items-center gap-0.5 pointer-events-none">
           {player.flagUrl ? (
             <img
@@ -126,22 +141,21 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           ) : null}
         </div>
 
-        {/* Captain Band Marker [C] */}
+        {/* Captain Marker: Bright Orange Band */}
         {player.isCaptain && (
-          <div className="absolute bottom-0.5 left-0.5 z-20 bg-white border border-black/80 text-black rounded-[2px] px-1 py-0 text-[8px] font-black tracking-tighter shadow-md leading-none">
+          <div className="absolute bottom-0.5 left-0.5 z-20 bg-orange-500 text-white border border-orange-300 rounded-[2px] px-1 py-0 text-[8px] font-black tracking-tighter shadow-md leading-none">
             C
           </div>
         )}
       </div>
 
-      {/* Floating Player Name Tag underneath if in detailed mode */}
-      {viewMode === 'detailed' && (
-        <div className="mt-0.5 text-center">
-          <div className="inline-block bg-black/90 backdrop-blur-sm border border-white/30 text-white px-1 py-0.5 rounded text-[8px] font-semibold truncate max-w-[66px] shadow-lg">
-            {player.name}
-          </div>
+      {/* Player Name Tag Displayed by Default */}
+      <div className="mt-0.5 text-center pointer-events-none">
+        <div className="inline-block bg-[#080d1a]/90 backdrop-blur-xs border border-white/20 text-white px-1 py-0.5 rounded text-[8px] sm:text-[8.5px] font-bold truncate max-w-[62px] sm:max-w-[70px] shadow-md leading-tight">
+          {player.name.split(' ').pop() || player.name}
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
