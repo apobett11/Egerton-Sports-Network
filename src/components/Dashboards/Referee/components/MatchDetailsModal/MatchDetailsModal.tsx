@@ -173,19 +173,19 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-amber-600 dark:text-[#D4AF37] block">Center Referee</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{currentUserName}</span>
+              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.referee || currentUserName}</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-slate-400 block">Linesman 1 (AR1)</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">Assistant Official 1</span>
+              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.assistantReferee1 || 'Assistant 1'}</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-slate-400 block">Linesman 2 (AR2)</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">Assistant Official 2</span>
+              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.assistantReferee2 || 'Assistant 2'}</span>
             </div>
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
               <span className="text-[9px] uppercase font-bold text-slate-400 block">4th Official</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">Table Official</span>
+              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.fourthOfficial || 'Table Official'}</span>
             </div>
           </div>
         </div>
@@ -237,45 +237,55 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
         {/* Action Controls for Referee (End Match, Cancel Match, Walkover) */}
         {!isFinished && !isCancelled && (
           <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
-                  onCancelMatch(match.id);
-                  onClose();
-                }
-              }}
-              className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <XCircle className="w-4 h-4" />
-              <span>Cancel Match</span>
-            </button>
+            {match.scheduledTime && new Date(match.scheduledTime).toDateString() !== new Date().toDateString() && new Date(match.scheduledTime).getTime() > new Date().getTime() ? (
+              <div className="text-xs text-amber-500 font-bold flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4" />
+                <span>Matchday not arrived — Match actions locked until scheduled date</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
+                      onCancelMatch(match.id);
+                      onClose();
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Cancel Match</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenWalkover(match);
-              }}
-              className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Trophy className="w-4 h-4" />
-              <span>Award Walkover (3-0)</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenWalkover(match);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Award Walkover (3-0)</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onEndMatch(match);
-              }}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <CheckCircle className="w-4 h-4" />
-              <span>End Match Portal</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEndMatch(match);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>End Match Portal</span>
+                </button>
+              </>
+            )}
           </div>
         )}
+
       </div>
     </div>
   );

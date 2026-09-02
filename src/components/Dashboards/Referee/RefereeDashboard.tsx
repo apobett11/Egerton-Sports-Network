@@ -21,13 +21,14 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     selectedDate,
     setSelectedDate,
     fixtures,
+    nextMatch,
     todayMatches,
+    matchdayGroups,
     matchesByMonth,
     announcements,
     isLoading,
     setSelectedFixtureId,
     selectedFixture,
-    upcomingAssignment,
     countdownStr,
     homeLineup,
     awayLineup,
@@ -78,11 +79,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
 
       {/* 3. MAIN DASHBOARD CONTENT AREA */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* TAB 1: OVERVIEW (MY GAMES TODAY + 3 ACTIONS) */}
+        {/* TAB 1: OVERVIEW (HERO NEXT MATCH + ANALYTICS) */}
         {activeTab === 'overview' && (
           <RefereeHomeOverview
-            todayMatches={todayMatches}
-            upcomingAssignment={upcomingAssignment}
+            nextMatch={nextMatch}
             countdownStr={countdownStr}
             announcements={announcements}
             profileData={profileData}
@@ -94,15 +94,19 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           />
         )}
 
-        {/* TAB 2: MATCHES (INLINE SCHEDULE GROUPED BY MONTH) */}
+        {/* TAB 2: MY MATCHES (TODAY'S MATCHES + MATCHDAY SCHEDULES & POPUP) */}
         {activeTab === 'matches' && (
           <MyMatchesView
-            matchesByMonth={matchesByMonth}
+            todayMatches={todayMatches}
+            matchdayGroups={matchdayGroups}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
+            onCancelMatch={cancelMatch}
+            onOpenWalkover={(match) => setWalkoverFixture(match)}
             setActiveTab={setActiveTab}
           />
         )}
+
 
         {/* TAB 3: ANNOUNCEMENTS (PRESIDENT BULLETINS + CRAFT TOOL) */}
         {activeTab === 'announcements' && (

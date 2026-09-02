@@ -219,25 +219,26 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
                   <span className="text-slate-400 flex items-center gap-2 font-bold">
                     <Phone className="w-4 h-4 text-emerald-500" /> Phone Contact:
                   </span>
-                  <span className="font-extrabold text-slate-800 dark:text-white font-mono">{profileData.phone}</span>
+                  <span className="font-extrabold text-slate-800 dark:text-white font-mono">{profileData.phone || 'Not Set'}</span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-2 font-bold">
                     <Mail className="w-4 h-4 text-amber-500" /> Official Email:
                   </span>
-                  <span className="font-extrabold text-slate-800 dark:text-white font-mono">{profileData.email}</span>
+                  <span className="font-extrabold text-slate-800 dark:text-white font-mono">{profileData.email || 'Not Set'}</span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-2 font-bold">
                     <MapPin className="w-4 h-4 text-rose-500" /> Association:
                   </span>
-                  <span className="font-extrabold text-slate-800 dark:text-white">{profileData.association}</span>
+                  <span className="font-extrabold text-slate-800 dark:text-white">{profileData.association || 'FKF Accredited Official'}</span>
                 </div>
               </div>
             )}
           </div>
+
 
           {/* Notification Preferences */}
           <div className="bg-white/80 dark:bg-[#0E1524]/80 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">

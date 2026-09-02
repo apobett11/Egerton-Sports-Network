@@ -13,6 +13,7 @@ import {
   Ban,
   FileCheck,
 } from 'lucide-react';
+import { useAuth } from '../../../../../contexts/AuthContext';
 import { useRefereeReconciliationAlgorithm } from '../../../../../hooks/useRefereeReconciliationAlgorithm';
 import type { Match } from '../../../../../types';
 import type { RefereeTab, PlayerLookupItem } from '../../types';
@@ -39,6 +40,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
   setActiveTab,
   onSuccess,
 }) => {
+  const { user } = useAuth();
   const matchUid = selectedFixture?.id;
   const {
     match,
@@ -48,6 +50,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
     isSubmitting,
     engineError,
     setEngineError,
+
     successMsg,
     setSuccessMsg,
     openWorkingSet,
@@ -58,7 +61,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
     confirmNormalResult,
     declareWalkover,
     cancelMatch,
-  } = useRefereeReconciliationAlgorithm(matchUid);
+  } = useRefereeReconciliationAlgorithm(matchUid, user?.id);
 
   // Workflow step
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);

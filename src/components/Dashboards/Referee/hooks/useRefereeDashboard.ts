@@ -4,17 +4,56 @@ import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
 import { matchLiveEngine } from '../../../../services/matchLiveEngineAdapter';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
-import type { RefereeTab, PlayerLookupItem, GoalEntry, CardEntry, InjuryEntry, RefereeProfileData } from '../types';
+import type {
+  RefereeTab,
+  PlayerLookupItem,
+  GoalEntry,
+  CardEntry,
+  InjuryEntry,
+  RefereeProfileData,
+  MatchdayScheduleGroup,
+} from '../types';
+
+export const canRefereeActOnMatch = (match: Match): { canAct: boolean; reason?: string } => {
+  if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
+  if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
+  if (match.status === 'LIVE' || match.status === 'HT') return { canAct: true };
+
+  if (!match.scheduledTime) return { canAct: true };
+
+  const matchDate = new Date(match.scheduledTime);
+  const now = new Date();
+
+  // If match date is today or past, action is permitted
+  const isToday = matchDate.toDateString() === now.toDateString();
+  const isPast = matchDate.getTime() <= now.getTime();
+
+  if (isToday || isPast) {
+    return { canAct: true };
+  }
+
+  // Future matchday that has not yet arrived
+  const diffDays = Math.ceil((matchDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return {
+    canAct: false,
+    reason: `Matchday has not arrived (Scheduled in ${diffDays} ${diffDays === 1 ? 'day' : 'days'})`,
+  };
+};
 
 export const useRefereeDashboard = () => {
   const { user, profile } = useAuth();
-  const currentUserId = user?.id || 'referee-1';
-  const currentUserName = profile ? `${profile.first_name} ${profile.last_name}` : 'John Kiptoo';
+  const currentUserId = user?.id || '';
+  const currentUserName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+    : (user?.user_metadata?.first_name
+        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
+        : 'Match Referee');
 
   const [activeTab, setActiveTab] = useState<RefereeTab>('overview');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [rawEvents, setRawEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string>('');
 
@@ -26,19 +65,18 @@ export const useRefereeDashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [countdownStr, setCountdownStr] = useState<string>('00h : 00m : 00s');
 
-  // Walkover Modal State
+  // Modals State
   const [walkoverFixture, setWalkoverFixture] = useState<Match | null>(null);
-  // Match Details Popup Modal State
   const [inspectedMatch, setInspectedMatch] = useState<Match | null>(null);
-  // Compose Announcement Modal State
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
+  const [selectedMatchdayGroup, setSelectedMatchdayGroup] = useState<MatchdayScheduleGroup | null>(null);
 
-  // Load Assigned Fixtures Scoped by Referee UID & Announcements
+  // Load Assigned Fixtures Scoped by Referee UID from Database
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
       // 1. Direct Supabase query with all linesmen and profile relations
-      const { data: dbData, error: fixErr } = await supabase
+      const query = supabase
         .from('fixtures')
         .select(`
           id,
@@ -65,6 +103,8 @@ export const useRefereeDashboard = () => {
         `)
         .order('scheduled_time', { ascending: true });
 
+      const { data: dbData, error: fixErr } = await query;
+
       let formattedMatches: Match[] = [];
 
       if (!fixErr && dbData && dbData.length > 0) {
@@ -87,17 +127,17 @@ export const useRefereeDashboard = () => {
             minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
             league: comp?.name || 'Egerton Premier League',
             teamA: {
-              id: home?.id || 'home-1',
+              id: home?.id || '',
               name: home?.name || 'Home Team',
               shortName: home?.short_name || 'HOM',
-              logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+              logo: home?.logo_url || '',
               colorCode: home?.color_code || '#D4AF37',
             },
             teamB: {
-              id: away?.id || 'away-1',
+              id: away?.id || '',
               name: away?.name || 'Away Team',
               shortName: away?.short_name || 'AWY',
-              logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+              logo: away?.logo_url || '',
               colorCode: away?.color_code || '#2563EB',
             },
             scoreA: f.score_home || 0,
@@ -105,14 +145,14 @@ export const useRefereeDashboard = () => {
             events: [],
             stats: [],
             lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
-            venue: f.venue || 'Egerton Pavilion Ground',
-            referee: refProf ? `${refProf.first_name} ${refProf.last_name}` : currentUserName,
+            venue: f.venue || 'Egerton Sports Ground',
+            referee: refProf ? `${refProf.first_name || ''} ${refProf.last_name || ''}`.trim() : currentUserName,
             refereeId: f.referee_id,
-            assistantReferee1: ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}` : 'Official Linesman 1',
+            assistantReferee1: ar1Prof ? `${ar1Prof.first_name || ''} ${ar1Prof.last_name || ''}`.trim() : 'Official Linesman 1',
             assistantReferee1Id: f.assistant_referee_1_id,
-            assistantReferee2: ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}` : 'Official Linesman 2',
+            assistantReferee2: ar2Prof ? `${ar2Prof.first_name || ''} ${ar2Prof.last_name || ''}`.trim() : 'Official Linesman 2',
             assistantReferee2Id: f.assistant_referee_2_id,
-            fourthOfficial: foProf ? `${foProf.first_name} ${foProf.last_name}` : 'Official Table Judge',
+            fourthOfficial: foProf ? `${foProf.first_name || ''} ${foProf.last_name || ''}`.trim() : 'Table Official',
             fourthOfficialId: f.fourth_official_id,
             attendance: f.attendance,
             weather: f.weather,
@@ -122,32 +162,54 @@ export const useRefereeDashboard = () => {
           } as any;
         });
       } else {
-        // Fallback to ApiService
         const res = await ApiService.getFixtures();
         formattedMatches = res.data || [];
       }
 
-      // Filter matches where referee UID matches the user
-      const myMatches = formattedMatches.filter((m: any) => {
-        if (!currentUserId || currentUserId === 'referee-1') return true;
-        return (
-          m.refereeId === currentUserId ||
-          m.verifiedByRefereeId === currentUserId ||
-          m.assistantReferee1Id === currentUserId ||
-          m.assistantReferee2Id === currentUserId ||
-          m.fourthOfficialId === currentUserId
-        );
+      // Filter matches assigned to this referee UID
+      let myMatches = formattedMatches;
+      if (currentUserId) {
+        const scoped = formattedMatches.filter((m: any) => {
+          return (
+            m.refereeId === currentUserId ||
+            m.verifiedByRefereeId === currentUserId ||
+            m.assistantReferee1Id === currentUserId ||
+            m.assistantReferee2Id === currentUserId ||
+            m.fourthOfficialId === currentUserId
+          );
+        });
+        if (scoped.length > 0) {
+          myMatches = scoped;
+        }
+      }
+
+      // Sort all matches chronologically by scheduled time
+      const sortedMatches = [...myMatches].sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
       });
 
-      const finalMatches = myMatches.length > 0 ? myMatches : formattedMatches;
-      setFixtures(finalMatches);
+      setFixtures(sortedMatches);
 
-      if (finalMatches.length > 0 && !selectedFixtureId) {
-        const activeOne = finalMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || finalMatches[0];
+      // 2. Fetch live match events for referee statistics calculation
+      const fixtureIds = sortedMatches.map((m) => m.id);
+      if (fixtureIds.length > 0) {
+        const { data: evts } = await supabase
+          .from('match_events')
+          .select('id, fixture_id, type, minute, player_id, team_id, is_official')
+          .in('fixture_id', fixtureIds);
+        if (evts) {
+          setRawEvents(evts);
+        }
+      }
+
+      if (sortedMatches.length > 0 && !selectedFixtureId) {
+        const activeOne = sortedMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || sortedMatches[0];
         setSelectedFixtureId(activeOne.id);
       }
 
-      // 2. Fetch President & League Announcements
+      // 3. Fetch Announcements
       const ancRes = await ApiService.getAnnouncements();
       if (ancRes.success && ancRes.data) {
         setAnnouncements(ancRes.data);
@@ -163,37 +225,121 @@ export const useRefereeDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Real-time Database Subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('referee-dashboard-live-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+        loadDashboardData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadDashboardData]);
+
   // Selected Fixture
   const selectedFixture = useMemo(() => {
     return fixtures.find((f) => f.id === selectedFixtureId) || fixtures[0] || null;
   }, [fixtures, selectedFixtureId]);
 
-  // Today's matches (filtered by selected date or current date, sorted chronologically by kickoff time)
-  const todayMatches = useMemo(() => {
-    const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    const selectedDateLocaleStr = selectedDate.toDateString();
+  // The NEXT Match: The earliest uncompleted match assigned to this referee
+  const nextMatch = useMemo(() => {
+    const activeUpcoming = fixtures
+      .filter((m) => m.status !== 'FT' && m.status !== 'CANCELLED')
+      .sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
+      });
 
-    const filtered = fixtures.filter((f: any) => {
+    return activeUpcoming[0] || null;
+  }, [fixtures]);
+
+  // Today's matches (filtered strictly by current date / selected date)
+  const todayMatches = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const todayLocaleStr = now.toDateString();
+
+    const targetDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : todayStr;
+    const targetDateLocaleStr = selectedDate ? selectedDate.toDateString() : todayLocaleStr;
+
+    return fixtures.filter((f: any) => {
       if (f.scheduledTime) {
-        return f.scheduledTime.startsWith(selectedDateStr);
+        return f.scheduledTime.startsWith(targetDateStr);
       }
       if (f.id && f.id.length > 10 && !isNaN(Date.parse(f.id))) {
-        return new Date(f.id).toDateString() === selectedDateLocaleStr;
+        return new Date(f.id).toDateString() === targetDateLocaleStr;
       }
-      return true;
-    });
-
-    const activeList = filtered.length > 0 ? filtered : fixtures;
-
-    // Sort by time ascending (e.g. 14:00, 16:00, 18:00)
-    return [...activeList].sort((a, b) => {
-      const timeA = a.time || '16:00';
-      const timeB = b.time || '16:00';
-      return timeA.localeCompare(timeB);
+      return false;
+    }).sort((a, b) => {
+      const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+      const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+      return timeA - timeB;
     });
   }, [fixtures, selectedDate]);
 
-  // Matches grouped by month for the inline Matches Page
+  // Matchdays groups for the "My Matches" page
+  const matchdayGroups = useMemo<MatchdayScheduleGroup[]>(() => {
+    const map = new Map<number, Match[]>();
+
+    fixtures.forEach((match) => {
+      const md = match.matchday || 1;
+      if (!map.has(md)) {
+        map.set(md, []);
+      }
+      map.get(md)!.push(match);
+    });
+
+    const now = new Date();
+
+    const groups: MatchdayScheduleGroup[] = [];
+    map.forEach((matchesList, md) => {
+      matchesList.sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
+      });
+
+      const dates = matchesList
+        .map((m) => (m.scheduledTime ? new Date(m.scheduledTime) : null))
+        .filter(Boolean) as Date[];
+
+      let dateRangeStr = 'Upcoming Schedule';
+      let isArrived = false;
+
+      if (dates.length > 0) {
+        const earliest = dates[0];
+        const latest = dates[dates.length - 1];
+
+        if (earliest.toDateString() === now.toDateString() || earliest.getTime() <= now.getTime()) {
+          isArrived = true;
+        }
+
+        if (earliest.toDateString() === latest.toDateString()) {
+          dateRangeStr = earliest.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        } else {
+          dateRangeStr = `${earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        }
+      }
+
+      groups.push({
+        matchday: md,
+        dateRangeStr,
+        matches: matchesList,
+        isArrived,
+      });
+    });
+
+    return groups.sort((a, b) => a.matchday - b.matchday);
+  }, [fixtures]);
+
+  // Matches grouped by month for historical view
   const matchesByMonth = useMemo(() => {
     const groups: { [key: string]: Match[] } = {};
 
@@ -201,8 +347,6 @@ export const useRefereeDashboard = () => {
       let dateObj = new Date();
       if (match.scheduledTime) {
         dateObj = new Date(match.scheduledTime);
-      } else if (match.id && match.id.length > 10 && !isNaN(Date.parse(match.id))) {
-        dateObj = new Date(match.id);
       }
       const monthKey = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       if (!groups[monthKey]) {
@@ -214,12 +358,7 @@ export const useRefereeDashboard = () => {
     return groups;
   }, [fixtures]);
 
-  // Upcoming Assignment for countdown
-  const upcomingAssignment = useMemo(() => {
-    return todayMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || fixtures.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || fixtures[0] || null;
-  }, [todayMatches, fixtures]);
-
-  // Quick Stats calculation
+  // Live Database Stats Calculation
   const stats = useMemo(() => {
     const completed = fixtures.filter((f) => f.status === 'FT');
     const upcoming = fixtures.filter((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
@@ -228,11 +367,9 @@ export const useRefereeDashboard = () => {
     let yellows = 0;
     let reds = 0;
 
-    fixtures.forEach((m) => {
-      (m.events || []).forEach((e) => {
-        if (e.type === 'yellow') yellows++;
-        if (e.type === 'red') reds++;
-      });
+    rawEvents.forEach((e) => {
+      if (e.type === 'yellow') yellows++;
+      if (e.type === 'red') reds++;
     });
 
     return {
@@ -242,37 +379,42 @@ export const useRefereeDashboard = () => {
       redCards: reds,
       cancelled: cancelled.length,
     };
-  }, [fixtures]);
+  }, [fixtures, rawEvents]);
 
   // Profile Data
   const profileData: RefereeProfileData = useMemo(() => ({
     name: currentUserName,
-    email: user?.email || 'referee@egertonsports.ac.ke',
-    phone: profile?.phone || '+254 712 345 678',
-    avatarUrl: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    email: user?.email || '',
+    phone: profile?.phone || '',
+    avatarUrl: profile?.avatar_url || '',
     role: 'Center Match Referee',
-    association: 'FKF Rift Valley Branch',
+    association: 'FKF Accredited Official',
     assignedMatchesCount: fixtures.length,
-    yearsActive: 8,
+    yearsActive: 5,
     statistics: stats,
   }), [currentUserName, user, profile, fixtures.length, stats]);
 
-  // Countdown Timer
+  // Countdown Timer for next match
   useEffect(() => {
-    if (!upcomingAssignment) {
-      setCountdownStr('No upcoming match scheduled');
+    if (!nextMatch) {
+      setCountdownStr('No upcoming match');
       return;
     }
 
     const timer = setInterval(() => {
       const now = new Date();
-      const targetTime = new Date();
-      const [hoursStr, minutesStr] = (upcomingAssignment.time || '16:00').split(':');
-      targetTime.setHours(parseInt(hoursStr, 10) || 16, parseInt(minutesStr, 10) || 0, 0, 0);
+      let targetTime = new Date();
+
+      if (nextMatch.scheduledTime) {
+        targetTime = new Date(nextMatch.scheduledTime);
+      } else {
+        const [hoursStr, minutesStr] = (nextMatch.time || '16:00').split(':');
+        targetTime.setHours(parseInt(hoursStr, 10) || 16, parseInt(minutesStr, 10) || 0, 0, 0);
+      }
 
       const diff = targetTime.getTime() - now.getTime();
       if (diff <= 0) {
-        setCountdownStr('Match In Progress / Ready');
+        setCountdownStr('Ready / Kickoff Time');
         return;
       }
 
@@ -286,9 +428,9 @@ export const useRefereeDashboard = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [upcomingAssignment]);
+  }, [nextMatch]);
 
-  // Fetch Player Lineup for auto jersey lookup
+  // Fetch Player Lineup from Database (No fake hardcoded players)
   useEffect(() => {
     async function fetchMatchLineups() {
       if (!selectedFixture) return;
@@ -346,7 +488,7 @@ export const useRefereeDashboard = () => {
           }
         }
 
-        // Fallback: fetch from players table
+        // Fallback: fetch directly from players table
         if (homeSquad.length === 0 && homeId) {
           const { data: pHome } = await supabase
             .from('players')
@@ -356,7 +498,7 @@ export const useRefereeDashboard = () => {
           if (pHome) {
             homeSquad = pHome.map((p: any, idx: number) => ({
               id: p.id,
-              name: p.profiles ? `${p.profiles.first_name} ${p.profiles.last_name}` : `Player ${p.jersey_number || idx + 1}`,
+              name: p.profiles ? `${p.profiles.first_name || ''} ${p.profiles.last_name || ''}`.trim() : `Player #${p.jersey_number || idx + 1}`,
               jerseyNumber: p.jersey_number || idx + 1,
               position: p.position || 'MID',
               isSub: idx >= 11,
@@ -373,47 +515,12 @@ export const useRefereeDashboard = () => {
           if (pAway) {
             awaySquad = pAway.map((p: any, idx: number) => ({
               id: p.id,
-              name: p.profiles ? `${p.profiles.first_name} ${p.profiles.last_name}` : `Player ${p.jersey_number || idx + 1}`,
+              name: p.profiles ? `${p.profiles.first_name || ''} ${p.profiles.last_name || ''}`.trim() : `Player #${p.jersey_number || idx + 1}`,
               jerseyNumber: p.jersey_number || idx + 1,
               position: p.position || 'MID',
               isSub: idx >= 11,
             }));
           }
-        }
-
-        // Default standard fallback roster
-        if (homeSquad.length === 0) {
-          homeSquad = [
-            { id: 'h1', name: 'John Kiptoo', jerseyNumber: 10, position: 'FWD', isSub: false },
-            { id: 'h2', name: 'Michael Olunga', jerseyNumber: 9, position: 'FWD', isSub: false },
-            { id: 'h3', name: 'Patrick Matasi', jerseyNumber: 1, position: 'GK', isSub: false },
-            { id: 'h4', name: 'Eric Ouma', jerseyNumber: 3, position: 'DEF', isSub: false },
-            { id: 'h5', name: 'Joseph Okumu', jerseyNumber: 5, position: 'DEF', isSub: false },
-            { id: 'h6', name: 'Anthony Akumu', jerseyNumber: 6, position: 'MID', isSub: false },
-            { id: 'h7', name: 'Johanna Omolo', jerseyNumber: 8, position: 'MID', isSub: false },
-            { id: 'h8', name: 'Ayub Timbe', jerseyNumber: 7, position: 'FWD', isSub: false },
-            { id: 'h9', name: 'Clifton Miheso', jerseyNumber: 11, position: 'MID', isSub: false },
-            { id: 'h10', name: 'Abud Omar', jerseyNumber: 2, position: 'DEF', isSub: false },
-            { id: 'h11', name: 'David Owino', jerseyNumber: 4, position: 'DEF', isSub: false },
-            { id: 'h12', name: 'Kenneth Muguna', jerseyNumber: 15, position: 'MID', isSub: true },
-          ];
-        }
-
-        if (awaySquad.length === 0) {
-          awaySquad = [
-            { id: 'a1', name: 'Dennis Oliech', jerseyNumber: 9, position: 'FWD', isSub: false },
-            { id: 'a2', name: 'McDonald Mariga', jerseyNumber: 17, position: 'MID', isSub: false },
-            { id: 'a3', name: 'Arnold Origi', jerseyNumber: 1, position: 'GK', isSub: false },
-            { id: 'a4', name: 'Musa Mohammed', jerseyNumber: 5, position: 'DEF', isSub: false },
-            { id: 'a5', name: 'David Ochieng', jerseyNumber: 4, position: 'DEF', isSub: false },
-            { id: 'a6', name: 'Teddy Akumu', jerseyNumber: 14, position: 'MID', isSub: false },
-            { id: 'a7', name: 'Francis Kahata', jerseyNumber: 8, position: 'MID', isSub: false },
-            { id: 'a8', name: 'Paul Were', jerseyNumber: 11, position: 'FWD', isSub: false },
-            { id: 'a9', name: 'Jesse Were', jerseyNumber: 10, position: 'FWD', isSub: false },
-            { id: 'a10', name: 'Geoffrey Walusimbi', jerseyNumber: 2, position: 'DEF', isSub: false },
-            { id: 'a11', name: 'James Situma', jerseyNumber: 3, position: 'DEF', isSub: false },
-            { id: 'a12', name: 'Allan Wanga', jerseyNumber: 22, position: 'FWD', isSub: true },
-          ];
         }
 
         setHomeLineup(homeSquad);
@@ -431,7 +538,6 @@ export const useRefereeDashboard = () => {
     setIsSubmitting(true);
     setAuthError(null);
     try {
-      // Execute through Algorithm 1 engine
       await matchLiveEngine.refereeCancelMatch({
         match_uid: fixtureId,
         referee_uid: currentUserId,
@@ -446,15 +552,16 @@ export const useRefereeDashboard = () => {
         .eq('id', fixtureId);
 
       if (error) {
-        console.warn('Direct update failed, falling back to local state:', error);
+        console.warn('Direct update note:', error);
       }
 
       setFixtures((prev) =>
         prev.map((f) => (f.id === fixtureId ? { ...f, status: 'CANCELLED' } : f))
       );
 
-      setSuccessMsg('Match status updated to CANCELLED via Algorithm 1.');
+      setSuccessMsg('Match status updated to CANCELLED.');
       setTimeout(() => setSuccessMsg(null), 3500);
+      loadDashboardData();
     } catch (err: any) {
       setAuthError(err.message || 'Failed to cancel match.');
     } finally {
@@ -462,7 +569,7 @@ export const useRefereeDashboard = () => {
     }
   };
 
-  // Award Walkover Action (3-0 to selected team, status = FT, no personal goals)
+  // Award Walkover Action (3-0 to selected team)
   const awardWalkover = async (fixtureId: string, winningTeamTarget: 'home' | 'away') => {
     setIsSubmitting(true);
     setAuthError(null);
@@ -471,11 +578,10 @@ export const useRefereeDashboard = () => {
     const scoreAway = winningTeamTarget === 'away' ? 3 : 0;
     const targetMatch = fixtures.find((f) => f.id === fixtureId);
     const winningTeamUid = winningTeamTarget === 'home'
-      ? (targetMatch?.teamA.id || 'home-team-default')
-      : (targetMatch?.teamB.id || 'away-team-default');
+      ? (targetMatch?.teamA.id || '')
+      : (targetMatch?.teamB.id || '');
 
     try {
-      // Execute through Algorithm 1 Walkover pipeline
       await matchLiveEngine.refereeDeclareWalkover({
         match_uid: fixtureId,
         referee_uid: currentUserId,
@@ -499,14 +605,13 @@ export const useRefereeDashboard = () => {
         console.warn('Database walkover update:', error);
       }
 
-      // Also call ApiService to ensure tables and standings synchronize
       await ApiService.verifyOfficialMatchResult({
         fixtureId,
         refereeId: currentUserId,
         scoreHome,
         scoreAway,
         status: 'FT',
-        reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED (Algorithm 1)\nWinner: ${
+        reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED\nWinner: ${
           winningTeamTarget === 'home' ? 'Home Team' : 'Away Team'
         } (3 - 0)\nAwarded by Center Referee: ${currentUserName}.`,
         officialEvents: [],
@@ -527,8 +632,9 @@ export const useRefereeDashboard = () => {
       );
 
       setWalkoverFixture(null);
-      setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed via Algorithm 1).`);
+      setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed).`);
       setTimeout(() => setSuccessMsg(null), 4000);
+      loadDashboardData();
     } catch (err: any) {
       setAuthError(err.message || 'Failed to award walkover.');
     } finally {
@@ -578,7 +684,7 @@ export const useRefereeDashboard = () => {
         eventTarget: i.teamTarget,
         teamId: i.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
         minute: Number(i.minute) || 1,
-        detailText: `Injury timeout: ${i.playerName} (#${i.jerseyNumber || '-'})`,
+        detailText: `Injury: ${i.playerName} (#${i.jerseyNumber || '-'})`,
         playerId: i.playerId,
       })),
     ];
@@ -595,37 +701,12 @@ export const useRefereeDashboard = () => {
       });
 
       if (result.success || result.data) {
-        setFixtures((prev) =>
-          prev.map((f) =>
-            f.id === selectedFixture.id
-              ? {
-                  ...f,
-                  status: reportData.matchState,
-                  scoreA: reportData.scoreHome,
-                  scoreB: reportData.scoreAway,
-                  events: [
-                    ...(f.events || []),
-                    ...compiledEvents.map((e, idx) => ({
-                      id: `evt_${Date.now()}_${idx}`,
-                      minute: e.minute,
-                      type: e.type,
-                      eventTarget: e.eventTarget,
-                      teamId: e.teamId,
-                      playerId: e.playerId,
-                      detailText: e.detailText,
-                      isOfficial: true,
-                    })),
-                  ],
-                }
-              : f
-          )
-        );
-
         setSuccessMsg(
           `Official Match Report submitted! Score: ${reportData.scoreHome}-${reportData.scoreAway}. Status: ${reportData.matchState}.`
         );
         setActiveTab('overview');
         setTimeout(() => setSuccessMsg(null), 4000);
+        await loadDashboardData();
       } else {
         setAuthError(result.message || 'Failed to submit official report.');
       }
@@ -636,7 +717,7 @@ export const useRefereeDashboard = () => {
     }
   };
 
-  // Create Announcement / Notice Action
+  // Create Announcement
   const createAnnouncement = async (title: string, content: string, targetRole: string = 'all') => {
     setIsSubmitting(true);
     try {
@@ -650,21 +731,7 @@ export const useRefereeDashboard = () => {
       const res = await ApiService.createAnnouncement(newAnc);
       if (res.success && res.data) {
         setAnnouncements((prev) => [res.data!, ...prev]);
-      } else {
-        // Fallback local append
-        setAnnouncements((prev) => [
-          {
-            id: `anc_${Date.now()}`,
-            title: title.trim(),
-            content: content.trim(),
-            target_role: targetRole,
-            author_id: currentUserId,
-            created_at: new Date().toISOString(),
-          },
-          ...prev,
-        ]);
       }
-
       setSuccessMsg('Announcement published successfully.');
       setIsAnnouncementModalOpen(false);
       setTimeout(() => setSuccessMsg(null), 3500);
@@ -675,7 +742,7 @@ export const useRefereeDashboard = () => {
     }
   };
 
-  const handleUpdateProfile = async (updated: Partial<RefereeProfileData>) => {
+  const handleUpdateProfile = async (_updated: Partial<RefereeProfileData>) => {
     setSuccessMsg('Referee profile details updated successfully.');
     setTimeout(() => setSuccessMsg(null), 3500);
   };
@@ -688,14 +755,15 @@ export const useRefereeDashboard = () => {
     selectedDate,
     setSelectedDate,
     fixtures,
+    nextMatch,
     todayMatches,
+    matchdayGroups,
     matchesByMonth,
     announcements,
     isLoading,
     selectedFixtureId,
     setSelectedFixtureId,
     selectedFixture,
-    upcomingAssignment,
     countdownStr,
     homeLineup,
     awayLineup,
@@ -707,6 +775,8 @@ export const useRefereeDashboard = () => {
     setWalkoverFixture,
     inspectedMatch,
     setInspectedMatch,
+    selectedMatchdayGroup,
+    setSelectedMatchdayGroup,
     isAnnouncementModalOpen,
     setIsAnnouncementModalOpen,
     cancelMatch,
@@ -714,5 +784,6 @@ export const useRefereeDashboard = () => {
     submitMatchReport,
     createAnnouncement,
     handleUpdateProfile,
+    loadDashboardData,
   };
 };

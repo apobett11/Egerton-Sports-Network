@@ -154,7 +154,9 @@ export interface Match {
   captainNotesA?: string;
   captainNotesB?: string;
   verifiedByRefereeId?: string;
+  scheduledTime?: string;
 }
+
 
 export interface NewsItem {
   id: string;

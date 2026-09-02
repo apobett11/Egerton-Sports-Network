@@ -67,3 +67,11 @@ export interface MatchOfficialsDetail {
   assistantReferee2?: string;
   fourthOfficial?: string;
 }
+
+export interface MatchdayScheduleGroup {
+  matchday: number;
+  dateRangeStr: string;
+  matches: import('../../../types').Match[];
+  isArrived: boolean;
+}
+
