@@ -39,6 +39,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     articles,
     notifications,
     performanceMetrics,
+    currentUserProfile,
     isMatchSelectorOpen,
     setIsMatchSelectorOpen,
     isComposeModalOpen,
@@ -210,7 +211,8 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         <main className="lg:col-span-9 space-y-6">
           {activeTab === 'home' && (
             <JournalistHomeView
-              currentEvent={currentEvent}
+              matches={matches}
+              onSelectMatchForEvents={selectCurrentEvent}
               onOpenMatchSelector={() => setIsMatchSelectorOpen(true)}
               onOpenCompose={() => openComposeModal()}
               onNavigateTab={(tab) => setActiveTab(tab)}
@@ -302,7 +304,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         isOpen={isMatchSelectorOpen}
         onClose={() => setIsMatchSelectorOpen(false)}
         matches={matches}
-        currentEventId={currentEvent.id}
+        currentEventId={currentEvent?.id || ''}
         onSelectMatch={selectCurrentEvent}
         cardBg={cardBg}
       />
@@ -336,6 +338,8 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+        currentUserProfile={currentUserProfile}
+        performanceMetrics={performanceMetrics}
         cardBg={cardBg}
       />
 

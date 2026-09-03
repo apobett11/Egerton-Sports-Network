@@ -95,7 +95,7 @@ export interface CurrentMatchEvent {
   awayLogo?: string;
   scoreHome: number;
   scoreAway: number;
-  status: 'LIVE' | 'HT' | 'FT' | 'UPCOMING';
+  status: 'LIVE' | 'HT' | 'FT' | 'UPCOMING' | 'SECOND_HALF';
   minute?: string;
   kickoff: string;
   time: string;

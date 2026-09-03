@@ -1386,7 +1386,7 @@ function buildAlgorithm3TimeConfig(
         slots: (tc.slots && tc.slots.length > 0 ? tc.slots : defaultSlots) as any,
       });
       // Also preserve original league_id alias if different
-      if (tc.league_id !== targetUid) {
+      if ((tc.league_id as string) !== targetUid) {
         configs.push({
           league_id: tc.league_id,
           slots: (tc.slots && tc.slots.length > 0 ? tc.slots : defaultSlots) as any,
