@@ -19,6 +19,7 @@ import type {
   MatchSquad,
   SquadPlayer,
 } from '../../../../../services/matchLiveEngineAdapter';
+import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
 
 interface JournalistLiveReportingPanelProps {
   currentEvent: CurrentMatchEvent;
@@ -371,90 +372,18 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
         </div>
       </div>
 
-      {/* LIVE EVENT TIMELINE FEED */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400">
-          <span>Active Match Event Stream ({activeEvents.length} active)</span>
-          <span className="text-[11px] text-emerald-500 font-bold">Auto Disciplinary Check Active</span>
-        </div>
-
-        {activeEvents.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-2">
-            <Clock className="w-8 h-8 text-slate-400 mx-auto" />
-            <p className="text-xs font-bold text-slate-400">No live events recorded yet for this match.</p>
-            <p className="text-[11px] text-slate-500">Use the buttons above to log goals, cards, and injuries in realtime.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {activeEvents.map((evt: MatchEvent) => {
-              const isHome = evt.team_uid === homeTeamUid;
-              const teamName = isHome ? currentEvent.homeTeam : currentEvent.awayTeam;
-              const player = currentTeamSquad.find((p: SquadPlayer) => p.player_uid === evt.player_uid);
-
-              return (
-                <div
-                  key={evt.event_uid}
-                  className={`p-3.5 rounded-2xl border ${cardBg} flex items-center justify-between gap-3 text-xs shadow-xs transition-all`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-mono font-black text-emerald-500 text-xs shrink-0">
-                      {evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : "—'"}
-                    </span>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-slate-900 dark:text-slate-100">
-                          {evt.type === 'GOAL' ? '⚽ Goal' : evt.type === 'CARD' ? (evt.card_type === 'RED' ? '🟥 Red Card' : '🟨 Yellow Card') : '🩹 Injury'}
-                        </span>
-                        {evt.goal_type && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-                            {evt.goal_type}
-                          </span>
-                        )}
-                        {evt.derived_red && (
-                          <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-500 text-[10px] font-black border border-rose-500/30">
-                            Derived Red (2nd Yellow)
-                          </span>
-                        )}
-                        <span className="text-[11px] text-slate-400">• {teamName}</span>
-                      </div>
-
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {player ? `${player.display_name} (#${player.jersey_number})` : evt.player_uid ? `Player ${evt.player_uid}` : 'Player Unassigned'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ACTION CONTROLS: EDIT & CANCEL */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => {
-                        setEditingEvent(evt);
-                        setSelectedTeamUid(evt.team_uid);
-                        setSelectedPlayerUid(evt.player_uid || '');
-                        setMinuteStr(evt.minute !== null && evt.minute !== undefined ? String(evt.minute) : '1');
-                        setSelectedPeriod(evt.period || 'FIRST_HALF');
-                        if (evt.goal_type) setGoalType(evt.goal_type);
-                        if (evt.card_type) setCardType(evt.card_type);
-                      }}
-                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                      title="Edit event"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setCancellingEventUid(evt.event_uid)}
-                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                      title="Cancel event"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* MATCH EVENTS DETAIL VIEW: CENTRAL MINUTE TIMELINE WITH MINI POPUP & SAVE */}
+      <div className="pt-2">
+        <MatchEventsDetailView
+          matchId={matchUid}
+          initialMatch={currentEvent}
+          canEdit={!isMatchFinished}
+          role="journalist"
+          onMatchUpdated={() => {
+            refreshState();
+            triggerToast('Live match state updated from database.');
+          }}
+        />
       </div>
 
       {/* MODAL 1: ADD GOAL */}

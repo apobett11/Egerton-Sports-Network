@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Match, MatchEvent } from '../../types';
+import { MatchEventsDetailView } from '../shared/MatchEventsDetailView';
 
 interface SummaryProps {
     match: Match;
@@ -97,74 +98,13 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                 </div>
             </div>
 
-            {/* 2. CHRONOLOGICAL TIMELINE (1ST HALF & 2ND HALF) */}
-            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-                {/* 1ST HALF HEADER */}
-                <div className="px-4 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-center text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                    1ST HALF
-                </div>
-
-                {firstHalfEvents.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">No events in 1st half</div>
-                ) : (
-                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {firstHalfEvents.map((ev) => {
-                            const isHome = ev.teamId === teamA.id;
-                            return (
-                                <div key={ev.id} className="grid grid-cols-[1fr_40px_1fr] items-center px-3 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                    {/* Home Event */}
-                                    <div className="flex justify-end pr-3">
-                                        {isHome ? renderEventContent(ev) : null}
-                                    </div>
-
-                                    {/* Minute Badge */}
-                                    <div className="text-center font-mono font-black text-xs text-[#ff0046]">
-                                        {ev.minute}'
-                                    </div>
-
-                                    {/* Away Event */}
-                                    <div className="flex justify-start pl-3">
-                                        {!isHome ? renderEventContent(ev) : null}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {/* 2ND HALF HEADER */}
-                <div className="px-4 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-t border-b border-[#e6e8ec] dark:border-[#1a2e45] text-center text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                    2ND HALF
-                </div>
-
-                {secondHalfEvents.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">No events in 2nd half</div>
-                ) : (
-                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {secondHalfEvents.map((ev) => {
-                            const isHome = ev.teamId === teamA.id;
-                            return (
-                                <div key={ev.id} className="grid grid-cols-[1fr_40px_1fr] items-center px-3 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                                    {/* Home Event */}
-                                    <div className="flex justify-end pr-3">
-                                        {isHome ? renderEventContent(ev) : null}
-                                    </div>
-
-                                    {/* Minute Badge */}
-                                    <div className="text-center font-mono font-black text-xs text-[#ff0046]">
-                                        {ev.minute}'
-                                    </div>
-
-                                    {/* Away Event */}
-                                    <div className="flex justify-start pl-3">
-                                        {!isHome ? renderEventContent(ev) : null}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+            {/* 2. CHRONOLOGICAL TIMELINE: MINUTE IN THE MIDDLE & NON-OVERLAPPING EVENTS */}
+            <MatchEventsDetailView
+                matchId={match.id}
+                initialMatch={match}
+                canEdit={false}
+                role="guest"
+            />
 
             {/* 3. MATCH INFORMATION CARD */}
             <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 text-xs space-y-2 shadow-xs">

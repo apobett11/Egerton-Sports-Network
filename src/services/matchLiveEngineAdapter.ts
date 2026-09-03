@@ -623,6 +623,53 @@ export class SupabaseMatchRepository implements MatchRepository {
         localStore.liveEvents.set(match_uid, events);
         return events;
       }
+
+      // Check match_events table by match_uid (fixture_id) if match_live_events has no events
+      const { data: meData } = await supabase
+        .from('match_events')
+        .select('*')
+        .eq('fixture_id', match_uid)
+        .order('minute', { ascending: true });
+
+      if (meData && meData.length > 0) {
+        const events: MatchEvent[] = meData.map((d: any) => {
+          let eventType: any = 'GOAL';
+          let goalType: any = undefined;
+          let cardType: any = undefined;
+          const lowerType = (d.type || '').toLowerCase();
+          if (lowerType === 'goal' || lowerType === 'penalty' || lowerType === 'own_goal') {
+            eventType = 'GOAL';
+            goalType = lowerType === 'penalty' ? 'PENALTY' : 'TAP_IN';
+          } else if (lowerType === 'yellow' || lowerType === 'red') {
+            eventType = 'CARD';
+            cardType = lowerType === 'yellow' ? 'YELLOW' : 'RED';
+          } else if (lowerType === 'injury') {
+            eventType = 'INJURY';
+          }
+
+          return {
+            event_uid: d.id,
+            match_uid: d.fixture_id,
+            team_uid: d.team_id,
+            player_uid: d.player_id,
+            player_number: null,
+            type: eventType,
+            goal_type: goalType,
+            card_type: cardType,
+            minute: d.minute,
+            period: d.minute <= 45 ? 'FIRST_HALF' : 'SECOND_HALF',
+            status: 'ACTIVE',
+            created_by_role: d.is_official ? 'REFEREE' : 'JOURNALIST',
+            created_by_uid: null,
+            idempotency_key: `evt_${d.id}`,
+            derived_red: false,
+            created_at: d.created_at || new Date().toISOString(),
+            updated_at: d.created_at || new Date().toISOString(),
+          } as unknown as MatchEvent;
+        });
+        localStore.liveEvents.set(match_uid, events);
+        return events;
+      }
     } catch {
       // Safe fallback to memory store
     }
@@ -944,3 +991,146 @@ export class SupabaseMatchPublisher implements MatchPublisher {
 export const matchRepository = new SupabaseMatchRepository();
 export const matchPublisher = new SupabaseMatchPublisher();
 export const matchLiveEngine = new MatchLiveInputEngine(matchRepository, matchPublisher);
+
+/**
+ * Universal Match Event & Score Synchronization Engine
+ * Persists all events and recalculates live match scores in the database using the match UID.
+ */
+export async function syncMatchEventsAndScores(
+  match_uid: UID,
+  events: MatchEvent[],
+  actor_role: 'JOURNALIST' | 'REFEREE' = 'JOURNALIST',
+  actor_uid: UID = 'user-1'
+): Promise<{ home_score: number; away_score: number }> {
+  const match = await matchRepository.getMatch(match_uid);
+  const score = calculateLiveScore(match, events);
+
+  // 1. Update In-Memory Cache
+  match.home_score = score.home_score;
+  match.away_score = score.away_score;
+  localStore.matches.set(match_uid, { ...match });
+  localStore.liveEvents.set(match_uid, [...events]);
+
+  const existingState = localStore.liveStates.get(match_uid);
+  const updatedState: LiveMatchState = {
+    match_uid,
+    status: existingState?.status || (match.status === 'SCHEDULED' ? 'LIVE' : match.status),
+    period: existingState?.period || 'FIRST_HALF',
+    home_score: score.home_score,
+    away_score: score.away_score,
+    active_events: events.filter((e) => e.status === 'ACTIVE'),
+    version: (existingState?.version || 1) + 1,
+    event_sequence: events.length,
+    updated_at: new Date().toISOString(),
+  };
+  localStore.liveStates.set(match_uid, updatedState);
+
+  // 2. Persist to Supabase Database using Match UID
+  try {
+    // 2.1 Update fixtures table with scores
+    await supabase
+      .from('fixtures')
+      .update({
+        score_home: score.home_score,
+        score_away: score.away_score,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', match_uid);
+
+    // 2.2 Upsert match_live_states table
+    await supabase
+      .from('match_live_states')
+      .upsert({
+        match_uid,
+        status: updatedState.status,
+        period: updatedState.period,
+        home_score: score.home_score,
+        away_score: score.away_score,
+        version: updatedState.version,
+        event_sequence: updatedState.event_sequence,
+        updated_at: updatedState.updated_at,
+      });
+
+    // 2.3 Persist active events to match_live_events & match_events
+    for (const evt of events) {
+      if (evt.status === 'ACTIVE') {
+        // Upsert match_live_events
+        await supabase
+          .from('match_live_events')
+          .upsert({
+            event_uid: evt.event_uid,
+            match_uid,
+            team_uid: evt.team_uid,
+            player_uid: evt.player_uid || null,
+            player_number: evt.player_number || null,
+            type: evt.type,
+            goal_type: evt.goal_type || null,
+            card_type: evt.card_type || null,
+            minute: evt.minute ?? 0,
+            period: evt.period || updatedState.period,
+            status: evt.status,
+            created_by_role: evt.created_by_role || actor_role,
+            created_by_uid: evt.created_by_uid || actor_uid,
+            idempotency_key: evt.idempotency_key || `evt_${evt.event_uid}`,
+            is_derived_red: evt.derived_red || false,
+            occurred_at: evt.created_at || new Date().toISOString(),
+          }, { onConflict: 'event_uid' });
+
+        // Upsert public match_events
+        await supabase
+          .from('match_events')
+          .upsert({
+            id: evt.event_uid,
+            fixture_id: match_uid,
+            minute: evt.minute ?? 0,
+            type: evt.type.toLowerCase(),
+            team_id: evt.team_uid,
+            player_id: evt.player_uid || null,
+            detail_text: `${evt.type}: ${evt.goal_type || evt.card_type || ''}`.trim(),
+            is_official: actor_role === 'REFEREE',
+            created_at: evt.created_at || new Date().toISOString(),
+          }, { onConflict: 'id' });
+      } else if (evt.status === 'CANCELLED') {
+        // Mark cancelled or delete in match_events
+        await supabase.from('match_events').delete().eq('id', evt.event_uid);
+        await supabase.from('match_live_events').update({ status: 'CANCELLED' }).eq('event_uid', evt.event_uid);
+      }
+    }
+
+    // 2.4 If Referee, also synchronize referee_working_sets
+    if (actor_role === 'REFEREE') {
+      await supabase
+        .from('referee_working_sets')
+        .upsert({
+          match_uid,
+          referee_uid: actor_uid,
+          status: 'OPEN',
+          home_score: score.home_score,
+          away_score: score.away_score,
+          events,
+          updated_at: new Date().toISOString(),
+        });
+    }
+  } catch (err) {
+    console.error('Database synchronization error in syncMatchEventsAndScores:', err);
+  }
+
+  // 3. Realtime Broadcast Notification
+  try {
+    await matchPublisher.publishRealtime({
+      type: 'LIVE_STATE_SNAPSHOT',
+      match_uid,
+      version: updatedState.version,
+      timestamp: updatedState.updated_at,
+      payload: {
+        home_score: score.home_score,
+        away_score: score.away_score,
+        event_count: events.length,
+      },
+    });
+  } catch {
+    // Non-blocking
+  }
+
+  return score;
+}

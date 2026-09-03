@@ -3,6 +3,7 @@ import {
   X, MapPin, Clock, CloudSun, UserCheck, ShieldCheck, 
   CheckCircle, XCircle, Trophy, Award, AlertCircle 
 } from 'lucide-react';
+import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
 import type { Match } from '../../../../../types';
 
 interface MatchDetailsModalProps {
@@ -190,49 +191,15 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
           </div>
         </div>
 
-        {/* Match Events Breakdown (Goals, Cards, Injuries) */}
-        {(goals.length > 0 || yellowCards.length > 0 || redCards.length > 0 || injuries.length > 0) && (
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" /> Recorded Match Events
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              {/* Goals */}
-              {goals.length > 0 && (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-1.5">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-[11px] block">
-                    ⚽ Goals ({goals.length})
-                  </span>
-                  {goals.map((g) => (
-                    <div key={g.id} className="text-[11px] text-slate-700 dark:text-slate-300">
-                      <strong>{g.minute}'</strong> — {g.detailText || 'Goal'}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Cards */}
-              {(yellowCards.length > 0 || redCards.length > 0) && (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-1.5">
-                  <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px] block">
-                    🟨 Cautions & Dismissals
-                  </span>
-                  {yellowCards.map((c) => (
-                    <div key={c.id} className="text-[11px] text-amber-700 dark:text-amber-300">
-                      <strong>{c.minute}'</strong> 🟨 {c.detailText || 'Yellow card'}
-                    </div>
-                  ))}
-                  {redCards.map((c) => (
-                    <div key={c.id} className="text-[11px] text-rose-700 dark:text-rose-300">
-                      <strong>{c.minute}'</strong> 🟥 {c.detailText || 'Red card'}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Match Events Timeline (Non-overlapping, live by match UID) */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <MatchEventsDetailView
+            matchId={match.id}
+            initialMatch={match}
+            canEdit={false}
+            role="referee"
+          />
+        </div>
 
         {/* Action Controls for Referee (End Match, Cancel Match, Walkover) */}
         {!isFinished && !isCancelled && (
