@@ -34,6 +34,7 @@ export const TeamDashboard: React.FC = () => {
     canPublish,
     teamId,
     teamFixtures,
+    linesmanMatches,
     announcements,
     publishedNews,
     isComposeModalOpen,
@@ -156,6 +157,7 @@ export const TeamDashboard: React.FC = () => {
               onApprovePracticeDay={handleApprovePracticeDay}
               onOpenInviteModal={() => setShowInviteModal(true)}
               matches={teamFixtures}
+              linesmanMatches={linesmanMatches}
               standings={standings}
             />
           )}

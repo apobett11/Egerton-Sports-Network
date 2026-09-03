@@ -581,11 +581,44 @@ export class SupabaseMatchRepository implements MatchRepository {
   }
 
   async getLiveEvents(match_uid: UID): Promise<MatchEvent[]> {
+    try {
+      const { data, error } = await supabase
+        .from('match_live_events')
+        .select('*')
+        .eq('match_uid', match_uid)
+        .order('occurred_at', { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        const events: MatchEvent[] = data.map((d: any) => ({
+          event_uid: d.event_uid,
+          match_uid: d.match_uid,
+          team_uid: d.team_uid,
+          player_uid: d.player_uid,
+          player_number: d.player_number,
+          type: d.type,
+          goal_type: d.goal_type,
+          card_type: d.card_type,
+          minute: d.minute,
+          period: d.period,
+          status: d.status,
+          created_by_role: d.created_by_role,
+          created_by_uid: d.created_by_uid,
+          idempotency_key: d.idempotency_key,
+          derived_red: d.is_derived_red,
+          created_at: d.occurred_at || new Date().toISOString(),
+          updated_at: d.occurred_at || new Date().toISOString(),
+        }));
+        localStore.liveEvents.set(match_uid, events);
+        return events;
+      }
+    } catch {
+      // Safe fallback to memory store
+    }
     return localStore.liveEvents.get(match_uid) || [];
   }
 
   async getEventByIdempotencyKey(match_uid: UID, idempotency_key: string): Promise<MatchEvent | null> {
-    const list = localStore.liveEvents.get(match_uid) || [];
+    const list = await this.getLiveEvents(match_uid);
     return list.find((e) => e.idempotency_key === idempotency_key) || null;
   }
 
@@ -654,6 +687,16 @@ export class SupabaseMatchRepository implements MatchRepository {
           occurred_at: event.updated_at,
         })
         .eq('event_uid', event.event_uid);
+
+      if (event.status === 'CANCELLED') {
+        // Clean up or mark cancelled in match_events
+        await supabase
+          .from('match_events')
+          .delete()
+          .eq('fixture_id', event.match_uid)
+          .eq('minute', event.minute ?? 0)
+          .eq('team_id', event.team_uid);
+      }
     } catch {
       // Safe fallback
     }

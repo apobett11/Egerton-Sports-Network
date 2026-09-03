@@ -15,8 +15,9 @@ import {
   Sparkles,
   Zap,
   CheckCircle2,
-  AlertCircle,
   Share2,
+  PlusCircle,
+  Activity,
 } from 'lucide-react';
 import {
   CurrentMatchEvent,
@@ -24,10 +25,10 @@ import {
   PerformanceMetrics,
   ARTICLE_CATEGORY_LABELS,
 } from '../../JournalistTypes';
-import { JournalistLiveReportingPanel } from '../LiveReporting/JournalistLiveReportingPanel';
 
 interface JournalistHomeViewProps {
-  currentEvent: CurrentMatchEvent;
+  matches: CurrentMatchEvent[];
+  onSelectMatchForEvents: (match: CurrentMatchEvent) => void;
   onOpenMatchSelector: () => void;
   onOpenCompose: () => void;
   onNavigateTab: (tab: 'articles' | 'analytics') => void;
@@ -40,7 +41,8 @@ interface JournalistHomeViewProps {
 }
 
 export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
-  currentEvent,
+  matches,
+  onSelectMatchForEvents,
   onOpenMatchSelector,
   onOpenCompose,
   onNavigateTab,
@@ -51,7 +53,20 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
   cardBg,
   hoverBg,
 }) => {
-  // Filter today's articles (max 3, newest first)
+  // Ongoing live matches filter (matches currently in progress today)
+  const ongoingMatches = matches.filter(
+    (m) =>
+      m.status === 'LIVE' ||
+      m.status === 'HT' ||
+      m.status === 'SECOND_HALF' ||
+      (m.status as string) === '1H' ||
+      (m.status as string) === '2H'
+  );
+
+  // Fallback today matches if no live ongoing ones (upcoming or recent today)
+  const displayMatches = ongoingMatches.length > 0 ? ongoingMatches : matches.slice(0, 3);
+
+  // Today's articles (max 3, newest first)
   const todayArticles = articles
     .filter((a) => a.isToday || a.status === 'published')
     .slice(0, 3);
@@ -63,132 +78,128 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. HERO MATCH EVENT CARD */}
-      <section className={`p-6 rounded-3xl border ${cardBg} space-y-5 shadow-xl relative overflow-hidden`}>
-        {/* Subtle Ambient Background Gradient */}
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* TOP STATUS BADGE & LEAGUE */}
-        <div className="flex items-center justify-between gap-2 relative z-10">
+      {/* 1. HERO SECTION: THIN MATCH STRIPS FOR CURRENT ONGOING EVENTS */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
-              <Layers className="w-3.5 h-3.5 text-emerald-500" />
-              {currentEvent.competition}
-            </span>
-
-            {currentEvent.matchday && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                Matchday {currentEvent.matchday}
-              </span>
-            )}
-
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider flex items-center gap-1.5 shadow-xs ${
-              currentEvent.status === 'LIVE'
-                ? 'bg-rose-600 text-white animate-pulse'
-                : currentEvent.status === 'HT'
-                ? 'bg-amber-500 text-slate-950 font-bold'
-                : currentEvent.status === 'FT'
-                ? 'bg-slate-700 text-slate-200'
-                : 'bg-emerald-600 text-white'
-            }`}>
-              {currentEvent.status === 'LIVE' && <span className="w-2 h-2 rounded-full bg-white animate-ping" />}
-              {currentEvent.status}
-            </span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+            <h2 className="font-black text-xs uppercase tracking-wider text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
+              <Radio className="w-4 h-4 text-rose-500" />
+              {ongoingMatches.length > 0 ? "Current Ongoing Matches (Click Strip to Log Events)" : "Today's Match Strips (Click to Manage Events)"}
+            </h2>
           </div>
-
-          {currentEvent.minute && (
-            <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-xl border border-emerald-500/30 shadow-xs">
-              {currentEvent.minute}
-            </span>
-          )}
-        </div>
-
-        {/* TEAMS & SCORE MATCH BOARD */}
-        <div className="py-3 flex items-center justify-between text-center gap-4 relative z-10">
-          {/* HOME TEAM */}
-          <div className="flex-1 space-y-2">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-white dark:bg-slate-800 p-2.5 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-md transform transition-transform hover:scale-105">
-              {currentEvent.homeLogo ? (
-                <img src={currentEvent.homeLogo} alt={currentEvent.homeTeam} className="w-full h-full object-contain" />
-              ) : (
-                <span className="font-black text-base text-emerald-600 dark:text-emerald-400">{currentEvent.homeTeam.slice(0, 2).toUpperCase()}</span>
-              )}
-            </div>
-            <h3 className="font-black text-sm md:text-base leading-tight text-slate-900 dark:text-slate-100">
-              {currentEvent.homeTeam}
-            </h3>
-          </div>
-
-          {/* SCORE / VS BOARD */}
-          <div className="px-5 py-2.5 rounded-2xl bg-slate-950 text-white border border-emerald-500/40 font-black text-2xl md:text-4xl tracking-widest font-mono shadow-2xl shrink-0 flex items-center justify-center gap-2">
-            {currentEvent.status === 'UPCOMING' ? (
-              <span className="text-sm uppercase tracking-widest text-slate-400">VS</span>
-            ) : (
-              <>
-                <span className="text-emerald-400">{currentEvent.scoreHome}</span>
-                <span className="text-slate-600 text-xl">-</span>
-                <span className="text-emerald-400">{currentEvent.scoreAway}</span>
-              </>
-            )}
-          </div>
-
-          {/* AWAY TEAM */}
-          <div className="flex-1 space-y-2">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-white dark:bg-slate-800 p-2.5 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-md transform transition-transform hover:scale-105">
-              {currentEvent.awayLogo ? (
-                <img src={currentEvent.awayLogo} alt={currentEvent.awayTeam} className="w-full h-full object-contain" />
-              ) : (
-                <span className="font-black text-base text-emerald-600 dark:text-emerald-400">{currentEvent.awayTeam.slice(0, 2).toUpperCase()}</span>
-              )}
-            </div>
-            <h3 className="font-black text-sm md:text-base leading-tight text-slate-900 dark:text-slate-100">
-              {currentEvent.awayTeam}
-            </h3>
-          </div>
-        </div>
-
-        {/* VENUE & KICKOFF META */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 dark:text-slate-400 pt-3 border-t border-slate-200/80 dark:border-slate-800 gap-2 relative z-10 font-semibold">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-              {currentEvent.venue}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-500" />
-              Kickoff: {currentEvent.kickoff}
-            </span>
-          </div>
-
-          {currentEvent.countdown && (
-            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
-              {currentEvent.countdown}
-            </span>
-          )}
-        </div>
-
-        {/* BUTTON: SEE OTHER GAMES */}
-        <div className="pt-1 relative z-10">
           <button
             onClick={onOpenMatchSelector}
-            className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 text-slate-800 dark:text-slate-200 font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700 group active:scale-[0.99]"
+            className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
           >
-            <Radio className="w-4 h-4 text-emerald-500 group-hover:text-white transition-colors" />
-            <span>Select Different Match Fixture</span>
+            <span>Browse All Fixtures</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {displayMatches.length === 0 ? (
+          <div className={`p-6 rounded-2xl border ${cardBg} text-center space-y-2 shadow-xs`}>
+            <Activity className="w-6 h-6 text-slate-400 mx-auto" />
+            <p className="text-xs font-bold text-slate-400">No matches found in database for today.</p>
+            <button
+              onClick={onOpenMatchSelector}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs cursor-pointer hover:bg-emerald-500"
+            >
+              Select Match from Archive
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {displayMatches.map((m) => {
+              const isLive = m.status === 'LIVE' || m.status === 'HT' || m.status === 'SECOND_HALF';
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => onSelectMatchForEvents(m)}
+                  className={`p-3.5 md:p-4 rounded-2xl border ${cardBg} ${hoverBg} transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-emerald-500/50 group flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative overflow-hidden`}
+                  title={`Click to open live events module for ${m.homeTeam} vs ${m.awayTeam}`}
+                >
+                  {/* Subtle live indicator left accent border */}
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                      isLive ? 'bg-rose-500' : 'bg-emerald-500'
+                    }`}
+                  />
+
+                  {/* LEFT: LEAGUE, STATUS & TEAMS */}
+                  <div className="flex items-center gap-3 md:gap-4 min-w-0 pl-1">
+                    {/* STATUS PILL */}
+                    <div className="shrink-0 flex flex-col items-center justify-center">
+                      <span
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-black tracking-wider flex items-center gap-1 shadow-xs ${
+                          isLive
+                            ? 'bg-rose-600 text-white animate-pulse'
+                            : m.status === 'FT'
+                            ? 'bg-slate-700 text-slate-200'
+                            : 'bg-emerald-600 text-white'
+                        }`}
+                      >
+                        {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                        {m.status}
+                      </span>
+                      {m.minute && (
+                        <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          {m.minute}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* TEAMS & SCORE */}
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        <Layers className="w-3 h-3 text-emerald-500" />
+                        <span className="truncate max-w-[200px]">{m.competition}</span>
+                        {m.venue && <span className="hidden md:inline">• {m.venue}</span>}
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="font-extrabold text-sm md:text-base text-slate-900 dark:text-slate-100 group-hover:text-emerald-500 transition-colors flex items-center gap-2 truncate">
+                          <span className="truncate">{m.homeTeam}</span>
+                          <span className="text-slate-400 font-normal">vs</span>
+                          <span className="truncate">{m.awayTeam}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT: SCORE DISPLAY & ACTION BUTTON */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                    {/* SCORE BOARD */}
+                    <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 text-white font-mono font-black text-base md:text-lg border border-emerald-500/40 shadow-xs flex items-center gap-2">
+                      {m.status === 'UPCOMING' ? (
+                        <span className="text-xs uppercase text-slate-400">VS</span>
+                      ) : (
+                        <>
+                          <span className="text-emerald-400">{m.scoreHome}</span>
+                          <span className="text-slate-600 text-sm">-</span>
+                          <span className="text-emerald-400">{m.scoreAway}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* CLICK TO LOG EVENTS PROMPT */}
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-all text-xs font-black">
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      <span>Log Events</span>
+                      <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* 1B. ALGORITHM 1 LIVE EVENT INTAKE ENGINE */}
-      <JournalistLiveReportingPanel
-        currentEvent={currentEvent}
-        cardBg={cardBg}
-        hoverBg={hoverBg}
-        triggerToast={triggerToast}
-      />
+      {/* SPACE SEPARATION */}
+      <div className="h-2" />
 
-      {/* 2. QUICK ACTIONS COMMAND BAR (STREAMLINED BUTTONS, NOT BRICKS) */}
+      {/* 2. NEWSROOM ACTIONS (QUICK COMMANDS) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="font-black text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -252,7 +263,7 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
 
           {/* BUTTON 4: BOOKMARKS / PRESS RELEASES (VIBRANT AMBER) */}
           <button
-            onClick={() => triggerToast('Press releases and bookmarked coverage desk loaded.')}
+            onClick={() => triggerToast('Press releases desk loaded.')}
             className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-amber-900/20 border border-amber-300/40 flex items-center gap-3 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer group text-left"
           >
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0 group-hover:rotate-6 transition-transform shadow-xs">
@@ -268,7 +279,7 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
         </div>
       </section>
 
-      {/* 3. EXECUTIVE ANALYTICS DASHBOARD STRIP */}
+      {/* 3. EDITORIAL ANALYTICS (FETCHING FROM DATABASE) */}
       <section className={`p-6 rounded-3xl border ${cardBg} space-y-5 shadow-xl relative overflow-hidden`}>
         {/* HEADER WITH REAL-TIME INDICATOR */}
         <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 gap-2">

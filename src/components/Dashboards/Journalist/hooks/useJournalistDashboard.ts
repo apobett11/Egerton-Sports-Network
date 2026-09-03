@@ -11,13 +11,6 @@ import {
   ProfileUser,
 } from '../JournalistTypes';
 import {
-  INITIAL_PERFORMANCE,
-  INITIAL_NOTIFICATIONS,
-  MOCK_MATCHES,
-  MOCK_COMPETITIONS,
-  MOCK_TEAMS,
-} from '../JournalistMockData';
-import {
   getAuthenticatedProfile,
   fetchNewsArticlesFromDB,
   uploadImageToStorage,
@@ -26,6 +19,25 @@ import {
   deleteNewsArticleDB,
   calculateAnalyticsFromDB,
 } from '../lib/supabaseClient';
+
+const EMPTY_PERFORMANCE: PerformanceMetrics = {
+  articlesToday: 0,
+  articlesThisWeek: 0,
+  articlesThisMonth: 0,
+  publishedCount: 0,
+  draftsCount: 0,
+  flaggedCount: 0,
+  impressions: 0,
+  engagementRate: 0,
+  reads: 0,
+  avgReadTime: '0m',
+  shares: 0,
+  topArticle: 'None',
+  topCompetition: 'Egerton Premier League',
+  mostCoveredTeam: 'None',
+  monthlyStats: [],
+  matchdayStats: [],
+};
 
 export const useJournalistDashboard = () => {
   // Navigation & Theme State
@@ -42,19 +54,19 @@ export const useJournalistDashboard = () => {
   // Authenticated Profile
   const [currentUserProfile, setCurrentUserProfile] = useState<ProfileUser | null>(null);
 
-  // Current Event State
-  const [matches, setMatches] = useState<CurrentMatchEvent[]>(MOCK_MATCHES);
-  const [currentEvent, setCurrentEvent] = useState<CurrentMatchEvent>(MOCK_MATCHES[0]);
-
-  // Data Collections (Database Driven)
-  const [competitions, setCompetitions] = useState<OptionItem[]>(MOCK_COMPETITIONS);
-  const [teams, setTeams] = useState<OptionItem[]>(MOCK_TEAMS);
+  // Collections (100% Database Driven)
+  const [matches, setMatches] = useState<CurrentMatchEvent[]>([]);
+  const [currentEvent, setCurrentEvent] = useState<CurrentMatchEvent | null>(null);
+  const [competitions, setCompetitions] = useState<OptionItem[]>([]);
+  const [teams, setTeams] = useState<OptionItem[]>([]);
   const [articles, setArticles] = useState<ArticlePost[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>(INITIAL_PERFORMANCE);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>(EMPTY_PERFORMANCE);
 
   // Modals & Drawers
   const [isMatchSelectorOpen, setIsMatchSelectorOpen] = useState<boolean>(false);
+  const [isMatchEventsModalOpen, setIsMatchEventsModalOpen] = useState<boolean>(false);
+  const [selectedMatchForEvents, setSelectedMatchForEvents] = useState<CurrentMatchEvent | null>(null);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
   const [isViewArticleModalOpen, setIsViewArticleModalOpen] = useState<boolean>(false);
   const [viewingArticle, setViewingArticle] = useState<ArticlePost | null>(null);
@@ -63,7 +75,7 @@ export const useJournalistDashboard = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Simplified Article Composer Form State
+  // Article Composer Form State
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
   const [composeType, setComposeType] = useState<ArticleCategory>('breaking_news');
   const [composeHeadline, setComposeHeadline] = useState<string>('');
@@ -87,6 +99,7 @@ export const useJournalistDashboard = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsMatchSelectorOpen(false);
+        setIsMatchEventsModalOpen(false);
         setIsComposeModalOpen(false);
         setIsViewArticleModalOpen(false);
         setIsProfileOpen(false);
@@ -117,12 +130,12 @@ export const useJournalistDashboard = () => {
         setCurrentUserProfile(prof);
       }
 
-      // 2. Fetch Fixtures
+      // 2. Fetch Fixtures from DB
       const fixRes = await ApiService.getFixtures();
-      if (fixRes.success && fixRes.data && fixRes.data.length > 0) {
+      if (fixRes.success && fixRes.data) {
         const dbMatches: CurrentMatchEvent[] = fixRes.data.map((f) => ({
           id: f.id,
-          competition: f.league || 'Egerton League',
+          competition: f.league || 'Egerton Premier League',
           competitionId: f.league,
           homeTeam: f.teamA?.name || 'Home Team',
           homeTeamId: f.teamA?.id,
@@ -140,14 +153,14 @@ export const useJournalistDashboard = () => {
           matchday: (f as any).matchday || 1,
         }));
         setMatches(dbMatches);
-        if (dbMatches.length > 0) {
+        if (dbMatches.length > 0 && !currentEvent) {
           setCurrentEvent(dbMatches[0]);
         }
       }
 
-      // 3. Fetch Competitions
+      // 3. Fetch Competitions from DB
       const leaguesRes = await ApiService.getLeagues();
-      if (leaguesRes.success && leaguesRes.data && leaguesRes.data.length > 0) {
+      if (leaguesRes.success && leaguesRes.data) {
         const dbComps: OptionItem[] = leaguesRes.data.map((l: any) => ({
           id: l.id,
           name: l.name,
@@ -155,9 +168,9 @@ export const useJournalistDashboard = () => {
         setCompetitions(dbComps);
       }
 
-      // 4. Fetch Teams
+      // 4. Fetch Teams from DB
       const teamsRes = await ApiService.getTeams();
-      if (teamsRes.success && teamsRes.data && teamsRes.data.length > 0) {
+      if (teamsRes.success && teamsRes.data) {
         const dbTeams: OptionItem[] = teamsRes.data.map((t: any) => ({
           id: t.id,
           name: t.name,
@@ -165,30 +178,41 @@ export const useJournalistDashboard = () => {
         setTeams(dbTeams);
       }
 
-      // 5. Fetch News Articles / Journals from production Database (own articles prioritized if profile exists)
+      // 5. Fetch News Articles from DB
       const dbArticles = await fetchNewsArticlesFromDB(prof?.id);
       setArticles(dbArticles);
 
-      // 6. Calculate Performance Analytics from production data
+      // 6. Calculate Real-Time Performance Analytics from DB
       const analytics = await calculateAnalyticsFromDB(dbArticles);
       setPerformanceMetrics(analytics);
     } catch (err: any) {
       console.error('Error loading Journalist Dashboard production data:', err);
-      setLoadError(err.message || 'Failed to connect to production database.');
+      setLoadError(err.message || 'Failed to connect to database.');
     } finally {
       setIsLoadingData(false);
     }
-  }, []);
+  }, [currentEvent]);
 
   useEffect(() => {
     loadDatabaseData();
   }, [loadDatabaseData]);
 
+  // Open dedicated Match Events Modal on strip click
+  const openMatchEventsModal = (match: CurrentMatchEvent) => {
+    setSelectedMatchForEvents(match);
+    setIsMatchEventsModalOpen(true);
+  };
+
+  const closeMatchEventsModal = () => {
+    setIsMatchEventsModalOpen(false);
+    setSelectedMatchForEvents(null);
+  };
+
   // Update current selected event (without page reload)
   const selectCurrentEvent = (match: CurrentMatchEvent) => {
     setCurrentEvent(match);
     setIsMatchSelectorOpen(false);
-    triggerToast(`Current Event updated to: ${match.homeTeam} vs ${match.awayTeam}`);
+    triggerToast(`Selected match fixture: ${match.homeTeam} vs ${match.awayTeam}`);
   };
 
   // Open Compose Modal (fresh or edit)
@@ -231,7 +255,6 @@ export const useJournalistDashboard = () => {
     let uploadedPath = '';
 
     try {
-      // Step 1: Upload image into Supabase Storage 'news' bucket IF image file is selected (OPTIONAL)
       if (imageFile) {
         triggerToast('Uploading featured image to Supabase Storage...');
         const uploadRes = await uploadImageToStorage(imageFile);
@@ -241,8 +264,8 @@ export const useJournalistDashboard = () => {
 
       const articleStatus = isDraftStatus ? 'draft' : 'published';
       const autoExcerpt = composeBody.trim().slice(0, 140);
+      const targetFixtureId = currentEvent?.id && !currentEvent.id.startsWith('match-') ? currentEvent.id : null;
 
-      // Step 2: Insert or Update in Database
       if (editingArticleId) {
         await updateNewsArticleDB(editingArticleId, {
           title: composeHeadline,
@@ -251,11 +274,10 @@ export const useJournalistDashboard = () => {
           category: composeType,
           status: articleStatus,
           imageUrl: uploadedPublicUrl,
-          fixtureId: currentEvent.id.startsWith('match-') ? null : currentEvent.id,
+          fixtureId: targetFixtureId,
         });
         triggerToast(isDraftStatus ? 'Draft article updated in database.' : '🚀 Article published live!');
       } else {
-        // Transactional insert: if insert fails, orphan image is deleted automatically inside createNewsArticleDB
         await createNewsArticleDB({
           title: composeHeadline,
           excerpt: autoExcerpt,
@@ -265,16 +287,15 @@ export const useJournalistDashboard = () => {
           authorId: currentUserProfile?.id || null,
           imageUrl: uploadedPublicUrl,
           imageStoragePath: uploadedPath,
-          fixtureId: currentEvent.id.startsWith('match-') ? null : currentEvent.id,
+          fixtureId: targetFixtureId,
         });
         triggerToast(
           isDraftStatus
-            ? 'Saved working draft to production database.'
+            ? 'Saved working draft to database.'
             : '🚀 Article published live to ESN Newsroom!'
         );
       }
 
-      // Step 3: Refresh centralized article list and analytics
       const updatedArticles = await fetchNewsArticlesFromDB(currentUserProfile?.id);
       setArticles(updatedArticles);
       const updatedAnalytics = await calculateAnalyticsFromDB(updatedArticles);
@@ -297,7 +318,7 @@ export const useJournalistDashboard = () => {
 
     try {
       await deleteNewsArticleDB(id, targetArticle.imageStoragePath);
-      triggerToast('Article deleted from database and Storage.');
+      triggerToast('Article deleted from database.');
 
       const updatedArticles = await fetchNewsArticlesFromDB(currentUserProfile?.id);
       setArticles(updatedArticles);
@@ -330,6 +351,10 @@ export const useJournalistDashboard = () => {
     matches,
     currentEvent,
     selectCurrentEvent,
+    isMatchEventsModalOpen,
+    selectedMatchForEvents,
+    openMatchEventsModal,
+    closeMatchEventsModal,
     competitions,
     teams,
     articles,

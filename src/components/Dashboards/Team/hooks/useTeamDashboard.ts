@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Player, UserRole, PracticeSession, Match, DBTeam, FormationName, TacticalSliders, PitchNodeCoordinate } from '../types';
+import type { Player, UserRole, PracticeSession, Match, DBTeam, FormationName, TacticalSliders, PitchNodeCoordinate, LinesmanMatch } from '../types';
 import { initialRoster, initialPracticeSchedule, initialFixtures, initialStandings, initialTeamForm, calculateDynamicPitchCoordinates } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
@@ -8,6 +8,7 @@ import {
   fetchAuthenticatedUserTeam,
   fetchTeamPlayers,
   fetchTeamFixtures,
+  fetchTeamLinesmanMatches,
   fetchTeamAnnouncements,
   saveTeamSquadToStrings,
   saveTeamTacticsConfig,
@@ -39,6 +40,7 @@ export const useTeamDashboard = () => {
   const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
   const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
   const [teamFixtures, setTeamFixtures] = useState<Match[]>([]);
+  const [linesmanMatches, setLinesmanMatches] = useState<LinesmanMatch[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
   const [teamForm, setTeamForm] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -127,6 +129,11 @@ export const useTeamDashboard = () => {
         const dbFixtures = await fetchTeamFixtures(resolvedTeamId);
         if (isMounted && dbFixtures.length > 0) {
           setTeamFixtures(dbFixtures);
+        }
+
+        const dbLinesman = await fetchTeamLinesmanMatches(resolvedTeamId, user.id);
+        if (isMounted) {
+          setLinesmanMatches(dbLinesman);
         }
 
         const dbStandings = await fetchTeamStandings(resolvedTeamId);
@@ -396,6 +403,7 @@ export const useTeamDashboard = () => {
     setPositionFilter,
     filteredRoster,
     teamFixtures,
+    linesmanMatches,
     announcements,
     publishedNews,
     isComposeModalOpen,

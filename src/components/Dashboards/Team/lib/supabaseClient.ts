@@ -1,5 +1,5 @@
 import { supabase } from '../../../../lib/supabase';
-import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry } from '../types';
+import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry, LinesmanMatch } from '../types';
 
 export { supabase };
 
@@ -746,6 +746,177 @@ export async function fetchCoachCaptainProfiles(teamId: string): Promise<{
         return {};
     } catch (e) {
         return {};
+    }
+}
+
+/**
+ * Fetches all matches where the team / user is allocated as Linesman 1 or Linesman 2.
+ * Queries public.matchday_schedules (linesman_team_a_id, linesman_team_b_id) and public.fixtures.
+ */
+export async function fetchTeamLinesmanMatches(teamId: string, userId?: string): Promise<LinesmanMatch[]> {
+    const teamUuid = toUuid(teamId);
+    const searchUids = Array.from(new Set([teamId, teamUuid, userId, userId ? toUuid(userId) : ''])).filter(Boolean) as string[];
+
+    const matchesMap = new Map<string, LinesmanMatch>();
+
+    try {
+        // 1. Fetch auxiliary reference mappings: Teams & Pitches
+        const [teamsRes, pitchesRes] = await Promise.all([
+            supabase.from('teams').select('id, name, short_name, logo_url'),
+            supabase.from('pitches').select('id, name, short_code, location')
+        ]);
+
+        const teamsMap = new Map<string, any>();
+        (teamsRes.data || []).forEach((t: any) => teamsMap.set(t.id, t));
+
+        const pitchesMap = new Map<string, any>();
+        (pitchesRes.data || []).forEach((p: any) => pitchesMap.set(p.id, p));
+
+        // 2. Query public.matchday_schedules for linesman allocations
+        const schedOrFilter = searchUids
+            .map((id) => `linesman_team_a_id.eq.${id},linesman_team_b_id.eq.${id}`)
+            .join(',');
+
+        const { data: schedData, error: schedError } = await supabase
+            .from('matchday_schedules')
+            .select(`
+                id,
+                fixture_id,
+                competition_id,
+                league,
+                matchday_number,
+                play_date,
+                start_time,
+                end_time,
+                period,
+                pitch_id,
+                status,
+                center_referee_id,
+                linesman_team_a_id,
+                linesman_team_b_id
+            `)
+            .or(schedOrFilter)
+            .order('play_date', { ascending: true })
+            .order('start_time', { ascending: true });
+
+        if (!schedError && schedData && schedData.length > 0) {
+            // Fetch base fixtures for these matchday schedules
+            const fixtureIds = schedData.map((s: any) => s.fixture_id).filter(Boolean);
+            const { data: baseFixtures } = await supabase
+                .from('base_fixtures')
+                .select('id, home_team_id, away_team_id, league')
+                .in('id', fixtureIds);
+
+            const baseMap = new Map<string, any>();
+            (baseFixtures || []).forEach((bf: any) => baseMap.set(bf.id, bf));
+
+            schedData.forEach((s: any) => {
+                const bf = baseMap.get(s.fixture_id) || {};
+                const homeTeam = teamsMap.get(bf.home_team_id) || null;
+                const awayTeam = teamsMap.get(bf.away_team_id) || null;
+                const pitch = pitchesMap.get(s.pitch_id) || null;
+
+                const isLinesman1 = searchUids.includes(s.linesman_team_a_id);
+                const role: 'Linesman 1' | 'Linesman 2' = isLinesman1 ? 'Linesman 1' : 'Linesman 2';
+
+                const d = s.play_date ? new Date(`${s.play_date}T12:00:00Z`) : new Date();
+                const dateFormatted = s.play_date
+                    ? d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })
+                    : 'Upcoming';
+
+                const timeStr = s.start_time
+                    ? (s.end_time ? `${s.start_time} - ${s.end_time}` : `${s.start_time} EAT`)
+                    : 'Time TBA';
+
+                const pitchName = pitch?.name || (s.pitch_id ? `Pitch ${s.pitch_id}` : 'Pavilion Main Stadium');
+
+                const key = s.fixture_id || s.id;
+                matchesMap.set(key, {
+                    id: key,
+                    fixtureId: s.fixture_id,
+                    homeTeamName: homeTeam?.name || 'Home Team',
+                    homeTeamLogo: homeTeam?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    homeTeamShortName: homeTeam?.short_name || 'HOM',
+                    awayTeamName: awayTeam?.name || 'Away Team',
+                    awayTeamLogo: awayTeam?.logo_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+                    awayTeamShortName: awayTeam?.short_name || 'AWY',
+                    pitch: pitchName,
+                    time: timeStr,
+                    playDate: s.play_date || '',
+                    dateFormatted,
+                    matchday: s.matchday_number || 1,
+                    league: s.league || 'Egerton Premier League',
+                    role,
+                    status: s.status || 'SCHEDULED',
+                });
+            });
+        }
+
+        // 3. Query public.fixtures for legacy/direct linesman references
+        const fixOrFilter = searchUids
+            .map((id) => `assistant_referee_1_id.eq.${id},assistant_referee_2_id.eq.${id},linesman_1_id.eq.${id},linesman_2_id.eq.${id},linesman_team_a_id.eq.${id},linesman_team_b_id.eq.${id}`)
+            .join(',');
+
+        const { data: fixData, error: fixError } = await supabase
+            .from('fixtures')
+            .select(`
+                id,
+                scheduled_time,
+                status,
+                venue,
+                matchday,
+                assistant_referee_1_id,
+                assistant_referee_2_id,
+                linesman_1_id,
+                linesman_2_id,
+                linesman_team_a_id,
+                linesman_team_b_id,
+                home_team:teams!home_team_id (id, name, short_name, logo_url),
+                away_team:teams!away_team_id (id, name, short_name, logo_url),
+                competition:competitions!competition_id (name)
+            `)
+            .or(fixOrFilter)
+            .order('scheduled_time', { ascending: true });
+
+        if (!fixError && fixData && fixData.length > 0) {
+            fixData.forEach((f: any) => {
+                if (matchesMap.has(f.id)) return;
+
+                const isLinesman1 =
+                    searchUids.includes(f.linesman_1_id) ||
+                    searchUids.includes(f.assistant_referee_1_id) ||
+                    searchUids.includes(f.linesman_team_a_id);
+                const role: 'Linesman 1' | 'Linesman 2' = isLinesman1 ? 'Linesman 1' : 'Linesman 2';
+
+                const d = new Date(f.scheduled_time || Date.now());
+                const dateFormatted = d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+                const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' EAT';
+
+                matchesMap.set(f.id, {
+                    id: f.id,
+                    fixtureId: f.id,
+                    homeTeamName: f.home_team?.name || 'Home Team',
+                    homeTeamLogo: f.home_team?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    homeTeamShortName: f.home_team?.short_name || 'HOM',
+                    awayTeamName: f.away_team?.name || 'Away Team',
+                    awayTeamLogo: f.away_team?.logo_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+                    awayTeamShortName: f.away_team?.short_name || 'AWY',
+                    pitch: f.venue || 'Pavilion Main Stadium',
+                    time: timeStr,
+                    playDate: f.scheduled_time ? f.scheduled_time.split('T')[0] : '',
+                    dateFormatted,
+                    matchday: f.matchday || 1,
+                    league: f.competition?.name || 'Egerton Premier League',
+                    role,
+                    status: f.status || 'SCHEDULED',
+                });
+            });
+        }
+
+        return Array.from(matchesMap.values());
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch team linesman matches:', err);
+        return [];
     }
 }
 

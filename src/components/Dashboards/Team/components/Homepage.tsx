@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, Player, PracticeSession, Match, StandingEntry } from '../types';
+import { UserRole, Player, PracticeSession, Match, StandingEntry, LinesmanMatch } from '../types';
 import {
   Users,
   Calendar,
@@ -22,6 +22,8 @@ import {
   ArrowRight,
   BarChart3,
   TrendingUp,
+  Flag,
+  X,
 } from 'lucide-react';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 
@@ -38,6 +40,7 @@ interface HomepageProps {
   onApprovePracticeDay?: (id: string) => void;
   onOpenInviteModal: () => void;
   matches: Match[];
+  linesmanMatches?: LinesmanMatch[];
   standings: StandingEntry[];
 }
 
@@ -54,10 +57,15 @@ export const Homepage: React.FC<HomepageProps> = ({
   onApprovePracticeDay,
   onOpenInviteModal,
   matches,
+  linesmanMatches = [],
   standings,
 }) => {
   const isCaptain = currentRole === 'CAPTAIN';
   const isCoach = currentRole === 'COACH';
+
+  // State for linesman all-matches popup modal
+  const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
+  const nextLinesmanMatch: LinesmanMatch | undefined = linesmanMatches && linesmanMatches.length > 0 ? linesmanMatches[0] : undefined;
 
   // Countdown timer for next match
   const [timeLeft, setTimeLeft] = useState({ days: 2, hours: 14, minutes: 35, seconds: 12 });
@@ -275,6 +283,82 @@ export const Homepage: React.FC<HomepageProps> = ({
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* LINESMAN MATCH STRIP (DIRECTLY BELOW NEXT GAME CARD, HEIGHT OF QUICK ACTION CARDS) */}
+      <section className="relative w-full rounded-2xl bg-[#161B22]/95 border border-cyan-900/40 hover:border-cyan-500/50 p-3.5 sm:p-4 shadow-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3.5 group">
+        {/* Left Side: Icon & Match Title */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+            <Flag className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+          </div>
+
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-950/60 px-2.5 py-0.5 rounded-lg border border-cyan-500/30 shadow-inner">
+                Our Next Linesman Match
+              </span>
+              {nextLinesmanMatch && (
+                <>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    {nextLinesmanMatch.role}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 bg-[#0D1117] px-2 py-0.5 rounded-md border border-[#2A3441]">
+                    MD {nextLinesmanMatch.matchday || 1}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {nextLinesmanMatch ? (
+              <div className="flex items-center gap-2 pt-0.5">
+                <h4 className="font-black text-xs sm:text-sm text-white truncate tracking-tight">
+                  {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal">vs</span> {nextLinesmanMatch.awayTeamName}
+                </h4>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 font-medium truncate pt-0.5">
+                No upcoming linesman duties currently scheduled for your team.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Middle/Metadata Info: Pitch & Time (if match exists) */}
+        {nextLinesmanMatch && (
+          <div className="flex items-center gap-2.5 sm:gap-3 text-xs text-slate-300 flex-wrap bg-[#0D1117]/80 px-3 py-1.5 rounded-xl border border-[#2A3441]">
+            <span className="flex items-center gap-1.5 font-medium">
+              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="truncate max-w-[130px] sm:max-w-[180px]">{nextLinesmanMatch.pitch}</span>
+            </span>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <span className="flex items-center gap-1.5 font-mono text-cyan-300 font-bold">
+              <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span>{nextLinesmanMatch.time}</span>
+            </span>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span>{nextLinesmanMatch.dateFormatted}</span>
+            </span>
+          </div>
+        )}
+
+        {/* Right Side: See All Button that triggers popup */}
+        <div className="shrink-0 self-end md:self-center">
+          <button
+            onClick={() => setShowLinesmanModal(true)}
+            className="px-3.5 py-2 bg-[#0D1117] hover:bg-cyan-950/40 text-cyan-300 hover:text-cyan-200 border border-cyan-500/40 hover:border-cyan-400 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <span>See All Linesman Games</span>
+            {linesmanMatches && linesmanMatches.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-black border border-cyan-500/30">
+                {linesmanMatches.length}
+              </span>
+            )}
+            <ArrowRight className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
+          </button>
         </div>
       </section>
 
@@ -710,6 +794,154 @@ export const Homepage: React.FC<HomepageProps> = ({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ALL LINESMAN GAMES POPUP MODAL */}
+      {showLinesmanModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowLinesmanModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#2A3441] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-xs">
+                  <Flag className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-base text-white">All Linesman Match Allocations</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                      {linesmanMatches?.length || 0} Games
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Live schedule of all matches where your club is appointed as official match linesman.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowLinesmanModal(false)}
+                className="w-8 h-8 rounded-xl bg-[#0D1117] border border-[#2A3441] hover:border-slate-500 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable list of match cards */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-thin">
+              {(!linesmanMatches || linesmanMatches.length === 0) ? (
+                <div className="text-center py-12 px-4 bg-[#0D1117] rounded-2xl border border-[#2A3441] space-y-2">
+                  <Flag className="w-8 h-8 text-slate-600 mx-auto" />
+                  <h4 className="font-black text-sm text-slate-300">No Linesman Matches Allocated</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    When the league administration assigns your club to linesman matches in the matchday schedule, they will automatically appear here.
+                  </p>
+                </div>
+              ) : (
+                linesmanMatches.map((lm, idx) => (
+                  <div
+                    key={lm.id || idx}
+                    className="p-4 rounded-2xl bg-[#0D1117] border border-[#2A3441] hover:border-cyan-500/40 transition-all space-y-3 shadow-sm"
+                  >
+                    {/* Card Header: Matchday, Play Date, League, Role Badge & Status */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2A3441]/60 pb-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                          {lm.role}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-300 bg-[#161B22] border border-[#2A3441]">
+                          Matchday {lm.matchday || 1}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400">
+                          {lm.league}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-slate-400 bg-[#161B22] px-2 py-0.5 rounded-md border border-[#2A3441]">
+                          {lm.dateFormatted}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                          lm.status === 'LIVE'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 animate-pulse'
+                            : lm.status === 'FINISHED' || lm.status === 'FT'
+                            ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                            : 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                        }`}>
+                          {lm.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Matchup Board */}
+                    <div className="flex items-center justify-between gap-3 py-1">
+                      {/* Home Team */}
+                      <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#161B22] border border-[#2A3441] p-1 flex items-center justify-center shrink-0">
+                          {lm.homeTeamLogo ? (
+                            <img src={lm.homeTeamLogo} alt={lm.homeTeamName} className="w-full h-full object-contain rounded-md" />
+                          ) : (
+                            <span className="text-[10px] font-black text-slate-400">{lm.homeTeamShortName || 'HOM'}</span>
+                          )}
+                        </div>
+                        <span className="font-bold text-xs sm:text-sm text-white truncate">{lm.homeTeamName}</span>
+                      </div>
+
+                      {/* VS separator */}
+                      <div className="px-2 py-1 rounded-lg bg-[#161B22] text-[10px] font-black text-slate-400 border border-[#2A3441] shrink-0">
+                        VS
+                      </div>
+
+                      {/* Away Team */}
+                      <div className="flex-1 flex items-center justify-end gap-2.5 min-w-0 text-right">
+                        <span className="font-bold text-xs sm:text-sm text-white truncate">{lm.awayTeamName}</span>
+                        <div className="w-8 h-8 rounded-lg bg-[#161B22] border border-[#2A3441] p-1 flex items-center justify-center shrink-0">
+                          {lm.awayTeamLogo ? (
+                            <img src={lm.awayTeamLogo} alt={lm.awayTeamName} className="w-full h-full object-contain rounded-md" />
+                          ) : (
+                            <span className="text-[10px] font-black text-slate-400">{lm.awayTeamShortName || 'AWY'}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Pitch & Time Info */}
+                    <div className="pt-2 border-t border-[#2A3441]/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>{lm.pitch}</span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1.5 font-mono text-cyan-300 font-bold">
+                          <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>{lm.time}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-[#2A3441] flex items-center justify-between text-xs text-slate-400">
+              <span>Showing {linesmanMatches?.length || 0} linesman duty assignments</span>
+              <button
+                onClick={() => setShowLinesmanModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -98,6 +98,26 @@ export interface Match {
     matchday?: number;
 }
 
+export interface LinesmanMatch {
+    id: string;
+    fixtureId?: string;
+    homeTeamName: string;
+    homeTeamLogo?: string;
+    homeTeamShortName?: string;
+    awayTeamName: string;
+    awayTeamLogo?: string;
+    awayTeamShortName?: string;
+    pitch: string;
+    time: string;
+    playDate: string;
+    dateFormatted: string;
+    matchday?: number;
+    league?: string;
+    role: 'Linesman 1' | 'Linesman 2';
+    status: string;
+    centerReferee?: string;
+}
+
 export interface TeamFormEntry {
     matchId: string;
     opponentName: string;
