@@ -337,140 +337,162 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
             </p>
           </div>
 
-          {/* DERIVED SCOREBOARD DISPLAY */}
-          <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div className="text-center">
-              <div className="text-[10px] font-black text-slate-400 uppercase">{selectedFixture.teamA.shortName}</div>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">{derivedHomeScore}</div>
-            </div>
-            <span className="text-lg font-black text-slate-400">:</span>
-            <div className="text-center">
-              <div className="text-[10px] font-black text-slate-400 uppercase">{selectedFixture.teamB.shortName}</div>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">{derivedAwayScore}</div>
-            </div>
+        {/* DERIVED SCOREBOARD DISPLAY */}
+        <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div className="text-center">
+            <div className="text-[10px] font-black text-slate-400 uppercase">{selectedFixture.teamA.shortName}</div>
+            <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">{derivedHomeScore}</div>
+          </div>
+          <span className="text-lg font-black text-slate-400">:</span>
+          <div className="text-center">
+            <div className="text-[10px] font-black text-slate-400 uppercase">{selectedFixture.teamB.shortName}</div>
+            <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">{derivedAwayScore}</div>
+          </div>
+          <button
+            onClick={() => openWorkingSet()}
+            disabled={isSubmitting || !!canonicalResult}
+            className="ml-2 px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+            title="Resync working set from live intake"
+          >
+            <RotateCw className="w-3.5 h-3.5" /> Sync Live Feed
+          </button>
+        </div>
+      </div>
+
+      {/* PRELOAD & REFEREE EDIT/DELETE CONTROL BANNER */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+        <span className="text-xl shrink-0">ℹ️</span>
+        <div className="text-xs space-y-1">
+          <div className="font-black text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+            Live Feed Preload Active • Referee Authority & Reconciliation
+          </div>
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+            Events below are <strong>preloaded from the live match intake & journalist stream</strong>. As the match official, you have sole authoritative control to <strong>edit</strong> or <strong>delete/dismiss any unverified event</strong> before committing the canonical result. Missing events can be added directly via the action buttons.
+          </p>
+        </div>
+      </div>
+
+      {/* 3 STEP TABS */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { num: 1, label: `1. Goals (${goalsList.length})` },
+          { num: 2, label: `2. Disciplinary (${cardsList.length})` },
+          { num: 3, label: '3. Terminal Finalize' },
+        ].map((s) => (
+          <button
+            key={s.num}
+            onClick={() => setActiveStep(s.num as any)}
+            className={`p-3.5 rounded-2xl text-center text-xs font-black transition-all cursor-pointer ${
+              activeStep === s.num
+                ? 'bg-amber-500/15 text-amber-600 dark:text-[#D4AF37] border border-amber-500/30 shadow-sm'
+                : 'bg-slate-50 dark:bg-slate-900/60 text-slate-500 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* STEP 1: GOALS & WORKING SET EVENTS */}
+      {activeStep === 1 && (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <span>⚽</span> Reconciled Goal Records ({goalsList.length})
+            </h4>
             <button
-              onClick={() => openWorkingSet()}
+              onClick={() => handleOpenAddModal('GOAL')}
               disabled={isSubmitting || !!canonicalResult}
-              className="ml-2 px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-700 dark:text-slate-300 font-extrabold text-[11px] transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
-              title="Resync working set from live intake"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
             >
-              <RotateCw className="w-3.5 h-3.5" /> Sync Live Feed
+              <Plus className="w-3.5 h-3.5" /> + Add Goal Event
             </button>
           </div>
-        </div>
 
-        {/* 3 STEP TABS */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { num: 1, label: `1. Goals (${goalsList.length})` },
-            { num: 2, label: `2. Disciplinary (${cardsList.length})` },
-            { num: 3, label: '3. Terminal Finalize' },
-          ].map((s) => (
-            <button
-              key={s.num}
-              onClick={() => setActiveStep(s.num as any)}
-              className={`p-3.5 rounded-2xl text-center text-xs font-black transition-all cursor-pointer ${
-                activeStep === s.num
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-[#D4AF37] border border-amber-500/30 shadow-sm'
-                  : 'bg-slate-50 dark:bg-slate-900/60 text-slate-500 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        {/* STEP 1: GOALS & WORKING SET EVENTS */}
-        {activeStep === 1 && (
-          <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <span>⚽</span> Reconciled Goal Records ({goalsList.length})
-              </h4>
-              <button
-                onClick={() => handleOpenAddModal('GOAL')}
-                disabled={isSubmitting || !!canonicalResult}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <Plus className="w-3.5 h-3.5" /> + Add Goal Event
-              </button>
+          {goalsList.length === 0 ? (
+            <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-400 space-y-1">
+              <p className="font-bold">No goals in current working set (Current score: 0 - 0).</p>
+              <p className="text-[11px] text-slate-500">Click "+ Add Goal Event" above to record an official goal.</p>
             </div>
+          ) : (
+            <div className="space-y-2.5">
+              {goalsList.map((g: MatchEvent, idx: number) => {
+                const isHome = g.team_uid === homeTeamUid;
+                const teamName = isHome ? selectedFixture.teamA.name : selectedFixture.teamB.name;
+                const squad = isHome ? homeSquad : awaySquad;
+                const player = squad.find((p: SquadPlayer) => p.player_uid === g.player_uid);
 
-            {goalsList.length === 0 ? (
-              <div className="p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center text-xs text-slate-400 space-y-1">
-                <p className="font-bold">No goals in current working set (Current score: 0 - 0).</p>
-                <p className="text-[11px] text-slate-500">Click "+ Add Goal Event" above to record an official goal.</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {goalsList.map((g: MatchEvent, idx: number) => {
-                  const isHome = g.team_uid === homeTeamUid;
-                  const teamName = isHome ? selectedFixture.teamA.name : selectedFixture.teamB.name;
-                  const squad = isHome ? homeSquad : awaySquad;
-                  const player = squad.find((p: SquadPlayer) => p.player_uid === g.player_uid);
-
-                  return (
-                    <div
-                      key={g.event_uid}
-                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shadow-xs"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-black flex items-center justify-center shrink-0">
-                          {g.minute !== null && g.minute !== undefined ? `${g.minute}'` : "—'"}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <span>Goal #{idx + 1} ({g.goal_type || 'TAP_IN'})</span>
-                            <span className="text-slate-400 font-bold">• {teamName}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                            {player ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                {player.display_name} (Jersey #{player.jersey_number})
-                              </span>
-                            ) : (
-                              <span className="text-amber-500 font-bold">
-                                ⚠️ Player Unresolved ({g.player_number ? `Jersey #${g.player_number}` : 'Missing Player UID'})
-                              </span>
-                            )}
-                          </div>
+                return (
+                  <div
+                    key={g.event_uid}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shadow-xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-black flex items-center justify-center shrink-0">
+                        {g.minute !== null && g.minute !== undefined ? `${g.minute}'` : "—'"}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
+                          <span>Goal #{idx + 1} ({g.goal_type || 'TAP_IN'})</span>
+                          <span className="text-slate-400 font-bold">• {teamName}</span>
+                          {g.created_by_role === 'JOURNALIST' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                              Preloaded (Live Feed)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              Official Referee
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          {player ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              {player.display_name} (Jersey #{player.jersey_number})
+                            </span>
+                          ) : (
+                            <span className="text-amber-500 font-bold">
+                              ⚠️ Player Unresolved ({g.player_number ? `Jersey #${g.player_number}` : 'Missing Player UID'})
+                            </span>
+                          )}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => handleOpenEditModal(g)}
-                          disabled={!!canonicalResult}
-                          className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleRemoveEvent(g.event_uid)}
-                          disabled={!!canonicalResult}
-                          className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-                          title="Remove"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
-              <button
-                onClick={() => setActiveStep(2)}
-                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-md"
-              >
-                Next: Review Cards & Disciplinary →
-              </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleOpenEditModal(g)}
+                        disabled={!!canonicalResult}
+                        className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Edit event details"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveEvent(g.event_uid)}
+                        disabled={!!canonicalResult}
+                        className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Delete / Dismiss event from official record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => setActiveStep(2)}
+              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-md"
+            >
+              Next: Review Cards & Disciplinary →
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
         {/* STEP 2: DISCIPLINARY & CARDS (WITH DERIVED RED DERIVATION) */}
         {activeStep === 2 && (
@@ -514,7 +536,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
                           {c.minute !== null && c.minute !== undefined ? `${c.minute}'` : "—'"}
                         </span>
                         <div className="min-w-0">
-                          <div className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <div className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 flex-wrap">
                             <span>
                               {c.card_type === 'RED' ? '🟥 Red Card' : c.card_type === 'SECOND_YELLOW' ? '🟨 Second Yellow' : '🟨 Yellow Card'}
                             </span>
@@ -524,6 +546,15 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
                               </span>
                             )}
                             <span className="text-slate-400 font-bold">• {teamName}</span>
+                            {c.created_by_role === 'JOURNALIST' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                Preloaded (Live Feed)
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Official Referee
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                             {player ? (
@@ -544,6 +575,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
                           onClick={() => handleOpenEditModal(c)}
                           disabled={!!canonicalResult}
                           className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                          title="Edit card details"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -551,6 +583,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
                           onClick={() => handleRemoveEvent(c.event_uid)}
                           disabled={!!canonicalResult}
                           className="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                          title="Delete / Dismiss card from official record"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

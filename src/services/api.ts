@@ -135,7 +135,8 @@ export const ApiService = {
             matchday: f.matchday,
             homePenaltyScore: f.home_penalty_score,
             awayPenaltyScore: f.away_penalty_score,
-            verifiedByRefereeId: f.verified_by_referee_id
+            verifiedByRefereeId: f.verified_by_referee_id,
+            scheduledTime: f.scheduled_time
           };
         });
 

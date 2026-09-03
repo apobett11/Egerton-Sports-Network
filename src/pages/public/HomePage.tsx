@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
 import { Card, Button, Badge, LoadingSpinner } from '../../components/common/UIComponents';
@@ -16,6 +16,7 @@ interface HomePageProps {
   selectedDate?: Date;
   setSelectedDate?: (date: Date) => void;
   selectedCompetitionId?: string;
+  dbFixtures?: Match[];
 }
 
 const FAVOURITES_KEY = 'esn_guest_favourites_v1';
@@ -26,7 +27,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenCalendar,
   selectedDate: propSelectedDate,
   setSelectedDate: propSetSelectedDate,
-  selectedCompetitionId = 'all'
+  selectedCompetitionId = 'all',
+  dbFixtures = []
 }) => {
   // Calendar Date State for Fixtures Reactivity
   const [internalDate, setInternalDate] = useState<Date>(() => new Date());
@@ -57,10 +59,86 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  const handleShiftDate = (days: number) => {
-    const next = new Date(activeDate);
-    next.setDate(next.getDate() + days);
-    handleDateChange(next);
+  // Map all fixture playdays (both league and friendly)
+  const fixturePlaydaysMap = useMemo(() => {
+    const map = new Map<string, { isFriendly: boolean; isLeague: boolean; matchday?: number }>();
+    const list = dbFixtures && dbFixtures.length > 0 ? dbFixtures : [];
+    list.forEach(f => {
+      const rawDate = f.scheduledTime || (f as any).scheduled_time || (f as any).playday || (f as any).play_date;
+      if (!rawDate) return;
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return;
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const isFriendly = f.league?.toLowerCase().includes('friendly') || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
+      const isLeague = !isFriendly;
+      if (!map.has(dateKey)) {
+        map.set(dateKey, { isFriendly, isLeague, matchday: f.matchday });
+      } else {
+        const cur = map.get(dateKey)!;
+        map.set(dateKey, {
+          isFriendly: cur.isFriendly || isFriendly,
+          isLeague: cur.isLeague || isLeague,
+          matchday: cur.matchday || f.matchday
+        });
+      }
+    });
+    return map;
+  }, [dbFixtures]);
+
+  const isPlayday = useCallback((d: Date): boolean => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    // If fixtures exist on this date in DB, it is a playday (league or friendly)
+    if (fixturePlaydaysMap.has(dateKey)) {
+      return true;
+    }
+
+    // Weekend days (Saturday = 6, Sunday = 0) are standard league playdays
+    const dayOfWeek = d.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }, [fixturePlaydaysMap]);
+
+  // Navigate laterally to next or previous playday (skipping empty weekdays)
+  const handleShiftPlayday = useCallback((direction: 1 | -1) => {
+    const current = new Date(activeDate);
+    const next = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 12, 0, 0);
+
+    for (let i = 1; i <= 90; i++) {
+      next.setDate(next.getDate() + direction);
+      if (isPlayday(next)) {
+        handleDateChange(new Date(next.getFullYear(), next.getMonth(), next.getDate()));
+        return;
+      }
+    }
+
+    const fallback = new Date(current);
+    fallback.setDate(fallback.getDate() + direction);
+    handleDateChange(fallback);
+  }, [activeDate, isPlayday]);
+
+  const handleShiftDate = handleShiftPlayday;
+
+  // Touch swipe support for lateral scrolling on mobile
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleShiftPlayday(1);
+      } else {
+        handleShiftPlayday(-1);
+      }
+    }
+    setTouchStartX(null);
   };
 
   // Independent Section States
@@ -317,7 +395,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     return list;
   }, [fixturesState.data, filterStatus]);
 
-  // Format date label for the fixtures card header: e.g. "SATURDAY 29/8/26"
+  // Format date label for the fixtures card header: e.g. "SATURDAY 29/8/26" or "MATCHDAY 1 • SATURDAY 29/8/26"
   const formattedDateTitle = useMemo(() => {
     const d = activeDate instanceof Date ? activeDate : new Date(activeDate);
     const weekdays = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -325,8 +403,19 @@ export const HomePage: React.FC<HomePageProps> = ({
     const day = d.getDate();
     const month = d.getMonth() + 1;
     const year = String(d.getFullYear()).slice(-2);
+
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const info = fixturePlaydaysMap.get(dateKey);
+    const md = info?.matchday || fixturesState.data.find(m => m.matchday)?.matchday;
+
+    if (info?.isFriendly && !info?.isLeague) {
+      return `FRIENDLY • ${weekday} ${day}/${month}/${year}`;
+    }
+    if (md) {
+      return `MATCHDAY ${md} • ${weekday} ${day}/${month}/${year}`;
+    }
     return `${weekday} ${day}/${month}/${year}`;
-  }, [activeDate]);
+  }, [activeDate, fixturePlaydaysMap, fixturesState.data]);
 
   return (
     <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
@@ -366,13 +455,18 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* 2. CALENDAR ROW EMBEDDED IN A CAPSULE (10PX MARGIN ON EITHER SIDE, EQUIDISTANT BUTTONS, DAY/DATE/ICON TOGETHER & CLICKABLE) */}
       <div className="mx-[10px]">
-        <div className="w-full bg-[#0e1e2d] dark:bg-[#102237] text-white border border-[#1a2e45] rounded-full py-1.5 px-3 sm:px-4 shadow-sm flex items-center justify-center gap-3 sm:gap-5">
-          {/* Previous Day Chevron Button */}
+        <div 
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="w-full bg-[#0e1e2d] dark:bg-[#102237] text-white border border-[#1a2e45] rounded-full py-1.5 px-3 sm:px-4 shadow-sm flex items-center justify-center gap-3 sm:gap-5 touch-pan-y"
+        >
+          {/* Previous Matchday / Playday Chevron Button */}
           <button
             type="button"
-            onClick={() => handleShiftDate(-1)}
+            onClick={() => handleShiftPlayday(-1)}
             className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
-            aria-label="Previous day"
+            aria-label="Previous matchday"
+            title="Previous matchday"
           >
             <ChevronLeft className="w-4 h-4 text-white" />
           </button>
@@ -382,8 +476,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             type="button"
             onClick={onOpenCalendar}
             className="flex items-center gap-2 px-3 sm:px-4 py-1 rounded-full bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-black tracking-wider uppercase cursor-pointer border border-white/10 shadow-xs transition-colors group"
-            title="Open Calendar"
-            aria-label="Open Calendar"
+            title="Open Calendar to select matchday"
+            aria-label="Open Calendar to select matchday"
           >
             <span className="text-white font-black group-hover:text-amber-400 transition-colors">
               {formattedDateTitle}
@@ -391,12 +485,13 @@ export const HomePage: React.FC<HomePageProps> = ({
             <Calendar className="w-3.5 h-3.5 text-white group-hover:text-amber-400 transition-colors" />
           </button>
 
-          {/* Next Day Chevron Button */}
+          {/* Next Matchday / Playday Chevron Button */}
           <button
             type="button"
-            onClick={() => handleShiftDate(1)}
+            onClick={() => handleShiftPlayday(1)}
             className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
-            aria-label="Next day"
+            aria-label="Next matchday"
+            title="Next matchday"
           >
             <ChevronRight className="w-4 h-4 text-white" />
           </button>

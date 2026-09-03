@@ -1177,10 +1177,28 @@ function buildAlgorithm2Signal(
   };
 }
 
+export const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
+export const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
+
 export function isEplLeague(leagueId?: string | null): boolean {
   if (!leagueId) return false;
-  const l = leagueId.toLowerCase();
-  return l === "epl";
+  const l = leagueId.toLowerCase().trim();
+  return (
+    l === EPL_COMP_ID.toLowerCase() ||
+    l === 'epl' ||
+    l.includes('1111') ||
+    l.includes('premier')
+  );
+}
+
+export function isChampionshipLeague(leagueId?: string | null): boolean {
+  if (!leagueId) return false;
+  const l = leagueId.toLowerCase().trim();
+  return (
+    l === CHAMP_COMP_ID.toLowerCase() ||
+    l === 'championship' ||
+    l.includes('2222')
+  );
 }
 
 /* ============================================================================
@@ -1257,9 +1275,7 @@ function buildAlgorithm3Signal(
       mdFixtures.length > 0
         ? mdFixtures.map((fixture) => ({
             match_id: fixture.fixture_id,
-            league_id: (isEplLeague(fixture.league_id)
-              ? "epl"
-              : "championship") as "epl" | "championship",
+            league_id: isEplLeague(fixture.league_id) ? EPL_COMP_ID : CHAMP_COMP_ID,
             home_id: fixture.home_id,
             away_id: fixture.away_id,
             matchday_number: mdNum,
@@ -1270,9 +1286,7 @@ function buildAlgorithm3Signal(
             const fixture = state.fixtures.find((f) => f.fixture_id === matchId);
             return {
               match_id: matchId,
-              league_id: (isEplLeague(fixture?.league_id)
-                ? "epl"
-                : "championship") as "epl" | "championship",
+              league_id: isEplLeague(fixture?.league_id) ? EPL_COMP_ID : CHAMP_COMP_ID,
               home_id: fixture?.home_id ?? "",
               away_id: fixture?.away_id ?? "",
               matchday_number: mdNum,
@@ -1307,9 +1321,9 @@ function buildAlgorithm3Signal(
     time_configuration: timeConfiguration,
     existing_allocations: state.matchAssignments.map((a) => ({
       match_id: a.match_id,
-      league_id: (isEplLeague(state.fixtures.find((f) => f.fixture_id === a.match_id)?.league_id)
-        ? "epl"
-        : "championship") as "epl" | "championship",
+      league_id: isEplLeague(state.fixtures.find((f) => f.fixture_id === a.match_id)?.league_id)
+        ? EPL_COMP_ID
+        : CHAMP_COMP_ID,
       matchday_number:
         state.matchdays.find((md) => md.matchday_id === a.matchday_id)?.matchday_number ?? 0,
       play_date: a.play_date,
@@ -1328,36 +1342,67 @@ function buildAlgorithm3TimeConfig(
   event: PresidentEvent,
   state: DBState,
 ): Algorithm3Signal["time_configuration"] {
-  // If the event is a time configuration change, use the event values
+  const defaultEplSlots: Array<{ slot_number: 1 | 2 | 3; start_time: string; end_time: string }> = [
+    { slot_number: 1, start_time: "08:00", end_time: "09:30" },
+    { slot_number: 2, start_time: "09:30", end_time: "11:00" },
+    { slot_number: 3, start_time: "11:00", end_time: "12:30" },
+  ];
+  const defaultChampSlots: Array<{ slot_number: 1 | 2 | 3; start_time: string; end_time: string }> = [
+    { slot_number: 1, start_time: "13:00", end_time: "14:30" },
+    { slot_number: 2, start_time: "14:30", end_time: "16:00" },
+    { slot_number: 3, start_time: "16:00", end_time: "17:30" },
+  ];
+
   if (event.type === "CHANGE_TIME_CONFIGURATION") {
-    const configs: NonNullable<Algorithm3Signal["time_configuration"]> = [];
-    const distinctLeagues = Array.from(
-      new Set(state.fixtures.map((f) => f.league_id).filter(Boolean)),
-    ).sort();
-    for (const leagueId of distinctLeagues) {
-      const existing = state.timeConfiguration?.find(
-        (tc) => tc.league_id === leagueId || tc.league_id === leagueId.toLowerCase(),
-      );
-      const isFirstLeague = leagueId === distinctLeagues[0];
-      const eventSlots = isFirstLeague ? event.eplSlots : event.championshipSlots;
-      configs.push({
-        league_id: leagueId,
-        slots: eventSlots || existing?.slots || [],
-      });
-    }
-    return configs.length > 0 ? configs : undefined;
+    return [
+      {
+        league_id: EPL_COMP_ID,
+        slots: event.eplSlots && event.eplSlots.length > 0 ? event.eplSlots : defaultEplSlots,
+      },
+      {
+        league_id: CHAMP_COMP_ID,
+        slots: event.championshipSlots && event.championshipSlots.length > 0 ? event.championshipSlots : defaultChampSlots,
+      },
+      {
+        league_id: "epl",
+        slots: event.eplSlots && event.eplSlots.length > 0 ? event.eplSlots : defaultEplSlots,
+      },
+      {
+        league_id: "championship",
+        slots: event.championshipSlots && event.championshipSlots.length > 0 ? event.championshipSlots : defaultChampSlots,
+      },
+    ];
   }
 
-  // If database has time configuration, pass it through
+  // If database has time configuration, pass it through while ensuring canonical UIDs
   if (state.timeConfiguration && state.timeConfiguration.length > 0) {
-    return state.timeConfiguration.map((tc) => ({
-      league_id: tc.league_id,
-      slots: tc.slots,
-    }));
+    const configs: NonNullable<Algorithm3Signal["time_configuration"]> = [];
+    for (const tc of state.timeConfiguration) {
+      const isEPL = isEplLeague(tc.league_id);
+      const targetUid = isEPL ? EPL_COMP_ID : CHAMP_COMP_ID;
+      const defaultSlots = isEPL ? defaultEplSlots : defaultChampSlots;
+      configs.push({
+        league_id: targetUid,
+        slots: (tc.slots && tc.slots.length > 0 ? tc.slots : defaultSlots) as any,
+      });
+      // Also preserve original league_id alias if different
+      if (tc.league_id !== targetUid) {
+        configs.push({
+          league_id: tc.league_id,
+          slots: (tc.slots && tc.slots.length > 0 ? tc.slots : defaultSlots) as any,
+        });
+      }
+    }
+    return configs;
   }
 
-  // No time configuration available — let Algorithm 3's own defaults handle it
-  return undefined;
+  // Fallback default: Always provide explicit non-empty time configuration with EPL AM & Champ PM
+  return [
+    { league_id: EPL_COMP_ID, slots: defaultEplSlots },
+    { league_id: CHAMP_COMP_ID, slots: defaultChampSlots },
+    { league_id: "epl", slots: defaultEplSlots },
+    { league_id: "championship", slots: defaultChampSlots },
+  ];
 }
 
 /* ============================================================================

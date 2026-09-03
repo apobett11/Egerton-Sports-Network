@@ -424,7 +424,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'president' || route === 'season-mode' || route === 'president-season' || route === 'season') {
+  if (route === 'president' || route === 'season-mode' || route === 'president-season' || route === 'season' || route === 'oversight') {
     return (
       <ProtectedRoute allowedRoles={['president', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
@@ -659,6 +659,7 @@ export const AppContent: React.FC = () => {
                   }}
                   onSelectMatch={handleMatchClick}
                   onOpenCalendar={() => setIsCalendarOpen(true)}
+                  dbFixtures={liveMatches}
                 />
               )}
 

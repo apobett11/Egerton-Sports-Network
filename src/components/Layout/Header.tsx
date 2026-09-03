@@ -92,14 +92,17 @@ export const Header: React.FC<HeaderProps> = ({
     const dateMatchMap = useMemo(() => {
         const map = new Map<string, { isLeague: boolean; isFriendly: boolean; matchday?: number }>();
         dbFixtures.forEach((f) => {
-            if (!f.time && !f.id) return;
+            const rawDate = f.scheduledTime || (f as any).scheduled_time || (f as any).playday || (f as any).play_date;
             let fDateStr = '';
-            if (f.id && f.id.length > 10 && !isNaN(Date.parse(f.id))) {
-                fDateStr = new Date(f.id).toDateString();
-            } else {
-                fDateStr = new Date().toDateString();
+            if (rawDate) {
+                const parsed = new Date(rawDate);
+                if (!isNaN(parsed.getTime())) {
+                    fDateStr = parsed.toDateString();
+                }
             }
-            const isFriendly = f.league?.toLowerCase().includes('friendly');
+            if (!fDateStr) return;
+
+            const isFriendly = f.league?.toLowerCase().includes('friendly') || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
             const isLeague = !isFriendly;
             if (!map.has(fDateStr)) {
                 map.set(fDateStr, { isLeague, isFriendly, matchday: f.matchday });
@@ -382,6 +385,16 @@ export const Header: React.FC<HeaderProps> = ({
                                 const isToday = dateKey === new Date().toDateString();
                                 const matchInfo = dateMatchMap.get(dateKey);
 
+                                const isWeekend = targetDate.getDay() === 0 || targetDate.getDay() === 6;
+                                const isFriendly = Boolean(matchInfo?.isFriendly);
+                                const isPlayday = Boolean(matchInfo?.isLeague) || (!isFriendly && isWeekend);
+
+                                const tooltip = isFriendly
+                                    ? `Friendly Match • ${targetDate.toLocaleDateString()}`
+                                    : isPlayday
+                                    ? `Playday ${matchInfo?.matchday ? `(Matchday ${matchInfo.matchday})` : ''} • ${targetDate.toLocaleDateString()}`
+                                    : targetDate.toLocaleDateString();
+
                                 return (
                                     <button
                                         key={dayNum}
@@ -391,46 +404,77 @@ export const Header: React.FC<HeaderProps> = ({
                                             setShowCalendarModal(false);
                                             if (onCloseCalendar) onCloseCalendar();
                                         }}
-                                        className={`w-full py-2 rounded font-bold text-xs transition-colors cursor-pointer relative flex flex-col items-center justify-center ${
-                                            isSelected
-                                                ? 'bg-[#ff0046] text-white font-extrabold shadow-sm'
-                                                : isToday
-                                                ? 'bg-slate-200 dark:bg-[#18314e] text-slate-900 dark:text-white'
-                                                : 'hover:bg-slate-100 dark:hover:bg-[#14263b] text-slate-800 dark:text-slate-200'
-                                        }`}
+                                        title={tooltip}
+                                        aria-label={tooltip}
+                                        className="w-full py-0.5 rounded font-bold text-xs transition-colors cursor-pointer relative flex flex-col items-center justify-center group"
                                     >
-                                        <span>{dayNum}</span>
-                                        {matchInfo && (
-                                            <span className="w-1 h-1 rounded-full bg-[#ff0046] mt-0.5" />
+                                        <div
+                                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs transition-all ${
+                                                isSelected
+                                                    ? 'bg-[#ff0046] text-white font-black shadow-xs ' +
+                                                      (isFriendly
+                                                        ? 'border-2 border-purple-400 ring-2 ring-purple-400/30'
+                                                        : isPlayday
+                                                        ? 'border-2 border-emerald-400 ring-2 ring-emerald-400/30'
+                                                        : 'border-2 border-transparent')
+                                                    : isFriendly
+                                                    ? 'border-2 border-purple-500 text-purple-600 dark:text-purple-400 font-extrabold hover:bg-purple-500/10'
+                                                    : isPlayday
+                                                    ? 'border-2 border-[#00b04f] text-[#00b04f] dark:text-emerald-400 font-extrabold hover:bg-emerald-500/10'
+                                                    : isToday
+                                                    ? 'bg-slate-200 dark:bg-[#18314e] text-slate-900 dark:text-white font-bold hover:bg-slate-300 dark:hover:bg-[#1f3f64]'
+                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#14263b] font-medium'
+                                            }`}
+                                        >
+                                            <span>{dayNum}</span>
+                                        </div>
+                                        {matchInfo?.matchday && (
+                                            <span className="text-[7.5px] font-black uppercase text-[#00b04f] dark:text-emerald-400 leading-none mt-0.5">
+                                                MD {matchInfo.matchday}
+                                            </span>
                                         )}
                                     </button>
                                 );
                             })}
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="pt-2 border-t border-slate-100 dark:border-[#1a2e45] flex items-center justify-between text-xs">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSelectedDate(new Date());
-                                    setShowCalendarModal(false);
-                                    if (onCloseCalendar) onCloseCalendar();
-                                }}
-                                className="text-xs font-bold text-[#ff0046] hover:underline cursor-pointer"
-                            >
-                                Today
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowCalendarModal(false);
-                                    if (onCloseCalendar) onCloseCalendar();
-                                }}
-                                className="px-3 py-1 bg-slate-200 dark:bg-[#14263b] rounded font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
-                            >
-                                Close
-                            </button>
+                        {/* Modal Footer with Legend & Action Buttons */}
+                        <div className="pt-3 border-t border-slate-100 dark:border-[#1a2e45] flex items-center justify-between text-xs">
+                            {/* Legend */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1" title="Playday / League Matchday">
+                                    <span className="w-2.5 h-2.5 rounded-full border-2 border-[#00b04f] inline-block shrink-0" />
+                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Playday</span>
+                                </div>
+                                <div className="flex items-center gap-1" title="Friendly Match">
+                                    <span className="w-2.5 h-2.5 rounded-full border-2 border-purple-500 inline-block shrink-0" />
+                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Friendly</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedDate(new Date());
+                                        setShowCalendarModal(false);
+                                        if (onCloseCalendar) onCloseCalendar();
+                                    }}
+                                    className="text-xs font-bold text-[#ff0046] hover:underline cursor-pointer"
+                                >
+                                    Today
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowCalendarModal(false);
+                                        if (onCloseCalendar) onCloseCalendar();
+                                    }}
+                                    className="px-2.5 py-1 bg-slate-200 dark:bg-[#14263b] rounded font-bold text-slate-800 dark:text-slate-200 cursor-pointer text-xs"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -570,6 +570,18 @@ export class SupabaseMatchRepository implements MatchRepository {
           event_sequence: state.event_sequence,
           updated_at: state.updated_at,
         });
+
+      // Synchronize fixtures table immediately for realtime dashboards
+      await supabase
+        .from('fixtures')
+        .update({
+          score_home: state.home_score,
+          score_away: state.away_score,
+          status: state.status === 'FINALIZED' ? 'FT' : (state.period === 'HALF_TIME' ? 'HT' : 'LIVE'),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', state.match_uid)
+        .neq('status', 'FT');
     } catch {
       // Safe fallback
     }
@@ -607,7 +619,7 @@ export class SupabaseMatchRepository implements MatchRepository {
           derived_red: d.is_derived_red,
           created_at: d.occurred_at || new Date().toISOString(),
           updated_at: d.occurred_at || new Date().toISOString(),
-        }));
+        } as unknown as MatchEvent));
         localStore.liveEvents.set(match_uid, events);
         return events;
       }
@@ -665,9 +677,9 @@ export class SupabaseMatchRepository implements MatchRepository {
 
   async updateLiveEvent(event: MatchEvent): Promise<void> {
     const list = localStore.liveEvents.get(event.match_uid) || [];
-    const index = list.findIndex((e) => e.event_uid === event.event_uid);
-    if (index !== -1) {
-      list[index] = { ...event };
+    const idx = list.findIndex((e) => e.event_uid === event.event_uid);
+    if (idx >= 0) {
+      list[idx] = { ...event };
       localStore.liveEvents.set(event.match_uid, list);
     }
 
@@ -678,13 +690,13 @@ export class SupabaseMatchRepository implements MatchRepository {
           team_uid: event.team_uid,
           player_uid: event.player_uid,
           player_number: event.player_number,
+          type: event.type,
           goal_type: event.goal_type,
           card_type: event.card_type,
-          minute: event.minute ?? 0,
+          minute: event.minute,
           period: event.period,
           status: event.status,
           is_derived_red: event.derived_red,
-          occurred_at: event.updated_at,
         })
         .eq('event_uid', event.event_uid);
 
@@ -761,7 +773,10 @@ export class SupabaseMatchRepository implements MatchRepository {
           home_score: result.home_score,
           away_score: result.away_score,
           events: result.events,
+          referee_uid: result.confirmed_by_uid || '88b96347-102c-4632-b934-b9ecb6ada202',
           finalized_at: new Date().toISOString(),
+          locked_at: new Date().toISOString(),
+          state_hash: result.state_hash,
           history_snapshot: result.history_snapshot,
         });
     } catch {

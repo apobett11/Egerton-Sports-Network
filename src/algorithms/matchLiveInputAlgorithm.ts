@@ -234,6 +234,8 @@ export interface CanonicalPermanentResult {
 
   source_live_version: number;
 
+  state_hash?: string;
+
   /**
    * Snapshot intended for easy history retrieval.
    */
@@ -966,7 +968,12 @@ export function buildInjuryEvent(input: {
 export function recomputeDisciplinaryConsequences(
   events: MatchEvent[]
 ): MatchEvent[] {
-  const cloned = events.map((event) => ({
+  // Exclude previously auto-injected derived red cards so re-runs remain idempotent
+  const baseEvents = events.filter(
+    (event) => !(event.derived_red && event.card_type === "RED")
+  );
+
+  const cloned = baseEvents.map((event) => ({
     ...event,
     derived_red: false
   }));
@@ -1004,6 +1011,28 @@ export function recomputeDisciplinaryConsequences(
       const secondYellow = yellows[1];
       secondYellow.derived_red = true;
       secondYellow.card_type = "SECOND_YELLOW";
+
+      // Inject authoritative RED card dismissal into the official event timeline
+      const derivedRedUid = `${secondYellow.event_uid}_red`;
+      const redCardEvent: MatchEvent = {
+        event_uid: derivedRedUid,
+        match_uid: secondYellow.match_uid,
+        team_uid: secondYellow.team_uid,
+        player_uid: secondYellow.player_uid,
+        player_number: secondYellow.player_number,
+        type: "CARD",
+        card_type: "RED",
+        minute: secondYellow.minute,
+        period: secondYellow.period,
+        status: "ACTIVE",
+        created_by_role: secondYellow.created_by_role,
+        created_by_uid: secondYellow.created_by_uid,
+        idempotency_key: `${secondYellow.idempotency_key || secondYellow.event_uid}_derived_red`,
+        derived_red: true,
+        created_at: secondYellow.created_at,
+        updated_at: secondYellow.updated_at
+      };
+      cloned.push(redCardEvent);
     }
   }
 

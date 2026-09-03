@@ -419,7 +419,12 @@ function allocateMatchesEngine(signal: Algorithm3Signal): Algorithm3Output {
 
       const availablePitches = getAvailablePitches(signal.pitches);
 
-      const slots = buildSlotsForLeague(leagueId, availablePitches, timeConfiguration);
+      const slots = buildSlotsForLeague(
+        leagueId,
+        availablePitches,
+        timeConfiguration,
+        leagueMatches.length,
+      );
 
       const result = allocateLeagueMatches(
         leagueMatches,
@@ -709,6 +714,7 @@ function buildSlotsForLeague(
   leagueId: LeagueId,
   availablePitches: PitchInput[],
   configuration: Record<LeagueId, SlotTime[]>,
+  matchCount?: number,
 ): InternalSlot[] {
   const slots: InternalSlot[] = [];
   const times = configuration[leagueId];
@@ -721,7 +727,24 @@ function buildSlotsForLeague(
     a.pitch_id.localeCompare(b.pitch_id),
   );
 
-  // Distribute parallel kickoff times horizontally across available pitches
+  // If match count is small (e.g. <= 2 matches, like a 4-team division),
+  // stagger kickoffs sequentially across time slots so non-playing teams
+  // remain resting and available for neutral linesman duty without time clashes.
+  if (matchCount !== undefined && matchCount <= 2 && times.length >= matchCount) {
+    for (const pitch of orderedPitches) {
+      for (const time of times) {
+        slots.push({
+          pitch_id: pitch.pitch_id,
+          slot_number: time.slot_number,
+          start_time: time.start_time,
+          end_time: time.end_time,
+        });
+      }
+    }
+    return slots;
+  }
+
+  // Otherwise distribute parallel kickoff times horizontally across available pitches
   for (const time of times) {
     for (const pitch of orderedPitches) {
       slots.push({
