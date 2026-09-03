@@ -180,8 +180,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
           referee_prof:profiles!referee_id(first_name, last_name),
           ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
           ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
@@ -202,6 +202,17 @@ export const ApiService = {
       const ar2Prof = unwrap(f.ar2_prof);
       const foProf = unwrap(f.fo_prof);
 
+      // Helper to normalize player positions
+      const normalizePos = (pos?: string, defaultPos: 'GK' | 'DEF' | 'MID' | 'FWD' = 'MID'): 'GK' | 'DEF' | 'MID' | 'FWD' => {
+        if (!pos) return defaultPos;
+        const p = pos.toUpperCase();
+        if (p.includes('GK') || p.includes('GOAL')) return 'GK';
+        if (p.includes('DEF') || p.includes('BACK') || p.includes('CB') || p.includes('LB') || p.includes('RB')) return 'DEF';
+        if (p.includes('MID') || p.includes('CM') || p.includes('DM') || p.includes('AM')) return 'MID';
+        if (p.includes('FWD') || p.includes('ATT') || p.includes('STR') || p.includes('ST') || p.includes('WING')) return 'FWD';
+        return defaultPos;
+      };
+
       // Fetch Stored Match Events
       const { data: eventsData } = await supabase
         .from('match_events')
@@ -209,7 +220,7 @@ export const ApiService = {
         .eq('fixture_id', fixtureId)
         .order('minute', { ascending: true });
 
-      const events: MatchEvent[] = (eventsData || []).map((e: any) => ({
+      let events: MatchEvent[] = (eventsData || []).map((e: any) => ({
         id: e.id,
         fixtureId: e.fixture_id,
         minute: e.minute,
@@ -223,98 +234,196 @@ export const ApiService = {
         createdAt: e.created_at
       }));
 
+      // If match_events has no events, fallback to match_live_events table
+      if (events.length === 0) {
+        const { data: liveEvents } = await supabase
+          .from('match_live_events')
+          .select('*')
+          .eq('match_uid', fixtureId)
+          .order('minute', { ascending: true });
+
+        if (liveEvents && liveEvents.length > 0) {
+          events = liveEvents.map((le: any) => ({
+            id: le.event_uid,
+            fixtureId: le.match_uid,
+            minute: le.minute || 0,
+            type: (le.type ? le.type.toLowerCase() : 'goal') as MatchEventType,
+            eventTarget: le.team_uid === home?.id ? 'home' : 'away',
+            teamId: le.team_uid,
+            playerId: le.player_uid,
+            detailText: sanitizeHtmlText(le.goal_type || le.card_type || le.type || 'Event'),
+            createdAt: le.occurred_at
+          }));
+        }
+      }
+
       // Fetch Stored Match Lineups
       const { data: lineupsData } = await supabase
         .from('match_lineups')
         .select('*')
         .eq('fixture_id', fixtureId);
 
+      // Fetch all registered players for both teams from the database
+      const [squadARes, squadBRes] = await Promise.all([
+        home?.id
+          ? supabase
+              .from('players')
+              .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
+              .eq('team_id', home.id)
+              .order('jersey_number', { ascending: true })
+          : Promise.resolve({ data: [] }),
+        away?.id
+          ? supabase
+              .from('players')
+              .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
+              .eq('team_id', away.id)
+              .order('jersey_number', { ascending: true })
+          : Promise.resolve({ data: [] })
+      ]);
+
+      const formatPlayerRecord = (p: any, teamObj: any, idx: number, isSubDefault: boolean = false): Player => {
+        const prof = unwrap(p.profile);
+        const pName = p.name 
+          ? p.name 
+          : p.first_name && p.last_name 
+          ? `${p.first_name} ${p.last_name}`.trim()
+          : prof?.first_name 
+          ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
+          : `Player #${p.jersey_number || idx + 1}`;
+        const isCap = Boolean(
+          (teamObj?.captain_id && (p.id === teamObj.captain_id || p.profile_id === teamObj.captain_id)) ||
+          prof?.role === 'captain' ||
+          p.jersey_number === 10 ||
+          p.isCaptain
+        );
+        return {
+          id: p.id,
+          name: pName,
+          number: p.jersey_number || p.number || idx + 1,
+          position: normalizePos(p.position, idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
+          isCaptain: isCap,
+          isSub: p.isSub !== undefined ? p.isSub : isSubDefault,
+          profile_id: p.profile_id,
+          team_id: teamObj?.id
+        };
+      };
+
+      const rawSquadA = squadARes.data || [];
+      const rawSquadB = squadBRes.data || [];
+
+      // Resolve Squad for Team A (Home)
       let teamAPlayers: Player[] = [];
-      let teamBPlayers: Player[] = [];
-      let formationA = '4-3-3';
-      let formationB = '4-3-3';
+      let formationA = home?.tactics_config?.formation || '4-3-3';
       let captainNotesA = '';
+
+      const lineupHome = (lineupsData || []).find((l: any) => l.team_id === home?.id);
+      if (lineupHome) {
+        formationA = lineupHome.formation || formationA;
+        captainNotesA = lineupHome.captain_notes || '';
+        const rawStarters = lineupHome.starting_xi || [];
+        const rawSubs = lineupHome.substitutes || [];
+
+        const starters = rawStarters.map((p: any, i: number) => {
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false }, home, i, false);
+        });
+        const subs = rawSubs.map((p: any, i: number) => {
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, home, starters.length + i, true);
+        });
+        teamAPlayers = [...starters, ...subs];
+      }
+
+      // If not from match_lineups, resolve from saved squad in teams table
+      if (teamAPlayers.length === 0 && rawSquadA.length > 0) {
+        const tempSquad = home?.temporary_match_squad;
+        const startingXiStr = home?.starting_xi_str;
+        const subsStr = home?.substitutes_str;
+
+        let starterIds: string[] = [];
+        let subIds: string[] = [];
+
+        if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
+          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p.id)).filter(Boolean);
+          formationA = tempSquad.formation || formationA;
+        } else if (startingXiStr && typeof startingXiStr === 'string') {
+          starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
+          if (subsStr && typeof subsStr === 'string') {
+            subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
+          }
+        }
+
+        if (starterIds.length > 0) {
+          const starters = rawSquadA
+            .filter((p: any) => starterIds.includes(p.id))
+            .map((p: any, i: number) => formatPlayerRecord(p, home, i, false));
+          const subs = rawSquadA
+            .filter((p: any) => !starterIds.includes(p.id))
+            .map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
+          teamAPlayers = [...starters, ...subs];
+        } else {
+          // Natural division: first 11 starters, remainder substitutes
+          teamAPlayers = rawSquadA.map((p: any, idx: number) =>
+            formatPlayerRecord(p, home, idx, idx >= 11)
+          );
+        }
+      }
+
+      // Resolve Squad for Team B (Away)
+      let teamBPlayers: Player[] = [];
+      let formationB = away?.tactics_config?.formation || '4-3-3';
       let captainNotesB = '';
 
-      if (lineupsData && lineupsData.length > 0) {
-        const lineupHome = lineupsData.find((l: any) => l.team_id === home?.id);
-        const lineupAway = lineupsData.find((l: any) => l.team_id === away?.id);
+      const lineupAway = (lineupsData || []).find((l: any) => l.team_id === away?.id);
+      if (lineupAway) {
+        formationB = lineupAway.formation || formationB;
+        captainNotesB = lineupAway.captain_notes || '';
+        const rawStarters = lineupAway.starting_xi || [];
+        const rawSubs = lineupAway.substitutes || [];
 
-        if (lineupHome) {
-          formationA = lineupHome.formation || '4-3-3';
-          captainNotesA = lineupHome.captain_notes || '';
-          const starters = (lineupHome.starting_xi || []).map((p: any) => ({ ...p, isSub: false }));
-          const subs = (lineupHome.substitutes || []).map((p: any) => ({ ...p, isSub: true }));
-          teamAPlayers = [...starters, ...subs];
+        const starters = rawStarters.map((p: any, i: number) => {
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false }, away, i, false);
+        });
+        const subs = rawSubs.map((p: any, i: number) => {
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, away, starters.length + i, true);
+        });
+        teamBPlayers = [...starters, ...subs];
+      }
+
+      // If not from match_lineups, resolve from saved squad in teams table
+      if (teamBPlayers.length === 0 && rawSquadB.length > 0) {
+        const tempSquad = away?.temporary_match_squad;
+        const startingXiStr = away?.starting_xi_str;
+        const subsStr = away?.substitutes_str;
+
+        let starterIds: string[] = [];
+        let subIds: string[] = [];
+
+        if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
+          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p.id)).filter(Boolean);
+          formationB = tempSquad.formation || formationB;
+        } else if (startingXiStr && typeof startingXiStr === 'string') {
+          starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
+          if (subsStr && typeof subsStr === 'string') {
+            subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
+          }
         }
 
-        if (lineupAway) {
-          formationB = lineupAway.formation || '4-3-3';
-          captainNotesB = lineupAway.captain_notes || '';
-          const starters = (lineupAway.starting_xi || []).map((p: any) => ({ ...p, isSub: false }));
-          const subs = (lineupAway.substitutes || []).map((p: any) => ({ ...p, isSub: true }));
+        if (starterIds.length > 0) {
+          const starters = rawSquadB
+            .filter((p: any) => starterIds.includes(p.id))
+            .map((p: any, i: number) => formatPlayerRecord(p, away, i, false));
+          const subs = rawSquadB
+            .filter((p: any) => !starterIds.includes(p.id))
+            .map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
           teamBPlayers = [...starters, ...subs];
-        }
-      }
-
-      // If lineups are not explicitly saved in match_lineups, fetch team registered squads from DB
-      if (teamAPlayers.length === 0 && home?.id) {
-        const { data: squadA } = await supabase
-          .from('players')
-          .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
-          .eq('team_id', home.id)
-          .order('jersey_number', { ascending: true });
-
-        if (squadA && squadA.length > 0) {
-          teamAPlayers = squadA.map((p: any, idx: number) => {
-            const prof = unwrap(p.profile);
-            const pName = p.first_name && p.last_name 
-              ? `${p.first_name} ${p.last_name}` 
-              : prof?.first_name 
-              ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
-              : `Player #${p.jersey_number || idx + 1}`;
-            const isCap = prof?.role === 'captain' || p.jersey_number === 10 || p.profile_id === home.captain_id;
-            return {
-              id: p.id,
-              name: pName,
-              number: p.jersey_number || idx + 1,
-              position: (p.position as any) || (idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
-              isCaptain: isCap,
-              isSub: idx >= 11,
-              profile_id: p.profile_id,
-              team_id: home.id
-            };
-          });
-        }
-      }
-
-      if (teamBPlayers.length === 0 && away?.id) {
-        const { data: squadB } = await supabase
-          .from('players')
-          .select('id, jersey_number, position, first_name, last_name, profile_id, profile:profiles!profile_id(first_name, last_name, role)')
-          .eq('team_id', away.id)
-          .order('jersey_number', { ascending: true });
-
-        if (squadB && squadB.length > 0) {
-          teamBPlayers = squadB.map((p: any, idx: number) => {
-            const prof = unwrap(p.profile);
-            const pName = p.first_name && p.last_name 
-              ? `${p.first_name} ${p.last_name}` 
-              : prof?.first_name 
-              ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
-              : `Player #${p.jersey_number || idx + 1}`;
-            const isCap = prof?.role === 'captain' || p.jersey_number === 10 || p.profile_id === away.captain_id;
-            return {
-              id: p.id,
-              name: pName,
-              number: p.jersey_number || idx + 1,
-              position: (p.position as any) || (idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
-              isCaptain: isCap,
-              isSub: idx >= 11,
-              profile_id: p.profile_id,
-              team_id: away.id
-            };
-          });
+        } else {
+          // Natural division: first 11 starters, remainder substitutes
+          teamBPlayers = rawSquadB.map((p: any, idx: number) =>
+            formatPlayerRecord(p, away, idx, idx >= 11)
+          );
         }
       }
 
@@ -675,7 +784,7 @@ export const ApiService = {
           team_home:teams!home_team_id(id, name),
           team_away:teams!away_team_id(id, name)
         `)
-        .eq('status', 'FT')
+        .in('status', ['FT', 'FINAL', 'ARCHIVED'])
         .or(`and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`)
         .order('scheduled_time', { ascending: false })
         .limit(10);
@@ -746,7 +855,7 @@ export const ApiService = {
           team_home:teams!home_team_id(name),
           team_away:teams!away_team_id(name)
         `)
-        .eq('status', 'FT')
+        .in('status', ['FT', 'FINAL', 'ARCHIVED'])
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
         .order('scheduled_time', { ascending: false })
         .limit(5);

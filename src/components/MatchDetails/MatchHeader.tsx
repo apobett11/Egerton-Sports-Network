@@ -59,8 +59,11 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                         className="p-1 text-slate-300 hover:text-white cursor-pointer"
                         title="Share Match"
                         onClick={() => {
+                            const shareUrl = `${window.location.origin}/#/match/${match.id}`;
                             if (navigator.share) {
-                                navigator.share({ title: `${match.teamA.name} vs ${match.teamB.name}`, url: window.location.href });
+                                navigator.share({ title: `${match.teamA.name} vs ${match.teamB.name}`, url: shareUrl }).catch(() => {});
+                            } else if (navigator.clipboard) {
+                                navigator.clipboard.writeText(shareUrl);
                             }
                         }}
                     >

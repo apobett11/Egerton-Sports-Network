@@ -23,6 +23,7 @@ import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import { DeviceService } from './services/DeviceService';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
+import { ApiService } from './services/api';
 import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
@@ -281,11 +282,27 @@ export const AppContent: React.FC = () => {
       try {
         sessionStorage.setItem('esn_current_route', newRoute);
       } catch {}
-      setSelectedMatch(null);
+      if (!newRoute.startsWith('match/')) {
+        setSelectedMatch(null);
+      }
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
+
+  // Fetch match details on deep link (e.g. #/match/<id>) or page refresh
+  useEffect(() => {
+    if (route.startsWith('match/')) {
+      const matchId = route.replace(/^match\/?/, '').trim();
+      if (matchId && (!selectedMatch || selectedMatch.id !== matchId)) {
+        ApiService.getMatchDetails(matchId).then((res: any) => {
+          if (res?.data) {
+            setSelectedMatch(res.data);
+          }
+        });
+      }
+    }
+  }, [route, selectedMatch]);
 
   // Lock body scroll and add Esc listener when mobile sidebar is open
   useEffect(() => {
@@ -326,11 +343,21 @@ export const AppContent: React.FC = () => {
 
   const handleMatchClick = (match: Match) => {
     setSelectedMatch(match);
+    const targetRoute = `match/${match.id}`;
+    setRoute(targetRoute);
+    window.location.hash = `/match/${match.id}`;
+    try {
+      sessionStorage.setItem('esn_current_route', targetRoute);
+    } catch {}
   };
 
   const handleBackToHome = () => {
     setSelectedMatch(null);
+    setRoute('home');
     window.location.hash = '/home';
+    try {
+      sessionStorage.setItem('esn_current_route', 'home');
+    } catch {}
   };
 
   const handleNavigateHash = (targetHash: string) => {
@@ -340,7 +367,9 @@ export const AppContent: React.FC = () => {
     try {
       sessionStorage.setItem('esn_current_route', cleanRoute);
     } catch {}
-    setSelectedMatch(null);
+    if (!cleanRoute.startsWith('match/')) {
+      setSelectedMatch(null);
+    }
   };
 
   const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
@@ -595,13 +624,20 @@ export const AppContent: React.FC = () => {
         )}
 
         {/* Main Switch Router */}
-        {selectedMatch ? (
-          <MatchDetailsContainer
-            match={selectedMatch}
-            onBack={handleBackToHome}
-            favorites={favorites}
-            toggleFavorite={toggleFavorite}
-          />
+        {selectedMatch || route.startsWith('match/') ? (
+          selectedMatch ? (
+            <MatchDetailsContainer
+              match={selectedMatch}
+              onBack={handleBackToHome}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+            />
+          ) : (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin text-[#ff0046]" />
+              <span className="text-xs font-bold uppercase tracking-wider">Loading match data...</span>
+            </div>
+          )
         ) : (
           // Home view
           <>

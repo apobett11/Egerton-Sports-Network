@@ -31,6 +31,8 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
 
     const [historyA, setHistoryA] = useState<MatchHistoryEntry[]>([]);
     const [historyB, setHistoryB] = useState<MatchHistoryEntry[]>([]);
+    const [formA, setFormA] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
+    const [formB, setFormB] = useState<Array<{ result: 'W' | 'D' | 'L'; label: string }>>([]);
     const [h2hList, setH2hList] = useState<H2HEntry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
@@ -39,11 +41,15 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
         const pA = teamA?.id ? ApiService.getTeamRecentMatches(teamA.id) : Promise.resolve({ success: true, data: [] });
         const pB = teamB?.id ? ApiService.getTeamRecentMatches(teamB.id) : Promise.resolve({ success: true, data: [] });
         const pH2H = (teamA?.id && teamB?.id) ? ApiService.getHeadToHead(teamA.id, teamB.id) : Promise.resolve({ success: true, data: [] });
+        const pFormA = teamA?.id ? ApiService.getTeamForm(teamA.id) : Promise.resolve({ success: true, data: [] });
+        const pFormB = teamB?.id ? ApiService.getTeamForm(teamB.id) : Promise.resolve({ success: true, data: [] });
 
-        Promise.all([pA, pB, pH2H]).then(([resA, resB, resH2H]) => {
+        Promise.all([pA, pB, pH2H, pFormA, pFormB]).then(([resA, resB, resH2H, resFormA, resFormB]) => {
             if (resA.data) setHistoryA(resA.data);
             if (resB.data) setHistoryB(resB.data);
             if (resH2H.data) setH2hList(resH2H.data as any);
+            if (resFormA.data) setFormA(resFormA.data);
+            if (resFormB.data) setFormB(resFormB.data);
             setLoading(false);
         }).catch(() => {
             setLoading(false);
@@ -68,18 +74,33 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                         <img src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamA.name}</span>
                     </div>
-                    {historyA.length > 0 && (
+                    {historyA.length > 0 ? (
                         <div className="flex items-center gap-1">
                             {historyA.map((h, i) => (
                                 <span key={i}>{renderBadge(h.res)}</span>
                             ))}
                         </div>
-                    )}
+                    ) : formA.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                            {formA.map((f, i) => (
+                                <span key={i}>{renderBadge(f.result)}</span>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
 
                 {historyA.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-400">
-                        {loading ? 'Loading match history...' : `No prior completed fixtures recorded for ${teamA.name}.`}
+                        {loading ? 'Loading match history...' : formA.length > 0 ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <span>Recent recorded form:</span>
+                                <div className="flex items-center gap-1">
+                                    {formA.map((f, i) => (
+                                        <span key={i}>{renderBadge(f.result)}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : `No prior completed fixtures recorded for ${teamA.name}.`}
                     </div>
                 ) : (
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
@@ -108,18 +129,33 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                         <img src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamB.name}</span>
                     </div>
-                    {historyB.length > 0 && (
+                    {historyB.length > 0 ? (
                         <div className="flex items-center gap-1">
                             {historyB.map((h, i) => (
                                 <span key={i}>{renderBadge(h.res)}</span>
                             ))}
                         </div>
-                    )}
+                    ) : formB.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                            {formB.map((f, i) => (
+                                <span key={i}>{renderBadge(f.result)}</span>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
 
                 {historyB.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-400">
-                        {loading ? 'Loading match history...' : `No prior completed fixtures recorded for ${teamB.name}.`}
+                        {loading ? 'Loading match history...' : formB.length > 0 ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <span>Recent recorded form:</span>
+                                <div className="flex items-center gap-1">
+                                    {formB.map((f, i) => (
+                                        <span key={i}>{renderBadge(f.result)}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : `No prior completed fixtures recorded for ${teamB.name}.`}
                     </div>
                 ) : (
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
