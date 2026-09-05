@@ -118,6 +118,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
                 onOpenCalendar={() => setIsCalendarOpen(true)}
                 onCancelMatchday={handleExecuteCancelMatchday}
                 onSelectDate={handleSelectDateFromCalendar}
+                onRefresh={refreshData}
               />
             )}
 

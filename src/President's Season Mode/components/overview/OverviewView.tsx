@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   CalendarDays,
   X,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import type {
   SeasonModeView,
@@ -22,6 +23,7 @@ import type {
   OperationalAlert,
 } from '../../types/seasonMode';
 import { COMPETITIONS } from '../../constants/seasonConstants';
+import { WeekendRefereeAllocationModal } from './WeekendRefereeAllocationModal';
 
 interface OverviewViewProps {
   isDark: boolean;
@@ -34,6 +36,7 @@ interface OverviewViewProps {
   onOpenCalendar: () => void;
   onCancelMatchday: (matchdayNumber: number, reason: string) => void;
   onSelectDate: (dateStr: string) => void;
+  onRefresh?: () => void;
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({
@@ -46,9 +49,49 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   onOpenCalendar,
   onCancelMatchday,
   onSelectDate,
+  onRefresh,
 }) => {
   const [showCancelMatchdayModal, setShowCancelMatchdayModal] = useState<boolean>(false);
   const [cancelReason, setCancelReason] = useState<string>('');
+  const [isWeekendRefModalOpen, setIsWeekendRefModalOpen] = useState<boolean>(false);
+
+  // Weekend playdays & referee allocation status (Open Friday & Saturday, used only once per weekend)
+  const { isWeekendAllocationOpen, isAlreadyAllocated, satDateStr, sunDateStr } = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon, ..., 5 = Fri, 6 = Sat
+    const isOpen = dayOfWeek === 5 || dayOfWeek === 6; // Open on Fridays and Saturdays
+    const satOffset = (6 - dayOfWeek + 7) % 7;
+    const sat = new Date(now);
+    sat.setDate(now.getDate() + satOffset);
+    const sun = new Date(sat);
+    sun.setDate(sat.getDate() + 1);
+
+    const sDate = sat.toISOString().split('T')[0];
+    const suDate = sun.toISOString().split('T')[0];
+
+    // Check if matches scheduled for next Saturday & Sunday already have center referees allocated
+    const weekendFixtures = fixtures.filter((f) => {
+      const timeStr = f.scheduled_time || '';
+      const pDate = (f as any).play_date || '';
+      return (
+        timeStr.startsWith(sDate) ||
+        timeStr.startsWith(suDate) ||
+        pDate === sDate ||
+        pDate === suDate
+      );
+    });
+
+    const alreadyDone =
+      weekendFixtures.length > 0 &&
+      weekendFixtures.every((f) => Boolean(f.referee_id || (f as any).center_referee_id));
+
+    return {
+      isWeekendAllocationOpen: isOpen,
+      isAlreadyAllocated: alreadyDone,
+      satDateStr: sDate,
+      sunDateStr: suDate,
+    };
+  }, [fixtures]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const formattedTodayDate = new Date().toLocaleDateString('en-GB', {
@@ -110,14 +153,48 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <span className="text-xs text-slate-300 font-extrabold">{formattedTodayDate}</span>
             </div>
 
-            {/* Section 4: CALENDAR ICON BUTTON */}
-            <button
-              onClick={onOpenCalendar}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs cursor-pointer backdrop-blur-md transition-all active:scale-95"
-            >
-              <CalendarIcon className="w-4 h-4 text-emerald-400" />
-              <span>Operational Calendar</span>
-            </button>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* WEEKEND REFEREE ALLOCATION (AGENT 0 ALGO 4 & 5) */}
+              <button
+                onClick={() => setIsWeekendRefModalOpen(true)}
+                disabled={isAlreadyAllocated}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs cursor-pointer backdrop-blur-md transition-all active:scale-95 shadow-md ${
+                  isAlreadyAllocated
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 opacity-90 cursor-not-allowed'
+                    : isWeekendAllocationOpen
+                    ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 hover:from-amber-400 hover:to-emerald-300 text-slate-950 shadow-amber-950/30'
+                    : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20'
+                }`}
+                title={
+                  isAlreadyAllocated
+                    ? `Referees already allocated for upcoming weekend (${satDateStr} & ${sunDateStr}). Used for this weekend.`
+                    : !isWeekendAllocationOpen
+                    ? 'Weekend referee allocation window opens on Fridays and Saturdays.'
+                    : `Allocate referees for upcoming Saturday (${satDateStr}) & Sunday (${sunDateStr}) matchdays (Agent 0 Algorithm 4 & 5)`
+                }
+              >
+                {isAlreadyAllocated ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                    <span>Weekend Referees Allocated</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-slate-950 animate-spin" style={{ animationDuration: '3s' }} />
+                    <span>Allocate Weekend Referees</span>
+                  </>
+                )}
+              </button>
+
+              {/* Section 4: CALENDAR ICON BUTTON */}
+              <button
+                onClick={onOpenCalendar}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs cursor-pointer backdrop-blur-md transition-all active:scale-95"
+              >
+                <CalendarIcon className="w-4 h-4 text-emerald-400" />
+                <span>Operational Calendar</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -419,6 +496,16 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* WEEKEND REFEREE ALLOCATION ONE-PAGE MODULE */}
+      <WeekendRefereeAllocationModal
+        isOpen={isWeekendRefModalOpen}
+        onClose={() => setIsWeekendRefModalOpen(false)}
+        isDark={isDark}
+        onAllocationComplete={() => {
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 };

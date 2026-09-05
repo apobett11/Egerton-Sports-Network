@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ArrowRight,
   Trophy,
@@ -11,10 +11,12 @@ import {
   ShieldCheck,
   Zap,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import type { PresidentTab, SeasonItem, TeamItem, RefereeItem, PitchItem } from '../../types';
 import { SeasonReadiness } from './SeasonReadiness';
 import { OPERATIONAL_STATUS_COLORS } from '../../constants';
+import { WeekendRefereeAllocationModal } from "../../../../../President's Season Mode/components/overview/WeekendRefereeAllocationModal";
 
 interface PresidentHomeOverviewProps {
   isDark: boolean;
@@ -36,6 +38,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
   setActiveView,
   onOpenSeasonLaunchModal,
 }) => {
+  const [isWeekendRefModalOpen, setIsWeekendRefModalOpen] = useState<boolean>(false);
   const premierLeagueTeams = teams.filter((t) => t.league === 'premier' || !t.league);
   const championshipTeams = teams.filter((t) => t.league === 'championship');
   const activeReferees = referees.filter((r) => r.status === 'Active');
@@ -94,7 +97,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
         <div>
           <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <button
               onClick={() => {
                 if (onOpenSeasonLaunchModal) {
@@ -108,6 +111,17 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
               <span className="flex items-center gap-2">
                 <Trophy className="w-4 h-4" />
                 <span>Begin Season</span>
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => setIsWeekendRefModalOpen(true)}
+              className="px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 flex items-center justify-between cursor-pointer group"
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-300 animate-spin" style={{ animationDuration: '3s' }} />
+                <span>Allocate Referees</span>
               </span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </button>
@@ -388,6 +402,13 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* WEEKEND REFEREE ALLOCATION MODAL */}
+      <WeekendRefereeAllocationModal
+        isOpen={isWeekendRefModalOpen}
+        onClose={() => setIsWeekendRefModalOpen(false)}
+        isDark={isDark}
+      />
     </div>
   );
 };
