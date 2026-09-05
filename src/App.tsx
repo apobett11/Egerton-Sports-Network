@@ -140,16 +140,60 @@ export const AppContent: React.FC = () => {
     }
 
     if (!isDeviceInitializing && deviceId) {
+      // 1. Always register/check-in device details alongside the fanpage
+      DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
+        if (profile && profile.has_completed_onboarding) {
+          saveLocalPreference(profile.favorite_team_id);
+          setShowOnboarding(false);
+        }
+      });
+
       if (cachedCompleted) {
-        DeviceService.registerOrCheckInDevice(deviceId);
+        return;
+      }
+
+      // 2. Track count of times the device has opened/used the app
+      let usageCount = 1;
+      try {
+        const storedCount = parseInt(localStorage.getItem('esn_device_usage_count') || '0', 10);
+        const sessionCounted = sessionStorage.getItem('esn_app_session_counted');
+        if (!sessionCounted) {
+          usageCount = storedCount + 1;
+          localStorage.setItem('esn_device_usage_count', String(usageCount));
+          sessionStorage.setItem('esn_app_session_counted', 'true');
+        } else {
+          usageCount = storedCount || 1;
+        }
+      } catch {
+        usageCount = 1;
+      }
+
+      // 3. Prevent popup on 1st and 2nd use (protects coaches, captains, referees during registration).
+      // Trigger target is randomly chosen between the 3rd or 4th time the app is opened.
+      let targetOpen = 3;
+      try {
+        const storedTarget = parseInt(localStorage.getItem('esn_onboarding_target_open') || '0', 10);
+        if (storedTarget === 3 || storedTarget === 4) {
+          targetOpen = storedTarget;
+        } else {
+          targetOpen = Math.random() < 0.5 ? 3 : 4;
+          localStorage.setItem('esn_onboarding_target_open', String(targetOpen));
+        }
+      } catch {
+        targetOpen = 3;
+      }
+
+      // If device usage count reaches the random threshold (3rd or 4th open),
+      // bring up the fan popup at a random time interval while on the fanpage
+      if (usageCount >= targetOpen) {
+        const randomDelayMs = Math.floor(Math.random() * 2000) + 1500; // random time between 1.5s and 3.5s
+        const timer = setTimeout(() => {
+          setShowOnboarding(true);
+        }, randomDelayMs);
+
+        return () => clearTimeout(timer);
       } else {
-        setShowOnboarding(true);
-        DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
-          if (profile && profile.has_completed_onboarding) {
-            saveLocalPreference(profile.favorite_team_id);
-            setShowOnboarding(false);
-          }
-        });
+        setShowOnboarding(false);
       }
     }
   }, [deviceId, isDeviceInitializing, cachedCompleted, isAuthenticated, saveLocalPreference]);
