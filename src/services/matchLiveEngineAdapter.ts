@@ -1118,10 +1118,10 @@ export async function syncMatchEventsAndScores(
   // 3. Realtime Broadcast Notification
   try {
     await matchPublisher.publishRealtime({
-      type: 'LIVE_STATE_SNAPSHOT',
+      type: 'LIVE_EVENT_UPDATED',
       match_uid,
       version: updatedState.version,
-      timestamp: updatedState.updated_at,
+      occurred_at: updatedState.updated_at,
       payload: {
         home_score: score.home_score,
         away_score: score.away_score,

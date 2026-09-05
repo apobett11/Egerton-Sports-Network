@@ -49,6 +49,7 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
     addInjury,
     updateEvent,
     cancelEvent,
+    refreshState,
   } = useJournalistLiveAlgorithm(matchUid);
 
   // Modals state
