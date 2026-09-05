@@ -139,15 +139,11 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
   };
 
-  const render6FormBadges = (teamId: string, pos: number) => {
-    const rawForm = teamFormsMap[teamId] || (
-      pos === 1 ? ['W', 'W', 'D', 'W', 'W', 'W'] :
-      pos === 2 ? ['W', 'D', 'W', 'L', 'W', 'W'] :
-      pos === 3 ? ['W', 'L', 'W', 'D', 'W', 'W'] :
-      pos === 4 ? ['D', 'W', 'W', 'L', 'W', 'D'] :
-      pos === 5 ? ['W', 'L', 'D', 'W', 'L', 'W'] :
-      ['L', 'W', 'L', 'D', 'W', 'L']
-    );
+  const render6FormBadges = (teamId: string, _pos: number) => {
+    const rawForm = teamFormsMap[teamId] || [];
+    if (rawForm.length === 0) {
+      return <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">—</span>;
+    }
     const form6 = rawForm.slice(0, 6);
 
     return (
@@ -238,46 +234,60 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {list.map((row) => {
-                const totalTeams = list.length;
-                const zoneBorder = getPositionBorderColor(row.position, totalTeams, isChamp);
+              {list.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Trophy className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                      <span className="font-bold">No standings recorded yet for this division.</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        Standings update automatically as matches are completed.
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                list.map((row) => {
+                  const totalTeams = list.length;
+                  const zoneBorder = getPositionBorderColor(row.position, totalTeams, isChamp);
 
-                return (
-                  <tr
-                    key={row.teamId || row.position}
-                    className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${zoneBorder}`}
-                  >
-                    <td className="py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
-                      {row.position}.
-                    </td>
-                    <td className="py-2.5 px-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img
-                          src={row.teamLogo}
-                          alt={row.teamName}
-                          className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                        />
-                        <span className="font-extrabold text-slate-900 dark:text-white truncate">
-                          {row.teamName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.played}</td>
-                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.won}</td>
-                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.drawn}</td>
-                    <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.lost}</td>
-                    <td className="py-2.5 px-2 text-center font-mono text-slate-500 dark:text-slate-400 hidden sm:table-cell">
-                      {row.goalsFor}:{row.goalsAgainst}
-                    </td>
-                    <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">
-                      {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">
-                      {row.points}
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr
+                      key={row.teamId || row.position}
+                      className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${zoneBorder}`}
+                    >
+                      <td className="py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
+                        {row.position}.
+                      </td>
+                      <td className="py-2.5 px-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <img
+                            src={row.teamLogo}
+                            alt={row.teamName}
+                            className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                          />
+                          <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                            {row.teamName}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.played}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.won}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.drawn}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{row.lost}</td>
+                      <td className="py-2.5 px-2 text-center font-mono text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                        {row.goalsFor}:{row.goalsAgainst}
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                        {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">
+                        {row.points}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -317,20 +327,34 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {list.map((row) => (
-                <tr key={row.teamId || row.position} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                  <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}.</td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img src={row.teamLogo} alt={row.teamName} className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0" />
-                      <span className="font-extrabold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+              {list.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
+                      <Activity className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                      <span className="font-bold">No recent match form recorded.</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        Form streaks will appear once matches conclude.
+                      </span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">{row.played}</td>
-                  <td className="py-2.5 px-3 text-center">{render6FormBadges(row.teamId, row.position)}</td>
-                  <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-slate-900 dark:text-white">{row.points}</td>
                 </tr>
-              ))}
+              ) : (
+                list.map((row) => (
+                  <tr key={row.teamId || row.position} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}.</td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img src={row.teamLogo} alt={row.teamName} className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0" />
+                        <span className="font-extrabold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">{row.played}</td>
+                    <td className="py-2.5 px-3 text-center">{render6FormBadges(row.teamId, row.position)}</td>
+                    <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-slate-900 dark:text-white">{row.points}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -374,16 +398,30 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-            {scorers.slice(0, 10).map((sc, idx) => (
-              <tr key={sc.playerId || idx} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <td className="py-2 px-3 text-center font-bold text-slate-400">
-                  {renderRankBadge(idx + 1)}
+            {scorers.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="flex flex-col items-center justify-center gap-1.5">
+                    <Award className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                    <span className="font-bold">No goalscorers recorded yet.</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      Statistics update automatically from official match results.
+                    </span>
+                  </div>
                 </td>
-                <td className="py-2 px-3 font-extrabold text-slate-900 dark:text-white truncate max-w-[140px]">{sc.playerName}</td>
-                <td className="py-2 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{sc.teamName}</td>
-                <td className="py-2 px-3 text-center font-black font-mono text-[#00b04f]">{sc.goals} G</td>
               </tr>
-            ))}
+            ) : (
+              scorers.slice(0, 10).map((sc, idx) => (
+                <tr key={sc.playerId || idx} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                  <td className="py-2 px-3 text-center font-bold text-slate-400">
+                    {renderRankBadge(idx + 1)}
+                  </td>
+                  <td className="py-2 px-3 font-extrabold text-slate-900 dark:text-white truncate max-w-[140px]">{sc.playerName}</td>
+                  <td className="py-2 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{sc.teamName}</td>
+                  <td className="py-2 px-3 text-center font-black font-mono text-[#00b04f]">{sc.goals} G</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -619,48 +657,62 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                {playersOfTheWeek.map((item) => (
-                  <tr key={item.week} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                    {/* Column 1: Week Numbered from 1 */}
-                    <td className="py-3 px-3 text-center font-mono font-black text-xs text-slate-900 dark:text-white bg-[#f8f9fa]/50 dark:bg-[#112236]/50">
-                      WEEK {item.week}
-                    </td>
-
-                    {/* Column 2: EPL Player */}
-                    <td className="py-3 px-4 border-r border-[#f0f2f5] dark:border-[#14263b]">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                            {item.eplPlayer.name}
-                          </span>
-                          <span className="text-[10px] text-[#ff0046] font-mono font-black shrink-0">
-                            {item.eplPlayer.contribution}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          {item.eplPlayer.team}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Column 3: Championships Player */}
-                    <td className="py-3 px-4">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                            {item.champPlayer.name}
-                          </span>
-                          <span className="text-[10px] text-amber-500 font-mono font-black shrink-0">
-                            {item.champPlayer.contribution}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          {item.champPlayer.team}
-                        </div>
+                {playersOfTheWeek.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <Star className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                        <span className="font-bold">No Player of the Week awards recorded yet.</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          Dual-league weekly stars are calculated following each matchday's completed fixtures.
+                        </span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  playersOfTheWeek.map((item) => (
+                    <tr key={item.week} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                      {/* Column 1: Week Numbered from 1 */}
+                      <td className="py-3 px-3 text-center font-mono font-black text-xs text-slate-900 dark:text-white bg-[#f8f9fa]/50 dark:bg-[#112236]/50">
+                        WEEK {item.week}
+                      </td>
+
+                      {/* Column 2: EPL Player */}
+                      <td className="py-3 px-4 border-r border-[#f0f2f5] dark:border-[#14263b]">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                              {item.eplPlayer.name}
+                            </span>
+                            <span className="text-[10px] text-[#ff0046] font-mono font-black shrink-0">
+                              {item.eplPlayer.contribution}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {item.eplPlayer.team}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Column 3: Championships Player */}
+                      <td className="py-3 px-4">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                              {item.champPlayer.name}
+                            </span>
+                            <span className="text-[10px] text-amber-500 font-mono font-black shrink-0">
+                              {item.champPlayer.contribution}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            {item.champPlayer.team}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -704,25 +756,39 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                {assistsList.slice(0, 5).map((ast) => (
-                  <tr key={ast.playerId} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                    <td className="py-2 px-3 text-center font-bold text-slate-400">
-                      {renderRankBadge(ast.rank)}
+                {assistsList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <Target className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                        <span className="font-bold">No playmakers or assists recorded yet.</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                          Assist statistics update automatically from official match events.
+                        </span>
+                      </div>
                     </td>
-                    <td className="py-2 px-3">
-                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
-                        ast.league === 'EPL'
-                          ? 'bg-rose-500/10 text-[#ff0046] border border-rose-500/20'
-                          : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                      }`}>
-                        {ast.league}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 font-extrabold text-slate-900 dark:text-white truncate max-w-[140px]">{ast.playerName}</td>
-                    <td className="py-2 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{ast.teamName}</td>
-                    <td className="py-2 px-3 text-center font-black font-mono text-[#1565c0] dark:text-[#42a5f5]">{ast.assists} A</td>
                   </tr>
-                ))}
+                ) : (
+                  assistsList.slice(0, 5).map((ast) => (
+                    <tr key={ast.playerId} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                      <td className="py-2 px-3 text-center font-bold text-slate-400">
+                        {renderRankBadge(ast.rank)}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                          ast.league === 'EPL'
+                            ? 'bg-rose-500/10 text-[#ff0046] border border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                        }`}>
+                          {ast.league}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 font-extrabold text-slate-900 dark:text-white truncate max-w-[140px]">{ast.playerName}</td>
+                      <td className="py-2 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{ast.teamName}</td>
+                      <td className="py-2 px-3 text-center font-black font-mono text-[#1565c0] dark:text-[#42a5f5]">{ast.assists} A</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -761,20 +827,30 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-[#f0f2f5] dark:divide-[#14263b] p-2">
-              {(scorersModalCategory === 'epl' ? eplScorers : scorersModalCategory === 'champ' ? champScorers : allTimeScorers).map((sc, idx) => (
-                <div key={sc.playerId || idx} className="flex items-center justify-between px-3 py-2 text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className="w-5 text-center font-bold text-slate-400">
-                      {renderRankBadge(idx + 1)}
-                    </span>
-                    <div>
-                      <span className="font-extrabold text-slate-900 dark:text-white block">{sc.playerName}</span>
-                      <span className="text-[10px] text-slate-500">{sc.teamName}</span>
+              {(() => {
+                const currentList = scorersModalCategory === 'epl' ? eplScorers : scorersModalCategory === 'champ' ? champScorers : allTimeScorers;
+                if (currentList.length === 0) {
+                  return (
+                    <div className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                      No goalscorer records found in this category.
                     </div>
+                  );
+                }
+                return currentList.map((sc, idx) => (
+                  <div key={sc.playerId || idx} className="flex items-center justify-between px-3 py-2 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="w-5 text-center font-bold text-slate-400">
+                        {renderRankBadge(idx + 1)}
+                      </span>
+                      <div>
+                        <span className="font-extrabold text-slate-900 dark:text-white block">{sc.playerName}</span>
+                        <span className="text-[10px] text-slate-500">{sc.teamName}</span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-black text-sm text-[#00b04f]">{sc.goals} Goals</span>
                   </div>
-                  <span className="font-mono font-black text-sm text-[#00b04f]">{sc.goals} Goals</span>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             <div className="p-3 bg-[#f8f9fa] dark:bg-[#112236] border-t border-[#e6e8ec] dark:border-[#1a2e45] flex justify-end">
@@ -817,27 +893,33 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-[#f0f2f5] dark:divide-[#14263b] p-2">
-              {assistsList.map((ast) => (
-                <div key={ast.playerId} className="flex items-center justify-between px-3 py-2 text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className="w-5 text-center font-bold text-slate-400">
-                      {renderRankBadge(ast.rank)}
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-slate-900 dark:text-white">{ast.playerName}</span>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded ${
-                          ast.league === 'EPL' ? 'bg-rose-500/10 text-[#ff0046]' : 'bg-amber-500/10 text-amber-500'
-                        }`}>
-                          {ast.league}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-500">{ast.teamName}</span>
-                    </div>
-                  </div>
-                  <span className="font-mono font-black text-sm text-[#1565c0] dark:text-[#42a5f5]">{ast.assists} Assists</span>
+              {assistsList.length === 0 ? (
+                <div className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                  No playmaker or assist records found in the database.
                 </div>
-              ))}
+              ) : (
+                assistsList.map((ast) => (
+                  <div key={ast.playerId} className="flex items-center justify-between px-3 py-2 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="w-5 text-center font-bold text-slate-400">
+                        {renderRankBadge(ast.rank)}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-slate-900 dark:text-white">{ast.playerName}</span>
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded ${
+                            ast.league === 'EPL' ? 'bg-rose-500/10 text-[#ff0046]' : 'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {ast.league}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500">{ast.teamName}</span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-black text-sm text-[#1565c0] dark:text-[#42a5f5]">{ast.assists} Assists</span>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="p-3 bg-[#f8f9fa] dark:bg-[#112236] border-t border-[#e6e8ec] dark:border-[#1a2e45] flex justify-end">

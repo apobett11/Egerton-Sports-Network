@@ -27,7 +27,7 @@ const DEFAULT_TTLS: Record<string, number> = {
   performance: 3 * 60 * 1000 // 3 minutes
 };
 
-const STORAGE_PREFIX = 'esn_guest_cache_v2_';
+const STORAGE_PREFIX = 'esn_guest_cache_v3_';
 
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
@@ -35,10 +35,10 @@ class GuestCacheManager {
   constructor() {
     if (typeof window !== 'undefined') {
       try {
-        // Purge legacy v1 cache keys on startup
+        // Purge legacy v1 and v2 cache keys on startup to clear pre-wipe stale mock data
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
-          if (k && k.startsWith('esn_guest_cache_v1_')) {
+          if (k && (k.startsWith('esn_guest_cache_v1_') || k.startsWith('esn_guest_cache_v2_'))) {
             localStorage.removeItem(k);
           }
         }

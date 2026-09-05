@@ -567,85 +567,103 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             {/* Unified List for EPL */}
-            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {/* EPL Top Scorer */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
-                    TOP SCORER
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.epl.topScorer.playerName}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.epl.topScorer.teamName}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-                    🔥 {perfState.data.epl.topScorer.streak || 3} match scoring streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
-                    {perfState.data.epl.topScorer.goals} G
+            {(!perfState.data.epl.topScorer && !perfState.data.epl.mostAssists && !perfState.data.epl.mostCleanSheets) ? (
+              <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <Award className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                  <span className="font-bold">No player performance records registered yet.</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    Official statistics are calculated automatically from completed fixtures.
                   </span>
                 </div>
               </div>
-
-              {/* EPL Most Assists */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
-                    MOST ASSISTS
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.epl.mostAssists.playerName}
+            ) : (
+              <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                {/* EPL Top Scorer */}
+                {perfState.data.epl.topScorer && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
+                        TOP SCORER
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.epl.topScorer.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.epl.topScorer.teamName}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.epl.mostAssists.teamName}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
-                    🎯 {perfState.data.epl.mostAssists.streak || 2} match assist streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
-                    {perfState.data.epl.mostAssists.assists} A
-                  </span>
-                </div>
-              </div>
-
-              {/* EPL Clean Sheets */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
-                    CLEAN SHEETS
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.epl.mostCleanSheets.playerName}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.epl.mostCleanSheets.teamName}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                        🔥 Leader
+                      </span>
+                      <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
+                        {perfState.data.epl.topScorer.goals} G
+                      </span>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
-                    🛡️ {perfState.data.epl.mostCleanSheets.streak || 4} match clean sheet streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-purple-500 shrink-0">
-                    {perfState.data.epl.mostCleanSheets.cleanSheets} CS
-                  </span>
-                </div>
+                {/* EPL Most Assists */}
+                {perfState.data.epl.mostAssists && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
+                        MOST ASSISTS
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.epl.mostAssists.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.epl.mostAssists.teamName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                        🎯 Playmaker
+                      </span>
+                      <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
+                        {perfState.data.epl.mostAssists.assists} A
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* EPL Clean Sheets */}
+                {perfState.data.epl.mostCleanSheets && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
+                        CLEAN SHEETS
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.epl.mostCleanSheets.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.epl.mostCleanSheets.teamName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
+                        🛡️ Wall
+                      </span>
+                      <span className="font-mono font-black text-xs text-purple-500 shrink-0">
+                        {perfState.data.epl.mostCleanSheets.cleanSheets} CS
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </section>
 
           {/* CARD 2: EGERTON CHAMPIONSHIPS PLAYER STATS */}
@@ -666,85 +684,103 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             {/* Unified List for Championships */}
-            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {/* Championships Top Scorer */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
-                    TOP SCORER
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.championship.topScorer.playerName}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.championship.topScorer.teamName}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-                    🔥 {perfState.data.championship.topScorer.streak || 4} match scoring streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
-                    {perfState.data.championship.topScorer.goals} G
+            {(!perfState.data.championship.topScorer && !perfState.data.championship.mostAssists && !perfState.data.championship.mostCleanSheets) ? (
+              <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <Trophy className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                  <span className="font-bold">No player performance records registered yet.</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    Official statistics are calculated automatically from completed fixtures.
                   </span>
                 </div>
               </div>
-
-              {/* Championships Most Assists */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
-                    MOST ASSISTS
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.championship.mostAssists.playerName}
+            ) : (
+              <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                {/* Championships Top Scorer */}
+                {perfState.data.championship.topScorer && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20 w-24 text-center shrink-0">
+                        TOP SCORER
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.championship.topScorer.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.championship.topScorer.teamName}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.championship.mostAssists.teamName}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
-                    🎯 {perfState.data.championship.mostAssists.streak || 3} match assist streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
-                    {perfState.data.championship.mostAssists.assists} A
-                  </span>
-                </div>
-              </div>
-
-              {/* Championships Clean Sheets */}
-              <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
-                    CLEAN SHEETS
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
-                      {perfState.data.championship.mostCleanSheets.playerName}
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {perfState.data.championship.mostCleanSheets.teamName}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                        🔥 Leader
+                      </span>
+                      <span className="font-mono font-black text-xs text-[#00b04f] shrink-0">
+                        {perfState.data.championship.topScorer.goals} G
+                      </span>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
-                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
-                    🛡️ {perfState.data.championship.mostCleanSheets.streak || 2} match clean sheet streak
-                  </span>
-                  <span className="font-mono font-black text-xs text-purple-500 shrink-0">
-                    {perfState.data.championship.mostCleanSheets.cleanSheets} CS
-                  </span>
-                </div>
+                {/* Championships Most Assists */}
+                {perfState.data.championship.mostAssists && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-[#1565c0]/10 text-[#1565c0] dark:text-[#42a5f5] border border-[#1565c0]/20 w-24 text-center shrink-0">
+                        MOST ASSISTS
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.championship.mostAssists.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.championship.mostAssists.teamName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                        🎯 Playmaker
+                      </span>
+                      <span className="font-mono font-black text-xs text-[#1565c0] dark:text-[#42a5f5] shrink-0">
+                        {perfState.data.championship.mostAssists.assists} A
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Championships Clean Sheets */}
+                {perfState.data.championship.mostCleanSheets && (
+                  <div className="p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 w-24 text-center shrink-0">
+                        CLEAN SHEETS
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                          {perfState.data.championship.mostCleanSheets.playerName}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {perfState.data.championship.mostCleanSheets.teamName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:pl-0">
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">
+                        🛡️ Wall
+                      </span>
+                      <span className="font-mono font-black text-xs text-purple-500 shrink-0">
+                        {perfState.data.championship.mostCleanSheets.cleanSheets} CS
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </section>
         </div>
       )}
@@ -765,47 +801,59 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         {milestonesState.data && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-center">
-            <div className="p-2 space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">HIGHEST SCORING</span>
-              <div className="text-base font-black text-slate-900 dark:text-white font-mono">
-                {milestonesState.data.highestScoringMatch?.totalGoals || 0} Goals
-              </div>
-              <div className="text-[10px] text-slate-500 truncate">
-                {milestonesState.data.highestScoringMatch?.homeTeam} vs {milestonesState.data.highestScoringMatch?.awayTeam}
+          milestonesState.data.completedMatchesCount === 0 || !milestonesState.data.highestScoringMatch ? (
+            <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <Zap className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                <span className="font-bold">No verified league matches completed yet.</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                  League records, highest scoring games, and clean sheets will calculate live upon match finalization.
+                </span>
               </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-center">
+              <div className="p-2 space-y-0.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">HIGHEST SCORING</span>
+                <div className="text-base font-black text-slate-900 dark:text-white font-mono">
+                  {milestonesState.data.highestScoringMatch?.totalGoals || 0} Goals
+                </div>
+                <div className="text-[10px] text-slate-500 truncate">
+                  {milestonesState.data.highestScoringMatch?.homeTeam} vs {milestonesState.data.highestScoringMatch?.awayTeam}
+                </div>
+              </div>
 
-            <div className="p-2 space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">LARGEST MARGIN</span>
-              <div className="text-base font-black text-[#00b04f] font-mono">
-                +{milestonesState.data.largestWinMargin?.margin || 0} Goals
+              <div className="p-2 space-y-0.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">LARGEST MARGIN</span>
+                <div className="text-base font-black text-[#00b04f] font-mono">
+                  +{milestonesState.data.largestWinMargin?.margin || 0} Goals
+                </div>
+                <div className="text-[10px] text-slate-500 truncate">
+                  {milestonesState.data.largestWinMargin?.winner || 'Pending'}
+                </div>
               </div>
-              <div className="text-[10px] text-slate-500 truncate">
-                {milestonesState.data.largestWinMargin?.winner || 'Pending'}
-              </div>
-            </div>
 
-            <div className="p-2 space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">TOTAL GOALS</span>
-              <div className="text-base font-black text-[#1565c0] font-mono">
-                {milestonesState.data.totalGoalsScored || 0}
+              <div className="p-2 space-y-0.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">TOTAL GOALS</span>
+                <div className="text-base font-black text-[#1565c0] font-mono">
+                  {milestonesState.data.totalGoalsScored || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  In {milestonesState.data.completedMatchesCount || 0} matches
+                </div>
               </div>
-              <div className="text-[10px] text-slate-500">
-                In {milestonesState.data.completedMatchesCount || 0} matches
-              </div>
-            </div>
 
-            <div className="p-2 space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">CLEAN SHEETS</span>
-              <div className="text-base font-black text-purple-500 font-mono">
-                {milestonesState.data.cleanSheetsTotal || 0}
-              </div>
-              <div className="text-[10px] text-slate-500">
-                Shutout games
+              <div className="p-2 space-y-0.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">CLEAN SHEETS</span>
+                <div className="text-base font-black text-purple-500 font-mono">
+                  {milestonesState.data.cleanSheetsTotal || 0}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  Shutout games
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
       </section>
 
@@ -836,19 +884,25 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
               EPL TOP 4
             </div>
-            {standingsState.epl.slice(0, 4).map((row) => (
-              <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                  <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                  <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
-                </div>
-                <div className="flex items-center gap-3 font-mono">
-                  <span className="text-slate-500 text-[11px]">{row.played}p</span>
-                  <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
-                </div>
+            {standingsState.epl.length === 0 ? (
+              <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                No standings recorded yet
               </div>
-            ))}
+            ) : (
+              standingsState.epl.slice(0, 4).map((row) => (
+                <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
+                    <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-500 text-[11px]">{row.played}p</span>
+                    <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Championships Snapshot */}
@@ -856,19 +910,25 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
               CHAMPIONSHIPS TOP 4
             </div>
-            {standingsState.champ.slice(0, 4).map((row) => (
-              <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                  <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                  <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
-                </div>
-                <div className="flex items-center gap-3 font-mono">
-                  <span className="text-slate-500 text-[11px]">{row.played}p</span>
-                  <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
-                </div>
+            {standingsState.champ.length === 0 ? (
+              <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                No standings recorded yet
               </div>
-            ))}
+            ) : (
+              standingsState.champ.slice(0, 4).map((row) => (
+                <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
+                    <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-500 text-[11px]">{row.played}p</span>
+                    <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>

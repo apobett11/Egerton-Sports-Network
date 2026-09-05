@@ -1069,49 +1069,65 @@ export const ApiService = {
     goals: number;
   }>>> {
     try {
+      // 1. Authoritative Feed: RPC Function get_top_scorers
       const { data, error } = await supabase.rpc('get_top_scorers', {
         p_competition_id: competitionId || null,
         p_limit: limit || 10
       });
 
-      if (!error && data && data.length > 0) {
+      if (!error && Array.isArray(data) && data.length > 0) {
         const scorers = data.map((row: any) => ({
           playerId: row.player_id,
-          playerName: row.player_name,
-          teamName: row.team_name,
+          playerName: row.player_name || 'Player',
+          teamName: row.team_name || 'Campus Team',
           teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
           goals: Number(row.goals)
         }));
         return { success: true, data: scorers };
       }
 
-      // High-grade fallback top scorers for EPL vs Championship vs All-Time
-      const isChamp = competitionId === '22222222-2222-2222-2222-222222222222';
-      const fallbackList = isChamp ? [
-        { playerId: 'c-sc-1', playerName: 'Brian Omondi', teamName: 'Championship FC Alpha', teamLogo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80', goals: 9 },
-        { playerId: 'c-sc-2', playerName: 'Kevin Kimani', teamName: 'Championship FC Beta', teamLogo: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80', goals: 8 },
-        { playerId: 'c-sc-3', playerName: 'Erick Kapaito', teamName: 'Championship FC Gamma', teamLogo: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80', goals: 7 },
-        { playerId: 'c-sc-4', playerName: 'George Abege', teamName: 'Championship FC Delta', teamLogo: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80', goals: 6 },
-        { playerId: 'c-sc-5', playerName: 'Humphrey Mieno', teamName: 'Championship FC Epsilon', teamLogo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80', goals: 6 },
-        { playerId: 'c-sc-6', playerName: 'David Owino', teamName: 'Championship FC Zeta', teamLogo: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80', goals: 5 },
-        { playerId: 'c-sc-7', playerName: 'Duncan Otieno', teamName: 'Championship FC Eta', teamLogo: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80', goals: 4 },
-        { playerId: 'c-sc-8', playerName: 'Whyvonne Isuza', teamName: 'Championship FC Theta', teamLogo: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80', goals: 4 },
-        { playerId: 'c-sc-9', playerName: 'Teddy Osok', teamName: 'Championship FC Iota', teamLogo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80', goals: 3 },
-        { playerId: 'c-sc-10', playerName: 'Collins Agade', teamName: 'Championship FC Kappa', teamLogo: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80', goals: 3 }
-      ] : [
-        { playerId: 'e-sc-1', playerName: 'Victor Wanyama', teamName: 'Sharklets FC', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 12 },
-        { playerId: 'e-sc-2', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', teamLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80', goals: 10 },
-        { playerId: 'e-sc-3', playerName: 'Jesse Were', teamName: 'Faculty of Science', teamLogo: 'https://images.unsplash.com/photo-1543351611-c823948c2a50?w=100&auto=format&fit=crop&q=80', goals: 9 },
-        { playerId: 'e-sc-4', playerName: 'Meddie Kagere', teamName: 'Njoro FC', teamLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80', goals: 8 },
-        { playerId: 'e-sc-5', playerName: 'Enosh Ochieng', teamName: 'Egerton Warriors', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 8 },
-        { playerId: 'e-sc-6', playerName: 'Tusker Simba', teamName: 'Faculty of Agriculture', teamLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80', goals: 7 },
-        { playerId: 'e-sc-7', playerName: 'Allan Wanga', teamName: 'Engineering Titans', teamLogo: 'https://images.unsplash.com/photo-1543351611-c823948c2a50?w=100&auto=format&fit=crop&q=80', goals: 6 },
-        { playerId: 'e-sc-8', playerName: 'Dennis Oliech', teamName: 'Medical Strikers', teamLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80', goals: 5 },
-        { playerId: 'e-sc-9', playerName: 'John Makwatta', teamName: 'Education FC', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 5 },
-        { playerId: 'e-sc-10', playerName: 'Francis Kahata', teamName: 'Veterinary Lions', teamLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80', goals: 4 }
-      ];
+      // 2. Direct Materialized Table Query Fallback: player_stats
+      let query = supabase
+        .from('player_stats')
+        .select(`
+          player_id,
+          goals,
+          player:players!player_id(
+            id,
+            first_name,
+            last_name,
+            profile:profiles!profile_id(first_name, last_name),
+            team:teams!team_id(id, name, logo_url)
+          )
+        `)
+        .gt('goals', 0);
 
-      return { success: true, data: fallbackList.slice(0, limit || 10) };
+      if (competitionId) {
+        query = query.eq('competition_id', competitionId);
+      }
+
+      const { data: psData, error: psErr } = await query
+        .order('goals', { ascending: false })
+        .limit(limit || 10);
+
+      if (!psErr && psData && psData.length > 0) {
+        const scorers = psData.map((row: any) => {
+          const p = unwrap(row.player);
+          const prof = unwrap(p?.profile);
+          const tm = unwrap(p?.team);
+          const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
+          return {
+            playerId: row.player_id,
+            playerName: fullName,
+            teamName: tm?.name || 'Campus Team',
+            teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+            goals: Number(row.goals)
+          };
+        });
+        return { success: true, data: scorers };
+      }
+
+      return { success: true, data: [] };
     } catch (err) {
       return { success: true, data: [] };
     }
@@ -1125,19 +1141,8 @@ export const ApiService = {
     teamLogo: string;
     goals: number;
   }>>> {
-    const allTime = [
-      { playerId: 'at-1', playerName: 'Dennis Oliech', teamName: 'Sharklets FC Legend', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 48 },
-      { playerId: 'at-2', playerName: 'Victor Wanyama', teamName: 'Sharklets FC', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 42 },
-      { playerId: 'at-3', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', teamLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80', goals: 39 },
-      { playerId: 'at-4', playerName: 'Jesse Were', teamName: 'Faculty of Science', teamLogo: 'https://images.unsplash.com/photo-1543351611-c823948c2a50?w=100&auto=format&fit=crop&q=80', goals: 35 },
-      { playerId: 'at-5', playerName: 'Allan Wanga', teamName: 'Engineering Titans', teamLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80', goals: 31 },
-      { playerId: 'at-6', playerName: 'Meddie Kagere', teamName: 'Njoro FC', teamLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80', goals: 28 },
-      { playerId: 'at-7', playerName: 'Brian Omondi', teamName: 'Championship FC Alpha', teamLogo: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80', goals: 26 },
-      { playerId: 'at-8', playerName: 'Enosh Ochieng', teamName: 'Egerton Warriors', teamLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80', goals: 24 },
-      { playerId: 'at-9', playerName: 'John Makwatta', teamName: 'Education FC', teamLogo: 'https://images.unsplash.com/photo-1543351611-c823948c2a50?w=100&auto=format&fit=crop&q=80', goals: 22 },
-      { playerId: 'at-10', playerName: 'Kevin Kimani', teamName: 'Championship FC Beta', teamLogo: 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80', goals: 21 }
-    ];
-    return { success: true, data: allTime.slice(0, limit || 10) };
+    // Queries all competitions aggregated directly from the database
+    return this.getTopScorers(undefined, limit);
   },
 
   // --- PLAYERS OF THE WEEK ---
@@ -1146,36 +1151,111 @@ export const ApiService = {
     eplPlayer: { name: string; team: string; contribution: string };
     champPlayer: { name: string; team: string; contribution: string };
   }>>> {
-    return {
-      success: true,
-      data: [
-        {
-          week: 5,
-          eplPlayer: { name: 'Victor Wanyama', team: 'Sharklets FC', contribution: '2 Goals, 1 Assist' },
-          champPlayer: { name: 'Brian Omondi', team: 'Championship FC Alpha', contribution: 'Hat-trick (3 Goals)' }
-        },
-        {
-          week: 4,
-          eplPlayer: { name: 'Michael Olunga', team: 'Faculty of Arts', contribution: '1 Goal, 2 Assists' },
-          champPlayer: { name: 'Kevin Kimani', team: 'Championship FC Beta', contribution: '2 Goals, 1 Assist' }
-        },
-        {
-          week: 3,
-          eplPlayer: { name: 'Patrick Matasi', team: 'Sharklets FC', contribution: 'Clean Sheet, 7 Saves' },
-          champPlayer: { name: 'Farouk Shikhalo', team: 'Championship FC Gamma', contribution: 'Penalty Save, Clean Sheet' }
-        },
-        {
-          week: 2,
-          eplPlayer: { name: 'Jesse Were', team: 'Faculty of Science', contribution: '2 Goals' },
-          champPlayer: { name: 'Erick Kapaito', team: 'Championship FC Gamma', contribution: '2 Goals' }
-        },
-        {
-          week: 1,
-          eplPlayer: { name: 'Meddie Kagere', team: 'Njoro FC', contribution: 'Opening Match Winner' },
-          champPlayer: { name: 'George Abege', team: 'Championship FC Delta', contribution: '1 Goal, 1 Assist' }
+    try {
+      const EPL_ID = '11111111-1111-1111-1111-111111111111';
+      const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
+
+      // Query completed fixtures with official match events to dynamically calculate weekly stars
+      const { data: fixtures, error } = await supabase
+        .from('fixtures')
+        .select(`
+          id, matchday, competition_id,
+          match_events(
+            id, type, player_id, assist_player_id,
+            player:players!player_id(
+              id,
+              profile:profiles!profile_id(first_name, last_name),
+              team:teams!team_id(name)
+            )
+          )
+        `)
+        .eq('status', 'FT')
+        .order('matchday', { ascending: false });
+
+      if (error || !fixtures || fixtures.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      // Group by matchday
+      const matchdayMap = new Map<number, { eplEvents: any[]; champEvents: any[] }>();
+      fixtures.forEach((f: any) => {
+        const mday = f.matchday || 1;
+        if (!matchdayMap.has(mday)) {
+          matchdayMap.set(mday, { eplEvents: [], champEvents: [] });
         }
-      ]
-    };
+        const group = matchdayMap.get(mday)!;
+        const events = f.match_events || [];
+        if (f.competition_id === CHAMP_ID) {
+          group.champEvents.push(...events);
+        } else {
+          group.eplEvents.push(...events);
+        }
+      });
+
+      const findStarPlayer = (events: any[]) => {
+        const playerScores = new Map<string, { player: any; goals: number; assists: number }>();
+        events.forEach((ev: any) => {
+          if (!ev.player_id) return;
+          const p = unwrap(ev.player);
+          if (!playerScores.has(ev.player_id)) {
+            playerScores.set(ev.player_id, { player: p, goals: 0, assists: 0 });
+          }
+          const rec = playerScores.get(ev.player_id)!;
+          if (ev.type === 'goal' || ev.type === 'penalty') {
+            rec.goals += 1;
+          }
+        });
+        events.forEach((ev: any) => {
+          if (!ev.assist_player_id) return;
+          if (playerScores.has(ev.assist_player_id)) {
+            playerScores.get(ev.assist_player_id)!.assists += 1;
+          }
+        });
+
+        let best: { name: string; team: string; contribution: string } | null = null;
+        let bestPoints = 0;
+        playerScores.forEach(({ player, goals, assists }) => {
+          const totalPoints = (goals * 2) + assists;
+          if (totalPoints > bestPoints) {
+            bestPoints = totalPoints;
+            const prof = unwrap(player?.profile);
+            const tm = unwrap(player?.team);
+            const fullName = prof ? `${prof.first_name} ${prof.last_name}` : 'Player';
+            const contribParts: string[] = [];
+            if (goals > 0) contribParts.push(`${goals} Goal${goals > 1 ? 's' : ''}`);
+            if (assists > 0) contribParts.push(`${assists} Assist${assists > 1 ? 's' : ''}`);
+            best = {
+              name: fullName,
+              team: tm?.name || 'Campus Team',
+              contribution: contribParts.join(', ') || 'Match Winner'
+            };
+          }
+        });
+        return best;
+      };
+
+      const results: Array<{
+        week: number;
+        eplPlayer: { name: string; team: string; contribution: string };
+        champPlayer: { name: string; team: string; contribution: string };
+      }> = [];
+
+      matchdayMap.forEach((group, week) => {
+        const eplStar = findStarPlayer(group.eplEvents);
+        const champStar = findStarPlayer(group.champEvents);
+        if (eplStar || champStar) {
+          results.push({
+            week,
+            eplPlayer: eplStar || { name: 'To be determined', team: 'EPL', contribution: 'Pending validation' },
+            champPlayer: champStar || { name: 'To be determined', team: 'Championships', contribution: 'Pending validation' }
+          });
+        }
+      });
+
+      return { success: true, data: results.sort((a, b) => b.week - a.week) };
+    } catch {
+      return { success: true, data: [] };
+    }
   },
 
   // --- ASSISTS LEADERBOARD ---
@@ -1187,37 +1267,66 @@ export const ApiService = {
     league: string;
     assists: number;
   }>>> {
-    const list = [
-      { rank: 1, playerId: 'ast-1', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', league: 'EPL', assists: 8 },
-      { rank: 2, playerId: 'ast-2', playerName: 'Kevin Kimani', teamName: 'Championship FC Beta', league: 'Championships', assists: 6 },
-      { rank: 3, playerId: 'ast-3', playerName: 'Francis Kahata', teamName: 'Veterinary Lions', league: 'EPL', assists: 5 },
-      { rank: 4, playerId: 'ast-4', playerName: 'Whyvonne Isuza', teamName: 'Championship FC Theta', league: 'Championships', assists: 5 },
-      { rank: 5, playerId: 'ast-5', playerName: 'Humphrey Mieno', teamName: 'Championship FC Epsilon', league: 'Championships', assists: 4 },
-      { rank: 6, playerId: 'ast-6', playerName: 'Victor Wanyama', teamName: 'Sharklets FC', league: 'EPL', assists: 4 },
-      { rank: 7, playerId: 'ast-7', playerName: 'Duncan Otieno', teamName: 'Championship FC Eta', league: 'Championships', assists: 4 },
-      { rank: 8, playerId: 'ast-8', playerName: 'Dennis Oliech', teamName: 'Medical Strikers', league: 'EPL', assists: 3 },
-      { rank: 9, playerId: 'ast-9', playerName: 'Allan Wanga', teamName: 'Engineering Titans', league: 'EPL', assists: 3 },
-      { rank: 10, playerId: 'ast-10', playerName: 'Brian Omondi', teamName: 'Championship FC Alpha', league: 'Championships', assists: 3 }
-    ];
-    return { success: true, data: list.slice(0, limit || 5) };
+    try {
+      const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
+      const { data, error } = await supabase
+        .from('player_stats')
+        .select(`
+          player_id,
+          competition_id,
+          assists,
+          player:players!player_id(
+            id,
+            profile:profiles!profile_id(first_name, last_name),
+            team:teams!team_id(id, name, competition_id)
+          )
+        `)
+        .gt('assists', 0)
+        .order('assists', { ascending: false })
+        .limit(limit || 10);
+
+      if (error || !data || data.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      const list = data.map((row: any, idx: number) => {
+        const p = unwrap(row.player);
+        const prof = unwrap(p?.profile);
+        const tm = unwrap(p?.team);
+        const isChamp = (row.competition_id === CHAMP_ID) || (tm?.competition_id === CHAMP_ID);
+        const fullName = prof ? `${prof.first_name} ${prof.last_name}` : 'Player';
+        return {
+          rank: idx + 1,
+          playerId: row.player_id,
+          playerName: fullName,
+          teamName: tm?.name || 'Campus Team',
+          league: isChamp ? 'Championships' : 'EPL',
+          assists: Number(row.assists)
+        };
+      });
+
+      return { success: true, data: list.slice(0, limit || 5) };
+    } catch {
+      return { success: true, data: [] };
+    }
   },
 
   // --- DUAL PLAYER PERFORMANCE & GOATS ---
   async getDualPlayerPerformance(): Promise<ApiResponse<{
     epl: {
-      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number };
-      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number };
-      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number };
+      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number } | null;
+      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null;
+      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null;
     };
     championship: {
-      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number };
-      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number };
-      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number };
+      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number } | null;
+      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null;
+      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null;
     };
     goats: {
-      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number };
-      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number };
-      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number };
+      topScorer: { playerId: string; playerName: string; teamName: string; league: string; goals: number; streak: number } | null;
+      mostAssists: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null;
+      mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null;
     };
   }>> {
     const cached = guestCache.get<any>('performance', 'dual_perf');
@@ -1227,185 +1336,124 @@ export const ApiService = {
       const EPL_ID = '11111111-1111-1111-1111-111111111111';
       const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
-      // 1. Fetch Top Scorers via RPC
+      // 1. Fetch Top Scorers via getTopScorers
       const [eplScorersRes, champScorersRes, goatsScorersRes] = await Promise.all([
-        this.getTopScorers(EPL_ID, 10),
-        this.getTopScorers(CHAMP_ID, 10),
-        this.getTopScorers(undefined, 10)
+        this.getTopScorers(EPL_ID, 1),
+        this.getTopScorers(CHAMP_ID, 1),
+        this.getTopScorers(undefined, 1)
       ]);
 
-      // 2. Fetch Clean Sheets Mathematically from Completed Fixtures
-      const { data: ftFixtures } = await supabase
-        .from('fixtures')
-        .select('competition_id, home_team_id, away_team_id, score_home, score_away')
-        .eq('status', 'FT');
-
-      const teamCleanSheetsMap: Record<string, number> = {};
-      (ftFixtures || []).forEach((f: any) => {
-        if (f.score_away === 0 && f.home_team_id) {
-          teamCleanSheetsMap[f.home_team_id] = (teamCleanSheetsMap[f.home_team_id] || 0) + 1;
-        }
-        if (f.score_home === 0 && f.away_team_id) {
-          teamCleanSheetsMap[f.away_team_id] = (teamCleanSheetsMap[f.away_team_id] || 0) + 1;
-        }
-      });
-
-      const { data: gks } = await supabase
-        .from('players')
-        .select(`
-          id,
-          team_id,
-          profile:profiles!profile_id(first_name, last_name),
-          team:teams!team_id(id, name, competition_id)
-        `)
-        .eq('position', 'GK');
-
-      const getTopGK = (compId?: string) => {
-        let best: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null = null;
-        (gks || []).forEach((gk: any) => {
-          const tm = unwrap(gk.team);
-          const prof = unwrap(gk.profile);
-          if (compId && tm?.competition_id !== compId) return;
-          const csCount = teamCleanSheetsMap[gk.team_id] || 0;
-          if (!best || csCount > best.cleanSheets) {
-            best = {
-              playerId: gk.id,
-              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Goalkeeper',
-              teamName: tm?.name || 'Campus Team',
-              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
-              cleanSheets: csCount,
-              streak: Math.max(1, Math.min(csCount, 4))
-            };
-          }
-        });
-        return best;
-      };
-
-      // 3. Query Assists from match_events
-      const { data: assistRows } = await supabase
-        .from('match_events')
-        .select(`
-          assist_player_id,
-          player:players!assist_player_id(
-            id,
-            team_id,
-            profile:profiles!profile_id(first_name, last_name),
-            team:teams!team_id(id, name, competition_id)
-          )
-        `)
-        .not('assist_player_id', 'is', null);
-
-      const assistCountsMap: Record<string, { player: any; count: number }> = {};
-      (assistRows || []).forEach((row: any) => {
-        const pId = row.assist_player_id;
-        if (!pId) return;
-        if (!assistCountsMap[pId]) {
-          assistCountsMap[pId] = { player: unwrap(row.player), count: 0 };
-        }
-        assistCountsMap[pId].count += 1;
-      });
-
-      const getTopAssistPlayer = (compId?: string) => {
-        let best: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null = null;
-        Object.values(assistCountsMap).forEach(({ player, count }) => {
-          if (!player) return;
-          const tm = unwrap(player.team);
-          const prof = unwrap(player.profile);
-          if (compId && tm?.competition_id !== compId) return;
-          if (!best || count > best.assists) {
-            best = {
-              playerId: player.id,
-              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Midfielder',
-              teamName: tm?.name || 'Campus Team',
-              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
-              assists: count,
-              streak: Math.max(1, Math.min(count, 3))
-            };
-          }
-        });
-        return best;
-      };
-
-      const eplTopScorer = eplScorersRes.data?.[0] ? {
+      const eplTopScorer = (eplScorersRes.data && eplScorersRes.data[0] && eplScorersRes.data[0].goals > 0) ? {
         playerId: eplScorersRes.data[0].playerId,
         playerName: eplScorersRes.data[0].playerName,
         teamName: eplScorersRes.data[0].teamName,
         league: 'Egerton Premier League',
         goals: eplScorersRes.data[0].goals,
-        streak: 3
-      } : {
-        playerId: 'epl-1',
-        playerName: 'Victor Wanyama',
-        teamName: 'Sharklets FC',
-        league: 'Egerton Premier League',
-        goals: 12,
-        streak: 3
-      };
+        streak: 1
+      } : null;
 
-      const champTopScorer = champScorersRes.data?.[0] ? {
+      const champTopScorer = (champScorersRes.data && champScorersRes.data[0] && champScorersRes.data[0].goals > 0) ? {
         playerId: champScorersRes.data[0].playerId,
         playerName: champScorersRes.data[0].playerName,
         teamName: champScorersRes.data[0].teamName,
         league: 'Egerton Championships',
         goals: champScorersRes.data[0].goals,
-        streak: 4
-      } : {
-        playerId: 'ch-1',
-        playerName: 'Brian Omondi',
-        teamName: 'Championship FC Alpha',
-        league: 'Egerton Championships',
-        goals: 9,
-        streak: 4
-      };
+        streak: 1
+      } : null;
 
-      const goatScorer = goatsScorersRes.data?.[0] ? {
+      const goatScorer = (goatsScorersRes.data && goatsScorersRes.data[0] && goatsScorersRes.data[0].goals > 0) ? {
         playerId: goatsScorersRes.data[0].playerId,
         playerName: goatsScorersRes.data[0].playerName,
         teamName: goatsScorersRes.data[0].teamName,
         league: 'Egerton Premier League',
         goals: goatsScorersRes.data[0].goals,
-        streak: 3
-      } : eplTopScorer;
+        streak: 1
+      } : (eplTopScorer || champTopScorer || null);
 
-      const eplAssists = getTopAssistPlayer(EPL_ID) || {
-        playerId: 'epl-ast-1',
-        playerName: 'Michael Olunga',
-        teamName: 'Faculty of Arts',
-        league: 'Egerton Premier League',
-        assists: 8,
-        streak: 2
+      // 2. Fetch Clean Sheets directly from materialized player_stats table (updated by fn_process_match_statistics)
+      const { data: cleanSheetStats } = await supabase
+        .from('player_stats')
+        .select(`
+          player_id,
+          competition_id,
+          clean_sheets,
+          player:players!player_id(
+            id,
+            position,
+            profile:profiles!profile_id(first_name, last_name),
+            team:teams!team_id(id, name, competition_id)
+          )
+        `)
+        .gt('clean_sheets', 0)
+        .order('clean_sheets', { ascending: false });
+
+      const getTopGK = (compId?: string) => {
+        let best: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null = null;
+        (cleanSheetStats || []).forEach((row: any) => {
+          const p = unwrap(row.player);
+          const prof = unwrap(p?.profile);
+          const tm = unwrap(p?.team);
+          if (compId && (row.competition_id !== compId && tm?.competition_id !== compId)) return;
+          const cs = Number(row.clean_sheets) || 0;
+          if (cs > 0 && (!best || cs > best.cleanSheets)) {
+            best = {
+              playerId: row.player_id,
+              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Goalkeeper',
+              teamName: tm?.name || 'Campus Team',
+              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
+              cleanSheets: cs,
+              streak: 1
+            };
+          }
+        });
+        return best;
       };
 
-      const champAssists = getTopAssistPlayer(CHAMP_ID) || {
-        playerId: 'ch-ast-1',
-        playerName: 'Kevin Kimani',
-        teamName: 'Championship FC Beta',
-        league: 'Egerton Championships',
-        assists: 6,
-        streak: 3
+      const eplCleanSheets = getTopGK(EPL_ID);
+      const champCleanSheets = getTopGK(CHAMP_ID);
+      const goatCleanSheets = getTopGK() || eplCleanSheets || champCleanSheets || null;
+
+      // 3. Fetch Most Assists directly from materialized player_stats table (updated by fn_process_match_statistics)
+      const { data: assistStats } = await supabase
+        .from('player_stats')
+        .select(`
+          player_id,
+          competition_id,
+          assists,
+          player:players!player_id(
+            id,
+            profile:profiles!profile_id(first_name, last_name),
+            team:teams!team_id(id, name, competition_id)
+          )
+        `)
+        .gt('assists', 0)
+        .order('assists', { ascending: false });
+
+      const getTopAssistPlayer = (compId?: string) => {
+        let best: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null = null;
+        (assistStats || []).forEach((row: any) => {
+          const p = unwrap(row.player);
+          const prof = unwrap(p?.profile);
+          const tm = unwrap(p?.team);
+          if (compId && (row.competition_id !== compId && tm?.competition_id !== compId)) return;
+          const ast = Number(row.assists) || 0;
+          if (ast > 0 && (!best || ast > best.assists)) {
+            best = {
+              playerId: row.player_id,
+              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Playmaker',
+              teamName: tm?.name || 'Campus Team',
+              league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
+              assists: ast,
+              streak: 1
+            };
+          }
+        });
+        return best;
       };
 
-      const goatAssists = getTopAssistPlayer() || eplAssists;
-
-      const eplCleanSheets = getTopGK(EPL_ID) || {
-        playerId: 'epl-cs-1',
-        playerName: 'Patrick Matasi',
-        teamName: 'Sharklets FC',
-        league: 'Egerton Premier League',
-        cleanSheets: 7,
-        streak: 4
-      };
-
-      const champCleanSheets = getTopGK(CHAMP_ID) || {
-        playerId: 'ch-cs-1',
-        playerName: 'Farouk Shikhalo',
-        teamName: 'Championship FC Gamma',
-        league: 'Egerton Championships',
-        cleanSheets: 5,
-        streak: 2
-      };
-
-      const goatCleanSheets = getTopGK() || eplCleanSheets;
+      const eplAssists = getTopAssistPlayer(EPL_ID);
+      const champAssists = getTopAssistPlayer(CHAMP_ID);
+      const goatAssists = getTopAssistPlayer() || eplAssists || champAssists || null;
 
       const performanceData = {
         epl: {
@@ -1431,21 +1479,9 @@ export const ApiService = {
       return {
         success: true,
         data: {
-          epl: {
-            topScorer: { playerId: '1', playerName: 'Victor Wanyama', teamName: 'Sharklets FC', league: 'Egerton Premier League', goals: 12, streak: 3 },
-            mostAssists: { playerId: '2', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', league: 'Egerton Premier League', assists: 8, streak: 2 },
-            mostCleanSheets: { playerId: '3', playerName: 'Patrick Matasi', teamName: 'Sharklets FC', league: 'Egerton Premier League', cleanSheets: 7, streak: 4 }
-          },
-          championship: {
-            topScorer: { playerId: '4', playerName: 'Brian Omondi', teamName: 'Championship FC Alpha', league: 'Egerton Championships', goals: 9, streak: 4 },
-            mostAssists: { playerId: '5', playerName: 'Kevin Kimani', teamName: 'Championship FC Beta', league: 'Egerton Championships', assists: 6, streak: 3 },
-            mostCleanSheets: { playerId: '6', playerName: 'Farouk Shikhalo', teamName: 'Championship FC Gamma', league: 'Egerton Championships', cleanSheets: 5, streak: 2 }
-          },
-          goats: {
-            topScorer: { playerId: '1', playerName: 'Victor Wanyama', teamName: 'Sharklets FC', league: 'Egerton Premier League', goals: 12, streak: 3 },
-            mostAssists: { playerId: '2', playerName: 'Michael Olunga', teamName: 'Faculty of Arts', league: 'Egerton Premier League', assists: 8, streak: 2 },
-            mostCleanSheets: { playerId: '3', playerName: 'Patrick Matasi', teamName: 'Sharklets FC', league: 'Egerton Premier League', cleanSheets: 7, streak: 4 }
-          }
+          epl: { topScorer: null, mostAssists: null, mostCleanSheets: null },
+          championship: { topScorer: null, mostAssists: null, mostCleanSheets: null },
+          goats: { topScorer: null, mostAssists: null, mostCleanSheets: null }
         }
       };
     }
