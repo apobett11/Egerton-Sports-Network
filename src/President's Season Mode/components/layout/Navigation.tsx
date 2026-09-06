@@ -70,12 +70,12 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <nav
-      className={`border-b sticky top-16 z-30 transition-colors duration-200 backdrop-blur-md ${
-        isDark ? 'bg-[#0E1424]/90 border-slate-800/80' : 'bg-white/90 border-slate-200'
+      className={`sticky top-[52px] z-30 w-full select-none border-b transition-colors duration-150 py-1.5 ${
+        isDark ? 'bg-[#0e1e2d] border-[#14263b]' : 'bg-white border-[#e6e8ec]'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-2.5 no-scrollbar scroll-smooth">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -84,23 +84,23 @@ export const Navigation: React.FC<NavigationProps> = ({
               <button
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-md font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    ? 'bg-[#ff0046] text-white shadow-xs ring-1 ring-white/10'
                     : isDark
-                    ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'text-slate-400 hover:text-white hover:bg-[#15273b]'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
                 {item.badge && (
                   <span
-                    className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`ml-1 px-1.5 py-0.5 rounded-xs text-[10px] font-black ${
                       isActive
                         ? 'bg-white/20 text-white'
                         : isDark
-                        ? 'bg-slate-800 text-emerald-400 border border-slate-700'
+                        ? 'bg-[#14263b] text-slate-300 border border-[#1a2e45]'
                         : 'bg-slate-100 text-slate-700 border border-slate-300'
                     }`}
                   >

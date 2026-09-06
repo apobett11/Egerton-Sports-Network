@@ -67,10 +67,9 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
   return (
     <div
       className={`min-h-screen font-sans relative ${
-        isDark ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-800'
-      } transition-colors duration-300 select-none pb-16`}
+        isDark ? 'bg-[#081018] text-white' : 'bg-[#f2f4f7] text-slate-900'
+      } transition-colors duration-200 select-none pb-16`}
     >
-      <div className="stadium-bg-overlay fixed inset-0 pointer-events-none z-0" />
 
       {/* TOAST NOTIFICATION */}
       <OperationalToast message={toastMessage} />
@@ -99,7 +98,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
       />
 
       {/* MAIN CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 relative z-10">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pt-5 relative z-10">
         {isLoading ? (
           <LoadingState isDark={isDark} label="Initializing Season Control Centre Operations..." />
         ) : error ? (

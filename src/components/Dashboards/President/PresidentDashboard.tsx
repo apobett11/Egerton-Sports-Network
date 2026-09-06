@@ -98,13 +98,11 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
   const championshipTeams = teams.filter((t) => t.league === 'championship');
 
   return (
-    <div className={`min-h-screen font-sans relative ${isDark ? 'bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-slate-800'} transition-colors duration-300 select-none pb-24`}>
-      <div className="stadium-bg-overlay fixed inset-0 pointer-events-none z-0" />
-
+    <div className={`min-h-screen font-sans relative ${isDark ? 'bg-[#081018] text-slate-100' : 'bg-[#f2f4f7] text-slate-800'} transition-colors duration-300 select-none pb-24`}>
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-100 flex items-center gap-3 bg-blue-600 text-white px-5 py-3 rounded-2xl shadow-2xl animate-bounce border border-blue-400/40 text-xs font-black">
-          <CheckCircle2 className="w-5 h-5" />
+        <div className="fixed top-20 right-6 z-100 flex items-center gap-2.5 bg-[#0e1e2d] text-white px-4 py-2.5 rounded-sm shadow-xl border border-[#1a2e45] text-xs font-black uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -199,14 +197,14 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
         )}
 
         {activeView === 'registration' && (
-          <div className="space-y-8">
-            <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Registration Center</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            <h2 className={`text-xl font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>Registration Center</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {['Coach Registration', 'Player Registration', 'Referee Registration'].map((title, i) => (
-                <div key={i} className={`p-6 rounded-3xl border space-y-3 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <h3 className="font-black text-sm">{title}</h3>
+                <div key={i} className={`p-5 rounded-none sm:rounded-sm border space-y-3 ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs`}>
+                  <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white">{title}</h3>
                   <p className="text-xs font-mono text-slate-400 truncate">https://livescore.egerton.ac.ke/register/{title.split(' ')[0].toLowerCase()}</p>
-                  <button onClick={() => showToast(`Copied ${title} link`)} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs cursor-pointer">
+                  <button onClick={() => showToast(`Copied ${title} link`)} className="px-4 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors">
                     Copy Link
                   </button>
                 </div>
@@ -218,38 +216,38 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
 
       {/* CREATE SEASON MODAL */}
       {showCreateSeasonModal && (
-        <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-season-title">
-          <div className={`w-full max-w-lg ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl`}>
-            <div className="flex items-center justify-between border-b border-slate-700/30 pb-4">
-              <h3 id="create-season-title" className="text-xl font-black">Create New Season</h3>
+        <div className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-season-title">
+          <div className={`w-full max-w-lg ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'} border rounded-none sm:rounded-sm p-6 md:p-8 space-y-6 shadow-2xl`}>
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-4">
+              <h3 id="create-season-title" className="text-base font-black uppercase tracking-wider">Create New Season</h3>
               <button
                 onClick={() => setShowCreateSeasonModal(false)}
                 aria-label="Close modal"
-                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-[#14263b] transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateSeason} className="space-y-4 text-xs font-semibold">
               <div>
-                <label htmlFor="season-name-input" className="block text-slate-400 uppercase font-bold mb-1">Season Name</label>
-                <input id="season-name-input" type="text" value={newSeasonName} onChange={(e) => setNewSeasonName(e.target.value)} placeholder="e.g. 2028 Egerton Premier Football Season" className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="season-name-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Season Name</label>
+                <input id="season-name-input" type="text" value={newSeasonName} onChange={(e) => setNewSeasonName(e.target.value)} placeholder="e.g. 2028 Egerton Premier Football Season" className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="season-start-input" className="block text-slate-400 uppercase font-bold mb-1">Start Date</label>
-                  <input id="season-start-input" type="date" value={newSeasonStart} onChange={(e) => setNewSeasonStart(e.target.value)} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                  <label htmlFor="season-start-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Start Date</label>
+                  <input id="season-start-input" type="date" value={newSeasonStart} onChange={(e) => setNewSeasonStart(e.target.value)} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
                 </div>
                 <div>
-                  <label htmlFor="season-end-input" className="block text-slate-400 uppercase font-bold mb-1">End Date</label>
-                  <input id="season-end-input" type="date" value={newSeasonEnd} onChange={(e) => setNewSeasonEnd(e.target.value)} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                  <label htmlFor="season-end-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">End Date</label>
+                  <input id="season-end-input" type="date" value={newSeasonEnd} onChange={(e) => setNewSeasonEnd(e.target.value)} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
                 </div>
               </div>
               <div>
-                <label htmlFor="season-cutoff-input" className="block text-slate-400 uppercase font-bold mb-1">Registration Cutoff Date</label>
-                <input id="season-cutoff-input" type="date" value={newSeasonCutoff} onChange={(e) => setNewSeasonCutoff(e.target.value)} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="season-cutoff-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Registration Cutoff Date</label>
+                <input id="season-cutoff-input" type="date" value={newSeasonCutoff} onChange={(e) => setNewSeasonCutoff(e.target.value)} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button type="submit" className="w-full py-3 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer min-h-[44px] shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Save & Initialize Season
               </button>
             </form>
@@ -259,32 +257,32 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
 
       {/* CREATE LEAGUE MODAL */}
       {showCreateLeagueModal && (
-        <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-league-title">
-          <div className={`w-full max-w-lg ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl`}>
-            <div className="flex items-center justify-between border-b border-slate-700/30 pb-4">
-              <h3 id="create-league-title" className="text-xl font-black">Create New League Tier</h3>
+        <div className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-league-title">
+          <div className={`w-full max-w-lg ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'} border rounded-none sm:rounded-sm p-6 md:p-8 space-y-6 shadow-2xl`}>
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-4">
+              <h3 id="create-league-title" className="text-base font-black uppercase tracking-wider">Create New League Tier</h3>
               <button
                 onClick={() => setShowCreateLeagueModal(false)}
                 aria-label="Close modal"
-                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-[#14263b] transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCreateLeague} className="space-y-4 text-xs font-semibold">
               <div>
-                <label htmlFor="league-name-input" className="block text-slate-400 uppercase font-bold mb-1">League Name</label>
-                <input id="league-name-input" type="text" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} placeholder="e.g. Campus Super Cup" className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="league-name-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">League Name</label>
+                <input id="league-name-input" type="text" value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} placeholder="e.g. Campus Super Cup" className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
               <div>
-                <label htmlFor="league-tier-input" className="block text-slate-400 uppercase font-bold mb-1">Tier / Division</label>
-                <input id="league-tier-input" type="text" value={newLeagueTier} onChange={(e) => setNewLeagueTier(e.target.value)} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="league-tier-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Tier / Division</label>
+                <input id="league-tier-input" type="text" value={newLeagueTier} onChange={(e) => setNewLeagueTier(e.target.value)} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
               <div>
-                <label htmlFor="league-capacity-input" className="block text-slate-400 uppercase font-bold mb-1">Maximum Team Capacity</label>
-                <input id="league-capacity-input" type="number" value={newLeagueMaxTeams} onChange={(e) => setNewLeagueMaxTeams(Number(e.target.value))} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="league-capacity-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Maximum Team Capacity</label>
+                <input id="league-capacity-input" type="number" value={newLeagueMaxTeams} onChange={(e) => setNewLeagueMaxTeams(Number(e.target.value))} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button type="submit" className="w-full py-3 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer min-h-[44px] shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Save & Add League
               </button>
             </form>
@@ -295,19 +293,19 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
       {/* LOCK WARNING MODAL */}
       {showLockWarningModal && (
         <div className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="lock-modal-title">
-          <div className={`w-full max-w-md ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 text-center shadow-2xl`}>
-            <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto" aria-hidden="true">
-              <AlertTriangle className="w-8 h-8" />
+          <div className={`w-full max-w-md ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'} border rounded-none sm:rounded-sm p-6 md:p-8 space-y-5 text-center shadow-2xl`}>
+            <div className="w-14 h-14 rounded-full bg-rose-500/10 text-[#ff0046] border border-rose-500/20 flex items-center justify-center mx-auto" aria-hidden="true">
+              <AlertTriangle className="w-7 h-7" />
             </div>
-            <h3 id="lock-modal-title" className="text-xl font-black">Warning: Lock Season Schedule?</h3>
+            <h3 id="lock-modal-title" className="text-base font-black uppercase tracking-wider">Warning: Lock Season Schedule?</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
               Locking the season schedule will finalize all fixture time slots, lock team rosters, and switch the system portal to Active Season Mode. Regeneration will be restricted.
             </p>
             <div className="flex items-center gap-3">
-              <button onClick={() => setShowLockWarningModal(false)} className="w-1/2 py-3 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button onClick={() => setShowLockWarningModal(false)} className="w-1/2 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer min-h-[44px] transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Cancel
               </button>
-              <button onClick={handleLockSchedule} className="w-1/2 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button onClick={handleLockSchedule} className="w-1/2 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer min-h-[44px] shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 CONFIRM & LOCK
               </button>
             </div>
@@ -317,31 +315,31 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
 
       {/* ADD REFEREE MODAL */}
       {showAddRefModal && (
-        <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="add-ref-title">
-          <div className={`w-full max-w-lg ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl`}>
-            <div className="flex items-center justify-between border-b border-slate-700/30 pb-4">
-              <h3 id="add-ref-title" className="text-xl font-black">Add Center Referee</h3>
+        <div className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="add-ref-title">
+          <div className={`w-full max-w-lg ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'} border rounded-none sm:rounded-sm p-6 md:p-8 space-y-6 shadow-2xl`}>
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-4">
+              <h3 id="add-ref-title" className="text-base font-black uppercase tracking-wider">Add Center Referee</h3>
               <button
                 onClick={() => setShowAddRefModal(false)}
                 aria-label="Close modal"
-                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-[#14263b] transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); handleAddReferee({ name: newRefName, email: '', phone: newRefPhone }); setShowAddRefModal(false); }} className="space-y-4 text-xs font-semibold">
               <div>
-                <label htmlFor="ref-name-input" className="block text-slate-400 uppercase font-bold mb-1">Referee Full Name</label>
-                <input id="ref-name-input" type="text" value={newRefName} onChange={(e) => setNewRefName(e.target.value)} placeholder="e.g. Ref. Peter Ndambuki" className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                <label htmlFor="ref-name-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Referee Full Name</label>
+                <input id="ref-name-input" type="text" value={newRefName} onChange={(e) => setNewRefName(e.target.value)} placeholder="e.g. Ref. Peter Ndambuki" className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200'}`} required />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="ref-phone-input" className="block text-slate-400 uppercase font-bold mb-1">Phone Number</label>
-                  <input id="ref-phone-input" type="text" value={newRefPhone} onChange={(e) => setNewRefPhone(e.target.value)} placeholder="+254 700 000 000" className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`} required />
+                  <label htmlFor="ref-phone-input" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Phone Number</label>
+                  <input id="ref-phone-input" type="text" value={newRefPhone} onChange={(e) => setNewRefPhone(e.target.value)} placeholder="+254 700 000 000" className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`} required />
                 </div>
                 <div>
-                  <label htmlFor="ref-badge-select" className="block text-slate-400 uppercase font-bold mb-1">Badge Level</label>
-                  <select id="ref-badge-select" value={newRefBadge} onChange={(e) => setNewRefBadge(e.target.value)} className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}>
+                  <label htmlFor="ref-badge-select" className="block text-slate-400 uppercase font-bold text-[10px] tracking-wider mb-1">Badge Level</label>
+                  <select id="ref-badge-select" value={newRefBadge} onChange={(e) => setNewRefBadge(e.target.value)} className={`w-full p-3 rounded-md border min-h-[44px] text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white' : 'bg-slate-50 border-slate-200'}`}>
                     <option>FIFA Accredited</option>
                     <option>FKF National Level 2</option>
                     <option>FKF Regional Level 1</option>
@@ -349,7 +347,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
                   </select>
                 </div>
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button type="submit" className="w-full py-3 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer min-h-[44px] shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Save & Add Referee
               </button>
             </form>
@@ -359,22 +357,22 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
 
       {/* REJECT TEAM REASON MODAL */}
       {rejectingTeamId && (
-        <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reject-team-title">
-          <div className={`w-full max-w-md ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl`}>
-            <h3 id="reject-team-title" className="text-xl font-black">Reject Team Application</h3>
+        <div className="fixed inset-0 z-100 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reject-team-title">
+          <div className={`w-full max-w-md ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'} border rounded-none sm:rounded-sm p-6 md:p-8 space-y-6 shadow-2xl`}>
+            <h3 id="reject-team-title" className="text-base font-black uppercase tracking-wider">Reject Team Application</h3>
             <textarea
               rows={4}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Specify official reason for rejection..."
               aria-label="Rejection reason details"
-              className={`w-full p-3 rounded-xl border text-xs focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'}`}
+              className={`w-full p-3 rounded-md border text-xs focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200'}`}
             />
             <div className="flex items-center gap-3">
-              <button onClick={() => setRejectingTeamId(null)} className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button onClick={() => setRejectingTeamId(null)} className="w-1/2 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer min-h-[44px] transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Cancel
               </button>
-              <button onClick={() => handleRejectTeam(rejectingTeamId)} className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+              <button onClick={() => handleRejectTeam(rejectingTeamId)} className="w-1/2 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer min-h-[44px] shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-[#ff0046] focus-visible:outline-none">
                 Confirm Reject
               </button>
             </div>
@@ -383,8 +381,8 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
       )}
 
       {/* MOBILE FIXED BOTTOM NAVIGATION BAR */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${isDark ? 'bg-[#090D16]/95 border-slate-800/80 text-slate-400' : 'bg-white/95 border-slate-200/80 text-slate-600'} backdrop-blur-xl border-t shadow-2xl safe-area-pb`}>
-        <div className="grid grid-cols-5 h-16 max-w-md mx-auto items-center px-1">
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${isDark ? 'bg-[#0e1e2d]/95 border-[#14263b] text-slate-400' : 'bg-white/95 border-[#e6e8ec] text-slate-600'} backdrop-blur-md border-t shadow-2xl safe-area-pb`}>
+        <div className="grid grid-cols-5 h-14 max-w-md mx-auto items-center px-1">
           {[
             { id: 'overview', label: 'Overview', icon: Activity },
             { id: 'season_engine', label: 'Leagues', icon: Calendar },
@@ -398,16 +396,16 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
               <button
                 key={item.id}
                 onClick={() => setActiveView(item.id as any)}
-                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-all cursor-pointer min-h-[48px] ${
+                className={`flex flex-col items-center justify-center py-1 transition-colors cursor-pointer min-h-[44px] ${
                   isActive
-                    ? 'text-blue-600 dark:text-blue-400 font-extrabold scale-105'
+                    ? 'text-[#ff0046] font-black'
                     : 'hover:text-slate-900 dark:hover:text-white font-medium'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
+                <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                <span className="text-[10px] uppercase font-bold tracking-tight mt-0.5">{item.label}</span>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 mt-0.5" />
+                  <span className="w-1 h-1 rounded-full bg-[#ff0046] mt-0.5" />
                 )}
               </button>
             );

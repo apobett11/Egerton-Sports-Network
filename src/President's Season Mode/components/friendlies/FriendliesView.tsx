@@ -82,7 +82,7 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Friendly Match Management
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-500/20 text-purple-400 border border-purple-500/30 uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-xs text-xs font-black bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 uppercase tracking-wider">
               Non-League
             </span>
           </div>
@@ -96,7 +96,7 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
             setIsOpenAddModal(true);
             setFormError(null);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs cursor-pointer shadow-lg shadow-purple-600/20 transition-all self-start sm:self-auto"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-md transition-all self-start sm:self-auto"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Add Friendly</span>
@@ -107,11 +107,11 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
       <div className="space-y-4">
         {friendliesList.length === 0 ? (
           <div
-            className={`p-8 rounded-3xl border text-center space-y-3 ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-8 rounded-sm border text-center space-y-3 ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200'
             }`}
           >
-            <Flame className="w-8 h-8 text-purple-400 mx-auto" />
+            <Flame className="w-8 h-8 text-[#ff0046] mx-auto" />
             <h3 className="font-extrabold text-sm text-slate-200">No Friendlies Scheduled</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               Click &quot;Add Friendly&quot; above to create exhibition, warm-up, or varsity derby matches.
@@ -122,12 +122,12 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
             {friendliesList.map((f) => (
               <div
                 key={f.id}
-                className={`p-5 rounded-3xl border space-y-3 transition-all ${
-                  isDark ? 'bg-[#0E1424] border-purple-900/30 hover:border-purple-500/40' : 'bg-white border-purple-200 shadow-sm'
+                className={`p-5 rounded-sm border space-y-3 transition-all ${
+                  isDark ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-[#ff0046]/40' : 'bg-white border-slate-200 shadow-sm'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  <span className="px-2.5 py-0.5 rounded-xs text-[10px] font-black uppercase tracking-wider bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20">
                     FRIENDLY
                   </span>
                   <span className="text-xs font-extrabold text-slate-400">
@@ -136,21 +136,21 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                 </div>
 
                 <div>
-                  <h4 className="font-black text-sm text-purple-300">
+                  <h4 className="font-black text-sm text-slate-200">
                     {f.friendly_name || 'Exhibition Match'}
                   </h4>
                   <div className="font-black text-base text-white mt-1">
-                    {f.home_team?.name || 'Team A'} <span className="text-purple-400 text-xs px-1.5">vs</span> {f.away_team?.name || 'Team B'}
+                    {f.home_team?.name || 'Team A'} <span className="text-slate-400 text-xs px-2 py-0.5 rounded-xs bg-[#15273b] border border-[#1a2e45] mx-1.5">vs</span> {f.away_team?.name || 'Team B'}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-800/60 text-slate-400">
+                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#1a2e45] text-slate-400">
                   <div className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span className="truncate">{f.venue}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <UserCheck className="w-3.5 h-3.5 text-slate-400" />
                     <span className="truncate">{f.referee?.name || 'Unassigned'}</span>
                   </div>
                 </div>
@@ -165,26 +165,26 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <form
             onSubmit={handleSubmit}
-            className={`w-full max-w-lg p-6 rounded-3xl border space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-lg p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-black text-lg text-purple-400 flex items-center gap-2">
-                <Flame className="w-5 h-5" /> Schedule New Friendly
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <h3 className="font-black text-lg text-white flex items-center gap-2">
+                <Flame className="w-5 h-5 text-[#ff0046]" /> Schedule New Friendly
               </h3>
               <button
                 type="button"
                 onClick={() => setIsOpenAddModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer transition-colors"
               >
                 Close
               </button>
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-extrabold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
+              <div className="p-3 rounded-xs bg-[#ff0046]/10 border border-[#ff0046]/30 text-rose-300 text-xs font-extrabold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[#ff0046]" />
                 <span>{formError}</span>
               </div>
             )}
@@ -198,8 +198,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                   value={friendlyName}
                   onChange={(e) => setFriendlyName(e.target.value)}
                   placeholder="e.g. Alumni Derby / Mid-Season Exhibition"
-                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 />
               </div>
@@ -212,8 +212,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                    className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                      isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                     }`}
                   />
                 </div>
@@ -224,8 +224,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                     required
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                    className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                      isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                     }`}
                   />
                 </div>
@@ -238,8 +238,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                     required
                     value={homeTeamId}
                     onChange={(e) => setHomeTeamId(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                    className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                      isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                     }`}
                   >
                     <option value="">Select Team A</option>
@@ -257,8 +257,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                     required
                     value={awayTeamId}
                     onChange={(e) => setAwayTeamId(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                    className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                      isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                     }`}
                   >
                     <option value="">Select Team B</option>
@@ -277,8 +277,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                   required
                   value={refereeId}
                   onChange={(e) => setRefereeId(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 >
                   <option value="">Select Center Referee</option>
@@ -296,8 +296,8 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
                   required
                   value={pitchId}
                   onChange={(e) => setPitchId(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-xs border outline-none mt-1 transition-colors ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 >
                   <option value="">Select Pitch</option>
@@ -314,13 +314,13 @@ export const FriendliesView: React.FC<FriendliesViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsOpenAddModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-slate-800"
+                className="flex-1 py-2.5 rounded-xs border border-[#1a2e45] text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-[#152a40] hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs cursor-pointer shadow-lg shadow-purple-600/20"
+                className="flex-1 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-md transition-colors"
               >
                 Create Friendly
               </button>

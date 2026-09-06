@@ -348,32 +348,32 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
     return (
       <div className="space-y-6 animate-fadeIn pb-16">
         <div
-          className={`p-10 sm:p-16 rounded-3xl border text-center space-y-6 max-w-2xl mx-auto ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-8 sm:p-12 rounded-md border text-center space-y-4 max-w-2xl mx-auto ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs'
           }`}
         >
-          <div className="w-20 h-20 rounded-3xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg shadow-amber-500/5">
-            <CalendarDays className="w-10 h-10" />
+          <div className="w-14 h-14 rounded-md bg-[#152a40] text-[#ff0046] flex items-center justify-center mx-auto border border-white/10 shadow-xs">
+            <CalendarDays className="w-7 h-7" />
           </div>
 
-          <div className="space-y-2">
-            <h2 className={`text-xl sm:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className="space-y-1.5">
+            <h2 className={`text-base sm:text-lg font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
               No Season Matchdays Generated
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
-              The database currently contains 0 scheduled matches or matchdays. Launch the season wizard to compute and save official fixtures via <strong className="text-amber-400">Agent 0</strong>.
+            <p className="text-xs text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
+              The database currently contains 0 scheduled matches or matchdays. Launch the season wizard to compute and save official fixtures via <strong className="text-[#ff0046]">Agent 0</strong>.
             </p>
           </div>
 
-          <div className={`p-4 rounded-2xl border text-left max-w-md mx-auto space-y-2 ${
-            isDark ? 'bg-slate-900/60 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+          <div className={`p-3.5 rounded-md border text-left max-w-md mx-auto space-y-1.5 ${
+            isDark ? 'bg-[#102237] border-[#1a2e45] text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
           }`}>
             <div className="text-[11px] font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span className="w-2 h-2 rounded-full bg-[#00b04f]"></span>
               <span>Registered Teams: {teams.length} clubs</span>
             </div>
             <div className="text-[11px] font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
               <span>Accredited Referees: {referees.length} officials</span>
             </div>
             <div className="text-[11px] font-bold flex items-center gap-2">
@@ -392,22 +392,22 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       {/* 1. TOP HEADER & SUMMARY BANNER */}
       {/* ========================================================================= */}
       <div
-        className={`p-5 sm:p-6 rounded-3xl border ${
-          isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-        } space-y-4`}
+        className={`p-4 sm:p-5 rounded-md border ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs'
+        } space-y-3.5`}
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
-                <Trophy className="w-3 h-3" />
+              <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#152a40] text-slate-300 border border-[#1a2e45] inline-flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-[#ff0046]" />
                 <span>Season Schedule Centre</span>
               </span>
               <span className="text-xs text-slate-400 font-bold">
                 {fixtures.length} Total Matches • {matchdayGroups.length} Matchdays
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white mt-1">
+            <h1 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white mt-1">
               Matchdays & Official Fixtures
             </h1>
             <p className="text-xs text-slate-400 font-medium mt-0.5">
@@ -417,16 +417,16 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
           {/* SEARCH BOX */}
           <div className="relative min-w-[240px] sm:min-w-[280px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search team, referee, venue, or matchday..."
-              className={`w-full pl-10 pr-4 py-2.5 rounded-2xl border text-xs font-semibold outline-none transition-all ${
+              className={`w-full pl-9 pr-4 py-2 rounded-md border text-xs font-semibold outline-none transition-all ${
                 isDark
-                  ? 'bg-slate-900/90 border-slate-700/80 text-white placeholder-slate-500 focus:border-amber-400'
-                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-amber-500'
+                  ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400 focus:border-[#ff0046]'
+                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#ff0046]'
               }`}
             />
           </div>
@@ -435,20 +435,20 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
         {/* ========================================================================= */}
         {/* 2. LEGS SEPARATION TABS & DIVISION FILTERS */}
         {/* ========================================================================= */}
-        <div className="pt-3 border-t border-slate-800/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="pt-3 border-t border-[#14263b] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Leg Selector Tabs */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
               <Layers className="w-3.5 h-3.5" /> Rounds:
             </span>
 
             <button
               onClick={() => setActiveLegTab('ALL')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                 activeLegTab === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  ? 'bg-[#ff0046] text-white shadow-xs'
                   : isDark
-                  ? 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                  ? 'bg-[#152a40] text-slate-300 hover:text-white hover:bg-[#1c3857] border border-white/10'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
               }`}
             >
@@ -457,58 +457,58 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
             <button
               onClick={() => setActiveLegTab(1)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeLegTab === 1
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  ? 'bg-[#ff0046] text-white shadow-xs'
                   : isDark
-                  ? 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                  ? 'bg-[#152a40] text-slate-300 hover:text-white hover:bg-[#1c3857] border border-white/10'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>Leg 1 (Opening Round)</span>
+              <span className="w-2 h-2 rounded-full bg-[#00b04f]"></span>
+              <span>Leg 1</span>
               <span className="text-[10px] opacity-80 font-mono">({leg1Matchdays.length} MDs)</span>
             </button>
 
             <button
               onClick={() => setActiveLegTab(2)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeLegTab === 2
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  ? 'bg-[#ff0046] text-white shadow-xs'
                   : isDark
-                  ? 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+                  ? 'bg-[#152a40] text-slate-300 hover:text-white hover:bg-[#1c3857] border border-white/10'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              <span>Leg 2 (Away Return Round)</span>
+              <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span>Leg 2</span>
               <span className="text-[10px] opacity-80 font-mono">({leg2Matchdays.length} MDs)</span>
             </button>
           </div>
 
           {/* Division Filter & View Mode */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 rounded-xl p-1 bg-slate-900 border border-slate-800">
+            <div className="flex items-center gap-1 rounded-md p-0.5 bg-[#0a1520] border border-[#1a2e45]">
               <button
                 onClick={() => setActiveLeagueFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                  activeLeagueFilter === 'ALL' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  activeLeagueFilter === 'ALL' ? 'bg-[#ff0046] text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 All Divisions
               </button>
               <button
                 onClick={() => setActiveLeagueFilter('EPL')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                  activeLeagueFilter === 'EPL' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-amber-400'
+                className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  activeLeagueFilter === 'EPL' ? 'bg-[#ff0046] text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Premier League
               </button>
               <button
                 onClick={() => setActiveLeagueFilter('CHAMPIONSHIP')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                  activeLeagueFilter === 'CHAMPIONSHIP' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-blue-400'
+                className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  activeLeagueFilter === 'CHAMPIONSHIP' ? 'bg-[#ff0046] text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Championship
@@ -518,11 +518,11 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             {/* View Mode Toggle */}
             <button
               onClick={() => setViewMode(viewMode === 'SELECTED' ? 'FULL_LIST' : 'SELECTED')}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all ${
+              className={`px-3 py-1.5 rounded-md border text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                 viewMode === 'FULL_LIST'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  ? 'bg-[#152a40] text-[#ff0046] border-[#ff0046]'
                   : isDark
-                  ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+                  ? 'bg-[#152a40] border-white/10 text-slate-300 hover:text-white'
                   : 'bg-slate-100 border-slate-200 text-slate-700'
               }`}
             >
@@ -539,18 +539,18 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-amber-400" />
+            <CalendarIcon className="w-3.5 h-3.5 text-[#ff0046]" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">
               Season Matchdays Directory ({filteredMatchdayGroups.length} Matchdays Available)
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:inline">
             Click any matchday card to open popup
           </span>
         </div>
 
         {/* MOBILE VIEW: INLINE HORIZONTAL SCROLLABLE LIST OF CARDS */}
-        <div className="flex sm:hidden overflow-x-auto gap-2.5 pb-2.5 pt-1 px-1 scroll-smooth snap-x snap-mandatory no-scrollbar">
+        <div className="flex sm:hidden overflow-x-auto gap-2 pb-2 pt-1 px-1 scroll-smooth snap-x snap-mandatory no-scrollbar">
           {filteredMatchdayGroups.map((g) => {
             const isSelected = activeSelectedMatchday?.matchdayNumber === g.matchdayNumber;
             const isLeg1 = g.leg === 1;
@@ -560,25 +560,25 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 key={g.matchdayNumber}
                 onClick={() => handleSelectMatchday(g)}
                 type="button"
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-w-[135px] max-w-[150px] shrink-0 snap-start shadow-xs active:scale-95 ${
+                className={`p-2.5 rounded-md border text-left transition-all cursor-pointer flex flex-col justify-between min-w-[130px] max-w-[145px] shrink-0 snap-start shadow-xs active:scale-95 ${
                   isSelected
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400'
+                    ? 'bg-[#152a40] text-white border-[#ff0046] ring-1 ring-[#ff0046] shadow-sm'
                     : isDark
-                    ? 'bg-[#0E1424] border-slate-800 text-slate-200'
+                    ? 'bg-[#0e1c2b] border-[#1a2e45] text-slate-200 hover:bg-[#13263b]'
                     : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`text-xs font-black tracking-tight ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                  <span className={`text-xs font-black tracking-tight ${isSelected ? 'text-white' : 'text-white'}`}>
                     MD {g.matchdayNumber}
                   </span>
                   <span
-                    className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                    className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs ${
                       isSelected
-                        ? 'bg-slate-950/20 text-slate-950'
+                        ? 'bg-white/20 text-white'
                         : isLeg1
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                        : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                     }`}
                   >
                     Leg {g.leg}
@@ -588,14 +588,14 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 <div className="mt-1.5 space-y-0.5">
                   <div
                     className={`text-[10px] font-semibold truncate ${
-                      isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'
+                      isSelected ? 'text-slate-200 font-bold' : 'text-slate-400'
                     }`}
                   >
                     {g.formattedDate}
                   </div>
                   <div
                     className={`text-[9px] font-black ${
-                      isSelected ? 'text-slate-950' : 'text-amber-400'
+                      isSelected ? 'text-[#ff0046]' : 'text-slate-400'
                     }`}
                   >
                     {g.matches.length} Matches
@@ -617,25 +617,25 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 key={g.matchdayNumber}
                 onClick={() => handleSelectMatchday(g)}
                 type="button"
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[74px] relative group ${
+                className={`p-2.5 rounded-md border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[74px] relative group ${
                   isSelected
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/25 ring-2 ring-amber-400 scale-[1.02] z-10'
+                    ? 'bg-[#152a40] text-white border-[#ff0046] ring-1 ring-[#ff0046] shadow-sm z-10'
                     : isDark
-                    ? 'bg-[#0E1424] border-slate-800 hover:border-slate-700 hover:bg-slate-800/80 text-slate-200'
+                    ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-slate-600 hover:bg-[#13263b] text-slate-200'
                     : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800 shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`text-xs font-black tracking-tight ${isSelected ? 'text-slate-950' : 'text-white'}`}>
+                  <span className={`text-xs font-black tracking-tight text-white`}>
                     MD {g.matchdayNumber}
                   </span>
                   <span
-                    className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                    className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs ${
                       isSelected
-                        ? 'bg-slate-950/20 text-slate-950'
+                        ? 'bg-white/20 text-white'
                         : isLeg1
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                        : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                     }`}
                   >
                     Leg {g.leg}
@@ -645,14 +645,14 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 <div className="mt-1 space-y-0.5">
                   <div
                     className={`text-[10px] font-semibold truncate ${
-                      isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'
+                      isSelected ? 'text-slate-200 font-bold' : 'text-slate-400'
                     }`}
                   >
                     {g.formattedDate}
                   </div>
                   <div
                     className={`text-[9px] font-black ${
-                      isSelected ? 'text-slate-950' : 'text-amber-400'
+                      isSelected ? 'text-[#ff0046]' : 'text-slate-400'
                     }`}
                   >
                     {g.matches.length} Matches
@@ -671,24 +671,24 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
         <div className="space-y-4 animate-fadeIn">
           {/* Active Matchday Header Bar */}
           <div
-            className={`p-4 sm:p-5 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            className={`p-4 rounded-md border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-black text-sm">
+              <div className="w-9 h-9 rounded-md bg-[#15273b] border border-[#223b56] text-white flex items-center justify-center font-black font-mono text-xs">
                 #{activeSelectedMatchday.matchdayNumber}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
                     Matchday {activeSelectedMatchday.matchdayNumber}
                   </h2>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    className={`px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider ${
                       activeSelectedMatchday.leg === 1
-                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                        ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                        : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                     }`}
                   >
                     Leg {activeSelectedMatchday.leg} (
@@ -696,7 +696,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 font-medium flex items-center gap-2 mt-0.5">
-                  <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#ff0046]" />
                   <span>Scheduled Date: <strong className="text-slate-200">{activeSelectedMatchday.formattedDate}</strong></span>
                   <span>•</span>
                   <span>{activeSelectedMatchday.matches.length} Official Fixtures</span>
@@ -708,7 +708,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setPopupMatchday(activeSelectedMatchday)}
-                className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-black flex items-center gap-1.5 cursor-pointer transition-all"
+                className="px-3 py-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors"
                 title="Open Matchday Popup"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -756,35 +756,35 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       {/* 5. MATCHDAY FIXTURES POPUP MODAL (TRIGGERED ON MATCHDAY CLICK) */}
       {/* ========================================================================= */}
       {popupMatchday && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
           <div
-            className={`w-full max-w-6xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden ${
-              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-6xl max-h-[90vh] flex flex-col rounded-xl border border-[#1a2e45] shadow-2xl overflow-hidden ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
             {/* POPUP HEADER */}
-            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-950/80">
+            <div className="p-4 sm:p-5 border-b border-[#1a2e45] flex items-center justify-between gap-3 bg-[#0e1e2d]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-black text-sm">
+                <div className="w-9 h-9 rounded-md bg-[#15273b] border border-[#223b56] text-white flex items-center justify-center font-black font-mono text-xs">
                   #{popupMatchday.matchdayNumber}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                    <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
                       Matchday {popupMatchday.matchdayNumber} Fixtures
                     </h2>
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      className={`px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider ${
                         popupMatchday.leg === 1
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                          : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                       }`}
                     >
                       Leg {popupMatchday.leg}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 font-medium flex items-center gap-2 mt-0.5">
-                    <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <CalendarIcon className="w-3.5 h-3.5 text-[#ff0046]" />
                     <span>{popupMatchday.formattedDate}</span>
                     <span>•</span>
                     <span>{popupMatchday.matches.length} Scheduled Matches</span>
@@ -793,10 +793,10 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               </div>
 
               {/* Popup Controls: Prev, Next, Close */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={handlePopupPrev}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                   title="Previous Matchday"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -804,7 +804,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 </button>
                 <button
                   onClick={handlePopupNext}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
                   title="Next Matchday"
                 >
                   <span className="hidden sm:inline">Next MD</span>
@@ -812,7 +812,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 </button>
                 <button
                   onClick={() => setPopupMatchday(null)}
-                  className="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-rose-600 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                  className="w-7 h-7 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors ml-1"
                   title="Close popup"
                 >
                   <X className="w-4 h-4" />
@@ -821,16 +821,16 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             </div>
 
             {/* POPUP BODY: TABLE OF SINGLE NEAT ROWS */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4 bg-[#0a1520]">
               {renderMatchdayTable(popupMatchday)}
             </div>
 
             {/* POPUP FOOTER */}
-            <div className="p-3 sm:p-4 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400 px-6">
-              <span>Presidential Operational View • Official Campus Schedule</span>
+            <div className="p-3 sm:p-3.5 border-t border-[#1a2e45] bg-[#0e1e2d] flex items-center justify-between text-xs text-slate-400 px-4 sm:px-6">
+              <span className="text-[10px] uppercase font-bold tracking-wider">Presidential Operational View • Official Campus Schedule</span>
               <button
                 onClick={() => setPopupMatchday(null)}
-                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer"
+                className="px-3.5 py-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 Close View
               </button>
@@ -845,15 +845,15 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 1. CANCEL MATCH MODAL */}
       {cancelTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 ${
-              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center gap-3 text-rose-500">
-              <AlertTriangle className="w-6 h-6 shrink-0" />
-              <h3 className="text-base font-black">Cancel Match Operation</h3>
+            <div className="flex items-center gap-2.5 text-rose-400">
+              <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500" />
+              <h3 className="text-sm font-black uppercase tracking-wider">Cancel Match Operation</h3>
             </div>
             <p className="text-xs text-slate-300">
               Are you sure you want to cancel the match between{' '}
@@ -861,21 +861,21 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               <strong className="text-white">{resolvePlayingTeam(cancelTargetMatch.away_team_id, cancelTargetMatch.away_team).name || 'null'}</strong>?
             </p>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Reason for cancellation</label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Reason for cancellation</label>
               <input
                 type="text"
                 value={cancelReasonInput}
                 onChange={(e) => setCancelReasonInput(e.target.value)}
                 placeholder="e.g. Referee emergency / Field maintenance"
-                className={`w-full p-3 rounded-xl border text-xs outline-none ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-2.5 rounded-md border text-xs font-semibold outline-none ${
+                  isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400 focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                 }`}
               />
             </div>
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-[#1a2e45]">
               <button
                 onClick={() => setCancelTargetMatch(null)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 Keep Match
               </button>
@@ -884,7 +884,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   onCancelMatch(cancelTargetMatch.id, cancelReasonInput || 'Presidential Order');
                   setCancelTargetMatch(null);
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
               >
                 Confirm Cancel
               </button>
@@ -895,31 +895,31 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 2. SWAP REFEREE MODAL */}
       {swapTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 ${
-              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center gap-3 text-emerald-400">
-              <RefreshCw className="w-6 h-6 shrink-0" />
-              <h3 className="text-base font-black">Swap Center Referee</h3>
+            <div className="flex items-center gap-2.5 text-[#ff0046]">
+              <RefreshCw className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-white">Swap Center Referee</h3>
             </div>
             <p className="text-xs text-slate-300">
               Reassign center referee for{' '}
-              <strong>
+              <strong className="text-white">
                 {resolvePlayingTeam(swapTargetMatch.home_team_id, swapTargetMatch.home_team).name || 'null'} vs{' '}
                 {resolvePlayingTeam(swapTargetMatch.away_team_id, swapTargetMatch.away_team).name || 'null'}
               </strong>
             </p>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-400 uppercase">Select Available Referee</label>
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Select Available Referee</label>
               <select
                 value={selectedRefForSwap}
                 onChange={(e) => setSelectedRefForSwap(e.target.value)}
-                className={`w-full p-3 rounded-xl border text-xs outline-none ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-2.5 rounded-md border text-xs font-semibold outline-none ${
+                  isDark ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                 }`}
               >
                 <option value="">-- Choose Referee --</option>
@@ -931,10 +931,10 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               </select>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-[#1a2e45]">
               <button
                 onClick={() => setSwapTargetMatch(null)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 Cancel
               </button>
@@ -944,7 +944,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   onSwapReferee(swapTargetMatch.id, selectedRefForSwap);
                   setSwapTargetMatch(null);
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
               >
                 Confirm Swap
               </button>
@@ -955,40 +955,40 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 3. SHIFT MATCH MODAL */}
       {shiftTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 ${
-              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center gap-3 text-blue-400">
-              <Clock className="w-6 h-6 shrink-0" />
-              <h3 className="text-base font-black">Shift Match Kick-Off Time</h3>
+            <div className="flex items-center gap-2.5 text-[#ff0046]">
+              <Clock className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-white">Shift Match Kick-Off Time</h3>
             </div>
             <p className="text-xs text-slate-300">
               Proposed match time shift for{' '}
-              <strong>
+              <strong className="text-white">
                 {resolvePlayingTeam(shiftTargetMatch.home_team_id, shiftTargetMatch.home_team).name || 'null'} vs{' '}
                 {resolvePlayingTeam(shiftTargetMatch.away_team_id, shiftTargetMatch.away_team).name || 'null'}
               </strong>
             </p>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">New Kick-Off Time (HH:MM)</label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">New Kick-Off Time (HH:MM)</label>
               <input
                 type="time"
                 value={proposedShiftTime}
                 onChange={(e) => setProposedShiftTime(e.target.value)}
-                className={`w-full p-3 rounded-xl border text-xs outline-none ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-2.5 rounded-md border text-xs font-semibold outline-none ${
+                  isDark ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                 }`}
               />
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-[#1a2e45]">
               <button
                 onClick={() => setShiftTargetMatch(null)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 Cancel
               </button>
@@ -998,9 +998,9 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                   onShiftMatch(shiftTargetMatch.id, proposedShiftTime);
                   setShiftTargetMatch(null);
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs cursor-pointer min-h-[44px] shadow-lg transition-all"
+                className="w-1/2 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
               >
-                Confirm & Shift Match Slot
+                Confirm & Shift
               </button>
             </div>
           </div>
@@ -1016,11 +1016,11 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
     if (!group.matches || group.matches.length === 0) {
       return (
         <div
-          className={`p-8 rounded-3xl border text-center space-y-2 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+          className={`p-6 rounded-md border text-center space-y-2 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200'
           }`}
         >
-          <CalendarIcon className="w-8 h-8 text-slate-500 mx-auto" />
+          <CalendarIcon className="w-7 h-7 text-slate-500 mx-auto" />
           <p className="text-xs text-slate-400 font-bold">No fixtures scheduled for this matchday</p>
         </div>
       );
@@ -1028,8 +1028,8 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
     return (
       <div
-        className={`rounded-3xl border overflow-hidden ${
-          isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        className={`rounded-md border overflow-hidden ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs'
         }`}
       >
         {/* DESKTOP TABLE VIEW (ALL DETAILS IN A SINGLE NEAT ROW) */}
@@ -1038,21 +1038,21 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             <thead>
               <tr
                 className={`border-b text-[10px] font-black uppercase tracking-wider ${
-                  isDark ? 'bg-slate-950/70 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                  isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-300' : 'bg-[#f8f9fa] border-[#e6e8ec] text-slate-600'
                 }`}
               >
-                <th className="py-3 px-4 w-[110px]">Kick-off Time</th>
-                <th className="py-3 px-3 w-[100px]">Division</th>
-                <th className="py-3 px-4 min-w-[280px]">Match Fixture (Home vs Away)</th>
-                <th className="py-3 px-4 min-w-[180px]">Pitch / Venue</th>
-                <th className="py-3 px-4 min-w-[180px]">Center Referee</th>
-                <th className="py-3 px-4 min-w-[160px]">Linesman Team 1 (Home Rep)</th>
-                <th className="py-3 px-4 min-w-[160px]">Linesman Team 2 (Away Rep)</th>
-                <th className="py-3 px-3 w-[100px] text-center">Status</th>
-                <th className="py-3 px-4 w-[110px] text-right">Actions</th>
+                <th className="py-2.5 px-3 w-[110px]">Kick-off Time</th>
+                <th className="py-2.5 px-3 w-[100px]">Division</th>
+                <th className="py-2.5 px-3 min-w-[280px]">Match Fixture (Home vs Away)</th>
+                <th className="py-2.5 px-3 min-w-[180px]">Pitch / Venue</th>
+                <th className="py-2.5 px-3 min-w-[180px]">Center Referee</th>
+                <th className="py-2.5 px-3 min-w-[160px]">Linesman Team 1 (Home Rep)</th>
+                <th className="py-2.5 px-3 min-w-[160px]">Linesman Team 2 (Away Rep)</th>
+                <th className="py-2.5 px-3 w-[100px] text-center">Status</th>
+                <th className="py-2.5 px-3 w-[110px] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs font-semibold">
+            <tbody className="divide-y divide-[#14263b] text-xs font-semibold">
               {group.matches.map((match, idx) => {
                 const isPlayed = match.status === 'FT';
                 const isCancelled = match.status === 'CANCELLED';
@@ -1090,7 +1090,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 return (
                   <tr
                     key={match.id || idx}
-                    className={`transition-colors hover:bg-slate-800/40 ${
+                    className={`transition-colors hover:bg-[#13263b] ${
                       isPlayed
                         ? 'bg-emerald-950/10'
                         : isCancelled
@@ -1099,10 +1099,10 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     }`}
                   >
                     {/* 1. TIME (Strictly formatted or null) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {timeStr ? (
                         <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200">
-                          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <Clock className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
                           <span>{timeStr}</span>
                         </div>
                       ) : (
@@ -1114,12 +1114,12 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 2. DIVISION */}
-                    <td className="py-3.5 px-3 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                        className={`px-2 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider ${
                           isEpl
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
-                            : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
+                            ? 'bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30'
+                            : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
                         }`}
                       >
                         {isEpl ? 'EPL Tier 1' : 'Championship'}
@@ -1127,7 +1127,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 3. FIXTURE (HOME vs AWAY — SHOWING ACTUAL TEAM NAMES OR NULL) */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
                         {/* Home Playing Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-end text-right">
@@ -1140,13 +1140,13 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                               {homeInfo.uid ? `null (${homeInfo.uid.slice(0, 8)}...)` : 'null'}
                             </span>
                           )}
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${homeInfo.name ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${homeInfo.name ? 'bg-[#00b04f]' : 'bg-slate-600'}`}></span>
                         </div>
 
                         {/* Score / VS Pill */}
-                        <div className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-center font-mono font-bold text-[10px] shrink-0 min-w-[36px]">
+                        <div className="px-2 py-0.5 rounded-xs bg-[#15273b] border border-[#223b56] text-center font-mono font-bold text-[10px] text-white shrink-0 min-w-[36px]">
                           {isPlayed ? (
-                            <span className="text-emerald-400 font-black">{match.score_home} - {match.score_away}</span>
+                            <span className="text-[#00b04f] font-black">{match.score_home} - {match.score_away}</span>
                           ) : (
                             <span className="text-slate-400">VS</span>
                           )}
@@ -1154,7 +1154,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
                         {/* Away Playing Team */}
                         <div className="flex items-center gap-1.5 min-w-[110px] justify-start text-left">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${awayInfo.name ? 'bg-blue-400' : 'bg-slate-600'}`}></span>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${awayInfo.name ? 'bg-sky-400' : 'bg-slate-600'}`}></span>
                           {awayInfo.name ? (
                             <span className="font-black text-xs text-white truncate max-w-[130px]" title={`${awayInfo.name} (${awayInfo.uid || ''})`}>
                               {awayInfo.name}
@@ -1169,10 +1169,10 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 4. PITCH / VENUE (Strictly resolved from Pitch UID) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {pitchInfo.name ? (
                         <div className="flex items-center gap-1.5 text-slate-200">
-                          <MapPin className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="truncate max-w-[160px] font-bold text-xs" title={`${pitchInfo.name} (${pitchInfo.uid || ''})`}>
                             {pitchInfo.name}
                           </span>
@@ -1188,15 +1188,15 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 5. CENTER REFEREE (Strictly resolved from Referee UID) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {refInfo.name ? (
                         <div className="flex items-center gap-1.5">
-                          <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <UserCheck className="w-3.5 h-3.5 text-[#00b04f] shrink-0" />
                           <div className="truncate max-w-[160px]">
                             <div className="font-bold text-xs text-slate-200 truncate" title={`${refInfo.name} (${refInfo.uid || ''})`}>
                               {refInfo.name}
                             </div>
-                            {refInfo.badge && <div className="text-[9px] text-emerald-400/80 font-semibold">{refInfo.badge}</div>}
+                            {refInfo.badge && <div className="text-[9px] text-[#00b04f]/80 font-semibold">{refInfo.badge}</div>}
                           </div>
                         </div>
                       ) : (
@@ -1210,15 +1210,15 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 6. LINESMAN TEAM 1 (Strictly resolved from Linesman Club A UID) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {linesman1Info.name ? (
                         <div className="flex items-center gap-1.5">
-                          <Users className="w-3 h-3 text-purple-400 shrink-0" />
+                          <Users className="w-3 h-3 text-slate-400 shrink-0" />
                           <div className="truncate max-w-[140px]">
                             <div className="font-bold text-xs text-slate-200 truncate" title={`${linesman1Info.name} Linesman (${linesman1Info.uid || ''})`}>
                               {linesman1Info.name}
                             </div>
-                            <div className="text-[9px] text-purple-400/80">Club Linesman</div>
+                            <div className="text-[9px] text-slate-400">Club Linesman</div>
                           </div>
                         </div>
                       ) : (
@@ -1232,15 +1232,15 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 7. LINESMAN TEAM 2 (Strictly resolved from Linesman Club B UID) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {linesman2Info.name ? (
                         <div className="flex items-center gap-1.5">
-                          <Users className="w-3 h-3 text-blue-400 shrink-0" />
+                          <Users className="w-3 h-3 text-slate-400 shrink-0" />
                           <div className="truncate max-w-[140px]">
                             <div className="font-bold text-xs text-slate-200 truncate" title={`${linesman2Info.name} Linesman (${linesman2Info.uid || ''})`}>
                               {linesman2Info.name}
                             </div>
-                            <div className="text-[9px] text-blue-400/80">Club Linesman</div>
+                            <div className="text-[9px] text-slate-400">Club Linesman</div>
                           </div>
                         </div>
                       ) : (
@@ -1254,14 +1254,14 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 8. STATUS */}
-                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-block ${
+                        className={`px-2 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider inline-block ${
                           isPlayed
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
                             : isCancelled
-                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                            ? 'bg-[#d63031]/15 text-[#d63031] border border-[#d63031]/30'
+                            : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
                         }`}
                       >
                         {match.status}
@@ -1269,7 +1269,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                     </td>
 
                     {/* 9. PRESIDENT ACTIONS */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
                       {!isPlayed && !isCancelled ? (
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -1278,7 +1278,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                               setSelectedRefForSwap(match.referee_id || '');
                             }}
                             title="Swap Center Referee"
-                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white border border-white/10 transition-colors cursor-pointer"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
                           </button>
@@ -1288,14 +1288,14 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                               setProposedShiftTime(timeStr && timeStr.includes(':') ? timeStr : '09:00');
                             }}
                             title="Shift Kick-Off Time"
-                            className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white border border-white/10 transition-colors cursor-pointer"
                           >
                             <Clock className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setCancelTargetMatch(match)}
                             title="Cancel Match"
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1.5 rounded-md bg-rose-500/15 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 transition-colors cursor-pointer"
                           >
                             <XCircle className="w-3.5 h-3.5" />
                           </button>

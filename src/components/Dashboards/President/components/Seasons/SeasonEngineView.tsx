@@ -14,9 +14,9 @@ export const SeasonEngineView: React.FC<SeasonEngineViewProps> = ({
   const championshipTeams = teams.filter((t) => t.league === 'championship');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-1">
-        <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h2 className={`text-xl md:text-2xl font-black tracking-tight uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
           League Registration Overview
         </h2>
         <p className={`text-xs md:text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -25,13 +25,13 @@ export const SeasonEngineView: React.FC<SeasonEngineViewProps> = ({
       </div>
 
       {/* SECTION 1: LEAGUE A (EGERTON PREMIER LEAGUE) */}
-      <div className={`p-6 md:p-8 rounded-3xl border elevation-card space-y-4 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="flex items-center justify-between border-b pb-4 border-slate-700/20">
+      <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border space-y-4 shadow-xs ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
+        <div className="flex items-center justify-between border-b pb-3 border-[#14263b]">
           <div>
-            <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20">
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20">
               Tier 1 Division
             </span>
-            <h3 className={`text-xl font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               League A — Egerton Premier League
             </h3>
           </div>
@@ -47,32 +47,32 @@ export const SeasonEngineView: React.FC<SeasonEngineViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-semibold">
-              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#090D16]/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-400' : 'bg-[#f8f9fa] border-[#e6e8ec] text-slate-600'}`}>
                 <tr>
-                  <th className="px-4 py-3">Team Name</th>
-                  <th className="px-4 py-3">Coach</th>
-                  <th className="px-4 py-3">Captain</th>
-                  <th className="px-4 py-3">Players Registered</th>
-                  <th className="px-4 py-3 text-right">Team Doctor</th>
+                  <th className="px-4 py-2.5">Team Name</th>
+                  <th className="px-4 py-2.5">Coach</th>
+                  <th className="px-4 py-2.5">Captain</th>
+                  <th className="px-4 py-2.5">Players Registered</th>
+                  <th className="px-4 py-2.5 text-right">Team Doctor</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+              <tbody className="divide-y divide-[#14263b]">
                 {premierTeams.map((t) => (
-                  <tr key={t.id} className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                    <td className="px-4 py-3 font-black">
+                  <tr key={t.id} className={`hover:bg-[#13263b] transition-colors ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                    <td className="px-4 py-2.5 font-black">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046]" />
                         <span>{t.name}</span>
                         {t.code && <span className="text-[10px] font-mono text-slate-400">[{t.code}]</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-bold">{t.coach || 'Unassigned'}</td>
-                    <td className="px-4 py-3 font-bold">{t.captain || 'Unassigned'}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-blue-500">
+                    <td className="px-4 py-2.5 font-bold">{t.coach || 'Unassigned'}</td>
+                    <td className="px-4 py-2.5 font-bold">{t.captain || 'Unassigned'}</td>
+                    <td className="px-4 py-2.5 font-mono font-bold text-slate-200">
                       {t.playerCount || 16} Players
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-black ${t.doctorStatus === 'Assigned' || t.doctorName ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className={`px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider ${t.doctorStatus === 'Assigned' || t.doctorName ? 'bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
                         {t.doctorName || (t.doctorStatus === 'Assigned' ? 'Dr. Assigned' : 'Unassigned')}
                       </span>
                     </td>
@@ -85,13 +85,13 @@ export const SeasonEngineView: React.FC<SeasonEngineViewProps> = ({
       </div>
 
       {/* SECTION 2: LEAGUE B (EGERTON CHAMPIONSHIP) */}
-      <div className={`p-6 md:p-8 rounded-3xl border elevation-card space-y-4 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="flex items-center justify-between border-b pb-4 border-slate-700/20">
+      <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border space-y-4 shadow-xs ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
+        <div className="flex items-center justify-between border-b pb-3 border-[#14263b]">
           <div>
-            <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#152a40] text-slate-300 border border-[#223b56]">
               Tier 2 Division
             </span>
-            <h3 className={`text-xl font-black mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <h3 className={`text-sm sm:text-base font-black uppercase tracking-wider mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               League B — Egerton Championship
             </h3>
           </div>
@@ -107,32 +107,32 @@ export const SeasonEngineView: React.FC<SeasonEngineViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-semibold">
-              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#090D16]/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
                 <tr>
-                  <th className="px-4 py-3">Team Name</th>
-                  <th className="px-4 py-3">Coach</th>
-                  <th className="px-4 py-3">Captain</th>
-                  <th className="px-4 py-3">Players Registered</th>
-                  <th className="px-4 py-3 text-right">Team Doctor</th>
+                  <th className="px-4 py-2.5">Team Name</th>
+                  <th className="px-4 py-2.5">Coach</th>
+                  <th className="px-4 py-2.5">Captain</th>
+                  <th className="px-4 py-2.5">Players Registered</th>
+                  <th className="px-4 py-2.5 text-right">Team Doctor</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+              <tbody className="divide-y divide-[#14263b]">
                 {championshipTeams.map((t) => (
-                  <tr key={t.id} className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                    <td className="px-4 py-3 font-black">
+                  <tr key={t.id} className={`hover:bg-[#13263b] transition-colors ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                    <td className="px-4 py-2.5 font-black">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
                         <span>{t.name}</span>
                         {t.code && <span className="text-[10px] font-mono text-slate-400">[{t.code}]</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-bold">{t.coach || 'Unassigned'}</td>
-                    <td className="px-4 py-3 font-bold">{t.captain || 'Unassigned'}</td>
-                    <td className="px-4 py-3 font-mono font-bold text-indigo-500">
+                    <td className="px-4 py-2.5 font-bold">{t.coach || 'Unassigned'}</td>
+                    <td className="px-4 py-2.5 font-bold">{t.captain || 'Unassigned'}</td>
+                    <td className="px-4 py-2.5 font-mono font-bold text-slate-200">
                       {t.playerCount || 16} Players
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-black ${t.doctorStatus === 'Assigned' || t.doctorName ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className={`px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider ${t.doctorStatus === 'Assigned' || t.doctorName ? 'bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
                         {t.doctorName || (t.doctorStatus === 'Assigned' ? 'Dr. Assigned' : 'Unassigned')}
                       </span>
                     </td>

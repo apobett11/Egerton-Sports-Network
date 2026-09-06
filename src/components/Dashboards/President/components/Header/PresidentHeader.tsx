@@ -26,37 +26,43 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
 }) => {
   return (
     <>
-      <header className={`sticky top-0 z-40 h-16 w-full ${isDark ? 'bg-[#090D16]/90 border-slate-800/80' : 'bg-white/90 border-slate-200/80'} backdrop-blur-xl border-b shadow-xs transition-all`}>
+      <header className={`sticky top-0 z-40 h-16 w-full select-none ${isDark ? 'bg-[#0e1e2d] border-[#14263b]' : 'bg-white border-[#e6e8ec]'} border-b shadow-sm transition-all`}>
         <div className="max-w-7xl mx-auto h-full px-4 md:px-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800/80 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}
+              className={`p-2 rounded-md transition-colors cursor-pointer ${isDark ? 'hover:bg-[#182f47] text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-700'}`}
               title="Toggle Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div onClick={() => setActiveView('overview')} className="flex items-center gap-3 cursor-pointer group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow-sm">
-                E
+            <div onClick={() => setActiveView('overview')} className="flex items-center gap-2.5 cursor-pointer group">
+              <div className="flex items-center gap-0.5">
+                <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
+                <div className={`w-1.5 h-6 ${isDark ? 'bg-white' : 'bg-slate-800'} transform -skew-x-12 rounded-[1.5px] opacity-90`} />
               </div>
-              <span className={`font-black text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'} group-hover:text-blue-600 transition-colors`}>
-                Egerton Football Association
-              </span>
+              <div className="flex flex-col leading-none">
+                <span className={`font-black text-base tracking-tight uppercase ${isDark ? 'text-white' : 'text-slate-900'} font-sans group-hover:text-[#ff0046] transition-colors`}>
+                  EFA PRESIDENT
+                </span>
+                <span className="text-[8.5px] font-bold tracking-widest uppercase text-slate-400">
+                  PRE-SEASON MANAGEMENT
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
-            <span className={`text-xs font-black tracking-wider uppercase px-3 py-1 rounded-full ${isDark ? 'bg-slate-800/80 text-slate-300 border border-slate-700/60' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+            <span className={`text-xs font-black tracking-wider uppercase px-3 py-1 rounded-sm ${isDark ? 'bg-[#14263b] text-slate-300 border border-[#1a2e45]' : 'bg-slate-100 text-slate-700 border border-[#e6e8ec]'}`}>
               2027 Season Phase: PRE-SEASON
             </span>
             {isScheduleLocked ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-sm text-[10px] font-black uppercase bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/30 flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Locked
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-orange-500/10 text-orange-500 border border-orange-500/30 flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-sm text-[10px] font-black uppercase bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center gap-1">
                 <Unlock className="w-3 h-3" /> Unlocked
               </span>
             )}
@@ -65,26 +71,26 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => showToast('Notifications up to date')}
-              className={`relative p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800/80 text-slate-300' : 'hover:bg-slate-100 text-slate-700'}`}
+              className={`relative p-2 rounded-md transition-colors cursor-pointer ${isDark ? 'hover:bg-[#182f47] text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-700'}`}
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ff0046] rounded-full" />
             </button>
 
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-slate-800/80 text-orange-400' : 'hover:bg-slate-100 text-slate-700'}`}
+              className={`p-2 rounded-md transition-colors cursor-pointer ${isDark ? 'hover:bg-[#182f47] text-amber-400 hover:text-amber-300' : 'hover:bg-slate-100 text-slate-700'}`}
               title="Toggle Theme"
             >
-              {isDark ? <Sun className="w-4 h-4 text-orange-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
 
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-700/30">
+            <div className="flex items-center gap-2 pl-2 border-l border-[#1a2e45]">
               <button
                 onClick={() => setActiveView('profile')}
                 title="Profile & Settings"
-                className={`w-8 h-8 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 font-extrabold text-xs flex items-center justify-center border border-blue-500/20 hover:scale-105 cursor-pointer transition-all ${
-                  activeView === 'profile' ? 'ring-2 ring-blue-500' : ''
+                className={`w-8 h-8 rounded-md bg-[#152a40] text-white font-black text-xs flex items-center justify-center border border-[#1a2e45] hover:border-[#ff0046] cursor-pointer transition-colors ${
+                  activeView === 'profile' ? 'border-[#ff0046] ring-1 ring-[#ff0046]' : ''
                 }`}
               >
                 P
@@ -93,11 +99,7 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
                 <button
                   onClick={onLogout}
                   title="Logout"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    isDark
-                      ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30'
-                      : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
-                  }`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-colors cursor-pointer bg-[#152a40] hover:bg-[#ff0046] text-white border border-white/10"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Logout</span>
@@ -109,8 +111,8 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
       </header>
 
       {/* TOP TAB NAVIGATION BAR FOR MANDATORY PRE-SEASON MODULES (DESKTOP ONLY) */}
-      <div className={`hidden md:block border-b ${isDark ? 'bg-[#0E1424]/80 border-slate-800' : 'bg-white/80 border-slate-200'} backdrop-blur-md sticky top-16 z-30 overflow-x-auto no-scrollbar`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center gap-2 py-2">
+      <div className={`hidden md:block border-b ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} sticky top-16 z-30 overflow-x-auto no-scrollbar`}>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center gap-1.5 py-2">
           {[
             { id: 'overview', label: 'Overview', icon: Activity },
             { id: 'season_engine', label: '1. Season & League', icon: Calendar },
@@ -125,11 +127,11 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveView(tab.id as PresidentTab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-black uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-md'
+                    ? 'bg-[#ff0046] text-white shadow-xs'
                     : isDark
-                    ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'text-slate-400 hover:text-white hover:bg-[#14263b]'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
@@ -145,16 +147,16 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex transition-opacity animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex transition-opacity animate-in fade-in duration-200"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`w-72 h-full ${isDark ? 'bg-[#090D16] border-slate-800' : 'bg-white border-slate-200'} border-r p-6 flex flex-col justify-between shadow-2xl transition-all`}
+            className={`w-72 h-full ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} border-r p-6 flex flex-col justify-between shadow-2xl transition-all`}
           >
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-700/30">
-                <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Pre-Season Dashboard</span>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white cursor-pointer">
+              <div className="flex items-center justify-between pb-4 border-b border-[#1a2e45]">
+                <span className="text-xs font-black uppercase tracking-wider text-[#ff0046]">Pre-Season Dashboard</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#14263b] cursor-pointer transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -178,11 +180,11 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
                         setActiveView(item.id as PresidentTab);
                         setIsSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                      className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-md transition-colors cursor-pointer text-xs font-black uppercase tracking-wider ${
                         isActive
-                          ? 'bg-blue-600 text-white shadow-sm'
+                          ? 'bg-[#ff0046] text-white shadow-xs'
                           : isDark
-                          ? 'text-slate-300 hover:bg-slate-800/60'
+                          ? 'text-slate-300 hover:bg-[#14263b] hover:text-white'
                           : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >

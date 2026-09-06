@@ -72,11 +72,11 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* HEADER & ACTION BUTTONS BAR */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className={`text-2xl md:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h2 className={`text-xl md:text-2xl font-black tracking-tight uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Referee Management
           </h2>
           <p className={`text-xs md:text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -88,38 +88,38 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={scrollToForm}
-            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
+            className="px-4 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs transition-colors cursor-pointer flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Referee
           </button>
 
           <button
             onClick={handleCopyLink}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs border transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-md font-bold text-xs uppercase tracking-wider border transition-colors cursor-pointer flex items-center gap-2 ${
               copied
-                ? 'bg-emerald-600 text-white border-emerald-500'
+                ? 'bg-[#00b04f] text-white border-[#00b04f]'
                 : isDark
-                ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                ? 'bg-[#152a40] hover:bg-[#1c3857] border-white/10 text-white'
                 : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
             }`}
           >
             {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? 'Copied Link!' : 'Copy Registration Link'}</span>
+            <span>{copied ? 'Copied Link!' : 'Copy Link'}</span>
           </button>
 
           <button
             onClick={handleWhatsAppShare}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
+            className="px-4 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center gap-2"
           >
-            <Share2 className="w-4 h-4" /> Send via WhatsApp
+            <Share2 className="w-4 h-4" /> Share via WhatsApp
           </button>
         </div>
       </div>
 
       {/* REFEREE TABLE (TOP) */}
-      <div className={`p-6 rounded-3xl border elevation-card space-y-4 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="flex items-center justify-between">
-          <h3 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border space-y-4 shadow-xs ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
+        <div className="flex items-center justify-between border-b pb-3 border-[#14263b]">
+          <h3 className={`text-xs sm:text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Registered Referees ({referees.length})
           </h3>
         </div>
@@ -131,35 +131,35 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-semibold">
-              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#090D16]/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-400' : 'bg-[#f8f9fa] border-[#e6e8ec] text-slate-600'}`}>
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-2.5">Name</th>
+                  <th className="px-4 py-2.5">Email</th>
+                  <th className="px-4 py-2.5">Phone</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+              <tbody className="divide-y divide-[#14263b]">
                 {referees.map((r) => (
-                  <tr key={r.id} className={isDark ? 'text-slate-200' : 'text-slate-800'}>
-                    <td className="px-4 py-3 font-black">{r.name}</td>
-                    <td className="px-4 py-3 text-slate-400">{r.email || '-'}</td>
-                    <td className="px-4 py-3 font-mono">{r.phone}</td>
-                    <td className="px-4 py-3">
+                  <tr key={r.id} className={`hover:bg-[#13263b] transition-colors ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                    <td className="px-4 py-2.5 font-black">{r.name}</td>
+                    <td className="px-4 py-2.5 text-slate-400">{r.email || '-'}</td>
+                    <td className="px-4 py-2.5 font-mono">{r.phone}</td>
+                    <td className="px-4 py-2.5">
                       <span
-                        className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                        className={`px-2 py-0.5 rounded-xs text-[10px] font-black uppercase tracking-wider ${
                           r.status === 'Active'
-                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                            ? 'bg-[#00b04f]/10 text-[#00b04f] border border-[#00b04f]/30'
                             : r.status === 'Suspended'
                             ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                            : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                            : 'bg-rose-500/10 text-[#ff0046] border border-rose-500/30'
                         }`}
                       >
                         {r.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <select
                         defaultValue=""
                         onChange={(e) => {
@@ -169,9 +169,9 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
                           if (action === 'delete') handleDeleteReferee(r.id);
                           e.target.value = '';
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none ${
+                        className={`px-3 py-1 rounded-md text-xs font-bold cursor-pointer border focus:outline-none focus:border-[#ff0046] ${
                           isDark
-                            ? 'bg-[#090D16] border-slate-800 text-slate-200'
+                            ? 'bg-[#15273b] border-[#223b56] text-white'
                             : 'bg-slate-50 border-slate-200 text-slate-700'
                         }`}
                       >
@@ -190,50 +190,50 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
       </div>
 
       {/* ADD REFEREE FORM (BELOW TABLE) WITH REF FOR SMOOTH SCROLLING */}
-      <div ref={refFormRef} id="add-referee-form" className={`p-6 md:p-8 rounded-3xl border elevation-card space-y-6 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-            <UserCheck className="w-5 h-5" />
+      <div ref={refFormRef} id="add-referee-form" className={`p-4 sm:p-6 rounded-none sm:rounded-sm border space-y-5 shadow-xs ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
+        <div className="flex items-center gap-3 border-b pb-3 border-[#14263b]">
+          <div className="w-8 h-8 rounded-md bg-[#152a40] text-[#ff0046] border border-[#223b56] flex items-center justify-center font-bold">
+            <UserCheck className="w-4 h-4" />
           </div>
           <div>
-            <h3 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Add Referee</h3>
+            <h3 className={`text-xs sm:text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>Add Referee</h3>
             <p className="text-xs text-slate-400 font-medium">Register an official center referee for pre-season pool allocation.</p>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-slate-400 text-xs uppercase font-bold mb-1">Name</label>
+            <label className="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Name</label>
             <input
               ref={nameInputRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Full Name (e.g. Ref. Peter Ndambuki)"
-              className={`w-full p-3 rounded-xl border text-xs font-bold ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-2.5 rounded-md border text-xs font-bold focus:border-[#ff0046] focus:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-white border-[#e6e8ec] text-slate-800'}`}
               required
             />
           </div>
 
           <div>
-            <label className="block text-slate-400 text-xs uppercase font-bold mb-1">Email</label>
+            <label className="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email address"
-              className={`w-full p-3 rounded-xl border text-xs font-bold ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-2.5 rounded-md border text-xs font-bold focus:border-[#ff0046] focus:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-white border-[#e6e8ec] text-slate-800'}`}
             />
           </div>
 
           <div>
-            <label className="block text-slate-400 text-xs uppercase font-bold mb-1">Phone</label>
+            <label className="block text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1">Phone</label>
             <input
               type="text"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Phone number (+254 7...)"
-              className={`w-full p-3 rounded-xl border text-xs font-bold ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-2.5 rounded-md border text-xs font-bold focus:border-[#ff0046] focus:outline-none ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-white border-[#e6e8ec] text-slate-800'}`}
               required
             />
           </div>
@@ -242,7 +242,7 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full md:w-auto px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full md:w-auto px-6 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" /> Save Referee
             </button>

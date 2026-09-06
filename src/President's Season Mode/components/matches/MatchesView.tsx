@@ -110,8 +110,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
           <select
             value={competitionFilter}
             onChange={(e) => setCompetitionFilter(e.target.value as any)}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${
-              isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+            className={`px-3 py-2 rounded-sm border text-xs font-bold outline-none cursor-pointer transition-colors ${
+              isDark ? 'bg-[#15273b] border-[#1a2e45] text-slate-200 focus:border-[#ff0046]' : 'bg-white border-slate-300 text-slate-800'
             }`}
           >
             <option value="ALL">Both Competitions & Friendlies</option>
@@ -123,8 +123,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
           <select
             value={matchdayFilter}
             onChange={(e) => setMatchdayFilter(e.target.value)}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold outline-none cursor-pointer ${
-              isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+            className={`px-3 py-2 rounded-sm border text-xs font-bold outline-none cursor-pointer transition-colors ${
+              isDark ? 'bg-[#15273b] border-[#1a2e45] text-slate-200 focus:border-[#ff0046]' : 'bg-white border-slate-300 text-slate-800'
             }`}
           >
             <option value="ALL">All Matchdays</option>
@@ -142,7 +142,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
       {/* Match Cards List */}
       <div className="space-y-3">
         {filteredFixtures.length === 0 ? (
-          <div className="p-8 rounded-3xl border border-slate-800 text-center text-slate-400 text-xs font-bold">
+          <div className="p-8 rounded-sm border border-[#1a2e45] bg-[#0e1c2b] text-center text-slate-400 text-xs font-bold">
             No matches found for the selected filter parameters.
           </div>
         ) : (
@@ -173,29 +173,29 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
             return (
               <div
                 key={match.id}
-                className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+                className={`rounded-sm border transition-all duration-200 overflow-hidden ${
                   isExpanded
                     ? isDark
-                      ? 'bg-[#0E1424] border-emerald-500/50 shadow-lg shadow-emerald-500/5'
-                      : 'bg-white border-emerald-500 shadow-md'
+                      ? 'bg-[#0e1c2b] border-[#ff0046] shadow-md shadow-[#ff0046]/10'
+                      : 'bg-white border-[#ff0046] shadow-sm'
                     : isDark
-                    ? 'bg-[#0E1424]/80 border-slate-800/80 hover:border-slate-700'
+                    ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-[#1a2e45]/80'
                     : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
                 {/* CLOSED SUMMARY BAR */}
                 <div
                   onClick={() => onToggleExpandMatch(match.id)}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none hover:bg-[#102237]/40 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                      className={`px-2.5 py-0.5 rounded-xs text-[10px] font-black uppercase tracking-wider ${
                         isFriendly
-                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                          ? 'bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30'
                           : isEpl
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                          : 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
                       }`}
                     >
                       {isFriendly ? 'FRIENDLY' : isEpl ? 'EPL' : 'Championship'}
@@ -209,22 +209,22 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                   {/* Team vs Team */}
                   <div className="flex items-center gap-2 font-black text-sm text-slate-900 dark:text-white">
                     <span>{homeName}</span>
-                    <span className="text-emerald-500 text-xs px-2 py-0.5 rounded bg-emerald-500/10">vs</span>
+                    <span className="text-slate-400 text-xs px-2 py-0.5 rounded-xs bg-[#15273b] border border-[#1a2e45]">vs</span>
                     <span>{awayName}</span>
                   </div>
 
                   {/* Venue & Time */}
                   <div className="flex items-center gap-4 text-xs text-slate-400">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {timeFormatted}
                     </span>
                     <span className="hidden md:flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
                       {match.venue}
                     </span>
                     <span className="hidden lg:flex items-center gap-1 text-slate-300 font-bold">
-                      <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+                      <UserCheck className="w-3.5 h-3.5 text-slate-400" />
                       {refName}
                     </span>
                   </div>
@@ -232,21 +232,21 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                   {/* Status & Expand Trigger */}
                   <div className="flex items-center gap-3 justify-end">
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      className={`px-2.5 py-0.5 rounded-xs text-[10px] font-black uppercase ${
                         match.status === 'FT'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
                           : match.status === 'CANCELLED'
-                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                          ? 'bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30'
                           : match.status === 'POSTPONED'
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
                       }`}
                     >
                       {match.status}
                     </span>
 
                     {isExpanded ? (
-                      <ChevronUp className="w-5 h-5 text-emerald-500" />
+                      <ChevronUp className="w-5 h-5 text-[#ff0046]" />
                     ) : (
                       <ChevronDown className="w-5 h-5 text-slate-400" />
                     )}
@@ -255,21 +255,21 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
 
                 {/* EXPANDED OPERATIONAL BODY */}
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-2 border-t border-slate-800/60 space-y-5 animate-fadeIn">
+                  <div className="px-5 pb-5 pt-2 border-t border-[#1a2e45] space-y-5 animate-fadeIn">
                     {/* Linesmen Duty Section */}
                     <div className="space-y-2">
                       <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <Flag className="w-4 h-4 text-emerald-500" /> Assistant Referees / Linesmen Assignments
+                        <Flag className="w-4 h-4 text-[#ff0046]" /> Assistant Referees / Linesmen Assignments
                       </h4>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Linesman 1 */}
                         <div
-                          className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                          className={`p-3.5 rounded-sm border flex items-center justify-between ${
                             linesmen.linesman_team1_status === 'Defaulted'
                               ? 'bg-rose-950/20 border-rose-800/40'
                               : isDark
-                              ? 'bg-slate-900/60 border-slate-800'
+                              ? 'bg-[#102237] border-[#1a2e45]'
                               : 'bg-slate-50 border-slate-200'
                           }`}
                         >
@@ -282,7 +282,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                               className={`text-[10px] font-bold ${
                                 linesmen.linesman_team1_status === 'Defaulted'
                                   ? 'text-rose-400'
-                                  : 'text-emerald-400'
+                                  : 'text-[#00b04f]'
                               }`}
                             >
                               Status: {linesmen.linesman_team1_status}
@@ -295,7 +295,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                                 e.stopPropagation();
                                 onFlagLinesmanDefault(match.id, 1);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-extrabold cursor-pointer border border-rose-500/20"
+                              className="px-2.5 py-1 rounded-xs bg-[#ff0046]/10 hover:bg-[#ff0046]/20 text-[#ff0046] text-[10px] font-extrabold cursor-pointer border border-[#ff0046]/30 transition-colors"
                             >
                               Flag Default
                             </button>
@@ -304,11 +304,11 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
 
                         {/* Linesman 2 */}
                         <div
-                          className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                          className={`p-3.5 rounded-sm border flex items-center justify-between ${
                             linesmen.linesman_team2_status === 'Defaulted'
                               ? 'bg-rose-950/20 border-rose-800/40'
                               : isDark
-                              ? 'bg-slate-900/60 border-slate-800'
+                              ? 'bg-[#102237] border-[#1a2e45]'
                               : 'bg-slate-50 border-slate-200'
                           }`}
                         >
@@ -321,7 +321,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                               className={`text-[10px] font-bold ${
                                 linesmen.linesman_team2_status === 'Defaulted'
                                   ? 'text-rose-400'
-                                  : 'text-emerald-400'
+                                  : 'text-[#00b04f]'
                               }`}
                             >
                               Status: {linesmen.linesman_team2_status}
@@ -334,7 +334,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                                 e.stopPropagation();
                                 onFlagLinesmanDefault(match.id, 2);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-extrabold cursor-pointer border border-rose-500/20"
+                              className="px-2.5 py-1 rounded-xs bg-[#ff0046]/10 hover:bg-[#ff0046]/20 text-[#ff0046] text-[10px] font-extrabold cursor-pointer border border-[#ff0046]/30 transition-colors"
                             >
                               Flag Default
                             </button>
@@ -350,7 +350,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                           e.stopPropagation();
                           setSwapModalMatch(match);
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-sm flex items-center gap-1.5"
+                        className="px-3.5 py-2 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-sm flex items-center gap-1.5 transition-colors"
                       >
                         <RotateCw className="w-3.5 h-3.5" />
                         <span>Swap Referee</span>
@@ -367,7 +367,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                           }
                           setShiftVenue(match.venue);
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs cursor-pointer shadow-sm flex items-center gap-1.5"
+                        className="px-3.5 py-2 rounded-xs bg-[#152a40] hover:bg-[#1a385c] text-slate-100 font-extrabold text-xs cursor-pointer border border-[#1a2e45] shadow-sm flex items-center gap-1.5 transition-colors"
                       >
                         <Sliders className="w-3.5 h-3.5" />
                         <span>Shift Match</span>
@@ -378,11 +378,11 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                           e.stopPropagation();
                           setViewModalMatch(match);
                         }}
-                        className={`px-3.5 py-2 rounded-xl border font-extrabold text-xs cursor-pointer flex items-center gap-1.5 ${
-                          isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
+                        className={`px-3.5 py-2 rounded-xs border font-extrabold text-xs cursor-pointer flex items-center gap-1.5 transition-colors ${
+                          isDark ? 'bg-[#15273b] hover:bg-[#1c334d] border-[#1a2e45] text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-800'
                         }`}
                       >
-                        <Eye className="w-3.5 h-3.5 text-teal-400" />
+                        <Eye className="w-3.5 h-3.5 text-slate-300" />
                         <span>View Match Details</span>
                       </button>
 
@@ -393,7 +393,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                             setCancelModalMatch(match);
                             setCancelReason('');
                           }}
-                          className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-extrabold text-xs cursor-pointer border border-rose-500/20 flex items-center gap-1.5 ml-auto"
+                          className="px-3.5 py-2 rounded-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-extrabold text-xs cursor-pointer border border-rose-500/20 flex items-center gap-1.5 ml-auto transition-colors"
                         >
                           <XCircle className="w-3.5 h-3.5" />
                           <span>Cancel Match</span>
@@ -412,11 +412,11 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
       {swapModalMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-xl p-6 rounded-3xl border space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-xl p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
               <div>
                 <h3 className="font-black text-lg text-slate-900 dark:text-white">Swap Referee</h3>
                 <p className="text-xs text-slate-400">
@@ -425,7 +425,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
               </div>
               <button
                 onClick={() => setSwapModalMatch(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer transition-colors"
               >
                 Close
               </button>
@@ -456,28 +456,28 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                     {eligibilities.map(({ referee, is_eligible, rejection_reasons, fatigue_warning }) => (
                       <div
                         key={referee.id}
-                        className={`p-3.5 rounded-2xl border flex items-center justify-between ${
+                        className={`p-3.5 rounded-sm border flex items-center justify-between transition-colors ${
                           !is_eligible
-                            ? 'bg-slate-900/40 border-slate-800 opacity-60'
+                            ? 'bg-[#0e1c2b]/50 border-[#1a2e45] opacity-60'
                             : isDark
-                            ? 'bg-slate-900 border-slate-700 hover:border-emerald-500/50'
-                            : 'bg-slate-50 border-slate-200 hover:border-emerald-400'
+                            ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-[#ff0046]/50'
+                            : 'bg-slate-50 border-slate-200 hover:border-[#ff0046]'
                         }`}
                       >
                         <div className="space-y-0.5">
                           <div className="font-extrabold text-xs flex items-center gap-2">
                             <span>{referee.name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                            <span className="text-[10px] px-2 py-0.5 rounded-xs bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30 font-bold">
                               {referee.tier || 'Mixed'}
                             </span>
                             {fatigue_warning && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
+                              <span className="text-[10px] px-2 py-0.5 rounded-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold">
                                 Fatigue Warning
                               </span>
                             )}
                           </div>
                           {!is_eligible && (
-                            <p className="text-[10px] text-rose-400 font-medium">
+                            <p className="text-[10px] text-[#ff0046] font-medium">
                               Ineligible: {rejection_reasons.join('; ')}
                             </p>
                           )}
@@ -489,7 +489,7 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                               onSwapReferee(swapModalMatch.id, referee.id);
                               setSwapModalMatch(null);
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-sm"
+                            className="px-3 py-1.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-sm transition-colors"
                           >
                             Assign Swap
                           </button>
@@ -508,8 +508,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
       {shiftModalMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 animate-scaleUp ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
             <h3 className="font-black text-lg">Shift Match Schedule</h3>
@@ -524,8 +524,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                   type="date"
                   value={shiftDate}
                   onChange={(e) => setShiftDate(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-sm border text-xs outline-none mt-1 ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 />
               </div>
@@ -536,8 +536,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                   type="time"
                   value={shiftTime}
                   onChange={(e) => setShiftTime(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-sm border text-xs outline-none mt-1 ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 />
               </div>
@@ -547,8 +547,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                 <select
                   value={shiftVenue}
                   onChange={(e) => setShiftVenue(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none mt-1 ${
-                    isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                  className={`w-full px-3.5 py-2.5 rounded-sm border text-xs outline-none mt-1 ${
+                    isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                   }`}
                 >
                   {pitches.map((p) => (
@@ -563,13 +563,13 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setShiftModalMatch(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-slate-800"
+                className="flex-1 py-2.5 rounded-xs border border-[#1a2e45] text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-[#152a40] hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmShift}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs cursor-pointer shadow-md"
+                className="flex-1 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-sm transition-colors"
               >
                 Confirm Shift
               </button>
@@ -582,11 +582,11 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
       {cancelModalMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 animate-scaleUp ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center gap-2 text-rose-500">
+            <div className="flex items-center gap-2 text-[#ff0046]">
               <AlertTriangle className="w-5 h-5" />
               <h3 className="font-black text-lg">Cancel Match?</h3>
             </div>
@@ -601,8 +601,8 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Reason..."
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none mt-1 ${
-                  isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full px-3.5 py-2.5 rounded-sm border text-xs outline-none mt-1 ${
+                  isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300'
                 }`}
               />
             </div>
@@ -610,13 +610,13 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setCancelModalMatch(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-slate-800"
+                className="flex-1 py-2.5 rounded-xs border border-[#1a2e45] text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-[#152a40] hover:text-white transition-colors"
               >
                 Keep Match
               </button>
               <button
                 onClick={handleConfirmCancel}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs cursor-pointer shadow-md"
+                className="flex-1 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-sm transition-colors"
               >
                 Confirm Cancel
               </button>
@@ -629,29 +629,29 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
       {viewModalMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-lg p-6 rounded-3xl border space-y-4 animate-scaleUp ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-lg p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
               <h3 className="font-black text-lg">Full Operational Match Record</h3>
               <button
                 onClick={() => setViewModalMatch(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer transition-colors"
               >
                 Close
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <div className="p-4 rounded-sm bg-[#0e1c2b] border border-[#1a2e45] space-y-2">
                 <div className="flex justify-between font-bold text-slate-400">
                   <span>Match ID</span>
                   <span className="text-slate-200 font-mono">{viewModalMatch.id}</span>
                 </div>
                 <div className="flex justify-between font-bold text-slate-400">
                   <span>Competition</span>
-                  <span className="text-emerald-400 font-bold">
+                  <span className="text-[#ff0046] font-bold">
                     {viewModalMatch.competition_id === COMPETITIONS.PREMIER_LEAGUE.id
                       ? 'Egerton Premier League'
                       : 'Egerton Championships'}
@@ -663,11 +663,11 @@ export const MatchesView: React.FC<MatchesViewProps> = ({
                 </div>
                 <div className="flex justify-between font-bold text-slate-400">
                   <span>Status</span>
-                  <span className="text-blue-400">{viewModalMatch.status}</span>
+                  <span className="text-slate-200 font-bold">{viewModalMatch.status}</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <div className="p-4 rounded-sm bg-[#0e1c2b] border border-[#1a2e45] space-y-2">
                 <div className="font-extrabold text-slate-300">Scheduled Officials & Venue</div>
                 <div className="text-slate-400">Venue: <span className="text-white">{viewModalMatch.venue}</span></div>
                 <div className="text-slate-400">Center Referee: <span className="text-white">{viewModalMatch.referee?.name || 'Unassigned'}</span></div>

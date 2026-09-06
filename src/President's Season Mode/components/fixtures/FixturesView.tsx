@@ -67,14 +67,14 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
         </div>
 
         {fixtures.length > 0 ? (
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-black text-xs">
-            <Sparkles className="w-4 h-4 text-blue-500" />
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xs bg-[#152a40] text-slate-300 border border-[#1a2e45] font-black text-xs">
+            <Sparkles className="w-4 h-4 text-slate-400" />
             <span>Official Schedule Active (Read-Only)</span>
           </div>
         ) : (
           <button
             onClick={onOpenGenerationModal}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-md shadow-emerald-600/20 transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-md transition-all min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none"
           >
             <Sparkles className="w-4 h-4" />
             <span>Generate Fixtures Workflow</span>
@@ -85,11 +85,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
       {/* NO SAVED FIXTURES EMPTY STATE */}
       {fixtures.length === 0 ? (
         <div
-          className={`p-8 rounded-3xl border text-center space-y-5 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+          className={`p-8 rounded-sm border text-center space-y-5 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200'
           }`}
         >
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-xs bg-[#152a40] text-[#ff0046] border border-[#1a2e45] flex items-center justify-center mx-auto">
             <Calendar className="w-7 h-7" />
           </div>
           <div className="max-w-md mx-auto space-y-2">
@@ -103,7 +103,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
           <button
             onClick={onOpenGenerationModal}
-            className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer shadow-lg shadow-emerald-600/20"
+            className="px-6 py-3 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs cursor-pointer shadow-md transition-colors"
           >
             Launch Generation Workflow
           </button>
@@ -115,11 +115,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setSelectedComp('EPL')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xs font-extrabold text-xs cursor-pointer transition-all ${
                   selectedComp === 'EPL'
-                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                    ? 'bg-[#ff0046] text-white shadow-md'
                     : isDark
-                    ? 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#152a40] text-slate-400 hover:text-white border border-[#1a2e45]'
                     : 'bg-slate-100 text-slate-600'
                 }`}
               >
@@ -129,11 +129,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
               <button
                 onClick={() => setSelectedComp('CHAMPIONSHIP')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xs font-extrabold text-xs cursor-pointer transition-all ${
                   selectedComp === 'CHAMPIONSHIP'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    ? 'bg-[#152a40] text-white border border-[#ff0046] shadow-md'
                     : isDark
-                    ? 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#152a40] text-slate-400 hover:text-white border border-[#1a2e45]'
                     : 'bg-slate-100 text-slate-600'
                 }`}
               >
@@ -150,9 +150,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                 placeholder="Filter by team or venue..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                className={`w-full pl-9 pr-4 py-2 rounded-xs text-xs font-medium border transition-colors focus:outline-none focus:border-[#ff0046] ${
                   isDark
-                    ? 'bg-slate-900/80 border-slate-800 text-white placeholder-slate-500'
+                    ? 'bg-[#15273b] border-[#1a2e45] text-white placeholder-slate-500'
                     : 'bg-white border-slate-200 text-slate-800 placeholder-slate-400'
                 }`}
               />
@@ -164,13 +164,13 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
             {matchdays.map((md) => (
               <div
                 key={md}
-                className={`p-6 rounded-3xl border space-y-4 ${
-                  isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+                className={`p-6 rounded-sm border space-y-4 ${
+                  isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200'
                 }`}
               >
-                <div className="flex items-center justify-between border-b border-slate-800/40 pb-3">
+                <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
                   <div className="flex items-center gap-2 font-black text-sm text-slate-900 dark:text-white">
-                    <Calendar className="w-4 h-4 text-emerald-500" />
+                    <Calendar className="w-4 h-4 text-[#ff0046]" />
                     <span>Matchday {md}</span>
                   </div>
                   <span className="text-xs font-bold text-slate-400">
@@ -182,15 +182,15 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                   {matchdayGroups[md].map((f) => (
                     <div
                       key={f.id}
-                      className={`p-4 rounded-2xl border space-y-2 ${
-                        isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                      className={`p-4 rounded-xs border space-y-2 ${
+                        isDark ? 'bg-[#102237] border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate">
                           {f.home_team?.name || 'Home Team'}
                         </span>
-                        <span className="text-[10px] font-black uppercase text-slate-400 px-2 py-0.5 rounded bg-slate-800/40">
+                        <span className="text-[10px] font-black uppercase text-slate-400 px-2 py-0.5 rounded-xs bg-[#15273b] border border-[#1a2e45]">
                           VS
                         </span>
                         <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate text-right">
@@ -198,12 +198,16 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-800/20">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-[#1a2e45]">
                         <span className="flex items-center gap-1 truncate">
-                          <MapPin className="w-3 h-3 text-teal-500 shrink-0" />
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                           <span className="truncate">{f.venue || 'Egerton Pitch'}</span>
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/10 text-emerald-500 uppercase">
+                        <span className={`px-2 py-0.5 rounded-xs text-[9px] font-extrabold uppercase ${
+                          f.status === 'FT'
+                            ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                            : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
+                        }`}>
                           {f.status}
                         </span>
                       </div>

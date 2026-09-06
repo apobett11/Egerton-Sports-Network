@@ -70,13 +70,13 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
     >
       <div
         className={`w-full max-w-md ${
-          isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-        } border rounded-3xl p-5 md:p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200`}
+          isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-slate-200 text-slate-900'
+        } border rounded-xl p-5 md:p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-700/30 pb-3.5">
+        <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xs bg-[#ff0046]/10 text-[#ff0046] flex items-center justify-center font-bold">
               <CalendarIcon className="w-4 h-4" />
             </div>
             <div>
@@ -89,7 +89,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close calendar modal"
-            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xs hover:bg-[#152a40] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -99,8 +99,8 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         <div className="flex items-center justify-between px-1">
           <button
             onClick={handlePrevMonth}
-            className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-              isDark ? 'bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-800'
+            className={`p-2 rounded-xs border text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+              isDark ? 'bg-[#152a40] border-[#1a2e45] hover:bg-[#1a385c] text-slate-200' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-800'
             }`}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -111,8 +111,8 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
           </span>
           <button
             onClick={handleNextMonth}
-            className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-              isDark ? 'bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-800'
+            className={`p-2 rounded-xs border text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+              isDark ? 'bg-[#152a40] border-[#1a2e45] hover:bg-[#1a385c] text-slate-200' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-800'
             }`}
           >
             <span className="hidden sm:inline">Next</span>
@@ -123,9 +123,9 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         {/* Calendar Grid — Monday-First Structure */}
         <div className="space-y-2">
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 text-center text-[11px] font-black uppercase text-slate-400 py-1 border-b border-slate-800/40">
+          <div className="grid grid-cols-7 text-center text-[11px] font-black uppercase text-slate-400 py-1 border-b border-[#1a2e45]">
             {weekDayNames.map((dayName, i) => (
-              <div key={dayName} className={i >= 5 ? 'text-amber-500/80 font-bold' : ''}>
+              <div key={dayName} className={i >= 5 ? 'text-amber-400/80 font-bold' : ''}>
                 {dayName}
               </div>
             ))}
@@ -135,7 +135,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
           <div className="grid grid-cols-7 gap-1.5 pt-1">
             {/* Blank leading slots */}
             {Array.from({ length: mondayFirstIndex }).map((_, idx) => (
-              <div key={`blank-${idx}`} className="h-11 rounded-xl bg-transparent" />
+              <div key={`blank-${idx}`} className="h-11 rounded-xs bg-transparent" />
             ))}
 
             {/* Calendar Days */}
@@ -152,16 +152,16 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
 
               // Determine slot visual styling
               let slotStyle = isDark
-                ? 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
+                ? 'bg-[#102237]/60 border-[#1a2e45] text-slate-300 hover:bg-[#15273b] hover:border-[#ff0046]/40'
                 : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100';
 
               if (hasMatchday) {
                 if (isCancelled) {
-                  slotStyle = 'bg-rose-500/20 border-rose-500/50 text-rose-400 font-black shadow-xs';
+                  slotStyle = 'bg-[#ff0046]/15 border-[#ff0046]/40 text-[#ff0046] font-black shadow-xs';
                 } else if (isFriendly) {
-                  slotStyle = 'bg-purple-500/20 border-purple-500/50 text-purple-400 font-black shadow-xs';
+                  slotStyle = 'bg-sky-500/15 border-sky-500/40 text-sky-400 font-black shadow-xs';
                 } else {
-                  slotStyle = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 font-black shadow-xs';
+                  slotStyle = 'bg-[#00b04f]/15 border-[#00b04f]/40 text-[#00b04f] font-black shadow-xs';
                 }
               }
 
@@ -172,7 +172,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                     onSelectDate(dateStr);
                     onClose();
                   }}
-                  className={`h-11 rounded-xl border flex flex-col items-center justify-center p-1 transition-all cursor-pointer text-xs font-bold relative active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${slotStyle}`}
+                  className={`h-11 rounded-xs border flex flex-col items-center justify-center p-1 transition-all cursor-pointer text-xs font-bold relative active:scale-95 focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none ${slotStyle}`}
                 >
                   <span>{dayNumber}</span>
                   {hasMatchday && (
@@ -187,17 +187,17 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         </div>
 
         {/* Legend */}
-        <div className="pt-2 border-t border-slate-800/40 flex items-center justify-between text-[11px] text-slate-400 flex-wrap gap-2">
+        <div className="pt-2 border-t border-[#1a2e45] flex items-center justify-between text-[11px] text-slate-400 flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
             <span>Matchday</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
             <span>Friendly</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046]" />
             <span>Cancelled</span>
           </div>
           <div className="flex items-center gap-1.5">

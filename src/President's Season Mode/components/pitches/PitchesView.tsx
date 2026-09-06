@@ -55,13 +55,13 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
           return (
             <div
               key={pitch.id}
-              className={`p-5 rounded-2xl border transition-all ${
+              className={`p-5 rounded-sm border transition-all ${
                 pitch.status === 'Unavailable'
                   ? isDark
-                    ? 'bg-rose-950/20 border-rose-800/40 text-rose-200'
+                    ? 'bg-[#ff0046]/10 border-[#ff0046]/30 text-rose-200'
                     : 'bg-rose-50 border-rose-200'
                   : isDark
-                  ? 'bg-[#0E1424] border-slate-800 hover:border-emerald-500/40'
+                  ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-[#1a2e45]/80'
                   : 'bg-white border-slate-200 shadow-sm'
               }`}
             >
@@ -69,7 +69,7 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
                 {/* Pitch Info */}
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                    <span className="px-2.5 py-0.5 rounded-xs text-[10px] font-black uppercase tracking-wider bg-[#152a40] text-slate-200 border border-[#1a2e45]">
                       {pitch.short_code || 'PITCH'}
                     </span>
                     <h3 className="font-black text-base text-slate-900 dark:text-white">
@@ -78,7 +78,7 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
                   </div>
 
                   <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-teal-400" />
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span>{pitch.location || 'Egerton Campus Grounds'}</span>
                     <span>•</span>
                     <span>{pitch.capacity ? pitch.capacity.toLocaleString() : 5000} Spectators</span>
@@ -89,12 +89,12 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
 
                 {/* Match Usage Badge */}
                 <div className="flex items-center gap-3 text-xs font-semibold text-slate-300">
-                  <span className="px-3 py-1.5 rounded-xl bg-slate-900/40 border border-slate-800 text-slate-300">
-                    Today: <strong className="text-emerald-400">{todayUsage.length} match(es)</strong>
+                  <span className="px-3 py-1.5 rounded-xs bg-[#102237] border border-[#1a2e45] text-slate-300">
+                    Today: <strong className="text-[#00b04f]">{todayUsage.length} match(es)</strong>
                   </span>
 
-                  <span className="px-3 py-1.5 rounded-xl bg-slate-900/40 border border-slate-800 text-slate-300">
-                    Total: <strong className="text-blue-400">{upcomingUsage.length} match(es)</strong>
+                  <span className="px-3 py-1.5 rounded-xs bg-[#102237] border border-[#1a2e45] text-slate-300">
+                    Total: <strong className="text-slate-200">{upcomingUsage.length} match(es)</strong>
                   </span>
                 </div>
 
@@ -106,8 +106,8 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
                   <select
                     value={currentMode}
                     onChange={(e) => onUpdatePitchAvailability(pitch.id, e.target.value as PitchAvailabilityMode)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-extrabold outline-none cursor-pointer ${
-                      isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    className={`w-full px-3.5 py-2.5 rounded-xs border text-xs font-extrabold outline-none cursor-pointer transition-colors ${
+                      isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   >
                     <option value="Available">Available</option>
@@ -126,11 +126,11 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
       {pitchConflictModalData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-lg p-6 rounded-3xl border space-y-4 animate-scaleUp ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-lg p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
-            <div className="flex items-center gap-2 text-rose-500">
+            <div className="flex items-center gap-2 text-[#ff0046]">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-black text-lg">
                 Pitch Closure Impact: {pitchConflictModalData.pitch.name}
@@ -143,7 +143,7 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
 
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {pitchConflictModalData.affected.map((m) => (
-                <div key={m.id} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs flex items-center justify-between">
+                <div key={m.id} className="p-3 rounded-xs bg-[#0e1c2b] border border-[#1a2e45] text-xs flex items-center justify-between">
                   <span className="font-bold text-white">
                     {m.home_team?.name} vs {m.away_team?.name}
                   </span>
@@ -154,7 +154,7 @@ export const PitchesView: React.FC<PitchesViewProps> = ({
 
             <button
               onClick={onClosePitchConflictModal}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-md min-h-[44px]"
+              className="w-full py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-md min-h-[44px] transition-colors"
             >
               Acknowledge & Confirm Change
             </button>

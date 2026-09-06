@@ -39,8 +39,8 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
         </div>
 
         <div
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs ${
-            isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs ${
+            isDark ? 'bg-[#15273b] border-[#1a2e45] text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
           }`}
         >
           <Search className="w-4 h-4 text-slate-400" />
@@ -49,7 +49,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search teams or coaches..."
-            className="bg-transparent outline-none text-xs w-40 sm:w-56"
+            className="bg-transparent outline-none text-xs w-40 sm:w-56 placeholder:text-slate-500"
           />
         </div>
       </div>
@@ -58,19 +58,19 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-emerald-500" />
-            <h2 className="text-base font-black uppercase tracking-wider text-emerald-400">
+            <Shield className="w-5 h-5 text-[#ff0046]" />
+            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Egerton Premier League
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="px-2.5 py-0.5 rounded-xs text-xs font-black bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20">
               {premierLeagueTeams.length} Teams
             </span>
           </div>
         </div>
 
         <div
-          className={`rounded-3xl border overflow-hidden transition-all ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`rounded-sm border overflow-hidden transition-all ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200 shadow-sm'
           }`}
         >
           <div className="overflow-x-auto">
@@ -78,7 +78,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
               <thead>
                 <tr
                   className={`border-b text-[10px] font-black uppercase tracking-wider ${
-                    isDark ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    isDark ? 'bg-[#102237] border-[#1a2e45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
                 >
                   <th className="py-3 px-4">Team</th>
@@ -89,7 +89,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                   <th className="py-3 px-4">Division</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40 font-medium">
+              <tbody className="divide-y divide-[#1a2e45] font-medium">
                 {eplFiltered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-slate-400 italic">
@@ -101,11 +101,11 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                     <tr
                       key={team.id}
                       className={`transition-colors ${
-                        isDark ? 'hover:bg-slate-800/40 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
+                        isDark ? 'hover:bg-[#15273b]/60 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
                       }`}
                     >
                       <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-xs border border-emerald-500/20">
+                        <div className="w-7 h-7 rounded-xs bg-[#15273b] text-slate-200 flex items-center justify-center font-black text-xs border border-[#1a2e45]">
                           {team.short_name.slice(0, 3)}
                         </div>
                         <span>{team.name}</span>
@@ -122,11 +122,11 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                           : 'Team Captain'}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded-xs text-[10px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
                           {team.status || 'approved'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-emerald-400">Premier League</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-300">Premier League</td>
                     </tr>
                   ))
                 )}
@@ -140,19 +140,19 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
       <div className="space-y-3 pt-4">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-amber-500" />
-            <h2 className="text-base font-black uppercase tracking-wider text-amber-400">
+            <Shield className="w-5 h-5 text-sky-400" />
+            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Egerton Championships
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <span className="px-2.5 py-0.5 rounded-xs text-xs font-black bg-sky-500/10 text-sky-400 border border-sky-500/20">
               {championshipTeams.length} Teams
             </span>
           </div>
         </div>
 
         <div
-          className={`rounded-3xl border overflow-hidden transition-all ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`rounded-sm border overflow-hidden transition-all ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200 shadow-sm'
           }`}
         >
           <div className="overflow-x-auto">
@@ -160,7 +160,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
               <thead>
                 <tr
                   className={`border-b text-[10px] font-black uppercase tracking-wider ${
-                    isDark ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    isDark ? 'bg-[#102237] border-[#1a2e45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
                   }`}
                 >
                   <th className="py-3 px-4">Team</th>
@@ -171,7 +171,7 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                   <th className="py-3 px-4">Division</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40 font-medium">
+              <tbody className="divide-y divide-[#1a2e45] font-medium">
                 {champFiltered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-slate-400 italic">
@@ -183,11 +183,11 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                     <tr
                       key={team.id}
                       className={`transition-colors ${
-                        isDark ? 'hover:bg-slate-800/40 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
+                        isDark ? 'hover:bg-[#15273b]/60 text-slate-200' : 'hover:bg-slate-50 text-slate-800'
                       }`}
                     >
                       <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xs border border-amber-500/20">
+                        <div className="w-7 h-7 rounded-xs bg-[#15273b] text-slate-200 flex items-center justify-center font-black text-xs border border-[#1a2e45]">
                           {team.short_name.slice(0, 3)}
                         </div>
                         <span>{team.name}</span>
@@ -204,11 +204,11 @@ export const TeamsView: React.FC<TeamsViewProps> = ({
                           : 'Team Captain'}
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded-xs text-[10px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
                           {team.status || 'approved'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-amber-400">Championship</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-300">Championship</td>
                     </tr>
                   ))
                 )}

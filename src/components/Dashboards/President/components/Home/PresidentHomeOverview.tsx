@@ -76,18 +76,18 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
   const setupPercentage = Math.round((completedCount / checklist.length) * 100);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* QUICK ACTIONS BANNER */}
       <div
-        className={`p-6 md:p-10 rounded-3xl border ${
-          isDark ? 'bg-[#0E1424]/90 border-slate-800/80' : 'bg-white/90 border-slate-200/80'
-        } backdrop-blur-2xl space-y-6 relative overflow-hidden`}
+        className={`p-5 md:p-6 rounded-none sm:rounded-sm border ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'
+        } shadow-xs space-y-5 relative overflow-hidden`}
       >
         <div className="space-y-2 max-w-2xl">
-          <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-500/10 text-orange-500 border border-orange-500/20">
+          <span className="inline-block px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20">
             PRE-SEASON PHASE
           </span>
-          <h1 className={`text-2xl md:text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h1 className={`text-xl md:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Pre-Season Executive Portal
           </h1>
           <p className={`text-xs md:text-sm font-medium leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -106,7 +106,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
                   setActiveView('fixture_engine');
                 }
               }}
-              className="px-4 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center justify-between cursor-pointer group"
+              className="px-3.5 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs transition-colors cursor-pointer flex items-center justify-between group"
             >
               <span className="flex items-center gap-2">
                 <Trophy className="w-4 h-4" />
@@ -117,10 +117,10 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setIsWeekendRefModalOpen(true)}
-              className="px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 flex items-center justify-between cursor-pointer group"
+              className="px-3.5 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center justify-between group"
             >
               <span className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-300 animate-spin" style={{ animationDuration: '3s' }} />
+                <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>Allocate Referees</span>
               </span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -128,7 +128,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('megaphone')}
-              className="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-400 flex items-center justify-between cursor-pointer group"
+              className="px-3.5 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center justify-between group"
             >
               <span className="flex items-center gap-2">
                 <Megaphone className="w-4 h-4" />
@@ -139,7 +139,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('referees')}
-              className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 flex items-center justify-between cursor-pointer group"
+              className="px-3.5 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center justify-between group"
             >
               <span className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4" />
@@ -150,7 +150,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
 
             <button
               onClick={() => setActiveView('season_engine')}
-              className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400 flex items-center justify-between cursor-pointer group"
+              className="px-3.5 py-2.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center justify-between group"
             >
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
@@ -163,121 +163,111 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
       </div>
 
       {/* DASHBOARD SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Referees */}
-        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+        <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border transition-all ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs space-y-3`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-slate-400">Referees</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Referees</span>
+            <div className="w-8 h-8 rounded-md bg-[#152a40] text-[#00b04f] border border-[#223b56] flex items-center justify-center font-bold">
               <UserCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className={`text-3xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {referees.length}
           </div>
           <button
             onClick={() => setActiveView('referees')}
-            className="w-full py-2.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+            className="w-full py-2 rounded-md bg-[#15273b] hover:bg-[#1a3350] text-slate-200 border border-[#223b56] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
           >
             Register Referee
           </button>
         </div>
 
         {/* Card 2: Registered Teams */}
-        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+        <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border transition-all ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs space-y-3`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-slate-400">Registered Teams</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Registered Teams</span>
+            <div className="w-8 h-8 rounded-md bg-[#152a40] text-[#ff0046] border border-[#223b56] flex items-center justify-center font-bold">
               <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className={`text-3xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {teams.length}
           </div>
           <button
             onClick={() => setActiveView('season_engine')}
-            className="w-full py-2.5 rounded-xl bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+            className="w-full py-2 rounded-md bg-[#15273b] hover:bg-[#1a3350] text-slate-200 border border-[#223b56] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
           >
             View Teams
           </button>
         </div>
 
         {/* Card 3: Leagues Overview */}
-        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+        <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border transition-all ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs space-y-3`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-slate-400">Leagues</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Leagues</span>
+            <div className="w-8 h-8 rounded-md bg-[#152a40] text-amber-400 border border-[#223b56] flex items-center justify-center font-bold">
               <Trophy className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className={`text-3xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
             2
           </div>
           <button
             onClick={() => setActiveView('season_engine')}
-            className="w-full py-2.5 rounded-xl bg-amber-600/10 hover:bg-amber-600 text-amber-600 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+            className="w-full py-2 rounded-md bg-[#15273b] hover:bg-[#1a3350] text-slate-200 border border-[#223b56] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
           >
             View Leagues
           </button>
         </div>
 
         {/* Card 4: Campus Pitches (Replaces Announcements Card) */}
-        <div className={`p-6 rounded-3xl border transition-all ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'} space-y-4`}>
+        <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border transition-all ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs space-y-3`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase text-slate-400">Campus Pitches</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Campus Pitches</span>
+            <div className="w-8 h-8 rounded-md bg-[#152a40] text-teal-400 border border-[#223b56] flex items-center justify-center font-bold">
               <MapPin className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <div className={`text-3xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {pitches.length}
           </div>
-          <div className="text-xs text-teal-500 font-bold flex items-center gap-1">
+          <div className="text-xs text-teal-400 font-bold flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Official Egerton Grounds</span>
           </div>
         </div>
       </div>
 
-      {/* SEASON READINESS COMPONENT */}
-      <SeasonReadiness
-        isDark={isDark}
-        premierLeagueTeams={premierLeagueTeams}
-        championshipTeams={championshipTeams}
-        referees={referees}
-        pitches={pitches}
-        onOpenGenerationModal={() => setActiveView('fixture_engine')}
-      />
-
       {/* PRE-SEASON CHECKLIST */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
+          <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
             Pre-Season Setup Checklist
           </h2>
-          <span className="text-xs font-black text-emerald-500">{setupPercentage}% Complete</span>
+          <span className="text-xs font-black text-[#00b04f]">{setupPercentage}% Complete</span>
         </div>
 
         <div
-          className={`p-6 rounded-3xl border space-y-5 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
-          }`}
+          className={`p-4 sm:p-5 rounded-none sm:rounded-sm border space-y-4 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'
+          } shadow-xs`}
         >
           {/* Progress Bar */}
-          <div className="w-full bg-slate-800/40 h-2.5 rounded-full overflow-hidden">
+          <div className="w-full bg-[#15273b] h-2 rounded-xs overflow-hidden border border-[#223b56]">
             <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500 rounded-full"
+              className="bg-[#00b04f] h-full transition-all duration-500 rounded-xs"
               style={{ width: `${setupPercentage}%` }}
             />
           </div>
 
-          <div className="space-y-3.5 divide-y divide-slate-800/40">
+          <div className="space-y-3 divide-y divide-[#14263b]">
             {checklist.map((item, idx) => (
-              <div key={idx} className="pt-3.5 first:pt-0 flex items-start gap-3">
+              <div key={idx} className="pt-3 first:pt-0 flex items-start gap-3">
                 {item.status === 'complete' ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-[#00b04f] shrink-0 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 )}
                 <div className="space-y-0.5">
                   <div className="font-extrabold text-xs text-slate-900 dark:text-white">{item.label}</div>
@@ -306,37 +296,37 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
       />
 
       {/* OFFICIAL CAMPUS PITCHES SECTION */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
               Official Campus Pitches
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Verified sports grounds allocated for Pre-Season league matches.
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-black">
+          <span className="px-2.5 py-1 rounded-sm bg-[#152a40] text-slate-300 border border-[#223b56] text-xs font-black uppercase tracking-wider">
             {pitches.length} Grounds Active
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {pitches.map((pitch) => (
             <div
               key={pitch.id}
-              className={`p-6 rounded-3xl border flex flex-col justify-between space-y-4 transition-all ${
-                isDark ? 'bg-[#0E1424] border-slate-800 hover:border-teal-500/30' : 'bg-white border-slate-200 hover:border-teal-400'
-              }`}
+              className={`p-4 sm:p-5 rounded-none sm:rounded-sm border flex flex-col justify-between space-y-4 transition-colors ${
+                isDark ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-[#223b56]' : 'bg-white border-[#e6e8ec] hover:border-slate-300'
+              } shadow-xs`}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-800 text-white flex items-center justify-center font-black shadow-md">
-                      <MapPin className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-md bg-[#152a40] text-teal-400 border border-[#223b56] flex items-center justify-center font-black shadow-xs">
+                      <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <h3 className="font-black text-sm text-slate-900 dark:text-white leading-tight">
+                      <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white leading-tight">
                         {pitch.name}
                       </h3>
                       {pitch.short_code && (
@@ -346,15 +336,15 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
                   </div>
 
                   <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase tracking-wider ${
-                      OPERATIONAL_STATUS_COLORS[pitch.status || 'Available'] || 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    className={`px-2 py-0.5 rounded-sm text-[10px] font-black border uppercase tracking-wider ${
+                      OPERATIONAL_STATUS_COLORS[pitch.status || 'Available'] || 'bg-[#00b04f]/10 text-[#00b04f] border-[#00b04f]/20'
                     }`}
                   >
                     {pitch.status || 'Available'}
                   </span>
                 </div>
 
-                <div className="space-y-2 pt-3 border-t border-slate-800/40 text-xs font-medium text-slate-300">
+                <div className="space-y-2 pt-3 border-t border-[#14263b] text-xs font-medium text-slate-300">
                   {pitch.location && (
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-bold">Location:</span>
@@ -394,7 +384,7 @@ export const PresidentHomeOverview: React.FC<PresidentHomeOverviewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800/40 flex items-center justify-between text-[11px] font-mono text-slate-500">
+              <div className="pt-3 border-t border-[#14263b] flex items-center justify-between text-[11px] font-mono text-slate-500">
                 <span>Ready for Allocation</span>
                 <span className="text-teal-400 font-extrabold">Active</span>
               </div>

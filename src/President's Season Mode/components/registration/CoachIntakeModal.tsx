@@ -68,27 +68,27 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="coach-modal-title"
     >
       <div
-        className={`w-full max-w-lg border rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl transition-all ${
-          isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+        className={`w-full max-w-lg border rounded-xl p-6 md:p-8 space-y-6 shadow-2xl transition-all ${
+          isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between border-b border-slate-800/40 pb-4">
+        <div className="flex items-center justify-between border-b border-[#1a2e45]/60 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-xs bg-[#ff0046]/10 text-[#ff0046] flex items-center justify-center font-black">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 id="coach-modal-title" className="text-lg font-black tracking-tight">
+              <h3 id="coach-modal-title" className="text-base sm:text-lg font-black tracking-tight">
                 Coach & Team Intake Registration
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-xs text-slate-400 font-medium">
                 Register coach credentials and team identity for pre-season review.
               </p>
             </div>
@@ -97,7 +97,7 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close modal"
-            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+            className="p-2 text-slate-400 hover:text-white cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xs hover:bg-[#152a40] transition-colors focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -105,7 +105,7 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
 
         {/* ERROR DISPLAY */}
         {errorMessage && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold flex items-start gap-2.5">
+          <div className="p-4 rounded-sm bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
@@ -121,8 +121,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
             <select
               value={competitionId}
               onChange={(e) => setCompetitionId(e.target.value)}
-              className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none font-bold ${
-                isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+              className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-bold ${
+                isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <option value={COMPETITIONS.PREMIER_LEAGUE.id}>Egerton Premier League (Tier 1)</option>
@@ -142,8 +142,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="e.g. John"
-                className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                  isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                  isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
                 }`}
                 required
               />
@@ -158,8 +158,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="e.g. Omondi"
-                className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                  isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                  isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
                 }`}
                 required
               />
@@ -178,8 +178,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="e.g. Coach Zico"
-                className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                  isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                  isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
                 }`}
               />
             </div>
@@ -193,8 +193,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+254 700 000 000"
-                className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                  isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                  isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
                 }`}
                 required
               />
@@ -212,8 +212,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="coach@egerton.ac.ke"
-              className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+              className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
               }`}
               required
             />
@@ -230,8 +230,8 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
               placeholder="e.g. eagles, Mighty Blacks, Sharklets"
-              className={`w-full p-3 rounded-xl border min-h-[44px] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
-                isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+              className={`w-full p-3 rounded-xs border min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none font-medium ${
+                isDark ? 'bg-[#15273b] border-[#1a2e45] text-white focus:border-[#ff0046]' : 'bg-slate-50 border-slate-200'
               }`}
               required
             />
@@ -240,21 +240,21 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
           {/* REAL-TIME TEAM NAME NORMALIZATION PREVIEW */}
           {normalizedPreview && (
             <div
-              className={`p-3.5 rounded-2xl border space-y-1.5 ${
-                isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'
+              className={`p-3.5 rounded-sm border space-y-1.5 ${
+                isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-emerald-50 border-emerald-200'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-emerald-500 font-extrabold text-[11px] uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-emerald-400 font-extrabold text-[11px] uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
                 Live Normalization Preview
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400 font-mono">Input: &quot;{normalizedPreview.raw_input}&quot;</span>
-                <span className="text-emerald-500 font-black">
+                <span className="text-emerald-400 font-black">
                   Canonical Display: {normalizedPreview.canonical_display_name}
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+              <div className="text-[10px] text-slate-500 font-mono">
                 System Key: {normalizedPreview.normalized_comparison_key}
               </div>
             </div>
@@ -264,7 +264,7 @@ export const CoachIntakeModal: React.FC<CoachIntakeModalProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs cursor-pointer min-h-[44px] transition-all shadow-md focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none disabled:opacity-50"
+            className="w-full py-3.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer min-h-[44px] transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-[#ff0046] focus-visible:outline-none disabled:opacity-50"
           >
             {isSubmitting ? 'Validating & Normalizing Registration...' : 'Submit & Normalize Coach Registration'}
           </button>

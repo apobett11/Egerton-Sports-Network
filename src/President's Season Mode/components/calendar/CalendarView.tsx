@@ -90,24 +90,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         {/* Legend */}
         <div className="flex items-center gap-3 text-xs font-bold flex-wrap">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-emerald-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
             <span className="text-slate-300">Green (League Matchday)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-rose-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046]" />
             <span className="text-slate-300">Red (Unavailable Weekend)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-purple-500" />
-            <span className="text-slate-300">Purple (Friendly)</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+            <span className="text-slate-300">Sky (Friendly)</span>
           </div>
         </div>
       </div>
 
       {/* MONTH CONTROL & CALENDAR GRID */}
       <div
-        className={`p-6 rounded-3xl border space-y-4 ${
-          isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        className={`p-6 rounded-md border space-y-4 ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-slate-200 shadow-sm'
         }`}
       >
         <div className="flex items-center justify-between">
@@ -115,13 +115,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrevMonth}
-              className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              className="p-2 rounded-xs border border-[#1a2e45] text-slate-400 hover:text-white hover:bg-[#152a40] cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={handleNextMonth}
-              className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              className="p-2 rounded-xs border border-[#1a2e45] text-slate-400 hover:text-white hover:bg-[#152a40] cursor-pointer transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -143,7 +143,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="grid grid-cols-7 gap-2">
           {daysArray.map((item, idx) => {
             if (!item) {
-              return <div key={`pad-${idx}`} className="h-24 rounded-2xl bg-transparent" />;
+              return <div key={`pad-${idx}`} className="h-24 rounded-xs bg-transparent" />;
             }
 
             const { dayNumber, dateStr } = item;
@@ -160,37 +160,37 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             );
             const hasFriendly = matchesOnDate.some((f) => f.is_friendly || f.competition_id === 'friendlies');
 
-            let cardBg = isDark ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-50 border-slate-200';
+            let cardBg = isDark ? 'bg-[#102237]/60 border-[#1a2e45]' : 'bg-slate-50 border-slate-200';
             if (hasFriendly) {
-              cardBg = isDark ? 'bg-purple-950/20 border-purple-800/40 text-purple-200' : 'bg-purple-50 border-purple-200';
+              cardBg = isDark ? 'bg-sky-950/20 border-sky-800/40 text-sky-200' : 'bg-sky-50 border-sky-200';
             } else if (isMatchday && isDefaultWeekend && override !== 'UNAVAILABLE') {
-              cardBg = isDark ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200';
+              cardBg = isDark ? 'bg-[#00b04f]/10 border-[#00b04f]/30 text-emerald-200' : 'bg-emerald-50 border-emerald-200';
             } else if (override === 'UNAVAILABLE') {
-              cardBg = isDark ? 'bg-rose-950/20 border-rose-800/40 text-rose-200' : 'bg-rose-50 border-rose-200';
+              cardBg = isDark ? 'bg-[#ff0046]/10 border-[#ff0046]/30 text-rose-200' : 'bg-rose-50 border-rose-200';
             } else if (override === 'AVAILABLE') {
-              cardBg = isDark ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200' : 'bg-emerald-50 border-emerald-200';
+              cardBg = isDark ? 'bg-[#00b04f]/10 border-[#00b04f]/30 text-emerald-200' : 'bg-emerald-50 border-emerald-200';
             }
 
             return (
               <div
                 key={dateStr}
                 onClick={() => setSelectedDateStr(dateStr)}
-                className={`p-3 rounded-2xl border min-h-[90px] flex flex-col justify-between cursor-pointer transition-all hover:scale-[1.02] ${cardBg}`}
+                className={`p-3 rounded-xs border min-h-[90px] flex flex-col justify-between cursor-pointer transition-all hover:border-[#ff0046]/50 ${cardBg}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-xs">{dayNumber}</span>
                   {hasFriendly ? (
-                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span className="w-2 h-2 rounded-full bg-sky-400" />
                   ) : isMatchday ? (
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
                   ) : override === 'UNAVAILABLE' ? (
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span className="w-2 h-2 rounded-full bg-[#ff0046]" />
                   ) : null}
                 </div>
 
                 <div className="space-y-1">
                   {matchesOnDate.length > 0 && (
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-black/30 block text-center truncate">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-xs bg-[#15273b] border border-[#1a2e45] block text-center truncate text-slate-200">
                       {matchesOnDate.length} Match(es)
                     </span>
                   )}
@@ -204,7 +204,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           setConfirmToggleDate({ dateStr, action: 'CANCEL' });
                         }}
                         title="Cancel Matchday Availability"
-                        className="text-[10px] font-bold text-rose-400 hover:underline"
+                        className="text-[10px] font-bold text-[#ff0046] hover:underline"
                       >
                         Cancel
                       </button>
@@ -215,7 +215,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           setConfirmToggleDate({ dateStr, action: 'ADD' });
                         }}
                         title="Add Weekday Matchday"
-                        className="text-[10px] font-bold text-emerald-400 hover:underline"
+                        className="text-[10px] font-bold text-[#00b04f] hover:underline"
                       >
                         + Matchday
                       </button>
@@ -232,18 +232,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {selectedDateStr && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-lg p-6 rounded-3xl border space-y-4 animate-scaleUp max-h-[85vh] overflow-y-auto ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-lg p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp max-h-[85vh] overflow-y-auto ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
               <div>
                 <h3 className="font-black text-lg">Operational Schedule: {selectedDateStr}</h3>
                 <p className="text-xs text-slate-400">{selectedDateMatches.length} Matches Scheduled</p>
               </div>
               <button
                 onClick={() => setSelectedDateStr(null)}
-                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer transition-colors"
               >
                 Close
               </button>
@@ -254,9 +254,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             ) : (
               <div className="space-y-3">
                 {selectedDateMatches.map((m) => (
-                  <div key={m.id} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-1">
+                  <div key={m.id} className="p-4 rounded-sm bg-[#0e1c2b] border border-[#1a2e45] space-y-1">
                     <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-emerald-400">
+                      <span className="text-[#ff0046]">
                         {m.is_friendly ? 'FRIENDLY' : `Matchday ${m.matchday}`}
                       </span>
                       <span className="text-slate-400">{m.scheduled_time?.split('T')[1]?.slice(0, 5) || '15:00'}</span>
@@ -279,8 +279,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {confirmToggleDate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
           <div
-            className={`w-full max-w-md p-6 rounded-3xl border space-y-4 animate-scaleUp ${
-              isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+            className={`w-full max-w-md p-6 rounded-xl border border-[#1a2e45] space-y-4 animate-scaleUp ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
             <h3 className="font-black text-lg">
@@ -295,13 +295,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setConfirmToggleDate(null)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-slate-800"
+                className="flex-1 py-2.5 rounded-xs border border-[#1a2e45] text-slate-400 font-extrabold text-xs cursor-pointer hover:bg-[#152a40] hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmAvailabilityToggle}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-md"
+                className="flex-1 py-2.5 rounded-xs bg-[#ff0046] hover:bg-[#e0003e] text-white font-extrabold text-xs cursor-pointer shadow-md transition-colors"
               >
                 Confirm Change
               </button>

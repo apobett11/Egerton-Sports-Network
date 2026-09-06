@@ -421,31 +421,31 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="weekend-ref-modal-title"
     >
       <div
-        className={`w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all ${
+        className={`w-full max-w-4xl max-h-[90vh] flex flex-col rounded-xl border shadow-2xl overflow-hidden transition-all ${
           isDark
-            ? 'bg-[#0A0E1A] border-slate-800 text-white'
-            : 'bg-white border-slate-200 text-slate-900'
+            ? 'bg-[#0e1e2d] border-[#1a2e45] text-white'
+            : 'bg-white border-[#e6e8ec] text-slate-900'
         }`}
       >
         {/* HEADER */}
-        <div className="p-5 sm:p-6 border-b border-slate-800/80 flex items-center justify-between shrink-0">
-          <div className="space-y-1">
+        <div className="p-4 sm:p-5 border-b border-[#1a2e45] bg-[#0e1e2d] flex items-center justify-between shrink-0">
+          <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-emerald-400" />
+              <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30 flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-[#ff0046]" />
                 Agent 0 • Algorithm 4 & 5
               </span>
-              <span className="text-xs text-slate-400 font-semibold">
+              <span className="text-[11px] text-slate-400 font-bold">
                 Weekend Playdays ({weekendDates.saturday} & {weekendDates.sunday})
               </span>
             </div>
-            <h2 id="weekend-ref-modal-title" className="text-xl sm:text-2xl font-black tracking-tight">
+            <h2 id="weekend-ref-modal-title" className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
               Weekend Referee Allocation
             </h2>
           </div>
@@ -453,30 +453,30 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
           <button
             onClick={onClose}
             aria-label="Close allocation modal"
-            className="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800/40 hover:bg-slate-800 cursor-pointer transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white rounded-md bg-[#152a40] hover:bg-[#1c3857] border border-white/10 cursor-pointer transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* BODY (SCROLLABLE ONE-PAGE MODULE) */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1 bg-[#0a1520]">
           {errorMessage && (
-            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-3 animate-fadeIn">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
+            <div className="p-3.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successResult && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-between animate-fadeIn">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <div className="p-3.5 rounded-md bg-[#00b04f]/15 border border-[#00b04f]/30 text-[#00b04f] text-xs font-semibold flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{successResult.message}</span>
               </div>
               <button
                 onClick={onClose}
-                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
+                className="px-3 py-1 rounded-md bg-[#00b04f] hover:bg-emerald-600 text-white font-bold text-xs cursor-pointer"
               >
                 Done
               </button>
@@ -485,23 +485,23 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
 
           {/* TARGET MATCHES SUMMARY */}
           <div
-            className={`p-4 sm:p-5 rounded-2xl border space-y-3 ${
-              isDark ? 'bg-[#0E1424] border-slate-800/80' : 'bg-slate-50 border-slate-200'
+            className={`p-3.5 sm:p-4 rounded-md border space-y-2.5 ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#ff0046]" />
                 Target Weekend Fixtures ({weekendMatches.length} Games)
               </h3>
-              <span className="text-[11px] font-bold text-emerald-400">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#00b04f]">
                 Saturday & Sunday Execution
               </span>
             </div>
 
             {loading ? (
               <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#ff0046]" />
                 <span>Loading scheduled weekend matches...</span>
               </div>
             ) : weekendMatches.length === 0 ? (
@@ -509,20 +509,20 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
                 No fixtures found for the upcoming Saturday & Sunday playdays.
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1 no-scrollbar">
                 {weekendMatches.map((m) => (
                   <div
                     key={m.fixtureId}
-                    className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
-                      isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+                    className={`p-2.5 rounded-md border text-xs flex items-center justify-between ${
+                      isDark ? 'bg-[#15273b] border-[#223b56]' : 'bg-white border-slate-200'
                     }`}
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="font-extrabold truncate text-slate-200">
+                      <div className="font-black text-xs truncate text-white">
                         {m.homeTeamName} vs {m.awayTeamName}
                       </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-emerald-400">{m.playDate}</span>
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono text-[#00b04f] font-bold">{m.playDate}</span>
                         <span>•</span>
                         <span>{m.startTime}</span>
                         <span>•</span>
@@ -530,11 +530,11 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
                       </div>
                     </div>
                     {m.centerRefereeName ? (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0">
+                      <span className="text-[10px] font-black text-[#00b04f] bg-[#00b04f]/15 border border-[#00b04f]/30 px-2 py-0.5 rounded-sm shrink-0">
                         {m.centerRefereeName}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md shrink-0">
+                      <span className="text-[10px] font-black text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-sm shrink-0">
                         Unallocated
                       </span>
                     )}
@@ -545,54 +545,54 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
           </div>
 
           {/* TOP SECTION: AVAILABLE REFEREES (WITH REMOVE BUTTON) */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-black tracking-tight">Available Referees Pool</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <UserCheck className="w-4 h-4 text-[#00b04f]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">Available Referees Pool</h3>
+                <span className="px-2 py-0.5 rounded-sm text-[10px] font-black bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
                   {availableCount} Available
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:inline">
                 Eligible for Agent 0 random tier matching
               </span>
             </div>
 
             {loading ? (
               <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#ff0046]" />
                 <span>Loading available referees...</span>
               </div>
             ) : availableReferees.length === 0 ? (
               <div
-                className={`p-6 rounded-2xl border text-center space-y-1 ${
-                  isDark ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-50 border-slate-200'
+                className={`p-6 rounded-md border text-center space-y-1 ${
+                  isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
                 }`}
               >
-                <AlertTriangle className="w-6 h-6 text-amber-400 mx-auto" />
+                <AlertTriangle className="w-5 h-5 text-amber-400 mx-auto" />
                 <p className="text-xs font-bold text-slate-300">No Referees Currently Available</p>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-400">
                   Add referees from the Unavailable list below to include them in the final allocation.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {availableReferees.map((ref) => {
                   const isUpdating = updatingRefId === ref.id;
                   const isFifa = ref.badge_level?.includes('FIFA');
                   return (
                     <div
                       key={ref.id}
-                      className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
-                        isDark ? 'bg-[#0E1424] border-slate-800 hover:border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                      className={`p-3 rounded-md border flex items-center justify-between gap-3 transition-all ${
+                        isDark ? 'bg-[#0e1c2b] border-[#1a2e45] hover:border-slate-600' : 'bg-white border-slate-200 shadow-xs'
                       }`}
                     >
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-extrabold text-xs truncate text-slate-100">{ref.name}</h4>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-xs truncate text-white">{ref.name}</h4>
                           {isFifa && (
-                            <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            <span className="px-1.5 py-0.2 rounded-xs text-[8px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
                               FIFA
                             </span>
                           )}
@@ -608,7 +608,7 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
                       <button
                         onClick={() => handleRemoveReferee(ref)}
                         disabled={isUpdating || allocating}
-                        className="px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                        className="px-2.5 py-1.5 rounded-md border border-rose-500/30 bg-rose-500/15 hover:bg-rose-500 hover:text-white text-rose-400 font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-50"
                       >
                         {isUpdating ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -625,41 +625,41 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
           </div>
 
           {/* BOTTOM SECTION: UNAVAILABLE REFEREES (WITH ADD BUTTON) */}
-          <div className="space-y-3 pt-2 border-t border-slate-800/60">
+          <div className="space-y-2.5 pt-3 border-t border-[#1a2e45]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserX className="w-4 h-4 text-slate-400" />
-                <h3 className="text-sm font-black tracking-tight text-slate-300">Unavailable Referees</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-400 border border-slate-700">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">Unavailable Referees</h3>
+                <span className="px-2 py-0.5 rounded-sm text-[10px] font-black bg-[#14263b] text-slate-400 border border-[#1a2e45]">
                   {unavailableCount} Unavailable
                 </span>
               </div>
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:inline">
                 Excluded from Algorithm 4 & 5 execution
               </span>
             </div>
 
             {loading ? null : unavailableReferees.length === 0 ? (
               <div
-                className={`p-4 rounded-2xl border text-center ${
-                  isDark ? 'bg-slate-900/20 border-slate-800' : 'bg-slate-50 border-slate-200'
+                className={`p-4 rounded-md border text-center ${
+                  isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
                 }`}
               >
                 <p className="text-xs text-slate-400">All registered referees are currently active and available.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {unavailableReferees.map((ref) => {
                   const isUpdating = updatingRefId === ref.id;
                   return (
                     <div
                       key={ref.id}
-                      className={`p-3.5 rounded-2xl border opacity-75 hover:opacity-100 flex items-center justify-between gap-3 transition-all ${
-                        isDark ? 'bg-slate-900/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+                      className={`p-3 rounded-md border opacity-75 hover:opacity-100 flex items-center justify-between gap-3 transition-all ${
+                        isDark ? 'bg-[#0e1c2b]/70 border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <h4 className="font-extrabold text-xs truncate text-slate-300">{ref.name}</h4>
+                        <h4 className="font-bold text-xs truncate text-slate-300">{ref.name}</h4>
                         <p className="text-[10px] text-slate-400 font-mono truncate">
                           {ref.badge_level || 'FKF National Level 2'} • {ref.phone}
                         </p>
@@ -671,7 +671,7 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
                       <button
                         onClick={() => handleAddReferee(ref)}
                         disabled={isUpdating || allocating}
-                        className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-600 hover:text-white text-emerald-400 font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                        className="px-2.5 py-1.5 rounded-md border border-[#00b04f]/30 bg-[#00b04f]/15 hover:bg-[#00b04f] hover:text-white text-[#00b04f] font-bold text-xs cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 disabled:opacity-50"
                       >
                         {isUpdating ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -690,34 +690,34 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
 
         {/* FOOTER: COUNTERS & CONFIRM ACTION BUTTON */}
         <div
-          className={`p-4 sm:p-5 border-t shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDark ? 'bg-[#080B14] border-slate-800' : 'bg-slate-50 border-slate-200'
+          className={`p-3.5 sm:p-4 border-t shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            isDark ? 'bg-[#0e1e2d] border-[#1a2e45]' : 'bg-slate-50 border-slate-200'
           }`}
         >
           {/* COUNTERS AT BOTTOM */}
-          <div className="flex items-center gap-4 text-xs font-black">
+          <div className="flex items-center gap-3 text-xs font-black">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-slate-400">Available:</span>
-              <span className="text-emerald-400 font-mono text-sm">{availableCount}</span>
+              <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
+              <span className="text-slate-400 uppercase text-[10px]">Available:</span>
+              <span className="text-[#00b04f] font-mono text-xs font-black">{availableCount}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-rose-400" />
-              <span className="text-slate-400">Unavailable:</span>
-              <span className="text-rose-400 font-mono text-sm">{unavailableCount}</span>
+              <span className="text-slate-400 uppercase text-[10px]">Unavailable:</span>
+              <span className="text-rose-400 font-mono text-xs font-black">{unavailableCount}</span>
             </div>
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-700/60">
-              <span className="text-slate-400">Total:</span>
-              <span className="text-white font-mono text-sm">{totalCount}</span>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-[#1a2e45]">
+              <span className="text-slate-400 uppercase text-[10px]">Total:</span>
+              <span className="text-white font-mono text-xs font-black">{totalCount}</span>
             </div>
           </div>
 
           {/* CONFIRMATION & AGENT 0 BUTTON */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               disabled={allocating}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer transition-colors disabled:opacity-50"
+              className="px-3.5 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors disabled:opacity-50"
             >
               Close
             </button>
@@ -725,16 +725,16 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
             <button
               onClick={handleConfirmAllocation}
               disabled={allocating || availableCount === 0 || weekendMatches.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs cursor-pointer shadow-lg shadow-emerald-900/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-all flex items-center gap-2 disabled:opacity-50 disabled:bg-[#14263b] disabled:text-slate-500 disabled:cursor-not-allowed active:scale-98"
             >
               {allocating ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Running Agent 0 Algorithm 4 & 5...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Confirm & Run Agent 0 Allocation</span>
                 </>
               )}

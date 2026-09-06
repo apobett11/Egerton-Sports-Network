@@ -35,109 +35,109 @@ export const SeasonProgressView: React.FC<SeasonProgressViewProps> = ({
   const champCompletionRate = Math.round((champCompleted / champTotal) * 100) || 0;
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Season Operational Progress Analytics
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30 uppercase tracking-wider">
               Read-Only Oversight
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-0.5">
             Executive overview tracking total competition completion, matchday execution, and spillover metrics.
           </p>
         </div>
       </div>
 
       {/* KPI METRIC CARDS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div
-          className={`p-6 rounded-3xl border space-y-2 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-1.5 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-black uppercase">Overall Completion</span>
-            <PieChart className="w-5 h-5 text-emerald-500" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Overall Completion</span>
+            <PieChart className="w-4 h-4 text-[#ff0046]" />
           </div>
-          <div className="text-3xl font-black text-slate-900 dark:text-white">{totalCompletionRate}%</div>
-          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden mt-2">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${totalCompletionRate}%` }} />
+          <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white">{totalCompletionRate}%</div>
+          <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden mt-1">
+            <div className="h-full rounded-sm bg-[#ff0046]" style={{ width: `${totalCompletionRate}%` }} />
           </div>
-          <p className="text-[11px] text-slate-400 font-medium pt-1">
+          <p className="text-[10px] text-slate-400 font-medium pt-0.5">
             {completedMatches} of {totalFixtures} total fixtures completed
           </p>
         </div>
 
         <div
-          className={`p-6 rounded-3xl border space-y-2 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-1.5 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-black uppercase">Completed Fixtures</span>
-            <CheckCircle2 className="w-5 h-5 text-blue-500" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Completed Fixtures</span>
+            <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
           </div>
-          <div className="text-3xl font-black text-emerald-400">{completedMatches}</div>
-          <p className="text-[11px] text-slate-400 font-medium">Final scores recorded & standings updated</p>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-[#00b04f]">{completedMatches}</div>
+          <p className="text-[10px] text-slate-400 font-medium">Final scores recorded & standings updated</p>
         </div>
 
         <div
-          className={`p-6 rounded-3xl border space-y-2 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-1.5 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-black uppercase font-mono">Remaining Fixtures</span>
-            <Clock className="w-5 h-5 text-amber-500" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Remaining Fixtures</span>
+            <Clock className="w-4 h-4 text-sky-400" />
           </div>
-          <div className="text-3xl font-black text-blue-400">{remainingMatches}</div>
-          <p className="text-[11px] text-slate-400 font-medium">Upcoming scheduled matchday matches</p>
+          <div className="text-2xl sm:text-3xl font-black font-mono text-sky-400">{remainingMatches}</div>
+          <p className="text-[10px] text-slate-400 font-medium">Upcoming scheduled matchday matches</p>
         </div>
 
         <div
-          className={`p-6 rounded-3xl border space-y-2 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-1.5 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-black uppercase font-mono">Postponed / Spillover</span>
-            <AlertTriangle className="w-5 h-5 text-rose-500" />
+            <span className="text-[10px] font-black uppercase tracking-wider">Postponed / Spillover</span>
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-3xl font-black text-amber-400">
+          <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400">
             {postponedMatches + spilloverMatches}
           </div>
-          <p className="text-[11px] text-slate-400 font-medium">
+          <p className="text-[10px] text-slate-400 font-medium">
             {postponedMatches} postponed, {spilloverMatches} spillover matches
           </p>
         </div>
       </div>
 
       {/* DETAILED COMPETITION BREAKDOWN */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* EPL */}
         <div
-          className={`p-6 rounded-3xl border space-y-4 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-3 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-amber-500" />
-              <h3 className="font-black text-lg text-slate-900 dark:text-white">
+              <Shield className="w-4 h-4 text-[#ff0046]" />
+              <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
                 Egerton Premier League
               </h3>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30">
               {eplCompletionRate}% Completed
             </span>
           </div>
 
-          <div className="space-y-2 text-xs">
+          <div className="space-y-1.5 text-xs">
             <div className="flex justify-between font-bold text-slate-400">
               <span>Target Team Count</span>
               <span className="text-white">10 Teams</span>
@@ -148,34 +148,34 @@ export const SeasonProgressView: React.FC<SeasonProgressViewProps> = ({
             </div>
             <div className="flex justify-between font-bold text-slate-400">
               <span>Completed Match Count</span>
-              <span className="text-emerald-400">{eplCompleted}</span>
+              <span className="text-[#00b04f] font-mono font-bold">{eplCompleted}</span>
             </div>
           </div>
 
-          <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden">
-            <div className="h-full rounded-full bg-amber-500" style={{ width: `${eplCompletionRate}%` }} />
+          <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden">
+            <div className="h-full rounded-sm bg-[#ff0046]" style={{ width: `${eplCompletionRate}%` }} />
           </div>
         </div>
 
         {/* CHAMPIONSHIP */}
         <div
-          className={`p-6 rounded-3xl border space-y-4 ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          className={`p-4 sm:p-5 rounded-md border space-y-3 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-500" />
-              <h3 className="font-black text-lg text-slate-900 dark:text-white">
+              <Shield className="w-4 h-4 text-sky-400" />
+              <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
                 Egerton Championships
               </h3>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-sky-500/15 text-sky-400 border border-sky-500/30">
               {champCompletionRate}% Completed
             </span>
           </div>
 
-          <div className="space-y-2 text-xs">
+          <div className="space-y-1.5 text-xs">
             <div className="flex justify-between font-bold text-slate-400">
               <span>Target Team Count</span>
               <span className="text-white">13 Teams</span>
@@ -186,12 +186,12 @@ export const SeasonProgressView: React.FC<SeasonProgressViewProps> = ({
             </div>
             <div className="flex justify-between font-bold text-slate-400">
               <span>Completed Match Count</span>
-              <span className="text-emerald-400">{champCompleted}</span>
+              <span className="text-[#00b04f] font-mono font-bold">{champCompleted}</span>
             </div>
           </div>
 
-          <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden">
-            <div className="h-full rounded-full bg-blue-500" style={{ width: `${champCompletionRate}%` }} />
+          <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden">
+            <div className="h-full rounded-sm bg-sky-500" style={{ width: `${champCompletionRate}%` }} />
           </div>
         </div>
       </div>

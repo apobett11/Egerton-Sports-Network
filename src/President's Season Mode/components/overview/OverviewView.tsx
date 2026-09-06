@@ -134,36 +134,36 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn pb-12">
       {/* SECTION 1: SEASON STATUS BANNER */}
       <div
-        className={`p-6 sm:p-8 rounded-3xl border relative overflow-hidden transition-all ${
+        className={`p-5 sm:p-6 rounded-md border relative overflow-hidden transition-all ${
           isDark
-            ? 'bg-gradient-to-r from-[#0E1424] via-[#121A2E] to-[#0A101D] border-slate-800/90 shadow-2xl'
-            : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white border-emerald-800 shadow-xl'
+            ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs'
+            : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
         }`}
       >
         <div className="relative z-10 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="px-2.5 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00b04f] animate-pulse" />
                 Active Season
               </span>
-              <span className="text-xs text-slate-300 font-extrabold">{formattedTodayDate}</span>
+              <span className="text-xs text-slate-400 font-bold">{formattedTodayDate}</span>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* WEEKEND REFEREE ALLOCATION (AGENT 0 ALGO 4 & 5) */}
               <button
                 onClick={() => setIsWeekendRefModalOpen(true)}
                 disabled={isAlreadyAllocated}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs cursor-pointer backdrop-blur-md transition-all active:scale-95 shadow-md ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-md font-black text-xs uppercase tracking-wider cursor-pointer transition-all active:scale-98 shadow-xs ${
                   isAlreadyAllocated
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 opacity-90 cursor-not-allowed'
+                    ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30 opacity-90 cursor-not-allowed'
                     : isWeekendAllocationOpen
-                    ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 hover:from-amber-400 hover:to-emerald-300 text-slate-950 shadow-amber-950/30'
-                    : 'bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20'
+                    ? 'bg-[#ff0046] hover:bg-[#e0003e] text-white shadow-sm'
+                    : 'bg-[#152a40] hover:bg-[#1c3857] text-slate-300 border border-white/10'
                 }`}
                 title={
                   isAlreadyAllocated
@@ -175,12 +175,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               >
                 {isAlreadyAllocated ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                    <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
                     <span>Weekend Referees Allocated</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-slate-950 animate-spin" style={{ animationDuration: '3s' }} />
+                    <Sparkles className="w-4 h-4 text-white" />
                     <span>Allocate Weekend Referees</span>
                   </>
                 )}
@@ -189,32 +189,34 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               {/* Section 4: CALENDAR ICON BUTTON */}
               <button
                 onClick={onOpenCalendar}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs cursor-pointer backdrop-blur-md transition-all active:scale-95"
+                className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors"
               >
-                <CalendarIcon className="w-4 h-4 text-emerald-400" />
+                <CalendarIcon className="w-4 h-4 text-[#ff0046]" />
                 <span>Operational Calendar</span>
               </button>
             </div>
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
               Egerton Sports Season Operational Control Centre
             </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-3xl font-medium leading-relaxed">
+            <p className="text-slate-400 text-xs font-medium leading-relaxed max-w-3xl">
               Managing real-world execution for Egerton Premier League and Egerton Championships.
-              Current Matchday: <span className="text-emerald-400 font-bold">Matchday {activeMatchdayNumber}</span>
+              Current Matchday: <span className="text-[#ff0046] font-bold">Matchday {activeMatchdayNumber}</span>
             </p>
           </div>
         </div>
       </div>
 
       {/* SECTION 2: TODAY'S MATCHES */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight">Today&apos;s Matches</h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              Today&apos;s Matches
+            </h2>
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#152a40] text-slate-300 border border-[#1a2e45]">
               {todayMatches.length} Scheduled
             </span>
           </div>
@@ -223,94 +225,94 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               onSelectDate(todayStr);
               setActiveView('matchdays');
             }}
-            className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-[#ff0046] hover:underline cursor-pointer"
           >
             <span>Go to Today&apos;s Matchday</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div
-            className={`p-5 rounded-2xl border transition-all ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-4 rounded-md border transition-all ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
             }`}
           >
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider">Played</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Played</span>
+              <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
             </div>
-            <div className="text-2xl font-black tracking-tight">{todayPlayed}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Completed matches today</p>
+            <div className="text-2xl font-black font-mono tracking-tight">{todayPlayed}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Completed matches today</p>
           </div>
 
           <div
-            className={`p-5 rounded-2xl border transition-all ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-4 rounded-md border transition-all ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
             }`}
           >
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider">Unplayed / Scheduled</span>
-              <Clock className="w-4 h-4 text-blue-500" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Unplayed / Scheduled</span>
+              <Clock className="w-4 h-4 text-sky-400" />
             </div>
-            <div className="text-2xl font-black tracking-tight">{todayUpcoming}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Pending kick-off</p>
+            <div className="text-2xl font-black font-mono tracking-tight">{todayUpcoming}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Pending kick-off</p>
           </div>
 
           <div
-            className={`p-5 rounded-2xl border transition-all ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-4 rounded-md border transition-all ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
             }`}
           >
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider">Cancelled</span>
-              <XCircle className="w-4 h-4 text-rose-500" />
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Cancelled</span>
+              <XCircle className="w-4 h-4 text-[#d63031]" />
             </div>
-            <div className="text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">{todayCancelled}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Cancelled today</p>
+            <div className="text-2xl font-black font-mono tracking-tight text-[#d63031]">{todayCancelled}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Cancelled today</p>
           </div>
 
           <div
-            className={`p-5 rounded-2xl border transition-all ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-4 rounded-md border transition-all ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
             }`}
           >
-            <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider">Postponed</span>
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Postponed</span>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-black tracking-tight text-amber-600 dark:text-amber-400">{todayPostponed}</div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Awaiting new fixture date</p>
+            <div className="text-2xl font-black font-mono tracking-tight text-amber-400">{todayPostponed}</div>
+            <p className="text-[10px] text-slate-400 mt-1">Awaiting new fixture date</p>
           </div>
         </div>
 
         {/* Competition Division Breakdown */}
         <div
-          className={`p-5 rounded-2xl border ${
-            isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+          className={`p-4 rounded-md border ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800/40">
-            <div className="space-y-2 pr-0 md:pr-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 divide-y md:divide-y-0 md:divide-x divide-[#14263b]">
+            <div className="space-y-1.5 pr-0 md:pr-4">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-sm text-emerald-400 flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-emerald-500" /> Egerton Premier League
+                <span className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-[#ff0046]" /> Egerton Premier League
                 </span>
-                <span className="text-xs font-extrabold">{eplToday.length} matches today</span>
+                <span className="text-xs font-bold text-slate-400">{eplToday.length} matches today</span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-slate-400">
                 Official Division 1 Competition Fixtures
               </p>
             </div>
 
-            <div className="space-y-2 pt-4 md:pt-0 md:pl-6">
+            <div className="space-y-1.5 pt-3 md:pt-0 md:pl-4">
               <div className="flex items-center justify-between">
-                <span className="font-extrabold text-sm text-amber-400 flex items-center gap-1.5">
+                <span className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Shield className="w-4 h-4 text-amber-500" /> Egerton Championships
                 </span>
-                <span className="text-xs font-extrabold">{champToday.length} matches today</span>
+                <span className="text-xs font-bold text-slate-400">{champToday.length} matches today</span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-slate-400">
                 Official Division 2 Competition Fixtures
               </p>
             </div>
@@ -320,15 +322,17 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
 
       {/* SECTION 3: MATCHDAY PROGRESS & ACTION CARD */}
       <div
-        className={`p-6 rounded-3xl border space-y-5 ${
-          isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        className={`p-5 rounded-md border space-y-4 ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
         }`}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black tracking-tight">Matchday Progress — Matchday {activeMatchdayNumber}</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Matchday Progress — Matchday {activeMatchdayNumber}
+              </h2>
+              <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
                 Current Operational Window
               </span>
             </div>
@@ -340,7 +344,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveView('matchdays')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer shadow-sm"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer shadow-xs transition-colors"
             >
               <CalendarDays className="w-4 h-4" />
               <span>Browse Matchdays</span>
@@ -349,7 +353,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             {/* Cancel Matchday Action Button */}
             <button
               onClick={() => setShowCancelMatchdayModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 font-extrabold text-xs cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-md bg-rose-600/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 font-black uppercase text-xs tracking-wider cursor-pointer transition-colors"
             >
               <XCircle className="w-4 h-4" />
               <span>Cancel Matchday</span>
@@ -358,14 +362,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
 
         {/* Clear Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-extrabold">
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs font-bold">
             <span className="text-slate-400 uppercase tracking-wider text-[10px]">Percentage Complete</span>
-            <span className="text-emerald-400 font-mono text-sm">{mdPercentage}%</span>
+            <span className="text-[#ff0046] font-mono text-xs font-black">{mdPercentage}%</span>
           </div>
-          <div className="w-full h-3.5 rounded-full bg-slate-800/60 overflow-hidden p-0.5 border border-slate-700/50">
+          <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+              className="h-full rounded-sm bg-[#ff0046] transition-all duration-500"
               style={{ width: `${mdPercentage}%` }}
             />
           </div>
@@ -373,12 +377,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       </div>
 
       {/* OPERATIONAL ALERTS DISPLAY */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg sm:text-xl font-extrabold tracking-tight">Operational Alerts</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              Operational Alerts
+            </h2>
+            <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
               {alerts.length} Active
             </span>
           </div>
@@ -386,20 +392,20 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
 
         {alerts.length === 0 ? (
           <div
-            className={`p-6 rounded-2xl border text-center space-y-2 ${
-              isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'
+            className={`p-6 rounded-md border text-center space-y-2 ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-slate-300 shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-700 shadow-xs'
             }`}
           >
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-            <h3 className="font-extrabold text-sm">No Active System Alerts</h3>
+            <CheckCircle2 className="w-7 h-7 text-[#00b04f] mx-auto" />
+            <h3 className="font-black text-xs uppercase tracking-wider">No Active System Alerts</h3>
             <p className="text-xs text-slate-400">All matchday operations and referee assignments are running cleanly.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {alerts.map((alert) => (
               <div
                 key={alert.id}
-                className={`p-5 rounded-2xl border space-y-2 transition-all ${
+                className={`p-4 rounded-md border space-y-1.5 transition-all ${
                   alert.severity === 'high'
                     ? isDark
                       ? 'bg-rose-950/20 border-rose-800/40 text-rose-200'
@@ -410,11 +416,11 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="font-extrabold text-sm flex items-center gap-2">
+                  <h4 className="font-black text-xs uppercase tracking-wider flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     {alert.title}
                   </h4>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/20">
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm bg-black/20">
                     {alert.severity}
                   </span>
                 </div>
@@ -428,42 +434,42 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       {/* CANCEL MATCHDAY CONFIRMATION MODAL */}
       {showCancelMatchdayModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancel-md-title"
         >
           <div
             className={`w-full max-w-md ${
-              isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-            } border rounded-3xl p-6 space-y-5 shadow-2xl`}
+              isDark ? 'bg-[#0e1e2d] border-[#1a2e45] text-white' : 'bg-white border-[#e6e8ec] text-slate-900'
+            } border rounded-xl p-5 space-y-4 shadow-2xl`}
           >
-            <div className="flex items-center justify-between border-b border-slate-700/30 pb-3">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-md bg-rose-500/20 text-rose-500 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4" />
                 </div>
-                <h3 id="cancel-md-title" className="text-base font-black">
+                <h3 id="cancel-md-title" className="text-sm font-black uppercase tracking-wider">
                   Confirm Cancel Matchday {activeMatchdayNumber}
                 </h3>
               </div>
               <button
                 onClick={() => setShowCancelMatchdayModal(false)}
                 aria-label="Close cancel matchday modal"
-                className="p-1.5 text-slate-400 hover:text-white cursor-pointer rounded-xl"
+                className="p-1.5 text-slate-400 hover:text-white cursor-pointer rounded-md hover:bg-[#152a40]"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <p className="text-slate-300 leading-relaxed font-medium">
+              <p className="text-slate-400 leading-relaxed font-medium">
                 Cancelling Matchday {activeMatchdayNumber} will mark all unplayed fixtures in this matchday as CANCELLED.
                 This action is logged in the operational audit log.
               </p>
 
               <div>
-                <label htmlFor="cancel-md-reason" className="block text-slate-400 uppercase font-bold mb-1">
+                <label htmlFor="cancel-md-reason" className="block text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1">
                   Cancellation Reason / Weather State
                 </label>
                 <textarea
@@ -472,23 +478,23 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="Specify reason e.g. Extreme weather / pitch unplayable..."
-                  className={`w-full p-3 rounded-xl border text-xs focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none ${
-                    isDark ? 'bg-[#0E1424] border-slate-800 text-white' : 'bg-slate-50 border-slate-200'
+                  className={`w-full p-2.5 rounded-md border text-xs focus:border-[#ff0046] focus:outline-none ${
+                    isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200'
                   }`}
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2 border-t border-[#1a2e45]">
               <button
                 onClick={() => setShowCancelMatchdayModal(false)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 Keep Matchday
               </button>
               <button
                 onClick={handleConfirmCancelMatchday}
-                className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer min-h-[44px]"
+                className="w-1/2 py-2 rounded-md bg-[#d32f2f] hover:bg-[#b71c1c] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
               >
                 Confirm Cancel
               </button>

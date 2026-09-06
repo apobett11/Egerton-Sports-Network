@@ -41,9 +41,9 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
       </div>
 
       {/* ANNOUNCEMENT FORM */}
-      <div className={`p-6 md:p-8 rounded-3xl border elevation-card space-y-6 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
+      <div className={`p-6 md:p-8 rounded-none sm:rounded-sm border space-y-6 ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold">
+          <div className={`w-9 h-9 rounded-xs ${isDark ? 'bg-[#152a40] text-[#ff0046] border border-[#223b56]' : 'bg-[#e9edf2] text-[#ff0046] border border-[#d2d8e0]'} flex items-center justify-center font-bold`}>
             <Megaphone className="w-5 h-5" />
           </div>
           <h3 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Create Announcement</h3>
@@ -56,7 +56,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
             <select
               value={recipientGroup}
               onChange={(e) => setRecipientGroup(e.target.value)}
-              className={`w-full p-3 rounded-xl border text-xs font-bold ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-3 rounded-md border text-xs font-bold ${isDark ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#ff0046] focus:outline-none' : 'bg-[#f4f6f9] border-[#d2d8e0] text-slate-800 focus:border-[#ff0046] focus:outline-none'}`}
             >
               <option value="all">All (Default)</option>
               <option value="coaches">Coaches</option>
@@ -71,7 +71,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-slate-400 text-xs uppercase font-bold">Title</label>
-              <span className={`text-[10px] font-mono font-bold ${announcementTitle.length >= MAX_TITLE_LENGTH ? 'text-rose-500' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-mono font-bold ${announcementTitle.length >= MAX_TITLE_LENGTH ? 'text-[#ff0046]' : 'text-slate-400'}`}>
                 {announcementTitle.length} / {MAX_TITLE_LENGTH}
               </span>
             </div>
@@ -81,7 +81,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
               value={announcementTitle}
               onChange={(e) => setAnnouncementTitle(e.target.value)}
               placeholder="e.g. Pre-Season Roster Verification Cutoff Notice"
-              className={`w-full p-3 rounded-xl border text-xs font-bold ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-3 rounded-md border text-xs font-bold ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-500 focus:border-[#ff0046] focus:outline-none' : 'bg-[#f4f6f9] border-[#d2d8e0] text-slate-800 placeholder-slate-400 focus:border-[#ff0046] focus:outline-none'}`}
               required
             />
           </div>
@@ -94,7 +94,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
               value={announcementBody}
               onChange={(e) => setAnnouncementBody(e.target.value)}
               placeholder="Enter official announcement message body..."
-              className={`w-full p-3 rounded-xl border text-xs leading-relaxed ${isDark ? 'bg-[#090D16] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              className={`w-full p-3 rounded-md border text-xs leading-relaxed font-medium ${isDark ? 'bg-[#15273b] border-[#223b56] text-white placeholder-slate-500 focus:border-[#ff0046] focus:outline-none' : 'bg-[#f4f6f9] border-[#d2d8e0] text-slate-800 placeholder-slate-400 focus:border-[#ff0046] focus:outline-none'}`}
               required
             />
           </div>
@@ -103,7 +103,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
           <button
             type="submit"
             disabled={isSending}
-            className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" /> Send Announcement
           </button>
@@ -111,7 +111,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
       </div>
 
       {/* RECENT ANNOUNCEMENTS TABLE */}
-      <div className={`p-6 rounded-3xl border elevation-card space-y-4 ${isDark ? 'bg-[#0E1424] border-slate-800' : 'bg-white border-slate-200'}`}>
+      <div className={`p-6 rounded-none sm:rounded-sm border space-y-4 ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'}`}>
         <h3 className={`text-base font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
           Recent Announcements ({recentAnnouncements.length})
         </h3>
@@ -123,7 +123,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-semibold">
-              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#090D16]/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+              <thead className={`border-b text-[10px] uppercase font-black tracking-wider ${isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-400' : 'bg-[#f8f9fa] border-[#e6e8ec] text-slate-600'}`}>
                 <tr>
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Recipient</th>
@@ -131,12 +131,12 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
                   <th className="px-4 py-3 text-right">Read Count</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+              <tbody className={`divide-y ${isDark ? 'divide-[#14263b]' : 'divide-slate-200'}`}>
                 {recentAnnouncements.map((anc) => (
                   <tr key={anc.id} className={isDark ? 'text-slate-200' : 'text-slate-800'}>
                     <td className="px-4 py-3 font-black">{anc.title}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                      <span className={`px-2 py-0.5 rounded-xs text-[10px] font-black uppercase ${isDark ? 'bg-[#152a40] text-[#ff0046] border border-[#223b56]' : 'bg-slate-100 text-[#ff0046] border border-slate-300'}`}>
                         {anc.target_role || 'All'}
                       </span>
                     </td>
