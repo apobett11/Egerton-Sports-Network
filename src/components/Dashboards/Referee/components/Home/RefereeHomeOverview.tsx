@@ -35,25 +35,25 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
       case 'LIVE':
       case 'HT':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 uppercase animate-pulse">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#ff0046] text-white animate-pulse">
             ● {status}
           </span>
         );
       case 'FT':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#00b04f] text-white">
             Full Time
           </span>
         );
       case 'CANCELLED':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
             Cancelled
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#152e4d] text-sky-200 border border-sky-400/20">
             Upcoming
           </span>
         );
@@ -65,17 +65,17 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   const isLive = nextMatch?.status === 'LIVE' || nextMatch?.status === 'HT';
 
   return (
-    <div className="animate-fadeIn select-none">
+    <div className="animate-fadeIn select-none space-y-8">
       {/* SECTION 1: HERO "NEXT MATCH" THIN STRIP MASTER CARD */}
-      <section className="bg-white/90 dark:bg-[#0E1524]/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-2xl p-4 sm:p-5 shadow-lg">
+      <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 sm:p-5 shadow-xs">
         {/* Next Match Header Ribbon */}
-        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-[#14263b]">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-[#D4AF37] to-amber-600 text-slate-950 shadow-xs">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#ff0046] text-white">
               NEXT MATCH
             </span>
             {nextMatch && (
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {nextMatch.league || 'Egerton Premier League'} • Matchday {nextMatch.matchday || 1}
               </span>
             )}
@@ -85,8 +85,8 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
             <div className="flex items-center gap-2">
               {renderStatusBadge(nextMatch.status)}
               {!isFinished && !isCancelled && (
-                <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-[#182236] border border-slate-200 dark:border-slate-700/80 text-xs font-mono font-bold text-amber-600 dark:text-[#D4AF37]">
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full sm:rounded-md bg-slate-100 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] text-xs font-mono font-extrabold text-[#ff0046]">
+                  <Clock className="w-3.5 h-3.5 text-[#ff0046]" />
                   <span>{countdownStr}</span>
                 </div>
               )}
@@ -97,8 +97,8 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
         {!nextMatch ? (
           /* Empty state when no next match */
           <div className="py-8 text-center space-y-2">
-            <Trophy className="w-8 h-8 text-slate-400 mx-auto" />
-            <h3 className="font-extrabold text-sm text-slate-700 dark:text-slate-300">
+            <Trophy className="w-8 h-8 text-slate-500 mx-auto" />
+            <h3 className="font-extrabold text-sm uppercase tracking-tight text-slate-800 dark:text-slate-200">
               No Upcoming Match Scheduled
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
@@ -107,13 +107,13 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('matches')}
-              className="mt-2 px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+              className="mt-2 px-4 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-colors cursor-pointer"
             >
               View Match History & Schedule
             </button>
           </div>
         ) : (
-          /* NEXT MATCH THIN STRIP (NO MINI CARDS, INTEGRATED DETAILS) */
+          /* NEXT MATCH THIN STRIP (INTEGRATED BROADCAST CARD) */
           <div className="pt-3.5 space-y-3.5">
             {/* Matchup strip */}
             <div
@@ -129,32 +129,32 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                     className="w-9 h-9 sm:w-11 sm:h-11 object-contain flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 font-black flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-sm bg-[#152a40] border border-[#223b56] text-white font-black flex items-center justify-center text-xs flex-shrink-0">
                     {nextMatch.teamA.shortName || 'HOM'}
                   </div>
                 )}
                 <div className="truncate">
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                  <h4 className="font-black text-sm sm:text-base uppercase tracking-tight text-slate-900 dark:text-white truncate">
                     {nextMatch.teamA.name}
                   </h4>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
                     Home Team
                   </span>
                 </div>
               </div>
 
               {/* Score / Kickoff */}
-              <div className="col-span-1 text-center font-mono font-black text-sm sm:text-lg text-amber-600 dark:text-[#D4AF37]">
+              <div className={`col-span-1 text-center font-mono font-black text-base sm:text-xl tracking-tight ${isLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'}`}>
                 {isFinished || isLive || isCancelled ? `${nextMatch.scoreA} - ${nextMatch.scoreB}` : 'VS'}
               </div>
 
               {/* Away Team */}
               <div className="col-span-5 flex items-center justify-end gap-2.5 sm:gap-3 text-right truncate">
                 <div className="truncate">
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                  <h4 className="font-black text-sm sm:text-base uppercase tracking-tight text-slate-900 dark:text-white truncate">
                     {nextMatch.teamB.name}
                   </h4>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold block">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
                     Away Team
                   </span>
                 </div>
@@ -165,46 +165,46 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                     className="w-9 h-9 sm:w-11 sm:h-11 object-contain flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 font-black flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-sm bg-[#152a40] border border-[#223b56] text-white font-black flex items-center justify-center text-xs flex-shrink-0">
                     {nextMatch.teamB.shortName || 'AWY'}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Inline Match Details (All in one card, no mini card boxes) */}
+            {/* Inline Match Details */}
             <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs text-slate-600 dark:text-slate-300 px-1 pt-1">
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-                <span className="text-[11px] font-semibold truncate">
-                  Venue: <strong className="text-slate-900 dark:text-white">{nextMatch.venue || 'Egerton Sports Ground'}</strong>
+                <span className="text-[11px] font-medium truncate uppercase tracking-wider">
+                  Venue: <strong className="text-slate-900 dark:text-white font-bold">{nextMatch.venue || 'Egerton Sports Ground'}</strong>
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                <span className="text-[11px] font-semibold">
-                  Kickoff: <strong className="text-slate-900 dark:text-white">{nextMatch.time || '16:00'} EAT</strong>
+                <Clock className="w-3.5 h-3.5 text-[#00b04f] flex-shrink-0" />
+                <span className="text-[11px] font-medium uppercase tracking-wider">
+                  Kickoff: <strong className="text-slate-900 dark:text-white font-bold">{nextMatch.time || '16:00'} EAT</strong>
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 truncate">
-                <UserCheck className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                <span className="text-[11px] font-semibold truncate">
-                  Officials: <strong className="text-slate-900 dark:text-white">{nextMatch.referee}</strong> • {nextMatch.assistantReferee1} • {nextMatch.assistantReferee2}
+                <UserCheck className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                <span className="text-[11px] font-medium truncate uppercase tracking-wider">
+                  Officials: <strong className="text-slate-900 dark:text-white font-bold">{nextMatch.referee}</strong> • {nextMatch.assistantReferee1} • {nextMatch.assistantReferee2}
                 </span>
               </div>
             </div>
 
-            {/* HR JUST ABOVE BUTTONS */}
-            <hr className="border-slate-200 dark:border-slate-800 my-3" />
+            {/* Divider */}
+            <hr className="border-slate-200 dark:border-[#14263b] my-3" />
 
             {/* Action Buttons Row */}
             <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
               <button
                 type="button"
                 onClick={() => onSelectMatch(nextMatch)}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-white font-bold text-xs uppercase tracking-wider border border-slate-200 dark:border-white/10 transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span>Match Details</span>
@@ -220,7 +220,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                         onCancelMatch(nextMatch.id);
                       }
                     }}
-                    className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    className="px-3 py-2 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     <span>Cancel Match</span>
@@ -230,9 +230,9 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenWalkover(nextMatch)}
-                    className="px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    className="px-3 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <Trophy className="w-3.5 h-3.5" />
+                    <Trophy className="w-3.5 h-3.5 text-amber-300" />
                     <span>Walkover (3-0)</span>
                   </button>
 
@@ -240,7 +240,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                   <button
                     type="button"
                     onClick={() => onEndMatch(nextMatch)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <CheckCircle className="w-4 h-4" />
                     <span>End Match</span>
@@ -252,48 +252,45 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
         )}
       </section>
 
-      {/* LARGE BREATHING SPACE (SEPARATION BETWEEN NEXT MATCH & ANALYTICS) */}
-      <div className="my-10 sm:my-14" />
-
       {/* SECTION 2: REFEREE ANALYTICS (ALL FETCHED FROM DATABASE) */}
-      <section className="bg-white/90 dark:bg-[#0E1524]/90 backdrop-blur-xl border border-slate-200/90 dark:border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-lg space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#14263b] pb-3">
           <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-amber-500" />
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Award className="w-4 h-4 text-[#ff0046]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
               Referee Official Analytics & Record
             </h3>
           </div>
-          <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-[#D4AF37]">
+          <span className="text-[11px] font-mono font-bold text-[#00b04f]">
             Live Database Sync
           </span>
         </div>
 
         {/* 4 Analytics Metric Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Matches Completed</span>
+          <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Matches Completed</span>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
               {stats.matchesRefereed}
             </div>
           </div>
 
-          <div className="p-3.5 bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Upcoming Fixtures</span>
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-[#D4AF37] font-mono">
+          <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Upcoming Fixtures</span>
+            <div className="text-xl sm:text-2xl font-black text-sky-400 font-mono">
               {stats.upcomingMatches}
             </div>
           </div>
 
-          <div className="p-3.5 bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Yellow Cards Issued</span>
-            <div className="text-xl sm:text-2xl font-black text-amber-500 font-mono">
+          <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Yellow Cards Issued</span>
+            <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
               {stats.yellowCards}
             </div>
           </div>
 
-          <div className="p-3.5 bg-slate-50 dark:bg-[#141C2E] border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Red Cards Issued</span>
+          <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Red Cards Issued</span>
             <div className="text-xl sm:text-2xl font-black text-rose-500 font-mono">
               {stats.redCards}
             </div>
@@ -301,10 +298,10 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
         </div>
 
         {/* Secondary Info Strip */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80 px-1">
-          <span>Official: <strong className="text-slate-800 dark:text-slate-200">{profileData.name}</strong></span>
-          <span>Cancelled Fixtures: <strong className="text-slate-800 dark:text-slate-200">{stats.cancelled}</strong></span>
-          <span>Accreditation: <strong className="text-slate-800 dark:text-slate-200">{profileData.association}</strong></span>
+        <div className="flex flex-wrap items-center justify-between text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-[#14263b] px-1 font-medium">
+          <span>Official: <strong className="text-slate-800 dark:text-slate-200 font-bold">{profileData.name}</strong></span>
+          <span>Cancelled Fixtures: <strong className="text-slate-800 dark:text-slate-200 font-bold">{stats.cancelled}</strong></span>
+          <span>Accreditation: <strong className="text-slate-800 dark:text-slate-200 font-bold">{profileData.association}</strong></span>
         </div>
       </section>
     </div>

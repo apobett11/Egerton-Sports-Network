@@ -59,7 +59,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
   };
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] dark:bg-[#080C16] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 pb-24 md:pb-12">
+    <div className="min-h-screen bg-[#f2f4f7] dark:bg-[#081018] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 pb-24 md:pb-12 font-sans select-none">
       {/* 1. GUEST-STYLED TOP NAVIGATION */}
       <RefereeHeader
         currentUserName={currentUserName}
@@ -78,7 +78,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
       />
 
       {/* 3. MAIN DASHBOARD CONTENT AREA */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-6 relative z-10">
         {/* TAB 1: OVERVIEW (HERO NEXT MATCH + ANALYTICS) */}
         {activeTab === 'overview' && (
           <RefereeHomeOverview

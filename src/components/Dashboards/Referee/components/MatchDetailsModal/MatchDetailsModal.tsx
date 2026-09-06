@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  X, MapPin, Clock, CloudSun, UserCheck, ShieldCheck, 
-  CheckCircle, XCircle, Trophy, Award, AlertCircle 
+  X, MapPin, Clock, CloudSun, UserCheck, 
+  CheckCircle, XCircle, Trophy, AlertCircle 
 } from 'lucide-react';
 import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
 import type { Match } from '../../../../../types';
@@ -37,25 +37,25 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
       case 'LIVE':
       case 'HT':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 uppercase animate-pulse">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30 uppercase tracking-wider animate-pulse">
             ● {status}
           </span>
         );
       case 'FT':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-[#1a2e45] uppercase tracking-wider">
             Full Time
           </span>
         );
       case 'CANCELLED':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 uppercase tracking-wider">
             Cancelled
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 dark:bg-[#152a40] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 uppercase tracking-wider">
             Upcoming
           </span>
         );
@@ -64,25 +64,27 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="match-modal-title"
     >
       <div
-        className="bg-white dark:bg-[#121827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-6 text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0e1e2d] border border-slate-200 dark:border-[#1a2e45] rounded-xl p-6 max-w-2xl w-full shadow-2xl space-y-6 text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1a2e45] pb-3">
           <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-500" />
+            <div className="w-8 h-8 rounded-md bg-[#ff0046]/10 border border-[#ff0046]/30 flex items-center justify-center text-[#ff0046]">
+              <Trophy className="w-4 h-4" />
+            </div>
             <div>
-              <h3 id="match-modal-title" className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">
+              <h3 id="match-modal-title" className="font-black text-sm uppercase tracking-wider text-slate-900 dark:text-white">
                 {match.league || 'Egerton Premier League'} • Matchday {match.matchday || 1}
               </h3>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 Fixture Details & Officiating Controls
               </span>
             </div>
@@ -93,7 +95,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#152a40] transition-colors cursor-pointer"
               aria-label="Close match details"
             >
               <X className="w-5 h-5" />
@@ -102,14 +104,14 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
         </div>
 
         {/* Scoreboard Block */}
-        <div className="bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 grid grid-cols-11 items-center gap-2">
+        <div className="bg-slate-50 dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-md p-5 grid grid-cols-11 items-center gap-2 shadow-xs">
           {/* Home */}
           <div className="col-span-5 flex items-center justify-end gap-3 text-right">
             <div>
-              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white uppercase tracking-tight">
                 {match.teamA.name}
               </h4>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Home</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Home</span>
             </div>
             <img
               src={match.teamA.logo}
@@ -119,7 +121,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
           </div>
 
           {/* Score / VS */}
-          <div className="col-span-1 text-center font-mono font-black text-lg sm:text-xl text-amber-600 dark:text-[#D4AF37]">
+          <div className="col-span-1 text-center font-mono font-black text-lg sm:text-xl text-[#ff0046]">
             {isFinished || isLive || isCancelled ? `${match.scoreA} - ${match.scoreB}` : 'VS'}
           </div>
 
@@ -131,68 +133,68 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
               className="w-10 h-10 sm:w-12 sm:h-12 object-contain flex-shrink-0"
             />
             <div>
-              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+              <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white uppercase tracking-tight">
                 {match.teamB.name}
               </h4>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Away</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Away</span>
             </div>
           </div>
         </div>
 
         {/* Match Attributes Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-2.5">
-            <MapPin className="w-4 h-4 text-rose-500" />
+          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
+            <MapPin className="w-4 h-4 text-[#ff0046]" />
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block">PITCH / VENUE</span>
-              <strong className="text-slate-800 dark:text-slate-200">{match.venue || 'Pavilion Main Pitch'}</strong>
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">PITCH / VENUE</span>
+              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">{match.venue || 'Pavilion Main Pitch'}</strong>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-2.5">
+          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
             <Clock className="w-4 h-4 text-emerald-500" />
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block">KICKOFF TIME</span>
-              <strong className="text-slate-800 dark:text-slate-200">{match.time || '16:00'}</strong>
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">KICKOFF TIME</span>
+              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">{match.time || '16:00'}</strong>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 rounded-xl flex items-center gap-2.5">
-            <CloudSun className="w-4 h-4 text-sky-500" />
+          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
+            <CloudSun className="w-4 h-4 text-sky-400" />
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block">PITCH CONDITIONS</span>
-              <strong className="text-slate-800 dark:text-slate-200">Good, Dry Turf</strong>
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">PITCH CONDITIONS</span>
+              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">Good, Dry Turf</strong>
             </div>
           </div>
         </div>
 
         {/* Assigned Match Officials / Linesmen */}
         <div className="space-y-2.5">
-          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <UserCheck className="w-4 h-4 text-amber-500" /> Assigned Match Officials & Linesmen
+          <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <UserCheck className="w-4 h-4 text-[#ff0046]" /> Assigned Match Officials & Linesmen
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
-              <span className="text-[9px] uppercase font-bold text-amber-600 dark:text-[#D4AF37] block">Center Referee</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.referee || currentUserName}</span>
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] space-y-0.5">
+              <span className="text-[9px] uppercase font-black tracking-wider text-[#ff0046] block">Center Referee</span>
+              <span className="font-black text-slate-900 dark:text-white truncate block">{match.referee || currentUserName}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
-              <span className="text-[9px] uppercase font-bold text-slate-400 block">Linesman 1 (AR1)</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.assistantReferee1 || 'Assistant 1'}</span>
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] space-y-0.5">
+              <span className="text-[9px] uppercase font-black tracking-wider text-slate-400 block">Linesman 1 (AR1)</span>
+              <span className="font-black text-slate-900 dark:text-white truncate block">{match.assistantReferee1 || 'Assistant 1'}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
-              <span className="text-[9px] uppercase font-bold text-slate-400 block">Linesman 2 (AR2)</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.assistantReferee2 || 'Assistant 2'}</span>
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] space-y-0.5">
+              <span className="text-[9px] uppercase font-black tracking-wider text-slate-400 block">Linesman 2 (AR2)</span>
+              <span className="font-black text-slate-900 dark:text-white truncate block">{match.assistantReferee2 || 'Assistant 2'}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#182234] border border-slate-200 dark:border-slate-800 space-y-0.5">
-              <span className="text-[9px] uppercase font-bold text-slate-400 block">4th Official</span>
-              <span className="font-extrabold text-slate-900 dark:text-white truncate block">{match.fourthOfficial || 'Table Official'}</span>
+            <div className="p-3 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] space-y-0.5">
+              <span className="text-[9px] uppercase font-black tracking-wider text-slate-400 block">4th Official</span>
+              <span className="font-black text-slate-900 dark:text-white truncate block">{match.fourthOfficial || 'Table Official'}</span>
             </div>
           </div>
         </div>
 
         {/* Match Events Timeline (Non-overlapping, live by match UID) */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="pt-2 border-t border-slate-200 dark:border-[#1a2e45]">
           <MatchEventsDetailView
             matchId={match.id}
             initialMatch={match}
@@ -203,9 +205,9 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
 
         {/* Action Controls for Referee (End Match, Cancel Match, Walkover) */}
         {!isFinished && !isCancelled && (
-          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-[#1a2e45]">
             {match.scheduledTime && new Date(match.scheduledTime).toDateString() !== new Date().toDateString() && new Date(match.scheduledTime).getTime() > new Date().getTime() ? (
-              <div className="text-xs text-amber-500 font-bold flex items-center gap-1.5">
+              <div className="text-xs text-[#ff0046] font-black uppercase tracking-wider flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4" />
                 <span>Matchday not arrived — Match actions locked until scheduled date</span>
               </div>
@@ -219,7 +221,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
                       onClose();
                     }
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <XCircle className="w-4 h-4" />
                   <span>Cancel Match</span>
@@ -231,9 +233,9 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
                     onClose();
                     onOpenWalkover(match);
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-white border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <Trophy className="w-4 h-4" />
+                  <Trophy className="w-4 h-4 text-amber-400" />
                   <span>Award Walkover (3-0)</span>
                 </button>
 
@@ -243,7 +245,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
                     onClose();
                     onEndMatch(match);
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <CheckCircle className="w-4 h-4" />
                   <span>End Match Portal</span>
