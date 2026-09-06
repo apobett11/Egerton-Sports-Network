@@ -29,7 +29,7 @@ export const fixturesService = {
   ): Promise<{ fixtures: OperationalMatch[]; error: string | null }> {
     try {
       // 1. Consolidated parallel fetch of schedules, base pairings, and metadata
-      const [schedulesRes, baseRes, teamsRes, refereesRes, pitchesRes] = await Promise.all([
+      const [schedulesRes, baseRes, teamsRes, refereesRes, pitchesRes, liveFixturesRes] = await Promise.all([
         supabase
           .from('matchday_schedules')
           .select('*')
@@ -58,11 +58,16 @@ export const fixturesService = {
               .from('pitches')
               .select('id, name, short_code, location, capacity, surface_type, has_lighting, status')
               .order('name'),
+        supabase
+          .from('fixtures')
+          .select('id, status, score_home, score_away, scheduled_time, venue, referee_id')
+          .is('deleted_at', null),
       ]);
 
       const schedules = schedulesRes.data || [];
       const baseFixtures = baseRes.data || [];
       const teamsList = (teamsRes.data || []) as any[];
+      const liveFixtures = (liveFixturesRes?.data || []) as any[];
       const refereesList = (refereesRes.data || []) as any[];
       const pitchesList = (pitchesRes.data || []) as any[];
 
@@ -78,6 +83,9 @@ export const fixturesService = {
 
       const baseMap = new Map<string, any>();
       baseFixtures.forEach((bf: any) => baseMap.set(bf.id, bf));
+
+      const liveMap = new Map<string, any>();
+      liveFixtures.forEach((lf: any) => liveMap.set(lf.id, lf));
 
       // 3. Primary Path: Matchday Schedules Table (Agent 0 Authoritative Schedules)
       if (schedules.length > 0) {
@@ -130,15 +138,20 @@ export const fixturesService = {
                 is_active: true,
               };
 
+          const liveFix = (s.fixture_id ? liveMap.get(s.fixture_id) : null) || liveMap.get(s.id);
+          const resolvedStatus = liveFix?.status || s.status || 'UPCOMING';
+          const resolvedScoreHome = typeof liveFix?.score_home === 'number' ? liveFix.score_home : (typeof s.score_home === 'number' ? s.score_home : 0);
+          const resolvedScoreAway = typeof liveFix?.score_away === 'number' ? liveFix.score_away : (typeof s.score_away === 'number' ? s.score_away : 0);
+
           return {
             id: s.fixture_id || s.id,
             competition_id: isEpl ? COMPETITIONS.PREMIER_LEAGUE.id : COMPETITIONS.CHAMPIONSHIP.id,
             home_team_id: homeTeamId,
             away_team_id: awayTeamId,
             scheduled_time: scheduledTime || new Date().toISOString(),
-            status: (s.status || 'UPCOMING') as any,
-            score_home: 0,
-            score_away: 0,
+            status: resolvedStatus as any,
+            score_home: resolvedScoreHome,
+            score_away: resolvedScoreAway,
             venue: venueName || '',
             referee_id: s.center_referee_id || null,
             matchday: s.matchday_number || 1,

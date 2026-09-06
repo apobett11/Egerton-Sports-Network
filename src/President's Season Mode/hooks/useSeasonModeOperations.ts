@@ -21,6 +21,7 @@ import {
 
 import { PresidentActionBridge } from '../../services/presidentAgent0Bridge';
 import { ApiService } from '../../services/api';
+import { supabase } from '../../lib/supabase';
 
 export function useSeasonModeOperations() {
   const [seasonId, setSeasonId] = useState<string>('season-2026-official');
@@ -119,6 +120,21 @@ export function useSeasonModeOperations() {
 
   useEffect(() => {
     loadData();
+
+    // Continuous Realtime Synchronization for Live Games, Status Transitions & Scores
+    const channel = supabase
+      .channel('president_season_ops_live_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+        loadData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchday_schedules' }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadData]);
 
   // Derived teams split

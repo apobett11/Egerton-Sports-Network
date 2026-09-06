@@ -93,31 +93,168 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     };
   }, [fixtures]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const formattedTodayDate = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
-  // Today's matches
-  const todayMatches = fixtures.filter(
-    (f) => f.scheduled_time && f.scheduled_time.startsWith(todayStr)
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const formattedTodayDate = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    []
   );
 
-  const eplToday = todayMatches.filter((f) => f.competition_id === COMPETITIONS.PREMIER_LEAGUE.id);
-  const champToday = todayMatches.filter((f) => f.competition_id === COMPETITIONS.CHAMPIONSHIP.id);
+  // 1. Dynamic Current Matchday calculation:
+  // - Priority A: Matchday with LIVE or HT matches in progress
+  // - Priority B: Matchday with matches scheduled for today (calendar date)
+  // - Priority C: Earliest matchday with uncompleted matches (status !== 'FT' && status !== 'CANCELLED')
+  // - Priority D: Latest matchday or 1
+  const sortedMatchdays = useMemo(() => {
+    const set = new Set<number>();
+    fixtures.forEach((f) => {
+      if (f.matchday) set.add(f.matchday);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [fixtures]);
 
-  const todayPlayed = todayMatches.filter((f) => f.status === 'FT').length;
-  const todayUpcoming = todayMatches.filter(
-    (f) => f.status === 'UPCOMING' || f.status === 'LIVE' || f.status === 'HT'
+  const activeMatchdayNumber = useMemo(() => {
+    if (fixtures.length === 0) return 1;
+
+    // A. Match currently LIVE or HT
+    const liveMatch = fixtures.find((f) => f.status === 'LIVE' || f.status === 'HT');
+    if (liveMatch?.matchday) return liveMatch.matchday;
+
+    // B. Match scheduled for today
+    const todayMatch = fixtures.find(
+      (f) => f.scheduled_time && f.scheduled_time.startsWith(todayStr)
+    );
+    if (todayMatch?.matchday) return todayMatch.matchday;
+
+    // C. Earliest matchday with uncompleted matches
+    for (const md of sortedMatchdays) {
+      const mdMatches = fixtures.filter((f) => f.matchday === md);
+      const hasUnfinished = mdMatches.some((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+      if (hasUnfinished) return md;
+    }
+
+    return sortedMatchdays[sortedMatchdays.length - 1] || fixtures[0]?.matchday || 1;
+  }, [fixtures, sortedMatchdays, todayStr]);
+
+  // 2. Active Overview Day Data
+  // Resolves the current daily matches:
+  // If calendar today has matches in fixtures, uses today's matches.
+  // If not, follows the active play day of the current matchday so overview data is continuously populated and accurate!
+  const { currentDayMatches, activeDayDateStr, isCalendarToday, formattedActiveDayDate } = useMemo(() => {
+    const todayFixtures = fixtures.filter(
+      (f) => f.scheduled_time && f.scheduled_time.startsWith(todayStr)
+    );
+    if (todayFixtures.length > 0) {
+      return {
+        currentDayMatches: todayFixtures,
+        activeDayDateStr: todayStr,
+        isCalendarToday: true,
+        formattedActiveDayDate: formattedTodayDate,
+      };
+    }
+
+    const mdFixtures = fixtures.filter((f) => f.matchday === activeMatchdayNumber);
+    if (mdFixtures.length > 0) {
+      const nextUncompleted = mdFixtures.find((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+      const targetMatch = nextUncompleted || mdFixtures[0];
+      const matchDateStr = targetMatch?.scheduled_time ? targetMatch.scheduled_time.split('T')[0] : todayStr;
+
+      let dateFormatted = formattedTodayDate;
+      if (matchDateStr) {
+        const dObj = new Date(matchDateStr);
+        if (!isNaN(dObj.getTime())) {
+          dateFormatted = dObj.toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          });
+        }
+      }
+
+      const dayMatches = mdFixtures.filter(
+        (f) => !f.scheduled_time || f.scheduled_time.startsWith(matchDateStr)
+      );
+      return {
+        currentDayMatches: dayMatches.length > 0 ? dayMatches : mdFixtures,
+        activeDayDateStr: matchDateStr,
+        isCalendarToday: matchDateStr === todayStr,
+        formattedActiveDayDate: dateFormatted,
+      };
+    }
+
+    return {
+      currentDayMatches: [],
+      activeDayDateStr: todayStr,
+      isCalendarToday: true,
+      formattedActiveDayDate: formattedTodayDate,
+    };
+  }, [fixtures, todayStr, activeMatchdayNumber, formattedTodayDate]);
+
+  // 3. Daily metrics & Daily percentage of games played
+  const dailyTotal = currentDayMatches.length;
+  const dailyPlayed = currentDayMatches.filter((f) => f.status === 'FT').length;
+  const dailyLive = currentDayMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
+  const dailyUpcoming = currentDayMatches.filter(
+    (f) => f.status === 'UPCOMING' || !f.status
   ).length;
-  const todayCancelled = todayMatches.filter((f) => f.status === 'CANCELLED').length;
-  const todayPostponed = todayMatches.filter((f) => f.status === 'POSTPONED').length;
+  const dailyCancelled = currentDayMatches.filter((f) => f.status === 'CANCELLED').length;
+  const dailyPostponed = currentDayMatches.filter((f) => f.status === 'POSTPONED').length;
+  const dailyProgress = dailyTotal > 0 ? Math.round((dailyPlayed / dailyTotal) * 100) : 0;
+
+  // 4. Division Breakdown: Range of PL Games and Championships
+  const isEplMatch = (f: OperationalMatch) =>
+    f.competition_id === COMPETITIONS.PREMIER_LEAGUE.id ||
+    (f as any).competition?.slug === 'epl' ||
+    (f as any).competition?.name?.includes('Premier');
+
+  const isChampMatch = (f: OperationalMatch) =>
+    f.competition_id === COMPETITIONS.CHAMPIONSHIP.id ||
+    (f as any).competition?.slug === 'championship' ||
+    (f as any).competition?.name?.includes('Championship');
+
+  const eplMatches = currentDayMatches.filter(isEplMatch);
+  const eplTotal = eplMatches.length;
+  const eplPlayed = eplMatches.filter((f) => f.status === 'FT').length;
+  const eplLive = eplMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
+  const eplUpcoming = eplMatches.filter((f) => f.status === 'UPCOMING' || !f.status).length;
+  const eplProgress = eplTotal > 0 ? Math.round((eplPlayed / eplTotal) * 100) : 0;
+
+  const champMatches = currentDayMatches.filter(isChampMatch);
+  const champTotal = champMatches.length;
+  const champPlayed = champMatches.filter((f) => f.status === 'FT').length;
+  const champLive = champMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
+  const champUpcoming = champMatches.filter((f) => f.status === 'UPCOMING' || !f.status).length;
+  const champProgress = champTotal > 0 ? Math.round((champPlayed / champTotal) * 100) : 0;
+
+  // Time range calculation for fixtures
+  const getTimeRange = (matches: OperationalMatch[]) => {
+    const times = matches
+      .map((m) => {
+        if (!m.scheduled_time) return null;
+        try {
+          const d = new Date(m.scheduled_time);
+          return isNaN(d.getTime()) ? null : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as string[];
+
+    if (times.length === 0) return 'Kickoff Schedule Pending';
+    if (times.length === 1) return `Kickoff at ${times[0]}`;
+    return `${times[0]} – ${times[times.length - 1]}`;
+  };
+
+  const eplTimeRange = getTimeRange(eplMatches);
+  const champTimeRange = getTimeRange(champMatches);
 
   // Active Matchday calculations
-  const activeMatchdayNumber = fixtures.length > 0 ? (fixtures.find((f) => f.status === 'LIVE' || f.status === 'UPCOMING')?.matchday || fixtures[0]?.matchday || 1) : 0;
   const activeMatchdayFixtures = fixtures.filter((f) => f.matchday === activeMatchdayNumber);
   const mdTotal = activeMatchdayFixtures.length;
   const mdCompleted = activeMatchdayFixtures.filter((f) => f.status === 'FT').length;
@@ -209,29 +346,33 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2: TODAY'S MATCHES */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      {/* SECTION 2: CURRENT OVERVIEW DAY & DAILY PROGRESS */}
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
             <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              Today&apos;s Matches
+              {isCalendarToday ? "Today's Overview" : `Matchday ${activeMatchdayNumber} Daily Overview`}
             </h2>
             <span className="px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider bg-[#152a40] text-slate-300 border border-[#1a2e45]">
-              {todayMatches.length} Scheduled
+              {dailyTotal} Daily Games • Matchday {activeMatchdayNumber}
+            </span>
+            <span className="text-[11px] text-slate-400 font-bold hidden sm:inline">
+              ({formattedActiveDayDate})
             </span>
           </div>
           <button
             onClick={() => {
-              onSelectDate(todayStr);
+              onSelectDate(activeDayDateStr);
               setActiveView('matchdays');
             }}
             className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-[#ff0046] hover:underline cursor-pointer"
           >
-            <span>Go to Today&apos;s Matchday</span>
+            <span>View Matchday {activeMatchdayNumber} Fixtures</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
+        {/* 4 Cards: Played, In Play / Live, Upcoming, Cancelled/Postponed */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div
             className={`p-4 rounded-md border transition-all ${
@@ -242,7 +383,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <span className="text-[10px] font-black uppercase tracking-wider">Played</span>
               <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
             </div>
-            <div className="text-2xl font-black font-mono tracking-tight">{todayPlayed}</div>
+            <div className="text-2xl font-black font-mono tracking-tight text-[#00b04f]">{dailyPlayed}</div>
             <p className="text-[10px] text-slate-400 mt-1">Completed matches today</p>
           </div>
 
@@ -252,10 +393,31 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             }`}
           >
             <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-black uppercase tracking-wider">Unplayed / Scheduled</span>
+              <span className="text-[10px] font-black uppercase tracking-wider">In Play / Live</span>
+              {dailyLive > 0 ? (
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046] animate-pulse" />
+              ) : (
+                <Clock className="w-4 h-4 text-slate-500" />
+              )}
+            </div>
+            <div className={`text-2xl font-black font-mono tracking-tight ${dailyLive > 0 ? 'text-[#ff0046]' : 'text-slate-400'}`}>
+              {dailyLive}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              {dailyLive > 0 ? 'Live on campus grounds' : 'No matches live currently'}
+            </p>
+          </div>
+
+          <div
+            className={`p-4 rounded-md border transition-all ${
+              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Upcoming</span>
               <Clock className="w-4 h-4 text-sky-400" />
             </div>
-            <div className="text-2xl font-black font-mono tracking-tight">{todayUpcoming}</div>
+            <div className="text-2xl font-black font-mono tracking-tight text-sky-400">{dailyUpcoming}</div>
             <p className="text-[10px] text-slate-400 mt-1">Pending kick-off</p>
           </div>
 
@@ -265,56 +427,107 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
             }`}
           >
             <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-black uppercase tracking-wider">Cancelled</span>
-              <XCircle className="w-4 h-4 text-[#d63031]" />
-            </div>
-            <div className="text-2xl font-black font-mono tracking-tight text-[#d63031]">{todayCancelled}</div>
-            <p className="text-[10px] text-slate-400 mt-1">Cancelled today</p>
-          </div>
-
-          <div
-            className={`p-4 rounded-md border transition-all ${
-              isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
-            }`}
-          >
-            <div className="flex items-center justify-between text-slate-400 mb-1">
-              <span className="text-[10px] font-black uppercase tracking-wider">Postponed</span>
+              <span className="text-[10px] font-black uppercase tracking-wider">Postponed / Cancelled</span>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-black font-mono tracking-tight text-amber-400">{todayPostponed}</div>
-            <p className="text-[10px] text-slate-400 mt-1">Awaiting new fixture date</p>
+            <div className="text-2xl font-black font-mono tracking-tight text-amber-400">
+              {dailyPostponed + dailyCancelled}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              {dailyCancelled} cancelled • {dailyPostponed} postponed
+            </p>
           </div>
         </div>
 
-        {/* Competition Division Breakdown */}
+        {/* DAILY GAMES PROGRESS CARD */}
         <div
-          className={`p-4 rounded-md border ${
+          className={`p-4 sm:p-5 rounded-md border space-y-2.5 ${
             isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
           }`}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 divide-y md:divide-y-0 md:divide-x divide-[#14263b]">
-            <div className="space-y-1.5 pr-0 md:pr-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Daily Matchday Progress
+              </span>
+              <span className="px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold bg-[#14263b] text-slate-300">
+                {dailyPlayed} / {dailyTotal} games completed
+              </span>
+            </div>
+            <span className="font-mono text-sm font-black text-[#00b04f]">
+              {dailyProgress}%
+            </span>
+          </div>
+
+          {/* Daily Progress Range Bar */}
+          <div className="w-full h-2.5 rounded-sm bg-[#14263b] overflow-hidden border border-white/5">
+            <div
+              className="h-full rounded-sm bg-gradient-to-r from-[#00b04f] to-[#00d05f] transition-all duration-500"
+              style={{ width: `${dailyProgress}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-0.5">
+            <span>{dailyPlayed} of {dailyTotal} played</span>
+            <span>{dailyUpcoming + dailyLive} in play / upcoming</span>
+          </div>
+        </div>
+
+        {/* RANGE OF THE PL GAMES AND THE CHAMPIONSHIPS */}
+        <div
+          className={`p-4 sm:p-5 rounded-md border space-y-4 ${
+            isDark ? 'bg-[#0e1c2b] border-[#1a2e45] text-white shadow-xs' : 'bg-white border-[#e6e8ec] text-slate-900 shadow-xs'
+          }`}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 divide-y md:divide-y-0 md:divide-x divide-[#14263b]">
+            {/* EPL GAMES RANGE */}
+            <div className="space-y-2.5 pr-0 md:pr-4">
               <div className="flex items-center justify-between">
                 <span className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Shield className="w-4 h-4 text-[#ff0046]" /> Egerton Premier League
                 </span>
-                <span className="text-xs font-bold text-slate-400">{eplToday.length} matches today</span>
+                <span className="text-xs font-mono font-black text-[#ff0046]">
+                  {eplPlayed} / {eplTotal} Played ({eplProgress}%)
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Official Division 1 Competition Fixtures
-              </p>
+
+              {/* EPL Range Progress Bar */}
+              <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden">
+                <div
+                  className="h-full rounded-sm bg-[#ff0046] transition-all duration-500"
+                  style={{ width: `${eplProgress}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>Kickoff Range: {eplTimeRange}</span>
+                <span>{eplLive > 0 ? `● ${eplLive} Live Now` : `${eplUpcoming} Pending`}</span>
+              </div>
             </div>
 
-            <div className="space-y-1.5 pt-3 md:pt-0 md:pl-4">
+            {/* CHAMPIONSHIP GAMES RANGE */}
+            <div className="space-y-2.5 pt-4 md:pt-0 md:pl-4">
               <div className="flex items-center justify-between">
                 <span className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Shield className="w-4 h-4 text-amber-500" /> Egerton Championships
                 </span>
-                <span className="text-xs font-bold text-slate-400">{champToday.length} matches today</span>
+                <span className="text-xs font-mono font-black text-amber-400">
+                  {champPlayed} / {champTotal} Played ({champProgress}%)
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Official Division 2 Competition Fixtures
-              </p>
+
+              {/* Championship Range Progress Bar */}
+              <div className="w-full h-2 rounded-sm bg-[#14263b] overflow-hidden">
+                <div
+                  className="h-full rounded-sm bg-amber-500 transition-all duration-500"
+                  style={{ width: `${champProgress}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>Kickoff Range: {champTimeRange}</span>
+                <span>{champLive > 0 ? `● ${champLive} Live Now` : `${champUpcoming} Pending`}</span>
+              </div>
             </div>
           </div>
         </div>
