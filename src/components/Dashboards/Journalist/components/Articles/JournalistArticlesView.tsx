@@ -8,10 +8,6 @@ import {
   BookOpen,
   Calendar,
   Layers,
-  Sparkles,
-  Filter,
-  CheckCircle2,
-  AlertCircle,
   FileText,
 } from 'lucide-react';
 import {
@@ -142,28 +138,28 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2 text-slate-900 dark:text-slate-100">
-              <BookOpen className="w-6 h-6 text-emerald-500" /> Newsroom Articles Archive
+            <h2 className="text-xl md:text-2xl font-black tracking-tight uppercase flex items-center gap-2 text-slate-900 dark:text-white">
+              <BookOpen className="w-6 h-6 text-[#ff0046]" /> Newsroom Articles Archive
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+            <span className="px-2 py-0.5 rounded-[2px] text-[10px] font-black uppercase tracking-wider bg-[#14263b] text-[#ff0046] border border-[#1a2e45]">
               {articles.length} Total
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Organized monthly and by matchdays directly from your database records.
           </p>
         </div>
 
         <button
           onClick={() => onOpenCompose()}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95"
+          className="px-4 py-2.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95"
         >
           <Plus className="w-4 h-4" /> Compose New Story
         </button>
       </div>
 
       {/* FILTER & SORT CONTROLS CARD */}
-      <div className={`p-4 md:p-5 rounded-2xl border ${cardBg} space-y-4 shadow-sm text-xs font-semibold`}>
+      <div className="p-4 md:p-5 rounded-none sm:rounded-sm bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] space-y-4 shadow-xs text-xs font-semibold">
         {/* ROW 1: SEARCH & SORT ORDER & GROUPING TOGGLE */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           <div className="sm:col-span-6 relative">
@@ -173,7 +169,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search headline, text body, keywords..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-4 py-2.5 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold placeholder-slate-400 focus:outline-none focus:border-[#ff0046] text-xs transition-colors"
             />
           </div>
 
@@ -183,7 +179,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
               id="article-sort-order"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as any)}
-              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2.5 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-[#ff0046] text-xs transition-colors cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -191,27 +187,27 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
           </div>
 
           {/* VIEW / GROUPING MODE */}
-          <div className="sm:col-span-3 flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="sm:col-span-3 flex items-center gap-0.5 p-0.5 rounded-sm bg-[#0a1520] border border-[#1a2e45]">
             <button
               onClick={() => setGroupingMode('flat')}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                groupingMode === 'flat' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500'
+              className={`flex-1 py-1.5 rounded-[2px] text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                groupingMode === 'flat' ? 'bg-[#ff0046] text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               List
             </button>
             <button
               onClick={() => setGroupingMode('monthly')}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                groupingMode === 'monthly' ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-xs' : 'text-slate-500'
+              className={`flex-1 py-1.5 rounded-[2px] text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                groupingMode === 'monthly' ? 'bg-[#ff0046] text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setGroupingMode('matchday')}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                groupingMode === 'matchday' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-500'
+              className={`flex-1 py-1.5 rounded-[2px] text-[11px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                groupingMode === 'matchday' ? 'bg-[#ff0046] text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               Matchdays
@@ -220,17 +216,17 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
         </div>
 
         {/* ROW 2: FILTERS (MONTH, MATCHDAY, STATUS, COMPETITION) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200 dark:border-[#14263b]">
           {/* MONTH FILTER */}
           <div>
             <label htmlFor="article-month-filter" className="block text-slate-400 uppercase font-black text-[10px] mb-1 flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-purple-500" /> Month
+              <Calendar className="w-3 h-3 text-[#ff0046]" /> Month
             </label>
             <select
               id="article-month-filter"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+              className="w-full p-2 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-[#ff0046] text-xs transition-colors cursor-pointer truncate"
             >
               <option value="all">All Months</option>
               {availableMonths.map(([key, label]) => (
@@ -242,13 +238,13 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
           {/* MATCHDAY FILTER */}
           <div>
             <label htmlFor="article-matchday-filter" className="block text-slate-400 uppercase font-black text-[10px] mb-1 flex items-center gap-1">
-              <Layers className="w-3 h-3 text-blue-500" /> Matchday
+              <Layers className="w-3 h-3 text-[#ff0046]" /> Matchday
             </label>
             <select
               id="article-matchday-filter"
               value={selectedMatchday}
               onChange={(e) => setSelectedMatchday(e.target.value)}
-              className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+              className="w-full p-2 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-[#ff0046] text-xs transition-colors cursor-pointer truncate"
             >
               <option value="all">All Matchdays</option>
               {availableMatchdays.map((md) => (
@@ -264,7 +260,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
               id="article-status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-[#ff0046] text-xs transition-colors cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="published">Live Published</option>
@@ -280,7 +276,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
               id="article-competition-filter"
               value={selectedCompId}
               onChange={(e) => setSelectedCompId(e.target.value)}
-              className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate"
+              className="w-full p-2 rounded-sm bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-[#ff0046] text-xs transition-colors cursor-pointer truncate"
             >
               <option value="">All Competitions</option>
               {competitions.map((c) => (
@@ -305,7 +301,7 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
                 setSelectedTeamId('');
                 setSearchQuery('');
               }}
-              className="text-emerald-500 font-black hover:underline cursor-pointer"
+              className="text-[#ff0046] font-black uppercase text-xs tracking-wider hover:underline cursor-pointer"
             >
               Reset Filters
             </button>
@@ -313,14 +309,14 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
         </div>
 
         {filteredArticles.length === 0 ? (
-          <div className={`p-12 rounded-2xl border ${cardBg} text-center space-y-3`}>
-            <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+          <div className="p-12 rounded-none sm:rounded-sm bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-center space-y-3 shadow-xs">
+            <div className="w-12 h-12 mx-auto rounded-sm bg-[#152a40] flex items-center justify-center text-slate-300">
               <FileText className="w-6 h-6" />
             </div>
             <p className="font-extrabold text-sm text-slate-400">No articles matched your search or filters.</p>
             <button
               onClick={() => onOpenCompose()}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-500 cursor-pointer shadow-md"
+              className="px-4 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer shadow-xs transition-colors"
             >
               + Create New Story Now
             </button>
@@ -346,8 +342,8 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
             {groupedByMonth.map(([monthKey, group]) => (
               <div key={monthKey} className="space-y-3">
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="font-black text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2 uppercase tracking-wider">
-                    <Calendar className="w-4 h-4" /> {group.label}
+                  <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                    <Calendar className="w-4 h-4 text-[#ff0046]" /> {group.label}
                   </h3>
                   <span className="text-xs font-bold text-slate-400">{group.list.length} articles</span>
                 </div>
@@ -373,8 +369,8 @@ export const JournalistArticlesView: React.FC<JournalistArticlesViewProps> = ({
             {groupedByMatchday.map(([mdKey, group]) => (
               <div key={mdKey} className="space-y-3">
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="font-black text-sm text-blue-600 dark:text-blue-400 flex items-center gap-2 uppercase tracking-wider">
-                    <Layers className="w-4 h-4" /> {group.label}
+                  <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                    <Layers className="w-4 h-4 text-[#ff0046]" /> {group.label}
                   </h3>
                   <span className="text-xs font-bold text-slate-400">{group.list.length} articles</span>
                 </div>
@@ -419,33 +415,33 @@ const ArticleCardItem: React.FC<ArticleCardItemProps> = ({
 }) => {
   return (
     <article
-      className={`p-4.5 rounded-2xl border ${cardBg} ${hoverBg} transition-all space-y-3 shadow-xs hover:border-emerald-500/40`}
+      className="p-4 rounded-none sm:rounded-sm bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors space-y-3 shadow-xs group"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="bg-[#14263b] text-slate-300 border border-[#223b56] text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-sm">
               {ARTICLE_CATEGORY_LABELS[post.category] || post.category}
             </span>
 
             {post.matchday && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+              <span className="bg-[#102237] text-sky-400 border border-[#1a2e45] text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-sm">
                 Matchday {post.matchday}
               </span>
             )}
 
             {post.monthLabel && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20">
+              <span className="bg-[#102237] text-purple-400 border border-[#1a2e45] text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-sm">
                 {post.monthLabel}
               </span>
             )}
 
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+            <span className={`px-2 py-0.5 rounded-[2px] text-[10px] font-black uppercase tracking-wider ${
               post.status === 'published'
-                ? 'bg-emerald-500/20 text-emerald-500'
+                ? 'bg-[#ff0046] text-white'
                 : post.status === 'draft'
-                ? 'bg-amber-500/20 text-amber-500'
-                : 'bg-rose-500/20 text-rose-500'
+                ? 'bg-[#152a40] text-slate-300 border border-white/10'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
             }`}>
               {post.status}
             </span>
@@ -455,7 +451,7 @@ const ArticleCardItem: React.FC<ArticleCardItemProps> = ({
 
           <h3
             onClick={() => onViewArticle(post)}
-            className="font-extrabold text-sm md:text-base leading-snug tracking-tight text-slate-900 dark:text-slate-100 hover:text-emerald-500 transition-colors cursor-pointer"
+            className="font-extrabold text-sm md:text-base leading-snug tracking-tight text-slate-900 dark:text-white group-hover:text-[#ff0046] transition-colors cursor-pointer"
           >
             {post.headline}
           </h3>
@@ -469,19 +465,19 @@ const ArticleCardItem: React.FC<ArticleCardItemProps> = ({
           <img
             src={post.images[0]}
             alt={post.headline}
-            className="w-20 h-20 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-800 shadow-xs"
+            className="w-20 h-20 rounded-sm object-cover shrink-0 border border-slate-200 dark:border-[#1a2e45] shadow-xs"
           />
         )}
       </div>
 
       {/* ARTICLE BOTTOM META & ACTIONS */}
-      <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2.5 border-t border-slate-100 dark:border-slate-800 font-semibold gap-2">
+      <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2.5 border-t border-slate-100 dark:border-[#14263b] font-semibold gap-2">
         <div className="flex items-center gap-4">
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+          <span className="text-slate-600 dark:text-slate-300 font-bold">
             By {post.authorName || 'Journalist'}
           </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5 text-blue-500" /> {post.viewsCount || 0} views
+          <span className="flex items-center gap-1 font-mono">
+            <Eye className="w-3.5 h-3.5 text-[#ff0046]" /> {post.viewsCount || 0} views
           </span>
           {post.matchTitle && (
             <span className="hidden sm:inline-block text-[11px] text-slate-400">
@@ -493,21 +489,21 @@ const ArticleCardItem: React.FC<ArticleCardItemProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onViewArticle(post)}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-bold uppercase tracking-wider border border-white/10 transition-colors cursor-pointer"
           >
             Read
           </button>
 
           <button
             onClick={() => onOpenCompose(post)}
-            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            className="px-3 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-bold uppercase tracking-wider border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
           >
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
 
           <button
             onClick={() => onDeleteArticle(post.id)}
-            className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+            className="px-3 py-1.5 rounded-sm bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider border border-red-500/30 transition-colors cursor-pointer flex items-center gap-1"
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>

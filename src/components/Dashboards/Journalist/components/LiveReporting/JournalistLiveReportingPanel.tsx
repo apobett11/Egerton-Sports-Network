@@ -225,56 +225,84 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
   const activeEvents: MatchEvent[] = liveState?.active_events || [];
 
   return (
-    <div className={`p-6 rounded-3xl border ${cardBg} space-y-6 shadow-xl relative overflow-hidden`}>
-      {/* Ambient background decoration */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-
+    <div className={`p-4 sm:p-5 rounded-none sm:rounded-sm border ${cardBg} space-y-5 shadow-xs relative overflow-hidden`}>
       {/* HEADER WITH REALTIME ENGINE INDICATOR */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-[#1a2e45] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
-              <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-500" />
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#14263b] text-[#ff0046] border border-[#1a2e45] flex items-center gap-1.5 shadow-xs">
+              <Radio className="w-3.5 h-3.5 animate-pulse text-[#ff0046]" />
               Algorithm 1 Live Engine
             </span>
-            <span className="text-xs font-bold text-slate-400">
+            <span className="text-xs font-mono font-bold text-slate-400">
               v{liveState?.version ?? 1} • Seq #{liveState?.event_sequence ?? 0}
             </span>
           </div>
-          <h3 className="text-base font-black text-slate-900 dark:text-slate-100 mt-1">
+          <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white mt-1">
             Live Match Event Intake Center
           </h3>
         </div>
 
         {/* CURRENT MATCH STATUS & PERIOD */}
         <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-xl text-xs font-black tracking-wider ${
+          <span className={`px-2.5 py-0.5 rounded-sm text-xs font-black uppercase tracking-wider ${
             isMatchLive
-              ? 'bg-rose-600 text-white animate-pulse'
+              ? 'bg-[#ff0046] text-white animate-pulse'
               : isMatchFinished
-              ? 'bg-slate-800 text-slate-200'
-              : 'bg-emerald-600 text-white'
+              ? 'bg-[#14263b] text-slate-300 border border-[#1a2e45]'
+              : 'bg-[#152a40] text-white border border-white/10'
           }`}>
             {matchStatus}
           </span>
           {activePeriod && (
-            <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+            <span className="px-2.5 py-0.5 rounded-sm bg-[#102237] border border-[#1a2e45] text-xs font-bold text-slate-300 uppercase tracking-wider">
               {activePeriod.replace('_', ' ')}
             </span>
           )}
         </div>
       </div>
 
+      {/* SCOREBOARD HEADER BANNER */}
+      <div className="p-4 sm:p-5 rounded-none sm:rounded-sm bg-[#0e1c2b] border border-[#1a2e45] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+        <div className="flex-1 text-center sm:text-right">
+          <h4 className="font-black text-base sm:text-lg text-white uppercase tracking-tight">{currentEvent.homeTeam}</h4>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Home Team</span>
+        </div>
+
+        <div className="flex flex-col items-center justify-center px-5 py-2 bg-[#112236] border border-[#1a2e45] rounded-sm min-w-[140px]">
+          <div className="font-mono font-black text-3xl text-white tracking-wider">
+            {currentScoreHome} : {currentScoreAway}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            {isMatchLive ? (
+              <span className="px-2 py-0.5 rounded-sm bg-[#ff0046] text-white text-[10px] font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                {currentEvent.minute || activePeriod.replace('_', ' ')}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                {matchStatus}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 text-center sm:text-left">
+          <h4 className="font-black text-base sm:text-lg text-white uppercase tracking-tight">{currentEvent.awayTeam}</h4>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Away Team</span>
+        </div>
+      </div>
+
       {/* ENGINE WARNING / ERROR ALERT */}
       {engineError && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-500 dark:text-rose-400 flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-sm bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-400 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
             <span>Algorithm Rule Notice: {engineError}</span>
           </div>
           <button
             onClick={() => setEngineError(null)}
-            className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black cursor-pointer hover:bg-rose-500"
+            className="px-2.5 py-1 rounded-sm bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider cursor-pointer hover:bg-rose-500 transition-colors"
           >
             Dismiss
           </button>
@@ -282,12 +310,14 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
       )}
 
       {/* MATCH CONTROL BAR: START MATCH & PERIOD STEPPER */}
-      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+      <div className="p-3.5 rounded-sm bg-slate-50 dark:bg-[#112236] border border-slate-200 dark:border-[#1a2e45] space-y-3">
         <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <Activity className="w-4 h-4 text-emerald-500" /> Match Execution Controls
+          <span className="flex items-center gap-1.5 uppercase text-[10px] font-bold tracking-wider">
+            <Activity className="w-4 h-4 text-[#ff0046]" /> Match Execution Controls
           </span>
-          <span>Derived Live Score: <strong className="text-emerald-500 font-mono text-sm">{currentScoreHome} - {currentScoreAway}</strong></span>
+          <span className="text-[10px] uppercase font-bold tracking-wider">
+            Derived Live Score: <strong className="text-[#ff0046] font-mono text-xs">{currentScoreHome} - {currentScoreAway}</strong>
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -296,14 +326,14 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
             <button
               onClick={handleStartMatch}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-md transition-all active:scale-95"
+              className="px-4 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
             >
               <Play className="w-4 h-4" /> Start Match Activation
             </button>
           )}
 
           {/* Period Progression State Machine Buttons */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-200 dark:bg-slate-800">
+          <div className="flex items-center gap-1 p-0.5 rounded-sm bg-[#0a1520] border border-[#1a2e45]">
             {(['FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'FULL_TIME'] as Period[]).map((p: Period) => {
               const isActive = activePeriod === p;
               return (
@@ -311,10 +341,10 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                   key={p}
                   onClick={() => handleSetPeriod(p)}
                   disabled={isSubmitting || isMatchFinished}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-[2px] text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#ff0046] text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {p === 'FIRST_HALF' ? '1st Half' : p === 'HALF_TIME' ? 'HT' : p === 'SECOND_HALF' ? '2nd Half' : 'Full Time'}
@@ -326,8 +356,8 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
       </div>
 
       {/* QUICK INTAKE ACTION BUTTONS (+ GOAL, + CARD, + INJURY) */}
-      <div className="space-y-3">
-        <div className="text-xs font-black uppercase tracking-wider text-slate-400">
+      <div className="space-y-2.5">
+        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
           Record Live Match Incident (Algorithm 1 Intake)
         </div>
 
@@ -336,45 +366,45 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
           <button
             onClick={handleOpenGoalModal}
             disabled={isSubmitting || isMatchFinished}
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs flex items-center justify-between cursor-pointer shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+            className="p-3 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs flex items-center justify-between cursor-pointer transition-colors disabled:opacity-50"
           >
             <span className="flex items-center gap-2">
               <span className="text-base">⚽</span>
               <span>+ Record Goal</span>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px]">Pills / Type</span>
+            <span className="px-2 py-0.5 rounded-sm bg-black/20 text-[10px] font-bold">Type</span>
           </button>
 
           {/* + CARD BUTTON */}
           <button
             onClick={handleOpenCardModal}
             disabled={isSubmitting || isMatchFinished}
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-extrabold text-xs flex items-center justify-between cursor-pointer shadow-lg shadow-amber-900/20 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+            className="p-3 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-bold uppercase text-xs tracking-wider rounded-sm border border-white/10 flex items-center justify-between cursor-pointer transition-colors disabled:opacity-50"
           >
             <span className="flex items-center gap-2">
               <span className="text-base">🟨</span>
               <span>+ Issue Card</span>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px]">Yellow / Red</span>
+            <span className="px-2 py-0.5 rounded-sm bg-white/10 text-[10px] font-bold text-amber-400">Discipline</span>
           </button>
 
           {/* + INJURY BUTTON */}
           <button
             onClick={handleOpenInjuryModal}
             disabled={isSubmitting || isMatchFinished}
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white font-extrabold text-xs flex items-center justify-between cursor-pointer shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+            className="p-3 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-bold uppercase text-xs tracking-wider rounded-sm border border-white/10 flex items-center justify-between cursor-pointer transition-colors disabled:opacity-50"
           >
             <span className="flex items-center gap-2">
               <span className="text-base">🩹</span>
               <span>+ Record Injury</span>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px]">Optional Player</span>
+            <span className="px-2 py-0.5 rounded-sm bg-white/10 text-[10px] font-bold text-slate-300">Timeout</span>
           </button>
         </div>
       </div>
 
       {/* MATCH EVENTS DETAIL VIEW: CENTRAL MINUTE TIMELINE WITH MINI POPUP & SAVE */}
-      <div className="pt-2">
+      <div className="pt-2 rounded-sm bg-[#0e1c2b] border border-[#1a2e45] p-3 shadow-xs">
         <MatchEventsDetailView
           matchId={matchUid}
           initialMatch={currentEvent}
@@ -389,27 +419,32 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
       {/* MODAL 1: ADD GOAL */}
       {isGoalModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`max-w-md w-full p-6 rounded-3xl border ${cardBg} space-y-4 shadow-2xl animate-fadeIn`}>
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full p-5 rounded-xl bg-[#0e1e2d] border border-[#1a2e45] space-y-4 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <h3 className="font-black text-sm uppercase tracking-wider text-white flex items-center gap-2">
                 <span>⚽</span> Record Live Goal (Algorithm 1)
               </h3>
-              <button onClick={() => setIsGoalModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
+              <button
+                onClick={() => setIsGoalModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded-sm hover:bg-[#152a40] transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-3 text-xs">
               {/* Team Selector */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Scoring Team</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Scoring Team</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(homeTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === homeTeamUid
-                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.homeTeam}
@@ -417,10 +452,10 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(awayTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === awayTeamUid
-                        ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.awayTeam}
@@ -430,61 +465,61 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
               {/* Goal Type */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Goal Type (Exact Enum)</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Goal Type (Exact Enum)</label>
                 <select
                   value={goalType}
                   onChange={(e) => setGoalType(e.target.value as GoalType)}
-                  className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                  className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white font-bold transition-colors"
                 >
-                  <option value="TAP_IN">TAP_IN (Open Play)</option>
-                  <option value="HEADER">HEADER</option>
-                  <option value="FREE_KICK">FREE_KICK</option>
-                  <option value="PENALTY">PENALTY</option>
-                  <option value="SCREAMER">SCREAMER (Long Range)</option>
-                  <option value="OTHER">OTHER</option>
+                  <option value="TAP_IN" className="bg-[#0e1e2d] text-white">TAP_IN (Open Play)</option>
+                  <option value="HEADER" className="bg-[#0e1e2d] text-white">HEADER</option>
+                  <option value="FREE_KICK" className="bg-[#0e1e2d] text-white">FREE_KICK</option>
+                  <option value="PENALTY" className="bg-[#0e1e2d] text-white">PENALTY</option>
+                  <option value="SCREAMER" className="bg-[#0e1e2d] text-white">SCREAMER (Long Range)</option>
+                  <option value="OTHER" className="bg-[#0e1e2d] text-white">OTHER</option>
                 </select>
               </div>
 
               {/* Minute & Period */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute (0 - 200)</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Minute (0 - 200)</label>
                   <input
                     type="number"
                     min="0"
                     max="200"
                     value={minuteStr}
                     onChange={(e) => setMinuteStr(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-mono font-bold text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Period</label>
                   <select
                     value={selectedPeriod}
                     onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="FIRST_HALF">First Half</option>
-                    <option value="HALF_TIME">Half Time</option>
-                    <option value="SECOND_HALF">Second Half</option>
-                    <option value="FULL_TIME">Full Time</option>
+                    <option value="FIRST_HALF" className="bg-[#0e1e2d] text-white">First Half</option>
+                    <option value="HALF_TIME" className="bg-[#0e1e2d] text-white">Half Time</option>
+                    <option value="SECOND_HALF" className="bg-[#0e1e2d] text-white">Second Half</option>
+                    <option value="FULL_TIME" className="bg-[#0e1e2d] text-white">Full Time</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#1a2e45]">
               <button
                 onClick={() => setIsGoalModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitGoal}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 Confirm Goal
               </button>
@@ -495,26 +530,31 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
       {/* MODAL 2: ADD CARD */}
       {isCardModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`max-w-md w-full p-6 rounded-3xl border ${cardBg} space-y-4 shadow-2xl animate-fadeIn`}>
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full p-5 rounded-xl bg-[#0e1e2d] border border-[#1a2e45] space-y-4 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <h3 className="font-black text-sm uppercase tracking-wider text-white flex items-center gap-2">
                 <span>🟨</span> Issue Disciplinary Card
               </h3>
-              <button onClick={() => setIsCardModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
+              <button
+                onClick={() => setIsCardModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded-sm hover:bg-[#152a40] transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Team</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Team</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(homeTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === homeTeamUid
-                        ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.homeTeam}
@@ -522,10 +562,10 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(awayTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === awayTeamUid
-                        ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.awayTeam}
@@ -534,19 +574,19 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Card Type</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Card Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['YELLOW', 'SECOND_YELLOW', 'RED'] as CardType[]).map((c: CardType) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setCardType(c)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                         cardType === c
                           ? c === 'RED' || c === 'SECOND_YELLOW'
-                            ? 'bg-rose-600 text-white border-rose-500'
-                            : 'bg-amber-500 text-slate-950 border-amber-400'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                            ? 'bg-[#ff0046] text-white border-[#ff0046]'
+                            : 'bg-[#f59e0b] text-slate-950 border-[#f59e0b]'
+                          : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                       }`}
                     >
                       {c === 'YELLOW' ? 'Yellow' : c === 'SECOND_YELLOW' ? '2nd Yellow' : 'Direct Red'}
@@ -557,43 +597,43 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Minute</label>
                   <input
                     type="number"
                     min="0"
                     max="200"
                     value={minuteStr}
                     onChange={(e) => setMinuteStr(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-mono font-bold text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Period</label>
                   <select
                     value={selectedPeriod}
                     onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="FIRST_HALF">First Half</option>
-                    <option value="HALF_TIME">Half Time</option>
-                    <option value="SECOND_HALF">Second Half</option>
-                    <option value="FULL_TIME">Full Time</option>
+                    <option value="FIRST_HALF" className="bg-[#0e1e2d] text-white">First Half</option>
+                    <option value="HALF_TIME" className="bg-[#0e1e2d] text-white">Half Time</option>
+                    <option value="SECOND_HALF" className="bg-[#0e1e2d] text-white">Second Half</option>
+                    <option value="FULL_TIME" className="bg-[#0e1e2d] text-white">Full Time</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#1a2e45]">
               <button
                 onClick={() => setIsCardModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitCard}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 Submit Card
               </button>
@@ -604,26 +644,31 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
       {/* MODAL 3: ADD INJURY */}
       {isInjuryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`max-w-md w-full p-6 rounded-3xl border ${cardBg} space-y-4 shadow-2xl animate-fadeIn`}>
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full p-5 rounded-xl bg-[#0e1e2d] border border-[#1a2e45] space-y-4 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <h3 className="font-black text-sm uppercase tracking-wider text-white flex items-center gap-2">
                 <span>🩹</span> Record Match Injury
               </h3>
-              <button onClick={() => setIsInjuryModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
+              <button
+                onClick={() => setIsInjuryModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded-sm hover:bg-[#152a40] transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Team</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Team</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(homeTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === homeTeamUid
-                        ? 'bg-sky-600 text-white border-sky-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.homeTeam}
@@ -631,10 +676,10 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                   <button
                     type="button"
                     onClick={() => setSelectedTeamUid(awayTeamUid)}
-                    className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-sm font-extrabold border text-center transition-all cursor-pointer ${
                       selectedTeamUid === awayTeamUid
-                        ? 'bg-sky-600 text-white border-sky-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                        ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                        : 'bg-[#15273b] border-[#223b56] text-slate-300 hover:border-[#1a2e45]'
                     }`}
                   >
                     {currentEvent.awayTeam}
@@ -644,43 +689,43 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Minute</label>
                   <input
                     type="number"
                     min="0"
                     max="200"
                     value={minuteStr}
                     onChange={(e) => setMinuteStr(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-mono font-bold text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Period</label>
                   <select
                     value={selectedPeriod}
                     onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="FIRST_HALF">First Half</option>
-                    <option value="HALF_TIME">Half Time</option>
-                    <option value="SECOND_HALF">Second Half</option>
-                    <option value="FULL_TIME">Full Time</option>
+                    <option value="FIRST_HALF" className="bg-[#0e1e2d] text-white">First Half</option>
+                    <option value="HALF_TIME" className="bg-[#0e1e2d] text-white">Half Time</option>
+                    <option value="SECOND_HALF" className="bg-[#0e1e2d] text-white">Second Half</option>
+                    <option value="FULL_TIME" className="bg-[#0e1e2d] text-white">Full Time</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#1a2e45]">
               <button
                 onClick={() => setIsInjuryModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitInjury}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-black shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 Submit Injury
               </button>
@@ -691,88 +736,93 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
       {/* MODAL 4: EDIT EVENT */}
       {editingEvent && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`max-w-md w-full p-6 rounded-3xl border ${cardBg} space-y-4 shadow-2xl animate-fadeIn`}>
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-emerald-500" /> Edit Live Event ({editingEvent.type})
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full p-5 rounded-xl bg-[#0e1e2d] border border-[#1a2e45] space-y-4 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <h3 className="font-black text-sm uppercase tracking-wider text-white flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-[#ff0046]" /> Edit Live Event ({editingEvent.type})
               </h3>
-              <button onClick={() => setEditingEvent(null)} className="text-slate-400 hover:text-slate-200 text-sm font-bold">✕</button>
+              <button
+                onClick={() => setEditingEvent(null)}
+                className="text-slate-400 hover:text-white text-sm font-bold p-1 rounded-sm hover:bg-[#152a40] transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-3 text-xs">
               {editingEvent.type === 'GOAL' && (
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Goal Type</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Goal Type</label>
                   <select
                     value={goalType}
                     onChange={(e) => setGoalType(e.target.value as GoalType)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="TAP_IN">TAP_IN</option>
-                    <option value="HEADER">HEADER</option>
-                    <option value="FREE_KICK">FREE_KICK</option>
-                    <option value="PENALTY">PENALTY</option>
-                    <option value="SCREAMER">SCREAMER</option>
-                    <option value="OTHER">OTHER</option>
+                    <option value="TAP_IN" className="bg-[#0e1e2d] text-white">TAP_IN</option>
+                    <option value="HEADER" className="bg-[#0e1e2d] text-white">HEADER</option>
+                    <option value="FREE_KICK" className="bg-[#0e1e2d] text-white">FREE_KICK</option>
+                    <option value="PENALTY" className="bg-[#0e1e2d] text-white">PENALTY</option>
+                    <option value="SCREAMER" className="bg-[#0e1e2d] text-white">SCREAMER</option>
+                    <option value="OTHER" className="bg-[#0e1e2d] text-white">OTHER</option>
                   </select>
                 </div>
               )}
 
               {editingEvent.type === 'CARD' && (
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Card Type</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Card Type</label>
                   <select
                     value={cardType}
                     onChange={(e) => setCardType(e.target.value as CardType)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="YELLOW">Yellow</option>
-                    <option value="SECOND_YELLOW">Second Yellow</option>
-                    <option value="RED">Direct Red</option>
+                    <option value="YELLOW" className="bg-[#0e1e2d] text-white">Yellow</option>
+                    <option value="SECOND_YELLOW" className="bg-[#0e1e2d] text-white">Second Yellow</option>
+                    <option value="RED" className="bg-[#0e1e2d] text-white">Direct Red</option>
                   </select>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Minute</label>
                   <input
                     type="number"
                     min="0"
                     max="200"
                     value={minuteStr}
                     onChange={(e) => setMinuteStr(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-mono font-bold text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Period</label>
                   <select
                     value={selectedPeriod}
                     onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none font-bold text-white transition-colors"
                   >
-                    <option value="FIRST_HALF">First Half</option>
-                    <option value="HALF_TIME">Half Time</option>
-                    <option value="SECOND_HALF">Second Half</option>
-                    <option value="FULL_TIME">Full Time</option>
+                    <option value="FIRST_HALF" className="bg-[#0e1e2d] text-white">First Half</option>
+                    <option value="HALF_TIME" className="bg-[#0e1e2d] text-white">Half Time</option>
+                    <option value="SECOND_HALF" className="bg-[#0e1e2d] text-white">Second Half</option>
+                    <option value="FULL_TIME" className="bg-[#0e1e2d] text-white">Full Time</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#1a2e45]">
               <button
                 onClick={() => setEditingEvent(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdateExistingEvent}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 Save Changes
               </button>
@@ -783,27 +833,27 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
 
       {/* MODAL 5: CANCEL CONFIRMATION */}
       {cancellingEventUid && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`max-w-sm w-full p-6 rounded-3xl border ${cardBg} space-y-4 shadow-2xl text-center animate-fadeIn`}>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-sm w-full p-5 rounded-xl bg-[#0e1e2d] border border-[#1a2e45] space-y-4 shadow-2xl text-center animate-fadeIn">
             <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">Cancel Live Event?</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h3 className="font-black text-sm uppercase tracking-wider text-white">Cancel Live Event?</h3>
+            <p className="text-xs text-slate-400 font-medium">
               This action will mark the event as CANCELLED, recalculate the live score and disciplinary standing, and cannot be undone.
             </p>
 
             <div className="flex justify-center gap-2 pt-2">
               <button
                 onClick={() => setCancellingEventUid(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors cursor-pointer"
               >
                 Keep Event
               </button>
               <button
                 onClick={handleConfirmCancelEvent}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 Yes, Cancel Event
               </button>

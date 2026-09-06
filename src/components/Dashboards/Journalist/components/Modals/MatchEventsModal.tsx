@@ -55,7 +55,7 @@ const MatchEventsModalContent: React.FC<{
   cardBg: string;
   triggerToast: (msg: string) => void;
   onMatchUpdated?: () => void;
-}> = ({ match: currentMatch, onClose, cardBg, triggerToast, onMatchUpdated }) => {
+}> = ({ match: currentMatch, onClose, triggerToast, onMatchUpdated }) => {
   const matchUid = currentMatch.id;
   const {
     match: algoMatch,
@@ -223,214 +223,242 @@ const MatchEventsModalContent: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
     >
-      <div className={`w-full max-w-2xl ${cardBg} p-5 md:p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-700/60 max-h-[92vh] overflow-y-auto`}>
-        {/* MODAL HEADER WITH TEAMS & LIVE SCORE */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <Radio className="w-3 h-3 animate-pulse text-emerald-500" />
-                Live Match Events Engine
-              </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                Match ID: <strong className="text-slate-200">{currentMatch.id}</strong>
-              </span>
-            </div>
-            <h2 className="text-base md:text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>{currentMatch.homeTeam}</span>
-              <span className="px-2.5 py-0.5 rounded-xl bg-slate-950 text-emerald-400 font-mono text-sm font-black border border-emerald-500/40">
-                {currentScoreHome} - {currentScoreAway}
-              </span>
-              <span>{currentMatch.awayTeam}</span>
+      <div className="w-full max-w-2xl bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* MODAL HEADER */}
+        <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="space-y-0.5">
+            <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <Radio className="w-4 h-4 text-[#ff0046] animate-pulse" /> Live Match Events Engine
             </h2>
-            <p className="text-xs text-slate-500 flex items-center gap-2">
-              <span>{currentMatch.competition}</span>
-              <span>•</span>
-              <span>{currentMatch.venue}</span>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Real-time incident intake & database synchronization
             </p>
           </div>
 
           <button
             onClick={onClose}
             aria-label="Close modal"
-            className="p-2 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-colors"
+            className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1.5 border border-white/10 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ENGINE WARNING / ERROR ALERT */}
-        {engineError && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-500 dark:text-rose-400 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span>{engineError}</span>
+        {/* DIALOG BODY */}
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+          {/* FLASHSCORE SCORE HEADER */}
+          <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 space-y-3">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="truncate">{currentMatch.competition}</span>
+              <span className="truncate">{currentMatch.venue}</span>
             </div>
-            <button
-              onClick={() => setEngineError(null)}
-              className="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-black cursor-pointer hover:bg-rose-500"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
 
-        {/* MATCH PERIOD STEPPER */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-            <span className="flex items-center gap-1.5 text-slate-900 dark:text-slate-200 font-extrabold">
-              <Activity className="w-3.5 h-3.5 text-emerald-500" /> Match Status & Period
-            </span>
-            <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase">
-              {matchStatus}
-            </span>
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-right flex-1 min-w-0 font-black text-sm sm:text-base text-white truncate">
+                {currentMatch.homeTeam}
+              </div>
+
+              <div className="px-3.5 py-1.5 rounded-sm bg-[#112236] text-white font-mono font-black text-base sm:text-lg border border-[#1a2e45] tracking-widest flex items-center gap-2 shrink-0">
+                <span className={isMatchLive ? 'text-[#ff0046]' : 'text-white'}>{currentScoreHome}</span>
+                <span className="text-slate-400">-</span>
+                <span className={isMatchLive ? 'text-[#ff0046]' : 'text-white'}>{currentScoreAway}</span>
+              </div>
+
+              <div className="text-left flex-1 min-w-0 font-black text-sm sm:text-base text-white truncate">
+                {currentMatch.awayTeam}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 pt-1 border-t border-[#14263b]">
+              <span>
+                MATCH ID: <strong className="text-slate-300 font-mono">{currentMatch.id}</strong>
+              </span>
+              {isMatchLive ? (
+                <span className="font-mono text-xs font-black text-[#ff0046] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046] animate-pulse" />
+                  {currentMatch.minute || 'LIVE'}
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-sm bg-[#102237] text-slate-400 border border-[#1a2e45]">
+                  {matchStatus}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {matchStatus === 'SCHEDULED' && (
+          {/* ENGINE WARNING / ERROR ALERT */}
+          {engineError && (
+            <div className="p-3.5 rounded-sm bg-rose-500/10 border border-rose-500/30 text-xs font-bold text-rose-400 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{engineError}</span>
+              </div>
               <button
-                onClick={handleStartMatch}
-                disabled={isSubmitting}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95"
+                onClick={() => setEngineError(null)}
+                className="px-2.5 py-1 rounded-sm bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider cursor-pointer transition-colors"
               >
-                <Play className="w-3.5 h-3.5" /> Start Match
+                Dismiss
               </button>
-            )}
-
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-200 dark:bg-slate-800">
-              {(['FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'FULL_TIME'] as Period[]).map((p: Period) => {
-                const isActive = activePeriod === p;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => handleSetPeriod(p)}
-                    disabled={isSubmitting || isMatchFinished}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {p === 'FIRST_HALF' ? '1st Half' : p === 'HALF_TIME' ? 'HT' : p === 'SECOND_HALF' ? '2nd Half' : 'Full Time'}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* QUICK INTAKE ACTION BUTTONS (+ GOAL, + CARD, + INJURY) */}
-        <div className="space-y-2.5">
-          <div className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-            Add Live Match Event (Auto-Preloads for Referee)
-          </div>
-
-          <div className="grid grid-cols-3 gap-2.5">
-            {/* + GOAL BUTTON */}
-            <button
-              onClick={handleOpenGoalModal}
-              disabled={isSubmitting || isMatchFinished}
-              className="p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-lg">⚽</span>
-              <span>+ Add Goal</span>
-            </button>
-
-            {/* + CARD BUTTON */}
-            <button
-              onClick={handleOpenCardModal}
-              disabled={isSubmitting || isMatchFinished}
-              className="p-3 rounded-2xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-lg">🟨</span>
-              <span>+ Add Card</span>
-            </button>
-
-            {/* + INJURY BUTTON */}
-            <button
-              onClick={handleOpenInjuryModal}
-              disabled={isSubmitting || isMatchFinished}
-              className="p-3 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50"
-            >
-              <span className="text-lg">🩹</span>
-              <span>+ Add Injury</span>
-            </button>
-          </div>
-        </div>
-
-        {/* LIVE EVENT LIST WITH DIRECT DELETION */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400 border-t border-slate-200 dark:border-slate-800 pt-3">
-            <span>Logged Events ({activeEvents.length})</span>
-            <span className="text-[10px] text-emerald-500 font-bold">Stored in DB for Preload</span>
-          </div>
-
-          {activeEvents.length === 0 ? (
-            <div className="p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 text-center space-y-1">
-              <Clock className="w-6 h-6 text-slate-400 mx-auto" />
-              <p className="text-xs font-bold text-slate-400">No events recorded for this match yet.</p>
-              <p className="text-[11px] text-slate-500">Add a goal, card, or injury above to register it live.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {activeEvents.map((evt: MatchEvent) => {
-                const isHome = evt.team_uid === homeTeamUid;
-                const teamName = isHome ? currentMatch.homeTeam : currentMatch.awayTeam;
-                const player = currentTeamSquad.find((p: SquadPlayer) => p.player_uid === evt.player_uid);
-
-                return (
-                  <div
-                    key={evt.event_uid}
-                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs shadow-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-mono font-black text-emerald-500 text-xs shrink-0">
-                        {evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : "—'"}
-                      </span>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-slate-900 dark:text-slate-100">
-                            {evt.type === 'GOAL' ? '⚽ Goal' : evt.type === 'CARD' ? (evt.card_type === 'RED' ? '🟥 Red Card' : '🟨 Yellow Card') : '🩹 Injury'}
-                          </span>
-                          {evt.goal_type && (
-                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-                              {evt.goal_type}
-                            </span>
-                          )}
-                          <span className="text-[11px] text-slate-400">• {teamName}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate">
-                          {player ? `${player.display_name} (#${player.jersey_number})` : evt.player_uid ? `Player ${evt.player_uid}` : 'Player Unassigned'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* DELETE EVENT ACTION */}
-                    <button
-                      onClick={() => handleConfirmCancelEvent(evt.event_uid)}
-                      disabled={isSubmitting}
-                      className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-colors cursor-pointer shrink-0"
-                      title="Delete event from match"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
             </div>
           )}
+
+          {/* MATCH PERIOD STEPPER */}
+          <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400">
+              <span className="flex items-center gap-1.5 text-white font-black">
+                <Activity className="w-3.5 h-3.5 text-[#ff0046]" /> Match Status & Period
+              </span>
+              <span className="px-2 py-0.5 rounded-sm bg-[#152a40] text-slate-300 border border-white/10 text-[10px] font-black uppercase tracking-wider">
+                {matchStatus}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {matchStatus === 'SCHEDULED' && (
+                <button
+                  onClick={handleStartMatch}
+                  disabled={isSubmitting}
+                  className="px-3.5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" /> Start Match
+                </button>
+              )}
+
+              <div className="flex flex-wrap items-center gap-1 p-1 rounded-sm bg-[#102237] border border-[#1a2e45]">
+                {(['FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'FULL_TIME'] as Period[]).map((p: Period) => {
+                  const isActive = activePeriod === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => handleSetPeriod(p)}
+                      disabled={isSubmitting || isMatchFinished}
+                      className={`px-3 py-1.5 rounded-sm text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-[#ff0046] text-white shadow-xs'
+                          : 'text-slate-400 hover:text-white hover:bg-[#152a40]'
+                      }`}
+                    >
+                      {p === 'FIRST_HALF' ? '1st Half' : p === 'HALF_TIME' ? 'HT' : p === 'SECOND_HALF' ? '2nd Half' : 'Full Time'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* INCIDENT ACTION BUTTONS (+GOAL #ff0046, +CARD #152a40, +INJURY #152a40) */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+              Add Live Match Event (Real-time Intake)
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {/* + GOAL BUTTON */}
+              <button
+                onClick={handleOpenGoalModal}
+                disabled={isSubmitting || isMatchFinished}
+                className="p-3 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider flex flex-col items-center justify-center gap-1 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
+              >
+                <span className="text-lg leading-none">⚽</span>
+                <span>+ Goal</span>
+              </button>
+
+              {/* + CARD BUTTON */}
+              <button
+                onClick={handleOpenCardModal}
+                disabled={isSubmitting || isMatchFinished}
+                className="p-3 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-amber-400 font-bold uppercase text-xs tracking-wider border border-white/10 flex flex-col items-center justify-center gap-1 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
+              >
+                <span className="text-lg leading-none">🟨</span>
+                <span>+ Card</span>
+              </button>
+
+              {/* + INJURY BUTTON */}
+              <button
+                onClick={handleOpenInjuryModal}
+                disabled={isSubmitting || isMatchFinished}
+                className="p-3 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-200 font-bold uppercase text-xs tracking-wider border border-white/10 flex flex-col items-center justify-center gap-1 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
+              >
+                <span className="text-lg leading-none">🩹</span>
+                <span>+ Injury</span>
+              </button>
+            </div>
+          </div>
+
+          {/* LOGGED EVENT LIST WITH DIRECT DELETION */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400 border-t border-[#1a2e45] pt-3">
+              <span>Logged Events ({activeEvents.length})</span>
+              <span className="text-[10px] text-[#ff0046] font-bold uppercase tracking-wider">Synced with database</span>
+            </div>
+
+            {activeEvents.length === 0 ? (
+              <div className="p-6 rounded-sm bg-[#0e1c2b] border border-dashed border-[#1a2e45] text-center space-y-1">
+                <Clock className="w-5 h-5 text-slate-500 mx-auto" />
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400">No events recorded for this match yet</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Click +Goal, +Card, or +Injury above to log an event</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {activeEvents.map((evt: MatchEvent) => {
+                  const isHome = evt.team_uid === homeTeamUid;
+                  const teamName = isHome ? currentMatch.homeTeam : currentMatch.awayTeam;
+                  const player = currentTeamSquad.find((p: SquadPlayer) => p.player_uid === evt.player_uid);
+
+                  return (
+                    <div
+                      key={evt.event_uid}
+                      className="p-3 rounded-sm bg-[#0e1c2b] hover:bg-[#13263b] border border-[#1a2e45] flex items-center justify-between gap-3 text-xs transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-8 h-8 rounded-sm bg-[#152a40] border border-white/10 flex items-center justify-center font-mono font-black text-[#ff0046] text-xs shrink-0">
+                          {evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : "—'"}
+                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black uppercase tracking-wider text-white">
+                              {evt.type === 'GOAL' ? '⚽ Goal' : evt.type === 'CARD' ? (evt.card_type === 'RED' ? '🟥 Red Card' : '🟨 Yellow Card') : '🩹 Injury'}
+                            </span>
+                            {evt.goal_type && (
+                              <span className="px-1.5 py-0.5 rounded-sm bg-[#14263b] text-[#ff0046] border border-[#1a2e45] text-[10px] font-bold uppercase tracking-wider">
+                                {evt.goal_type}
+                              </span>
+                            )}
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">• {teamName}</span>
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
+                            {player ? `${player.display_name} (#${player.jersey_number})` : evt.player_uid ? `Player ${evt.player_uid}` : 'Player Unassigned'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* DELETE EVENT ACTION */}
+                      <button
+                        onClick={() => handleConfirmCancelEvent(evt.event_uid)}
+                        disabled={isSubmitting}
+                        className="p-2 rounded-sm bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 transition-colors cursor-pointer shrink-0"
+                        title="Delete event from match"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* MODAL CLOSE BUTTON */}
-        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+        {/* MODAL FOOTER */}
+        <div className="bg-[#0e1e2d] border-t border-[#1a2e45] px-6 py-4 flex justify-end shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-slate-800 dark:hover:bg-slate-700 font-extrabold text-xs cursor-pointer"
+            className="px-5 py-2.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-black text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
           >
             Done Managing Events
           </button>
@@ -438,26 +466,33 @@ const MatchEventsModalContent: React.FC<{
 
         {/* SUBMODAL 1: ADD GOAL */}
         {isGoalModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className={`max-w-md w-full p-5 rounded-3xl ${cardBg} space-y-4 shadow-2xl border border-slate-700`}>
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden space-y-0">
+              <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-5 py-3.5 flex items-center justify-between text-white font-black uppercase text-xs tracking-wider">
+                <h3 className="flex items-center gap-2">
                   <span>⚽</span> Record Live Goal
                 </h3>
-                <button onClick={() => setIsGoalModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-xs font-bold">✕</button>
+                <button
+                  onClick={() => setIsGoalModalOpen(false)}
+                  className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1 border border-white/10 cursor-pointer transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="p-5 space-y-4 text-xs bg-[#081018]">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Scoring Team</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Scoring Team
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(homeTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === homeTeamUid
-                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.homeTeam}
@@ -465,10 +500,10 @@ const MatchEventsModalContent: React.FC<{
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(awayTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === awayTeamUid
-                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-xs'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.awayTeam}
@@ -477,11 +512,13 @@ const MatchEventsModalContent: React.FC<{
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Goal Type</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Goal Type
+                  </label>
                   <select
                     value={goalType}
                     onChange={(e) => setGoalType(e.target.value as GoalType)}
-                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold"
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-bold text-xs focus:border-[#ff0046] focus:outline-none transition-colors cursor-pointer"
                   >
                     <option value="TAP_IN">Open Play (TAP_IN)</option>
                     <option value="HEADER">Header</option>
@@ -494,22 +531,26 @@ const MatchEventsModalContent: React.FC<{
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute (0 - 200)</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Minute (0 - 200)
+                    </label>
                     <input
                       type="number"
                       min="0"
                       max="200"
                       value={minuteStr}
                       onChange={(e) => setMinuteStr(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] font-mono font-bold text-xs text-white focus:border-[#ff0046] focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Period
+                    </label>
                     <select
                       value={selectedPeriod}
                       onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-bold text-xs focus:border-[#ff0046] focus:outline-none transition-colors cursor-pointer"
                     >
                       <option value="FIRST_HALF">First Half</option>
                       <option value="HALF_TIME">Half Time</option>
@@ -520,17 +561,17 @@ const MatchEventsModalContent: React.FC<{
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="px-5 py-3.5 bg-[#0e1e2d] border-t border-[#1a2e45] flex justify-end gap-2">
                 <button
                   onClick={() => setIsGoalModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                  className="px-4 py-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitGoal}
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs cursor-pointer transition-colors"
                 >
                   Save Goal
                 </button>
@@ -541,26 +582,33 @@ const MatchEventsModalContent: React.FC<{
 
         {/* SUBMODAL 2: ADD CARD */}
         {isCardModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className={`max-w-md w-full p-5 rounded-3xl ${cardBg} space-y-4 shadow-2xl border border-slate-700`}>
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden space-y-0">
+              <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-5 py-3.5 flex items-center justify-between text-white font-black uppercase text-xs tracking-wider">
+                <h3 className="flex items-center gap-2">
                   <span>🟨</span> Issue Card
                 </h3>
-                <button onClick={() => setIsCardModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-xs font-bold">✕</button>
+                <button
+                  onClick={() => setIsCardModalOpen(false)}
+                  className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1 border border-white/10 cursor-pointer transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="p-5 space-y-4 text-xs bg-[#081018]">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Team</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Team
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(homeTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === homeTeamUid
-                          ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.homeTeam}
@@ -568,10 +616,10 @@ const MatchEventsModalContent: React.FC<{
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(awayTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === awayTeamUid
-                          ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.awayTeam}
@@ -580,19 +628,21 @@ const MatchEventsModalContent: React.FC<{
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Card Type</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Card Type
+                  </label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['YELLOW', 'SECOND_YELLOW', 'RED'] as CardType[]).map((c: CardType) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setCardType(c)}
-                        className={`p-2 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                        className={`p-2 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                           cardType === c
                             ? c === 'RED' || c === 'SECOND_YELLOW'
-                              ? 'bg-rose-600 text-white border-rose-500'
-                              : 'bg-amber-500 text-slate-950 border-amber-400'
-                            : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                              ? 'bg-rose-600 text-white border-rose-500 shadow-xs'
+                              : 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
+                            : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                         }`}
                       >
                         {c === 'YELLOW' ? 'Yellow' : c === 'SECOND_YELLOW' ? '2nd Yellow' : 'Red'}
@@ -603,22 +653,26 @@ const MatchEventsModalContent: React.FC<{
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Minute
+                    </label>
                     <input
                       type="number"
                       min="0"
                       max="200"
                       value={minuteStr}
                       onChange={(e) => setMinuteStr(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] font-mono font-bold text-xs text-white focus:border-[#ff0046] focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Period
+                    </label>
                     <select
                       value={selectedPeriod}
                       onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-bold text-xs focus:border-[#ff0046] focus:outline-none transition-colors cursor-pointer"
                     >
                       <option value="FIRST_HALF">First Half</option>
                       <option value="HALF_TIME">Half Time</option>
@@ -629,17 +683,17 @@ const MatchEventsModalContent: React.FC<{
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="px-5 py-3.5 bg-[#0e1e2d] border-t border-[#1a2e45] flex justify-end gap-2">
                 <button
                   onClick={() => setIsCardModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                  className="px-4 py-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitCard}
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-sm bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider shadow-xs cursor-pointer transition-colors"
                 >
                   Save Card
                 </button>
@@ -650,26 +704,33 @@ const MatchEventsModalContent: React.FC<{
 
         {/* SUBMODAL 3: ADD INJURY */}
         {isInjuryModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className={`max-w-md w-full p-5 rounded-3xl ${cardBg} space-y-4 shadow-2xl border border-slate-700`}>
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden space-y-0">
+              <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-5 py-3.5 flex items-center justify-between text-white font-black uppercase text-xs tracking-wider">
+                <h3 className="flex items-center gap-2">
                   <span>🩹</span> Record Injury
                 </h3>
-                <button onClick={() => setIsInjuryModalOpen(false)} className="text-slate-400 hover:text-slate-200 text-xs font-bold">✕</button>
+                <button
+                  onClick={() => setIsInjuryModalOpen(false)}
+                  className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1 border border-white/10 cursor-pointer transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="p-5 space-y-4 text-xs bg-[#081018]">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Team</label>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Team
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(homeTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === homeTeamUid
-                          ? 'bg-sky-600 text-white border-sky-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-[#152a40] text-white border-white/20 shadow-xs ring-1 ring-white/20'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.homeTeam}
@@ -677,10 +738,10 @@ const MatchEventsModalContent: React.FC<{
                     <button
                       type="button"
                       onClick={() => setSelectedTeamUid(awayTeamUid)}
-                      className={`p-2.5 rounded-xl font-extrabold border text-center transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-sm font-black text-xs uppercase tracking-wider border text-center transition-colors cursor-pointer ${
                         selectedTeamUid === awayTeamUid
-                          ? 'bg-sky-600 text-white border-sky-500 shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-[#152a40] text-white border-white/20 shadow-xs ring-1 ring-white/20'
+                          : 'bg-[#15273b] hover:bg-[#152a40] border-[#223b56] text-slate-300'
                       }`}
                     >
                       {currentMatch.awayTeam}
@@ -690,22 +751,26 @@ const MatchEventsModalContent: React.FC<{
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Minute</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Minute
+                    </label>
                     <input
                       type="number"
                       min="0"
                       max="200"
                       value={minuteStr}
                       onChange={(e) => setMinuteStr(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-slate-100"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] font-mono font-bold text-xs text-white focus:border-[#ff0046] focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Period</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      Period
+                    </label>
                     <select
                       value={selectedPeriod}
                       onChange={(e) => setSelectedPeriod(e.target.value as Period)}
-                      className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200"
+                      className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-bold text-xs focus:border-[#ff0046] focus:outline-none transition-colors cursor-pointer"
                     >
                       <option value="FIRST_HALF">First Half</option>
                       <option value="HALF_TIME">Half Time</option>
@@ -716,17 +781,17 @@ const MatchEventsModalContent: React.FC<{
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="px-5 py-3.5 bg-[#0e1e2d] border-t border-[#1a2e45] flex justify-end gap-2">
                 <button
                   onClick={() => setIsInjuryModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                  className="px-4 py-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitInjury}
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-black shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider shadow-xs cursor-pointer transition-colors"
                 >
                   Save Injury
                 </button>

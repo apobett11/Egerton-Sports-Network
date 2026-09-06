@@ -20,61 +20,58 @@ export const JournalistHeader: React.FC<JournalistHeaderProps> = ({
   onOpenSettings,
   onLogout,
 }) => {
-  const headerBg = darkMode
-    ? 'bg-[#0F172A]/90 border-slate-800 text-slate-100'
-    : 'bg-white/90 border-slate-200 text-slate-900';
-
   return (
-    <header className={`sticky top-0 z-30 h-16 w-full ${headerBg} backdrop-blur-md border-b transition-colors`}>
-      <div className="max-w-7xl mx-auto h-full px-4 md:px-6 flex items-center justify-between gap-4">
-        {/* BRAND & TITLE */}
+    <header className="sticky top-0 z-40 w-full select-none shadow-md bg-[#0e1e2d] text-white border-b border-[#1a2e45]">
+      <div className="max-w-7xl mx-auto h-16 px-4 md:px-6 flex items-center justify-between gap-4">
+        {/* BRAND & TITLE WITH FLASHSCORE BRAND MARK */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white font-black text-sm flex items-center justify-center shadow-md shadow-emerald-900/20">
-            J
+          <div className="flex items-center gap-0.5" aria-hidden="true">
+            <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
+            <div className="w-1.5 h-6 bg-white transform -skew-x-12 rounded-[1.5px] opacity-90" />
           </div>
-          <div>
-            <h1 className="font-extrabold text-sm md:text-base tracking-tight leading-none">
+          <div className="flex flex-col leading-none">
+            <h1 className="font-black tracking-wider text-sm sm:text-base uppercase text-white font-sans">
               Press Newsroom
             </h1>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            <span className="text-[9px] sm:text-[10px] font-bold tracking-widest uppercase text-slate-400 mt-0.5">
               Official Journalist Console
-            </p>
+            </span>
           </div>
         </div>
 
-        {/* CONTROLS: PROFILE, NOTIFICATIONS, SETTINGS, LOGOUT */}
+        {/* CONTROLS: THEME, PROFILE, NOTIFICATIONS, SETTINGS, LOGOUT */}
         <div className="flex items-center gap-2">
           {/* THEME TOGGLE */}
           <button
             onClick={() => setDarkMode(!darkMode)}
             aria-label="Toggle Theme"
-            className="p-2.5 rounded-xl border border-transparent hover:border-slate-300 dark:hover:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer"
             title="Toggle Light/Dark Theme"
           >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
           </button>
 
           {/* PROFILE BUTTON */}
           <button
             onClick={onOpenProfile}
             aria-label="Open Profile"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-transparent hover:border-slate-300 dark:hover:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer text-xs font-bold"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer"
             title="Journalist Profile"
           >
-            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden sm:inline">Profile</span>
+            <User className="w-4 h-4 text-slate-300" />
+            <span className="hidden sm:inline uppercase tracking-wider text-[11px]">Profile</span>
           </button>
 
           {/* NOTIFICATIONS BUTTON */}
           <button
             onClick={onOpenNotifications}
             aria-label="Open Notifications"
-            className="relative p-2.5 rounded-xl border border-transparent hover:border-slate-300 dark:hover:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="relative p-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer"
             title="Notifications"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-4 h-4 text-slate-300" />
             {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
+              <span className="absolute -top-1 -right-1 bg-[#ff0046] text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none shadow-xs">
                 {unreadNotificationsCount}
               </span>
             )}
@@ -84,10 +81,10 @@ export const JournalistHeader: React.FC<JournalistHeaderProps> = ({
           <button
             onClick={onOpenSettings}
             aria-label="Open Settings"
-            className="p-2.5 rounded-xl border border-transparent hover:border-slate-300 dark:hover:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer"
             title="Settings"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-4 h-4 text-slate-300" />
           </button>
 
           {/* LOGOUT BUTTON */}
@@ -95,11 +92,11 @@ export const JournalistHeader: React.FC<JournalistHeaderProps> = ({
             <button
               onClick={onLogout}
               aria-label="Log Out"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition-colors cursor-pointer ml-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#ff0046] text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer ml-1"
               title="Logout"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
+              <LogOut className="w-3.5 h-3.5 text-slate-300" />
+              <span className="hidden sm:inline uppercase tracking-wider text-[11px]">Logout</span>
             </button>
           )}
         </div>

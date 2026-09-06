@@ -77,14 +77,14 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
       aria-modal="true"
       aria-labelledby="compose-modal-title"
     >
-      <div className={`w-full max-w-2xl ${cardBg} p-5 md:p-6 rounded-3xl shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border border-slate-700/60`}>
+      <div className="w-full max-w-2xl bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl p-5 md:p-6 space-y-4 max-h-[92vh] overflow-y-auto">
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
           <div>
-            <h3 id="compose-modal-title" className="font-extrabold text-base tracking-tight leading-none">
+            <h3 id="compose-modal-title" className="font-black text-base uppercase tracking-tight text-white leading-none">
               {editingArticleId ? 'Edit News Article' : 'Compose News Article'}
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium pt-1">
+            <p className="text-[11px] text-slate-400 font-medium pt-1">
               Publish news stories, press releases, and editorial articles to the campus newsroom.
             </p>
           </div>
@@ -92,7 +92,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close compose modal"
-            className="p-2 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-colors"
+            className="p-1.5 text-slate-400 hover:text-white rounded-sm hover:bg-[#152a40] cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -102,7 +102,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4 text-xs font-semibold">
           {/* ARTICLE TYPE DROPDOWN */}
           <div>
-            <label htmlFor="article-type-select" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
+            <label htmlFor="article-type-select" className="block text-slate-400 uppercase font-black text-[10px] tracking-wider mb-1">
               Article Type
             </label>
             <select
@@ -110,10 +110,10 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               value={composeType}
               onChange={(e) => setComposeType(e.target.value as ArticleCategory)}
               disabled={isSavingArticle}
-              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white font-bold text-xs disabled:opacity-50 transition-colors"
             >
               {(Object.keys(ARTICLE_CATEGORY_LABELS) as ArticleCategory[]).map((cat) => (
-                <option key={cat} value={cat}>
+                <option key={cat} value={cat} className="bg-[#0e1e2d] text-white">
                   {ARTICLE_CATEGORY_LABELS[cat]}
                 </option>
               ))}
@@ -123,10 +123,10 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
           {/* HEADLINE WITH LIVE CHARACTER COUNTER */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label htmlFor="article-headline-input" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px]">
+              <label htmlFor="article-headline-input" className="block text-slate-400 uppercase font-black text-[10px] tracking-wider">
                 Headline <span className="text-rose-500">*</span>
               </label>
-              <span className={`text-[10px] font-mono font-bold ${
+              <span className={`text-[10px] font-bold tracking-wider ${
                 headlineLength > MAX_HEADLINE_LENGTH ? 'text-rose-500' : 'text-slate-400'
               }`}>
                 {headlineLength} / {MAX_HEADLINE_LENGTH}
@@ -140,17 +140,17 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               onChange={(e) => setComposeHeadline(e.target.value)}
               disabled={isSavingArticle}
               placeholder="Enter article headline..."
-              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-extrabold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white placeholder-slate-400 font-bold text-xs disabled:opacity-50 transition-colors"
             />
           </div>
 
           {/* FEATURED IMAGE UPLOAD (OPTIONAL) */}
           <div className="space-y-1.5">
-            <label htmlFor="article-file-upload" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px]">
+            <label htmlFor="article-file-upload" className="block text-slate-400 uppercase font-black text-[10px] tracking-wider">
               Featured Image (Optional)
             </label>
 
-            <div className="p-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-center space-y-2">
+            <div className="p-4 rounded-sm border border-dashed border-[#223b56] hover:border-[#ff0046] bg-[#102237] text-slate-300 text-center space-y-2 transition-colors">
               <input
                 id="article-file-upload"
                 type="file"
@@ -162,7 +162,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
 
               <label
                 htmlFor="article-file-upload"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-extrabold text-xs cursor-pointer transition-colors border border-emerald-500/30"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
               >
                 <Upload className="w-4 h-4" />
                 <span>{selectedFile ? 'Change Image File' : 'Choose Image File'}</span>
@@ -173,10 +173,10 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
                   <img
                     src={filePreview || composeImageUrl}
                     alt="Preview"
-                    className="w-16 h-16 rounded-xl object-cover border border-emerald-500 shadow-sm"
+                    className="w-16 h-16 rounded-sm object-cover border border-[#1a2e45] shadow-xs"
                   />
                   <div className="text-left text-xs font-semibold">
-                    <p className="text-emerald-500 flex items-center gap-1">
+                    <p className="text-[#ff0046] flex items-center gap-1 font-bold">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Image Selected
                     </p>
                     <p className="text-[10px] text-slate-400 font-mono truncate max-w-[200px]">
@@ -187,7 +187,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               )}
 
               {!selectedFile && !composeImageUrl && (
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-400 font-medium">
                   Optional. Select JPG, PNG, or WEBP to upload to Supabase Storage.
                 </p>
               )}
@@ -200,7 +200,7 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
 
           {/* ARTICLE BODY */}
           <div>
-            <label htmlFor="article-body-input" className="block text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] mb-1">
+            <label htmlFor="article-body-input" className="block text-slate-400 uppercase font-black text-[10px] tracking-wider mb-1">
               Article Body <span className="text-rose-500">*</span>
             </label>
             <textarea
@@ -210,17 +210,17 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               onChange={(e) => setComposeBody(e.target.value)}
               disabled={isSavingArticle}
               placeholder="Message here..."
-              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+              className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white placeholder-slate-400 font-bold text-xs leading-relaxed resize-y disabled:opacity-50 transition-colors"
             />
           </div>
 
           {/* ACTION BUTTONS */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#1a2e45]">
             <button
               type="button"
               onClick={onClose}
               disabled={isSavingArticle}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-sm bg-[#14263b] hover:bg-[#1c3857] text-slate-300 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -229,17 +229,17 @@ export const ArticleComposerModal: React.FC<ArticleComposerModalProps> = ({
               type="button"
               onClick={() => handleFormSubmit(true)}
               disabled={isSavingArticle}
-              className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold uppercase text-xs tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {isSavingArticle ? 'Saving...' : 'Save Draft'}
+              {isSavingArticle ? 'Saving...' : 'Save as Working Draft'}
             </button>
 
             <button
               type="button"
               onClick={() => handleFormSubmit(false)}
               disabled={isSavingArticle}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-lg shadow-emerald-900/30 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               {isSavingArticle ? 'Publishing...' : 'Publish Article'}

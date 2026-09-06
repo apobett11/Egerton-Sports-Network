@@ -15,7 +15,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose,
   currentUserProfile,
   performanceMetrics,
-  cardBg,
 }) => {
   if (!isOpen) return null;
 
@@ -41,91 +40,104 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="profile-modal-title"
     >
-      <div className={`w-full max-w-md ${cardBg} p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-700/60`}>
+      <div className="w-full max-w-md bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* HEADER */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-          <h3 id="profile-modal-title" className="font-extrabold text-base tracking-tight flex items-center gap-2">
-            <User className="w-4 h-4 text-emerald-500" /> Press Credentials & Profile
+        <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-6 py-4 flex items-center justify-between shrink-0">
+          <h3 id="profile-modal-title" className="text-sm sm:text-base font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <User className="w-4 h-4 text-[#ff0046]" /> Press Credentials & Profile
           </h3>
           <button
             onClick={onClose}
             aria-label="Close profile modal"
-            className="p-2 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-colors"
+            className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1.5 border border-white/10 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* PROFILE CARD */}
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <img
-            src={avatarSrc}
-            alt={displayName}
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-md"
-          />
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-1.5 font-extrabold text-base text-slate-900 dark:text-slate-100 truncate">
-              <span className="truncate">{displayName}</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500/20 shrink-0" />
+        {/* BODY */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* PROFILE CARD */}
+          <div className="flex items-center gap-4 p-4 rounded-sm bg-[#0e1c2b] border border-[#1a2e45]">
+            <img
+              src={avatarSrc}
+              alt={displayName}
+              className="w-16 h-16 rounded-sm object-cover border border-[#1a2e45] shadow-xs shrink-0"
+            />
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 font-black text-lg text-white truncate">
+                <span className="truncate">{displayName}</span>
+                <CheckCircle2 className="w-4 h-4 text-[#ff0046] fill-[#ff0046]/20 shrink-0" />
+              </div>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wider truncate">{userHandle}</p>
+              <span className="bg-[#ff0046] text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-sm inline-block">
+                {roleTitle}
+              </span>
             </div>
-            <p className="text-xs text-slate-400 font-semibold truncate">{userHandle}</p>
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-              {roleTitle}
-            </span>
+          </div>
+
+          {/* EDITORIAL STATS GRID */}
+          <div className="grid grid-cols-3 gap-2.5 text-center">
+            <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-3">
+              <div className="font-mono font-black text-xl text-white">
+                {performanceMetrics.publishedCount}
+              </div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 mt-1">
+                <BookOpen className="w-3 h-3 text-[#ff0046]" /> Published
+              </div>
+            </div>
+
+            <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-3">
+              <div className="font-mono font-black text-xl text-[#38bdf8]">
+                {performanceMetrics.reads >= 1000
+                  ? `${(performanceMetrics.reads / 1000).toFixed(1)}k`
+                  : performanceMetrics.reads}
+              </div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 mt-1">
+                <Eye className="w-3 h-3 text-[#38bdf8]" /> Reads
+              </div>
+            </div>
+
+            <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-3">
+              <div className="font-mono font-black text-xl text-[#ff0046]">
+                {performanceMetrics.engagementRate}%
+              </div>
+              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
+                Engagement
+              </div>
+            </div>
+          </div>
+
+          {/* CREDENTIALS */}
+          <div className="space-y-2.5">
+            <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-3 flex items-center justify-between font-mono text-xs text-[#ff0046] font-bold">
+              <span className="text-slate-400 flex items-center gap-2 font-sans font-bold uppercase text-[11px] tracking-wider">
+                <Award className="w-4 h-4 text-[#ff0046]" /> Press Badge ID
+              </span>
+              <span>{pressBadgeId}</span>
+            </div>
+            <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-3 flex items-center justify-between text-xs font-bold text-slate-300">
+              <span className="text-slate-400 flex items-center gap-2 uppercase text-[11px] tracking-wider">
+                <FileText className="w-4 h-4 text-[#38bdf8]" /> Media House
+              </span>
+              <span className="text-white font-extrabold uppercase tracking-wider">Egerton Sports Network</span>
+            </div>
           </div>
         </div>
 
-        {/* DATABASE STATS */}
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-            <div className="font-black text-lg text-slate-900 dark:text-slate-100">
-              {performanceMetrics.publishedCount}
-            </div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1">
-              <BookOpen className="w-3 h-3 text-emerald-500" /> Published
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-            <div className="font-black text-lg text-emerald-500">
-              {performanceMetrics.reads >= 1000
-                ? `${(performanceMetrics.reads / 1000).toFixed(1)}k`
-                : performanceMetrics.reads}
-            </div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase flex items-center justify-center gap-1">
-              <Eye className="w-3 h-3 text-blue-500" /> Reads
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-            <div className="font-black text-lg text-purple-500">
-              {performanceMetrics.engagementRate}%
-            </div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase">
-              Engagement
-            </div>
-          </div>
-        </div>
-
-        {/* CREDENTIALS */}
-        <div className="space-y-2 text-xs font-semibold">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
-            <span className="text-slate-400 flex items-center gap-2">
-              <Award className="w-4 h-4 text-emerald-500" /> Press Badge ID
-            </span>
-            <span className="font-mono text-slate-900 dark:text-slate-100 font-bold">{pressBadgeId}</span>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800">
-            <span className="text-slate-400 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-500" /> Media House
-            </span>
-            <span className="text-slate-900 dark:text-slate-100 font-bold">Egerton Sports Network</span>
-          </div>
+        {/* FOOTER */}
+        <div className="bg-[#0e1e2d] border-t border-[#1a2e45] px-6 py-4 flex justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-black text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>

@@ -14,47 +14,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   darkMode,
   setDarkMode,
-  cardBg,
 }) => {
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-modal-title"
     >
-      <div className={`w-full max-w-md ${cardBg} p-6 rounded-3xl shadow-2xl space-y-5 border border-slate-700/60`}>
+      <div className="w-full max-w-md bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* HEADER */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-          <h3 id="settings-modal-title" className="font-extrabold text-base tracking-tight flex items-center gap-2">
-            <Settings className="w-4 h-4 text-emerald-500" /> Newsroom Settings
+        <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-6 py-4 flex items-center justify-between shrink-0">
+          <h3 id="settings-modal-title" className="text-sm sm:text-base font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <Settings className="w-4 h-4 text-[#ff0046]" /> Newsroom Settings
           </h3>
           <button
             onClick={onClose}
             aria-label="Close settings modal"
-            className="p-2 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-colors"
+            className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1.5 border border-white/10 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* SETTINGS LIST */}
-        <div className="space-y-3 text-xs font-bold">
+        <div className="p-6 space-y-3 overflow-y-auto flex-1">
           {/* DARK MODE */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <Moon className="w-4 h-4 text-amber-400" />
-              <div>
-                <div className="text-slate-900 dark:text-slate-100">Dark Theme</div>
-                <div className="text-[10px] text-slate-400 font-normal">Use sleek dark colors</div>
+          <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-sm bg-[#152a40] border border-white/10 flex items-center justify-center shrink-0">
+                <Moon className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-black uppercase tracking-wider text-white">Dark Theme</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">
+                  Use sleek dark broadcast colors
+                </div>
               </div>
             </div>
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
-                darkMode ? 'bg-emerald-600' : 'bg-slate-300'
+              aria-label="Toggle dark theme"
+              className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+                darkMode ? 'bg-[#ff0046]' : 'bg-[#152a40] border border-white/10'
               }`}
             >
               <div
@@ -66,28 +70,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* AUTO-SAVE DRAFTS */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <Shield className="w-4 h-4 text-emerald-500" />
-              <div>
-                <div className="text-slate-900 dark:text-slate-100">Auto-Save Drafts</div>
-                <div className="text-[10px] text-slate-400 font-normal">Automatically recover unsubmitted articles</div>
+          <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-sm bg-[#152a40] border border-white/10 flex items-center justify-center shrink-0">
+                <Shield className="w-4 h-4 text-[#ff0046]" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-black uppercase tracking-wider text-white">Auto-Save Drafts</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">
+                  Automatically recover unsubmitted articles
+                </div>
               </div>
             </div>
-            <Check className="w-5 h-5 text-emerald-500" />
+            <span className="flex items-center gap-1 text-[#ff0046] font-mono text-[10px] font-black uppercase tracking-wider shrink-0">
+              <Check className="w-4 h-4 text-[#ff0046] stroke-[3]" /> ACTIVE
+            </span>
           </div>
 
           {/* BREAKING NEWS ALERTS */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <Bell className="w-4 h-4 text-blue-500" />
-              <div>
-                <div className="text-slate-900 dark:text-slate-100">Notifications</div>
-                <div className="text-[10px] text-slate-400 font-normal">Receive article flag updates</div>
+          <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-sm bg-[#152a40] border border-white/10 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-[#38bdf8]" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-black uppercase tracking-wider text-white">Editorial Alerts</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 truncate">
+                  Receive article flag & review updates
+                </div>
               </div>
             </div>
-            <Check className="w-5 h-5 text-emerald-500" />
+            <span className="flex items-center gap-1 text-[#ff0046] font-mono text-[10px] font-black uppercase tracking-wider shrink-0">
+              <Check className="w-4 h-4 text-[#ff0046] stroke-[3]" /> ACTIVE
+            </span>
           </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="bg-[#0e1e2d] border-t border-[#1a2e45] px-6 py-4 flex justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-white font-black text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>

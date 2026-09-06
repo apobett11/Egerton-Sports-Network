@@ -17,36 +17,37 @@ export const ViewArticleModal: React.FC<ViewArticleModalProps> = ({
   article,
   onEdit,
   onDelete,
-  cardBg,
 }) => {
   if (!isOpen || !article) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs"
       role="dialog"
       aria-modal="true"
       aria-labelledby="view-article-title"
     >
-      <div className={`w-full max-w-2xl ${cardBg} p-6 rounded-3xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border border-slate-700/60`}>
-        {/* HEADER */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+      <div className="w-full max-w-2xl bg-[#0e1e2d] border border-[#1a2e45] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* DIALOG HEADER */}
+        <div className="bg-[#0e1e2d] border-b border-[#1a2e45] px-6 py-4 flex items-start justify-between gap-4 shrink-0">
+          <div className="space-y-2 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-[#14263b] text-slate-300 border border-[#223b56] text-[10px] uppercase font-bold tracking-wider rounded-sm px-2 py-0.5">
                 {ARTICLE_CATEGORY_LABELS[article.category] || article.category}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                article.status === 'published'
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : article.status === 'draft'
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-rose-500/20 text-rose-400'
-              }`}>
+              <span
+                className={`text-[10px] uppercase font-bold tracking-wider rounded-sm px-2 py-0.5 border ${
+                  article.status === 'published'
+                    ? 'bg-[#00b04f]/20 text-[#00b04f] border-[#00b04f]/30'
+                    : article.status === 'draft'
+                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                    : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                }`}
+              >
                 {article.status}
               </span>
             </div>
-            <h2 id="view-article-title" className="font-extrabold text-lg md:text-xl leading-tight">
+            <h2 id="view-article-title" className="font-black text-xl text-white leading-tight">
               {article.headline}
             </h2>
           </div>
@@ -54,60 +55,63 @@ export const ViewArticleModal: React.FC<ViewArticleModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close article modal"
-            className="p-2 text-slate-400 hover:text-slate-200 rounded-xl cursor-pointer transition-colors"
+            className="bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white rounded-sm p-1.5 border border-white/10 transition-colors cursor-pointer shrink-0 mt-1"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* METADATA */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2 py-1">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-              {article.timestamp || 'Today'}
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-3.5 h-3.5 text-blue-500" />
-              {article.viewsCount || 0} views
-            </span>
+        {/* SCROLLABLE READING SHEET */}
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* METADATA STRIP */}
+          <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider gap-2 pb-2 border-b border-[#1a2e45]">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#ff0046]" />
+                {article.timestamp || 'Today'}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-[#38bdf8]" />
+                {article.viewsCount || 0} views
+              </span>
+            </div>
+
+            {article.competitionName && (
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Tag className="w-3.5 h-3.5 text-[#ff0046]" />
+                {article.competitionName}
+              </span>
+            )}
           </div>
 
-          {article.competitionName && (
-            <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-              <Tag className="w-3.5 h-3.5" />
-              {article.competitionName}
-            </span>
+          {/* FEATURED IMAGE CONTAINER */}
+          {article.images && article.images.length > 0 && (
+            <div className="rounded-sm border border-[#1a2e45] overflow-hidden max-h-72 bg-[#0e1c2b]">
+              <img
+                src={article.images[0]}
+                alt={article.headline}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
-        </div>
 
-        {/* FEATURED IMAGE */}
-        {article.images && article.images.length > 0 && (
-          <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-72">
-            <img
-              src={article.images[0]}
-              alt={article.headline}
-              className="w-full h-full object-cover"
-            />
+          {/* SUBTITLE */}
+          {article.subtitle && (
+            <p className="text-slate-300 font-medium italic border-l-2 border-[#ff0046] pl-3 py-1">
+              {article.subtitle}
+            </p>
+          )}
+
+          {/* BODY TEXT */}
+          <div className="text-slate-200 leading-relaxed whitespace-pre-line text-xs sm:text-sm font-sans pt-1">
+            {article.body}
           </div>
-        )}
-
-        {/* SUBTITLE */}
-        {article.subtitle && (
-          <p className="font-bold text-sm text-slate-700 dark:text-slate-200 italic border-l-4 border-emerald-500 pl-3 py-1">
-            {article.subtitle}
-          </p>
-        )}
-
-        {/* BODY */}
-        <div className="text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line pt-2">
-          {article.body}
         </div>
 
         {/* FOOTER ACTIONS */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800 text-xs font-bold">
-          <div className="text-slate-500">
-            By {article.authorName || 'Journalist'} ({article.roleBadge || 'Reporter'})
+        <div className="bg-[#0e1e2d] border-t border-[#1a2e45] px-6 py-4 flex items-center justify-between text-xs font-bold shrink-0">
+          <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+            By <span className="text-white font-extrabold">{article.authorName || 'Journalist'}</span> ({article.roleBadge || 'Reporter'})
           </div>
 
           <div className="flex items-center gap-2">
@@ -117,7 +121,7 @@ export const ViewArticleModal: React.FC<ViewArticleModalProps> = ({
                   onClose();
                   onEdit(article);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 font-bold uppercase text-xs tracking-wider rounded-sm px-3.5 py-2 flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5" /> Edit
               </button>
@@ -129,7 +133,7 @@ export const ViewArticleModal: React.FC<ViewArticleModalProps> = ({
                   onClose();
                   onDelete(article.id);
                 }}
-                className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800/40 font-bold uppercase text-xs tracking-wider rounded-sm px-3.5 py-2 flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete Draft
               </button>

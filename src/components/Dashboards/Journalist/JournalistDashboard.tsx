@@ -73,9 +73,9 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     handleMarkNotificationRead,
   } = useJournalistDashboard();
 
-  const bgClass = darkMode ? 'bg-[#0B0F17] text-slate-100' : 'bg-[#F6F8FA] text-slate-900';
-  const cardBg = darkMode ? 'bg-[#141A24] border-slate-800' : 'bg-white border-[#D9E2EC] shadow-xs';
-  const hoverBg = darkMode ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50';
+  const bgClass = darkMode ? 'bg-[#081018] text-slate-100' : 'bg-[#f2f4f7] text-slate-900';
+  const cardBg = darkMode ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs';
+  const hoverBg = darkMode ? 'hover:bg-[#13263b]' : 'hover:bg-slate-50';
 
   const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
@@ -83,18 +83,20 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 pb-24 md:pb-12`}>
       {/* DATABASE LOADING OVERLAY */}
       {isLoadingData && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-3 shadow-2xl">
-            <div className="w-8 h-8 mx-auto border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-extrabold text-slate-200">Connecting to production Supabase database...</p>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="p-6 rounded-md bg-[#0e1c2b] border border-[#1a2e45] text-center space-y-3 shadow-2xl max-w-sm w-full">
+            <div className="w-8 h-8 mx-auto border-2 border-[#ff0046] border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-black uppercase tracking-wider text-white">Connecting to database...</p>
           </div>
         </div>
       )}
 
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 px-4 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black shadow-2xl flex items-center gap-2.5 animate-bounce border border-emerald-400/30">
-          <CheckCircle2 className="w-4 h-4" /> {toastMessage}
+        <div className="fixed top-20 right-6 z-50 px-4 py-3 bg-[#0e1e2d] border border-[#1a2e45] text-white shadow-xl rounded-md flex items-center gap-2.5 animate-bounce text-xs font-black uppercase tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-[#ff0046] shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
@@ -112,14 +114,14 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       {/* DATABASE ERROR BANNER WITH RETRY */}
       {loadError && (
         <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-xs font-bold text-rose-400">
+          <div className="p-3.5 rounded-sm bg-[#0e1c2b] border border-[#1a2e45] flex items-center justify-between gap-3 text-xs font-bold text-rose-400 shadow-xs">
             <span className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span>Database Query Notice: {loadError}</span>
+              <AlertTriangle className="w-4 h-4 text-[#ff0046] shrink-0" />
+              <span className="uppercase tracking-wider text-[11px]">Database Query Notice: {loadError}</span>
             </span>
             <button
               onClick={retryLoad}
-              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold cursor-pointer transition-colors flex items-center gap-1.5 shrink-0"
+              className="px-3 py-1.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 shadow-xs"
             >
               <RotateCw className="w-3.5 h-3.5" /> Retry DB Fetch
             </button>
@@ -131,21 +133,22 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* DESKTOP SIDEBAR NAVIGATION */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-20 space-y-4">
-          <div className={`p-4 rounded-3xl border ${cardBg} space-y-2 shadow-xs`}>
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-500">
-              Newsroom Navigation
+          <div className={`p-3.5 rounded-sm border ${cardBg} space-y-2 shadow-xs`}>
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#ff0046] flex items-center gap-1.5">
+              <span className="w-1.5 h-3 bg-[#ff0046] rounded-[0.5px]" />
+              <span>Newsroom Navigation</span>
             </div>
 
             <nav className="space-y-1 font-bold text-xs">
               {/* HOME */}
               <button
                 onClick={() => setActiveTab('home')}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm transition-all cursor-pointer text-xs uppercase tracking-wider ${
                   activeTab === 'home'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    ? 'bg-[#ff0046] text-white font-black shadow-xs'
                     : darkMode
-                    ? 'text-slate-300 hover:bg-slate-800'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'text-slate-400 hover:text-white hover:bg-[#152a40]/50 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold'
                 }`}
               >
                 <Home className="w-4 h-4" />
@@ -155,12 +158,12 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
               {/* ARTICLES */}
               <button
                 onClick={() => setActiveTab('articles')}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm transition-all cursor-pointer text-xs uppercase tracking-wider ${
                   activeTab === 'articles'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    ? 'bg-[#ff0046] text-white font-black shadow-xs'
                     : darkMode
-                    ? 'text-slate-300 hover:bg-slate-800'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'text-slate-400 hover:text-white hover:bg-[#152a40]/50 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -170,12 +173,12 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
               {/* ANALYTICS */}
               <button
                 onClick={() => setActiveTab('analytics')}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm transition-all cursor-pointer text-xs uppercase tracking-wider ${
                   activeTab === 'analytics'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/20'
+                    ? 'bg-[#ff0046] text-white font-black shadow-xs'
                     : darkMode
-                    ? 'text-slate-300 hover:bg-slate-800'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'text-slate-400 hover:text-white hover:bg-[#152a40]/50 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
@@ -185,19 +188,23 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
               {/* PROFILE */}
               <button
                 onClick={() => setIsProfileOpen(true)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
-                  darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm transition-all cursor-pointer text-xs uppercase tracking-wider ${
+                  darkMode
+                    ? 'text-slate-400 hover:text-white hover:bg-[#152a40]/50 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold'
                 }`}
               >
-                <User className="w-4 h-4 text-emerald-500" />
+                <User className="w-4 h-4 text-[#ff0046]" />
                 <span>Press Credentials</span>
               </button>
 
               {/* SETTINGS */}
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
-                  darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-sm transition-all cursor-pointer text-xs uppercase tracking-wider ${
+                  darkMode
+                    ? 'text-slate-400 hover:text-white hover:bg-[#152a40]/50 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold'
                 }`}
               >
                 <Settings className="w-4 h-4" />
@@ -251,51 +258,51 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       <button
         onClick={() => openComposeModal()}
         aria-label="Compose Article"
-        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 z-40 p-4 md:px-5 md:py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-2xl shadow-emerald-900/50 flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 border border-emerald-400/40"
+        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 z-40 p-3.5 md:px-5 md:py-3.5 rounded-full bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 border border-white/20"
         title="Compose Article"
       >
-        <Plus className="w-5 h-5 md:w-6 md:h-6" />
-        <span className="hidden md:inline font-extrabold tracking-tight">Compose</span>
+        <Plus className="w-5 h-5" />
+        <span className="hidden md:inline font-black tracking-wider">Compose Story</span>
       </button>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border-t border-slate-800 px-4 py-2 flex items-center justify-around text-slate-400">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0e1e2d] border-t border-[#1a2e45] px-4 py-2 flex items-center justify-around text-slate-400 select-none shadow-lg">
         <button
           onClick={() => setActiveTab('home')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeTab === 'home' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+            activeTab === 'home' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Home</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Home</span>
         </button>
 
         <button
           onClick={() => setActiveTab('articles')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeTab === 'articles' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+            activeTab === 'articles' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
           <FileText className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Articles</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Articles</span>
         </button>
 
         <button
           onClick={() => setActiveTab('analytics')}
           className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
-            activeTab === 'analytics' ? 'text-emerald-400 font-extrabold' : 'hover:text-slate-200'
+            activeTab === 'analytics' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
           <BarChart3 className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Analytics</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Analytics</span>
         </button>
 
         <button
           onClick={() => setIsProfileOpen(true)}
-          className="flex flex-col items-center gap-1 cursor-pointer hover:text-slate-200 transition-colors"
+          className="flex flex-col items-center gap-1 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors font-bold"
         >
           <User className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Profile</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Profile</span>
         </button>
       </div>
 
