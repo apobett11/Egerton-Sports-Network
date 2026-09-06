@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, MapPin, Clock, CloudSun, UserCheck, 
-  CheckCircle, XCircle, Trophy, AlertCircle 
+  CheckCircle, XCircle, Trophy, AlertTriangle, Save, Loader2 
 } from 'lucide-react';
 import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
-import type { Match } from '../../../../../types';
+import type { Match, MatchStatus } from '../../../../../types';
 
 interface MatchDetailsModalProps {
   match: Match;
   currentUserName: string;
+  activeRefereeId?: string;
+  isAssignedToMe?: boolean;
+  onSaveMatchDetails?: (
+    fixtureId: string,
+    updates: {
+      scheduledTime?: string;
+      time?: string;
+      scoreA?: number;
+      scoreB?: number;
+      status?: MatchStatus;
+      venue?: string;
+    }
+  ) => Promise<void>;
   onClose: () => void;
   onEndMatch: (match: Match) => void;
   onCancelMatch: (fixtureId: string) => Promise<void>;
@@ -18,19 +31,71 @@ interface MatchDetailsModalProps {
 export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
   match,
   currentUserName,
+  activeRefereeId,
+  isAssignedToMe,
+  onSaveMatchDetails,
   onClose,
   onEndMatch,
   onCancelMatch,
   onOpenWalkover,
 }) => {
-  const isFinished = match.status === 'FT';
-  const isCancelled = match.status === 'CANCELLED';
-  const isLive = match.status === 'LIVE' || match.status === 'HT';
+  // Check if this match is assigned to current referee UID
+  const assigned =
+    isAssignedToMe ??
+    Boolean(
+      activeRefereeId &&
+        (match.refereeId === activeRefereeId ||
+          match.assistantReferee1Id === activeRefereeId ||
+          match.assistantReferee2Id === activeRefereeId ||
+          match.fourthOfficialId === activeRefereeId ||
+          match.verifiedByRefereeId === activeRefereeId)
+    );
 
-  const goals = (match.events || []).filter((e) => e.type === 'goal' || e.type === 'penalty');
-  const yellowCards = (match.events || []).filter((e) => e.type === 'yellow');
-  const redCards = (match.events || []).filter((e) => e.type === 'red');
-  const injuries = (match.events || []).filter((e) => e.type === 'injury');
+  // Game Fill editable state (editable at any time by assigned referee)
+  const [kickoffTime, setKickoffTime] = useState<string>(() => {
+    if (match.time && match.time.includes(':')) {
+      const parts = match.time.split(':');
+      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+    }
+    if (match.scheduledTime) {
+      const d = new Date(match.scheduledTime);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    return '16:00';
+  });
+
+  const [scoreHome, setScoreHome] = useState<number>(match.scoreA ?? 0);
+  const [scoreAway, setScoreAway] = useState<number>(match.scoreB ?? 0);
+  const [matchStatus, setMatchStatus] = useState<MatchStatus>(match.status || 'UPCOMING');
+  const [venue, setVenue] = useState<string>(match.venue || 'Pitch A — Main Stadium Pitch');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const isFinished = matchStatus === 'FT';
+  const isCancelled = matchStatus === 'CANCELLED';
+  const isLive = matchStatus === 'LIVE' || matchStatus === 'HT';
+
+  const handleSaveGameFill = async () => {
+    if (!assigned) return;
+    if (!onSaveMatchDetails) return;
+    setIsSaving(true);
+    setSaveMessage(null);
+    try {
+      await onSaveMatchDetails(match.id, {
+        time: kickoffTime,
+        scoreA: scoreHome,
+        scoreB: scoreAway,
+        status: matchStatus,
+        venue,
+      });
+      setSaveMessage('Match updated and live on guest page!');
+      setTimeout(() => setSaveMessage(null), 3500);
+    } catch (err: any) {
+      setSaveMessage(`Error: ${err.message || 'Failed to save'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -43,7 +108,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
         );
       case 'FT':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-200 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-[#1a2e45] uppercase tracking-wider">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30 uppercase tracking-wider">
             Full Time
           </span>
         );
@@ -64,14 +129,14 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn select-none"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="match-modal-title"
     >
       <div
-        className="bg-white dark:bg-[#0e1e2d] border border-slate-200 dark:border-[#1a2e45] rounded-xl p-6 max-w-2xl w-full shadow-2xl space-y-6 text-slate-900 dark:text-slate-100 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#0e1e2d] border border-slate-200 dark:border-[#1a2e45] rounded-xl p-5 sm:p-6 max-w-2xl w-full shadow-2xl space-y-6 text-slate-900 dark:text-slate-100 max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -85,13 +150,13 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
                 {match.league || 'Egerton Premier League'} • Matchday {match.matchday || 1}
               </h3>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                Fixture Details & Officiating Controls
+                Official Game Fill & Match Center
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {renderStatusBadge(match.status)}
+            {renderStatusBadge(matchStatus)}
             <button
               type="button"
               onClick={onClose}
@@ -102,6 +167,14 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* ASSIGNMENT WARNING BANNER: If not assigned to this referee UID */}
+        {!assigned && (
+          <div className="p-3.5 bg-amber-500/15 border border-amber-500/40 rounded-md text-amber-500 text-xs font-black uppercase tracking-wider flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <span>You cannot confirm a match that is not assigned to you.</span>
+          </div>
+        )}
 
         {/* Scoreboard Block */}
         <div className="bg-slate-50 dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-md p-5 grid grid-cols-11 items-center gap-2 shadow-xs">
@@ -122,7 +195,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
 
           {/* Score / VS */}
           <div className="col-span-1 text-center font-mono font-black text-lg sm:text-xl text-[#ff0046]">
-            {isFinished || isLive || isCancelled ? `${match.scoreA} - ${match.scoreB}` : 'VS'}
+            {isFinished || isLive || isCancelled ? `${scoreHome} - ${scoreAway}` : 'VS'}
           </div>
 
           {/* Away */}
@@ -141,30 +214,143 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
           </div>
         </div>
 
-        {/* Match Attributes Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
-            <MapPin className="w-4 h-4 text-[#ff0046]" />
-            <div>
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">PITCH / VENUE</span>
-              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">{match.venue || 'Pavilion Main Pitch'}</strong>
+        {/* GAME FILL & ANY-TIME SAVE CONTROLS */}
+        <div className="bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md p-4 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1a2e45] pb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#ff0046]" />
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Game Fill: Update Match At Any Time
+              </h4>
+            </div>
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              Syncs Live to Frontend Guest Page
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 1. Kickoff Time */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-emerald-500" /> Kickoff Time (EAT)
+              </label>
+              <input
+                type="time"
+                value={kickoffTime}
+                disabled={!assigned || isSaving}
+                onChange={(e) => setKickoffTime(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-mono font-bold rounded-md bg-white dark:bg-[#0a1520] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white focus:border-[#ff0046] focus:outline-hidden disabled:opacity-50"
+              />
+            </div>
+
+            {/* 2. Match Status */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Match Status
+              </label>
+              <select
+                value={matchStatus}
+                disabled={!assigned || isSaving}
+                onChange={(e) => setMatchStatus(e.target.value as MatchStatus)}
+                className="w-full px-3 py-2 text-xs font-bold rounded-md bg-white dark:bg-[#0a1520] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white focus:border-[#ff0046] focus:outline-hidden disabled:opacity-50"
+              >
+                <option value="UPCOMING">UPCOMING</option>
+                <option value="LIVE">LIVE (In Progress)</option>
+                <option value="HT">HT (Half Time)</option>
+                <option value="FT">FT (Full Time)</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+
+            {/* 3. Venue */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-[#ff0046]" /> Venue
+              </label>
+              <input
+                type="text"
+                value={venue}
+                disabled={!assigned || isSaving}
+                onChange={(e) => setVenue(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold rounded-md bg-white dark:bg-[#0a1520] border border-slate-200 dark:border-[#223b56] text-slate-900 dark:text-white focus:border-[#ff0046] focus:outline-hidden disabled:opacity-50 truncate"
+              />
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
-            <Clock className="w-4 h-4 text-emerald-500" />
-            <div>
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">KICKOFF TIME</span>
-              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">{match.time || '16:00'}</strong>
+          {/* Score adjustments for live or manual referee score updates */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="p-2.5 rounded-md bg-white dark:bg-[#0a1520] border border-slate-200 dark:border-[#223b56] flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase truncate pr-2 text-slate-800 dark:text-slate-200">
+                {match.teamA.shortName || 'Home'} Score:
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!assigned || scoreHome <= 0 || isSaving}
+                  onClick={() => setScoreHome((prev) => Math.max(0, prev - 1))}
+                  className="w-6 h-6 rounded-sm bg-slate-100 dark:bg-[#152a40] text-slate-700 dark:text-white font-black text-xs hover:bg-[#ff0046] hover:text-white disabled:opacity-40 cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="font-mono font-black text-sm text-[#ff0046] w-6 text-center">{scoreHome}</span>
+                <button
+                  type="button"
+                  disabled={!assigned || isSaving}
+                  onClick={() => setScoreHome((prev) => prev + 1)}
+                  className="w-6 h-6 rounded-sm bg-slate-100 dark:bg-[#152a40] text-slate-700 dark:text-white font-black text-xs hover:bg-[#ff0046] hover:text-white disabled:opacity-40 cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-md bg-white dark:bg-[#0a1520] border border-slate-200 dark:border-[#223b56] flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase truncate pr-2 text-slate-800 dark:text-slate-200">
+                {match.teamB.shortName || 'Away'} Score:
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!assigned || scoreAway <= 0 || isSaving}
+                  onClick={() => setScoreAway((prev) => Math.max(0, prev - 1))}
+                  className="w-6 h-6 rounded-sm bg-slate-100 dark:bg-[#152a40] text-slate-700 dark:text-white font-black text-xs hover:bg-[#ff0046] hover:text-white disabled:opacity-40 cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="font-mono font-black text-sm text-[#ff0046] w-6 text-center">{scoreAway}</span>
+                <button
+                  type="button"
+                  disabled={!assigned || isSaving}
+                  onClick={() => setScoreAway((prev) => prev + 1)}
+                  className="w-6 h-6 rounded-sm bg-slate-100 dark:bg-[#152a40] text-slate-700 dark:text-white font-black text-xs hover:bg-[#ff0046] hover:text-white disabled:opacity-40 cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md flex items-center gap-2.5">
-            <CloudSun className="w-4 h-4 text-sky-400" />
-            <div>
-              <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">PITCH CONDITIONS</span>
-              <strong className="text-slate-800 dark:text-slate-200 uppercase tracking-tight font-black text-xs block">Good, Dry Turf</strong>
-            </div>
+          {/* Save Action Bar */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-[#1a2e45]">
+            {saveMessage ? (
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-500">
+                {saveMessage}
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-400 font-medium">
+                Save match details anytime. Changes broadcast instantly to guest users.
+              </span>
+            )}
+
+            <button
+              type="button"
+              disabled={!assigned || isSaving}
+              onClick={handleSaveGameFill}
+              className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-xs disabled:opacity-40 flex items-center gap-1.5"
+            >
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>Save Match Details</span>
+            </button>
           </div>
         </div>
 
@@ -206,52 +392,46 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
         {/* Action Controls for Referee (End Match, Cancel Match, Walkover) */}
         {!isFinished && !isCancelled && (
           <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-[#1a2e45]">
-            {match.scheduledTime && new Date(match.scheduledTime).toDateString() !== new Date().toDateString() && new Date(match.scheduledTime).getTime() > new Date().getTime() ? (
-              <div className="text-xs text-[#ff0046] font-black uppercase tracking-wider flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4" />
-                <span>Matchday not arrived — Match actions locked until scheduled date</span>
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
-                      onCancelMatch(match.id);
-                      onClose();
-                    }
-                  }}
-                  className="px-4 py-2.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <XCircle className="w-4 h-4" />
-                  <span>Cancel Match</span>
-                </button>
+            <button
+              type="button"
+              disabled={!assigned}
+              onClick={() => {
+                if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
+                  onCancelMatch(match.id);
+                  onClose();
+                }
+              }}
+              className="px-4 py-2.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <XCircle className="w-4 h-4" />
+              <span>Cancel Match</span>
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenWalkover(match);
-                  }}
-                  className="px-4 py-2.5 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-white border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                  <span>Award Walkover (3-0)</span>
-                </button>
+            <button
+              type="button"
+              disabled={!assigned}
+              onClick={() => {
+                onClose();
+                onOpenWalkover(match);
+              }}
+              className="px-4 py-2.5 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-white border border-slate-200 dark:border-white/10 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <span>Award Walkover (3-0)</span>
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onEndMatch(match);
-                  }}
-                  className="px-5 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>End Match Portal</span>
-                </button>
-              </>
-            )}
+            <button
+              type="button"
+              disabled={!assigned}
+              onClick={() => {
+                onClose();
+                onEndMatch(match);
+              }}
+              className="px-5 py-2.5 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>End Match Portal</span>
+            </button>
           </div>
         )}
 
@@ -259,3 +439,5 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
     </div>
   );
 };
+
+export default MatchDetailsModal;

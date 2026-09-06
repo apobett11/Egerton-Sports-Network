@@ -11,6 +11,7 @@ interface RefereeHomeOverviewProps {
   countdownStr: string;
   announcements: Announcement[];
   profileData: RefereeProfileData;
+  activeRefereeId?: string;
   onSelectMatch: (match: Match) => void;
   onEndMatch: (match: Match) => void;
   onCancelMatch: (fixtureId: string) => Promise<void>;
@@ -22,6 +23,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   nextMatch,
   countdownStr,
   profileData,
+  activeRefereeId,
   onSelectMatch,
   onEndMatch,
   onCancelMatch,
@@ -29,6 +31,15 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   setActiveTab,
 }) => {
   const stats = profileData.statistics;
+  const isAssignedToMe = Boolean(
+    !activeRefereeId ||
+      (nextMatch &&
+        (nextMatch.refereeId === activeRefereeId ||
+          nextMatch.assistantReferee1Id === activeRefereeId ||
+          nextMatch.assistantReferee2Id === activeRefereeId ||
+          nextMatch.fourthOfficialId === activeRefereeId ||
+          nextMatch.verifiedByRefereeId === activeRefereeId))
+  );
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -211,41 +222,48 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
               </button>
 
               {!isFinished && !isCancelled && (
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  {/* Cancel Match */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`Are you sure you want to cancel ${nextMatch.teamA.name} vs ${nextMatch.teamB.name}?`)) {
-                        onCancelMatch(nextMatch.id);
-                      }
-                    }}
-                    className="px-3 py-2 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Cancel Match</span>
-                  </button>
+                isAssignedToMe ? (
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Cancel Match */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to cancel ${nextMatch.teamA.name} vs ${nextMatch.teamB.name}?`)) {
+                          onCancelMatch(nextMatch.id);
+                        }
+                      }}
+                      className="px-3 py-2 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Cancel Match</span>
+                    </button>
 
-                  {/* Give Walkover */}
-                  <button
-                    type="button"
-                    onClick={() => onOpenWalkover(nextMatch)}
-                    className="px-3 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Walkover (3-0)</span>
-                  </button>
+                    {/* Give Walkover */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenWalkover(nextMatch)}
+                      className="px-3 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Trophy className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Walkover (3-0)</span>
+                    </button>
 
-                  {/* End Match */}
-                  <button
-                    type="button"
-                    onClick={() => onEndMatch(nextMatch)}
-                    className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>End Match</span>
-                  </button>
-                </div>
+                    {/* End Match */}
+                    <button
+                      type="button"
+                      onClick={() => onEndMatch(nextMatch)}
+                      className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>End Match</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-black text-amber-500 uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Not assigned to you • Confirm locked</span>
+                  </div>
+                )
               )}
             </div>
           </div>

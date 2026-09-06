@@ -14,31 +14,26 @@ import type {
   MatchdayScheduleGroup,
 } from '../types';
 
-export const canRefereeActOnMatch = (match: Match): { canAct: boolean; reason?: string } => {
-  if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
-  if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
-  if (match.status === 'LIVE' || match.status === 'HT') return { canAct: true };
-
-  if (!match.scheduledTime) return { canAct: true };
-
-  const matchDate = new Date(match.scheduledTime);
-  const now = new Date();
-
-  // If match date is today or past, action is permitted
-  const isToday = matchDate.toDateString() === now.toDateString();
-  const isPast = matchDate.getTime() <= now.getTime();
-
-  if (isToday || isPast) {
-    return { canAct: true };
+export const canRefereeActOnMatch = (match: Match, refereeUid?: string): { canAct: boolean; reason?: string } => {
+  if (refereeUid) {
+    const isAssigned =
+      match.refereeId === refereeUid ||
+      match.assistantReferee1Id === refereeUid ||
+      match.assistantReferee2Id === refereeUid ||
+      match.fourthOfficialId === refereeUid ||
+      match.verifiedByRefereeId === refereeUid;
+    if (!isAssigned) {
+      return { canAct: false, reason: 'You cannot confirm a match that is not assigned to you.' };
+    }
   }
 
-  // Future matchday that has not yet arrived
-  const diffDays = Math.ceil((matchDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  return {
-    canAct: false,
-    reason: `Matchday has not arrived (Scheduled in ${diffDays} ${diffDays === 1 ? 'day' : 'days'})`,
-  };
+  if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
+  if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
+
+  // Referees can update match at any time
+  return { canAct: true };
 };
+
 
 export const useRefereeDashboard = () => {
   const { user, profile } = useAuth();
@@ -48,6 +43,37 @@ export const useRefereeDashboard = () => {
     : (user?.user_metadata?.first_name
         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim()
         : 'Match Referee');
+
+  // Referee List & Active Official Resolution
+  const [refereesList, setRefereesList] = useState<any[]>([]);
+  const [activeRefereeId, setActiveRefereeIdState] = useState<string>(() => {
+    return localStorage.getItem('esn_active_referee_id') || '';
+  });
+
+  const setActiveRefereeId = useCallback((id: string) => {
+    setActiveRefereeIdState(id);
+    localStorage.setItem('esn_active_referee_id', id);
+  }, []);
+
+  const activeReferee = useMemo(() => {
+    if (!refereesList.length) return null;
+    if (activeRefereeId) {
+      const found = refereesList.find((r) => r.id === activeRefereeId);
+      if (found) return found;
+    }
+    // Match by currentUserId or email
+    if (currentUserId) {
+      const found = refereesList.find((r) => r.id === currentUserId || (r.email && user?.email && r.email.toLowerCase() === user.email.toLowerCase()));
+      if (found) return found;
+    }
+    return refereesList[0] || null;
+  }, [refereesList, activeRefereeId, currentUserId, user?.email]);
+
+  const effectiveRefereeId = activeReferee?.id || currentUserId;
+  const effectiveRefereeName = activeReferee?.name || currentUserName;
+
+  // Unavailable switch: Inactive in database means Unavailable
+  const isUnavailable = activeReferee?.status === 'Inactive';
 
   const [activeTab, setActiveTab] = useState<RefereeTab>('overview');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
@@ -71,10 +97,35 @@ export const useRefereeDashboard = () => {
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
   const [selectedMatchdayGroup, setSelectedMatchdayGroup] = useState<MatchdayScheduleGroup | null>(null);
 
+  // Helper to check if a match is assigned to the current referee UID
+  const isAssignedToMe = useCallback(
+    (match: Match | null | undefined, refId: string = effectiveRefereeId): boolean => {
+      if (!match || !refId) return false;
+      return (
+        match.refereeId === refId ||
+        match.assistantReferee1Id === refId ||
+        match.assistantReferee2Id === refId ||
+        match.fourthOfficialId === refId ||
+        match.verifiedByRefereeId === refId
+      );
+    },
+    [effectiveRefereeId]
+  );
+
   // Load Assigned Fixtures Scoped by Referee UID from Database
   const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 0. Fetch all registered referees for assignment verification and pool management
+      const { data: dbRefs } = await supabase
+        .from('referees')
+        .select('*')
+        .is('deleted_at', null)
+        .order('name');
+      if (dbRefs && dbRefs.length > 0) {
+        setRefereesList(dbRefs);
+      }
+
       // 1. Direct Supabase query with all linesmen and profile relations
       const query = supabase
         .from('fixtures')
@@ -166,21 +217,19 @@ export const useRefereeDashboard = () => {
         formattedMatches = res.data || [];
       }
 
-      // Filter matches assigned to this referee UID
+      // Filter matches assigned strictly to this referee UID
       let myMatches = formattedMatches;
-      if (currentUserId) {
+      if (effectiveRefereeId) {
         const scoped = formattedMatches.filter((m: any) => {
           return (
-            m.refereeId === currentUserId ||
-            m.verifiedByRefereeId === currentUserId ||
-            m.assistantReferee1Id === currentUserId ||
-            m.assistantReferee2Id === currentUserId ||
-            m.fourthOfficialId === currentUserId
+            m.refereeId === effectiveRefereeId ||
+            m.verifiedByRefereeId === effectiveRefereeId ||
+            m.assistantReferee1Id === effectiveRefereeId ||
+            m.assistantReferee2Id === effectiveRefereeId ||
+            m.fourthOfficialId === effectiveRefereeId
           );
         });
-        if (scoped.length > 0) {
-          myMatches = scoped;
-        }
+        myMatches = scoped;
       }
 
       // Sort all matches chronologically by scheduled time
@@ -219,7 +268,7 @@ export const useRefereeDashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUserId, currentUserName, selectedFixtureId]);
+  }, [effectiveRefereeId, effectiveRefereeName, selectedFixtureId]);
 
   useEffect(() => {
     loadDashboardData();
@@ -260,6 +309,29 @@ export const useRefereeDashboard = () => {
     return activeUpcoming[0] || null;
   }, [fixtures]);
 
+  // Helper to test if a match is scheduled on a weekend (Saturday or Sunday)
+  const isWeekendMatch = useCallback((match: Match): boolean => {
+    if (match.scheduledTime) {
+      const d = new Date(match.scheduledTime);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDay(); // 0 = Sunday, 6 = Saturday
+        return day === 0 || day === 6;
+      }
+    }
+    return false;
+  }, []);
+
+  // "My Next Matches" - weekend only matches assigned to this referee UID
+  const myNextMatches = useMemo(() => {
+    return fixtures
+      .filter((m) => isAssignedToMe(m, effectiveRefereeId) && isWeekendMatch(m))
+      .sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
+      });
+  }, [fixtures, effectiveRefereeId, isAssignedToMe, isWeekendMatch]);
+
   // Today's matches (filtered strictly by current date / selected date)
   const todayMatches = useMemo(() => {
     const now = new Date();
@@ -269,7 +341,7 @@ export const useRefereeDashboard = () => {
     const targetDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : todayStr;
     const targetDateLocaleStr = selectedDate ? selectedDate.toDateString() : todayLocaleStr;
 
-    return fixtures.filter((f: any) => {
+    const filtered = fixtures.filter((f: any) => {
       if (f.scheduledTime) {
         return f.scheduledTime.startsWith(targetDateStr);
       }
@@ -282,7 +354,9 @@ export const useRefereeDashboard = () => {
       const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
       return timeA - timeB;
     });
-  }, [fixtures, selectedDate]);
+
+    return filtered.length > 0 ? filtered : myNextMatches;
+  }, [fixtures, selectedDate, myNextMatches]);
 
   // Matchdays groups for the "My Matches" page
   const matchdayGroups = useMemo<MatchdayScheduleGroup[]>(() => {
@@ -535,12 +609,18 @@ export const useRefereeDashboard = () => {
 
   // Cancel Match Action (sets status = CANCELLED in DB)
   const cancelMatch = async (fixtureId: string) => {
+    const targetMatch = fixtures.find((f) => f.id === fixtureId);
+    if (targetMatch && !isAssignedToMe(targetMatch, effectiveRefereeId)) {
+      setAuthError('You cannot confirm or cancel a match that is not assigned to you.');
+      return;
+    }
+
     setIsSubmitting(true);
     setAuthError(null);
     try {
       await matchLiveEngine.refereeCancelMatch({
         match_uid: fixtureId,
-        referee_uid: currentUserId,
+        referee_uid: effectiveRefereeId,
         idempotency_key: crypto.randomUUID(),
       }).catch((engineErr) => {
         console.warn('Algorithm 1 cancel note:', engineErr);
@@ -571,12 +651,17 @@ export const useRefereeDashboard = () => {
 
   // Award Walkover Action (3-0 to selected team)
   const awardWalkover = async (fixtureId: string, winningTeamTarget: 'home' | 'away') => {
+    const targetMatch = fixtures.find((f) => f.id === fixtureId);
+    if (targetMatch && !isAssignedToMe(targetMatch, effectiveRefereeId)) {
+      setAuthError('You cannot confirm a match that is not assigned to you.');
+      return;
+    }
+
     setIsSubmitting(true);
     setAuthError(null);
 
     const scoreHome = winningTeamTarget === 'home' ? 3 : 0;
     const scoreAway = winningTeamTarget === 'away' ? 3 : 0;
-    const targetMatch = fixtures.find((f) => f.id === fixtureId);
     const winningTeamUid = winningTeamTarget === 'home'
       ? (targetMatch?.teamA.id || '')
       : (targetMatch?.teamB.id || '');
@@ -584,7 +669,7 @@ export const useRefereeDashboard = () => {
     try {
       await matchLiveEngine.refereeDeclareWalkover({
         match_uid: fixtureId,
-        referee_uid: currentUserId,
+        referee_uid: effectiveRefereeId,
         winning_team_uid: winningTeamUid,
         idempotency_key: crypto.randomUUID(),
       }).catch((engineErr) => {
@@ -652,6 +737,10 @@ export const useRefereeDashboard = () => {
     injuries: InjuryEntry[];
   }) => {
     if (!selectedFixture) return;
+    if (!isAssignedToMe(selectedFixture, effectiveRefereeId)) {
+      setAuthError('You cannot confirm a match that is not assigned to you.');
+      return;
+    }
     setIsSubmitting(true);
     setAuthError(null);
 
@@ -692,7 +781,7 @@ export const useRefereeDashboard = () => {
     try {
       const result = await ApiService.verifyOfficialMatchResult({
         fixtureId: selectedFixture.id,
-        refereeId: currentUserId,
+        refereeId: effectiveRefereeId,
         scoreHome: reportData.scoreHome,
         scoreAway: reportData.scoreAway,
         status: reportData.matchState,
@@ -717,6 +806,124 @@ export const useRefereeDashboard = () => {
     }
   };
 
+  // Immediate toggle of Referee Availability (Active <-> Inactive in database)
+  const toggleAvailability = async (setUnavailable: boolean) => {
+    if (!effectiveRefereeId) return;
+    setIsSubmitting(true);
+    setAuthError(null);
+    try {
+      const newStatus = setUnavailable ? 'Inactive' : 'Active';
+      const { error } = await supabase
+        .from('referees')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', effectiveRefereeId);
+
+      if (error) throw error;
+
+      setRefereesList((prev) =>
+        prev.map((r) => (r.id === effectiveRefereeId ? { ...r, status: newStatus } : r))
+      );
+
+      setSuccessMsg(
+        setUnavailable
+          ? "Status updated to Unavailable. You will not be included in the next game's match allocation."
+          : "Status updated to Available. You will now be allocated into the next game's match allocation."
+      );
+      setTimeout(() => setSuccessMsg(null), 4500);
+      await loadDashboardData();
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to update referee availability status.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Game Fill: Referee updates match details (Kickoff Time, Scores, Status) at ANY time
+  const handleSaveMatchDetails = async (
+    fixtureId: string,
+    updates: {
+      scheduledTime?: string;
+      time?: string;
+      scoreA?: number;
+      scoreB?: number;
+      status?: MatchStatus;
+      venue?: string;
+    }
+  ) => {
+    setIsSubmitting(true);
+    setAuthError(null);
+    try {
+      const target = fixtures.find((f) => f.id === fixtureId);
+      if (!target) throw new Error('Match not found.');
+
+      if (!isAssignedToMe(target, effectiveRefereeId)) {
+        throw new Error('You cannot confirm or edit a match that is not assigned to you.');
+      }
+
+      let isoScheduledTime = updates.scheduledTime;
+      if (!isoScheduledTime && updates.time && target.scheduledTime) {
+        const baseDate = new Date(target.scheduledTime);
+        const [h, m] = updates.time.split(':');
+        baseDate.setHours(parseInt(h, 10) || 0, parseInt(m, 10) || 0, 0, 0);
+        isoScheduledTime = baseDate.toISOString();
+      }
+
+      const payload: any = {
+        updated_at: new Date().toISOString(),
+      };
+      if (isoScheduledTime) payload.scheduled_time = isoScheduledTime;
+      if (typeof updates.scoreA === 'number') payload.score_home = updates.scoreA;
+      if (typeof updates.scoreB === 'number') payload.score_away = updates.scoreB;
+      if (updates.status) payload.status = updates.status;
+      if (updates.venue) payload.venue = updates.venue;
+
+      const { error: fixErr } = await supabase
+        .from('fixtures')
+        .update(payload)
+        .eq('id', fixtureId);
+
+      if (fixErr) throw fixErr;
+
+      // Update matchday_schedules if start time was modified
+      if (updates.time) {
+        await supabase
+          .from('matchday_schedules')
+          .update({
+            start_time: updates.time,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('fixture_id', fixtureId);
+      }
+
+      setFixtures((prev) =>
+        prev.map((f) => {
+          if (f.id !== fixtureId) return f;
+          return {
+            ...f,
+            scheduledTime: isoScheduledTime || f.scheduledTime,
+            time: updates.time || f.time,
+            scoreA: typeof updates.scoreA === 'number' ? updates.scoreA : f.scoreA,
+            scoreB: typeof updates.scoreB === 'number' ? updates.scoreB : f.scoreB,
+            status: updates.status || f.status,
+            venue: updates.venue || f.venue,
+          };
+        })
+      );
+
+      setSuccessMsg('Match details updated successfully! Live time and scores reflected at frontend guest page.');
+      setTimeout(() => setSuccessMsg(null), 4000);
+      await loadDashboardData();
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to update match details.');
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Create Announcement
   const createAnnouncement = async (title: string, content: string, targetRole: string = 'all') => {
     setIsSubmitting(true);
@@ -725,7 +932,7 @@ export const useRefereeDashboard = () => {
         title: title.trim(),
         content: content.trim(),
         target_role: targetRole,
-        author_id: currentUserId,
+        author_id: effectiveRefereeId,
       };
 
       const res = await ApiService.createAnnouncement(newAnc);
@@ -748,8 +955,16 @@ export const useRefereeDashboard = () => {
   };
 
   return {
-    currentUserId,
-    currentUserName,
+    currentUserId: effectiveRefereeId,
+    currentUserName: effectiveRefereeName,
+    activeRefereeId: effectiveRefereeId,
+    setActiveRefereeId,
+    activeReferee,
+    refereesList,
+    isUnavailable,
+    toggleAvailability,
+    handleSaveMatchDetails,
+    isAssignedToMe,
     activeTab,
     setActiveTab,
     selectedDate,
@@ -757,6 +972,7 @@ export const useRefereeDashboard = () => {
     fixtures,
     nextMatch,
     todayMatches,
+    myNextMatches,
     matchdayGroups,
     matchesByMonth,
     announcements,

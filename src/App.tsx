@@ -489,11 +489,9 @@ export const AppContent: React.FC = () => {
 
   if (route === 'journalist') {
     return (
-      <ProtectedRoute allowedRoles={['journalist', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <JournalistDashboard onLogout={() => handleNavigateHash('/home')} />
-        </Suspense>
-      </ProtectedRoute>
+      <Suspense fallback={<DashboardLoader />}>
+        <JournalistDashboard onLogout={() => handleNavigateHash('/home')} />
+      </Suspense>
     );
   }
 
@@ -523,11 +521,9 @@ export const AppContent: React.FC = () => {
 
   if (route === 'referee' || route === 'dashboard/referee') {
     return (
-      <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
-        </Suspense>
-      </ProtectedRoute>
+      <Suspense fallback={<DashboardLoader />}>
+        <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
+      </Suspense>
     );
   }
 

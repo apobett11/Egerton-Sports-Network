@@ -15,7 +15,15 @@ import type { Match } from '../../../types';
 
 export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const {
+    currentUserId,
     currentUserName,
+    activeRefereeId,
+    setActiveRefereeId,
+    refereesList,
+    isUnavailable,
+    toggleAvailability,
+    handleSaveMatchDetails,
+    isAssignedToMe,
     activeTab,
     setActiveTab,
     selectedDate,
@@ -23,6 +31,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     fixtures,
     nextMatch,
     todayMatches,
+    myNextMatches,
     matchdayGroups,
     matchesByMonth,
     announcements,
@@ -63,6 +72,11 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
       {/* 1. GUEST-STYLED TOP NAVIGATION */}
       <RefereeHeader
         currentUserName={currentUserName}
+        activeRefereeId={activeRefereeId}
+        refereesList={refereesList}
+        onSelectRefereeId={setActiveRefereeId}
+        isUnavailable={isUnavailable}
+        onToggleAvailability={toggleAvailability}
         authError={authError}
         successMsg={successMsg}
         selectedDate={selectedDate}
@@ -86,6 +100,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             countdownStr={countdownStr}
             announcements={announcements}
             profileData={profileData}
+            activeRefereeId={activeRefereeId}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
             onCancelMatch={cancelMatch}
@@ -94,10 +109,11 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           />
         )}
 
-        {/* TAB 2: MY MATCHES (TODAY'S MATCHES + MATCHDAY SCHEDULES & POPUP) */}
+        {/* TAB 2: MY MATCHES (WEEKEND MATCHES + SCHEDULES & POPUP) */}
         {activeTab === 'matches' && (
           <MyMatchesView
             todayMatches={todayMatches}
+            myNextMatches={myNextMatches}
             matchdayGroups={matchdayGroups}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
@@ -155,6 +171,9 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         <MatchDetailsModal
           match={inspectedMatch}
           currentUserName={currentUserName}
+          activeRefereeId={activeRefereeId}
+          isAssignedToMe={isAssignedToMe(inspectedMatch, activeRefereeId)}
+          onSaveMatchDetails={handleSaveMatchDetails}
           onClose={() => setInspectedMatch(null)}
           onEndMatch={handleLaunchEndMatch}
           onCancelMatch={cancelMatch}

@@ -4,9 +4,15 @@ import {
   ShieldCheck, AlertTriangle, CheckCircle2, Trophy, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../../../../contexts/AuthContext';
+import { AvailabilityConfirmModal } from './AvailabilityConfirmModal';
 
 interface RefereeHeaderProps {
   currentUserName: string;
+  activeRefereeId?: string;
+  refereesList?: any[];
+  onSelectRefereeId?: (id: string) => void;
+  isUnavailable: boolean;
+  onToggleAvailability: (setUnavailable: boolean) => Promise<void> | void;
   authError: string | null;
   successMsg: string | null;
   selectedDate: Date;
@@ -16,6 +22,11 @@ interface RefereeHeaderProps {
 
 export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
   currentUserName,
+  activeRefereeId,
+  refereesList,
+  onSelectRefereeId,
+  isUnavailable,
+  onToggleAvailability,
   authError,
   successMsg,
   selectedDate,
@@ -26,6 +37,8 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return document.documentElement.classList.contains('dark') || true;
   });
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState<boolean>(false);
 
   const toggleDarkMode = () => {
     const next = !isDarkMode;
@@ -70,10 +83,20 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
     }
   };
 
+  const handleConfirmToggle = async () => {
+    setIsUpdatingAvailability(true);
+    try {
+      await onToggleAvailability(!isUnavailable);
+      setIsConfirmModalOpen(false);
+    } finally {
+      setIsUpdatingAvailability(false);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full select-none bg-white dark:bg-[#0e1e2d] text-slate-800 dark:text-slate-100 border-b border-[#e6e8ec] dark:border-[#1a2e45] shadow-md transition-colors duration-200">
       {/* Row 1: Flashscore Style Brand & Header Controls */}
-      <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto gap-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
             <div className="flex items-center gap-0.5">
@@ -92,13 +115,61 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
         </div>
 
         {/* Right side controls styled like guest page */}
-        <div className="flex items-center gap-2">
-          {/* Official Role Pill */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{currentUserName}</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* TOP RIGHT UNAVAILABLE SWITCH (Green when unavailable, Red when not) */}
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
+            <span
+              className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
+                isUnavailable ? 'text-[#00b04f]' : 'text-[#ff0046]'
+              }`}
+            >
+              {isUnavailable ? 'Unavailable' : 'Available'}
+            </span>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isUnavailable}
+              onClick={() => setIsConfirmModalOpen(true)}
+              className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                isUnavailable ? 'bg-[#00b04f]' : 'bg-[#ff0046]'
+              }`}
+              title={
+                isUnavailable
+                  ? 'Status: Unavailable (Green). Click to set Available.'
+                  : 'Status: Available (Red). Click to set Unavailable.'
+              }
+            >
+              <span className="sr-only">Toggle Referee Availability</span>
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  isUnavailable ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
+
+          {/* Official Role Pill or Referee Switcher */}
+          {refereesList && refereesList.length > 1 && onSelectRefereeId ? (
+            <select
+              value={activeRefereeId}
+              onChange={(e) => onSelectRefereeId(e.target.value)}
+              className="hidden md:inline-block px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider cursor-pointer focus:outline-hidden focus:border-[#ff0046]"
+              title="Switch Official Profile"
+            >
+              {refereesList.map((r) => (
+                <option key={r.id} value={r.id} className="bg-white dark:bg-[#0e1e2d] text-slate-900 dark:text-white">
+                  {r.name} {r.status === 'Inactive' ? '• [Unavailable]' : '• [Available]'}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{currentUserName}</span>
+            </div>
+          )}
 
           {/* Theme Toggle */}
           <button
@@ -126,6 +197,15 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Availability Confirmation Modal with required prompt messages */}
+      <AvailabilityConfirmModal
+        isOpen={isConfirmModalOpen}
+        isCurrentlyUnavailable={isUnavailable}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmToggle}
+        isSubmitting={isUpdatingAvailability}
+      />
 
       {/* Row 2: Ecosystem Continuity Banner */}
       <div className="border-t border-b border-[#e6e8ec] dark:border-[#1a2e45] bg-slate-50 dark:bg-[#0e1c2b] transition-colors duration-200">
