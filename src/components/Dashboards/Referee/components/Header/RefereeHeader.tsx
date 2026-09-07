@@ -1,44 +1,32 @@
 import React, { useState } from 'react';
 import { 
-  Sun, Moon, ChevronLeft, ChevronRight, 
-  ShieldCheck, AlertTriangle, CheckCircle2, Trophy, LogOut
+  Sun, Moon, ShieldCheck, AlertTriangle, CheckCircle2, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../../../../contexts/AuthContext';
-import { AvailabilityConfirmModal } from './AvailabilityConfirmModal';
 
 interface RefereeHeaderProps {
   currentUserName: string;
   activeRefereeId?: string;
   refereesList?: any[];
   onSelectRefereeId?: (id: string) => void;
-  isUnavailable: boolean;
-  onToggleAvailability: (setUnavailable: boolean) => Promise<void> | void;
-  authError: string | null;
-  successMsg: string | null;
-  selectedDate: Date;
-  setSelectedDate: (date: Date) => void;
+  isUnavailable?: boolean;
+  onToggleAvailability?: (setUnavailable: boolean) => Promise<void> | void;
+  authError?: string | null;
+  successMsg?: string | null;
+  selectedDate?: Date;
+  setSelectedDate?: (date: Date) => void;
   onLogout?: () => void;
 }
 
 export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
-  currentUserName,
-  activeRefereeId,
-  refereesList,
-  onSelectRefereeId,
-  isUnavailable,
-  onToggleAvailability,
   authError,
   successMsg,
-  selectedDate,
-  setSelectedDate,
   onLogout,
 }) => {
   const { logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return document.documentElement.classList.contains('dark') || true;
   });
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
-  const [isUpdatingAvailability, setIsUpdatingAvailability] = useState<boolean>(false);
 
   const toggleDarkMode = () => {
     const next = !isDarkMode;
@@ -50,46 +38,12 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
     }
   };
 
-  const formatDateLabel = (date: Date) => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else {
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    }
-  };
-
-  const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + days);
-    setSelectedDate(newDate);
-  };
-
   const handleSignOut = () => {
     if (onLogout) {
       onLogout();
     } else {
       logout();
       window.location.hash = '/home';
-    }
-  };
-
-  const handleConfirmToggle = async () => {
-    setIsUpdatingAvailability(true);
-    try {
-      await onToggleAvailability(!isUnavailable);
-      setIsConfirmModalOpen(false);
-    } finally {
-      setIsUpdatingAvailability(false);
     }
   };
 
@@ -108,7 +62,7 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
                 ESN REFEREE
               </span>
               <span className="text-[8.5px] font-black tracking-widest uppercase text-slate-400 mt-0.5">
-                OFFICIAL MATCH CENTER
+                REFEREES DASHBOARD
               </span>
             </div>
           </div>
@@ -116,44 +70,11 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
 
         {/* Right side controls styled like guest page */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* TOP RIGHT UNAVAILABLE SWITCH (Green when unavailable, Red when not) */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
-            <span
-              className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
-                isUnavailable ? 'text-[#00b04f]' : 'text-[#ff0046]'
-              }`}
-            >
-              {isUnavailable ? 'Unavailable' : 'Available'}
-            </span>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isUnavailable}
-              onClick={() => setIsConfirmModalOpen(true)}
-              className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                isUnavailable ? 'bg-[#00b04f]' : 'bg-[#ff0046]'
-              }`}
-              title={
-                isUnavailable
-                  ? 'Status: Unavailable (Green). Click to set Available.'
-                  : 'Status: Available (Red). Click to set Unavailable.'
-              }
-            >
-              <span className="sr-only">Toggle Referee Availability</span>
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  isUnavailable ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
           {/* Unified Match Officials Badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Unified Match Officials</span>
+            <span>Referees Dashboard</span>
           </div>
 
           {/* Theme Toggle */}
@@ -180,78 +101,6 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Logout</span>
           </button>
-        </div>
-      </div>
-
-      {/* Availability Confirmation Modal with required prompt messages */}
-      <AvailabilityConfirmModal
-        isOpen={isConfirmModalOpen}
-        isCurrentlyUnavailable={isUnavailable}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={handleConfirmToggle}
-        isSubmitting={isUpdatingAvailability}
-      />
-
-      {/* Row 2: Ecosystem Continuity Banner */}
-      <div className="border-t border-b border-[#e6e8ec] dark:border-[#1a2e45] bg-slate-50 dark:bg-[#0e1c2b] transition-colors duration-200">
-        <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar px-4 py-2 max-w-7xl mx-auto text-xs">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-sm bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/30">
-              <Trophy className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight text-[11px] sm:text-xs">
-              Official Match Control • Egerton Premier League & Championships
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-sm border border-emerald-500/30">
-              Assigned Official
-            </span>
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-slate-200/60 dark:bg-[#152a40] px-2.5 py-0.5 rounded-sm border border-slate-300/60 dark:border-[#1a2e45] font-mono">
-              FKF Accredited
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 3: Date Navigator Strip */}
-      <div className="border-b border-[#e6e8ec] dark:border-[#1a2e45] bg-white dark:bg-[#0e1e2d] transition-colors duration-200">
-        <div className="flex items-center justify-between px-4 py-2 max-w-7xl mx-auto">
-          <button
-            type="button"
-            onClick={() => changeDate(-1)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-white/10 transition-colors cursor-pointer group"
-            title="Previous Day"
-          >
-            <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
-            <span className="hidden sm:inline">Previous Day</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#ff0046] flex items-center gap-2 font-sans">
-              {formatDateLabel(selectedDate)}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedDate(new Date())}
-              className="px-3 py-1.5 rounded-md bg-[#ff0046]/10 hover:bg-[#ff0046]/20 border border-[#ff0046]/30 text-[#ff0046] text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => changeDate(1)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider border border-slate-200 dark:border-white/10 transition-colors cursor-pointer group"
-              title="Next Day"
-            >
-              <span className="hidden sm:inline">Next Day</span>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
-            </button>
-          </div>
         </div>
       </div>
 

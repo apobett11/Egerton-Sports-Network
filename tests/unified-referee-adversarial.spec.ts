@@ -220,7 +220,7 @@ test.describe('UNIFIED REFEREE DASHBOARD & MATCH END ADVERSARIAL AUDIT', () => {
     await expect(refereeHeader).toBeVisible({ timeout: 20000 });
 
     // Verify 3-event rolling queue or today's matches section is present
-    const overviewSection = page.locator('text=Official Match Center').or(page.locator("text=Today's Matches")).first();
+    const overviewSection = page.locator('text=REFEREES DASHBOARD').or(page.locator("text=Today's Matches")).first();
     await expect(overviewSection).toBeVisible({ timeout: 10000 });
 
     console.log('✓ Audit 5 PASS: Referee Dashboard shows unified header and official match center.');

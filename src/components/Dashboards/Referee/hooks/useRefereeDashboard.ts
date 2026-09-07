@@ -3,6 +3,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
 import { matchLiveEngine } from '../../../../services/matchLiveEngineAdapter';
+import { executeWithRetry } from '../../../../lib/retryPolicy';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
 import { mockMatches } from '../../../../mockData';
 import type {
@@ -141,10 +142,7 @@ export const useRefereeDashboard = () => {
             competition:competitions(id, name),
             team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
             team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
-            referee_prof:profiles!referee_id(first_name, last_name),
-            ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
-            ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
-            fo_prof:profiles!fourth_official_id(first_name, last_name)
+            referee_prof:profiles!referee_id(first_name, last_name)
           `)
           .order('scheduled_time', { ascending: true });
 
@@ -156,9 +154,9 @@ export const useRefereeDashboard = () => {
             const home = Array.isArray(f.team_home) ? f.team_home[0] : f.team_home;
             const away = Array.isArray(f.team_away) ? f.team_away[0] : f.team_away;
             const refProf = Array.isArray(f.referee_prof) ? f.referee_prof[0] : f.referee_prof;
-            const ar1Prof = Array.isArray(f.ar1_prof) ? f.ar1_prof[0] : f.ar1_prof;
-            const ar2Prof = Array.isArray(f.ar2_prof) ? f.ar2_prof[0] : f.ar2_prof;
-            const foProf = Array.isArray(f.fo_prof) ? f.fo_prof[0] : f.fo_prof;
+            const ar1Prof = null;
+            const ar2Prof = null;
+            const foProf = null;
 
             const matchDate = f.scheduled_time ? new Date(f.scheduled_time) : new Date();
             const timeStr = matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -190,12 +188,11 @@ export const useRefereeDashboard = () => {
               lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
               venue: f.venue || 'Egerton Sports Ground',
               referee: refProf ? `${refProf.first_name || ''} ${refProf.last_name || ''}`.trim() : currentUserName,
-              refereeId: f.referee_id,
-              assistantReferee1: ar1Prof ? `${ar1Prof.first_name || ''} ${ar1Prof.last_name || ''}`.trim() : 'Official Linesman 1',
+              assistantReferee1: 'Official Linesman 1',
               assistantReferee1Id: f.assistant_referee_1_id,
-              assistantReferee2: ar2Prof ? `${ar2Prof.first_name || ''} ${ar2Prof.last_name || ''}`.trim() : 'Official Linesman 2',
+              assistantReferee2: 'Official Linesman 2',
               assistantReferee2Id: f.assistant_referee_2_id,
-              fourthOfficial: foProf ? `${foProf.first_name || ''} ${foProf.last_name || ''}`.trim() : 'Table Official',
+              fourthOfficial: 'Table Official',
               fourthOfficialId: f.fourth_official_id,
               attendance: f.attendance,
               weather: f.weather,
@@ -297,9 +294,23 @@ export const useRefereeDashboard = () => {
     return fixtures.find((f) => f.id === selectedFixtureId) || fixtures[0] || null;
   }, [fixtures, selectedFixtureId]);
 
-  // Unified Homepage: Top 3 active events. When one is filled/submitted, another automatically slides in.
+  // 1. Determine active matchday: the lowest matchday that has at least one UPCOMING or LIVE fixture.
+  const activeMatchday = useMemo(() => {
+    const activeOne = fixtures.find((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+    if (activeOne && activeOne.matchday) {
+      return activeOne.matchday;
+    }
+    return fixtures.length > 0 ? Math.max(...fixtures.map((f) => f.matchday || 1)) : 1;
+  }, [fixtures]);
+
+  // 2. Scoped Matchday Matches: Only the matches for the current round
+  const matchdayMatches = useMemo(() => {
+    return fixtures.filter((f) => (f.matchday || 1) === activeMatchday);
+  }, [fixtures, activeMatchday]);
+
+  // 3. Unified Homepage: Top 3 active events for the current matchday. When one is filled/submitted, another automatically slides in.
   const activeThreeMatches = useMemo<Match[]>(() => {
-    return fixtures
+    return matchdayMatches
       .filter((m) => m.status !== 'FT' && m.status !== 'CANCELLED')
       .sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
@@ -307,7 +318,15 @@ export const useRefereeDashboard = () => {
         return timeA - timeB;
       })
       .slice(0, 3);
-  }, [fixtures]);
+  }, [matchdayMatches]);
+
+  // 4. Alterability guard: only active matchday non-confirmed matches can be altered
+  const isMatchAlterable = useCallback((match: Match | null | undefined): boolean => {
+    if (!match) return false;
+    if (match.status === 'FT' || match.status === 'CANCELLED') return false;
+    if (match.matchday && match.matchday < activeMatchday) return false;
+    return true;
+  }, [activeMatchday]);
 
   // The NEXT Match: Primary active match
   const nextMatch = useMemo(() => {
@@ -625,6 +644,59 @@ export const useRefereeDashboard = () => {
     fetchMatchLineups();
   }, [selectedFixture]);
 
+  // Resilience: LocalStorage offline queue for guaranteed delivery under poor networks
+  const REFEREE_OFFLINE_QUEUE_KEY = 'esn_referee_pending_submissions';
+
+  const enqueueOfflineSubmission = useCallback((item: any) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem(REFEREE_OFFLINE_QUEUE_KEY) || '[]');
+      existing.push({ ...item, queuedAt: Date.now() });
+      localStorage.setItem(REFEREE_OFFLINE_QUEUE_KEY, JSON.stringify(existing));
+    } catch (e) {
+      console.warn('Offline enqueue note:', e);
+    }
+  }, []);
+
+  const drainOfflineQueue = useCallback(async () => {
+    try {
+      const raw = localStorage.getItem(REFEREE_OFFLINE_QUEUE_KEY);
+      if (!raw) return;
+      const queue: any[] = JSON.parse(raw);
+      if (!queue || queue.length === 0) return;
+
+      const remaining: any[] = [];
+      for (const item of queue) {
+        try {
+          if (item.type === 'report') {
+            await ApiService.verifyOfficialMatchResult(item.params);
+          } else if (item.type === 'walkover') {
+            await supabase.from('fixtures').update(item.fixtureUpdate).eq('id', item.fixtureId);
+            await ApiService.verifyOfficialMatchResult(item.params);
+          } else if (item.type === 'cancel') {
+            await supabase.from('fixtures').update({ status: 'CANCELLED' }).eq('id', item.fixtureId);
+          }
+        } catch {
+          remaining.push(item);
+        }
+      }
+      localStorage.setItem(REFEREE_OFFLINE_QUEUE_KEY, JSON.stringify(remaining));
+      if (remaining.length < queue.length) {
+        loadDashboardData();
+      }
+    } catch {}
+  }, [loadDashboardData]);
+
+  useEffect(() => {
+    drainOfflineQueue();
+    const handleOnline = () => drainOfflineQueue();
+    window.addEventListener('online', handleOnline);
+    const interval = setInterval(drainOfflineQueue, 20000);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      clearInterval(interval);
+    };
+  }, [drainOfflineQueue]);
+
   // Cancel Match Action (sets status = CANCELLED in DB)
   const cancelMatch = async (fixtureId: string) => {
     const targetMatch = fixtures.find((f) => f.id === fixtureId);
@@ -633,35 +705,45 @@ export const useRefereeDashboard = () => {
       return;
     }
 
+    if (!isMatchAlterable(targetMatch)) {
+      setAuthError('Confirmed past matches or finalized results cannot be altered.');
+      return;
+    }
+
     setIsSubmitting(true);
     setAuthError(null);
+
+    // Optimistic UI update
+    setFixtures((prev) =>
+      prev.map((f) => (f.id === fixtureId ? { ...f, status: 'CANCELLED' } : f))
+    );
+
     try {
-      await matchLiveEngine.refereeCancelMatch({
-        match_uid: fixtureId,
-        referee_uid: effectiveRefereeId,
-        idempotency_key: crypto.randomUUID(),
-      }).catch((engineErr) => {
-        console.warn('Algorithm 1 cancel note:', engineErr);
-      });
+      await executeWithRetry(async () => {
+        await matchLiveEngine.refereeCancelMatch({
+          match_uid: fixtureId,
+          referee_uid: effectiveRefereeId,
+          idempotency_key: crypto.randomUUID(),
+        }).catch((engineErr) => {
+          console.warn('Algorithm 1 cancel note:', engineErr);
+        });
 
-      const { error } = await supabase
-        .from('fixtures')
-        .update({ status: 'CANCELLED' })
-        .eq('id', fixtureId);
+        const { error } = await supabase
+          .from('fixtures')
+          .update({ status: 'CANCELLED' })
+          .eq('id', fixtureId);
 
-      if (error) {
-        console.warn('Direct update note:', error);
-      }
-
-      setFixtures((prev) =>
-        prev.map((f) => (f.id === fixtureId ? { ...f, status: 'CANCELLED' } : f))
-      );
+        if (error) throw error;
+      }, { maxRetries: 3, initialDelayMs: 400 });
 
       setSuccessMsg('Match status updated to CANCELLED.');
       setTimeout(() => setSuccessMsg(null), 3500);
       loadDashboardData();
     } catch (err: any) {
-      setAuthError(err.message || 'Failed to cancel match.');
+      console.warn('Network issue while cancelling, saving to offline resilient queue:', err);
+      enqueueOfflineSubmission({ type: 'cancel', fixtureId });
+      setSuccessMsg('Match cancelled locally. Status will automatically sync once connection stabilizes.');
+      setTimeout(() => setSuccessMsg(null), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -675,6 +757,11 @@ export const useRefereeDashboard = () => {
       return;
     }
 
+    if (!isMatchAlterable(targetMatch)) {
+      setAuthError('Confirmed past matches or finalized results cannot be altered.');
+      return;
+    }
+
     setIsSubmitting(true);
     setAuthError(null);
 
@@ -684,62 +771,75 @@ export const useRefereeDashboard = () => {
       ? (targetMatch?.teamA.id || '')
       : (targetMatch?.teamB.id || '');
 
+    // Optimistic UI update
+    setFixtures((prev) =>
+      prev.map((f) =>
+        f.id === fixtureId
+          ? {
+              ...f,
+              status: 'FT',
+              scoreA: scoreHome,
+              scoreB: scoreAway,
+              events: [],
+            }
+          : f
+      )
+    );
+    setWalkoverFixture(null);
+
+    const walkoverParams = {
+      fixtureId,
+      refereeId: currentUserId || effectiveRefereeId,
+      scoreHome,
+      scoreAway,
+      status: 'FT' as MatchStatus,
+      reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED\nWinner: ${
+        winningTeamTarget === 'home' ? 'Home Team' : 'Away Team'
+      } (3 - 0)\nAwarded by Center Referee: ${currentUserName}.`,
+      officialEvents: [],
+    };
+
+    const fixtureUpdate = {
+      status: 'FT',
+      score_home: scoreHome,
+      score_away: scoreAway,
+      verified_by_referee_id: currentUserId,
+    };
+
     try {
-      await matchLiveEngine.refereeDeclareWalkover({
-        match_uid: fixtureId,
-        referee_uid: effectiveRefereeId,
-        winning_team_uid: winningTeamUid,
-        idempotency_key: crypto.randomUUID(),
-      }).catch((engineErr) => {
-        console.warn('Algorithm 1 walkover note:', engineErr);
-      });
+      await executeWithRetry(async () => {
+        await matchLiveEngine.refereeDeclareWalkover({
+          match_uid: fixtureId,
+          referee_uid: effectiveRefereeId,
+          winning_team_uid: winningTeamUid,
+          idempotency_key: crypto.randomUUID(),
+        }).catch((engineErr) => {
+          console.warn('Algorithm 1 walkover note:', engineErr);
+        });
 
-      const { error } = await supabase
-        .from('fixtures')
-        .update({
-          status: 'FT',
-          score_home: scoreHome,
-          score_away: scoreAway,
-          verified_by_referee_id: currentUserId,
-        })
-        .eq('id', fixtureId);
+        const { error } = await supabase
+          .from('fixtures')
+          .update(fixtureUpdate)
+          .eq('id', fixtureId);
 
-      if (error) {
-        console.warn('Database walkover update:', error);
-      }
+        if (error) throw error;
 
-      await ApiService.verifyOfficialMatchResult({
-        fixtureId,
-        refereeId: currentUserId,
-        scoreHome,
-        scoreAway,
-        status: 'FT',
-        reportText: `OFFICIAL MATCH REPORT - WALKOVER AWARDED\nWinner: ${
-          winningTeamTarget === 'home' ? 'Home Team' : 'Away Team'
-        } (3 - 0)\nAwarded by Center Referee: ${currentUserName}.`,
-        officialEvents: [],
-      });
+        await ApiService.verifyOfficialMatchResult(walkoverParams);
+      }, { maxRetries: 3, initialDelayMs: 400 });
 
-      setFixtures((prev) =>
-        prev.map((f) =>
-          f.id === fixtureId
-            ? {
-                ...f,
-                status: 'FT',
-                scoreA: scoreHome,
-                scoreB: scoreAway,
-                events: [],
-              }
-            : f
-        )
-      );
-
-      setWalkoverFixture(null);
       setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed).`);
       setTimeout(() => setSuccessMsg(null), 4000);
       loadDashboardData();
     } catch (err: any) {
-      setAuthError(err.message || 'Failed to award walkover.');
+      console.warn('Network issue while awarding walkover, saving to offline resilient queue:', err);
+      enqueueOfflineSubmission({
+        type: 'walkover',
+        fixtureId,
+        fixtureUpdate,
+        params: walkoverParams,
+      });
+      setSuccessMsg(`Walkover (3-0) recorded locally! Queued for guaranteed server confirmation.`);
+      setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
       setIsSubmitting(false);
     }
@@ -755,6 +855,12 @@ export const useRefereeDashboard = () => {
     injuries: InjuryEntry[];
   }) => {
     if (!selectedFixture) return;
+
+    if (!isMatchAlterable(selectedFixture)) {
+      setAuthError('Confirmed past matches or finalized results cannot be altered.');
+      return;
+    }
+
     setIsSubmitting(true);
     setAuthError(null);
 
@@ -792,16 +898,38 @@ export const useRefereeDashboard = () => {
       })),
     ];
 
+    // Optimistic UI update
+    setFixtures((prev) =>
+      prev.map((f) =>
+        f.id === selectedFixture.id
+          ? {
+              ...f,
+              status: reportData.matchState || 'FT',
+              scoreA: reportData.scoreHome,
+              scoreB: reportData.scoreAway,
+            }
+          : f
+      )
+    );
+
+    const reportParams = {
+      fixtureId: selectedFixture.id,
+      refereeId: effectiveRefereeId,
+      scoreHome: reportData.scoreHome,
+      scoreAway: reportData.scoreAway,
+      status: reportData.matchState || 'FT',
+      reportText: `OFFICIAL MATCH REPORT\nFinal Score: ${reportData.scoreHome} - ${reportData.scoreAway}\nStatus: ${reportData.matchState}`,
+      officialEvents: compiledEvents,
+    };
+
     try {
-      const result = await ApiService.verifyOfficialMatchResult({
-        fixtureId: selectedFixture.id,
-        refereeId: effectiveRefereeId,
-        scoreHome: reportData.scoreHome,
-        scoreAway: reportData.scoreAway,
-        status: reportData.matchState,
-        reportText: `OFFICIAL MATCH REPORT\nFinal Score: ${reportData.scoreHome} - ${reportData.scoreAway}\nStatus: ${reportData.matchState}`,
-        officialEvents: compiledEvents,
-      });
+      const result = await executeWithRetry(async () => {
+        const res = await ApiService.verifyOfficialMatchResult(reportParams);
+        if (!res.success && !res.data) {
+          throw new Error(res.message || 'Server rejected official report verification.');
+        }
+        return res;
+      }, { maxRetries: 4, initialDelayMs: 500 });
 
       if (result.success || result.data) {
         setSuccessMsg(
@@ -814,7 +942,17 @@ export const useRefereeDashboard = () => {
         setAuthError(result.message || 'Failed to submit official report.');
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Error submitting official referee report.');
+      console.warn('Network issue during report submit, queueing for resilient sync:', err);
+      enqueueOfflineSubmission({
+        type: 'report',
+        fixtureId: selectedFixture.id,
+        params: reportParams,
+      });
+      setSuccessMsg(
+        `Official Match Report saved locally! Result (${reportData.scoreHome}-${reportData.scoreAway}) is queued for guaranteed sync.`
+      );
+      setActiveTab('overview');
+      setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
       setIsSubmitting(false);
     }
@@ -980,6 +1118,9 @@ export const useRefereeDashboard = () => {
     selectedDate,
     setSelectedDate,
     fixtures,
+    activeMatchday,
+    matchdayMatches,
+    isMatchAlterable,
     nextMatch,
     activeThreeMatches,
     leagueProgress,

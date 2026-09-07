@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { 
   User, Award, Phone, Mail, ShieldCheck, MapPin, 
-  Calendar, Check, Lock, Bell, LogOut, Edit3, Shield, Upload,
-  Users, AlertCircle, Loader2
+  Calendar, Check, Bell, LogOut, Edit3, Shield, Upload,
+  Users, CheckCircle2, ClipboardCheck, Scale, AlertOctagon, Activity
 } from 'lucide-react';
 import { useAuth } from '../../../../../contexts/AuthContext';
-import { supabase } from '../../../../../lib/supabase';
 import type { RefereeProfileData } from '../../types';
 
 interface RefereeProfileViewProps {
@@ -26,14 +25,6 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
   const [association, setAssociation] = useState(profileData.association);
   const [avatarUrl, setAvatarUrl] = useState(profileData.avatarUrl || '');
   const [isSaving, setIsSaving] = useState(false);
-
-  // Password & Security state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Notifications preferences
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -58,38 +49,6 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
       setIsEditing(false);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handlePasswordUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword) {
-      setPasswordError('Please enter a new password.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
-      return;
-    }
-    if (confirmPassword && newPassword !== confirmPassword) {
-      setPasswordError('New password and confirmation do not match.');
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    setPasswordError(null);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      setPasswordSuccess(true);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(false), 4500);
-    } catch (err: any) {
-      setPasswordError(err.message || 'Failed to update shared password.');
-    } finally {
-      setIsUpdatingPassword(false);
     }
   };
 
@@ -364,93 +323,96 @@ export const RefereeProfileView: React.FC<RefereeProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Security & Shared Password */}
+        {/* Right Column: Match Operations & Disciplinary Analytics */}
         <div className="lg:col-span-6 space-y-6">
+          {/* Match Operations Checklist */}
           <div className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#14263b] pb-3">
               <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                <Lock className="w-4 h-4 text-[#ff0046]" /> Shared Dashboard Password & Security
+                <ClipboardCheck className="w-4 h-4 text-[#ff0046]" /> Match Operations & Pre-Match Protocol
               </h3>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Updating the password changes the master login credentials for all referees sharing this official dashboard.
-            </p>
-
-            {passwordSuccess && (
-              <div className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-[#00b04f] text-xs font-bold flex items-center gap-2">
-                <Check className="w-4 h-4" /> <span>Shared dashboard password updated successfully.</span>
-              </div>
-            )}
-
-            {passwordError && (
-              <div className="p-3 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" /> <span>{passwordError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handlePasswordUpdate} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  New Shared Password
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="w-full p-2.5 rounded-md bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] font-mono text-xs text-slate-900 dark:text-white focus:border-[#ff0046] focus:outline-none transition-colors"
-                />
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Pitch & Goal Safety Inspection</span>
+                </div>
+                <span className="text-[10px] font-black uppercase text-[#00b04f] font-mono">Passed (60m Prior)</span>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat new password"
-                  className="w-full p-2.5 rounded-md bg-slate-50 dark:bg-[#15273b] border border-slate-200 dark:border-[#223b56] font-mono text-xs text-slate-900 dark:text-white focus:border-[#ff0046] focus:outline-none transition-colors"
-                />
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Official Match Ball Certification</span>
+                </div>
+                <span className="text-[10px] font-black uppercase text-[#00b04f] font-mono">FKF Pro Spec</span>
               </div>
 
-              <div className="flex justify-end pt-1">
-                <button
-                  type="submit"
-                  disabled={isUpdatingPassword}
-                  className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {isUpdatingPassword ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Updating...</span>
-                    </>
-                  ) : (
-                    <span>Update Shared Password</span>
-                  )}
-                </button>
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#00b04f]" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Team Sheet Sign-Off & Kit Check</span>
+                </div>
+                <span className="text-[10px] font-black uppercase text-[#00b04f] font-mono">Mandatory</span>
               </div>
-            </form>
+
+              <div className="flex items-center justify-between p-2.5 rounded-md bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45]">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-sky-400" />
+                  <span className="font-bold text-slate-800 dark:text-slate-200">Stoppage Time Calculation Standard</span>
+                </div>
+                <span className="text-[10px] font-black uppercase text-sky-400 font-mono">+30s per Sub</span>
+              </div>
+            </div>
           </div>
 
-          {/* Account Accreditation & Logout */}
+          {/* Disciplinary & Fair Play Protocol (IFAB Law 12) */}
           <div className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#14263b] pb-3">
               <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#ff0046]" /> Account Status & Exit
+                <Scale className="w-4 h-4 text-[#ff0046]" /> Disciplinary Protocol & Fair Play (IFAB Law 12)
+              </h3>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
+              <div className="p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200">
+                <div className="font-black uppercase text-[10px] text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-xs bg-amber-400" /> Caution Offenses (Yellow Card)
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Unsporting behavior, dissent by word or action, persistent offenses, delaying the restart of play, failure to respect required distance at free kicks or corners.
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-200">
+                <div className="font-black uppercase text-[10px] text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1.5">
+                  <AlertOctagon className="w-3.5 h-3.5 text-rose-500" /> Sending-Off Offenses (Red Card)
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Denying obvious goal-scoring opportunity (DOGSO), serious foul play, violent conduct, using offensive/abusive language, receiving second caution in same match. Immediate match report submission mandatory.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Status & Exit */}
+          <div className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#14263b] pb-3">
+              <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#ff0046]" /> Unified Officials Desk Status
               </h3>
             </div>
 
             <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
               <div className="flex justify-between py-2 border-b border-slate-100 dark:border-[#14263b]">
-                <span className="text-slate-400">Account Role:</span>
+                <span className="text-slate-400">Portal Role:</span>
                 <span className="font-black uppercase text-[11px] text-[#00b04f]">Unified Referee Panel</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100 dark:border-[#14263b]">
-                <span className="text-slate-400">Accreditation:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white">FKF-ESN-2026</span>
+                <span className="text-slate-400">Authority Accreditation:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">FKF National Match Center</span>
               </div>
             </div>
 

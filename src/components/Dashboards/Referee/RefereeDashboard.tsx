@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LoadingSpinner } from '../../../components/common/UIComponents';
 import { useRefereeDashboard } from './hooks/useRefereeDashboard';
 import { RefereeHeader } from './components/Header/RefereeHeader';
@@ -11,6 +11,7 @@ import { RefereeProfileView } from './components/Profile/RefereeProfileView';
 import { RefereeAnnouncementsView } from './components/Announcements/RefereeAnnouncementsView';
 import { WalkoverModal } from './components/WalkoverModal/WalkoverModal';
 import { MatchDetailsModal } from './components/MatchDetailsModal/MatchDetailsModal';
+import { EndMatchModal } from './components/EndMatchModal/EndMatchModal';
 import type { Match } from '../../../types';
 
 export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
@@ -60,13 +61,15 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     handleUpdateProfile,
   } = useRefereeDashboard();
 
+  const [endMatchFixture, setEndMatchFixture] = useState<Match | null>(null);
+
   if (isLoading) {
     return <LoadingSpinner label="Loading official referee match center..." />;
   }
 
   const handleLaunchEndMatch = (match: Match) => {
     setSelectedFixtureId(match.id);
-    setActiveTab('report');
+    setEndMatchFixture(match);
   };
 
   return (
@@ -160,6 +163,24 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
       </main>
 
       {/* 4. MODALS */}
+      {/* End Match Smart Modal Popup (Full page with borders, timeline, strict hierarchy) */}
+      {endMatchFixture && (
+        <EndMatchModal
+          match={endMatchFixture}
+          isOpen={!!endMatchFixture}
+          onClose={() => setEndMatchFixture(null)}
+          onSubmitReport={async (reportData) => {
+            await submitMatchReport(reportData);
+            setEndMatchFixture(null);
+          }}
+          onAwardWalkover={awardWalkover}
+          onCancelMatch={cancelMatch}
+          isSubmitting={isSubmitting}
+          homeSquad={homeLineup}
+          awaySquad={awayLineup}
+        />
+      )}
+
       {/* Walkover Award Modal (3-0 to selected team) */}
       {walkoverFixture && (
         <WalkoverModal
@@ -170,7 +191,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         />
       )}
 
-      {/* Match Details Popup Modal */}
+      {/* Match Details Popup Modal (Preview & Technical Inspection) */}
       {inspectedMatch && (
         <MatchDetailsModal
           match={inspectedMatch}

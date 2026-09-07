@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Trophy, Clock, MapPin, Eye, CheckCircle, 
-  XCircle, Award, Calendar, CheckCircle2, ShieldCheck
+  XCircle, Award, Calendar, CheckCircle2, ShieldCheck, Radio
 } from 'lucide-react';
 import type { Match, Announcement } from '../../../../../types';
 import type { RefereeTab, RefereeProfileData } from '../../types';
@@ -138,171 +138,140 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
             </div>
           )
         ) : (
-          /* 3 ACTIVE MATCHDAY EVENT MODULES */
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Showing current 3 matches. When any match is filled and submitted, the next fixture will queue here until all EPL matches are filled. Referees can update details, scores, or end any match at any time.
-            </p>
+          /* LEAGUE FIXTURES CARD: THIN HORIZONTAL STRIPS (IDENTICAL TO HOMEPAGE FIXTURESLIST) */
+          <div className="border border-slate-200 dark:border-[#1a2e45] rounded-md overflow-hidden bg-white dark:bg-[#0c1825] shadow-xs">
+            {/* League Header Strip */}
+            <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#eaedf2] dark:bg-[#0c1a27] border-b border-[#d8dce2] dark:border-[#14263b] text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-3.5 h-3.5 text-[#ff0046]" />
+                <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                  {displayMatches[0]?.league || 'Egerton Premier League'}
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">
+                  • Matchday {displayMatches[0]?.matchday || 1}
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              {displayMatches.map((match, idx) => {
-                const isFinished = match.status === 'FT';
-                const isCancelled = match.status === 'CANCELLED';
-                const isLive = match.status === 'LIVE' || match.status === 'HT';
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20">
+                  Active 3-Match Queue
+                </span>
+              </div>
+            </div>
+
+            {/* Match Rows Container (Identical to FixturesList.tsx) */}
+            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              {displayMatches.map((match) => {
+                const isMatchLive = match.status === 'LIVE';
+                const isHT = match.status === 'HT';
+                const isFT = match.status === 'FT';
 
                 return (
                   <div
                     key={match.id}
-                    className="bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md p-4 space-y-3.5 shadow-xs transition-all hover:border-[#ff0046]/40"
+                    onClick={() => onEndMatch(match)}
+                    className="flex items-center justify-between px-3 py-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
                   >
-                    {/* Top strip: Event number badge + League + Matchday + Time */}
-                    <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200 dark:border-[#14263b] text-xs">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="w-5 h-5 rounded-full bg-[#ff0046] text-white font-black flex items-center justify-center text-[11px]">
-                          {idx + 1}
+                    {/* Left Column: Match Status / Time */}
+                    <div className="w-14 text-center flex flex-col items-center justify-center shrink-0">
+                      {isMatchLive ? (
+                        <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
+                          <Radio className="w-3 h-3 animate-pulse" />
+                          {match.minute || "65'"}
                         </span>
-                        <span className="font-black uppercase tracking-tight text-slate-900 dark:text-white">
-                          {match.league || 'Egerton Premier League'}
+                      ) : isHT ? (
+                        <span className="text-[11px] font-extrabold text-[#ff0046]">HT</span>
+                      ) : isFT ? (
+                        <span className="text-[10px] font-bold text-[#00b04f]">Finished</span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono">
+                          {match.time || '16:00'}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-600">•</span>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                          Matchday {match.matchday || 1}
-                        </span>
-                        <span className="text-slate-400 dark:text-slate-600">•</span>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#00b04f]" /> {match.time || '16:00'} EAT
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {renderStatusBadge(match.status)}
-                        {idx === 0 && !isFinished && !isCancelled && (
-                          <span className="hidden sm:inline-block text-[11px] font-mono font-bold text-[#ff0046]">
-                            {countdownStr}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
 
-                    {/* MATCHUP MODULE: High-visibility team names and badges */}
-                    <div
-                      onClick={() => onSelectMatch(match)}
-                      className="grid grid-cols-11 items-center gap-2 py-2 px-1 cursor-pointer bg-white dark:bg-[#0a1520] p-3 rounded-sm border border-slate-200 dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#264468] transition-all"
-                    >
-                      {/* Home Team */}
-                      <div className="col-span-5 flex items-center justify-start gap-3 truncate">
-                        {match.teamA.logo ? (
+                    {/* Middle Column: 2 Stacked Team Rows */}
+                    <div className="flex-1 px-3 flex flex-col justify-center gap-1 min-w-0">
+                      {/* Team A (Home) */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={match.teamA.logo}
                             alt={match.teamA.name}
-                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain flex-shrink-0"
+                            className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                           />
-                        ) : (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-sm bg-[#152a40] border border-[#223b56] text-white font-black flex items-center justify-center text-xs flex-shrink-0">
-                            {match.teamA.shortName || 'HOM'}
-                          </div>
-                        )}
-                        <div className="truncate">
-                          <h4 className="font-black text-sm sm:text-base uppercase tracking-tight text-slate-900 dark:text-white truncate">
+                          <span className={`text-xs truncate ${
+                            isMatchLive ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-800 dark:text-slate-100'
+                          }`}>
                             {match.teamA.name}
-                          </h4>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
-                            Home Team
                           </span>
                         </div>
-                      </div>
 
-                      {/* Score / VS */}
-                      <div className={`col-span-1 text-center font-mono font-black text-base sm:text-xl tracking-tight ${isLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'}`}>
-                        {isFinished || isLive || isCancelled ? `${match.scoreA} - ${match.scoreB}` : 'VS'}
-                      </div>
-
-                      {/* Away Team */}
-                      <div className="col-span-5 flex items-center justify-end gap-3 text-right truncate">
-                        <div className="truncate">
-                          <h4 className="font-black text-sm sm:text-base uppercase tracking-tight text-slate-900 dark:text-white truncate">
-                            {match.teamB.name}
-                          </h4>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
-                            Away Team
+                        {match.status !== 'UPCOMING' && (
+                          <span className={`text-xs font-mono font-extrabold pl-2 ${
+                            isMatchLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'
+                          }`}>
+                            {match.scoreA}
                           </span>
-                        </div>
-                        {match.teamB.logo ? (
+                        )}
+                      </div>
+
+                      {/* Team B (Away) */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={match.teamB.logo}
                             alt={match.teamB.name}
-                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain flex-shrink-0"
+                            className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                           />
-                        ) : (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-sm bg-[#152a40] border border-[#223b56] text-white font-black flex items-center justify-center text-xs flex-shrink-0">
-                            {match.teamB.shortName || 'AWY'}
-                          </div>
+                          <span className={`text-xs truncate ${
+                            isMatchLive ? 'font-black text-slate-900 dark:text-white' : 'font-bold text-slate-800 dark:text-slate-100'
+                          }`}>
+                            {match.teamB.name}
+                          </span>
+                        </div>
+
+                        {match.status !== 'UPCOMING' && (
+                          <span className={`text-xs font-mono font-extrabold pl-2 ${
+                            isMatchLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'
+                          }`}>
+                            {match.scoreB}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Meta info row */}
-                    <div className="flex flex-wrap items-center justify-between gap-y-1.5 gap-x-4 text-xs text-slate-600 dark:text-slate-300 px-1">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-                        <span className="text-[11px] font-medium truncate uppercase tracking-wider">
-                          Venue: <strong className="text-slate-900 dark:text-white font-bold">{match.venue || 'Egerton Sports Ground'}</strong>
-                        </span>
-                      </div>
+                    {/* Right Column: 3 Action Buttons */}
+                    <div className="shrink-0 flex items-center gap-1.5 pl-2" onClick={(e) => e.stopPropagation()}>
+                      {/* 1. End Match Button */}
+                      <button
+                        type="button"
+                        onClick={() => onEndMatch(match)}
+                        className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f] hover:bg-[#009643] text-white transition-colors cursor-pointer shadow-2xs"
+                        title="Open End Match Modal"
+                      >
+                        End Match
+                      </button>
 
-                      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Match ID: <span className="font-mono">{match.id.slice(0, 8)}...</span>
-                      </div>
-                    </div>
+                      {/* 2. Walkover (3-0) Button */}
+                      <button
+                        type="button"
+                        onClick={() => onOpenWalkover(match)}
+                        className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer shadow-2xs"
+                        title="Award 3-0 Walkover"
+                      >
+                        Walkover (3-0)
+                      </button>
 
-                    {/* Action buttons row: ANY referee can act on ANY match */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-[#14263b]">
+                      {/* 3. Preview Button at the far right (identical to guest page) */}
                       <button
                         type="button"
                         onClick={() => onSelectMatch(match)}
-                        className="px-3.5 py-2 rounded-md bg-slate-200 dark:bg-[#152a40] hover:bg-slate-300 dark:hover:bg-[#1c3857] text-slate-800 dark:text-white font-bold text-xs uppercase tracking-wider border border-slate-200 dark:border-white/10 transition-colors cursor-pointer flex items-center gap-1.5"
+                        className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] hover:bg-[#1a385d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs transition-colors cursor-pointer"
+                        title="Match Preview & Lineups"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Match Details & Scores</span>
+                        PREVIEW
                       </button>
-
-                      {!isFinished && !isCancelled && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Cancel Match */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to cancel ${match.teamA.name} vs ${match.teamB.name}?`)) {
-                                onCancelMatch(match.id);
-                              }
-                            }}
-                            className="px-3 py-2 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Cancel</span>
-                          </button>
-
-                          {/* Walkover */}
-                          <button
-                            type="button"
-                            onClick={() => onOpenWalkover(match)}
-                            className="px-3 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <Trophy className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Walkover (3-0)</span>
-                          </button>
-
-                          {/* End Match */}
-                          <button
-                            type="button"
-                            onClick={() => onEndMatch(match)}
-                            className="px-4 py-2 rounded-md bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>End Match</span>
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
