@@ -118,29 +118,17 @@ export const DeviceService = {
         }
       } catch {}
 
-      // Try fetching from anonymous_devices row
+      // Fetch from anonymous_devices row
       try {
-        let devRow: any = null;
         const res = await supabase
           .from('anonymous_devices')
-          .select('announcements, interaction_history')
+          .select('interaction_history')
           .eq('device_id', deviceId)
           .maybeSingle();
 
-        if (res.error && (res.error.code === '42703' || res.error.message?.includes('announcements'))) {
-          const fallback = await supabase
-            .from('anonymous_devices')
-            .select('interaction_history')
-            .eq('device_id', deviceId)
-            .maybeSingle();
-          devRow = fallback.data;
-        } else {
-          devRow = res.data;
-        }
+        const devRow = res.data;
 
-        if (devRow?.announcements && Array.isArray(devRow.announcements)) {
-          devRow.announcements.forEach((item: DeviceAnnouncementItem) => recordedMap.set(item.id, item));
-        } else if (devRow?.interaction_history?.announcements && Array.isArray(devRow.interaction_history.announcements)) {
+        if (devRow?.interaction_history?.announcements && Array.isArray(devRow.interaction_history.announcements)) {
           devRow.interaction_history.announcements.forEach((item: DeviceAnnouncementItem) => recordedMap.set(item.id, item));
         }
       } catch {}
