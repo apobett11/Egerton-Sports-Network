@@ -233,6 +233,8 @@ export interface Announcement {
   title: string;
   content: string;
   target_role: string;
+  recipients?: string;
+  read_count?: number;
   target_team_id?: string;
   author_id?: string;
   created_at: string;

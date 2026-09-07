@@ -113,7 +113,8 @@ export type SeasonModeView =
   | 'matchdays'
   | 'referees'
   | 'pitches'
-  | 'teams';
+  | 'teams'
+  | 'announcements';
 
 export interface SeasonFixture {
   id: string;

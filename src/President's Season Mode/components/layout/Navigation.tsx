@@ -9,6 +9,7 @@ import {
   Flame,
   Shield,
   BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import type { SeasonModeView } from '../../types/seasonMode';
 
@@ -22,6 +23,7 @@ interface NavigationProps {
   pitchesCount?: number;
   friendliesCount?: number;
   teamsCount?: number;
+  announcementsCount?: number;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -34,6 +36,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   pitchesCount = 0,
   friendliesCount = 0,
   teamsCount = 0,
+  announcementsCount = 0,
 }) => {
   const navItems = [
     {
@@ -65,6 +68,12 @@ export const Navigation: React.FC<NavigationProps> = ({
       label: 'Teams',
       icon: Shield,
       badge: teamsCount > 0 ? String(teamsCount) : null,
+    },
+    {
+      id: 'announcements' as const,
+      label: 'Announcements',
+      icon: Megaphone,
+      badge: announcementsCount > 0 ? String(announcementsCount) : null,
     },
   ];
 

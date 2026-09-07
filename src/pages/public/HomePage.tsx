@@ -8,6 +8,9 @@ import {
   Flame, Award, X, User, ChevronLeft, ChevronRight, Zap, Star, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useCacheSubscription } from '../../hooks/useCacheSubscription';
+import { guestCache } from '../../lib/guestCache';
+import { resolveGuestMatchdayDate } from '../../lib/matchdayHelper';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -31,7 +34,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   dbFixtures = []
 }) => {
   // Calendar Date State for Fixtures Reactivity
-  const [internalDate, setInternalDate] = useState<Date>(() => new Date());
+  const [internalDate, setInternalDate] = useState<Date>(() => resolveGuestMatchdayDate(dbFixtures));
   const activeDate = propSelectedDate || internalDate;
 
   const formattedDateStr = useMemo(() => {
@@ -141,11 +144,50 @@ export const HomePage: React.FC<HomePageProps> = ({
     setTouchStartX(null);
   };
 
+  // Helper to extract cached fixtures for active date & competition instantly
+  const getCachedFixtures = useCallback((dateStr: string, compId: string) => {
+    // 1. Check exact key in guestCache
+    const cacheKey = `${compId}_${dateStr}_pall_sall`;
+    const cachedExact = guestCache.get<Match[]>('fixtures', cacheKey);
+    if (cachedExact && cachedExact.length > 0) return cachedExact;
+
+    // 2. Check master 'all_all_pall_sall' in guestCache or dbFixtures prop
+    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+    const sourceList = (allCached && allCached.length > 0) ? allCached : dbFixtures;
+
+    if (sourceList && sourceList.length > 0) {
+      const filtered = sourceList.filter(m => {
+        if (compId !== 'all') {
+          if (compId === '11111111-1111-1111-1111-111111111111') {
+            const isEpl = m.league?.toLowerCase().includes('premier') || !m.league?.toLowerCase().includes('championship');
+            if (!isEpl) return false;
+          } else if (compId === '22222222-2222-2222-2222-222222222222') {
+            const isChamp = m.league?.toLowerCase().includes('championship');
+            if (!isChamp) return false;
+          } else if (compId === 'friendlies') {
+            const isFriendly = m.league?.toLowerCase().includes('friendly');
+            if (!isFriendly) return false;
+          }
+        }
+        const rawDate = m.scheduledTime || (m as any).scheduled_time;
+        if (!rawDate) return false;
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return false;
+        const mDateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return mDateKey === dateStr;
+      });
+      return filtered;
+    }
+    return null;
+  }, [dbFixtures]);
+
   // Independent Section States
-  const [fixturesState, setFixturesState] = useState<{ data: Match[]; loading: boolean; error: string | null }>({
-    data: [],
-    loading: true,
-    error: null
+  const [fixturesState, setFixturesState] = useState<{ data: Match[]; loading: boolean; error: string | null }>(() => {
+    const initial = getCachedFixtures(formattedDateStr, selectedCompetitionId);
+    if (initial && initial.length > 0) {
+      return { data: initial, loading: false, error: null };
+    }
+    return { data: [], loading: true, error: null };
   });
 
   const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>({
@@ -188,19 +230,26 @@ export const HomePage: React.FC<HomePageProps> = ({
   const EPL_ID = '11111111-1111-1111-1111-111111111111';
   const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
-  // Load Fixtures independently on formattedDateStr or selectedCompetitionId change
-  useEffect(() => {
+  // Staggered Progressive Section Loads (Level 12 efficiency)
+  // Section 1: Fixtures loads immediately (0ms)
+  const loadFixtures = useCallback(() => {
     let isMounted = true;
-    setFixturesState(prev => ({ ...prev, loading: true, error: null }));
-
     const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+
+    // Check if we already have cached data for this date & competition
+    const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
+    if (cached && cached.length > 0) {
+      // Instant display from cache — zero wait!
+      setFixturesState({ data: cached, loading: false, error: null });
+    } else {
+      setFixturesState(prev => (prev.data.length > 0 ? prev : { ...prev, loading: true, error: null }));
+    }
 
     ApiService.getFixtures(compId, formattedDateStr)
       .then(res => {
         if (!isMounted) return;
         if (res.success && res.data) {
           const fetchedMatches = res.data;
-          // Auto-purge FT matches from favourites (Level 10 constraint)
           setFavourites(prevFavs => {
             const ftIds = new Set(fetchedMatches.filter(m => m.status === 'FT').map(m => m.id));
             const cleaned = prevFavs.filter(id => !ftIds.has(id));
@@ -209,25 +258,40 @@ export const HomePage: React.FC<HomePageProps> = ({
             } catch {}
             return cleaned;
           });
-
           setFixturesState({ data: fetchedMatches, loading: false, error: null });
         } else {
-          setFixturesState({ data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
+          setFixturesState(prev => prev.data.length > 0 ? prev : { data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
         }
       })
-      .catch(err => {
+      .catch(() => {
         if (isMounted) {
-          setFixturesState({ data: [], loading: false, error: 'Database network timeout.' });
+          setFixturesState(prev => prev.data.length > 0 ? prev : { data: [], loading: false, error: 'Database network timeout.' });
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [formattedDateStr, selectedCompetitionId]);
+  }, [formattedDateStr, selectedCompetitionId, getCachedFixtures]);
 
-  // Load Standings independently
   useEffect(() => {
+    return loadFixtures();
+  }, [loadFixtures]);
+
+  // When dbFixtures populates or updates, sync fixturesState immediately if currently empty
+  useEffect(() => {
+    if (dbFixtures && dbFixtures.length > 0 && fixturesState.data.length === 0) {
+      const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
+      if (cached && cached.length > 0) {
+        setFixturesState({ data: cached, loading: false, error: null });
+      }
+    }
+  }, [dbFixtures, formattedDateStr, selectedCompetitionId, getCachedFixtures, fixturesState.data.length]);
+
+  useCacheSubscription('fixtures', loadFixtures);
+
+  // Section 2: Standings loads staggered (150ms delay)
+  const loadStandings = useCallback(() => {
     let isMounted = true;
     setStandingsState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -253,14 +317,23 @@ export const HomePage: React.FC<HomePageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [EPL_ID, CHAMP_ID]);
 
-  // Load News independently
   useEffect(() => {
+    const timer = setTimeout(() => {
+      loadStandings();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [loadStandings]);
+
+  useCacheSubscription('standings', loadStandings);
+
+  // Section 3: News loads staggered (300ms delay)
+  const loadNews = useCallback(() => {
     let isMounted = true;
     setNewsState(prev => ({ ...prev, loading: true, error: null }));
 
-    ApiService.getNews()
+    ApiService.getNews({ page: 1, pageSize: 6 })
       .then(res => {
         if (!isMounted) return;
         setNewsState({ data: res.data || [], loading: false, error: null });
@@ -276,8 +349,17 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, []);
 
-  // Load Performance independently
   useEffect(() => {
+    const timer = setTimeout(() => {
+      loadNews();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loadNews]);
+
+  useCacheSubscription('news', loadNews);
+
+  // Section 4: Performance loads staggered (450ms delay)
+  const loadPerformance = useCallback(() => {
     let isMounted = true;
     setPerfState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -297,8 +379,17 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, []);
 
-  // Load Milestones independently
   useEffect(() => {
+    const timer = setTimeout(() => {
+      loadPerformance();
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [loadPerformance]);
+
+  useCacheSubscription('performance', loadPerformance);
+
+  // Section 5: Milestones loads staggered (600ms delay)
+  const loadMilestones = useCallback(() => {
     let isMounted = true;
     setMilestonesState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -317,6 +408,15 @@ export const HomePage: React.FC<HomePageProps> = ({
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMilestones();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [loadMilestones]);
+
+  useCacheSubscription('milestones', loadMilestones);
 
   // Realtime subscription for live match updates
   useEffect(() => {

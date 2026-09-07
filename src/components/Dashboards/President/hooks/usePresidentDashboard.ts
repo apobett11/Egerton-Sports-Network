@@ -108,9 +108,14 @@ export const usePresidentDashboard = () => {
   // =========================================================================
   const fetchPresidentData = useCallback(async () => {
     try {
-      // 1. Fetch Approved Teams
+      // Stage 1: Load Primary Overview Data Immediately (Teams, Pending Teams, Leagues)
+      const [teamRes, pendingRes, leaguesRes] = await Promise.all([
+        ApiService.getTeams(),
+        ApiService.getPendingTeams(),
+        ApiService.getLeagues(),
+      ]);
+
       let loadedTeams: TeamItem[] = [];
-      const teamRes = await ApiService.getTeams();
       if (teamRes.success && teamRes.data) {
         loadedTeams = teamRes.data
           .filter((t: any) => t.status !== 'pending' && t.status !== 'rejected')
@@ -133,58 +138,12 @@ export const usePresidentDashboard = () => {
         setTeams([]);
       }
 
-      // 2. Fetch Referees
-      const refRes = await ApiService.getReferees();
-      if (refRes.success && refRes.data) {
-        const formatted: RefereeItem[] = refRes.data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          email: r.email || '',
-          phone: r.phone || '',
-          status: r.status || 'Active',
-          badgeLevel: r.badge_level || 'FKF National Level 2',
-        }));
-        setReferees(formatted);
-      } else {
-        setReferees([]);
-      }
-
-      // 3. Fetch Announcements
-      const ancRes = await ApiService.getAnnouncements();
-      if (ancRes.success && ancRes.data) {
-        setAnnouncements(ancRes.data);
-      } else {
-        setAnnouncements([]);
-      }
-
-      // 4. Fetch Pending Teams
-      const pendingRes = await ApiService.getPendingTeams();
       if (pendingRes.success && pendingRes.data) {
         setPendingTeams(pendingRes.data);
       } else {
         setPendingTeams([]);
       }
 
-      // 5. Fetch Seasons
-      let formattedSeasons: SeasonItem[] = [];
-      const seasonsRes = await ApiService.getSeasons();
-      if (seasonsRes.success && seasonsRes.data) {
-        formattedSeasons = seasonsRes.data.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          startDate: s.start_date || s.startDate || '2026-09-01',
-          endDate: s.end_date || s.endDate || '2027-05-30',
-          registrationCutoff: s.registration_cutoff || s.registrationCutoff || '2026-08-25',
-          status: s.status || 'active',
-          isLocked: Boolean(s.is_locked ?? s.isLocked ?? false),
-        }));
-        setSeasons(formattedSeasons);
-      } else {
-        setSeasons([]);
-      }
-
-      // 6. Fetch Competitions / Leagues
-      const leaguesRes = await ApiService.getLeagues();
       if (leaguesRes.success && leaguesRes.data) {
         const formattedLeagues: LeagueItem[] = leaguesRes.data.map((l: any) => {
           const isChampionship = l.slug?.includes('championship') || l.name?.toLowerCase().includes('championship');
@@ -204,21 +163,57 @@ export const usePresidentDashboard = () => {
         setLeagues([]);
       }
 
-      // 7. Fetch Campus Pitches
-      const pitchRes = await pitchesService.fetchPitches();
-      if (pitchRes.pitches && pitchRes.pitches.length > 0) {
-        setPitches(pitchRes.pitches);
-      } else {
-        setPitches(OFFICIAL_PITCHES as PitchItem[]);
-      }
+      // Stage 2: Stagger secondary sections (Referees, Announcements, Seasons, Pitches, Fixtures)
+      setTimeout(async () => {
+        try {
+          const [refRes, ancRes, seasonsRes, pitchRes, fixRes] = await Promise.all([
+            ApiService.getReferees(),
+            ApiService.getAnnouncements(),
+            ApiService.getSeasons(),
+            pitchesService.fetchPitches(),
+            fixturesService.fetchFixtures(),
+          ]);
 
-      // 8. Fetch Saved Fixtures if present
-      const fixRes = await fixturesService.fetchFixtures();
-      if (fixRes.fixtures && fixRes.fixtures.length > 0) {
-        setSavedFixtures(fixRes.fixtures);
-      } else {
-        setSavedFixtures([]);
-      }
+          if (refRes.success && refRes.data) {
+            const formatted: RefereeItem[] = refRes.data.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              email: r.email || '',
+              phone: r.phone || '',
+              status: r.status || 'Active',
+              badgeLevel: r.badge_level || 'FKF National Level 2',
+            }));
+            setReferees(formatted);
+          }
+
+          if (ancRes.success && ancRes.data) {
+            setAnnouncements(ancRes.data);
+          }
+
+          if (seasonsRes.success && seasonsRes.data) {
+            const formattedSeasons: SeasonItem[] = seasonsRes.data.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              startDate: s.start_date || s.startDate || '2026-09-01',
+              endDate: s.end_date || s.endDate || '2027-05-30',
+              registrationCutoff: s.registration_cutoff || s.registrationCutoff || '2026-08-25',
+              status: s.status || 'active',
+              isLocked: Boolean(s.is_locked ?? s.isLocked ?? false),
+            }));
+            setSeasons(formattedSeasons);
+          }
+
+          if (pitchRes.pitches && pitchRes.pitches.length > 0) {
+            setPitches(pitchRes.pitches);
+          }
+
+          if (fixRes.fixtures && fixRes.fixtures.length > 0) {
+            setSavedFixtures(fixRes.fixtures);
+          }
+        } catch (stage2Err) {
+          console.warn('Dashboard stage 2 data load error:', stage2Err);
+        }
+      }, 100);
     } catch (err: any) {
       console.warn('Live database sync info:', err.message);
       setSavedFixtures([]);
@@ -533,12 +528,14 @@ export const usePresidentDashboard = () => {
     const res = await ApiService.createAnnouncement({
       title: announcementTitle,
       content: announcementBody,
-      target_role: recipientGroup
+      target_role: recipientGroup,
+      recipients: recipientGroup
     });
     if (res.success && res.data) {
       await ApiService.logAuditAction('BROADCAST_ANNOUNCEMENT', 'announcements', res.data.id || 'new', {
         title: announcementTitle,
-        target_role: recipientGroup
+        target_role: recipientGroup,
+        recipients: recipientGroup
       });
       setAnnouncementTitle('');
       setAnnouncementBody('');

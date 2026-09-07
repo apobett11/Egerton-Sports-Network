@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell } from 'lucide-react';
 import type { Match } from '../../types';
 
 interface HeaderProps {
@@ -20,6 +20,8 @@ interface HeaderProps {
     favoritesCount?: number;
     isCalendarOpen?: boolean;
     onCloseCalendar?: () => void;
+    unreadAnnouncementsCount?: number;
+    onOpenNotifications?: () => void;
 }
 
 const SPORTS_LIST = [
@@ -50,7 +52,9 @@ export const Header: React.FC<HeaderProps> = ({
     onSelectMainTab,
     favoritesCount = 0,
     isCalendarOpen = false,
-    onCloseCalendar
+    onCloseCalendar,
+    unreadAnnouncementsCount = 0,
+    onOpenNotifications,
 }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -181,6 +185,20 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                             <Search className="w-5 h-5" />
                         </button>
+
+                        {onOpenNotifications && (
+                            <button
+                                type="button"
+                                onClick={onOpenNotifications}
+                                className="p-2 rounded-md hover:bg-[#182f47] text-slate-300 hover:text-white transition-colors cursor-pointer relative"
+                                aria-label="Notifications"
+                            >
+                                <Bell className="w-5 h-5" />
+                                {unreadAnnouncementsCount > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ff0046] ring-2 ring-[#0e1e2d] animate-pulse" />
+                                )}
+                            </button>
+                        )}
 
                         <button
                             type="button"

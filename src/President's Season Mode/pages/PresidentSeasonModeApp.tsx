@@ -7,6 +7,7 @@ import { MatchdaysView } from '../components/matchdays/MatchdaysView';
 import { RefereesView } from '../components/referees/RefereesView';
 import { PitchesView } from '../components/pitches/PitchesView';
 import { TeamsView } from '../components/teams/TeamsView';
+import { AnnouncementsView } from '../components/announcements/AnnouncementsView';
 import { CalendarModal } from '../components/calendar/CalendarModal';
 import { LoadingState, ErrorState, OperationalToast } from '../components/shared/StateDisplays';
 
@@ -23,6 +24,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
     isLoading,
     error,
     toastMessage,
+    showToast,
     fixtures,
     referees,
     pitches,
@@ -172,6 +174,13 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
                 isDark={isDark}
                 premierLeagueTeams={premierLeagueTeams}
                 championshipTeams={championshipTeams}
+              />
+            )}
+
+            {activeView === 'announcements' && (
+              <AnnouncementsView
+                isDark={isDark}
+                showToast={showToast}
               />
             )}
           </>

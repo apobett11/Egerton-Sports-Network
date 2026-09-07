@@ -33,19 +33,67 @@ const CACHE_TTL_MS = 60000; // 1 minute TTL
 
 
 export const ApiService = {
-  // Clear in-memory cache when data changes
-  invalidateCache(): void {
+  // Clear in-memory and guest cache when data changes
+  invalidateCache(category?: string): void {
     cachedTeams = null;
     cachedLeagues = null;
     cacheTimestamp = 0;
+    if (category) {
+      guestCache.invalidate(category);
+    } else {
+      guestCache.invalidate('fixtures');
+      guestCache.invalidate('standings');
+      guestCache.invalidate('teams');
+      guestCache.invalidate('news');
+      guestCache.invalidate('announcements');
+      guestCache.invalidate('match_details');
+      guestCache.invalidate('performance');
+      guestCache.invalidate('milestones');
+      guestCache.invalidate('audit_logs');
+      guestCache.invalidate('seasons');
+      guestCache.invalidate('leagues');
+      guestCache.invalidate('referees');
+    }
   },
 
   // --- FIXTURES ---
-  async getFixtures(competitionId?: string, selectedDate?: string): Promise<ApiResponse<Match[]>> {
-    const cacheKey = `${competitionId || 'all'}_${selectedDate || 'all'}`;
+  async getFixtures(competitionId?: string, selectedDate?: string, page?: number, pageSize?: number): Promise<ApiResponse<Match[]> & { total?: number; page?: number; totalPages?: number }> {
+    const cacheKey = `${competitionId || 'all'}_${selectedDate || 'all'}_p${page || 'all'}_s${pageSize || 'all'}`;
     const cached = guestCache.get<Match[]>('fixtures', cacheKey);
     if (cached) {
       return { success: true, data: cached };
+    }
+
+    // Instant extraction from master cache if available (zero-latency guest experience)
+    if (!page && !pageSize) {
+      const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+      if (allCached && allCached.length > 0) {
+        let filtered = allCached;
+        if (competitionId && competitionId !== 'all') {
+          if (competitionId === '11111111-1111-1111-1111-111111111111') {
+            filtered = filtered.filter(m => m.league?.toLowerCase().includes('premier') || !m.league?.toLowerCase().includes('championship'));
+          } else if (competitionId === '22222222-2222-2222-2222-222222222222') {
+            filtered = filtered.filter(m => m.league?.toLowerCase().includes('championship'));
+          } else if (competitionId === 'friendlies') {
+            filtered = filtered.filter(m => m.league?.toLowerCase().includes('friendly'));
+          }
+        }
+        if (selectedDate && selectedDate !== 'all') {
+          const targetDateStr = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
+            ? selectedDate
+            : new Date(selectedDate).toISOString().split('T')[0];
+          filtered = filtered.filter(m => {
+            const raw = m.scheduledTime || (m as any).scheduled_time;
+            if (!raw) return false;
+            const d = new Date(raw);
+            if (isNaN(d.getTime())) return false;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            return key === targetDateStr;
+          });
+        }
+        guestCache.set('fixtures', cacheKey, filtered);
+        return { success: true, data: filtered, total: filtered.length };
+      }
     }
 
     try {
@@ -70,7 +118,7 @@ export const ApiService = {
             competition:competitions(id, name),
             team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
             team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
-          `);
+          `, { count: 'exact' });
 
         if (competitionId) {
           query = query.eq('competition_id', competitionId);
@@ -85,7 +133,15 @@ export const ApiService = {
           query = query.gte('scheduled_time', startIso).lte('scheduled_time', endIso);
         }
 
-        const { data, error } = await query.order('scheduled_time', { ascending: true });
+        query = query.order('scheduled_time', { ascending: true });
+
+        if (page && pageSize) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        const { data, count, error } = await query;
 
         if (error || !data || data.length === 0) {
           if (error) logger.warn('Error fetching fixtures from Supabase:', { error });
@@ -141,7 +197,12 @@ export const ApiService = {
         });
 
         guestCache.set('fixtures', cacheKey, formattedMatches);
-        return { success: true, data: formattedMatches };
+        const resp: any = { success: true, data: formattedMatches };
+        if (count !== null && count !== undefined) resp.total = count;
+        if (page) resp.page = page;
+        if (pageSize) resp.pageSize = pageSize;
+        if (count && pageSize) resp.totalPages = Math.ceil(count / pageSize);
+        return resp;
       });
     } catch (err) {
       logger.warn('Failed to fetch fixtures from Supabase.', { error: err });
@@ -216,7 +277,7 @@ export const ApiService = {
       // Fetch Stored Match Events
       const { data: eventsData } = await supabase
         .from('match_events')
-        .select('*')
+        .select('id, fixture_id, minute, type, event_target, team_id, player_id, assist_player_id, detail_text, is_official, created_at')
         .eq('fixture_id', fixtureId)
         .order('minute', { ascending: true });
 
@@ -238,7 +299,7 @@ export const ApiService = {
       if (events.length === 0) {
         const { data: liveEvents } = await supabase
           .from('match_live_events')
-          .select('*')
+          .select('event_uid, match_uid, minute, type, team_uid, player_uid, goal_type, card_type, occurred_at')
           .eq('match_uid', fixtureId)
           .order('minute', { ascending: true });
 
@@ -260,7 +321,7 @@ export const ApiService = {
       // Fetch Stored Match Lineups
       const { data: lineupsData } = await supabase
         .from('match_lineups')
-        .select('*')
+        .select('id, fixture_id, team_id, formation, starting_xi, substitutes, captain_notes')
         .eq('fixture_id', fixtureId);
 
       // Fetch all registered players for both teams from the database
@@ -1592,7 +1653,9 @@ export const ApiService = {
   async getHistoricalStandings(seasonId?: string): Promise<ApiResponse<HistoricalSeasonStandings[]>> {
     try {
       return await executeWithRetry(async () => {
-        let query = supabase.from('historical_standings').select('*');
+        let query = supabase
+          .from('historical_standings')
+          .select('season_id, position, team_name, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, archived_at');
         if (seasonId) {
           query = query.eq('season_id', seasonId);
         }
@@ -1642,17 +1705,34 @@ export const ApiService = {
   },
 
   // --- NEWS ---
-  async getNews(): Promise<ApiResponse<NewsItem[]>> {
-    const cached = guestCache.get<NewsItem[]>('news', 'all_published');
+  async getNews(options?: { page?: number; pageSize?: number; category?: string }): Promise<ApiResponse<NewsItem[]> & { total?: number; page?: number; pageSize?: number; totalPages?: number }> {
+    const page = options?.page;
+    const pageSize = options?.pageSize;
+    const category = options?.category;
+    const cacheKey = `${category || 'all'}_p${page || 'all'}_s${pageSize || 'all'}`;
+    const cached = guestCache.get<NewsItem[]>('news', cacheKey);
     if (cached) return { success: true, data: cached };
 
     try {
       return await executeWithRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from('news_articles')
-          .select('*')
-          .eq('status', 'published')
-          .order('published_at', { ascending: false });
+          .select('id, title, excerpt, content, image_url, category, author_id, status, published_at, created_at, slug', { count: 'exact' })
+          .eq('status', 'published');
+
+        if (category && category !== 'ALL') {
+          query = query.eq('category', category);
+        }
+
+        query = query.order('published_at', { ascending: false });
+
+        if (page && pageSize) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        const { data, count, error } = await query;
 
         if (error || !data || data.length === 0) {
           return { success: true, data: [] };
@@ -1665,15 +1745,20 @@ export const ApiService = {
           content: item.content,
           imageUrl: item.image_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
           publishedAt: new Date(item.published_at || item.created_at).toLocaleDateString(),
-          author: item.author || 'Sports Journalist',
-          authorRole: item.author_role || 'Official Journalist',
+          author: 'Sports Journalist',
+          authorRole: 'Official Journalist',
           verified: true,
           category: item.category || 'general',
           slug: item.slug
         }));
 
-        guestCache.set('news', 'all_published', articles);
-        return { success: true, data: articles };
+        guestCache.set('news', cacheKey, articles);
+        const resp: any = { success: true, data: articles };
+        if (count !== null && count !== undefined) resp.total = count;
+        if (page) resp.page = page;
+        if (pageSize) resp.pageSize = pageSize;
+        if (count && pageSize) resp.totalPages = Math.ceil(count / pageSize);
+        return resp;
       });
     } catch (err) {
       logger.warn('Failed to fetch news from Supabase.', { error: err });
@@ -1813,18 +1898,37 @@ export const ApiService = {
   },
 
   // --- ANNOUNCEMENTS ---
-  async getAnnouncements(): Promise<ApiResponse<Announcement[]>> {
+  async getAnnouncements(page?: number, pageSize?: number, role?: string): Promise<ApiResponse<Announcement[]> & { total?: number; page?: number; totalPages?: number }> {
     try {
       return await executeWithRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from('announcements')
-          .select('*')
+          .select('*', { count: 'exact' })
           .order('created_at', { ascending: false });
+
+        if (role && role !== 'all' && role !== 'admin' && role !== 'president') {
+          // In the table, recipients/target_role column determines the read:
+          // Users with this role read where recipient is 'all' or their selected role
+          query = query.or(`target_role.eq.all,target_role.eq.${role}`);
+        }
+
+        if (page && pageSize) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        const { data, count, error } = await query;
 
         if (error || !data) {
           return { success: true, data: [] };
         }
-        return { success: true, data };
+        const resp: any = { success: true, data };
+        if (count !== null && count !== undefined) resp.total = count;
+        if (page) resp.page = page;
+        if (pageSize) resp.pageSize = pageSize;
+        if (count && pageSize) resp.totalPages = Math.ceil(count / pageSize);
+        return resp;
       });
     } catch (err) {
       return { success: true, data: [] };
@@ -1835,18 +1939,33 @@ export const ApiService = {
     if (!announcement.title || !announcement.content) {
       return { success: false, data: null, message: 'Title and Content are required.' };
     }
+    const recipientValue = announcement.recipients || announcement.target_role || 'all';
     try {
-      const { data, error } = await supabase
+      const insertPayload: any = {
+        title: sanitizeHtmlText(announcement.title),
+        content: sanitizeHtmlText(announcement.content),
+        target_role: recipientValue,
+        recipients: recipientValue,
+        target_team_id: announcement.target_team_id || null,
+        author_id: announcement.author_id || null
+      };
+      let { data, error } = await supabase
         .from('announcements')
-        .insert({
-          title: sanitizeHtmlText(announcement.title),
-          content: sanitizeHtmlText(announcement.content),
-          target_role: announcement.target_role || 'all',
-          target_team_id: announcement.target_team_id || null,
-          author_id: announcement.author_id || null
-        })
+        .insert(insertPayload)
         .select()
         .single();
+
+      // If remote table does not have recipients column yet (42703), retry without it
+      if (error && (error.code === '42703' || error.message?.includes('recipients'))) {
+        delete insertPayload.recipients;
+        const retryRes = await supabase
+          .from('announcements')
+          .insert(insertPayload)
+          .select()
+          .single();
+        data = retryRes.data;
+        error = retryRes.error;
+      }
 
       if (error) return { success: false, data: null, message: error.message };
       return { success: true, data };
@@ -1878,10 +1997,22 @@ export const ApiService = {
   },
 
   // --- AUDIT LOGGING ---
-  async getAuditLogs(): Promise<ApiResponse<AuditLog[]>> {
+  async getAuditLogs(page = 1, pageSize = 50): Promise<ApiResponse<AuditLog[]> & { total?: number; page?: number; totalPages?: number }> {
     try {
-      const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-      return { success: true, data: data || [] };
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data, count } = await supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      const resp: any = { success: true, data: data || [] };
+      if (count !== null && count !== undefined) resp.total = count;
+      resp.page = page;
+      resp.pageSize = pageSize;
+      if (count) resp.totalPages = Math.ceil(count / pageSize);
+      return resp;
     } catch (e) {
       return { success: true, data: [] };
     }
@@ -1917,7 +2048,7 @@ export const ApiService = {
   // --- PRE-SEASON & DASHBOARD MANAGEMENT MUTATIONS ---
   async getSeasons(): Promise<ApiResponse<any[]>> {
     try {
-      const { data, error } = await supabase.from('seasons').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('seasons').select('id, name, start_date, end_date, registration_cutoff, status, is_locked, created_at').order('created_at', { ascending: false });
       if (error || !data) return { success: true, data: [] };
       return { success: true, data };
     } catch (e) {
@@ -1961,7 +2092,7 @@ export const ApiService = {
     try {
       const { data, error } = await supabase
         .from('competitions')
-        .select('*')
+        .select('id, name, slug, country, season, logo_url, is_active, created_at')
         .order('created_at', { ascending: true });
       if (error || !data) return { success: true, data: [] };
       return { success: true, data };
@@ -2113,7 +2244,7 @@ export const ApiService = {
 
   async getReferees(): Promise<ApiResponse<any[]>> {
     try {
-      const { data } = await supabase.from('referees').select('*').is('deleted_at', null);
+      const { data } = await supabase.from('referees').select('id, name, email, phone, badge_level, status, created_at').is('deleted_at', null);
       return { success: true, data: data || [] };
     } catch (e) {
       return { success: true, data: [] };

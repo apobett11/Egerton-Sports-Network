@@ -17,14 +17,18 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { HerdMentalityProvider } from './project_stark';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
+import { resolveGuestMatchdayDate } from './lib/matchdayHelper';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import { DeviceService } from './services/DeviceService';
+import type { DeviceAnnouncementItem } from './services/DeviceService';
+import { PublicAnnouncementPopup } from './components/PublicAnnouncementPopup';
+import { DeviceNotificationsModal } from './components/DeviceNotificationsModal';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun } from 'lucide-react';
+import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -206,6 +210,48 @@ export const AppContent: React.FC = () => {
     }
   };
 
+  // Device-specific Announcements & Notifications State
+  const [deviceAnnouncements, setDeviceAnnouncements] = useState<DeviceAnnouncementItem[]>([]);
+  const [activePopupAnnouncement, setActivePopupAnnouncement] = useState<DeviceAnnouncementItem | null>(null);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!deviceId) return;
+    let isMounted = true;
+
+    const fetchAnnouncements = async () => {
+      try {
+        const list = await DeviceService.getDeviceAnnouncements(deviceId);
+        if (isMounted) {
+          setDeviceAnnouncements(list);
+          // Check for unread announcements to show as popup
+          const unread = list.find((a) => a.status === 'unread');
+          if (unread && !activePopupAnnouncement) {
+            setActivePopupAnnouncement(unread);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load device announcements:', e);
+      }
+    };
+
+    fetchAnnouncements();
+    const interval = setInterval(fetchAnnouncements, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [deviceId]);
+
+  const handleMarkAnnouncementRead = async (announcementId: string) => {
+    if (!deviceId) return;
+    const updated = await DeviceService.markAnnouncementAsRead(deviceId, announcementId);
+    setDeviceAnnouncements(updated);
+    if (activePopupAnnouncement?.id === announcementId) {
+      setActivePopupAnnouncement(null);
+    }
+  };
+
   // Appearance & Theme State
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('theme');
@@ -237,10 +283,13 @@ export const AppContent: React.FC = () => {
       const saved = sessionStorage.getItem('esn_selected_date');
       if (saved) {
         const d = new Date(saved);
-        if (!isNaN(d.getTime())) return d;
+        if (!isNaN(d.getTime())) {
+          const dayOfWeek = d.getDay();
+          if (dayOfWeek === 0 || dayOfWeek === 6) return d;
+        }
       }
     } catch {}
-    return new Date();
+    return resolveGuestMatchdayDate();
   });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
@@ -320,6 +369,9 @@ export const AppContent: React.FC = () => {
 
   // Sync route on hash change
   useEffect(() => {
+    if (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/') {
+      window.location.hash = '/home';
+    }
     const handleHash = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
@@ -418,6 +470,31 @@ export const AppContent: React.FC = () => {
 
   const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
 
+  // Auto-sync guest fixtures to next matchday if on a weekday, or today if on a playday
+  useEffect(() => {
+    if (liveMatches && liveMatches.length > 0) {
+      const curYear = selectedDate.getFullYear();
+      const curMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const curDay = String(selectedDate.getDate()).padStart(2, '0');
+      const curKey = `${curYear}-${curMonth}-${curDay}`;
+      const dayOfWeek = selectedDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const hasFixturesOnDate = liveMatches.some(f => {
+        const raw = f.scheduledTime || (f as any).scheduled_time;
+        if (!raw) return false;
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return false;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return key === curKey;
+      });
+
+      if (!isWeekend && !hasFixturesOnDate) {
+        const targetDate = resolveGuestMatchdayDate(liveMatches);
+        setSelectedDate(targetDate);
+      }
+    }
+  }, [liveMatches]);
+
   // Dynamically computed standings derived strictly from finalized matches in liveMatches
   const currentStandings = useMemo(() => {
     const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
@@ -489,9 +566,11 @@ export const AppContent: React.FC = () => {
 
   if (route === 'journalist') {
     return (
-      <Suspense fallback={<DashboardLoader />}>
-        <JournalistDashboard onLogout={() => handleNavigateHash('/home')} />
-      </Suspense>
+      <ProtectedRoute allowedRoles={['journalist', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <JournalistDashboard onLogout={() => handleNavigateHash('/home')} />
+        </Suspense>
+      </ProtectedRoute>
     );
   }
 
@@ -521,9 +600,11 @@ export const AppContent: React.FC = () => {
 
   if (route === 'referee' || route === 'dashboard/referee') {
     return (
-      <Suspense fallback={<DashboardLoader />}>
-        <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
-      </Suspense>
+      <ProtectedRoute allowedRoles={['referee', 'linesman', 'assistant_referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
+        </Suspense>
+      </ProtectedRoute>
     );
   }
 
@@ -626,6 +707,29 @@ export const AppContent: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Notifications & Announcements in Sidebar */}
+                <div className="space-y-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Announcements</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      setIsNotificationsModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#14263b] text-xs font-bold cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-[#ff0046]" />
+                      <span>Notices & Bulletins</span>
+                    </span>
+                    {deviceAnnouncements.filter((a) => a.status === 'unread').length > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-[#ff0046] text-white">
+                        {deviceAnnouncements.filter((a) => a.status === 'unread').length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
                 <div className="space-y-3">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Campus Competitions</div>
                   <ul className="space-y-1.5">
@@ -699,6 +803,8 @@ export const AppContent: React.FC = () => {
               favoritesCount={favorites.length}
               isCalendarOpen={isCalendarOpen}
               onCloseCalendar={() => setIsCalendarOpen(false)}
+              unreadAnnouncementsCount={deviceAnnouncements.filter((a) => a.status === 'unread').length}
+              onOpenNotifications={() => setIsNotificationsModalOpen(true)}
             />
 
             <Navigation
@@ -756,6 +862,25 @@ export const AppContent: React.FC = () => {
             <Footer />
           </>
         )}
+
+        {/* Public Announcement Popup for Anonymous Devices */}
+        {activePopupAnnouncement && (
+          <PublicAnnouncementPopup
+            announcement={activePopupAnnouncement}
+            onMarkRead={handleMarkAnnouncementRead}
+            onDismiss={() => handleMarkAnnouncementRead(activePopupAnnouncement.id)}
+            isDark={darkMode}
+          />
+        )}
+
+        {/* Device Notifications Modal */}
+        <DeviceNotificationsModal
+          isOpen={isNotificationsModalOpen}
+          onClose={() => setIsNotificationsModalOpen(false)}
+          announcements={deviceAnnouncements}
+          onMarkRead={handleMarkAnnouncementRead}
+          isDark={darkMode}
+        />
       </div>
     </HerdMentalityProvider>
   );

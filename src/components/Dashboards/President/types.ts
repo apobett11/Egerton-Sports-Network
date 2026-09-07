@@ -77,6 +77,7 @@ export interface AnnouncementItem {
   title: string;
   content: string;
   target_role: string;
+  recipients?: string;
   author_id?: string;
   created_at: string;
   read_count?: number;

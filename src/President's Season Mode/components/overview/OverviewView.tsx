@@ -125,11 +125,11 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     const liveMatch = fixtures.find((f) => f.status === 'LIVE' || f.status === 'HT');
     if (liveMatch?.matchday) return liveMatch.matchday;
 
-    // B. Match scheduled for today
-    const todayMatch = fixtures.find(
-      (f) => f.scheduled_time && f.scheduled_time.startsWith(todayStr)
+    // B. Match scheduled for today that is not yet completed
+    const todayUnfinished = fixtures.find(
+      (f) => f.scheduled_time && f.scheduled_time.startsWith(todayStr) && f.status !== 'FT' && f.status !== 'CANCELLED'
     );
-    if (todayMatch?.matchday) return todayMatch.matchday;
+    if (todayUnfinished?.matchday) return todayUnfinished.matchday;
 
     // C. Earliest matchday with uncompleted matches
     for (const md of sortedMatchdays) {
@@ -140,6 +140,11 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
 
     return sortedMatchdays[sortedMatchdays.length - 1] || fixtures[0]?.matchday || 1;
   }, [fixtures, sortedMatchdays, todayStr]);
+
+  // Active Matchday Fixtures: calls the games of the matchday
+  const activeMatchdayFixtures = useMemo(() => {
+    return fixtures.filter((f) => f.matchday === activeMatchdayNumber);
+  }, [fixtures, activeMatchdayNumber]);
 
   // 2. Active Overview Day Data
   // Resolves the current daily matches:
@@ -158,7 +163,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       };
     }
 
-    const mdFixtures = fixtures.filter((f) => f.matchday === activeMatchdayNumber);
+    const mdFixtures = activeMatchdayFixtures;
     if (mdFixtures.length > 0) {
       const nextUncompleted = mdFixtures.find((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
       const targetMatch = nextUncompleted || mdFixtures[0];
@@ -194,17 +199,19 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
       isCalendarToday: true,
       formattedActiveDayDate: formattedTodayDate,
     };
-  }, [fixtures, todayStr, activeMatchdayNumber, formattedTodayDate]);
+  }, [fixtures, todayStr, activeMatchdayFixtures, formattedTodayDate]);
 
-  // 3. Daily metrics & Daily percentage of games played
-  const dailyTotal = currentDayMatches.length;
-  const dailyPlayed = currentDayMatches.filter((f) => f.status === 'FT').length;
-  const dailyLive = currentDayMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
-  const dailyUpcoming = currentDayMatches.filter(
+  // 3. Matchday metrics & percentage of games played (those that have been completed)
+  // Calls the games of the matchday so range and progress reflect completed games
+  const matchdayMatches = activeMatchdayFixtures.length > 0 ? activeMatchdayFixtures : currentDayMatches;
+  const dailyTotal = matchdayMatches.length;
+  const dailyPlayed = matchdayMatches.filter((f) => f.status === 'FT').length;
+  const dailyLive = matchdayMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
+  const dailyUpcoming = matchdayMatches.filter(
     (f) => f.status === 'UPCOMING' || !f.status
   ).length;
-  const dailyCancelled = currentDayMatches.filter((f) => f.status === 'CANCELLED').length;
-  const dailyPostponed = currentDayMatches.filter((f) => f.status === 'POSTPONED').length;
+  const dailyCancelled = matchdayMatches.filter((f) => f.status === 'CANCELLED').length;
+  const dailyPostponed = matchdayMatches.filter((f) => f.status === 'POSTPONED').length;
   const dailyProgress = dailyTotal > 0 ? Math.round((dailyPlayed / dailyTotal) * 100) : 0;
 
   // 4. Division Breakdown: Range of PL Games and Championships
@@ -218,44 +225,38 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     (f as any).competition?.slug === 'championship' ||
     (f as any).competition?.name?.includes('Championship');
 
-  const eplMatches = currentDayMatches.filter(isEplMatch);
+  const eplMatches = matchdayMatches.filter(isEplMatch);
   const eplTotal = eplMatches.length;
   const eplPlayed = eplMatches.filter((f) => f.status === 'FT').length;
   const eplLive = eplMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
   const eplUpcoming = eplMatches.filter((f) => f.status === 'UPCOMING' || !f.status).length;
   const eplProgress = eplTotal > 0 ? Math.round((eplPlayed / eplTotal) * 100) : 0;
 
-  const champMatches = currentDayMatches.filter(isChampMatch);
+  const champMatches = matchdayMatches.filter(isChampMatch);
   const champTotal = champMatches.length;
   const champPlayed = champMatches.filter((f) => f.status === 'FT').length;
   const champLive = champMatches.filter((f) => f.status === 'LIVE' || f.status === 'HT').length;
   const champUpcoming = champMatches.filter((f) => f.status === 'UPCOMING' || !f.status).length;
   const champProgress = champTotal > 0 ? Math.round((champPlayed / champTotal) * 100) : 0;
 
-  // Time range calculation for fixtures
+  // Time range calculation for fixtures (sorted chronologically)
   const getTimeRange = (matches: OperationalMatch[]) => {
-    const times = matches
-      .map((m) => {
-        if (!m.scheduled_time) return null;
-        try {
-          const d = new Date(m.scheduled_time);
-          return isNaN(d.getTime()) ? null : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as string[];
+    const valid = matches
+      .filter((m) => m.scheduled_time)
+      .sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime());
 
-    if (times.length === 0) return 'Kickoff Schedule Pending';
-    if (times.length === 1) return `Kickoff at ${times[0]}`;
-    return `${times[0]} – ${times[times.length - 1]}`;
+    if (valid.length === 0) return 'Kickoff Schedule Pending';
+    const firstTime = new Date(valid[0].scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const lastTime = new Date(valid[valid.length - 1].scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (valid.length === 1 || firstTime === lastTime) return `Kickoff at ${firstTime}`;
+    return `${firstTime} – ${lastTime}`;
   };
 
   const eplTimeRange = getTimeRange(eplMatches);
   const champTimeRange = getTimeRange(champMatches);
 
   // Active Matchday calculations
-  const activeMatchdayFixtures = fixtures.filter((f) => f.matchday === activeMatchdayNumber);
   const mdTotal = activeMatchdayFixtures.length;
   const mdCompleted = activeMatchdayFixtures.filter((f) => f.status === 'FT').length;
   const mdRemaining = Math.max(0, mdTotal - mdCompleted);
@@ -448,7 +449,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                Daily Matchday Progress
+                Daily Matchday Progress — Matchday {activeMatchdayNumber}
               </span>
               <span className="px-2 py-0.5 rounded-sm text-[10px] font-mono font-bold bg-[#14263b] text-slate-300">
                 {dailyPlayed} / {dailyTotal} games completed

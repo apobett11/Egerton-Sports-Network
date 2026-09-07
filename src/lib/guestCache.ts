@@ -1,20 +1,27 @@
-/**
- * Guest Cache Layer (Level 11)
- * High-performance, memory & localStorage bounded cache system for Guest Read Operations.
- * 
- * Features:
- * - TTL validation per category (fixtures, standings, match_details, teams, players, news)
- * - Minimal memory & storage footprint
- * - Background revalidation when network is available
- * - Network-aware recovery
- * - Independent section cache isolation
- */
+import { supabase } from './supabase';
 
 export interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;
 }
+
+export type CacheCategory = 
+  | 'fixtures' 
+  | 'standings' 
+  | 'match_details' 
+  | 'teams' 
+  | 'players' 
+  | 'news' 
+  | 'announcements' 
+  | 'milestones' 
+  | 'performance' 
+  | 'audit_logs' 
+  | 'seasons' 
+  | 'leagues'
+  | 'referees';
+
+type CacheSubscriber = (category: string, key?: string) => void;
 
 const DEFAULT_TTLS: Record<string, number> = {
   fixtures: 60 * 1000,      // 1 minute
@@ -23,14 +30,21 @@ const DEFAULT_TTLS: Record<string, number> = {
   teams: 10 * 60 * 1000,     // 10 minutes
   players: 10 * 60 * 1000,   // 10 minutes
   news: 5 * 60 * 1000,       // 5 minutes
+  announcements: 5 * 60 * 1000,
   milestones: 5 * 60 * 1000, // 5 minutes
-  performance: 3 * 60 * 1000 // 3 minutes
+  performance: 3 * 60 * 1000, // 3 minutes
+  audit_logs: 30 * 1000,
+  seasons: 10 * 60 * 1000,
+  leagues: 10 * 60 * 1000,
+  referees: 10 * 60 * 1000
 };
 
 const STORAGE_PREFIX = 'esn_guest_cache_v3_';
 
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
+  private subscribers: Set<CacheSubscriber> = new Set();
+  private isRealtimeSubscribed = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -48,7 +62,78 @@ class GuestCacheManager {
         // Revalidate stale cache on network recovery
         this.clearStaleMemory();
       });
+
+      this.initRealtimeSubscription();
     }
+  }
+
+  /**
+   * Listen to database changes and auto-renew / invalidate affected cache entries in real-time
+   */
+  private initRealtimeSubscription(): void {
+    if (this.isRealtimeSubscribed || typeof window === 'undefined') return;
+
+    try {
+      const channel = supabase
+        .channel('esn_cache_realtime_renewal')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+          this.invalidate('fixtures');
+          this.invalidate('standings');
+          this.invalidate('performance');
+          this.invalidate('milestones');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, () => {
+          this.invalidate('match_details');
+          this.invalidate('fixtures');
+          this.invalidate('performance');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'news_articles' }, () => {
+          this.invalidate('news');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+          this.invalidate('announcements');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
+          this.invalidate('teams');
+          this.invalidate('standings');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
+          this.invalidate('players');
+          this.invalidate('performance');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
+          this.invalidate('performance');
+          this.invalidate('milestones');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
+          this.invalidate('audit_logs');
+        })
+        .subscribe();
+
+      this.isRealtimeSubscribed = true;
+    } catch (err) {
+      console.warn('Realtime cache synchronization subscription deferred:', err);
+    }
+  }
+
+  /**
+   * Subscribe to cache invalidation / renewal events
+   */
+  subscribe(fn: CacheSubscriber): () => void {
+    this.subscribers.add(fn);
+    return () => {
+      this.subscribers.delete(fn);
+    };
+  }
+
+  private notifySubscribers(category: string, key?: string): void {
+    this.subscribers.forEach((fn) => {
+      try {
+        fn(category, key);
+      } catch (err) {
+        console.error('Error in cache subscriber notification:', err);
+      }
+    });
   }
 
   /**
@@ -108,7 +193,7 @@ class GuestCacheManager {
   }
 
   /**
-   * Invalidate specific category or key.
+   * Invalidate specific category or key and notify subscribers.
    */
   invalidate(category: string, key?: string): void {
     if (key) {
@@ -133,6 +218,8 @@ class GuestCacheManager {
         }
       } catch {}
     }
+
+    this.notifySubscribers(category, key);
   }
 
   /**

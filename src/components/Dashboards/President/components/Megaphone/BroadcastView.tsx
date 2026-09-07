@@ -59,6 +59,7 @@ export const BroadcastView: React.FC<BroadcastViewProps> = ({
               className={`w-full p-3 rounded-md border text-xs font-bold ${isDark ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#ff0046] focus:outline-none' : 'bg-[#f4f6f9] border-[#d2d8e0] text-slate-800 focus:border-[#ff0046] focus:outline-none'}`}
             >
               <option value="all">All (Default)</option>
+              <option value="public">Public / Fans</option>
               <option value="coaches">Coaches</option>
               <option value="captains">Captains</option>
               <option value="referees">Referees</option>
