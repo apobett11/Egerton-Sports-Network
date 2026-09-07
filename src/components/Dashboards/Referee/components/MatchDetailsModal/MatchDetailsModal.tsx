@@ -39,17 +39,8 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
   onCancelMatch,
   onOpenWalkover,
 }) => {
-  // Check if this match is assigned to current referee UID
-  const assigned =
-    isAssignedToMe ??
-    Boolean(
-      activeRefereeId &&
-        (match.refereeId === activeRefereeId ||
-          match.assistantReferee1Id === activeRefereeId ||
-          match.assistantReferee2Id === activeRefereeId ||
-          match.fourthOfficialId === activeRefereeId ||
-          match.verifiedByRefereeId === activeRefereeId)
-    );
+  // Unified Match Operations: All matches are editable and actionable by any logged-in referee
+  const assigned = true;
 
   // Game Fill editable state (editable at any time by assigned referee)
   const [kickoffTime, setKickoffTime] = useState<string>(() => {

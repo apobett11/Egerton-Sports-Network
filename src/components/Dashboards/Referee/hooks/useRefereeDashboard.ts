@@ -21,23 +21,11 @@ export const FALLBACK_REFEREES = [
   { id: 'ref_3', name: 'Brian Otieno', role: 'Class 1 Referee', status: 'Active', email: 'otieno@egerton.ac.ke' },
 ];
 
-export const canRefereeActOnMatch = (match: Match, refereeUid?: string): { canAct: boolean; reason?: string } => {
-  if (refereeUid) {
-    const isAssigned =
-      match.refereeId === refereeUid ||
-      match.assistantReferee1Id === refereeUid ||
-      match.assistantReferee2Id === refereeUid ||
-      match.fourthOfficialId === refereeUid ||
-      match.verifiedByRefereeId === refereeUid;
-    if (!isAssigned) {
-      return { canAct: false, reason: 'You cannot confirm a match that is not assigned to you.' };
-    }
-  }
-
+export const canRefereeActOnMatch = (match: Match, _refereeUid?: string): { canAct: boolean; reason?: string } => {
   if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
   if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
 
-  // Referees can update match at any time
+  // Unified Match Operations: Referees can update and end matches at any time
   return { canAct: true };
 };
 
@@ -104,19 +92,12 @@ export const useRefereeDashboard = () => {
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
   const [selectedMatchdayGroup, setSelectedMatchdayGroup] = useState<MatchdayScheduleGroup | null>(null);
 
-  // Helper to check if a match is assigned to the current referee UID
+  // Unified Match Operations: All matches are accessible to any official
   const isAssignedToMe = useCallback(
-    (match: Match | null | undefined, refId: string = effectiveRefereeId): boolean => {
-      if (!match || !refId) return false;
-      return (
-        match.refereeId === refId ||
-        match.assistantReferee1Id === refId ||
-        match.assistantReferee2Id === refId ||
-        match.fourthOfficialId === refId ||
-        match.verifiedByRefereeId === refId
-      );
+    (_match: Match | null | undefined, _refId?: string): boolean => {
+      return true;
     },
-    [effectiveRefereeId]
+    []
   );
 
   // Load Assigned Fixtures Scoped by Referee UID from Database
@@ -248,23 +229,8 @@ export const useRefereeDashboard = () => {
         }));
       }
 
-      // Filter matches assigned strictly to this referee UID
-      let myMatches = formattedMatches;
-      if (effectiveRefereeId) {
-        const scoped = formattedMatches.filter((m: any) => {
-          return (
-            m.refereeId === effectiveRefereeId ||
-            m.verifiedByRefereeId === effectiveRefereeId ||
-            m.assistantReferee1Id === effectiveRefereeId ||
-            m.assistantReferee2Id === effectiveRefereeId ||
-            m.fourthOfficialId === effectiveRefereeId
-          );
-        });
-        myMatches = scoped.length > 0 ? scoped : formattedMatches;
-      }
-
-      // Sort all matches chronologically by scheduled time
-      const sortedMatches = [...myMatches].sort((a, b) => {
+      // Unified Referee Dashboard: Load all matches across competitions
+      const sortedMatches = [...formattedMatches].sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
         const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
         return timeA - timeB;
@@ -331,17 +297,33 @@ export const useRefereeDashboard = () => {
     return fixtures.find((f) => f.id === selectedFixtureId) || fixtures[0] || null;
   }, [fixtures, selectedFixtureId]);
 
-  // The NEXT Match: The earliest uncompleted match assigned to this referee
-  const nextMatch = useMemo(() => {
-    const activeUpcoming = fixtures
+  // Unified Homepage: Top 3 active events. When one is filled/submitted, another automatically slides in.
+  const activeThreeMatches = useMemo<Match[]>(() => {
+    return fixtures
       .filter((m) => m.status !== 'FT' && m.status !== 'CANCELLED')
       .sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
         const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
         return timeA - timeB;
-      });
+      })
+      .slice(0, 3);
+  }, [fixtures]);
 
-    return activeUpcoming[0] || null;
+  // The NEXT Match: Primary active match
+  const nextMatch = useMemo(() => {
+    return activeThreeMatches[0] || null;
+  }, [activeThreeMatches]);
+
+  // League completion status
+  const leagueProgress = useMemo(() => {
+    const total = fixtures.length;
+    const completed = fixtures.filter((m) => m.status === 'FT' || m.status === 'CANCELLED').length;
+    return {
+      total,
+      completed,
+      remaining: Math.max(0, total - completed),
+      isAllCompleted: total > 0 && completed === total,
+    };
   }, [fixtures]);
 
   // Helper to test if a match is scheduled on a weekend (Saturday or Sunday)
@@ -646,8 +628,8 @@ export const useRefereeDashboard = () => {
   // Cancel Match Action (sets status = CANCELLED in DB)
   const cancelMatch = async (fixtureId: string) => {
     const targetMatch = fixtures.find((f) => f.id === fixtureId);
-    if (targetMatch && !isAssignedToMe(targetMatch, effectiveRefereeId)) {
-      setAuthError('You cannot confirm or cancel a match that is not assigned to you.');
+    if (!targetMatch) {
+      setAuthError('Match not found.');
       return;
     }
 
@@ -688,8 +670,8 @@ export const useRefereeDashboard = () => {
   // Award Walkover Action (3-0 to selected team)
   const awardWalkover = async (fixtureId: string, winningTeamTarget: 'home' | 'away') => {
     const targetMatch = fixtures.find((f) => f.id === fixtureId);
-    if (targetMatch && !isAssignedToMe(targetMatch, effectiveRefereeId)) {
-      setAuthError('You cannot confirm a match that is not assigned to you.');
+    if (!targetMatch) {
+      setAuthError('Match not found.');
       return;
     }
 
@@ -773,10 +755,6 @@ export const useRefereeDashboard = () => {
     injuries: InjuryEntry[];
   }) => {
     if (!selectedFixture) return;
-    if (!isAssignedToMe(selectedFixture, effectiveRefereeId)) {
-      setAuthError('You cannot confirm a match that is not assigned to you.');
-      return;
-    }
     setIsSubmitting(true);
     setAuthError(null);
 
@@ -895,10 +873,6 @@ export const useRefereeDashboard = () => {
       const target = fixtures.find((f) => f.id === fixtureId);
       if (!target) throw new Error('Match not found.');
 
-      if (!isAssignedToMe(target, effectiveRefereeId)) {
-        throw new Error('You cannot confirm or edit a match that is not assigned to you.');
-      }
-
       let isoScheduledTime = updates.scheduledTime;
       if (!isoScheduledTime && updates.time && target.scheduledTime) {
         const baseDate = new Date(target.scheduledTime);
@@ -1007,6 +981,8 @@ export const useRefereeDashboard = () => {
     setSelectedDate,
     fixtures,
     nextMatch,
+    activeThreeMatches,
+    leagueProgress,
     todayMatches,
     myNextMatches,
     matchdayGroups,

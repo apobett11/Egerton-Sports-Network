@@ -149,27 +149,12 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
             </button>
           </div>
 
-          {/* Official Role Pill or Referee Switcher */}
-          {refereesList && refereesList.length > 1 && onSelectRefereeId ? (
-            <select
-              value={activeRefereeId}
-              onChange={(e) => onSelectRefereeId(e.target.value)}
-              className="hidden md:inline-block px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider cursor-pointer focus:outline-hidden focus:border-[#ff0046]"
-              title="Switch Official Profile"
-            >
-              {refereesList.map((r) => (
-                <option key={r.id} value={r.id} className="bg-white dark:bg-[#0e1e2d] text-slate-900 dark:text-white">
-                  {r.name} {r.status === 'Inactive' ? '• [Unavailable]' : '• [Available]'}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>{currentUserName}</span>
-            </div>
-          )}
+          {/* Unified Match Officials Badge */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-200 text-xs font-black uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Unified Match Officials</span>
+          </div>
 
           {/* Theme Toggle */}
           <button

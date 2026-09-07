@@ -29,7 +29,7 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
   setActiveTab,
 }) => {
   const [activeMatchdayModal, setActiveMatchdayModal] = useState<MatchdayScheduleGroup | null>(null);
-  const weekendMatches = myNextMatches && myNextMatches.length > 0 ? myNextMatches : todayMatches;
+  const displayMatches = todayMatches && todayMatches.length > 0 ? todayMatches : (myNextMatches && myNextMatches.length > 0 ? myNextMatches : []);
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -79,42 +79,42 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black tracking-tight uppercase text-slate-900 dark:text-white">
-              My Next Matches
+              Today's Matches
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Upcoming weekend fixtures allocated to your referee UID. Update kickoff time, scores, and status at any time.
+              All official league fixtures. Any official can update kickoff time, scores, award walkovers, or finalize any match at any time.
             </p>
           </div>
         </div>
       </div>
 
-      {/* SECTION 1: MY NEXT MATCHES (WEEKEND FIXTURES) */}
+      {/* SECTION 1: TODAY'S MATCHES (ALL FIXTURES) */}
       <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#14263b] pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#ff0046]" />
             <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              My Next Matches ({weekendMatches.length})
+              Today's Matches ({displayMatches.length})
             </h3>
           </div>
           <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Weekend Allocation • Saturday & Sunday
+            All Fixtures
           </span>
         </div>
 
-        {weekendMatches.length === 0 ? (
+        {displayMatches.length === 0 ? (
           <div className="py-8 text-center bg-slate-50 dark:bg-[#102237] border border-dashed border-slate-200 dark:border-[#1a2e45] rounded-md space-y-2">
             <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
             <h4 className="font-extrabold text-xs sm:text-sm uppercase tracking-tight text-slate-800 dark:text-slate-200">
-              No Weekend Matches Allocated
+              No Matches Found
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              You do not have any fixtures allocated for the upcoming weekend under your referee UID. Ensure your status is set to Available to be included in Friday's allocation.
+              No fixtures scheduled for this selection.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {weekendMatches.map((match) => {
+            {displayMatches.map((match) => {
               const isFinished = match.status === 'FT';
               const isCancelled = match.status === 'CANCELLED';
               const isLive = match.status === 'LIVE' || match.status === 'HT';

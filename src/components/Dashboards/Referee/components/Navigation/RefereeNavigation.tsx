@@ -15,7 +15,7 @@ export const RefereeNavigation: React.FC<RefereeNavigationProps> = ({
 }) => {
   const tabs = [
     { id: 'overview' as RefereeTab, label: 'Overview', icon: Home },
-    { id: 'matches' as RefereeTab, label: 'My Matches', icon: Calendar },
+    { id: 'matches' as RefereeTab, label: "Today's Matches", icon: Calendar },
     { id: 'announcements' as RefereeTab, label: 'Announcements', icon: Megaphone, badge: announcementsCount },
     { id: 'profile' as RefereeTab, label: 'Profile', icon: User },
   ];

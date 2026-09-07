@@ -717,10 +717,9 @@ export function assertLiveJournalistWindow(
 
 export function assertRefereeActionWindow(
   match: Match,
-  now: string
+  _now?: string
 ): void {
-  assertMatchStarted(match, now);
-
+  // Unified Match Operations: Referees can act on fixtures at any time without time blockage
   if (
     match.status === "FINALIZED" ||
     match.status === "LOCKED" ||
@@ -735,10 +734,16 @@ export function assertRefereeActionWindow(
 }
 
 export function assertNormalFinalizationWindow(match: Match): void {
-  if (match.status !== "FULL_TIME") {
+  // Unified Match Operations: Normal finalization permitted for any active match
+  if (
+    match.status === "FINALIZED" ||
+    match.status === "LOCKED" ||
+    match.status === "CANCELLED" ||
+    match.status === "WALKOVER"
+  ) {
     throw new MatchEngineError(
-      "FULL_TIME_REQUIRED",
-      "Normal referee confirmation requires FULL_TIME."
+      "MATCH_TERMINAL",
+      `Match ${match.match_uid} is already terminal (${match.status}).`
     );
   }
 }

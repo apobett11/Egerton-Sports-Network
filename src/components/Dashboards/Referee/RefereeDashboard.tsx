@@ -30,6 +30,8 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     setSelectedDate,
     fixtures,
     nextMatch,
+    activeThreeMatches,
+    leagueProgress,
     todayMatches,
     myNextMatches,
     matchdayGroups,
@@ -93,10 +95,12 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
 
       {/* 3. MAIN DASHBOARD CONTENT AREA */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-6 relative z-10">
-        {/* TAB 1: OVERVIEW (HERO NEXT MATCH + ANALYTICS) */}
+        {/* TAB 1: OVERVIEW (3-EVENT ROLLING HOMEPAGE + ANALYTICS) */}
         {activeTab === 'overview' && (
           <RefereeHomeOverview
+            activeMatches={activeThreeMatches}
             nextMatch={nextMatch}
+            leagueProgress={leagueProgress}
             countdownStr={countdownStr}
             announcements={announcements}
             profileData={profileData}
