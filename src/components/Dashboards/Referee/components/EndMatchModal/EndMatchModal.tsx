@@ -59,8 +59,6 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   homeSquad = [],
   awaySquad = [],
 }) => {
-  if (!isOpen) return null;
-
   // Recorded Match Events list
   const [events, setEvents] = useState<RecordedEvent[]>([]);
 
@@ -84,6 +82,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
   // Fetch complete squads (starters and substitutes) if not already fully supplied
   useEffect(() => {
+    if (!isOpen) return;
     async function loadFullRosters() {
       try {
         const homeId = match.teamA.id;
@@ -172,7 +171,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     }
 
     loadFullRosters();
-  }, [match.id, match.teamA.id, match.teamB.id, match.teamA.name, match.teamB.name]);
+  }, [isOpen, match.id, match.teamA.id, match.teamB.id, match.teamA.name, match.teamB.name]);
 
   // Dynamic Score calculated from recorded goals
   const calculatedScore = useMemo(() => {
@@ -381,6 +380,8 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     setIsConfirmSubmitOpen(false);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div

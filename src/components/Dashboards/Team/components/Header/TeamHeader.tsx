@@ -18,9 +18,6 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
   darkMode,
   setDarkMode,
 }) => {
-  const isCoach = currentRole === 'COACH';
-  const isCaptain = currentRole === 'CAPTAIN';
-
   const viewTitles: Record<DashboardView, string> = {
     DASHBOARD: 'Team Executive Overview',
     TACTICS: '2D Tactical Squad & Pitch',
@@ -43,13 +40,9 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
 
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
-              isCoach
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-            }`}>
-              {isCoach ? <Briefcase className="w-3 h-3" /> : <Crown className="w-3 h-3" />}
-              <span>{currentRole} ACTIVE</span>
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <Briefcase className="w-3 h-3" />
+              <span>HEAD COACH ACTIVE</span>
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">• Egerton FC Desk</span>
           </div>

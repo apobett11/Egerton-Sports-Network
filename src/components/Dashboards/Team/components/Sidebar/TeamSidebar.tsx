@@ -26,9 +26,6 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
   setActiveView,
   currentRole,
 }) => {
-  const isCoach = currentRole === 'COACH';
-  const isCaptain = currentRole === 'CAPTAIN';
-
   const navItems: { view: DashboardView; label: string; icon: React.ReactNode; badge?: string; color: string }[] = [
     {
       view: 'DASHBOARD',
@@ -74,24 +71,16 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
       {/* Role Badge Indicator */}
       <div className="p-3 rounded-xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black ${
-            isCoach 
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-              : isCaptain
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-          }`}>
-            {isCoach ? <Briefcase className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <Briefcase className="w-4 h-4" />
           </div>
           <div>
             <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Current Role</div>
-            <div className="text-xs font-black text-white">{currentRole} MODE</div>
+            <div className="text-xs font-black text-white">HEAD COACH</div>
           </div>
         </div>
-        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-          isCoach ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-        }`}>
-          {isCoach ? 'Manager' : 'On-Pitch Leader'}
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400">
+          Exclusive Manager
         </span>
       </div>
 

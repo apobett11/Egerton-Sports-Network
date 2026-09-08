@@ -34,8 +34,9 @@ export const useTeamDashboard = () => {
   const { user, role: authRole, logout: authLogout } = useAuth();
 
   const isLoggedIn = Boolean(user && authRole !== 'guest');
-  const currentRole: UserRole = authRole === 'captain' ? 'CAPTAIN' : 'COACH';
-  const canPublish = (authRole === 'coach' || authRole === 'captain') || (!authRole && (currentRole === 'COACH' || currentRole === 'CAPTAIN'));
+  // Coach is the exclusive manager of the Team Dashboard with full permissions
+  const currentRole: UserRole = 'COACH';
+  const canPublish = true; // Coach has exclusive authority to publish team press releases and announcements
 
   const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
   const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
@@ -289,7 +290,7 @@ export const useTeamDashboard = () => {
 
   const handleAssignActivity = (sessionId: string, newActivity: string) => {
     setPracticeSchedule((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Captain Leo' } : s))
+      prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Coach Marcus' } : s))
     );
     showToast(`Assigned "${newActivity}" to drill schedule.`);
   };
@@ -307,13 +308,13 @@ export const useTeamDashboard = () => {
       time,
       location,
       activity,
-      assignedBy: 'Captain Leo',
-      coachApproved: false,
+      assignedBy: 'Coach Marcus',
+      coachApproved: true,
       intensity,
       focusArea: activity,
     };
     setPracticeSchedule((prev) => [...prev, newSession]);
-    showToast(`Added ${day} (${activity}) drill session to schedule.`);
+    showToast(`Coach Marcus added ${day} (${activity}) session to schedule.`);
   };
 
   const handleApprovePracticeDay = (sessionId: string) => {
@@ -325,7 +326,7 @@ export const useTeamDashboard = () => {
 
   const handlePublishJournal = async (title: string, content: string, category: string) => {
     if (!canPublish) {
-      showToast('Permission Denied: Only Coach or Captain can publish team journals.');
+      showToast('Permission Denied: Only Head Coach can publish team journals.');
       return;
     }
     setIsSubmittingJournal(true);

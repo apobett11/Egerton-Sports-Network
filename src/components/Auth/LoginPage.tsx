@@ -5,7 +5,7 @@ import { useFormResilience } from '../../hooks/useFormResilience';
 import { useToast } from '../../contexts/ToastContext';
 import { LogIn, Loader2 } from 'lucide-react';
 
-export type AllowedRole = 'ADMIN' | 'COACH' | 'CAPTAIN' | 'JOURNALIST' | 'PRESIDENT' | 'REFEREE' | 'LINESMAN' | 'PLAYER' | 'DOCTOR';
+export type AllowedRole = 'ADMIN' | 'COACH' | 'JOURNALIST' | 'PRESIDENT' | 'REFEREE' | 'DOCTOR';
 
 interface LoginPageProps {
   onLoginSuccess?: (role: AllowedRole) => void;
@@ -59,7 +59,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
     clearRedirectRoute();
     
     if (onLoginSuccess) {
-      onLoginSuccess((res.role || 'player').toUpperCase() as AllowedRole);
+      onLoginSuccess((res.role || 'coach').toUpperCase() as AllowedRole);
     } else {
       window.location.hash = targetHash;
     }

@@ -58,10 +58,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
     const handleSaveTeamSettings = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (currentRole !== 'COACH') {
-            showToast('Access Denied: Captains cannot modify core team registration or kit parameters.');
-            return;
-        }
         const success = await updateTeamSettings(teamId, {
             name: teamName,
             short_name: shortName,
@@ -77,11 +73,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
     const handleSaveMatchRoles = (e: React.FormEvent) => {
         e.preventDefault();
-        if (currentRole !== 'CAPTAIN') {
-            showToast('Notice: Set-piece & match roles assignment is delegated to Captain Mode.');
-            return;
-        }
-        showToast('Captain Authority: In-match roles and set-piece specialists saved successfully.');
+        showToast('Coach Authority: In-match roles and set-piece specialists saved successfully.');
     };
 
 
@@ -112,14 +104,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <span className="material-symbols-outlined text-primary text-base">verified</span>
                                 </div>
                                 <p className="text-[10px] text-on-surface-variant font-medium mt-0.5 uppercase tracking-wider">
-                                    {currentRole === 'COACH' ? 'Coach Executive Portal' : 'Captain Match Operations Portal'}
+                                    Head Coach Executive Portal
                                 </p>
                             </div>
                         </div>
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
-                            currentRole === 'COACH' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-slate-950'
-                        }`}>
-                            {currentRole} ACTIVE
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white">
+                            COACH ACTIVE
                         </span>
                     </div>
 
@@ -167,13 +157,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 COACH EXCLUSIVE
                             </span>
                         </div>
-
-                        {currentRole === 'CAPTAIN' && (
-                            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg text-xs font-semibold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-sm">lock</span>
-                                <span>Locked for Captain: Team metadata, logo upload, colors, kits, and captain assignment are restricted to Coach Gate.</span>
-                            </div>
-                        )}
 
                         <form onSubmit={handleSaveTeamSettings} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,37 +291,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </form>
                     </div>
 
-                    {/* SECTION 2: CAPTAIN ONLY - IN-MATCH ROLES & SET PIECES */}
-                    <div className={`bg-surface-container p-6 border rounded-xl space-y-6 shadow transition-all ${
-                        currentRole === 'CAPTAIN' ? 'border-amber-500/40' : 'border-outline-variant/15 opacity-80'
-                    }`}>
+                    {/* SECTION 2: HEAD COACH - IN-MATCH ROLES & SET PIECES */}
+                    <div className="bg-surface-container p-6 border border-emerald-500/40 rounded-xl space-y-6 shadow transition-all">
                         <div className="flex items-center justify-between border-b border-outline-variant/15 pb-3">
                             <div>
                                 <h3 className="font-headline-md text-sm font-bold text-on-surface flex items-center gap-2">
                                     <span>🎯</span> Match Roles & Set-Piece Specialists
                                 </h3>
                                 <p className="text-[10px] text-on-surface-variant mt-1">
-                                    Team Captain authority: Designate penalty takers, free kick specialists, corner takers, kickoff, throw-in, sub priority, vice captain, and emergency GK.
+                                    Head Coach authority: Designate penalty takers, free kick specialists, corner takers, kickoff, throw-in, sub priority, vice captain, and emergency GK.
                                 </p>
                             </div>
-                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-amber-950/80 text-amber-400 border border-amber-500/30">
-                                CAPTAIN EXCLUSIVE
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
+                                COACH EXCLUSIVE
                             </span>
                         </div>
-
-                        {currentRole === 'COACH' && (
-                            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-lg text-xs font-semibold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-sm">info</span>
-                                <span>Note for Coach: Set-piece takers and match duty roles are delegated to the Captain's Match Operations responsibilities.</span>
-                            </div>
-                        )}
 
                         <form onSubmit={handleSaveMatchRoles} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Penalty Kick Taker</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={setPiecePenalty}
                                         onChange={(e) => setSetPiecePenalty(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -352,7 +326,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Free Kick Specialist</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={setPieceFreeKick}
                                         onChange={(e) => setSetPieceFreeKick(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -366,7 +340,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Corner Kick Taker</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={setPieceCorner}
                                         onChange={(e) => setSetPieceCorner(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -380,7 +354,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Kickoff Player</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={kickoffPlayer}
                                         onChange={(e) => setKickoffPlayer(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -393,7 +367,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Throw-In Priority</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={throwInPriority}
                                         onChange={(e) => setThrowInPriority(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -406,7 +380,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Substitution Priority Lead</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={subPriority}
                                         onChange={(e) => setSubPriority(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -419,7 +393,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Vice Captain</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={viceCaptain}
                                         onChange={(e) => setViceCaptain(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -432,7 +406,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <div className="space-y-1">
                                     <label className="font-label-sm text-[9px] text-on-surface-variant uppercase font-bold tracking-wider block">Emergency Goalkeeper</label>
                                     <select
-                                        disabled={currentRole !== 'CAPTAIN'}
+                                        disabled={false}
                                         value={emergencyGk}
                                         onChange={(e) => setEmergencyGk(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
@@ -443,14 +417,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
                             </div>
 
-                            {currentRole === 'CAPTAIN' && (
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-md"
-                                >
-                                    Save Captain Match Roles
-                                </button>
-                            )}
+                            <button
+                                type="submit"
+                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-md"
+                            >
+                                Save Match Roles & Set-Piece Specialists
+                            </button>
                         </form>
                     </div>
 
@@ -474,39 +446,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         <div className="space-y-4 text-xs">
                             <div className="flex items-center justify-between font-semibold">
                                 <span className="text-on-surface opacity-80">Edit Team Roster & Transfers</span>
-                                {currentRole === 'COACH' ? (
-                                    <span className="text-emerald-400 font-bold">COACH ONLY</span>
-                                ) : (
-                                    <span className="text-rose-400 font-bold">LOCKED</span>
-                                )}
+                                <span className="text-emerald-400 font-bold">COACH EXCLUSIVE</span>
                             </div>
                             <div className="flex items-center justify-between font-semibold">
                                 <span className="text-on-surface opacity-80">Upload Logo & Kit Colors</span>
-                                {currentRole === 'COACH' ? (
-                                    <span className="text-emerald-400 font-bold">COACH ONLY</span>
-                                ) : (
-                                    <span className="text-rose-400 font-bold">LOCKED</span>
-                                )}
+                                <span className="text-emerald-400 font-bold">COACH EXCLUSIVE</span>
                             </div>
                             <div className="flex items-center justify-between font-semibold">
                                 <span className="text-on-surface opacity-80">Appoint Team Captain</span>
-                                {currentRole === 'COACH' ? (
-                                    <span className="text-emerald-400 font-bold">COACH ONLY</span>
-                                ) : (
-                                    <span className="text-rose-400 font-bold">LOCKED</span>
-                                )}
+                                <span className="text-emerald-400 font-bold">COACH EXCLUSIVE</span>
                             </div>
                             <div className="flex items-center justify-between font-semibold">
                                 <span className="text-on-surface opacity-80">Starting XI & Pitch Tactics</span>
-                                <span className="text-emerald-400 font-bold">COACH & CAPTAIN</span>
+                                <span className="text-emerald-400 font-bold">COACH EXCLUSIVE</span>
                             </div>
                             <div className="flex items-center justify-between font-semibold">
                                 <span className="text-on-surface opacity-80">Set-Piece Specialists & Match Roles</span>
-                                {currentRole === 'CAPTAIN' ? (
-                                    <span className="text-amber-400 font-bold">CAPTAIN ONLY</span>
-                                ) : (
-                                    <span className="text-slate-400 font-bold">VIEW ONLY</span>
-                                )}
+                                <span className="text-emerald-400 font-bold">COACH EXCLUSIVE</span>
                             </div>
                         </div>
 

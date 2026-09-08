@@ -60,12 +60,12 @@ function generateDefaultPlaydays(startDateStr: string = '2026-09-05', count: num
 
 function resolvePitchName(pitchId: string): string {
   const matched = OFFICIAL_PITCHES.find(
-    (p) => p.id === pitchId || pitchId.startsWith(p.id.slice(0, 3))
+    (p) => p.id === pitchId || pitchId.startsWith(p.id.slice(0, 8))
   );
   if (matched) return matched.name;
-  if (pitchId.includes('91') || pitchId.includes('1')) return 'Pitch A — Main Stadium Pitch';
-  if (pitchId.includes('92') || pitchId.includes('2')) return 'Pitch B — Pavilion Grounds';
-  if (pitchId.includes('93') || pitchId.includes('3')) return 'Pitch C — Tatton Complex Ground';
+  if (pitchId.startsWith('91111111') || pitchId === 'pitch-1' || pitchId === 'pitch_1') return 'Pitch A — Main Stadium Pitch';
+  if (pitchId.startsWith('92222222') || pitchId === 'pitch-2' || pitchId === 'pitch_2') return 'Pitch B — Pavilion Grounds';
+  if (pitchId.startsWith('93333333') || pitchId === 'pitch-3' || pitchId === 'pitch_3') return 'Pitch C — Tatton Complex Ground';
   return 'Pavilion Main Pitch';
 }
 
@@ -87,14 +87,19 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
       const eplTeams = allTeams.filter((t: any) =>
         t.competition_id === EPL_COMP_ID ||
         t.competition_id?.includes('1111') ||
-        t.name?.toLowerCase().includes('premier') ||
-        (!t.competition_id && !t.name?.toLowerCase().includes('championship'))
+        t.name?.toLowerCase().includes('premier')
       );
       const champTeams = allTeams.filter((t: any) =>
         t.competition_id === CHAMP_COMP_ID ||
         t.competition_id?.includes('2222') ||
         t.name?.toLowerCase().includes('championship')
       );
+      // Unassigned teams distributed cleanly
+      const unassigned = allTeams.filter((t: any) => !eplTeams.some(e => e.id === t.id) && !champTeams.some(c => c.id === t.id));
+      unassigned.forEach((t: any) => {
+        if (eplTeams.length <= champTeams.length) eplTeams.push(t);
+        else champTeams.push(t);
+      });
 
       const teams = [
         ...eplTeams.map((t: any) => ({

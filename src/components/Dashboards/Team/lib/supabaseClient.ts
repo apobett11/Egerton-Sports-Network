@@ -16,36 +16,12 @@ export function isValidUuid(id: string): boolean {
 
 export function toUuid(id: string): string {
     if (!id) return DEFAULT_TEAM_UUID;
-    if (id === 't-egerton-fc' || id === 'team-egerton-fc') return DEFAULT_TEAM_UUID;
-    if (id === 'u-user-current') return DEFAULT_COACH_UUID;
-    if (id === 'u-captain') return DEFAULT_CAPTAIN_UUID;
-
-    // Map mock player IDs (e.g., 'p1', 'p2'...) to valid UUID formats
-    const playerMatch = id.match(/^p(\d+)$/);
-    if (playerMatch) {
-        const num = parseInt(playerMatch[1], 10);
-        const hex = num.toString(16).padStart(12, '0');
-        return `daf00000-0000-0000-0000-${hex}`;
-    }
-
-    if (isValidUuid(id)) {
-        return id;
-    }
-
+    if (isValidUuid(id)) return id;
     const clean = id.replace(/[^a-f0-9]/gi, '').padEnd(12, '0').slice(0, 12);
     return `00000000-0000-0000-0000-${clean}`;
 }
 
 export function fromUuid(uuid: string): string {
-    if (uuid === DEFAULT_TEAM_UUID) return 't-egerton-fc';
-    if (uuid === DEFAULT_COACH_UUID) return 'u-user-current';
-    if (uuid === DEFAULT_CAPTAIN_UUID) return 'u-captain';
-
-    if (uuid && uuid.startsWith('daf00000-0000-0000-0000-')) {
-        const hex = uuid.substring(24);
-        const num = parseInt(hex, 16);
-        return `p${num}`;
-    }
     return uuid;
 }
 

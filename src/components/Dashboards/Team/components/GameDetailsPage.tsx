@@ -212,10 +212,6 @@ export const GameDetailsPage: React.FC<GameDetailsPageProps> = ({
                             <select
                                 value={activePlaystyle}
                                 onChange={(e) => {
-                                    if (currentRole === 'CAPTAIN') {
-                                        showToast('Access Denied: Captains cannot modify strategic play styles.');
-                                        return;
-                                    }
                                     setActivePlaystyle(e.target.value);
                                     showToast(`Tactic updated to ${e.target.value}`);
                                 }}
@@ -232,10 +228,6 @@ export const GameDetailsPage: React.FC<GameDetailsPageProps> = ({
                             <select
                                 value={formation}
                                 onChange={(e) => {
-                                    if (currentRole === 'CAPTAIN') {
-                                        showToast('Access Denied: Captains cannot adjust squad formations.');
-                                        return;
-                                    }
                                     setFormation(e.target.value);
                                     showToast(`Formation adjusted to ${e.target.value}`);
                                 }}

@@ -93,8 +93,6 @@ export const TeamDashboard: React.FC = () => {
     return null;
   }
 
-  const isCaptain = currentRole === 'CAPTAIN';
-  const isCoach = currentRole === 'COACH';
 
   // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
   if (activeView === 'TACTICS') {

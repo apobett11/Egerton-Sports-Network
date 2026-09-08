@@ -137,8 +137,8 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
           stats_processed: fixture.stats_processed,
         })
         .eq('id', fixture.id);
-    } catch {
-      // Safe fallback
+    } catch (err) {
+      console.error('Error persisting fixture to database:', err);
     }
   }
 
@@ -160,8 +160,8 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
         localStore.standings.set(key, data);
         return data;
       }
-    } catch {
-      // Fallback
+    } catch (err) {
+      console.warn('Unable to load league standing from database:', err);
     }
     return null;
   }
@@ -186,8 +186,8 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
           points: standing.points,
           last_updated: standing.last_updated || new Date().toISOString(),
         });
-    } catch {
-      // Safe fallback
+    } catch (err) {
+      console.error('Error upserting league standing:', err);
     }
   }
 
@@ -207,8 +207,8 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
         localStore.forms.set(team_id, data);
         return data;
       }
-    } catch {
-      // Fallback
+    } catch (err) {
+      console.warn('Unable to load team form from database:', err);
     }
     return null;
   }
@@ -225,8 +225,8 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
           latest_results: form.latest_results,
           last_updated: form.last_updated || new Date().toISOString(),
         });
-    } catch {
-      // Safe fallback
+    } catch (err) {
+      console.error('Error upserting team form:', err);
     }
   }
 

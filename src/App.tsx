@@ -14,7 +14,6 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
-import { HerdMentalityProvider } from './project_stark';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { resolveGuestMatchdayDate } from './lib/matchdayHelper';
@@ -35,8 +34,6 @@ const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashbo
 const JournalistDashboard = lazy(() => import('./components/Dashboards/Journalist/JournalistDashboard'));
 const PresidentDashboard = lazy(() => import('./components/Dashboards/President/PresidentDashboard'));
 const RefereeDashboard = lazy(() => import('./components/Dashboards/Referee/RefereeDashboard'));
-const LinesmanDashboard = lazy(() => import('./components/Dashboards/Linesman/LinesmanDashboard'));
-const PlayerDashboard = lazy(() => import('./components/Dashboards/Player/PlayerDashboard'));
 const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/DoctorDashboard'));
 const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
 const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -236,10 +233,18 @@ export const AppContent: React.FC = () => {
     };
 
     fetchAnnouncements();
-    const interval = setInterval(fetchAnnouncements, 25000);
+
+    // Event-driven real-time updates instead of polling every 25s
+    const channel = supabase
+      .channel(`device_announcements_${deviceId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+        if (isMounted) fetchAnnouncements();
+      })
+      .subscribe();
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      supabase.removeChannel(channel);
     };
   }, [deviceId]);
 
@@ -544,15 +549,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'captain') {
-    return (
-      <ProtectedRoute allowedRoles={['captain', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <TeamDashboard />
-        </Suspense>
-      </ProtectedRoute>
-    );
-  }
+
 
   if (route === 'doctor' || route === 'team_doctor') {
     return (
@@ -600,7 +597,7 @@ export const AppContent: React.FC = () => {
 
   if (route === 'referee' || route === 'dashboard/referee') {
     return (
-      <ProtectedRoute allowedRoles={['referee', 'linesman', 'assistant_referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+      <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
           <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
         </Suspense>
@@ -608,24 +605,10 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'linesman' || route === 'assistant_referee') {
-    return (
-      <ProtectedRoute allowedRoles={['linesman', 'assistant_referee', 'referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <LinesmanDashboard />
-        </Suspense>
-      </ProtectedRoute>
-    );
-  }
-
-  if (route === 'player' || route === 'dashboard/player') {
-    return (
-      <ProtectedRoute allowedRoles={['player', 'captain', 'coach', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <PlayerDashboard />
-        </Suspense>
-      </ProtectedRoute>
-    );
+  // Decommissioned & Retired Roles: Safely redirect to public home
+  if (route === 'captain' || route === 'player' || route === 'dashboard/player' || route === 'linesman' || route === 'assistant_referee') {
+    handleNavigateHash('/home');
+    return null;
   }
 
   if (route === 'reset-password' || route === 'auth/reset-password' || route === 'password-reset') {
@@ -648,7 +631,7 @@ export const AppContent: React.FC = () => {
   }
 
   return (
-    <HerdMentalityProvider>
+    <>
       <OfflineBanner />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {!isAuthenticated && !cachedCompleted && showOnboarding && (
@@ -882,7 +865,7 @@ export const AppContent: React.FC = () => {
           isDark={darkMode}
         />
       </div>
-    </HerdMentalityProvider>
+    </>
   );
 };
 

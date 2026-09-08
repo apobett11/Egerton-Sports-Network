@@ -25,20 +25,17 @@ export const getRouteForRole = (role: UserRole): string => {
       return '/president';
     case 'coach':
       return '/coach';
-    case 'captain':
-      return '/captain';
     case 'doctor':
     case 'team_doctor':
       return '/doctor';
-    case 'player':
-      return '/player';
     case 'referee':
       return '/referee';
-    case 'linesman':
-    case 'assistant_referee':
-      return '/linesman';
     case 'journalist':
       return '/journalist';
+    case 'captain':
+    case 'player':
+    case 'linesman':
+    case 'assistant_referee':
     default:
       return '/home';
   }
@@ -142,27 +139,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const sessionStart = sessionStartStr ? parseInt(sessionStartStr, 10) : Date.now();
       const uptimeSeconds = Math.max(0, Math.floor((Date.now() - sessionStart) / 1000));
 
-      // 1. Update profiles table with active timestamp
+      // Update profiles table with active timestamp (throttled)
       await supabase
         .from('profiles')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', userId);
-
-      // 2. Safe audit log collaboration for session telemetry
-      await supabase
-        .from('audit_logs')
-        .insert([{
-          user_id: userId,
-          user_role: currentRole,
-          action: 'SESSION_UPTIME_HEARTBEAT',
-          resource_type: 'session',
-          resource_id: userId,
-          details: {
-            uptime_seconds: uptimeSeconds,
-            role: currentRole,
-            last_activity: new Date().toISOString()
-          }
-        }]);
     } catch {
       // Non-blocking catch to prevent network offline from breaking UI
     }
@@ -215,8 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
           return { ...(data as UserProfile), role: 'guest' };
         }
-        const cachedRole = localStorage.getItem(STORAGE_KEY_CACHED_ROLE);
-        const resolvedRole = cachedRole === 'referee' ? 'referee' : normalizeRole(data.role);
+        const resolvedRole = normalizeRole(data.role);
         const userProf = { ...(data as UserProfile), role: resolvedRole };
         setProfile(userProf);
         setRole(resolvedRole);
@@ -454,25 +434,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const isRefereePortalLogin = cleanEmail === 'referee1@gmail.com' && pass === 'referee1';
 
-      let { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: pass,
       });
-
-      // If logging into referee account and remote Supabase returns unconfirmed email or credentials mismatch,
-      // fallback to the confirmed admin auth token to provide an active session while presenting referee role
-      if (error && isRefereePortalLogin) {
-        const adminAuthRes = await supabase.auth.signInWithPassword({
-          email: 'admin1@gmail.com',
-          password: 'admin1',
-        });
-        if (!adminAuthRes.error && adminAuthRes.data?.user) {
-          data = adminAuthRes.data;
-          error = null;
-        }
-      }
 
       if (error) {
         setIsLoading(false);
@@ -485,23 +451,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
         localStorage.setItem(STORAGE_KEY_CACHED_USER, JSON.stringify(data.user));
 
-        if (isRefereePortalLogin) {
-          localStorage.setItem(STORAGE_KEY_CACHED_ROLE, 'referee');
-        }
-
-        let fetchedProf = await fetchProfile(data.user.id);
-
-        if (isRefereePortalLogin) {
-          fetchedProf = {
-            ...(fetchedProf || { id: data.user.id }),
-            email: 'referee1@gmail.com',
-            role: 'referee',
-            first_name: 'Official',
-            last_name: 'Referee',
-            phone: '0711000000',
-            bio: 'Unified Official Match Referee'
-          } as UserProfile;
-        }
+        const fetchedProf = await fetchProfile(data.user.id);
 
         if (!fetchedProf) {
           setIsLoading(false);
@@ -509,7 +459,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Access Revocation Check
-        if (fetchedProf.bio?.includes('[SUSPENDED]')) {
+        const isSuspended = (fetchedProf as any).status === 'suspended' || fetchedProf.bio?.includes('[SUSPENDED]');
+        if (isSuspended) {
           await supabase.auth.signOut();
           setUser(null);
           setProfile(null);

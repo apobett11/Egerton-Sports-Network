@@ -22,8 +22,6 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
   onSaveRoles,
   onClose,
 }) => {
-  const isCaptain = currentRole === 'CAPTAIN';
-
   const content = (
     <div className="bg-[#1F1F1F] border border-[#2A2A2A] rounded-xl p-5 md:p-6 space-y-5 shadow-2xl max-w-4xl w-full mx-auto">
       <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
@@ -33,26 +31,22 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>In-Match Tactical Roles</span>
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            {isCaptain
-              ? 'Captain Control: Designate match leaders, set-piece takers, and corner kickers.'
-              : 'Coach View: In-match tactical role designations (Read-Only).'}
+            Head Coach Authority: Designate match leaders, set-piece takers, and corner kickers.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {isCaptain && (
-            <button
-              onClick={() => {
-                if (onSaveRoles) onSaveRoles();
-                else showToast('Saved Roles successfully');
-                if (onClose) onClose();
-              }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer min-h-[44px]"
-            >
-              <Check className="w-4 h-4" />
-              <span>Save Roles</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (onSaveRoles) onSaveRoles();
+              else showToast('Saved Roles successfully');
+              if (onClose) onClose();
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+          >
+            <Check className="w-4 h-4" />
+            <span>Save Roles</span>
+          </button>
           {onClose && (
             <button
               onClick={onClose}
@@ -73,7 +67,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Team Captain</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.captainId}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, captainId: e.target.value }));
@@ -95,7 +89,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Vice Captain</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.viceCaptainId || ''}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, viceCaptainId: e.target.value }));
@@ -117,7 +111,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Penalty Taker</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.penaltyTakerId}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, penaltyTakerId: e.target.value }));
@@ -139,7 +133,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Free Kick Specialist</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.freeKickTakerId}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, freeKickTakerId: e.target.value }));
@@ -161,7 +155,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Left Corner Kick Taker</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.leftCornerTakerId}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, leftCornerTakerId: e.target.value }));
@@ -183,7 +177,7 @@ export const RoleAssignmentsView: React.FC<RoleAssignmentsViewProps> = ({
             <span>Right Corner Kick Taker</span>
           </label>
           <select
-            disabled={!isCaptain}
+            disabled={false}
             value={roleAssignments.rightCornerTakerId}
             onChange={e => {
               setRoleAssignments(prev => ({ ...prev, rightCornerTakerId: e.target.value }));

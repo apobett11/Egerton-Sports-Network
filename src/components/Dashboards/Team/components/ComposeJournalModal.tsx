@@ -112,7 +112,7 @@ export const ComposeJournalModal: React.FC<ComposeJournalModalProps> = ({
               maxLength={120}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Captain's Matchday Briefing: Tactical Readiness & Squad Focus"
+              placeholder="e.g. Head Coach's Matchday Briefing: Tactical Readiness & Squad Focus"
               className="w-full bg-[#111111] border border-[#2C2C2E] rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
               required
             />

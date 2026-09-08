@@ -110,6 +110,28 @@ export const DoctorDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout 
     }
   };
 
+  const handleUpdateStatus = async (recordId: string, newStatus: 'Cleared' | 'Pending' | 'Injured') => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      await supabase
+        .from('players')
+        .update({
+          medical_status: newStatus,
+          last_checked: todayStr,
+        })
+        .eq('id', recordId);
+    } catch (err) {
+      console.error('Error updating player medical status:', err);
+    }
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === recordId
+          ? { ...r, status: newStatus, lastChecked: todayStr }
+          : r
+      )
+    );
+  };
+
   const clearedCount = records.filter((r) => r.status === 'Cleared').length;
   const injuredCount = records.filter((r) => r.status === 'Injured').length;
   const pendingCount = records.filter((r) => r.status === 'Pending').length;
@@ -239,6 +261,7 @@ export const DoctorDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout 
                     <th className="pb-3 px-3">Details / ETA</th>
                     <th className="pb-3 px-3">Last Examined</th>
                     <th className="pb-3 px-3">Doctor Notes</th>
+                    <th className="pb-3 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
@@ -281,6 +304,37 @@ export const DoctorDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout 
                         </td>
                         <td className="py-3.5 px-3 text-slate-400 font-mono">{rec.lastChecked}</td>
                         <td className="py-3.5 px-3 text-slate-300 max-w-xs truncate">{rec.notes}</td>
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {rec.status !== 'Cleared' && (
+                              <button
+                                onClick={() => handleUpdateStatus(rec.id, 'Cleared')}
+                                className="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-md text-[10px] font-bold cursor-pointer transition-colors"
+                                title="Grant full medical clearance"
+                              >
+                                Clear
+                              </button>
+                            )}
+                            {rec.status !== 'Injured' && (
+                              <button
+                                onClick={() => handleUpdateStatus(rec.id, 'Injured')}
+                                className="px-2 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-md text-[10px] font-bold cursor-pointer transition-colors"
+                                title="Report injury & restrict"
+                              >
+                                Injure
+                              </button>
+                            )}
+                            {rec.status !== 'Pending' && (
+                              <button
+                                onClick={() => handleUpdateStatus(rec.id, 'Pending')}
+                                className="px-2 py-1 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white rounded-md text-[10px] font-bold cursor-pointer transition-colors"
+                                title="Mark evaluation pending"
+                              >
+                                Pending
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                 </tbody>

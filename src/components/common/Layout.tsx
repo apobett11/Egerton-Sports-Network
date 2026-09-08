@@ -38,15 +38,12 @@ export const AppLayout: React.FC<LayoutProps> = ({
   const roleNavItems: Record<UserRole, { label: string; path: string; icon: React.ReactNode }[]> = {
     guest: [],
     player: [
-      { label: 'Overview', path: '/player', icon: <Home className="w-4 h-4" /> },
-      { label: 'My Profile', path: '/player', icon: <User className="w-4 h-4" /> },
       { label: 'Fixtures', path: '/fixtures', icon: <Calendar className="w-4 h-4" /> },
       { label: 'League Table', path: '/league', icon: <Trophy className="w-4 h-4" /> },
     ],
     captain: [
-      { label: 'Overview', path: '/captain', icon: <Home className="w-4 h-4" /> },
-      { label: 'Team Requests', path: '/captain', icon: <Users className="w-4 h-4" /> },
       { label: 'Fixtures', path: '/fixtures', icon: <Calendar className="w-4 h-4" /> },
+      { label: 'League Table', path: '/league', icon: <Trophy className="w-4 h-4" /> },
     ],
     coach: [
       { label: 'Squad & Tactics', path: '/coach', icon: <Shield className="w-4 h-4" /> },
@@ -58,18 +55,14 @@ export const AppLayout: React.FC<LayoutProps> = ({
     referee: [
       { label: 'Assigned Matches', path: '/referee', icon: <Award className="w-4 h-4" /> },
     ],
-    linesman: [
-      { label: 'Assistant Reports', path: '/linesman', icon: <Award className="w-4 h-4" /> },
-    ],
+    linesman: [],
     doctor: [
       { label: 'Medical Clearances', path: '/doctor', icon: <Shield className="w-4 h-4" /> },
     ],
     team_doctor: [
       { label: 'Medical Clearances', path: '/doctor', icon: <Shield className="w-4 h-4" /> },
     ],
-    assistant_referee: [
-      { label: 'Assistant Reports', path: '/linesman', icon: <Award className="w-4 h-4" /> },
-    ],
+    assistant_referee: [],
     president: [
       { label: 'Club Management', path: '/president', icon: <Shield className="w-4 h-4" /> },
     ],

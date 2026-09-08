@@ -22,17 +22,27 @@ export const FALLBACK_REFEREES = [
   { id: 'ref_3', name: 'Brian Otieno', role: 'Class 1 Referee', status: 'Active', email: 'otieno@egerton.ac.ke' },
 ];
 
-export const canRefereeActOnMatch = (match: Match, _refereeUid?: string): { canAct: boolean; reason?: string } => {
+export const canRefereeActOnMatch = (
+  match: Match,
+  activeMatchday?: number | string
+): { canAct: boolean; reason?: string } => {
   if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
   if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
 
-  // Unified Match Operations: Referees can update and end matches at any time
+  // Matchday Integrity: Fixtures must be written within the active matchday
+  if (typeof activeMatchday === 'number' && match.matchday !== undefined && match.matchday !== activeMatchday) {
+    return {
+      canAct: false,
+      reason: `Fixture belongs to Matchday ${match.matchday}. Only current Matchday (${activeMatchday}) fixtures can be officiated today.`,
+    };
+  }
+
   return { canAct: true };
 };
 
 
 export const useRefereeDashboard = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, role } = useAuth();
   const currentUserId = user?.id || '';
   const currentUserName = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
@@ -41,31 +51,28 @@ export const useRefereeDashboard = () => {
         : 'Match Referee');
 
   // Referee List & Active Official Resolution
-  const [refereesList, setRefereesList] = useState<any[]>(FALLBACK_REFEREES);
-  const [activeRefereeId, setActiveRefereeIdState] = useState<string>(() => {
-    return localStorage.getItem('esn_active_referee_id') || FALLBACK_REFEREES[0].id;
-  });
+  const [refereesList, setRefereesList] = useState<any[]>([]);
+  const [activeRefereeId, setActiveRefereeIdState] = useState<string>(() => currentUserId);
 
   const setActiveRefereeId = useCallback((id: string) => {
     setActiveRefereeIdState(id);
-    localStorage.setItem('esn_active_referee_id', id);
   }, []);
 
   const activeReferee = useMemo(() => {
-    if (!refereesList.length) return FALLBACK_REFEREES[0];
-    if (activeRefereeId) {
-      const found = refereesList.find((r) => r.id === activeRefereeId);
-      if (found) return found;
-    }
-    // Match by currentUserId or email
-    if (currentUserId) {
+    if (refereesList.length > 0) {
       const found = refereesList.find((r) => r.id === currentUserId || (r.email && user?.email && r.email.toLowerCase() === user.email.toLowerCase()));
       if (found) return found;
     }
-    return refereesList[0] || FALLBACK_REFEREES[0];
-  }, [refereesList, activeRefereeId, currentUserId, user?.email]);
+    return {
+      id: currentUserId,
+      name: currentUserName,
+      email: user?.email || '',
+      role: 'Match Official',
+      status: 'Active'
+    };
+  }, [refereesList, currentUserId, currentUserName, user?.email]);
 
-  const effectiveRefereeId = activeReferee?.id || currentUserId;
+  const effectiveRefereeId = currentUserId;
   const effectiveRefereeName = activeReferee?.name || currentUserName;
 
   // Unavailable switch: Inactive in database means Unavailable
@@ -92,14 +99,6 @@ export const useRefereeDashboard = () => {
   const [inspectedMatch, setInspectedMatch] = useState<Match | null>(null);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState<boolean>(false);
   const [selectedMatchdayGroup, setSelectedMatchdayGroup] = useState<MatchdayScheduleGroup | null>(null);
-
-  // Unified Match Operations: All matches are accessible to any official
-  const isAssignedToMe = useCallback(
-    (_match: Match | null | undefined, _refId?: string): boolean => {
-      return true;
-    },
-    []
-  );
 
   // Load Assigned Fixtures Scoped by Referee UID from Database
   const loadDashboardData = useCallback(async () => {
@@ -188,6 +187,8 @@ export const useRefereeDashboard = () => {
               lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
               venue: f.venue || 'Egerton Sports Ground',
               referee: refProf ? `${refProf.first_name || ''} ${refProf.last_name || ''}`.trim() : currentUserName,
+              refereeId: f.referee_id,
+              referee_id: f.referee_id,
               assistantReferee1: 'Official Linesman 1',
               assistantReferee1Id: f.assistant_referee_1_id,
               assistantReferee2: 'Official Linesman 2',
@@ -320,13 +321,24 @@ export const useRefereeDashboard = () => {
       .slice(0, 3);
   }, [matchdayMatches]);
 
-  // 4. Alterability guard: only active matchday non-confirmed matches can be altered
+  // 4. Alterability guard: matches must be non-finalized and within the active matchday
   const isMatchAlterable = useCallback((match: Match | null | undefined): boolean => {
     if (!match) return false;
     if (match.status === 'FT' || match.status === 'CANCELLED') return false;
-    if (match.matchday && match.matchday < activeMatchday) return false;
+    // Matches must be within the active matchday
+    if (match.matchday && match.matchday !== activeMatchday) return false;
     return true;
   }, [activeMatchday]);
+
+  // Unified Officiating Guard: All authenticated referees share authority over active matchday fixtures without UID verification
+  const isAssignedToMe = useCallback(
+    (match: Match | null | undefined, _refId?: string): boolean => {
+      if (!match) return false;
+      if (role === 'admin') return true;
+      return isMatchAlterable(match);
+    },
+    [isMatchAlterable, role]
+  );
 
   // The NEXT Match: Primary active match
   const nextMatch = useMemo(() => {
@@ -357,17 +369,15 @@ export const useRefereeDashboard = () => {
     return false;
   }, []);
 
-  // "My Next Matches" - weekend only matches assigned to this referee UID
+  // "My Next Matches" - all active matchday matches under referee management
   const myNextMatches = useMemo(() => {
-    const assigned = fixtures.filter((m) => isAssignedToMe(m, effectiveRefereeId) && isWeekendMatch(m));
-    const pool = assigned.length > 0 ? assigned : fixtures;
-    return pool
-      .sort((a, b) => {
-        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
-        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
-        return timeA - timeB;
-      });
-  }, [fixtures, effectiveRefereeId, isAssignedToMe, isWeekendMatch]);
+    const pool = matchdayMatches.length > 0 ? matchdayMatches : fixtures;
+    return [...pool].sort((a, b) => {
+      const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+      const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+      return timeA - timeB;
+    });
+  }, [fixtures, matchdayMatches]);
 
   // Today's matches: Scoped strictly to that active or next matchday, rendered by matchday ID (never by referee ID)
   const todayMatches = useMemo(() => {

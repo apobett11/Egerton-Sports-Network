@@ -60,9 +60,6 @@ export const Homepage: React.FC<HomepageProps> = ({
   linesmanMatches = [],
   standings,
 }) => {
-  const isCaptain = currentRole === 'CAPTAIN';
-  const isCoach = currentRole === 'COACH';
-
   // State for linesman all-matches popup modal
   const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
   const nextLinesmanMatch: LinesmanMatch | undefined = linesmanMatches && linesmanMatches.length > 0 ? linesmanMatches[0] : undefined;
@@ -369,7 +366,7 @@ export const Homepage: React.FC<HomepageProps> = ({
             <Zap className="w-3.5 h-3.5 text-slate-400" />
             <span>Team Quick Actions</span>
           </h2>
-          <span className="text-[10px] font-mono text-slate-500 uppercase">Coach & Captain Commands</span>
+          <span className="text-[10px] font-mono text-emerald-400 uppercase">Head Coach Executive Commands</span>
         </div>
 
         {/* Subdued, elegant shaded cards */}
@@ -602,39 +599,31 @@ export const Homepage: React.FC<HomepageProps> = ({
               </h2>
             </div>
             <p className="text-xs text-slate-400">
-              {isCaptain
-                ? 'Captain Role: Organize pitch drills, set drill intensity, and schedule tactical sessions.'
-                : isCoach
-                ? 'Coach Role: Approve training sessions, oversee medical clearances, and review workloads.'
-                : 'Team Training Schedule & Tactical Conditioning.'}
+              Head Coach Authority: Organize pitch drills, set drill intensity, and schedule tactical sessions.
             </p>
           </div>
 
-          {/* Role-Specific Training Action Buttons */}
+          {/* Head Coach Training Action Buttons */}
           <div className="flex items-center gap-2">
-            {isCaptain && (
-              <button
-                onClick={() => setShowAddPracticeModal(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Schedule Drill Session</span>
-              </button>
-            )}
+            <button
+              onClick={() => setShowAddPracticeModal(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Schedule Drill Session</span>
+            </button>
 
-            {isCoach && (
-              <button
-                onClick={() => {
-                  practiceSchedule.forEach((s) => {
-                    if (onApprovePracticeDay) onApprovePracticeDay(s.id);
-                  });
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Sign Off All Workouts</span>
-              </button>
-            )}
+            <button
+              onClick={() => {
+                practiceSchedule.forEach((s) => {
+                  if (onApprovePracticeDay) onApprovePracticeDay(s.id);
+                });
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Sign Off All Workouts</span>
+            </button>
           </div>
         </div>
 
@@ -683,28 +672,26 @@ export const Homepage: React.FC<HomepageProps> = ({
                 </div>
               </div>
 
-              {/* Captain/Coach Interactive Options */}
+              {/* Head Coach Interactive Options */}
               <div className="pt-2 border-t border-[#2A3441]/60 flex items-center justify-between text-[10px]">
                 <div className="space-y-0.5">
                   <span className="text-slate-500 block text-[9px] uppercase">Led by</span>
-                  <span className="font-bold text-amber-300">{session.assignedBy || 'Captain Leo'}</span>
+                  <span className="font-bold text-amber-300">{session.assignedBy || 'Coach Marcus'}</span>
                 </div>
 
-                {isCaptain && (
-                  <select
-                    value={session.activity}
-                    onChange={(e) => onAssignActivity(session.id, e.target.value)}
-                    className="bg-[#161B22] border border-[#2A3441] text-amber-400 text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer"
-                  >
-                    <option value="Gas Conditioning & Sprints">Gas Conditioning</option>
-                    <option value="Rondo Passing & Ball Retention">Rondo Passing</option>
-                    <option value="Tactical Positioning & Set-Piece Routines">Set-Pieces & Tactics</option>
-                    <option value="Gegenpressing & Defensive Shape">Gegenpressing Drill</option>
-                    <option value="Recovery & Low-Impact Conditioning">Recovery Session</option>
-                  </select>
-                )}
+                <select
+                  value={session.activity}
+                  onChange={(e) => onAssignActivity(session.id, e.target.value)}
+                  className="bg-[#161B22] border border-[#2A3441] text-amber-400 text-[10px] font-bold rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer"
+                >
+                  <option value="Gas Conditioning & Sprints">Gas Conditioning</option>
+                  <option value="Rondo Passing & Ball Retention">Rondo Passing</option>
+                  <option value="Tactical Positioning & Set-Piece Routines">Set-Pieces & Tactics</option>
+                  <option value="Gegenpressing & Defensive Shape">Gegenpressing Drill</option>
+                  <option value="Recovery & Low-Impact Conditioning">Recovery Session</option>
+                </select>
 
-                {isCoach && !session.coachApproved && onApprovePracticeDay && (
+                {!session.coachApproved && onApprovePracticeDay && (
                   <button
                     onClick={() => onApprovePracticeDay(session.id)}
                     className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] rounded-lg cursor-pointer transition-colors"
@@ -718,7 +705,7 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* CAPTAIN ADD PRACTICE DAY MODAL */}
+      {/* COACH ADD PRACTICE DAY MODAL */}
       {showAddPracticeModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <form
@@ -728,7 +715,7 @@ export const Homepage: React.FC<HomepageProps> = ({
             <div className="flex items-center justify-between border-b border-[#2A3441] pb-3">
               <div className="flex items-center gap-2">
                 <Dumbbell className="w-5 h-5 text-amber-400" />
-                <h3 className="font-black text-base text-white">Captain Tactical Session Planner</h3>
+                <h3 className="font-black text-base text-white">Coach Tactical Session Planner</h3>
               </div>
             </div>
 

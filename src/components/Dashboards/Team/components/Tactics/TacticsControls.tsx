@@ -76,9 +76,6 @@ export const TacticsControls: React.FC<TacticsControlsProps> = ({
   selectedPitchSlot = null,
   onSwapPlayer,
 }) => {
-  const isCoach = currentRole === 'COACH';
-  const isCaptain = currentRole === 'CAPTAIN';
-
   const [activeTab, setActiveTab] = useState<'TACTICS' | 'SUBS'>('TACTICS');
   const [showImpendingWarning, setShowImpendingWarning] = useState<boolean>(false);
 

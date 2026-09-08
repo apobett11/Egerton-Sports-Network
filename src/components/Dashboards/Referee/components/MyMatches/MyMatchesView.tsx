@@ -463,7 +463,8 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                 const isFinished = match.status === 'FT';
                 const isCancelled = match.status === 'CANCELLED';
                 const isLive = match.status === 'LIVE' || match.status === 'HT';
-                const { canAct, reason } = canRefereeActOnMatch(match);
+                const activeMd = todayMatches[0]?.matchday || displayMatches[0]?.matchday;
+                const { canAct, reason } = canRefereeActOnMatch(match, activeMd);
 
                 return (
                   <div
