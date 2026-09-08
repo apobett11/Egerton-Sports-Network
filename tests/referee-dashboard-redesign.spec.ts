@@ -126,21 +126,38 @@ test.describe('REFEREE DASHBOARD REDESIGN & MATCHDAY OPERATIONAL ASSURANCE', () 
     const modalTitle = page.locator('text=Official Match Control • End Match Portal');
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
 
-    // Timeline ribbon must be visible
-    const timelineRibbon = page.locator("text=Match Timeline (0' — 90'+)");
-    await expect(timelineRibbon).toBeVisible();
+    // Vertical Timeline must be visible
+    const timelineHeading = page.locator('text=Match Events Timeline').or(page.locator('text=No match events registered yet.'));
+    await expect(timelineHeading.first()).toBeVisible();
 
-    // Step 1: Team selection buttons
-    const homeTeamBtn = page.locator('button:has-text("(Home)")').first();
-    const awayTeamBtn = page.locator('button:has-text("(Away)")').first();
-    await expect(homeTeamBtn).toBeVisible();
-    await expect(awayTeamBtn).toBeVisible();
+    // If no events initially, verify Submit FT prompts 0 - 0 confirmation
+    const submitFtBtn = page.locator('button:has-text("Submit Match Report (FT)")');
+    await expect(submitFtBtn).toBeVisible();
+    await submitFtBtn.click();
 
-    // Select Home Team
-    await homeTeamBtn.click();
+    const confirm00 = page.locator('text=0 — 0 (Full Time)').or(page.locator('text=Confirm Official Match Report (FT)'));
+    await expect(confirm00).toBeVisible();
+    const cancelConfirmBtn = page.locator('button:has-text("Cancel")');
+    await cancelConfirmBtn.click();
+
+    // Click "+ Add Event" at the bottom of the timeline to open the second popup
+    const addEventPopupBtn = page.locator('button:has-text("+ Add Event")');
+    await expect(addEventPopupBtn).toBeVisible();
+    await addEventPopupBtn.click();
+
+    // Second popup modal: Smart Match Event Hierarchy
+    const popupHeader = page.locator('text=Log Match Event');
+    await expect(popupHeader).toBeVisible();
+
+    // Step 1: Team selection
+    const homeTeamBtn = page.locator('button:has-text("Step 1")').locator('..').locator('button').first();
+    await expect(page.locator('text=Step 1: Select the team')).toBeVisible();
+    // Click first team
+    const teamButtons = page.locator('text=Step 1: Select the team').locator('..').locator('button');
+    await teamButtons.first().click();
 
     // Step 2: Action buttons must be active
-    const goalActionBtn = page.locator('button:has-text("⚽ Goal")');
+    const goalActionBtn = page.locator('button:has-text("Goal")').filter({ hasText: '⚽' });
     await expect(goalActionBtn).toBeVisible();
     await goalActionBtn.click();
 
@@ -150,46 +167,30 @@ test.describe('REFEREE DASHBOARD REDESIGN & MATCHDAY OPERATIONAL ASSURANCE', () 
     await openPlayBtn.click();
 
     // Step 4: Minute input
-    const minuteInput = page.locator('input[placeholder*="Enter minute"]');
+    const minuteInput = page.locator('input[placeholder*="e.g. 45"]');
     await expect(minuteInput).toBeVisible();
     await minuteInput.fill('28');
 
-    // Step 5: Player selection is now unlocked
+    // Step 5: Player selection with Starters and Substitutes
     const playerSelect = page.locator('select').first();
     await expect(playerSelect).toBeVisible();
     await playerSelect.selectOption({ index: 1 });
 
-    // Add event
-    const addEventBtn = page.locator('button:has-text("Add Event to Match Record")');
-    await expect(addEventBtn).toBeEnabled();
-    await addEventBtn.click();
+    // Add event button in popup
+    const addEventConfirmBtn = page.locator('button:has-text("Add Event")').last();
+    await expect(addEventConfirmBtn).toBeEnabled();
+    await addEventConfirmBtn.click();
 
-    // Verify event is added to the timeline
+    // Verify event is added to the vertical timeline
     const eventChip = page.locator("text=28'").first();
     await expect(eventChip).toBeVisible();
-
-    // Verify running score updated to 1 - 0
-    const scoreboard = page.locator('text=1').first();
-    await expect(scoreboard).toBeVisible();
-
-    // Click Submit Match Report (FT) -> Confirmation Prompt must appear
-    const submitFtBtn = page.locator('button:has-text("Submit Match Report (FT)")');
-    await submitFtBtn.click();
-
-    const confirmPrompt = page.locator('text=Confirm End Match & Final Score');
-    await expect(confirmPrompt).toBeVisible();
-
-    // Back button cancels prompt
-    const backBtn = page.locator('button:has-text("Back")');
-    await backBtn.click();
-    await expect(confirmPrompt).toBeHidden();
 
     // Close modal via top X button
     const closeXBtn = page.locator('button[title*="Cancel and close"]').first();
     await closeXBtn.click();
     await expect(modalTitle).toBeHidden();
 
-    console.log('✓ Test 3 PASS: Smart End Match modal functions with strict conscious hierarchy and confirmation prompt.');
+    console.log('✓ Test 3 PASS: Smart End Match modal functions with vertical timeline, second popup hierarchy, and confirmation.');
   });
 
   test('Test 4: Profile Section removes password change form and displays Match Operations & Disciplinary Protocols', async ({ page }) => {
@@ -215,5 +216,58 @@ test.describe('REFEREE DASHBOARD REDESIGN & MATCHDAY OPERATIONAL ASSURANCE', () 
     await expect(disciplinaryTitle).toBeVisible({ timeout: 5000 });
 
     console.log('✓ Test 4 PASS: Profile section is completely stripped of password changes and houses Match Operations & Disciplinary protocols.');
+  });
+
+  test('Test 5: Today\'s Matches thin strips, League Operations Analytics, and Mobile 3-Button Popup', async ({ page }) => {
+    // 1. Desktop Check: League Operations Analytics
+    await page.goto('http://localhost:5173/#/referee');
+    await page.waitForLoadState('domcontentloaded');
+
+    await expect(page.locator('text=REFEREES DASHBOARD').first()).toBeVisible({ timeout: 15000 });
+
+    // Analytics Card must be present
+    const analyticsTitle = page.locator("text=Today's Match Operations & League Analytics");
+    await expect(analyticsTitle).toBeVisible();
+
+    // League breakdowns: EPL and Championship
+    await expect(page.locator('text=Egerton Premier League (EPL)').first()).toBeVisible();
+    await expect(page.locator('text=Egerton Championship').first()).toBeVisible();
+
+    // 2. Today's Matches Tab: Thin strips rendered by matchday
+    const myMatchesTab = page.locator('button:has-text("My Matches")').or(page.locator('button:has-text("Today\'s Matches")')).first();
+    await myMatchesTab.click();
+
+    await expect(page.locator('h3:has-text("Today\'s / Matchday Matches")')).toBeVisible({ timeout: 10000 });
+    // Verify action buttons present on the cards in Today's Matches
+    const previewBtn = page.locator('button:has-text("PREVIEW")').first();
+    await expect(previewBtn).toBeVisible();
+
+    // 3. Mobile Emulation: Verify mobile 3-button popup modal on card tap
+    await page.setViewportSize({ width: 375, height: 700 });
+    await page.goto('http://localhost:5173/#/referee');
+    await page.waitForLoadState('domcontentloaded');
+
+    // On mobile, only PREVIEW is visible on the strip, while End Match & Walkover on the strip are hidden
+    const mobilePreview = page.locator('button:has-text("PREVIEW")').first();
+    await expect(mobilePreview).toBeVisible();
+    await expect(page.locator('.hidden.sm\\:flex').first()).toBeHidden();
+
+    // Tapping the match card opens the mobile 3-button popup modal
+    const firstTeamName = page.locator('div.flex-1 span.truncate').first();
+    await firstTeamName.click();
+
+    // The mobile 3-button popup modal should appear
+    const mobileEndMatch = page.locator('button:has-text("End Match (Official Final Score)")');
+    await expect(mobileEndMatch).toBeVisible();
+
+    await expect(page.locator('button:has-text("Award Walkover (3-0)")')).toBeVisible();
+    await expect(page.locator('button:has-text("Preview Details & Lineups")')).toBeVisible();
+
+    // Close the mobile modal via close button
+    const closeBtn = page.locator('button[aria-label="Close"]').last();
+    await closeBtn.click();
+    await expect(mobileEndMatch).toBeHidden();
+
+    console.log('✓ Test 5 PASS: Today\'s Matches thin strips, League Operations Analytics, and Mobile 3-Button Popup verified.');
   });
 });

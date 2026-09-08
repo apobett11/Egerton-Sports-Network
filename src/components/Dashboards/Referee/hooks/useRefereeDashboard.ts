@@ -369,31 +369,29 @@ export const useRefereeDashboard = () => {
       });
   }, [fixtures, effectiveRefereeId, isAssignedToMe, isWeekendMatch]);
 
-  // Today's matches (filtered strictly by current date / selected date)
+  // Today's matches: Scoped strictly to that active or next matchday, rendered by matchday ID (never by referee ID)
   const todayMatches = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const todayLocaleStr = now.toDateString();
-
-    const targetDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : todayStr;
-    const targetDateLocaleStr = selectedDate ? selectedDate.toDateString() : todayLocaleStr;
-
-    const filtered = fixtures.filter((f: any) => {
-      if (f.scheduledTime) {
-        return f.scheduledTime.startsWith(targetDateStr);
-      }
-      if (f.id && f.id.length > 10 && !isNaN(Date.parse(f.id))) {
-        return new Date(f.id).toDateString() === targetDateLocaleStr;
-      }
-      return false;
-    }).sort((a, b) => {
-      const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
-      const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
-      return timeA - timeB;
-    });
-
-    return filtered.length > 0 ? filtered : myNextMatches;
-  }, [fixtures, selectedDate, myNextMatches]);
+    // 1. Current active matchday matches
+    const activeMdMatches = fixtures.filter((f) => (f.matchday || 1) === activeMatchday);
+    if (activeMdMatches.length > 0) {
+      return [...activeMdMatches].sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
+      });
+    }
+    // 2. Fallback to next matchday matches
+    const nextMdMatches = fixtures.filter((f) => (f.matchday || 1) === activeMatchday + 1);
+    if (nextMdMatches.length > 0) {
+      return [...nextMdMatches].sort((a, b) => {
+        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
+        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
+        return timeA - timeB;
+      });
+    }
+    const firstMd = fixtures[0]?.matchday || 1;
+    return fixtures.filter((f) => (f.matchday || 1) === firstMd);
+  }, [fixtures, activeMatchday]);
 
   // Matchdays groups for the "My Matches" page
   const matchdayGroups = useMemo<MatchdayScheduleGroup[]>(() => {
@@ -1129,6 +1127,7 @@ export const useRefereeDashboard = () => {
     matchdayGroups,
     matchesByMonth,
     announcements,
+    rawEvents,
     isLoading,
     selectedFixtureId,
     setSelectedFixtureId,

@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Trophy, Clock, MapPin, Eye, CheckCircle, 
-  XCircle, Award, Calendar, CheckCircle2, ShieldCheck, Radio
+  XCircle, Award, Calendar, CheckCircle2, ShieldCheck, Radio, X
 } from 'lucide-react';
 import type { Match, Announcement } from '../../../../../types';
 import type { RefereeTab, RefereeProfileData } from '../../types';
 
 interface RefereeHomeOverviewProps {
   activeMatches?: Match[];
+  allMatches?: Match[];
+  rawEvents?: any[];
   nextMatch?: Match | null;
   leagueProgress?: {
     total: number;
@@ -28,6 +30,8 @@ interface RefereeHomeOverviewProps {
 
 export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   activeMatches,
+  allMatches = [],
+  rawEvents = [],
   nextMatch,
   leagueProgress,
   countdownStr,
@@ -39,12 +43,96 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   setActiveTab,
 }) => {
   const stats = profileData.statistics;
+  const [mobileActionMatch, setMobileActionMatch] = useState<Match | null>(null);
 
   // Render top 3 active unfilled matches or fallback to nextMatch
   const displayMatches: Match[] = 
     activeMatches && activeMatches.length > 0 
       ? activeMatches 
       : (nextMatch ? [nextMatch] : []);
+
+  // Today's League Analytics (auto-updates dynamically on match submission)
+  const todayAnalytics = useMemo(() => {
+    const now = new Date();
+    const todayLocaleStr = now.toDateString();
+
+    const matchesToday = (allMatches || []).filter((m) => {
+      if (m.scheduledTime) {
+        const d = new Date(m.scheduledTime);
+        if (!isNaN(d.getTime()) && d.toDateString() === todayLocaleStr) {
+          return true;
+        }
+      }
+      return (m.matchday || 1) === (activeMatches?.[0]?.matchday || 1);
+    });
+
+    const isEPL = (m: Match) => {
+      const l = (m.league || '').toLowerCase();
+      return !l.includes('champ');
+    };
+
+    const isChamp = (m: Match) => {
+      const l = (m.league || '').toLowerCase();
+      return l.includes('champ');
+    };
+
+    const eplToday = matchesToday.filter(isEPL);
+    const eplPlayedToday = eplToday.filter((m) => m.status === 'FT');
+    const eplGoalsToday = eplPlayedToday.reduce((acc, m) => acc + (m.scoreA || 0) + (m.scoreB || 0), 0);
+
+    const champToday = matchesToday.filter(isChamp);
+    const champPlayedToday = champToday.filter((m) => m.status === 'FT');
+    const champGoalsToday = champPlayedToday.reduce((acc, m) => acc + (m.scoreA || 0) + (m.scoreB || 0), 0);
+
+    const eplMatchIds = new Set(eplToday.map((m) => m.id));
+    const champMatchIds = new Set(champToday.map((m) => m.id));
+
+    let eplYellows = 0;
+    let eplReds = 0;
+    let eplInjuries = 0;
+
+    let champYellows = 0;
+    let champReds = 0;
+    let champInjuries = 0;
+
+    (rawEvents || []).forEach((e: any) => {
+      const fid = e.fixture_id || e.match_uid;
+      const type = (e.type || '').toLowerCase();
+
+      if (eplMatchIds.has(fid)) {
+        if (type === 'yellow' || (type === 'card' && e.card_type === 'YELLOW')) eplYellows++;
+        if (type === 'red' || (type === 'card' && e.card_type === 'RED')) eplReds++;
+        if (type === 'injury') eplInjuries++;
+      } else if (champMatchIds.has(fid)) {
+        if (type === 'yellow' || (type === 'card' && e.card_type === 'YELLOW')) champYellows++;
+        if (type === 'red' || (type === 'card' && e.card_type === 'RED')) champReds++;
+        if (type === 'injury') champInjuries++;
+      }
+    });
+
+    return {
+      totalPlayedToday: eplPlayedToday.length + champPlayedToday.length,
+      totalYellowsToday: eplYellows + champYellows,
+      totalRedsToday: eplReds + champReds,
+      totalInjuriesToday: eplInjuries + champInjuries,
+      epl: {
+        playedToday: eplPlayedToday.length,
+        totalToday: eplToday.length,
+        goalsToday: eplGoalsToday,
+        yellows: eplYellows,
+        reds: eplReds,
+        injuries: eplInjuries,
+      },
+      championship: {
+        playedToday: champPlayedToday.length,
+        totalToday: champToday.length,
+        goalsToday: champGoalsToday,
+        yellows: champYellows,
+        reds: champReds,
+        injuries: champInjuries,
+      },
+    };
+  }, [allMatches, rawEvents, activeMatches]);
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -169,7 +257,13 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                 return (
                   <div
                     key={match.id}
-                    onClick={() => onEndMatch(match)}
+                    onClick={() => {
+                      if (window.innerWidth < 640) {
+                        setMobileActionMatch(match);
+                      } else {
+                        onEndMatch(match);
+                      }
+                    }}
                     className="flex items-center justify-between px-3 py-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
                   >
                     {/* Left Column: Match Status / Time */}
@@ -241,29 +335,30 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                       </div>
                     </div>
 
-                    {/* Right Column: 3 Action Buttons */}
+                    {/* Right Column: Action Buttons (Desktop has all 3, Mobile has only PREVIEW) */}
                     <div className="shrink-0 flex items-center gap-1.5 pl-2" onClick={(e) => e.stopPropagation()}>
-                      {/* 1. End Match Button */}
-                      <button
-                        type="button"
-                        onClick={() => onEndMatch(match)}
-                        className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f] hover:bg-[#009643] text-white transition-colors cursor-pointer shadow-2xs"
-                        title="Open End Match Modal"
-                      >
-                        End Match
-                      </button>
+                      {/* Desktop only: End Match & Walkover */}
+                      <div className="hidden sm:flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onEndMatch(match)}
+                          className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f] hover:bg-[#009643] text-white transition-colors cursor-pointer shadow-2xs"
+                          title="Open End Match Modal"
+                        >
+                          End Match
+                        </button>
 
-                      {/* 2. Walkover (3-0) Button */}
-                      <button
-                        type="button"
-                        onClick={() => onOpenWalkover(match)}
-                        className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer shadow-2xs"
-                        title="Award 3-0 Walkover"
-                      >
-                        Walkover (3-0)
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenWalkover(match)}
+                          className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer shadow-2xs"
+                          title="Award 3-0 Walkover"
+                        >
+                          Walkover (3-0)
+                        </button>
+                      </div>
 
-                      {/* 3. Preview Button at the far right (identical to guest page) */}
+                      {/* Both Mobile and Desktop: PREVIEW Button on the strip */}
                       <button
                         type="button"
                         onClick={() => onSelectMatch(match)}
@@ -281,8 +376,87 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
         )}
       </section>
 
+      {/* MOBILE 3-BUTTON MODAL POPUP (Triggered when tapping a match on mobile) */}
+      {mobileActionMatch && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/75 backdrop-blur-xs animate-fadeIn select-none"
+          onClick={() => setMobileActionMatch(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-[#0d1b2a] border border-slate-200 dark:border-[#1e3857] rounded-xl p-5 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046] animate-pulse" />
+                <div>
+                  <h4 className="font-black text-xs uppercase tracking-tight text-slate-900 dark:text-white">
+                    {mobileActionMatch.teamA.shortName || mobileActionMatch.teamA.name} vs {mobileActionMatch.teamB.shortName || mobileActionMatch.teamB.name}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {mobileActionMatch.league || 'Egerton League'} • Matchday {mobileActionMatch.matchday || 1}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileActionMatch(null)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 3 Selectable Action Options */}
+            <div className="space-y-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const m = mobileActionMatch;
+                  setMobileActionMatch(null);
+                  onEndMatch(m);
+                }}
+                className="w-full py-3 px-4 rounded-lg bg-[#00b04f] hover:bg-[#009643] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm active:scale-98 transition-all cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>End Match (Official Final Score)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const m = mobileActionMatch;
+                  setMobileActionMatch(null);
+                  onOpenWalkover(m);
+                }}
+                className="w-full py-3 px-4 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Award Walkover (3-0)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const m = mobileActionMatch;
+                  setMobileActionMatch(null);
+                  onSelectMatch(m);
+                }}
+                className="w-full py-3 px-4 rounded-lg bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1e3857] text-slate-800 dark:text-slate-200 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Preview Details & Lineups</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SECTION 2: REFEREE ANALYTICS (FETCHED FROM DATABASE) */}
-      <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-4">
+      <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-5 sm:p-6 shadow-xs space-y-5">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#14263b] pb-3">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-[#ff0046]" />
@@ -295,10 +469,10 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
           </span>
         </div>
 
-        {/* 4 Analytics Metric Cards */}
+        {/* 4 Analytics Metric Cards (All-Time / Season) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Matches Completed</span>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Matches Completed (Season)</span>
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
               {stats.matchesRefereed}
             </div>
@@ -312,16 +486,119 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
           </div>
 
           <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Yellow Cards Issued</span>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Yellow Cards Issued (Season)</span>
             <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
               {stats.yellowCards}
             </div>
           </div>
 
           <div className="p-3.5 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md space-y-1">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Red Cards Issued</span>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Red Cards Issued (Season)</span>
             <div className="text-xl sm:text-2xl font-black text-rose-500 font-mono">
               {stats.redCards}
+            </div>
+          </div>
+        </div>
+
+        {/* TODAY'S MATCH OPERATIONS & LEAGUE ANALYTICS CARD (Auto-updates on match submission) */}
+        <div className="bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-md p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-[#162a40] pb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#ff0046]" />
+              <div>
+                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Today's Match Operations & League Analytics
+                </h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Real-time match completion, disciplinary sanctions, and player injuries
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+                Live Auto-Updating
+              </span>
+            </div>
+          </div>
+
+          {/* Today's High-Level Metric Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="bg-white dark:bg-[#0c1825] p-3 rounded border border-slate-200 dark:border-[#182f49]">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Today's Matches Played</span>
+              <span className="text-lg sm:text-xl font-black font-mono text-emerald-500">{todayAnalytics.totalPlayedToday}</span>
+            </div>
+            <div className="bg-white dark:bg-[#0c1825] p-3 rounded border border-slate-200 dark:border-[#182f49]">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Today's Yellow Cards</span>
+              <span className="text-lg sm:text-xl font-black font-mono text-amber-400">{todayAnalytics.totalYellowsToday}</span>
+            </div>
+            <div className="bg-white dark:bg-[#0c1825] p-3 rounded border border-slate-200 dark:border-[#182f49]">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Today's Red Cards</span>
+              <span className="text-lg sm:text-xl font-black font-mono text-rose-500">{todayAnalytics.totalRedsToday}</span>
+            </div>
+            <div className="bg-white dark:bg-[#0c1825] p-3 rounded border border-slate-200 dark:border-[#182f49]">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Today's Injuries Logged</span>
+              <span className="text-lg sm:text-xl font-black font-mono text-sky-400">{todayAnalytics.totalInjuriesToday}</span>
+            </div>
+          </div>
+
+          {/* Two League Breakdown Columns: EPL & Championships */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* EPL Column */}
+            <div className="bg-white dark:bg-[#0c1825] border border-slate-200 dark:border-[#182f49] rounded p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#14263b] pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-[#ff0046]" />
+                  <span className="text-xs font-black uppercase text-slate-900 dark:text-white">Egerton Premier League (EPL)</span>
+                </div>
+                <span className="text-[10px] font-bold font-mono text-slate-400">
+                  {todayAnalytics.epl.playedToday} / {todayAnalytics.epl.totalToday} Completed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Goals</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.epl.goalsToday}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Cards (Y / R)</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.epl.yellows} / {todayAnalytics.epl.reds}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Injuries</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.epl.injuries}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Championship Column */}
+            <div className="bg-white dark:bg-[#0c1825] border border-slate-200 dark:border-[#182f49] rounded p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#14263b] pb-2">
+                <div className="flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-[#3b82f6]" />
+                  <span className="text-xs font-black uppercase text-slate-900 dark:text-white">Egerton Championships</span>
+                </div>
+                <span className="text-[10px] font-bold font-mono text-slate-400">
+                  {todayAnalytics.championship.playedToday} / {todayAnalytics.championship.totalToday} Completed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Goals</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.championship.goalsToday}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Cards (Y / R)</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.championship.yellows} / {todayAnalytics.championship.reds}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-[#102237] p-2 rounded">
+                  <span className="text-[9px] font-bold text-slate-400 block uppercase">Injuries</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-white">{todayAnalytics.championship.injuries}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

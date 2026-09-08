@@ -38,6 +38,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     matchdayGroups,
     matchesByMonth,
     announcements,
+    rawEvents,
     isLoading,
     setSelectedFixtureId,
     selectedFixture,
@@ -102,6 +103,8 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         {activeTab === 'overview' && (
           <RefereeHomeOverview
             activeMatches={activeThreeMatches}
+            allMatches={fixtures}
+            rawEvents={rawEvents}
             nextMatch={nextMatch}
             leagueProgress={leagueProgress}
             countdownStr={countdownStr}
