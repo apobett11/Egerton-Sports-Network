@@ -161,13 +161,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   // prioritizing Egerton Premier League (EPL) teams first, followed by Egerton Championships.
   const filteredTeams = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
+    // Return empty suggestions when input is empty/null (no game suggestions, teams only when typing)
     if (!query) {
-      return [...availableTeams].sort((a, b) => {
-        const compRankA = a.isEPL ? 0 : a.isChampionship ? 1 : 2;
-        const compRankB = b.isEPL ? 0 : b.isChampionship ? 1 : 2;
-        if (compRankA !== compRankB) return compRankA - compRankB;
-        return a.name.localeCompare(b.name);
-      });
+      return [];
     }
 
     const matches = availableTeams.filter((t) => {
@@ -337,9 +333,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   )}
                 </div>
 
-                {/* Real-time search results and available teams list */}
+                {/* Real-time search results and available teams list (suggestions are null when input is empty) */}
                 <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-700/80 bg-[#121c2c] divide-y divide-slate-800/80 shadow-inner">
-                  {filteredTeams.length > 0 ? (
+                  {!searchTerm.trim() ? (
+                    <div className="p-6 text-center text-xs text-slate-400 font-medium">
+                      Type the name of your team to see suggestions...
+                    </div>
+                  ) : filteredTeams.length > 0 ? (
                     filteredTeams.map((team) => (
                       <button
                         key={team.id}
@@ -392,7 +392,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 </div>
               </div>
 
-              {/* Alternative Action: General Football Fan */}
+              {/* Alternative Action: General Football Fan / General User */}
               <div className="pt-2 border-t border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <button
                   type="button"
@@ -400,7 +400,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
                 >
                   <Trophy className="w-4 h-4 text-amber-400" />
-                  <span>I am a general football fan</span>
+                  <span>I am a general football fan / General user of the page</span>
                 </button>
 
                 <button
@@ -408,7 +408,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   onClick={handleDismiss}
                   className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors cursor-pointer"
                 >
-                  Skip for now
+                  General user of the page (Skip)
                 </button>
               </div>
             </div>

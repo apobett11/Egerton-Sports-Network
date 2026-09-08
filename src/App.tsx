@@ -27,7 +27,7 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell } from 'lucide-react';
+import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell, Star } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -131,7 +131,14 @@ export const AppContent: React.FC = () => {
   }, [user, role]);
 
   // Device Identity & Fan Onboarding State
-  const { deviceId, isInitializing: isDeviceInitializing, cachedCompleted, saveLocalPreference } = useDeviceIdentity();
+  const { 
+    deviceId, 
+    isInitializing: isDeviceInitializing, 
+    cachedCompleted, 
+    deviceFavorites, 
+    toggleDeviceFavorite, 
+    saveLocalPreference 
+  } = useDeviceIdentity();
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
@@ -203,7 +210,7 @@ export const AppContent: React.FC = () => {
     saveLocalPreference(teamId);
     setShowOnboarding(false);
     if (deviceId) {
-      DeviceService.setFavoriteTeam(deviceId, teamId);
+      DeviceService.completeOnboarding(deviceId, teamId);
     }
   };
 
@@ -276,11 +283,12 @@ export const AppContent: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
-  // Favorites list
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    const saved = localStorage.getItem('favorites');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Favorites list equated to the anonymous device
+  const [favorites, setFavorites] = useState<string[]>(deviceFavorites);
+
+  useEffect(() => {
+    setFavorites(deviceFavorites);
+  }, [deviceFavorites]);
 
   const [activeSport, setActiveSport] = useState<string>('football');
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -383,6 +391,9 @@ export const AppContent: React.FC = () => {
       try {
         sessionStorage.setItem('esn_current_route', newRoute);
       } catch {}
+      if (newRoute === 'favorites' || newRoute === 'favourites') {
+        setActiveTab('favorites');
+      }
       if (!newRoute.startsWith('match/')) {
         setSelectedMatch(null);
       }
@@ -437,9 +448,7 @@ export const AppContent: React.FC = () => {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const toggleFavorite = (matchId: string) => {
-    setFavorites((prev) =>
-      prev.includes(matchId) ? prev.filter((id) => id !== matchId) : [...prev, matchId]
-    );
+    toggleDeviceFavorite(matchId);
   };
 
   const handleMatchClick = (match: Match) => {
@@ -825,6 +834,8 @@ export const AppContent: React.FC = () => {
                   onSelectMatch={handleMatchClick}
                   onOpenCalendar={() => setIsCalendarOpen(true)}
                   dbFixtures={liveMatches}
+                  favorites={favorites}
+                  toggleFavorite={toggleFavorite}
                 />
               )}
 
@@ -833,12 +844,26 @@ export const AppContent: React.FC = () => {
               {activeTab === 'news' && <PublicNewsPage />}
 
               {activeTab === 'favorites' && (
-                <FixturesList
-                  matches={favoriteMatches}
-                  onMatchClick={handleMatchClick}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                />
+                favoriteMatches.length > 0 ? (
+                  <FixturesList
+                    matches={favoriteMatches}
+                    onMatchClick={handleMatchClick}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                  />
+                ) : (
+                  <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-12 text-center select-none shadow-xs">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-[#14263b] text-amber-500 flex items-center justify-center mx-auto mb-3">
+                      <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                      No Favourite Matches Saved
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                      Click the star icon next to any match to track your favourite games on this device.
+                    </p>
+                  </div>
+                )
               )}
             </main>
 

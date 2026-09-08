@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { DeviceService } from '../services/DeviceService';
 
 const DEVICE_STORAGE_KEY = 'esn_device_id';
 const ONBOARDING_STORAGE_KEY = 'esn_onboarding_completed';
@@ -47,7 +48,54 @@ export function useDeviceIdentity() {
     }
   });
 
+  const [deviceFavorites, setDeviceFavorites] = useState<string[]>(() => {
+    try {
+      const devId = localStorage.getItem(DEVICE_STORAGE_KEY) || deviceId;
+      const localKey = `esn_device_favorites_${devId}`;
+      const saved = localStorage.getItem(localKey) || localStorage.getItem('favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [isInitializing] = useState<boolean>(false);
+
+  // Sync favorites from anonymous device record in background
+  useEffect(() => {
+    if (!deviceId) return;
+    DeviceService.getFavoriteMatches(deviceId).then((matches) => {
+      if (matches && Array.isArray(matches)) {
+        setDeviceFavorites((prev) => {
+          const merged = Array.from(new Set([...prev, ...matches]));
+          try {
+            localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(merged));
+            localStorage.setItem('favorites', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+  }, [deviceId]);
+
+  const toggleDeviceFavorite = useCallback(async (matchId: string) => {
+    if (!matchId) return;
+    setDeviceFavorites((prev) => {
+      const next = prev.includes(matchId) ? prev.filter((id) => id !== matchId) : [...prev, matchId];
+      try {
+        localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(next));
+        localStorage.setItem('favorites', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    if (deviceId) {
+      const updated = await DeviceService.toggleFavoriteMatch(deviceId, matchId);
+      if (updated && Array.isArray(updated)) {
+        setDeviceFavorites(updated);
+      }
+    }
+  }, [deviceId]);
 
   const saveLocalPreference = useCallback((teamId: string | null) => {
     try {
@@ -58,7 +106,10 @@ export function useDeviceIdentity() {
     }
     setCachedCompleted(true);
     setCachedTeamId(teamId);
-  }, []);
+    if (deviceId) {
+      DeviceService.completeOnboarding(deviceId, teamId);
+    }
+  }, [deviceId]);
 
   return {
     deviceId,
@@ -66,6 +117,10 @@ export function useDeviceIdentity() {
     isInitializing,
     cachedCompleted,
     cachedTeamId,
+    deviceFavorites,
+    setDeviceFavorites,
+    toggleDeviceFavorite,
     saveLocalPreference
   };
 }
+

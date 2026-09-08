@@ -20,6 +20,8 @@ interface HomePageProps {
   setSelectedDate?: (date: Date) => void;
   selectedCompetitionId?: string;
   dbFixtures?: Match[];
+  favorites?: string[];
+  toggleFavorite?: (matchId: string) => void;
 }
 
 const FAVOURITES_KEY = 'esn_guest_favourites_v1';
@@ -31,7 +33,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   selectedDate: propSelectedDate,
   setSelectedDate: propSetSelectedDate,
   selectedCompetitionId = 'all',
-  dbFixtures = []
+  dbFixtures = [],
+  favorites: propFavorites,
+  toggleFavorite: propToggleFavorite
 }) => {
   // Calendar Date State for Fixtures Reactivity
   const [internalDate, setInternalDate] = useState<Date>(() => resolveGuestMatchdayDate(dbFixtures));
@@ -250,14 +254,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         if (!isMounted) return;
         if (res.success && res.data) {
           const fetchedMatches = res.data;
-          setFavourites(prevFavs => {
-            const ftIds = new Set(fetchedMatches.filter(m => m.status === 'FT').map(m => m.id));
-            const cleaned = prevFavs.filter(id => !ftIds.has(id));
-            try {
-              localStorage.setItem(FAVOURITES_KEY, JSON.stringify(cleaned));
-            } catch {}
-            return cleaned;
-          });
           setFixturesState({ data: fetchedMatches, loading: false, error: null });
         } else {
           setFixturesState(prev => prev.data.length > 0 ? prev : { data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
@@ -464,6 +460,17 @@ export const HomePage: React.FC<HomePageProps> = ({
     });
   };
 
+  const activeFavorites = propFavorites !== undefined ? propFavorites : favourites;
+
+  const handleToggleFavorite = (fixtureId: string, e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (propToggleFavorite) {
+      propToggleFavorite(fixtureId);
+    } else {
+      toggleFavourite(fixtureId, e || ({} as any));
+    }
+  };
+
   const eplFixtures = fixturesState.data.filter(
     (f) => f.league.toLowerCase().includes('premier') || f.league === 'Egerton Premier League'
   );
@@ -630,8 +637,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           <FixturesList
             matches={filteredMatches}
             onMatchClick={onSelectMatch || (() => {})}
-            favorites={favourites}
-            toggleFavorite={(id: string) => toggleFavourite(id, {} as any)}
+            favorites={activeFavorites}
+            toggleFavorite={(id: string) => handleToggleFavorite(id)}
             selectedDate={activeDate}
             onOpenTable={(_league: string) => onNavigate('/league')}
           />

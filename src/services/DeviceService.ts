@@ -17,6 +17,7 @@ export interface DeviceProfile {
   has_completed_onboarding: boolean;
   interaction_history?: Record<string, any>;
   announcements?: DeviceAnnouncementItem[];
+  favorite_matches?: string[];
   last_seen_at?: string;
   created_at?: string;
 }
@@ -233,5 +234,162 @@ export const DeviceService = {
       console.error('Failed to mark announcement as read:', err);
       return [];
     }
+  },
+
+  /**
+   * Fetches favorite match IDs equated to the anonymous device.
+   * Reads from instant local storage first, then syncs with Supabase anonymous_devices record.
+   */
+  async getFavoriteMatches(deviceId: string): Promise<string[]> {
+    if (!deviceId || !isValidUUID(deviceId)) return [];
+
+    const localKey = `esn_device_favorites_${deviceId}`;
+    let cachedList: string[] = [];
+    try {
+      const local = localStorage.getItem(localKey) || localStorage.getItem('favorites');
+      if (local) {
+        cachedList = JSON.parse(local);
+      }
+    } catch {}
+
+    try {
+      const { data, error } = await supabase
+        .from('anonymous_devices')
+        .select('favorite_matches, interaction_history')
+        .eq('device_id', deviceId)
+        .maybeSingle();
+
+      if (!error && data) {
+        const dbList = Array.isArray(data.favorite_matches)
+          ? data.favorite_matches
+          : Array.isArray(data.interaction_history?.favorite_matches)
+          ? data.interaction_history.favorite_matches
+          : null;
+
+        if (dbList && Array.isArray(dbList)) {
+          const merged = Array.from(new Set([...cachedList, ...dbList]));
+          try {
+            localStorage.setItem(localKey, JSON.stringify(merged));
+            localStorage.setItem('favorites', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        }
+      }
+    } catch (err) {
+      console.warn('Unable to sync device favorites from remote:', err);
+    }
+
+    return cachedList;
+  },
+
+  /**
+   * Records or toggles a match as favorite equated to the anonymous device.
+   * Instant local update + non-blocking background Supabase persistence.
+   */
+  async toggleFavoriteMatch(deviceId: string, matchId: string): Promise<string[]> {
+    if (!deviceId || !isValidUUID(deviceId) || !matchId) return [];
+
+    const localKey = `esn_device_favorites_${deviceId}`;
+    let currentList: string[] = [];
+    try {
+      const local = localStorage.getItem(localKey) || localStorage.getItem('favorites');
+      if (local) {
+        currentList = JSON.parse(local);
+      }
+    } catch {}
+
+    const isFav = currentList.includes(matchId);
+    const updatedList = isFav
+      ? currentList.filter((id) => id !== matchId)
+      : [...currentList, matchId];
+
+    // 1. Instant local persistence (0ms latency for smooth UX)
+    try {
+      localStorage.setItem(localKey, JSON.stringify(updatedList));
+      localStorage.setItem('favorites', JSON.stringify(updatedList));
+    } catch {}
+
+    // 2. Non-blocking remote persistence to anonymous_devices table
+    (async () => {
+      try {
+        const payload: any = {
+          device_id: deviceId,
+          favorite_matches: updatedList,
+          last_seen_at: new Date().toISOString()
+        };
+
+        const { error: upsertErr } = await supabase
+          .from('anonymous_devices')
+          .upsert(payload, { onConflict: 'device_id' });
+
+        if (upsertErr) {
+          // Fallback to interaction_history JSONB
+          await supabase
+            .from('anonymous_devices')
+            .upsert(
+              {
+                device_id: deviceId,
+                interaction_history: { favorite_matches: updatedList },
+                last_seen_at: new Date().toISOString()
+              },
+              { onConflict: 'device_id' }
+            );
+        }
+      } catch (e) {
+        console.warn('Failed to sync favorite match to Supabase:', e);
+      }
+    })();
+
+    return updatedList;
+  },
+
+  /**
+   * Sets the favorite matches list for the anonymous device directly.
+   */
+  async setFavoriteMatches(deviceId: string, matchIds: string[]): Promise<string[]> {
+    if (!deviceId || !isValidUUID(deviceId)) return [];
+    const localKey = `esn_device_favorites_${deviceId}`;
+    try {
+      localStorage.setItem(localKey, JSON.stringify(matchIds));
+      localStorage.setItem('favorites', JSON.stringify(matchIds));
+    } catch {}
+
+    (async () => {
+      try {
+        const payload: any = {
+          device_id: deviceId,
+          favorite_matches: matchIds,
+          last_seen_at: new Date().toISOString()
+        };
+        const { error: upsertErr } = await supabase
+          .from('anonymous_devices')
+          .upsert(payload, { onConflict: 'device_id' });
+
+        if (upsertErr) {
+          await supabase
+            .from('anonymous_devices')
+            .upsert(
+              {
+                device_id: deviceId,
+                interaction_history: { favorite_matches: matchIds },
+                last_seen_at: new Date().toISOString()
+              },
+              { onConflict: 'device_id' }
+            );
+        }
+      } catch (e) {
+        console.warn('Failed to sync favorite matches to Supabase:', e);
+      }
+    })();
+
+    return matchIds;
+  },
+
+  /**
+   * Completes onboarding for the anonymous device, ensuring the user is never prompted twice.
+   */
+  async completeOnboarding(deviceId: string, teamId: string | null = null): Promise<DeviceProfile | null> {
+    return this.setFavoriteTeam(deviceId, teamId);
   }
 };
+
