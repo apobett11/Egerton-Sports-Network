@@ -241,9 +241,9 @@ export const AppContent: React.FC = () => {
 
     fetchAnnouncements();
 
-    // Event-driven real-time updates instead of polling every 25s
+    // Event-driven real-time updates using shared channel topic
     const channel = supabase
-      .channel(`device_announcements_${deviceId}`)
+      .channel('public_announcements_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
         if (isMounted) fetchAnnouncements();
       })

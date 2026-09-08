@@ -190,9 +190,8 @@ export const useLiveMatchRealtime = (
     };
     subscribers.add(localCallback);
 
-    const channelId = `live_match_channel_${Math.random().toString(36).substring(2, 7)}`;
     const channel = supabase
-      .channel(channelId)
+      .channel('public_live_matches_channel')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fixtures' },

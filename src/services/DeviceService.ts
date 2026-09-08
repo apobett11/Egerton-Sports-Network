@@ -35,6 +35,22 @@ export const DeviceService = {
   async registerOrCheckInDevice(deviceId: string): Promise<DeviceProfile | null> {
     try {
       if (!deviceId || !isValidUUID(deviceId)) return null;
+
+      const cacheKey = `esn_device_last_checkin_${deviceId}`;
+      const cachedProfileKey = `esn_device_profile_${deviceId}`;
+      const lastCheckin = localStorage.getItem(cacheKey);
+      const cachedProfile = localStorage.getItem(cachedProfileKey);
+      const now = Date.now();
+
+      // Avoid hammering the database on every page load/refresh if checked in within the last 6 hours
+      if (lastCheckin && cachedProfile && (now - parseInt(lastCheckin, 10)) < 6 * 60 * 60 * 1000) {
+        try {
+          return JSON.parse(cachedProfile);
+        } catch {
+          // Fall through to query if cache is corrupted
+        }
+      }
+
       const { data, error } = await supabase
         .from('anonymous_devices')
         .upsert(
@@ -49,6 +65,11 @@ export const DeviceService = {
 
       if (error) throw error;
       
+      if (data) {
+        localStorage.setItem(cacheKey, String(now));
+        localStorage.setItem(cachedProfileKey, JSON.stringify(data));
+      }
+
       return data;
     } catch (error) {
       console.error("Failed to check in device to Supabase:", error);

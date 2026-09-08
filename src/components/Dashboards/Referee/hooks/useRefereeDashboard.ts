@@ -273,19 +273,24 @@ export const useRefereeDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Real-time Database Subscription
+  // Real-time Database Subscription with Debounce Protection
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const triggerReload = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        loadDashboardData();
+      }, 350);
+    };
+
     const channel = supabase
       .channel('referee-dashboard-live-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-        loadDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, () => {
-        loadDashboardData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [loadDashboardData]);
