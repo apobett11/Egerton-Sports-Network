@@ -96,6 +96,7 @@ export interface Match {
     result?: 'W' | 'D' | 'L';
     referee?: string;
     matchday?: number;
+    scheduled_time?: string;
 }
 
 export interface LinesmanMatch {
@@ -204,6 +205,8 @@ export interface DBTeam {
     coach_id?: string;
     starting_xi_str?: string;
     substitutes_str?: string;
+    practice_schedule?: PracticeSession[];
+    crest_url?: string;
     temporary_match_squad?: Record<string, any>;
     tactics_config?: TacticalSliders & { formation: string };
     kits_config?: KitConfig[];

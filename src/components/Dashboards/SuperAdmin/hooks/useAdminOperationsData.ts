@@ -14,6 +14,7 @@ import type {
   AuditLogRecord,
   PlatformInsightItem,
   PlatformPerformanceMetrics,
+  AdminPlayerRow,
 } from '../types';
 
 export const useAdminOperationsData = () => {
@@ -21,6 +22,7 @@ export const useAdminOperationsData = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [playersList, setPlayersList] = useState<AdminPlayerRow[]>([]);
 
   // Core Data States
   const [platformHealth, setPlatformHealth] = useState<PlatformHealthMetrics>({
@@ -248,6 +250,35 @@ export const useAdminOperationsData = () => {
         };
       });
       setUserDirectory(userRows);
+
+      // Map Players to Admin Rows
+      const mappedPlayers: AdminPlayerRow[] = allPlayers.map((pl: any) => {
+        const matchingProf = allProfiles.find((p) => p.id === pl.profile_id);
+        const matchingTeam = allTeams.find((t) => t.id === pl.team_id);
+        const fullName = (pl.first_name || pl.last_name)
+          ? `${pl.first_name || ''} ${pl.last_name || ''}`.trim()
+          : (matchingProf ? `${matchingProf.first_name || ''} ${matchingProf.last_name || ''}`.trim() : 'Player');
+
+        return {
+          id: pl.id,
+          profileId: pl.profile_id,
+          name: fullName || 'Squad Player',
+          firstName: pl.first_name || matchingProf?.first_name || '',
+          lastName: pl.last_name || matchingProf?.last_name || '',
+          email: matchingProf?.email || pl.email || 'N/A',
+          phone: pl.phone || matchingProf?.phone || 'N/A',
+          studentId: pl.student_id || 'N/A',
+          jerseyNumber: pl.jersey_number || 0,
+          position: pl.position || 'MID',
+          teamId: pl.team_id || '',
+          teamName: matchingTeam?.name || 'Unassigned',
+          teamLogo: matchingTeam?.logo_url,
+          status: pl.status || 'Fit',
+          isApproved: Boolean(pl.is_approved || matchingProf?.is_verified),
+          registeredAt: new Date(pl.created_at || Date.now()).toLocaleDateString(),
+        };
+      });
+      setPlayersList(mappedPlayers);
 
       // Audit Logs mapping
       const mappedAuditLogs: AuditLogRecord[] = allAuditLogs.map((log) => {
@@ -649,6 +680,35 @@ export const useAdminOperationsData = () => {
     }
   }, [showToast, fetchOperationsData]);
 
+  // 5b. Action: Approve Player
+  const handleApprovePlayer = useCallback(async (playerId: string) => {
+    try {
+      const pl = playersList.find((p) => p.id === playerId);
+      await supabase.from('players').update({ is_approved: true, status: 'Fit' }).eq('id', playerId);
+      if (pl?.profileId) {
+        await supabase.from('profiles').update({ is_verified: true }).eq('id', pl.profileId);
+      }
+      setPlayersList((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, isApproved: true, status: 'Fit' } : p))
+      );
+      showToast(`Player ${pl?.name || ''} approved and activated successfully!`);
+    } catch (err: any) {
+      showToast(`Failed to approve player: ${err.message}`);
+    }
+  }, [playersList, showToast]);
+
+  // 5c. Action: Reject / Remove Player
+  const handleRejectPlayer = useCallback(async (playerId: string) => {
+    try {
+      const pl = playersList.find((p) => p.id === playerId);
+      await supabase.from('players').delete().eq('id', playerId);
+      setPlayersList((prev) => prev.filter((p) => p.id !== playerId));
+      showToast(`Removed ${pl?.name || 'player'} from squad.`);
+    } catch (err: any) {
+      showToast(`Failed to remove player: ${err.message}`);
+    }
+  }, [playersList, showToast]);
+
   // 6. Action: Export Audit Logs CSV
   const handleExportAuditLogsCSV = useCallback(() => {
     if (auditLogs.length === 0) {
@@ -813,6 +873,10 @@ export const useAdminOperationsData = () => {
     handleResetPassword,
     handlePostAnnouncement,
     handleExportAuditLogsCSV,
+    playersList,
+    handleApprovePlayer,
+    handleRejectPlayer,
     refreshData: fetchOperationsData,
   };
 };
+

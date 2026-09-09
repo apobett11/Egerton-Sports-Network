@@ -1,4 +1,4 @@
-﻿-- Migration 34: Seed referee1@gmail.com Unified Referee Account
+-- Migration 34: Seed referee1@gmail.com Unified Referee Account
 -- Password: referee1
 
 DO $$
@@ -16,7 +16,12 @@ BEGIN
         raw_user_meta_data = jsonb_build_object('role', 'referee', 'first_name', 'Official', 'last_name', 'Referee', 'email_verified', true),
         raw_app_meta_data = jsonb_build_object('provider', 'email', 'providers', json_build_array('email')),
         email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-        updated_at = NOW()
+        updated_at = NOW(),
+        email_change = COALESCE(email_change, ''),
+        email_change_token_new = COALESCE(email_change_token_new, ''),
+        email_change_token_current = COALESCE(email_change_token_current, ''),
+        phone_change = COALESCE(phone_change, ''),
+        phone_change_token = COALESCE(phone_change_token, '')
     WHERE LOWER(email) = 'referee1@gmail.com';
     
     SELECT id INTO v_ref_uid FROM auth.users WHERE LOWER(email) = 'referee1@gmail.com';
@@ -34,7 +39,12 @@ BEGIN
       created_at,
       updated_at,
       confirmation_token,
-      recovery_token
+      recovery_token,
+      email_change,
+      email_change_token_new,
+      email_change_token_current,
+      phone_change,
+      phone_change_token
     ) VALUES (
       '00000000-0000-0000-0000-000000000000',
       v_ref_uid,
@@ -47,6 +57,11 @@ BEGIN
       jsonb_build_object('role', 'referee', 'first_name', 'Official', 'last_name', 'Referee', 'email_verified', true),
       NOW(),
       NOW(),
+      '',
+      '',
+      '',
+      '',
+      '',
       '',
       ''
     );

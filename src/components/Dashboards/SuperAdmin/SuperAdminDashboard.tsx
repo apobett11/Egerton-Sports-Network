@@ -13,6 +13,7 @@ import { AdminAuditLogsView } from './components/Views/AdminAuditLogsView';
 import { AdminPerformanceView } from './components/Views/AdminPerformanceView';
 import { AdminSettingsAnnouncementsView } from './components/Views/AdminSettingsAnnouncementsView';
 import { AdminProfileView } from './components/Views/AdminProfileView';
+import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApprovalsView';
 import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -60,6 +61,9 @@ export const SuperAdminDashboard: React.FC = () => {
     handleResetPassword,
     handlePostAnnouncement,
     handleExportAuditLogsCSV,
+    playersList,
+    handleApprovePlayer,
+    handleRejectPlayer,
     refreshData,
   } = useAdminOperationsData();
 
@@ -106,6 +110,7 @@ export const SuperAdminDashboard: React.FC = () => {
         onRefresh={refreshData}
         onLogout={handleLogout}
         insightsCount={platformInsights.filter((i) => i.severity === 'critical' || i.severity === 'warning').length}
+        pendingPlayersCount={playersList.filter((p) => !p.isApproved).length}
       />
 
       {/* Main Content Workspace */}
@@ -214,6 +219,15 @@ export const SuperAdminDashboard: React.FC = () => {
               onResetPassword={handleResetPassword}
               setActiveTab={setActiveTab}
               setAuditSearchTerm={setAuditSearchTerm}
+            />
+          )}
+
+          {activeTab === 'players' && (
+            <AdminPlayerApprovalsView
+              players={playersList}
+              onApprovePlayer={handleApprovePlayer}
+              onRejectPlayer={handleRejectPlayer}
+              onRefresh={refreshData}
             />
           )}
 

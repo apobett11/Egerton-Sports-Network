@@ -9,6 +9,8 @@ interface SettingsPageProps {
     showToast: (msg: string) => void;
     onLogout: () => void;
     teamId?: string;
+    roster?: any[];
+    teamInfo?: any;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -17,30 +19,45 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setDarkMode,
     showToast,
     onLogout,
-    teamId = DEFAULT_TEAM_UUID
+    teamId = DEFAULT_TEAM_UUID,
+    roster = [],
+    teamInfo,
 }) => {
     // Coach-managed Team Profile & Identity
-    const [teamName, setTeamName] = useState('Egerton FC');
-    const [shortName, setShortName] = useState('EFC');
-    const [logoUrl, setLogoUrl] = useState('https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN');
+    const [teamName, setTeamName] = useState(teamInfo?.name || 'Egerton FC');
+    const [shortName, setShortName] = useState(teamInfo?.short_name || 'EFC');
+    const [logoUrl, setLogoUrl] = useState(teamInfo?.crest_url || teamInfo?.logo_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN');
     const [contactEmail, setContactEmail] = useState('athletics@egerton.ac.ke');
     const [contactPhone, setContactPhone] = useState('+254 700 123456');
-    const [stadium, setStadium] = useState('Egerton Main Pavilion Arena');
-    const [teamDescription, setTeamDescription] = useState('Official high-performance university varsity squad competing in the Premier Division.');
-    const [primaryColor, setPrimaryColor] = useState('#D4AF37');
-    const [secondaryColor, setSecondaryColor] = useState('#1E293B');
-    const [accentColor, setAccentColor] = useState('#FFFFFF');
+    const [stadium, setStadium] = useState(teamInfo?.stadium || 'Egerton Main Pavilion Arena');
+    const [teamDescription, setTeamDescription] = useState(teamInfo?.description || 'Official high-performance university varsity squad competing in the Premier Division.');
+    const [primaryColor, setPrimaryColor] = useState(teamInfo?.primary_color || teamInfo?.color_code || '#D4AF37');
+    const [secondaryColor, setSecondaryColor] = useState(teamInfo?.secondary_color || '#1E293B');
+    const [accentColor, setAccentColor] = useState(teamInfo?.accent_color || '#FFFFFF');
 
-    // Captain-managed Tactical & In-Match Roles
-    const [setPiecePenalty, setSetPiecePenalty] = useState('E. Haaland');
-    const [setPieceFreeKick, setSetPieceFreeKick] = useState('K. De Bruyne');
-    const [setPieceCorner, setSetPieceCorner] = useState('K. De Bruyne');
-    const [kickoffPlayer, setKickoffPlayer] = useState('Marcus Thorne');
-    const [throwInPriority, setThrowInPriority] = useState('Aaron Sterling');
-    const [subPriority, setSubPriority] = useState('P. Foden');
-    const [viceCaptain, setViceCaptain] = useState('Soren Brandt');
-    const [emergencyGk, setEmergencyGk] = useState('Marcus Thorne');
-    const [designatedCaptain, setDesignatedCaptain] = useState('Leo Van Dijk');
+    // Tactical & In-Match Roles
+    const [setPiecePenalty, setSetPiecePenalty] = useState(roster[0]?.name || 'E. Haaland');
+    const [setPieceFreeKick, setSetPieceFreeKick] = useState(roster[1]?.name || 'K. De Bruyne');
+    const [setPieceCorner, setSetPieceCorner] = useState(roster[2]?.name || 'K. De Bruyne');
+    const [kickoffPlayer, setKickoffPlayer] = useState(roster[3]?.name || 'Marcus Thorne');
+    const [throwInPriority, setThrowInPriority] = useState(roster[4]?.name || 'Aaron Sterling');
+    const [subPriority, setSubPriority] = useState(roster[5]?.name || 'P. Foden');
+    const [viceCaptain, setViceCaptain] = useState(roster[1]?.name || 'Soren Brandt');
+    const [emergencyGk, setEmergencyGk] = useState(roster[0]?.name || 'Marcus Thorne');
+    const [designatedCaptain, setDesignatedCaptain] = useState(teamInfo?.captain_id || roster[0]?.id || 'p1');
+
+    React.useEffect(() => {
+        if (teamInfo) {
+            if (teamInfo.name) setTeamName(teamInfo.name);
+            if (teamInfo.short_name) setShortName(teamInfo.short_name);
+            if (teamInfo.stadium) setStadium(teamInfo.stadium);
+            if (teamInfo.description) setTeamDescription(teamInfo.description);
+            if (teamInfo.primary_color || teamInfo.color_code) setPrimaryColor(teamInfo.primary_color || teamInfo.color_code);
+            if (teamInfo.secondary_color) setSecondaryColor(teamInfo.secondary_color);
+            if (teamInfo.accent_color) setAccentColor(teamInfo.accent_color);
+            if (teamInfo.captain_id) setDesignatedCaptain(teamInfo.captain_id);
+        }
+    }, [teamInfo]);
 
     const handleToggleTheme = () => {
         const nextDark = !darkMode;
@@ -63,6 +80,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             short_name: shortName,
             logo_url: logoUrl,
             color_code: primaryColor,
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            accent_color: accentColor,
+            stadium: stadium,
+            description: teamDescription,
+            captain_id: designatedCaptain,
         });
         if (success) {
             showToast('Coach Authority: Team profile, logo, colors, and stadium updated in database.');
@@ -71,9 +94,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
-    const handleSaveMatchRoles = (e: React.FormEvent) => {
+    const handleSaveMatchRoles = async (e: React.FormEvent) => {
         e.preventDefault();
-        showToast('Coach Authority: In-match roles and set-piece specialists saved successfully.');
+        try {
+            await updateTeamSettings(teamId, {
+                captain_id: designatedCaptain,
+            });
+            showToast('Coach Authority: In-match roles and set-piece specialists saved successfully.');
+        } catch (err) {
+            showToast('Coach Authority: Saved match roles locally.');
+        }
     };
 
 
@@ -269,14 +299,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     value={designatedCaptain}
                                     onChange={(e) => {
                                         setDesignatedCaptain(e.target.value);
-                                        showToast(`Coach Authority: Appointed ${e.target.value} as Team Captain.`);
+                                        const found = roster.find(p => p.id === e.target.value);
+                                        showToast(`Coach Authority: Appointed ${found?.name || e.target.value} as Team Captain.`);
                                     }}
                                     className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                 >
-                                    <option value="Leo Van Dijk">Leo Van Dijk (#2 - CB)</option>
-                                    <option value="Aaron Sterling">Aaron Sterling (#10 - CAM)</option>
-                                    <option value="Soren Brandt">Soren Brandt (#1 - GK)</option>
-                                    <option value="Marcus Thorne">Marcus Thorne (#9 - ST)</option>
+                                    {roster && roster.length > 0 ? (
+                                        roster.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} (#{p.number} - {p.position})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="Leo Van Dijk">Leo Van Dijk (#2 - CB)</option>
+                                            <option value="Aaron Sterling">Aaron Sterling (#10 - CAM)</option>
+                                            <option value="Soren Brandt">Soren Brandt (#1 - GK)</option>
+                                            <option value="Marcus Thorne">Marcus Thorne (#9 - ST)</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 
@@ -317,9 +358,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setSetPiecePenalty(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="E. Haaland">E. Haaland (ST)</option>
-                                        <option value="Marcus Thorne">Marcus Thorne (ST)</option>
-                                        <option value="P. Foden">P. Foden (CAM)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="E. Haaland">E. Haaland (ST)</option>
+                                                <option value="Marcus Thorne">Marcus Thorne (ST)</option>
+                                                <option value="P. Foden">P. Foden (CAM)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -331,9 +382,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setSetPieceFreeKick(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="K. De Bruyne">K. De Bruyne (CM)</option>
-                                        <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
-                                        <option value="Cole Palmer">Cole Palmer (RW)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="K. De Bruyne">K. De Bruyne (CM)</option>
+                                                <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
+                                                <option value="Cole Palmer">Cole Palmer (RW)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -345,9 +406,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setSetPieceCorner(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="K. De Bruyne">K. De Bruyne (CM)</option>
-                                        <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
-                                        <option value="B. Silva">B. Silva (RM)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="K. De Bruyne">K. De Bruyne (CM)</option>
+                                                <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
+                                                <option value="B. Silva">B. Silva (RM)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -359,8 +430,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setKickoffPlayer(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="Marcus Thorne">Marcus Thorne (ST)</option>
-                                        <option value="Aaron Sterling">Aaron Sterling (CAM)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Marcus Thorne">Marcus Thorne (ST)</option>
+                                                <option value="Aaron Sterling">Aaron Sterling (CAM)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -372,8 +453,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setThrowInPriority(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="Aaron Sterling">Aaron Sterling (LB)</option>
-                                        <option value="K. De Bruyne">K. De Bruyne (RB)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Aaron Sterling">Aaron Sterling (LB)</option>
+                                                <option value="K. De Bruyne">K. De Bruyne (RB)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -385,8 +476,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setSubPriority(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="P. Foden">P. Foden (MID)</option>
-                                        <option value="Marcus Thorne">Marcus Thorne (FWD)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="P. Foden">P. Foden (MID)</option>
+                                                <option value="Marcus Thorne">Marcus Thorne (FWD)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -398,8 +499,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setViceCaptain(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="Soren Brandt">Soren Brandt (GK)</option>
-                                        <option value="Aaron Sterling">Aaron Sterling (CAM)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Soren Brandt">Soren Brandt (GK)</option>
+                                                <option value="Aaron Sterling">Aaron Sterling (CAM)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
 
@@ -411,8 +522,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         onChange={(e) => setEmergencyGk(e.target.value)}
                                         className="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface rounded-lg p-2.5 text-xs outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 cursor-pointer"
                                     >
-                                        <option value="Marcus Thorne">Marcus Thorne (ST)</option>
-                                        <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
+                                        {roster && roster.length > 0 ? (
+                                            roster.map((p) => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name} ({p.position})
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <option value="Marcus Thorne">Marcus Thorne (ST)</option>
+                                                <option value="Leo Van Dijk">Leo Van Dijk (CB)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                             </div>

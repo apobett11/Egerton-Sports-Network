@@ -243,7 +243,6 @@ export const ApiService = {
           competition:competitions(id, name, season),
           team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
           team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
-          referee_prof:profiles!referee_id(first_name, last_name),
           ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
           ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
           fo_prof:profiles!fourth_official_id(first_name, last_name)
@@ -762,7 +761,10 @@ export const ApiService = {
 
     try {
       const { data: userData } = await supabase.auth.getUser();
-      const currentUserId = userData?.user?.id || params.refereeId;
+      const rawOfficialId = userData?.user?.id || params.refereeId;
+      const verifiedOfficialId = (rawOfficialId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawOfficialId))
+        ? rawOfficialId
+        : null;
 
       const fullReportText = [
         sanitizeHtmlText(params.reportText),
@@ -773,37 +775,60 @@ export const ApiService = {
 
       await supabase.from('match_reports').insert({
         fixture_id: params.fixtureId,
-        official_id: currentUserId,
+        official_id: verifiedOfficialId,
         official_role: 'referee',
         report_text: fullReportText,
         submitted_at: new Date().toISOString()
       });
 
+      // Deduplication Guarantee: clean up any pre-existing events for this fixture before writing official batch
+      await supabase.from('match_events').delete().eq('fixture_id', params.fixtureId);
+
       if (params.officialEvents && params.officialEvents.length > 0) {
         for (const evt of params.officialEvents) {
+          const validPlayerId = (evt.playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.playerId))
+            ? evt.playerId
+            : null;
+          const validTeamId = (evt.teamId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.teamId))
+            ? evt.teamId
+            : null;
+
           await supabase.from('match_events').insert({
             fixture_id: params.fixtureId,
             minute: Math.max(0, evt.minute),
             type: evt.type,
             event_target: evt.eventTarget,
-            team_id: evt.teamId || null,
-            player_id: evt.playerId || null,
+            team_id: validTeamId,
+            player_id: validPlayerId,
             detail_text: sanitizeHtmlText(evt.detailText) || null,
             is_official: true,
-            created_by: currentUserId
+            created_by: verifiedOfficialId
           });
         }
       }
 
+      // Check current fixture competition_id to prevent null-constraint failure in Algorithm 2
+      const { data: curFix } = await supabase
+        .from('fixtures')
+        .select('competition_id')
+        .eq('id', params.fixtureId)
+        .maybeSingle();
+
+      const fixUpdatePayload: any = {
+        score_home: Math.max(0, params.scoreHome),
+        score_away: Math.max(0, params.scoreAway),
+        status: params.status || 'FT',
+        verified_by_referee_id: verifiedOfficialId,
+        referee_verification_status: 'VERIFIED'
+      };
+
+      if (!curFix?.competition_id) {
+        fixUpdatePayload.competition_id = '11111111-1111-1111-1111-111111111111';
+      }
+
       const { data: updatedFixture } = await supabase
         .from('fixtures')
-        .update({
-          score_home: Math.max(0, params.scoreHome),
-          score_away: Math.max(0, params.scoreAway),
-          status: params.status || 'FT',
-          verified_by_referee_id: currentUserId,
-          referee_verification_status: 'VERIFIED'
-        })
+        .update(fixUpdatePayload)
         .eq('id', params.fixtureId)
         .select()
         .single();

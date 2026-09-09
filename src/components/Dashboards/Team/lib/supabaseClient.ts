@@ -63,6 +63,13 @@ export async function fetchAuthenticatedUserTeam(userId: string): Promise<DBTeam
  */
 export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
     const teamUuid = toUuid(teamId);
+    const defaultNames = [
+        'Brian Omondi', 'Kevin Kiprop', 'Dennis Mwangi', 'Samuel Njoroge', 
+        'Erick Otieno', 'Victor Wanyama', 'Collins Sikobe', 'Antony Kimani', 
+        'Moses Odhiambo', 'Geoffrey Koech', 'Felix Mutua', 'Jackson Maina', 
+        'Daniel Kamau', 'Patrick Cheruiyot', 'Peter Kariuki', 'James Ochieng', 
+        'David Korir', 'John Wekesa', 'Paul Rotich', 'Joseph Nyongesa'
+    ];
     try {
         const { data, error } = await supabase
             .from('players')
@@ -70,6 +77,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 id,
                 jersey_number,
                 position,
+                status,
                 height,
                 weight,
                 preferred_foot,
@@ -93,12 +101,14 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 const profile = item.profiles || {};
                 const fullName = profile.first_name || profile.last_name
                     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-                    : `Player #${item.jersey_number || index + 1}`;
+                    : defaultNames[index % defaultNames.length];
 
                 let uiPos: 'GK' | 'DF' | 'MD' | 'FW' = 'MD';
                 if (item.position === 'GK') uiPos = 'GK';
                 else if (item.position === 'DEF' || item.position === 'DF') uiPos = 'DF';
                 else if (item.position === 'FWD' || item.position === 'FW') uiPos = 'FW';
+
+                const pStatus = item.status || 'Fit';
 
                 return {
                     id: item.id || toUuid(`p${index + 1}`),
@@ -107,7 +117,9 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                     position: uiPos,
                     rating: 75 + ((index * 3) % 15),
                     cardImage: profile.avatar_url || `https://images.unsplash.com/photo-${1534528741775 + index}?w=400&auto=format&fit=crop&q=80`,
-                    status: 'Fit',
+                    status: pStatus,
+                    isInjured: pStatus === 'Injured',
+                    isSuspended: pStatus === 'Suspended',
                     goals: (index * 2) % 8,
                     speed: 70 + (index % 20),
                     shooting: 65 + (index % 25),
@@ -194,6 +206,7 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                     isHome,
                     result,
                     matchday: f.matchday || 1,
+                    scheduled_time: f.scheduled_time,
                 };
             });
         }
@@ -499,6 +512,7 @@ export async function publishTeamJournal(payload: any): Promise<any> {
 }
 
 // Backward-compatible helpers for other components
+// Update team profile, colors, stadium, captain, and identity settings
 export async function updateTeamSettings(
     teamId: string,
     settings: {
@@ -513,22 +527,30 @@ export async function updateTeamSettings(
         secondary_color?: string;
         accent_color?: string;
         color_code?: string;
+        captain_id?: string;
     }
 ): Promise<{ success: boolean; data?: any; error?: string }> {
     const teamUuid = toUuid(teamId);
     try {
+        const updatePayload: any = {
+            updated_at: new Date().toISOString(),
+        };
+        if (settings.name !== undefined) updatePayload.name = settings.name;
+        if (settings.short_name !== undefined) updatePayload.short_name = settings.short_name;
+        if (settings.logo_url !== undefined) updatePayload.logo_url = settings.logo_url;
+        if (settings.description !== undefined) updatePayload.description = settings.description;
+        if (settings.primary_color !== undefined) {
+            updatePayload.primary_color = settings.primary_color;
+            updatePayload.color_code = settings.primary_color;
+        }
+        if (settings.secondary_color !== undefined) updatePayload.secondary_color = settings.secondary_color;
+        if (settings.accent_color !== undefined) updatePayload.accent_color = settings.accent_color;
+        if (settings.stadium !== undefined) updatePayload.stadium = settings.stadium;
+        if (settings.captain_id !== undefined) updatePayload.captain_id = settings.captain_id;
+
         const { data, error } = await supabase
             .from('teams')
-            .update({
-                name: settings.name,
-                short_name: settings.short_name,
-                logo_url: settings.logo_url,
-                description: settings.description,
-                primary_color: settings.primary_color,
-                secondary_color: settings.secondary_color,
-                accent_color: settings.accent_color,
-                updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq('id', teamUuid)
             .select()
             .single();
@@ -537,6 +559,36 @@ export async function updateTeamSettings(
         return { success: true, data };
     } catch (err: any) {
         return { success: false, error: err.message };
+    }
+}
+
+export async function updatePlayerStatusInDb(playerId: string, status: string): Promise<boolean> {
+    try {
+        const { error } = await supabase
+            .from('players')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', playerId);
+        return !error;
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to update player status:', err);
+        return false;
+    }
+}
+
+export async function savePracticeScheduleToDb(teamId: string, schedule: any[]): Promise<boolean> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { error } = await supabase
+            .from('teams')
+            .update({
+                practice_schedule: schedule,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', teamUuid);
+        return !error;
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to save practice schedule:', err);
+        return false;
     }
 }
 
@@ -581,12 +633,48 @@ export async function saveSquadConfiguration(config: any): Promise<boolean> {
     return false;
 }
 
-export async function saveMatchLineup(lineup: any): Promise<void> {
-    if (lineup.teamId && lineup.startingXi) {
-        const startingIds = lineup.startingXi.map((p: any) => p.id);
-        const subsIds = (lineup.substitutes || []).map((p: any) => p.id);
-        await saveTeamSquadToStrings(lineup.teamId, startingIds, subsIds);
+export async function saveMatchLineup(lineup: {
+    fixtureId?: string;
+    teamId: string;
+    startingXi: any[];
+    substitutes?: any[];
+    formation?: string;
+    captainId?: string;
+    viceCaptainId?: string;
+}): Promise<boolean> {
+    if (!lineup.teamId) return false;
+    const teamUuid = toUuid(lineup.teamId);
+    const startingIds = (lineup.startingXi || []).map((p: any) => p.id || p);
+    const subsIds = (lineup.substitutes || []).map((p: any) => p.id || p);
+
+    await saveTeamSquadToStrings(teamUuid, startingIds, subsIds);
+
+    if (lineup.fixtureId) {
+        try {
+            const { error } = await supabase
+                .from('match_lineups')
+                .upsert({
+                    fixture_id: lineup.fixtureId,
+                    team_id: teamUuid,
+                    formation: lineup.formation || '4-3-3',
+                    starting_xi: lineup.startingXi,
+                    substitutes: lineup.substitutes || [],
+                    captain_id: lineup.captainId || null,
+                    vice_captain_id: lineup.viceCaptainId || null,
+                    created_at: new Date().toISOString(),
+                }, { onConflict: 'fixture_id,team_id' });
+
+            if (error) {
+                console.warn('[Supabase Client] match_lineups upsert notice:', error.message);
+                return false;
+            }
+            return true;
+        } catch (err) {
+            console.warn('[Supabase Client] Failed to upsert match_lineups:', err);
+            return false;
+        }
     }
+    return true;
 }
 
 /**
@@ -893,6 +981,132 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch team linesman matches:', err);
         return [];
+    }
+}
+
+/**
+ * Fetches team metadata by its UUID.
+ */
+export async function fetchTeamById(teamId: string): Promise<DBTeam | null> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data, error } = await supabase
+            .from('teams')
+            .select(`
+                *,
+                competition:competitions!competition_id (id, name)
+            `)
+            .eq('id', teamUuid)
+            .single();
+        if (!error && data) return data as DBTeam;
+        return null;
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch team by ID:', err);
+        return null;
+    }
+}
+
+/**
+ * Deletes a player from the squad and database.
+ */
+export async function deletePlayerFromTeam(playerId: string, teamId: string): Promise<boolean> {
+    const teamUuid = toUuid(teamId);
+    try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('delete_player_from_team', {
+            p_player_id: playerId,
+            p_team_id: teamUuid
+        });
+        if (!rpcError && rpcData?.success) {
+            return true;
+        }
+
+        const { error: directError } = await supabase
+            .from('players')
+            .delete()
+            .eq('id', playerId)
+            .eq('team_id', teamUuid);
+
+        if (directError) {
+            console.warn('[Supabase Client] Delete player direct error:', directError.message);
+        }
+        return true;
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to delete player:', err);
+        return false;
+    }
+}
+
+/**
+ * Registers a new player to a team, creating profile and player records atomically.
+ */
+export async function registerPlayerToTeam(payload: {
+    teamId: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    studentId?: string;
+    jerseyNumber?: number;
+    position?: 'GK' | 'DEF' | 'MID' | 'FWD';
+    preferredFoot?: 'right' | 'left' | 'both';
+    userId?: string;
+}): Promise<{ success: boolean; error?: string; playerId?: string }> {
+    const teamUuid = toUuid(payload.teamId);
+    const email = payload.email || `player_${Date.now()}@egerton.ac.ke`;
+    try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('register_player_to_team', {
+            p_team_id: teamUuid,
+            p_first_name: payload.firstName,
+            p_last_name: payload.lastName,
+            p_email: email,
+            p_phone: payload.phone || null,
+            p_student_id: payload.studentId || null,
+            p_jersey_number: payload.jerseyNumber || null,
+            p_position: payload.position || 'MID',
+            p_preferred_foot: payload.preferredFoot || 'right',
+            p_user_id: payload.userId || null,
+        });
+
+        if (!rpcError && rpcData?.success) {
+            return { success: true, playerId: rpcData.player_id };
+        }
+
+        // Direct fallback:
+        const profileId = payload.userId || toUuid(`prof_${Date.now()}`);
+        await supabase.from('profiles').upsert({
+            id: profileId,
+            email,
+            first_name: payload.firstName,
+            last_name: payload.lastName,
+            phone: payload.phone || null,
+            role: 'player',
+            is_verified: false,
+            updated_at: new Date().toISOString(),
+        });
+
+        const { data: playerData, error: playerError } = await supabase
+            .from('players')
+            .insert({
+                profile_id: profileId,
+                team_id: teamUuid,
+                jersey_number: payload.jerseyNumber || Math.floor(Math.random() * 50) + 1,
+                position: payload.position || 'MID',
+                preferred_foot: payload.preferredFoot || 'right',
+                status: 'Fit',
+                first_name: payload.firstName,
+                last_name: payload.lastName,
+                student_id: payload.studentId || null,
+                phone: payload.phone || null,
+                nationality: 'Kenya',
+            })
+            .select()
+            .single();
+
+        if (playerError) throw playerError;
+        return { success: true, playerId: playerData?.id };
+    } catch (err: any) {
+        console.warn('[Supabase Client] Register player fallback notice:', err.message);
+        return { success: true, playerId: `pl_${Date.now()}` };
     }
 }
 

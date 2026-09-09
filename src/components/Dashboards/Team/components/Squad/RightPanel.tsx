@@ -3,6 +3,7 @@ import React from 'react';
 interface RightPanelProps {
   collectiveStrength: number;
   onAutoPick: () => void;
+  onSubmitLineup?: () => void;
   isCoach?: boolean;
   onPermissionDenied?: (msg: string) => void;
 }
@@ -10,6 +11,7 @@ interface RightPanelProps {
 export const RightPanel: React.FC<RightPanelProps> = ({
   collectiveStrength,
   onAutoPick,
+  onSubmitLineup,
   isCoach = true,
   onPermissionDenied,
 }) => {
@@ -38,15 +40,30 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         </span>
       </div>
 
-      {/* Bottom Button: Auto-pick players contained safely within screen */}
-      <div className="mb-1">
+      {/* Bottom Action Buttons: Submit Match Lineup + Auto-pick players */}
+      <div className="flex flex-col gap-2 mb-1">
+        {onSubmitLineup && (
+          <button
+            onClick={onSubmitLineup}
+            id="btn-submit-match-lineup"
+            className={`${
+              isCoach
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white cursor-pointer shadow-emerald-950/40'
+                : 'bg-[#12161f] opacity-40 text-gray-500 cursor-not-allowed'
+            } active:scale-95 border border-emerald-400/40 text-[11px] sm:text-[12px] font-black px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-[12px] shadow-lg transition-all flex flex-col items-center justify-center leading-tight focus:outline-none`}
+          >
+            <span>Submit Match Lineup</span>
+          </button>
+        )}
+
         <button
           onClick={handleAutoPickClick}
+          id="btn-autopick-players"
           className={`${
             isCoach 
               ? 'bg-[#181d28] hover:bg-[#202736] text-[#3b82f6] hover:text-[#60a5fa] cursor-pointer' 
               : 'bg-[#12161f] opacity-40 text-gray-500 cursor-not-allowed'
-          } active:scale-95 border border-white/10 text-[11.5px] sm:text-[12.5px] font-semibold px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-[12px] shadow-lg transition-all flex flex-col items-center justify-center leading-tight focus:outline-none`}
+          } active:scale-95 border border-white/10 text-[11px] sm:text-[12px] font-semibold px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-[12px] shadow-lg transition-all flex flex-col items-center justify-center leading-tight focus:outline-none`}
         >
           <span>Auto-pick</span>
           <span>players</span>

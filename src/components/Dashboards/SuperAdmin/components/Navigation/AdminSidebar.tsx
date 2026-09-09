@@ -22,6 +22,7 @@ interface AdminSidebarProps {
   onRefresh: () => void;
   onLogout: () => void;
   insightsCount: number;
+  pendingPlayersCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -30,6 +31,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onRefresh,
   onLogout,
   insightsCount,
+  pendingPlayersCount = 0,
 }) => {
   const navItems = [
     {
@@ -57,6 +59,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'users' as AdminTabType,
       label: 'User Directory',
       icon: Users,
+    },
+    {
+      id: 'players' as AdminTabType,
+      label: 'Player Approvals',
+      icon: UserCheck,
+      badge: pendingPlayersCount > 0 ? pendingPlayersCount : undefined,
     },
     {
       id: 'roles' as AdminTabType,

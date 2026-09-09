@@ -396,40 +396,81 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
                 {/* CENTER: MATCHUP BOARD (HOME VS AWAY) */}
                 <div className="flex-1 flex items-center justify-between sm:justify-center gap-4 md:gap-8 py-2 border-y md:border-y-0 md:border-x border-[#2A3441]/60 px-2 md:px-6">
-                  {/* HOME / OUR CLUB */}
-                  <div className="flex items-center gap-2.5 sm:w-44 justify-end">
-                    <span className="font-extrabold text-xs md:text-sm text-white text-right">
-                      Egerton FC
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
-                      EFC
-                    </div>
-                  </div>
+                  {fixture.isHome !== false ? (
+                    <>
+                      {/* HOME / OUR CLUB */}
+                      <div className="flex items-center gap-2.5 sm:w-44 justify-end">
+                        <span className="font-extrabold text-xs md:text-sm text-white text-right">
+                          Egerton FC
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
+                          EFC
+                        </div>
+                      </div>
 
-                  {/* SCORELINE / VS BADGE */}
-                  <div className="px-3.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 text-center shrink-0">
-                    {fixture.score ? (
-                      <span className="font-mono font-black text-sm md:text-base text-emerald-400">
-                        {fixture.score}
-                      </span>
-                    ) : (
-                      <span className="font-mono font-black text-xs text-amber-400 uppercase">
-                        VS
-                      </span>
-                    )}
-                  </div>
+                      {/* SCORELINE / VS BADGE */}
+                      <div className="px-3.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 text-center shrink-0">
+                        {fixture.score ? (
+                          <span className="font-mono font-black text-sm md:text-base text-emerald-400">
+                            {fixture.score}
+                          </span>
+                        ) : (
+                          <span className="font-mono font-black text-xs text-amber-400 uppercase">
+                            VS
+                          </span>
+                        )}
+                      </div>
 
-                  {/* AWAY / OPPONENT */}
-                  <div className="flex items-center gap-2.5 sm:w-44 justify-start">
-                    <img
-                      src={fixture.opponentLogo}
-                      alt={fixture.opponentName}
-                      className="w-8 h-8 object-contain rounded-xl shrink-0"
-                    />
-                    <span className="font-extrabold text-xs md:text-sm text-slate-200 truncate">
-                      {fixture.opponentName}
-                    </span>
-                  </div>
+                      {/* AWAY / OPPONENT */}
+                      <div className="flex items-center gap-2.5 sm:w-44 justify-start">
+                        <img
+                          src={fixture.opponentLogo}
+                          alt={fixture.opponentName}
+                          className="w-8 h-8 object-contain rounded-xl shrink-0"
+                        />
+                        <span className="font-extrabold text-xs md:text-sm text-slate-200 truncate">
+                          {fixture.opponentName}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* HOME / OPPONENT */}
+                      <div className="flex items-center gap-2.5 sm:w-44 justify-end">
+                        <span className="font-extrabold text-xs md:text-sm text-slate-200 truncate text-right">
+                          {fixture.opponentName}
+                        </span>
+                        <img
+                          src={fixture.opponentLogo}
+                          alt={fixture.opponentName}
+                          className="w-8 h-8 object-contain rounded-xl shrink-0"
+                        />
+                      </div>
+
+                      {/* SCORELINE / VS BADGE */}
+                      <div className="px-3.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 text-center shrink-0">
+                        {fixture.score ? (
+                          <span className="font-mono font-black text-sm md:text-base text-emerald-400">
+                            {fixture.score}
+                          </span>
+                        ) : (
+                          <span className="font-mono font-black text-xs text-amber-400 uppercase">
+                            VS
+                          </span>
+                        )}
+                      </div>
+
+                      {/* AWAY / OUR CLUB */}
+                      <div className="flex items-center gap-2.5 sm:w-44 justify-start">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
+                          EFC
+                        </div>
+                        <span className="font-extrabold text-xs md:text-sm text-white text-left">
+                          Egerton FC
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* RIGHT: VENUE, REFEREE & STATUS */}

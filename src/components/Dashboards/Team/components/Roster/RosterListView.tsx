@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Search, UserPlus, Shield, Star } from 'lucide-react';
+import { Search, UserPlus, Shield, Star, Trash2, Copy, Check, ExternalLink, MessageCircle, AlertTriangle } from 'lucide-react';
 import type { Player, UserRole, PlayerPosition } from '../../types';
 import { KitsSection } from '../Kits/KitsSection';
 
@@ -16,7 +16,9 @@ interface RosterListViewProps {
   onUpdatePlayerStatus: (playerId: string, status: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => void;
   onUploadPlayerImage?: (playerId: string, imageUrl: string) => void;
   teamId?: string;
+  teamName?: string;
   onShowToast?: (msg: string) => void;
+  onDeletePlayer?: (playerId: string) => void;
 }
 
 export const RosterListView: React.FC<RosterListViewProps> = ({
@@ -32,11 +34,45 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   onUpdatePlayerStatus,
   onUploadPlayerImage,
   teamId,
+  teamName = 'Your Team',
   onShowToast,
+  onDeletePlayer,
 }) => {
   const isCoach = currentRole === 'COACH';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedPlayerForImage, setSelectedPlayerForImage] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const registrationUrl = `${window.location.origin}/#/register/player?teamId=${teamId || ''}`;
+  const whatsappText = `⚽ Official Invitation: Join ${teamName} on Egerton Sports Network!\n\nRegister your player profile here:\n${registrationUrl}\n\nYour profile will appear directly in our squad roster.`;
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
+
+  const handleCopyRegistrationLink = async () => {
+    try {
+      await navigator.clipboard.writeText(registrationUrl);
+      setCopiedLink(true);
+      if (onShowToast) onShowToast('📋 Player registration link copied to clipboard!');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      if (onShowToast) onShowToast(`Registration Link: ${registrationUrl}`);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!playerToDelete || !onDeletePlayer) return;
+    setIsDeleting(true);
+    try {
+      await onDeletePlayer(playerToDelete.id);
+      if (onShowToast) onShowToast(`Removed ${playerToDelete.name} from squad.`);
+      setPlayerToDelete(null);
+    } catch (err: any) {
+      if (onShowToast) onShowToast(`Failed to remove player: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && selectedPlayerForImage) {
@@ -77,6 +113,62 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
 
       {/* 1. EMBEDDED CONVENIENTLY COMPACT KITS SECTION */}
       <KitsSection currentRole={currentRole} teamId={teamId} onShowToast={onShowToast} />
+
+      {/* 1.5 DEDICATED TEAM PLAYER REGISTRATION LINK BANNER */}
+      <div className="bg-gradient-to-r from-[#161B22] via-[#1C2331] to-[#161B22] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <span>Team Player Registration Link</span>
+            </h3>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Direct Intake Form
+            </span>
+          </div>
+          <p className="text-xs text-slate-300">
+            Share this dedicated link with players via WhatsApp or SMS. Submitting the form registers them directly into <strong className="text-emerald-400">{teamName}</strong>'s squad.
+          </p>
+          <div className="pt-1">
+            <code className="text-[11px] font-mono text-slate-400 bg-[#0D1117] px-2.5 py-1 rounded-md border border-[#2A3441] inline-block select-all max-w-full truncate">
+              {registrationUrl}
+            </code>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            onClick={handleCopyRegistrationLink}
+            className="px-3.5 py-2 bg-[#0D1117] hover:bg-[#2A3441] text-slate-200 text-xs font-bold rounded-xl border border-[#2A3441] flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Copy Registration URL"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedLink ? 'Copied Link' : 'Copy Link'}</span>
+          </button>
+
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer active:scale-95"
+            title="Direct Share via WhatsApp"
+          >
+            <MessageCircle className="w-4 h-4 fill-white text-transparent" />
+            <span>Share via WhatsApp</span>
+          </a>
+
+          <a
+            href={`#/register/player?teamId=${teamId || ''}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Open Registration Form"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Open Form</span>
+          </a>
+        </div>
+      </div>
 
       {/* 2. INTEGRATED PLAYERS LIST SECTION HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#2A3441] pb-4">
@@ -157,7 +249,22 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   </span>
                 </div>
 
-                <span className="font-mono font-black text-xs text-slate-400">#{player.number}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-black text-xs text-slate-400">#{player.number}</span>
+                  {isCoach && onDeletePlayer && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlayerToDelete(player);
+                      }}
+                      className="p-1 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title={`Remove ${player.name} from squad`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Player Portrait & Name */}
@@ -190,6 +297,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 </span>
 
                 <select
+                  data-testid="player-status-select"
                   value={player.status}
                   onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
                   className="bg-[#0D1117] border border-[#2A3441] text-slate-300 text-[9px] font-bold rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
@@ -204,6 +312,49 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
           );
         })}
       </div>
+
+      {/* Delete Player Confirmation Modal */}
+      {playerToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-white">Remove Player from Squad?</h3>
+                <p className="text-xs text-slate-400">This will remove the player from your official roster.</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#0D1117] rounded-xl border border-[#2A3441] text-xs">
+              <div className="text-white font-bold">{playerToDelete.name}</div>
+              <div className="text-slate-400 text-[11px]">#{playerToDelete.number} • {playerToDelete.position}</div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2A3441]">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setPlayerToDelete(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Removing...' : 'Remove Player'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

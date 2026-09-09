@@ -772,7 +772,7 @@ export class SupabaseMatchRepository implements MatchRepository {
         action_type: entry.action,
         actor_role: entry.actor_role,
         actor_uid: entry.actor_uid,
-        payload: entry.payload,
+        new_state: entry.payload ? (typeof entry.payload === 'object' ? entry.payload : { data: entry.payload }) : null,
         occurred_at: entry.created_at,
       });
     } catch {
@@ -1043,7 +1043,7 @@ export async function syncMatchEventsAndScores(
       .upsert({
         match_uid,
         status: updatedState.status,
-        period: updatedState.period,
+        period: updatedState.period || 'FULL_TIME',
         home_score: score.home_score,
         away_score: score.away_score,
         version: updatedState.version,

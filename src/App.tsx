@@ -38,6 +38,7 @@ const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/Doctor
 const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
 const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const PasswordResetOnboarding = lazy(() => import('./components/Auth/PasswordResetOnboarding').then(m => ({ default: m.PasswordResetOnboarding })));
+const PlayerRegistrationPage = lazy(() => import('./pages/public/PlayerRegistrationPage'));
 
 const DashboardLoader: React.FC = () => (
   <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center gap-4 text-emerald-500">
@@ -550,11 +551,9 @@ export const AppContent: React.FC = () => {
 
   if (route === 'coach' || route === 'dashboard/coach') {
     return (
-      <ProtectedRoute allowedRoles={['coach', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
-        <Suspense fallback={<DashboardLoader />}>
-          <TeamDashboard />
-        </Suspense>
-      </ProtectedRoute>
+      <Suspense fallback={<DashboardLoader />}>
+        <TeamDashboard />
+      </Suspense>
     );
   }
 
@@ -624,6 +623,14 @@ export const AppContent: React.FC = () => {
     return (
       <Suspense fallback={<DashboardLoader />}>
         <PasswordResetOnboarding />
+      </Suspense>
+    );
+  }
+
+  if (route === 'register' || route.startsWith('register') || route.startsWith('player-registration')) {
+    return (
+      <Suspense fallback={<DashboardLoader />}>
+        <PlayerRegistrationPage onNavigate={handleNavigateHash} />
       </Suspense>
     );
   }

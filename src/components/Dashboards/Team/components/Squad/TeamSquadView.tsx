@@ -23,32 +23,116 @@ import { saveTeamTacticsAndSquad, uploadTeamCrest } from '../../lib/supabaseClie
 interface TeamSquadViewProps {
   currentRole?: 'COACH' | 'CAPTAIN' | 'PLAYER' | 'GUEST' | string;
   teamId?: string;
+  roster?: any[];
+  teamName?: string;
+  teamCrest?: string;
+  activeFixtureId?: string;
   onNavigateBack?: () => void;
   onShowToast?: (msg: string) => void;
+  onSaveMatchLineup?: (fixtureId?: string, startingXI?: any[], subs?: any[], formation?: string, capId?: string) => Promise<any>;
 }
 
 export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   currentRole = 'COACH',
   teamId = 'fc910b80-1a73-45f8-80f4-fcb03adce911',
+  roster,
+  teamName,
+  teamCrest,
+  activeFixtureId,
   onNavigateBack,
   onShowToast,
+  onSaveMatchLineup,
 }) => {
   const isCoach = currentRole === 'COACH';
-  const [currentTeamId, setCurrentTeamId] = useState<string>('man_united');
   const initialTeam = TEAMS_DATA['man_united'];
 
-  const [startingXI, setStartingXI] = useState<Player[]>(initialTeam.startingXI);
-  const [substitutes, setSubstitutes] = useState<Player[]>(initialTeam.substitutes.slice(0, 7));
-  const [reserves, setReserves] = useState<Player[]>(initialTeam.substitutes.slice(7));
-  const [manager, setManager] = useState<Manager>(initialTeam.manager);
-  const [formation, setFormation] = useState<FormationType>(initialTeam.formation);
-  const [playstyle, setPlaystyle] = useState<Playstyle>(initialTeam.playstyle);
+  // Map real database roster to pitch player models if available
+  const dbMappedSquad = React.useMemo(() => {
+    if (roster && roster.length > 0) {
+      const template = FORMATIONS['4-3-3'];
+      const mapped: Player[] = roster.map((p, idx) => {
+        let pos: any = 'CMF';
+        if (p.position === 'GK') pos = 'GK';
+        else if (p.position === 'DF') pos = idx % 2 === 0 ? 'CB' : 'LB';
+        else if (p.position === 'FW') pos = idx % 2 === 0 ? 'CF' : 'RWF';
+
+        return {
+          id: p.id,
+          name: p.name,
+          number: p.number || idx + 1,
+          position: pos,
+          defaultPosition: pos,
+          rating: p.rating || 78,
+          photoUrl: p.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+          flagUrl: 'https://flagcdn.com/w80/ke.png',
+          clubLogoUrl: teamCrest || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          cardTheme: p.rating >= 85 ? 'epic' : p.rating >= 80 ? 'gold' : 'blue',
+          isCaptain: idx === 0,
+        };
+      });
+
+      const xi = mapped.slice(0, 11).map((player, idx) => {
+        const slot = template.coords[idx] || { x: 50, y: 50, position: 'CMF' };
+        return {
+          ...player,
+          position: slot.position as any,
+          coord: { x: slot.x, y: slot.y },
+        };
+      });
+
+      return {
+        startingXI: xi,
+        substitutes: mapped.slice(11, 18),
+        reserves: mapped.slice(18),
+        manager: {
+          name: 'Coach Marcus',
+          photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+          proficiencies: {
+            'Possession Game': 85,
+            'Quick Counter': 80,
+            'Long Ball Counter': 75,
+            'Out Wide': 70,
+            'Long Ball': 65,
+          },
+        },
+      };
+    }
+    return null;
+  }, [roster, teamCrest]);
+
+  const [currentTeamId, setCurrentTeamId] = useState<string>(dbMappedSquad ? 'egerton_fc' : 'man_united');
+
+  const [startingXI, setStartingXI] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.startingXI : initialTeam.startingXI);
+  const [substitutes, setSubstitutes] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.substitutes : initialTeam.substitutes.slice(0, 7));
+  const [reserves, setReserves] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.reserves : initialTeam.substitutes.slice(7));
+  const [manager, setManager] = useState<Manager>(dbMappedSquad ? dbMappedSquad.manager : initialTeam.manager);
+  const [formation, setFormation] = useState<FormationType>('4-3-3');
+  const [playstyle, setPlaystyle] = useState<Playstyle>('Possession Game');
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (dbMappedSquad) {
+      setStartingXI(dbMappedSquad.startingXI);
+      setSubstitutes(dbMappedSquad.substitutes);
+      setReserves(dbMappedSquad.reserves);
+      setManager(dbMappedSquad.manager);
+    }
+  }, [dbMappedSquad]);
+
   const autoSaveTimeoutRef = useRef<any>(null);
 
-  const currentTeam: TeamData = TEAMS_DATA[currentTeamId] || initialTeam;
+  const currentTeam: TeamData = {
+    id: teamId,
+    name: teamName || (dbMappedSquad ? 'Egerton FC First Team' : initialTeam.name),
+    shortName: 'EFC',
+    crestUrl: teamCrest || (dbMappedSquad ? 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80' : initialTeam.crestUrl),
+    formation,
+    playstyle,
+    manager,
+    startingXI,
+    substitutes,
+  };
   const currentCaptain = startingXI.find((p) => p.isCaptain) || startingXI[0];
 
   const showToast = (msg: string) => {
@@ -429,6 +513,20 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         <RightPanel
           collectiveStrength={collectiveStrength}
           onAutoPick={handleAutoPick}
+          onSubmitLineup={async () => {
+            if (onSaveMatchLineup) {
+              await onSaveMatchLineup(activeFixtureId, startingXI, substitutes, formation, currentCaptain?.id);
+            } else {
+              await saveTeamTacticsAndSquad(teamId, {
+                startingXI,
+                substitutes,
+                reserves,
+                formation,
+                playstyle,
+              });
+              showToast('Official Matchday Lineup committed to database!');
+            }
+          }}
           isCoach={isCoach}
           onPermissionDenied={handlePermissionDenied}
         />

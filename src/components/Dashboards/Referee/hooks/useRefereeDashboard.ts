@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
-import { matchLiveEngine } from '../../../../services/matchLiveEngineAdapter';
+import { matchLiveEngine, matchRepository } from '../../../../services/matchLiveEngineAdapter';
 import { executeWithRetry } from '../../../../lib/retryPolicy';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
 import { mockMatches } from '../../../../mockData';
@@ -140,8 +140,7 @@ export const useRefereeDashboard = () => {
             verified_by_referee_id,
             competition:competitions(id, name),
             team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
-            team_away:teams!away_team_id(id, name, short_name, logo_url, color_code),
-            referee_prof:profiles!referee_id(first_name, last_name)
+            team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
           `)
           .order('scheduled_time', { ascending: true });
 
@@ -877,6 +876,11 @@ export const useRefereeDashboard = () => {
     setIsSubmitting(true);
     setAuthError(null);
 
+    const isValidUuid = (id?: string | null): boolean => {
+      if (!id) return false;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    };
+
     const compiledEvents: Array<{
       type: MatchEventType;
       eventTarget: 'home' | 'away' | 'match';
@@ -891,7 +895,7 @@ export const useRefereeDashboard = () => {
         teamId: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
         minute: Number(g.minute) || 1,
         detailText: `Goal: ${g.playerName} (#${g.jerseyNumber || '-'})`,
-        playerId: g.playerId,
+        playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
       })),
       ...reportData.cards.map((c) => ({
         type: (c.cardType === 'yellow' ? 'yellow' : 'red') as MatchEventType,
@@ -899,7 +903,7 @@ export const useRefereeDashboard = () => {
         teamId: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
         minute: Number(c.minute) || 1,
         detailText: `${c.cardType.toUpperCase()} Card: ${c.playerName} (#${c.jerseyNumber || '-'})`,
-        playerId: c.playerId,
+        playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
       })),
       ...reportData.injuries.map((i) => ({
         type: 'injury' as MatchEventType,
@@ -907,7 +911,7 @@ export const useRefereeDashboard = () => {
         teamId: i.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
         minute: Number(i.minute) || 1,
         detailText: `Injury: ${i.playerName} (#${i.jerseyNumber || '-'})`,
-        playerId: i.playerId,
+        playerId: isValidUuid(i.playerId) ? i.playerId : undefined,
       })),
     ];
 
@@ -937,6 +941,64 @@ export const useRefereeDashboard = () => {
 
     try {
       const result = await executeWithRetry(async () => {
+        // Sync Algorithm 1 working set with the official events BEFORE refereeConfirmNormalResult
+        if (reportData.goals.length > 0 || reportData.cards.length > 0) {
+          await matchRepository.saveRefereeWorkingSet({
+            match_uid: selectedFixture.id,
+            opened_by_uid: effectiveRefereeId,
+            status: 'OPEN',
+            home_score: reportData.scoreHome,
+            away_score: reportData.scoreAway,
+            events: [
+              ...reportData.goals.map((g) => ({
+                event_uid: g.id || crypto.randomUUID(),
+                match_uid: selectedFixture.id,
+                team_uid: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
+                player_uid: g.playerId || null,
+                player_number: g.jerseyNumber ? parseInt(g.jerseyNumber, 10) : null,
+                type: 'GOAL' as const,
+                goal_type: (g.goalType === 'penalty' ? 'PENALTY' : 'OTHER') as any,
+                minute: Number(g.minute) || 1,
+                period: 'FIRST_HALF' as const,
+                status: 'ACTIVE' as const,
+                created_by_role: 'REFEREE' as const,
+                created_by_uid: effectiveRefereeId,
+                idempotency_key: `ref_goal_${g.id || crypto.randomUUID()}`,
+                is_derived_red: false,
+                created_at: new Date().toISOString(),
+              })),
+              ...reportData.cards.map((c) => ({
+                event_uid: c.id || crypto.randomUUID(),
+                match_uid: selectedFixture.id,
+                team_uid: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
+                player_uid: c.playerId || null,
+                player_number: c.jerseyNumber ? parseInt(c.jerseyNumber, 10) : null,
+                type: (c.cardType === 'yellow' ? 'YELLOW_CARD' : 'RED_CARD') as any,
+                card_type: (c.cardType === 'yellow' ? 'YELLOW' : 'RED') as any,
+                minute: Number(c.minute) || 1,
+                period: 'FIRST_HALF' as const,
+                status: 'ACTIVE' as const,
+                created_by_role: 'REFEREE' as const,
+                created_by_uid: effectiveRefereeId,
+                idempotency_key: `ref_card_${c.id || crypto.randomUUID()}`,
+                is_derived_red: false,
+                created_at: new Date().toISOString(),
+              })),
+            ],
+            opened_at: new Date().toISOString(),
+            base_live_version: 1,
+          }).catch((wsErr) => console.warn('Working set save note:', wsErr));
+        }
+
+        // Harmonize Algorithm 1: Confirm normal result and create permanent canonical state
+        await matchLiveEngine.refereeConfirmNormalResult({
+          match_uid: selectedFixture.id,
+          referee_uid: effectiveRefereeId,
+          idempotency_key: crypto.randomUUID(),
+        }).catch((engineErr) => {
+          console.warn('Algorithm 1 normal result note:', engineErr);
+        });
+
         const res = await ApiService.verifyOfficialMatchResult(reportParams);
         if (!res.success && !res.data) {
           throw new Error(res.message || 'Server rejected official report verification.');

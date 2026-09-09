@@ -16,7 +16,11 @@ import {
   DEFAULT_TEAM_UUID,
   publishTeamJournal,
   fetchTeamNews,
-  fetchTeamStandings
+  fetchTeamStandings,
+  updatePlayerStatusInDb,
+  savePracticeScheduleToDb,
+  saveMatchLineup,
+  deletePlayerFromTeam
 } from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
@@ -91,19 +95,36 @@ export const useTeamDashboard = () => {
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
 
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
+  const [showSharePopup, setShowSharePopup] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // When coach opens the dashboard, show the link popup if players are 0
+  useEffect(() => {
+    if (!isLoadingData && roster.length === 0 && teamId) {
+      const dismissed = sessionStorage.getItem(`esn_share_popup_${teamId}`);
+      if (!dismissed) {
+        setShowSharePopup(true);
+      }
+    }
+  }, [isLoadingData, roster.length, teamId]);
+
+  const handleCloseSharePopup = () => {
+    setShowSharePopup(false);
+    if (teamId) {
+      try {
+        sessionStorage.setItem(`esn_share_popup_${teamId}`, 'dismissed');
+      } catch {}
+    }
+  };
 
   // Synchronize Live Supabase Data
   useEffect(() => {
     let isMounted = true;
     async function initData() {
-      if (!user) {
-        setIsLoadingData(false);
-        return;
-      }
       setIsLoadingData(true);
       try {
-        const team = await fetchAuthenticatedUserTeam(user.id);
+        const coachUserId = user?.id || DEFAULT_COACH_UUID;
+        const team = await fetchAuthenticatedUserTeam(coachUserId);
         const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
         if (isMounted) {
           setTeamInfo(team);
@@ -120,11 +141,24 @@ export const useTeamDashboard = () => {
               buildUpStyle: team.tactics_config.buildUpStyle || 'Short Pass',
             });
           }
+          if (team?.practice_schedule && Array.isArray(team.practice_schedule) && team.practice_schedule.length > 0) {
+            setPracticeSchedule(team.practice_schedule);
+          }
         }
 
         const dbPlayers = await fetchTeamPlayers(resolvedTeamId);
         if (isMounted && dbPlayers.length > 0) {
           setRoster(dbPlayers);
+          // If starting_xi_str saved in DB, map IDs back to indices
+          if (team?.starting_xi_str) {
+            const savedIds = team.starting_xi_str.split(',').map((id: string) => id.trim());
+            const resolvedIndices = savedIds
+              .map((id: string) => dbPlayers.findIndex((p) => p.id === id))
+              .filter((idx: number) => idx !== -1);
+            if (resolvedIndices.length === 11) {
+              setStartingXI(resolvedIndices);
+            }
+          }
         }
 
         const dbFixtures = await fetchTeamFixtures(resolvedTeamId);
@@ -267,7 +301,7 @@ export const useTeamDashboard = () => {
     showToast(`Substituted ${newPlayerName} in for ${oldPlayerName}`);
   };
 
-  const handleUpdatePlayerStatus = (playerId: string, newStatus: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => {
+  const handleUpdatePlayerStatus = async (playerId: string, newStatus: 'Fit' | 'Active' | 'Injured' | 'Suspended' | 'Recovering') => {
     if (currentRole !== 'COACH') {
       showToast('Permission Denied: Only Coach can update player availability status.');
       return;
@@ -285,13 +319,39 @@ export const useTeamDashboard = () => {
         return p;
       })
     );
-    showToast('Updated player availability status.');
+    await updatePlayerStatusInDb(playerId, newStatus);
+    showToast(`Updated player availability status to ${newStatus}.`);
+  };
+
+  const handleDeletePlayer = async (playerId: string) => {
+    if (currentRole !== 'COACH') {
+      showToast('Permission Denied: Only Head Coach can manage players.');
+      return;
+    }
+    const playerToRemove = roster.find((p) => p.id === playerId);
+    const oldIdx = roster.findIndex((p) => p.id === playerId);
+
+    setRoster((prev) => prev.filter((p) => p.id !== playerId));
+
+    // Safely shift startingXI indices
+    if (oldIdx !== -1) {
+      setStartingXI((prev) =>
+        prev
+          .filter((idx) => idx !== oldIdx)
+          .map((idx) => (idx > oldIdx ? idx - 1 : idx))
+      );
+    }
+
+    await deletePlayerFromTeam(playerId, teamId);
+    showToast(`Removed ${playerToRemove?.name || 'player'} from squad.`);
   };
 
   const handleAssignActivity = (sessionId: string, newActivity: string) => {
-    setPracticeSchedule((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Coach Marcus' } : s))
-    );
+    setPracticeSchedule((prev) => {
+      const updated = prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Coach Marcus' } : s));
+      savePracticeScheduleToDb(teamId, updated);
+      return updated;
+    });
     showToast(`Assigned "${newActivity}" to drill schedule.`);
   };
 
@@ -313,15 +373,49 @@ export const useTeamDashboard = () => {
       intensity,
       focusArea: activity,
     };
-    setPracticeSchedule((prev) => [...prev, newSession]);
+    setPracticeSchedule((prev) => {
+      const updated = [...prev, newSession];
+      savePracticeScheduleToDb(teamId, updated);
+      return updated;
+    });
     showToast(`Coach Marcus added ${day} (${activity}) session to schedule.`);
   };
 
   const handleApprovePracticeDay = (sessionId: string) => {
-    setPracticeSchedule((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, coachApproved: true } : s))
-    );
+    setPracticeSchedule((prev) => {
+      const updated = prev.map((s) => (s.id === sessionId ? { ...s, coachApproved: true } : s));
+      savePracticeScheduleToDb(teamId, updated);
+      return updated;
+    });
     showToast('Coach approved training workout.');
+  };
+
+  const handleSaveMatchLineup = async (
+    fixtureId?: string,
+    startingXIPlayers?: Player[],
+    subPlayers?: Player[],
+    formationStr?: string,
+    capId?: string
+  ) => {
+    const activeStarting = startingXIPlayers || startingXI.map((idx) => roster[idx]).filter(Boolean);
+    const activeSubs = subPlayers || roster.filter((_, idx) => !startingXI.includes(idx));
+    const targetFormation = formationStr || formation;
+
+    const res = await saveMatchLineup({
+      fixtureId,
+      teamId,
+      startingXi: activeStarting,
+      substitutes: activeSubs,
+      formation: targetFormation,
+      captainId: capId || roleAssignments.captainId,
+    });
+
+    if (res) {
+      showToast('Official Matchday Lineup committed to database for Referee!');
+    } else {
+      showToast('Lineup saved to club roster strings.');
+    }
+    return res;
   };
 
   const handlePublishJournal = async (title: string, content: string, category: string) => {
@@ -358,6 +452,15 @@ export const useTeamDashboard = () => {
     return matchesSearch && matchesPos;
   });
 
+  const refreshRoster = useCallback(async () => {
+    if (teamId) {
+      const dbPlayers = await fetchTeamPlayers(teamId);
+      if (dbPlayers && dbPlayers.length > 0) {
+        setRoster(dbPlayers);
+      }
+    }
+  }, [teamId]);
+
   return {
     isLoggedIn,
     currentRole,
@@ -370,6 +473,7 @@ export const useTeamDashboard = () => {
     setDarkMode,
     isLoadingData,
     roster,
+    refreshRoster,
     practiceSchedule,
     formation,
     setFormation,
@@ -387,6 +491,9 @@ export const useTeamDashboard = () => {
     setShowSwapModal,
     showRolesModal,
     setShowRolesModal,
+    roleAssignments,
+    setRoleAssignments,
+    handleSaveMatchLineup,
     activeSquadType,
     setActiveSquadType,
     handleOpenNextGameSquad,
@@ -395,6 +502,7 @@ export const useTeamDashboard = () => {
     handleSaveRoles,
     handleSwapPlayer,
     handleUpdatePlayerStatus,
+    handleDeletePlayer,
     handleAssignActivity,
     handleAddPracticeDay,
     handleApprovePracticeDay,
@@ -413,6 +521,9 @@ export const useTeamDashboard = () => {
     handlePublishJournal,
     showInviteModal,
     setShowInviteModal,
+    showSharePopup,
+    setShowSharePopup,
+    handleCloseSharePopup,
     toastMessage,
     showToast,
     handleLogout,
@@ -420,3 +531,4 @@ export const useTeamDashboard = () => {
     teamForm,
   };
 };
+

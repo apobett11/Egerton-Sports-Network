@@ -64,17 +64,6 @@ export const Homepage: React.FC<HomepageProps> = ({
   const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
   const nextLinesmanMatch: LinesmanMatch | undefined = linesmanMatches && linesmanMatches.length > 0 ? linesmanMatches[0] : undefined;
 
-  // Countdown timer for next match
-  const [timeLeft, setTimeLeft] = useState({ days: 2, hours: 14, minutes: 35, seconds: 12 });
-
-  // State for adding practice day (Captain)
-  const [showAddPracticeModal, setShowAddPracticeModal] = useState<boolean>(false);
-  const [newDay, setNewDay] = useState('Thursday');
-  const [newTime, setNewTime] = useState('16:00 - 18:00');
-  const [newLocation, setNewLocation] = useState('Pavilion Main Stadium');
-  const [newActivity, setNewActivity] = useState('Set-Piece Routines & Penalty Drills');
-  const [newIntensity, setNewIntensity] = useState<'High' | 'Medium' | 'Recovery'>('High');
-
   // Next fixture data (Strictly prioritizing live upcoming matches)
   const nextMatch: Match = (matches && matches.find((m) => m.status === 'UPCOMING')) || (matches && matches[0]) || {
     id: 'next1',
@@ -89,18 +78,50 @@ export const Homepage: React.FC<HomepageProps> = ({
     matchday: 24,
   };
 
+  // State for adding practice day
+  const [showAddPracticeModal, setShowAddPracticeModal] = useState<boolean>(false);
+  const [newDay, setNewDay] = useState('Thursday');
+  const [newTime, setNewTime] = useState('16:00 - 18:00');
+  const [newLocation, setNewLocation] = useState('Pavilion Main Stadium');
+  const [newActivity, setNewActivity] = useState('Set-Piece Routines & Penalty Drills');
+  const [newIntensity, setNewIntensity] = useState<'High' | 'Medium' | 'Recovery'>('High');
+
+  // Dynamic countdown timer for next match
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (!nextMatch?.scheduled_time) return { days: 2, hours: 14, minutes: 35, seconds: 12 };
+    const diff = new Date(nextMatch.scheduled_time).getTime() - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / 1000 / 60) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
+  });
+
   useEffect(() => {
+    const calculateTimeLeft = () => {
+      if (!nextMatch?.scheduled_time) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+      const diff = new Date(nextMatch.scheduled_time).getTime() - Date.now();
+      if (diff <= 0) {
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+      return {
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / 1000 / 60) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      };
+    };
+
+    setTimeLeft(calculateTimeLeft());
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        return prev;
-      });
+      setTimeLeft(calculateTimeLeft());
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [nextMatch?.scheduled_time]);
 
   const fd = (num: number) => String(num).padStart(2, '0');
 
@@ -202,33 +223,67 @@ export const Homepage: React.FC<HomepageProps> = ({
 
         {/* INLINE MATCHUP BOARD (SPACIOUS & UNOBSTRUCTED) */}
         <div className="flex items-center justify-between gap-3 sm:gap-8 py-2 relative z-10">
-          {/* HOME CLUB */}
-          <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
-              <span className="font-black text-sm sm:text-lg text-white">EFC</span>
-            </div>
-            <div className="min-w-0 text-left">
-              <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
-              <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
-            </div>
-          </div>
+          {nextMatch.isHome !== false ? (
+            <>
+              {/* HOME CLUB (EGERTON) */}
+              <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
+                  <span className="font-black text-sm sm:text-lg text-white">EFC</span>
+                </div>
+                <div className="min-w-0 text-left">
+                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
+                  <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
+                </div>
+              </div>
 
-          {/* VS / SCORE BADGE */}
-          <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
-            <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-            <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
-          </div>
+              {/* VS / SCORE BADGE */}
+              <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
+                <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
+                <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
+              </div>
 
-          {/* AWAY CLUB */}
-          <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
-            <div className="min-w-0 text-right">
-              <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
-              <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
-            </div>
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
-              <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
-            </div>
-          </div>
+              {/* AWAY CLUB (OPPONENT) */}
+              <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+                <div className="min-w-0 text-right">
+                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
+                  <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
+                </div>
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
+                  <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* HOME CLUB (OPPONENT) */}
+              <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
+                  <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
+                  <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
+                </div>
+              </div>
+
+              {/* VS / SCORE BADGE */}
+              <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
+                <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
+                <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
+              </div>
+
+              {/* AWAY CLUB (EGERTON) */}
+              <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+                <div className="min-w-0 text-right">
+                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
+                  <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
+                </div>
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
+                  <span className="font-black text-sm sm:text-lg text-white">EFC</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* METADATA INFO: VENUE & REFEREE */}

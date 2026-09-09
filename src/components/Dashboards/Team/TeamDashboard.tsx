@@ -25,6 +25,8 @@ import { TeamSquadView } from './components/Squad/TeamSquadView';
 import { RosterListView } from './components/Roster/RosterListView';
 import { RoleAssignmentsView } from './components/Roles/RoleAssignmentsView';
 import { ComposeJournalModal } from './components/ComposeJournalModal';
+import { InvitePlayerModal } from './components/Roster/InvitePlayerModal';
+import { ShareTeamLinkModal } from './components/Roster/ShareTeamLinkModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
 
 export const TeamDashboard: React.FC = () => {
@@ -33,6 +35,7 @@ export const TeamDashboard: React.FC = () => {
     currentRole,
     canPublish,
     teamId,
+    teamInfo,
     teamFixtures,
     linesmanMatches,
     announcements,
@@ -46,6 +49,7 @@ export const TeamDashboard: React.FC = () => {
     darkMode,
     setDarkMode,
     roster,
+    refreshRoster,
     startingXI,
     formation,
     setFormation,
@@ -59,6 +63,9 @@ export const TeamDashboard: React.FC = () => {
     setShowSwapModal,
     showRolesModal,
     setShowRolesModal,
+    roleAssignments,
+    setRoleAssignments,
+    handleSaveMatchLineup,
     activeSquadType,
     setActiveSquadType,
     handleOpenNextGameSquad,
@@ -83,16 +90,13 @@ export const TeamDashboard: React.FC = () => {
     handleSaveSquad,
     handleSwapPlayer,
     handleUpdatePlayerStatus,
+    handleDeletePlayer,
+    showSharePopup,
+    handleCloseSharePopup,
     filteredRoster,
     standings,
     teamForm,
   } = useTeamDashboard();
-
-  if (!isLoggedIn) {
-    window.location.hash = '/login';
-    return null;
-  }
-
 
   // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
   if (activeView === 'TACTICS') {
@@ -101,8 +105,13 @@ export const TeamDashboard: React.FC = () => {
         <TeamSquadView
           currentRole={currentRole}
           teamId={teamId}
+          roster={roster}
+          teamName={teamInfo?.name}
+          teamCrest={teamInfo?.logo_url}
+          activeFixtureId={teamFixtures && teamFixtures.length > 0 ? teamFixtures[0].id : undefined}
           onNavigateBack={() => setActiveView('DASHBOARD')}
           onShowToast={showToast}
+          onSaveMatchLineup={handleSaveMatchLineup}
         />
       </div>
     );
@@ -173,7 +182,9 @@ export const TeamDashboard: React.FC = () => {
               startingXI={startingXI}
               roster={roster}
               onUpdatePlayerStatus={handleUpdatePlayerStatus}
+              onDeletePlayer={handleDeletePlayer}
               teamId={teamId}
+              teamName={teamInfo?.name}
               onShowToast={showToast}
             />
           )}
@@ -190,15 +201,8 @@ export const TeamDashboard: React.FC = () => {
           {/* MATCH ROLES MODAL */}
           {showRolesModal && (
             <RoleAssignmentsView
-              roleAssignments={{
-                captainId: 'p2',
-                viceCaptainId: 'p6',
-                penaltyTakerId: 'p5',
-                freeKickTakerId: 'p6',
-                leftCornerTakerId: 'p6',
-                rightCornerTakerId: 'p2',
-              }}
-              setRoleAssignments={() => {}}
+              roleAssignments={roleAssignments}
+              setRoleAssignments={setRoleAssignments}
               roster={roster}
               currentRole={currentRole}
               showToast={showToast}
@@ -280,6 +284,8 @@ export const TeamDashboard: React.FC = () => {
               showToast={showToast}
               onLogout={handleLogout}
               teamId={teamId}
+              roster={roster}
+              teamInfo={teamInfo}
             />
           )}
         </main>
@@ -301,8 +307,32 @@ export const TeamDashboard: React.FC = () => {
           isSubmitting={isSubmittingJournal}
         />
       )}
+
+      {/* INVITE / REGISTER PLAYER MODAL */}
+      {showInviteModal && (
+        <InvitePlayerModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          teamId={teamId}
+          onPlayerAdded={refreshRoster}
+          onShowToast={showToast}
+        />
+      )}
+
+      {/* ZERO-PLAYER SQUAD SHARE POPUP MODAL */}
+      {showSharePopup && (
+        <ShareTeamLinkModal
+          isOpen={showSharePopup}
+          onClose={handleCloseSharePopup}
+          teamId={teamId}
+          teamName={teamInfo?.name}
+          onOpenManualAdd={() => setShowInviteModal(true)}
+          onShowToast={showToast}
+        />
+      )}
     </div>
   );
 };
+
 
 export default TeamDashboard;

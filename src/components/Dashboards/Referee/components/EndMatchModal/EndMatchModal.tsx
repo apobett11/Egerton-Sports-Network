@@ -245,8 +245,14 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   const parsedMinute = parseInt(minuteInput, 10);
   const isMinuteValid = !isNaN(parsedMinute) && parsedMinute >= 1 && parsedMinute <= 120;
 
-  // Add Event Handler: Immediately updates state & syncs with Supabase
-  const handleAddEvent = async () => {
+  // Helper to test if a string is a valid PostgreSQL UUID
+  const isValidUuid = (id?: string | null): boolean => {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  };
+
+  // Add Event Handler: 100% Instant in Frontend (Local Cached State)
+  const handleAddEvent = () => {
     if (!selectedTeam || !selectedAction || !isMinuteValid || !selectedPlayerId) return;
     if (selectedAction === 'goal' && !selectedGoalType) return;
     if (selectedAction === 'substitution' && !selectedSubPlayerInId) return;
@@ -255,7 +261,6 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     const subInPlayer = activeSquad.find((p) => p.id === selectedSubPlayerInId);
 
     const newEventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const teamId = selectedTeam === 'home' ? match.teamA.id : match.teamB.id;
     const teamName = selectedTeam === 'home' ? match.teamA.name : match.teamB.name;
 
     const newEvent: RecordedEvent = {
@@ -272,7 +277,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
       subPlayerInName: selectedAction === 'substitution' ? subInPlayer?.name : undefined,
     };
 
-    // 1. Immediately update local state
+    // 1. Immediately update local cached state (instant score calculation, zero network wait)
     setEvents((prev) => [...prev, newEvent].sort((a, b) => a.minute - b.minute));
 
     // 2. Close hierarchy popup
@@ -285,64 +290,14 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     setMinuteInput('');
     setSelectedPlayerId('');
     setSelectedSubPlayerInId('');
-
-    // 4. Send event to database immediately
-    try {
-      const detailText = selectedAction === 'substitution'
-        ? `Sub: ${primaryPlayer?.name || 'Player'} OUT -> ${subInPlayer?.name || 'Sub'} IN`
-        : `${selectedAction.toUpperCase()}: ${primaryPlayer?.name || 'Player'} (${selectedGoalType || 'normal'})`;
-
-      const { data: insertedData, error: insertErr } = await supabase
-        .from('match_events')
-        .insert({
-          fixture_id: match.id,
-          minute: parsedMinute,
-          type: selectedAction,
-          event_target: selectedTeam,
-          team_id: teamId || null,
-          player_id: selectedPlayerId || null,
-          detail_text: detailText,
-          is_official: true,
-        })
-        .select('id')
-        .maybeSingle();
-
-      if (!insertErr && insertedData?.id) {
-        setEvents((prev) =>
-          prev.map((e) => (e.id === newEventId ? { ...e, dbId: insertedData.id } : e))
-        );
-      }
-
-      // Also update running scores in fixtures table immediately
-      const nextHome = calculatedScore.home + (selectedAction === 'goal' ? (selectedGoalType === 'own_goal' ? (selectedTeam === 'away' ? 1 : 0) : (selectedTeam === 'home' ? 1 : 0)) : 0);
-      const nextAway = calculatedScore.away + (selectedAction === 'goal' ? (selectedGoalType === 'own_goal' ? (selectedTeam === 'home' ? 1 : 0) : (selectedTeam === 'away' ? 1 : 0)) : 0);
-
-      await supabase
-        .from('fixtures')
-        .update({
-          score_home: nextHome,
-          score_away: nextAway,
-        })
-        .eq('id', match.id);
-    } catch (dbErr) {
-      console.warn('Immediate database event sync notice:', dbErr);
-    }
   };
 
-  const handleRemoveEvent = async (id: string) => {
-    const target = events.find((e) => e.id === id);
+  // Remove Event Handler: 100% Instant in Frontend
+  const handleRemoveEvent = (id: string) => {
     setEvents((prev) => prev.filter((e) => e.id !== id));
-
-    if (target?.dbId) {
-      try {
-        await supabase.from('match_events').delete().eq('id', target.dbId);
-      } catch (err) {
-        console.warn('Event removal DB sync note:', err);
-      }
-    }
   };
 
-  // Submit Final Match Report (Full Time)
+  // Submit Final Match Report (Full Time) - Commits all cached events in one single atomic payload
   const handleConfirmSubmitFT = async () => {
     const goals: GoalEntry[] = events
       .filter((e) => e.type === 'goal')
@@ -351,7 +306,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         teamTarget: g.teamTarget,
         minute: g.minute,
         jerseyNumber: g.jerseyNumber ?? '',
-        playerId: g.playerId,
+        playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
         playerName: g.playerName,
         goalType: g.goalType === 'penalty' ? 'penalty' : g.goalType === 'own_goal' ? 'own_goal' : 'normal',
       }));
@@ -363,7 +318,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         teamTarget: c.teamTarget,
         minute: c.minute,
         jerseyNumber: c.jerseyNumber ?? '',
-        playerId: c.playerId,
+        playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
         playerName: c.playerName,
         cardType: c.type === 'yellow' ? 'yellow' : 'red',
       }));

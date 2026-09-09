@@ -4,11 +4,31 @@ export type AdminTabType =
   | 'insights'
   | 'agent0'
   | 'users'
+  | 'players'
   | 'roles'
   | 'audit_logs'
   | 'performance'
   | 'settings'
   | 'profile';
+
+export interface AdminPlayerRow {
+  id: string;
+  profileId?: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  studentId: string;
+  jerseyNumber: number;
+  position: string;
+  teamId: string;
+  teamName: string;
+  teamLogo?: string;
+  status: string;
+  isApproved: boolean;
+  registeredAt: string;
+}
 
 export interface PlatformHealthMetrics {
   totalUsers: number;
