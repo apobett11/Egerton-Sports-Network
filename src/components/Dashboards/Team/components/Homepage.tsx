@@ -211,12 +211,12 @@ export const Homepage: React.FC<HomepageProps> = ({
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Matchday Focus & Official Duties
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              EPL • MD3
             </h2>
           </div>
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-200/60 dark:bg-slate-800/80 px-2.5 py-0.5 rounded-full">
-            {nextMatch ? `${nextMatch.league} • MD ${nextMatch.matchday || 1}` : 'Impending Schedule'}
+            EPL • MD3
           </span>
         </div>
 
@@ -310,11 +310,11 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
 
               {/* ACTION BUTTONS (OUTLINED BY DEFAULT, ACCENT ACTIVE) */}
-              <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto justify-end pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3 shrink-0 w-full justify-center pt-3 border-t border-[#ff0046]/25 dark:border-[#ff0046]/30">
                 <button
                   type="button"
                   onClick={() => onNavigateView('TACTICS')}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-[#ff0046] text-[#ff0046] hover:bg-[#ff0046] hover:text-white active:bg-[#ff0046] active:text-white bg-transparent transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold border border-[#ff0046] text-[#ff0046] hover:bg-[#ff0046] hover:text-white active:bg-[#ff0046] active:text-white bg-transparent transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
                 >
                   <Flame className="w-3.5 h-3.5" />
                   <span>Configure Match Squad</span>
@@ -323,7 +323,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigateView('STANDINGS')}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-transparent transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-transparent transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap"
                 >
                   <Calendar className="w-3 h-3 text-blue-500" />
                   <span>Fixtures</span>
@@ -394,8 +394,8 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* 2. SECTION: COACH COMMAND CENTER (SPACED, TRUE CALL-TO-ACTION BUTTONS) */}
-      <section className="space-y-3">
+      {/* 2. SECTION: COACH COMMAND CENTER (SPACED BY ~1CM ON MOBILE, TRUE CALL-TO-ACTION BUTTONS) */}
+      <section className="mt-10 sm:mt-6 space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-emerald-500" />
@@ -489,7 +489,7 @@ export const Homepage: React.FC<HomepageProps> = ({
       </section>
 
       {/* 3. SECTION: LEAGUE STANDINGS & RECENT FORM SNIPPET */}
-      <section className="space-y-2.5">
+      <section className="mt-10 sm:mt-6 space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-500" />
@@ -653,14 +653,14 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </div>
 
-            {/* TWO RECHARTS PIE CHARTS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* TWO RECHARTS PIE CHARTS (SIDE BY SIDE IN ALL VIEWS) */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 pt-1">
               {/* Chart 1: Win / Draw / Loss Distribution */}
-              <div className="p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
-                  Match Results Distribution
+              <div className="p-2 sm:p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
+                <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-1.5 self-start truncate w-full">
+                  Match Results
                 </h4>
-                <div className="w-full h-44 flex items-center justify-center">
+                <div className="w-full h-36 sm:h-44 flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -669,8 +669,8 @@ export const Homepage: React.FC<HomepageProps> = ({
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={42}
-                        outerRadius={65}
+                        innerRadius={30}
+                        outerRadius={50}
                         paddingAngle={4}
                       >
                         {recordChartData.map((entry, index) => (
@@ -691,28 +691,28 @@ export const Homepage: React.FC<HomepageProps> = ({
                   </ResponsiveContainer>
                 </div>
                 {/* Legend */}
-                <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
-                    Wins ({currentStanding?.won ?? 0})
+                <div className="flex items-center justify-center gap-2 sm:gap-4 text-[9px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 mt-1 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
+                    <span>W ({currentStanding?.won ?? 0})</span>
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
-                    Draws ({currentStanding?.drawn ?? 0})
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#ff9800]" />
+                    <span>D ({currentStanding?.drawn ?? 0})</span>
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#d63031]" />
-                    Losses ({currentStanding?.lost ?? 0})
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-[#d63031]" />
+                    <span>L ({currentStanding?.lost ?? 0})</span>
                   </span>
                 </div>
               </div>
 
               {/* Chart 2: Squad Fitness & Status Breakdown */}
-              <div className="p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
-                  Squad Status & Fitness Distribution
+              <div className="p-2 sm:p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
+                <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-1.5 self-start truncate w-full">
+                  Squad Fitness
                 </h4>
-                <div className="w-full h-44 flex items-center justify-center">
+                <div className="w-full h-36 sm:h-44 flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -721,8 +721,8 @@ export const Homepage: React.FC<HomepageProps> = ({
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        innerRadius={42}
-                        outerRadius={65}
+                        innerRadius={30}
+                        outerRadius={50}
                         paddingAngle={4}
                       >
                         {fitnessChartData.map((entry, index) => (
@@ -743,22 +743,18 @@ export const Homepage: React.FC<HomepageProps> = ({
                   </ResponsiveContainer>
                 </div>
                 {/* Legend */}
-                <div className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2 flex-wrap justify-center">
+                <div className="flex items-center gap-2 text-[9px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 mt-1 flex-wrap justify-center">
                   <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
-                    Fit ({roster.filter(p => p.status === 'Fit' || p.status === 'Active').length})
+                    <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
+                    <span>Fit ({roster.filter(p => p.status === 'Fit' || p.status === 'Active').length})</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#1565c0]" />
-                    Recovering ({roster.filter(p => p.status === 'Recovering').length})
+                    <span className="w-2 h-2 rounded-full bg-[#1565c0]" />
+                    <span>Rec ({roster.filter(p => p.status === 'Recovering').length})</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046]" />
-                    Injured ({roster.filter(p => p.status === 'Injured').length})
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
-                    Suspended ({roster.filter(p => p.status === 'Suspended').length})
+                    <span className="w-2 h-2 rounded-full bg-[#ff0046]" />
+                    <span>Inj ({roster.filter(p => p.status === 'Injured').length})</span>
                   </span>
                 </div>
               </div>

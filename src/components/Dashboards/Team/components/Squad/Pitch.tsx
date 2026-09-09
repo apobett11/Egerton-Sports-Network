@@ -74,7 +74,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
     // Smart Proximity Hit Testing
     let target: string | null = null;
-    const minDistance = 12;
+    const minDistance = 14;
 
     for (const p of players) {
       if (p.id === activeDragId) continue;
@@ -341,16 +341,25 @@ export const Pitch: React.FC<PitchProps> = ({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onTouchStart={(e) => handleTouchStart(e, player)}
+              onDragOver={(e) => {
+                if (isCoach) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                }
+              }}
+              onDrop={(e) => handleHTML5DropOnPlayer(e, player)}
               style={{
                 left: `${xPos}%`,
                 top: `${yPos}%`,
                 transform: isDraggingThis
-                  ? 'translate(-50%, -50%) scale(1.14) rotate(1.5deg)'
+                  ? 'translate(calc(-50% + 14px), calc(-50% - 48px)) scale(1.14)'
+                  : isSwapTargetThis
+                  ? 'translate(-50%, -50%) scale(1.12)'
                   : 'translate(-50%, -50%)',
                 transition: isDraggingThis
                   ? 'none'
-                  : 'left 0.35s cubic-bezier(0.2, 0.85, 0.3, 1), top 0.35s cubic-bezier(0.2, 0.85, 0.3, 1), transform 0.2s ease',
-                zIndex: isDraggingThis ? 50 : isSwapTargetThis ? 40 : 20,
+                  : 'left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s ease',
+                zIndex: isDraggingThis ? 60 : isSwapTargetThis ? 45 : 20,
               }}
               className={`absolute touch-none cursor-grab active:cursor-grabbing ${
                 isDraggingThis ? 'card-dragging-glow' : ''

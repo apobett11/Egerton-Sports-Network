@@ -125,9 +125,8 @@ export const TeamModal: React.FC<TeamModalProps> = ({
     if (onUpdateInMatchRoles) {
       onUpdateInMatchRoles(updatedRoles);
     }
-    // Automatically closes modal on player pick as specified
+    // Only collapse the player dropdown so coach can select another role
     setActiveRoleDropdown(null);
-    onClose();
   };
 
   const getPlayerName = (id: string, fallbackIdx = 0) => {
@@ -416,14 +415,21 @@ export const TeamModal: React.FC<TeamModalProps> = ({
               })}
             </div>
 
-            {/* Cancel Button (Closes Modal automatically) */}
-            <div className="pt-2 flex justify-end">
+            {/* Action Buttons: Back to main or Done */}
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSubView('main')}
+                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
+              >
+                Back
+              </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer transition-colors"
+                className="px-4 py-1.5 rounded-lg bg-[#00b04f] hover:bg-[#009944] text-white text-xs font-bold cursor-pointer transition-colors"
               >
-                Cancel
+                Done
               </button>
             </div>
           </div>

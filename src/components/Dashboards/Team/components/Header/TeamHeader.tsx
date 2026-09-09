@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Briefcase, Settings } from 'lucide-react';
+import { Sun, Moon, Briefcase, Settings, LogOut } from 'lucide-react';
 import type { UserRole } from '../../types';
 import type { DashboardView } from '../../hooks/useTeamDashboard';
 
@@ -9,6 +9,7 @@ interface TeamHeaderProps {
   setActiveView: (view: DashboardView) => void;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
+  onLogout?: () => void;
 }
 
 export const TeamHeader: React.FC<TeamHeaderProps> = ({
@@ -17,6 +18,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
   setActiveView,
   darkMode,
   setDarkMode,
+  onLogout,
 }) => {
   const viewTitles: Record<DashboardView, string> = {
     DASHBOARD: 'Team Executive Overview',
@@ -45,7 +47,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
               <span>HEAD COACH</span>
             </span>
             <span className="text-[10px] text-slate-400 font-semibold hidden sm:inline uppercase">
-              • Egerton FC Operations Desk
+              • ESN • Egerton Sports Network
             </span>
           </div>
 
@@ -82,6 +84,19 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
         >
           {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-200" />}
         </button>
+
+        {/* Logout button */}
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="p-2 rounded-full bg-[#152a40] hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-white/10 hover:border-red-500/30 transition-colors cursor-pointer"
+            title="Log Out"
+            aria-label="Log Out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </header>
   );

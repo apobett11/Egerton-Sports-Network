@@ -18,6 +18,7 @@ import { ComposeJournalModal } from './components/ComposeJournalModal';
 import { InvitePlayerModal } from './components/Roster/InvitePlayerModal';
 import { ShareTeamLinkModal } from './components/Roster/ShareTeamLinkModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
+import { Footer } from '../../Layout/Footer';
 
 export const TeamDashboard: React.FC = () => {
   const {
@@ -136,6 +137,7 @@ export const TeamDashboard: React.FC = () => {
           setActiveView={setActiveView}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          onLogout={handleLogout}
         />
 
         {/* MAIN VIEWS WORKSPACE CANVAS */}
@@ -187,6 +189,8 @@ export const TeamDashboard: React.FC = () => {
               standings={standings}
               fixtures={teamFixtures}
               teamForm={teamForm as any}
+              currentTeamName={teamInfo?.name}
+              currentTeamLogo={teamInfo?.logo_url}
             />
           )}
 
@@ -281,6 +285,11 @@ export const TeamDashboard: React.FC = () => {
               teamInfo={teamInfo}
             />
           )}
+
+          {/* PERSISTENT FOOTER */}
+          <div className="mt-14 -mx-3 md:-mx-5 -mb-28">
+            <Footer />
+          </div>
         </main>
       </div>
 

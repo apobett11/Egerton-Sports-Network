@@ -16,11 +16,15 @@ interface StandingsPageProps {
   standings: StandingEntry[];
   fixtures: Match[];
   teamForm?: TeamFormEntry[];
+  currentTeamName?: string;
+  currentTeamLogo?: string;
 }
 
 export const StandingsPage: React.FC<StandingsPageProps> = ({
   standings,
   fixtures,
+  currentTeamName,
+  currentTeamLogo,
 }) => {
   const [showFullStandings, setShowFullStandings] = useState<boolean>(false);
   const [showFullFormTable, setShowFullFormTable] = useState<boolean>(false);
@@ -28,9 +32,13 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
   // Find index of current team in standings
   const currentTeamIndex = useMemo(() => {
-    const idx = standings.findIndex((t) => t.isCurrent || t.teamName.toLowerCase().includes('egerton'));
+    const idx = standings.findIndex((t) =>
+      t.isCurrent ||
+      (currentTeamName && t.teamName.toLowerCase() === currentTeamName.toLowerCase()) ||
+      t.teamName.toLowerCase().includes('egerton')
+    );
     return idx !== -1 ? idx : 3;
-  }, [standings]);
+  }, [standings, currentTeamName]);
 
   // Contextual 5-team snippet: 2 above, current team, 2 below
   const contextualStandings = useMemo(() => {
@@ -97,22 +105,18 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto w-full select-none pb-16">
+    <div className="space-y-5 max-w-7xl mx-auto w-full select-none pb-24 sm:pb-16">
       {/* 1. PAGE HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+      <div className="flex items-center justify-between px-1 py-1">
         <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-[#ff0046]" />
+          <Trophy className="w-5 h-5 text-amber-500" />
           <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-            Table & Fixtures Desk
+            Tables & Fixtures
           </h2>
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#ff0046] text-white">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f]">
             2026/27
           </span>
         </div>
-
-        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-[#eef1f5] dark:bg-[#14263b] px-3 py-1 rounded-full self-start sm:self-auto">
-          Synced Live with Competition Engine
-        </span>
       </div>
 
       {/* 2. TABLE 1: LEAGUE STANDINGS (FLASHSCORE GUEST STYLE) */}
@@ -170,12 +174,12 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                 </tr>
               ) : (
                 contextualStandings.map((team, idx) => {
-                  const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
+                  const isOurTeam = team.isCurrent || (currentTeamName ? team.teamName.toLowerCase() === currentTeamName.toLowerCase() : team.teamName.toLowerCase().includes('egerton'));
                   const zoneBorder = isOurTeam
-                    ? 'border-l-[3px] border-l-[#ff0046] bg-[#ff0046]/5 dark:bg-[#ff0046]/10'
+                    ? 'border-l-2 border-l-[#ff0046]/40 bg-[#ff0046]/4 dark:bg-[#ff0046]/6'
                     : team.position <= 4
-                    ? 'border-l-[3px] border-l-[#00b04f]'
-                    : 'border-l-[3px] border-l-transparent';
+                    ? 'border-l-2 border-l-[#00b04f]/40'
+                    : 'border-l-2 border-l-transparent';
 
                   return (
                     <tr
@@ -200,12 +204,12 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                             </div>
                           )}
                           <span className={`truncate ${
-                            isOurTeam ? 'font-black text-[#ff0046] dark:text-[#ff0046]' : 'font-extrabold text-slate-900 dark:text-white'
+                            isOurTeam ? 'font-black text-slate-900 dark:text-white' : 'font-extrabold text-slate-800 dark:text-slate-200'
                           }`}>
                             {team.teamName}
                           </span>
                           {isOurTeam && (
-                            <span className="text-[9px] bg-[#ff0046] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider shrink-0">
+                            <span className="text-[9px] bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0">
                               Our Club
                             </span>
                           )}
@@ -283,7 +287,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                 </tr>
               ) : (
                 contextualFormStandings.map((team, idx) => {
-                  const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
+                  const isOurTeam = team.isCurrent || (currentTeamName ? team.teamName.toLowerCase() === currentTeamName.toLowerCase() : team.teamName.toLowerCase().includes('egerton'));
                   const formList = (team.recentForm && team.recentForm.length > 0)
                     ? team.recentForm
                     : ['W', 'W', 'D', 'W', 'L', 'W'] as ('W' | 'D' | 'L')[];
@@ -293,7 +297,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     <tr
                       key={team.teamName || idx}
                       className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${
-                        isOurTeam ? 'bg-[#ff0046]/5 dark:bg-[#ff0046]/10 border-l-[3px] border-l-[#ff0046]' : 'border-l-[3px] border-l-transparent'
+                        isOurTeam ? 'border-l-2 border-l-[#ff0046]/40 bg-[#ff0046]/4 dark:bg-[#ff0046]/6' : 'border-l-2 border-l-transparent'
                       }`}
                     >
                       <td className="py-2.5 px-3 text-center font-bold text-slate-400">
@@ -314,12 +318,12 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                             </div>
                           )}
                           <span className={`truncate ${
-                            isOurTeam ? 'font-black text-[#ff0046]' : 'font-extrabold text-slate-900 dark:text-white'
+                            isOurTeam ? 'font-black text-slate-900 dark:text-white' : 'font-extrabold text-slate-800 dark:text-slate-200'
                           }`}>
                             {team.teamName}
                           </span>
                           {isOurTeam && (
-                            <span className="text-[9px] bg-[#ff0046] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider shrink-0">
+                            <span className="text-[9px] bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider shrink-0">
                               Our Club
                             </span>
                           )}
@@ -347,7 +351,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
       </section>
 
       {/* 4. FIXTURES & MATCH SCHEDULE (FLASHSCORE GUEST FEED STYLE) */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+      <section className="w-full mt-10 sm:mt-4 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         {/* Flashscore Filter Row */}
         <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -395,6 +399,13 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
             {filteredFixtures.map((fixture) => {
               const isFinished = fixture.status === 'FINISHED';
               const isLive = fixture.status === 'LIVE';
+              const isHome = fixture.isHome !== false;
+              const homeName = fixture.homeTeamName || (isHome ? (currentTeamName || 'Egerton FC') : fixture.opponentName);
+              const homeLogo = fixture.homeTeamLogo || (isHome ? currentTeamLogo : fixture.opponentLogo);
+              const awayName = fixture.awayTeamName || (!isHome ? (currentTeamName || 'Egerton FC') : fixture.opponentName);
+              const awayLogo = fixture.awayTeamLogo || (!isHome ? currentTeamLogo : fixture.opponentLogo);
+              const isOurHomeTeam = currentTeamName ? homeName.toLowerCase() === currentTeamName.toLowerCase() : isHome;
+              const isOurAwayTeam = currentTeamName ? awayName.toLowerCase() === currentTeamName.toLowerCase() : !isHome;
 
               return (
                 <div
@@ -402,21 +413,21 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                   className="flex items-center justify-between px-4 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors"
                 >
                   {/* Left Column: Match Status / Time & Matchday */}
-                  <div className="w-20 text-center flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[9px] font-mono text-slate-400 uppercase block">
-                      MD {fixture.matchday || 1}
+                  <div className="w-24 text-center flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[9px] font-mono font-bold text-slate-400 uppercase block whitespace-nowrap">
+                      MD{fixture.matchday || 1} • {fixture.date}
                     </span>
                     {isLive ? (
-                      <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
+                      <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5 mt-0.5">
                         <Radio className="w-3 h-3 animate-pulse" />
                         LIVE
                       </span>
                     ) : isFinished ? (
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
                         Finished
                       </span>
                     ) : (
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-0.5">
                         {fixture.time || '16:00'}
                       </span>
                     )}
@@ -427,13 +438,21 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     {/* Team Home */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold">
-                          {fixture.isHome !== false ? 'E' : (fixture.opponentName?.slice(0, 1) || 'O')}
-                        </div>
+                        {homeLogo ? (
+                          <img
+                            src={homeLogo}
+                            alt={homeName}
+                            className="w-4 h-4 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold text-slate-600 dark:text-slate-300">
+                            {homeName.slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
                         <span className={`text-xs truncate ${
-                          fixture.isHome !== false ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
+                          isOurHomeTeam ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
                         }`}>
-                          {fixture.isHome !== false ? 'Egerton FC' : fixture.opponentName}
+                          {homeName}
                         </span>
                       </div>
                       {fixture.score && (
@@ -446,13 +465,21 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     {/* Team Away */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold">
-                          {fixture.isHome !== false ? (fixture.opponentName?.slice(0, 1) || 'O') : 'E'}
-                        </div>
+                        {awayLogo ? (
+                          <img
+                            src={awayLogo}
+                            alt={awayName}
+                            className="w-4 h-4 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold text-slate-600 dark:text-slate-300">
+                            {awayName.slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
                         <span className={`text-xs truncate ${
-                          fixture.isHome === false ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
+                          isOurAwayTeam ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
                         }`}>
-                          {fixture.isHome !== false ? fixture.opponentName : 'Egerton FC'}
+                          {awayName}
                         </span>
                       </div>
                       {fixture.score && (
@@ -463,13 +490,14 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Venue & Date */}
-                  <div className="text-right hidden sm:flex flex-col items-end justify-center text-[10px] text-slate-400 shrink-0 min-w-[120px]">
-                    <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#ff0046]" />
-                      <span className="truncate max-w-[110px]">{fixture.location}</span>
-                    </span>
-                    <span className="mt-0.5">{fixture.date}</span>
+                  {/* Right Column: Venue */}
+                  <div className="text-right hidden sm:flex flex-col items-end justify-center text-[10px] text-slate-400 shrink-0 min-w-[100px]">
+                    {fixture.location && (
+                      <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-[#ff0046]" />
+                        <span className="truncate max-w-[110px]">{fixture.location}</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               );

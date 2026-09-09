@@ -38,7 +38,7 @@ export const TeamMobileNav: React.FC<TeamMobileNavProps> = ({
     },
     {
       view: 'STANDINGS',
-      label: 'Table',
+      label: 'Tables & Fixtures',
       icon: <Trophy className="w-4 h-4" />,
     },
     {
