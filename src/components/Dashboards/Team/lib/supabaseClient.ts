@@ -6,7 +6,7 @@ export { supabase };
 const SQUAD_CACHE_KEY = 'supabase-squad-coords-cache';
 const LINEUP_CACHE_KEY = 'supabase-match-lineup-cache';
 
-export const DEFAULT_TEAM_UUID = 'de307384-d113-4956-a5cc-96c20579e0fa';
+export const DEFAULT_TEAM_UUID = '10000000-0000-4000-8000-000000000002';
 export const DEFAULT_COACH_UUID = 'db77e5ab-6195-4a06-bf7c-8e57ce7e370b';
 export const DEFAULT_CAPTAIN_UUID = 'eb77e5ab-6195-4a06-bf7c-8e57ce7e370d';
 
@@ -28,20 +28,41 @@ export function fromUuid(uuid: string): string {
 /**
  * Resolves the authenticated user's assigned team record from Supabase 'teams' table.
  */
-export async function fetchAuthenticatedUserTeam(userId: string): Promise<DBTeam | null> {
-    const userUuid = toUuid(userId);
+export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTeam | null> {
     try {
-        const { data: teamData, error: teamError } = await supabase
-            .from('teams')
-            .select('*')
-            .or(`coach_id.eq.${userUuid},captain_id.eq.${userUuid}`)
-            .limit(1);
+        if (userId && isValidUuid(userId)) {
+            // 1. Direct check on coach_id or captain_id in teams table
+            const { data: directTeam, error: directError } = await supabase
+                .from('teams')
+                .select('*')
+                .or(`coach_id.eq.${userId},captain_id.eq.${userId}`)
+                .limit(1);
 
-        if (!teamError && teamData && teamData.length > 0) {
-            return teamData[0] as DBTeam;
+            if (!directError && directTeam && directTeam.length > 0) {
+                return directTeam[0] as DBTeam;
+            }
+
+            // 2. Check profile's team_id
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('team_id')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (profileData?.team_id) {
+                const { data: profileTeam } = await supabase
+                    .from('teams')
+                    .select('*')
+                    .eq('id', profileData.team_id)
+                    .maybeSingle();
+
+                if (profileTeam) {
+                    return profileTeam as DBTeam;
+                }
+            }
         }
 
-        // Fallback: Fetch primary active team from database
+        // 3. Fallback: Fetch primary active approved team from database
         const { data: defaultTeams, error: defaultError } = await supabase
             .from('teams')
             .select('*')
@@ -62,14 +83,7 @@ export async function fetchAuthenticatedUserTeam(userId: string): Promise<DBTeam
  * Fetches players belonging to a team from Supabase 'players' table joining 'profiles'.
  */
 export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
-    const teamUuid = toUuid(teamId);
-    const defaultNames = [
-        'Brian Omondi', 'Kevin Kiprop', 'Dennis Mwangi', 'Samuel Njoroge', 
-        'Erick Otieno', 'Victor Wanyama', 'Collins Sikobe', 'Antony Kimani', 
-        'Moses Odhiambo', 'Geoffrey Koech', 'Felix Mutua', 'Jackson Maina', 
-        'Daniel Kamau', 'Patrick Cheruiyot', 'Peter Kariuki', 'James Ochieng', 
-        'David Korir', 'John Wekesa', 'Paul Rotich', 'Joseph Nyongesa'
-    ];
+    if (!teamId) return [];
     try {
         const { data, error } = await supabase
             .from('players')
@@ -82,6 +96,8 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 weight,
                 preferred_foot,
                 nationality,
+                first_name,
+                last_name,
                 profiles:profile_id (
                     id,
                     first_name,
@@ -91,7 +107,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                     role
                 )
             `)
-            .eq('team_id', teamUuid)
+            .eq('team_id', teamId)
             .order('jersey_number', { ascending: true });
 
         if (error) throw error;
@@ -101,22 +117,24 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 const profile = item.profiles || {};
                 const fullName = profile.first_name || profile.last_name
                     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-                    : defaultNames[index % defaultNames.length];
+                    : item.first_name || item.last_name
+                    ? `${item.first_name || ''} ${item.last_name || ''}`.trim()
+                    : `Player #${item.jersey_number || index + 1}`;
 
                 let uiPos: 'GK' | 'DF' | 'MD' | 'FW' = 'MD';
                 if (item.position === 'GK') uiPos = 'GK';
                 else if (item.position === 'DEF' || item.position === 'DF') uiPos = 'DF';
                 else if (item.position === 'FWD' || item.position === 'FW') uiPos = 'FW';
 
-                const pStatus = item.status || 'Fit';
+                const pStatus = item.status === 'active' || item.status === 'Fit' ? 'Fit' : item.status || 'Fit';
 
                 return {
-                    id: item.id || toUuid(`p${index + 1}`),
+                    id: item.id,
                     name: fullName,
                     number: item.jersey_number || index + 1,
                     position: uiPos,
                     rating: 75 + ((index * 3) % 15),
-                    cardImage: profile.avatar_url || `https://images.unsplash.com/photo-${1534528741775 + index}?w=400&auto=format&fit=crop&q=80`,
+                    cardImage: profile.avatar_url || '',
                     status: pStatus,
                     isInjured: pStatus === 'Injured',
                     isSuspended: pStatus === 'Suspended',
@@ -142,10 +160,10 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
 }
 
 /**
- * Fetches team fixtures and match history filtered by team UUID.
+ * Fetches team fixtures and match history filtered by team UUID from live database.
  */
 export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
-    const teamUuid = toUuid(teamId);
+    if (!teamId) return [];
     try {
         const { data, error } = await supabase
             .from('fixtures')
@@ -157,18 +175,18 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team:teams!home_team_id (id, name, logo_url),
-                away_team:teams!away_team_id (id, name, logo_url),
+                home_team:teams!home_team_id (id, name, short_name, logo_url),
+                away_team:teams!away_team_id (id, name, short_name, logo_url),
                 competition:competitions!competition_id (name)
             `)
-            .or(`home_team_id.eq.${teamUuid},away_team_id.eq.${teamUuid}`)
-            .order('scheduled_time', { ascending: false });
+            .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+            .order('scheduled_time', { ascending: true });
 
         if (error) throw error;
 
         if (data && data.length > 0) {
             return data.map((f: any) => {
-                const isHome = f.home_team?.id === teamUuid;
+                const isHome = f.home_team?.id === teamId;
                 const opponent = isHome ? f.away_team : f.home_team;
                 const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
                 const oppScore = isHome ? (f.score_away ?? 0) : (f.score_home ?? 0);
@@ -194,7 +212,11 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 return {
                     id: f.id,
                     opponentName: opponent?.name || 'Opponent Team',
-                    opponentLogo: opponent?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    opponentLogo: opponent?.logo_url || '',
+                    homeTeamName: f.home_team?.name || 'Home Team',
+                    homeTeamLogo: f.home_team?.logo_url || '',
+                    awayTeamName: f.away_team?.name || 'Away Team',
+                    awayTeamLogo: f.away_team?.logo_url || '',
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
                     time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     location: f.venue || 'Pavilion Main Stadium',
@@ -218,52 +240,55 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
 }
 
 /**
- * Fetches real-time league standings with calculated 6-match recent form from live database.
+ * Fetches real-time league standings filtered strictly by the team's league/competition.
+ * Calculates authentic recent form from actual finished matches in the database.
  */
-export async function fetchTeamStandings(teamId: string): Promise<StandingEntry[]> {
-    const teamUuid = toUuid(teamId);
+export async function fetchTeamStandings(teamId: string, competitionId?: string): Promise<StandingEntry[]> {
     try {
-        let rawStandings: any[] = [];
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
-            p_competition_id: null
-        });
+        let targetCompId = competitionId;
 
-        if (!rpcErr && rpcData && rpcData.length > 0) {
-            rawStandings = rpcData;
-        } else {
-            const { data: tblData, error: tblErr } = await supabase
-                .from('league_standings')
-                .select(`
-                    played, won, drawn, lost, goals_for, goals_against, goal_difference, points, team_id,
-                    team:teams!team_id (id, name, logo_url)
-                `)
-                .order('points', { ascending: false })
-                .order('goal_difference', { ascending: false });
+        // If competitionId was not passed, resolve from team record
+        if (!targetCompId && teamId) {
+            const { data: teamRec } = await supabase
+                .from('teams')
+                .select('competition_id')
+                .eq('id', teamId)
+                .maybeSingle();
 
-            if (!tblErr && tblData && tblData.length > 0) {
-                rawStandings = tblData.map((row: any, idx: number) => ({
-                    position: idx + 1,
-                    team_id: row.team_id || row.team?.id,
-                    team_name: row.team?.name || 'Campus Team',
-                    team_logo: row.team?.logo_url,
-                    played: row.played,
-                    won: row.won,
-                    drawn: row.drawn,
-                    lost: row.lost,
-                    goals_for: row.goals_for,
-                    goals_against: row.goals_against,
-                    goal_difference: row.goal_difference,
-                    points: row.points,
-                }));
+            if (teamRec?.competition_id) {
+                targetCompId = teamRec.competition_id;
             }
         }
 
-        // Fetch finalized fixtures to compute authentic 6-game form for each team
-        const { data: allFtFixtures } = await supabase
+        // 1. Query standings table strictly for the specified league/competition
+        let standingsQuery = supabase
+            .from('league_standings')
+            .select(`
+                played, won, drawn, lost, goals_for, goals_against, goal_difference, points, team_id,
+                team:teams!team_id (id, name, logo_url, short_name)
+            `);
+
+        if (targetCompId) {
+            standingsQuery = standingsQuery.eq('competition_id', targetCompId);
+        }
+
+        const { data: tblData, error: tblErr } = await standingsQuery
+            .order('points', { ascending: false })
+            .order('goal_difference', { ascending: false })
+            .order('goals_for', { ascending: false });
+
+        // 2. Fetch authentic finalized fixtures for this competition to compute real recent form
+        let ftQuery = supabase
             .from('fixtures')
             .select('home_team_id, away_team_id, score_home, score_away, scheduled_time, status')
-            .in('status', ['FT', 'FINISHED'])
+            .in('status', ['FT', 'FINISHED', 'finished', 'ft'])
             .order('scheduled_time', { ascending: false });
+
+        if (targetCompId) {
+            ftQuery = ftQuery.eq('competition_id', targetCompId);
+        }
+
+        const { data: allFtFixtures } = await ftQuery;
 
         const formMap = new Map<string, ('W' | 'D' | 'L')[]>();
         if (allFtFixtures && allFtFixtures.length > 0) {
@@ -290,23 +315,23 @@ export async function fetchTeamStandings(teamId: string): Promise<StandingEntry[
             }
         }
 
-        if (rawStandings && rawStandings.length > 0) {
-            return rawStandings.map((r: any, idx: number) => {
-                const tid = r.team_id || '';
-                const rf = formMap.get(tid) || ['W', 'W', 'D', 'W', 'D', 'W'];
-                const isCur = tid === teamUuid || (r.team_name && r.team_name.toLowerCase().includes('egerton'));
+        if (!tblErr && tblData && tblData.length > 0) {
+            return tblData.map((row: any, idx: number) => {
+                const tid = row.team_id || row.team?.id || '';
+                const rf = formMap.get(tid) || []; // Strictly actual match outcomes, NO mock fallback!
+                const isCur = tid === teamId;
                 return {
-                    position: Number(r.position || idx + 1),
-                    teamName: r.team_name || 'Team',
-                    teamLogo: r.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-                    played: Number(r.played || 0),
-                    won: Number(r.won || 0),
-                    drawn: Number(r.drawn || 0),
-                    lost: Number(r.lost || 0),
-                    goalsFor: Number(r.goals_for || 0),
-                    goalsAgainst: Number(r.goals_against || 0),
-                    goalDifference: Number(r.goal_difference || 0),
-                    points: Number(r.points || 0),
+                    position: idx + 1,
+                    teamName: row.team?.name || 'Team',
+                    teamLogo: row.team?.logo_url || '',
+                    played: Number(row.played || 0),
+                    won: Number(row.won || 0),
+                    drawn: Number(row.drawn || 0),
+                    lost: Number(row.lost || 0),
+                    goalsFor: Number(row.goals_for || 0),
+                    goalsAgainst: Number(row.goals_against || 0),
+                    goalDifference: Number(row.goal_difference || 0),
+                    points: Number(row.points || 0),
                     isCurrent: isCur,
                     recentForm: rf,
                 };

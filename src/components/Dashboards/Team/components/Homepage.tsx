@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 
+import type { DBTeam } from '../types';
+
 interface HomepageProps {
   currentRole: UserRole;
   canPublish?: boolean;
@@ -42,6 +44,7 @@ interface HomepageProps {
   matches: Match[];
   linesmanMatches?: LinesmanMatch[];
   standings: StandingEntry[];
+  teamInfo?: DBTeam | null;
 }
 
 export const Homepage: React.FC<HomepageProps> = ({
@@ -59,24 +62,27 @@ export const Homepage: React.FC<HomepageProps> = ({
   matches,
   linesmanMatches = [],
   standings,
+  teamInfo,
 }) => {
   // State for linesman all-matches popup modal
   const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
   const nextLinesmanMatch: LinesmanMatch | undefined = linesmanMatches && linesmanMatches.length > 0 ? linesmanMatches[0] : undefined;
 
-  // Next fixture data (Strictly prioritizing live upcoming matches)
-  const nextMatch: Match = (matches && matches.find((m) => m.status === 'UPCOMING')) || (matches && matches[0]) || {
-    id: 'next1',
-    opponentName: 'Engineering XI',
-    opponentLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
-    date: 'Saturday, Aug 16',
-    time: '16:00 EAT',
-    location: 'Pavilion Main Stadium',
-    league: 'Egerton Premier League',
-    status: 'UPCOMING' as const,
-    referee: 'Ref. Hillary Kiplagat',
-    matchday: 24,
-  };
+  // Resolve team identity from live database teamInfo
+  const ourTeamName = teamInfo?.name || 'Our Club';
+  const ourTeamShort = teamInfo?.short_name || teamInfo?.name?.slice(0, 3)?.toUpperCase() || 'EFC';
+  const ourTeamLogo = teamInfo?.logo_url || '';
+
+  // Next fixture data: Strictly prioritize the chronologically earliest upcoming match from the database
+  const upcomingMatches = (matches || [])
+    .filter((m) => m.status === 'UPCOMING' || m.status === 'LIVE')
+    .sort((a, b) => {
+      const ta = a.scheduled_time ? new Date(a.scheduled_time).getTime() : Infinity;
+      const tb = b.scheduled_time ? new Date(b.scheduled_time).getTime() : Infinity;
+      return ta - tb;
+    });
+
+  const nextMatch: Match | undefined = upcomingMatches[0] || (matches && matches.length > 0 ? matches[0] : undefined);
 
   // State for adding practice day
   const [showAddPracticeModal, setShowAddPracticeModal] = useState<boolean>(false);
@@ -86,9 +92,9 @@ export const Homepage: React.FC<HomepageProps> = ({
   const [newActivity, setNewActivity] = useState('Set-Piece Routines & Penalty Drills');
   const [newIntensity, setNewIntensity] = useState<'High' | 'Medium' | 'Recovery'>('High');
 
-  // Dynamic countdown timer for next match
+  // Dynamic countdown timer for next match (calculates strictly from database scheduled_time)
   const [timeLeft, setTimeLeft] = useState(() => {
-    if (!nextMatch?.scheduled_time) return { days: 2, hours: 14, minutes: 35, seconds: 12 };
+    if (!nextMatch?.scheduled_time) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     const diff = new Date(nextMatch.scheduled_time).getTime() - Date.now();
     if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     return {
@@ -125,32 +131,21 @@ export const Homepage: React.FC<HomepageProps> = ({
 
   const fd = (num: number) => String(num).padStart(2, '0');
 
-  // Live Database Standing data
-  const currentStanding: StandingEntry = (standings && standings.find((s) => s.isCurrent || (s.teamName && s.teamName.toLowerCase().includes('egerton')))) || (standings && standings[0]) || {
-    position: 4,
-    teamName: 'Egerton FC',
-    teamLogo: '',
-    played: 23,
-    won: 14,
-    drawn: 6,
-    lost: 3,
-    goalsFor: 42,
-    goalsAgainst: 22,
-    points: 48,
-    goalDifference: 20,
-    isCurrent: true,
-    recentForm: ['W', 'W', 'D', 'W', 'L', 'W'],
-  };
+  // Live Database Standing data: Strictly find the team in the database league standings
+  const currentStanding: StandingEntry | undefined =
+    (standings && standings.find((s) => s.isCurrent || (teamInfo && s.teamName && s.teamName.toLowerCase() === teamInfo.name?.toLowerCase()))) ||
+    (standings && standings[0]);
 
   const totalPlayers = roster.length;
   const activePlayers = roster.filter(
     (p) => p.status === 'Fit' || p.status === 'Active' || (!p.isInjured && !p.isSuspended)
   ).length;
-  const fitPercentage = totalPlayers > 0 ? Math.round((activePlayers / totalPlayers) * 100) : 100;
+  const fitPercentage = totalPlayers > 0 ? Math.round((activePlayers / totalPlayers) * 100) : 0;
 
-  const recentFormList: ('W' | 'D' | 'L')[] = currentStanding.recentForm && currentStanding.recentForm.length > 0
+  // Authentic recent form from the database (no fake fallback wins)
+  const recentFormList: ('W' | 'D' | 'L')[] = currentStanding?.recentForm && currentStanding.recentForm.length > 0
     ? currentStanding.recentForm.slice(-6)
-    : ['W', 'W', 'D', 'W', 'D', 'W'];
+    : [];
 
   const handleCreatePractice = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,101 +203,136 @@ export const Homepage: React.FC<HomepageProps> = ({
               Impending Matchday Focus
             </span>
             <span className="text-xs font-bold text-slate-300 bg-[#161B22] px-2.5 py-1 rounded-xl border border-[#2A3441]">
-              {nextMatch.league} • MD {nextMatch.matchday || 24}
+              {nextMatch ? `${nextMatch.league} • MD ${nextMatch.matchday || 1}` : 'No Upcoming Fixture'}
             </span>
           </div>
 
           {/* Clock Countdown Ticker */}
-          <div className="flex items-center gap-2 font-mono text-xs font-black text-amber-400 bg-[#0D1117] border border-[#2A3441] px-3.5 py-1.5 rounded-xl shadow-inner">
-            <Clock className="w-3.5 h-3.5 text-amber-400/80" />
-            <span>
-              {fd(timeLeft.days)}d : {fd(timeLeft.hours)}h : {fd(timeLeft.minutes)}m : {fd(timeLeft.seconds)}s
-            </span>
-          </div>
-        </div>
-
-        {/* INLINE MATCHUP BOARD (SPACIOUS & UNOBSTRUCTED) */}
-        <div className="flex items-center justify-between gap-3 sm:gap-8 py-2 relative z-10">
-          {nextMatch.isHome !== false ? (
-            <>
-              {/* HOME CLUB (EGERTON) */}
-              <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
-                  <span className="font-black text-sm sm:text-lg text-white">EFC</span>
-                </div>
-                <div className="min-w-0 text-left">
-                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
-                  <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
-                </div>
-              </div>
-
-              {/* VS / SCORE BADGE */}
-              <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
-                <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-                <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
-              </div>
-
-              {/* AWAY CLUB (OPPONENT) */}
-              <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
-                <div className="min-w-0 text-right">
-                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
-                  <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
-                </div>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
-                  <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
-                </div>
-              </div>
-            </>
+          {nextMatch?.scheduled_time ? (
+            <div className="flex items-center gap-2 font-mono text-xs font-black text-amber-400 bg-[#0D1117] border border-[#2A3441] px-3.5 py-1.5 rounded-xl shadow-inner">
+              <Clock className="w-3.5 h-3.5 text-amber-400/80" />
+              <span>
+                {fd(timeLeft.days)}d : {fd(timeLeft.hours)}h : {fd(timeLeft.minutes)}m : {fd(timeLeft.seconds)}s
+              </span>
+            </div>
           ) : (
-            <>
-              {/* HOME CLUB (OPPONENT) */}
-              <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0">
-                  <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
-                </div>
-                <div className="min-w-0 text-left">
-                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
-                  <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
-                </div>
-              </div>
-
-              {/* VS / SCORE BADGE */}
-              <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
-                <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-                <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time}</span>
-              </div>
-
-              {/* AWAY CLUB (EGERTON) */}
-              <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
-                <div className="min-w-0 text-right">
-                  <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">Egerton FC</h3>
-                  <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
-                </div>
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2.5 sm:p-3.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0">
-                  <span className="font-black text-sm sm:text-lg text-white">EFC</span>
-                </div>
-              </div>
-            </>
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-400 bg-[#0D1117] border border-[#2A3441] px-3 py-1.5 rounded-xl">
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Schedule Pending</span>
+            </div>
           )}
         </div>
 
-        {/* METADATA INFO: VENUE & REFEREE */}
-        <div className="flex flex-wrap items-center justify-between pt-3 border-t border-[#2A3441]/60 text-xs text-slate-400 gap-3 relative z-10">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              {nextMatch.location}
-            </span>
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-              <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              {nextMatch.date}
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-slate-400">
-              <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-              <span>{nextMatch.referee || 'Ref. Hillary Kiplagat'}</span>
-            </span>
+        {/* INLINE MATCHUP BOARD (SPACIOUS & UNOBSTRUCTED) */}
+        {nextMatch ? (
+          <div className="flex items-center justify-between gap-3 sm:gap-8 py-2 relative z-10">
+            {nextMatch.isHome !== false ? (
+              <>
+                {/* HOME CLUB */}
+                <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 sm:p-2.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0 overflow-hidden">
+                    {ourTeamLogo ? (
+                      <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="font-black text-sm sm:text-lg text-white">{ourTeamShort}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{ourTeamName}</h3>
+                    <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
+                  </div>
+                </div>
+
+                {/* VS / SCORE BADGE */}
+                <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
+                  <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
+                  <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time || '16:00 EAT'}</span>
+                </div>
+
+                {/* AWAY CLUB */}
+                <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+                  <div className="min-w-0 text-right">
+                    <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
+                    <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
+                  </div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0 overflow-hidden">
+                    {nextMatch.opponentLogo ? (
+                      <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
+                    ) : (
+                      <span className="font-black text-xs sm:text-sm text-slate-300">{nextMatch.opponentName.slice(0, 3).toUpperCase()}</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* HOME CLUB (OPPONENT) */}
+                <div className="flex-1 flex items-center justify-start gap-3 min-w-0">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-[#0D1117] p-2 sm:p-2.5 flex items-center justify-center border border-[#2A3441] shadow-lg shrink-0 overflow-hidden">
+                    {nextMatch.opponentLogo ? (
+                      <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain rounded-xl" />
+                    ) : (
+                      <span className="font-black text-xs sm:text-sm text-slate-300">{nextMatch.opponentName.slice(0, 3).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{nextMatch.opponentName}</h3>
+                    <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block mt-0.5">Home Team</span>
+                  </div>
+                </div>
+
+                {/* VS / SCORE BADGE */}
+                <div className="px-3.5 sm:px-5 py-2 rounded-2xl bg-[#0D1117] text-white border border-[#2A3441] text-center shrink-0 shadow-xl">
+                  <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
+                  <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{nextMatch.time || '16:00 EAT'}</span>
+                </div>
+
+                {/* AWAY CLUB (OUR TEAM) */}
+                <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+                  <div className="min-w-0 text-right">
+                    <h3 className="font-black text-sm sm:text-lg text-white truncate leading-tight">{ourTeamName}</h3>
+                    <span className="text-[10px] sm:text-xs text-emerald-400 font-bold uppercase tracking-wider block mt-0.5">Away Club</span>
+                  </div>
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 sm:p-2.5 flex items-center justify-center border border-emerald-400/40 shadow-lg shrink-0 overflow-hidden">
+                    {ourTeamLogo ? (
+                      <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="font-black text-sm sm:text-lg text-white">{ourTeamShort}</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="py-6 text-center space-y-2 relative z-10 bg-[#0D1117]/60 rounded-2xl border border-[#2A3441]">
+            <Calendar className="w-8 h-8 text-slate-500 mx-auto" />
+            <h4 className="font-black text-sm text-white">No Upcoming Match Scheduled in Database</h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Matches assigned to your team in the league schedule will automatically appear here once scheduled.
+            </p>
+          </div>
+        )}
+
+        {/* METADATA INFO: VENUE & REFEREE */}
+        {nextMatch && (
+          <div className="flex flex-wrap items-center justify-between pt-3 border-t border-[#2A3441]/60 text-xs text-slate-400 gap-3 relative z-10">
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                {nextMatch.location || 'Pavilion Grounds'}
+              </span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
+                <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                {nextMatch.date}
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                <UserCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span>{nextMatch.referee || 'Appointed by League'}</span>
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* HERO ACTION BUTTONS: TASTEFUL CONFIGURE BUTTON + FUNCTIONAL FIXTURES & STANDINGS BUTTONS */}
         <div className="pt-3 border-t border-[#2A3441] flex flex-wrap items-center justify-between gap-3 relative z-10">
@@ -515,28 +545,40 @@ export const Homepage: React.FC<HomepageProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-[#0D1117] p-4 rounded-2xl border border-[#2A3441]">
           {/* Team Identity & League Rank */}
           <div className="md:col-span-4 flex items-center gap-3.5 border-b md:border-b-0 md:border-r border-[#2A3441] pb-3 md:pb-0 md:pr-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md">
-              EFC
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 p-2 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md overflow-hidden">
+              {ourTeamLogo ? (
+                <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
+              ) : (
+                ourTeamShort
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-base text-white">{currentStanding.teamName}</h3>
+                <h3 className="font-black text-base text-white">{currentStanding?.teamName || ourTeamName}</h3>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  Rank #{currentStanding.position}
+                  Rank #{currentStanding?.position ?? '-'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Egerton Premier League 2026/27</p>
+              <p className="text-[11px] text-slate-400 font-medium">
+                {nextMatch?.league || (standings.length > 0 ? 'Egerton Premier League' : 'League Standings')}
+              </p>
             </div>
           </div>
 
-          {/* Recent 6 Games Form */}
+          {/* Recent Games Form */}
           <div className="md:col-span-4 flex flex-col sm:flex-row sm:items-center justify-start md:justify-center gap-2.5 border-b md:border-b-0 md:border-r border-[#2A3441] pb-3 md:pb-0 md:px-3">
             <div className="text-left sm:text-right">
               <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Recent Form</span>
-              <span className="text-[9px] text-slate-500 block">(Last 6 Games)</span>
+              <span className="text-[9px] text-slate-500 block">
+                {recentFormList.length > 0 ? `(Last ${recentFormList.length} Games)` : '(Current Season)'}
+              </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              {recentFormList.map((res, idx) => renderFormBadge(res, idx))}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {recentFormList.length > 0 ? (
+                recentFormList.map((res, idx) => renderFormBadge(res, idx))
+              ) : (
+                <span className="text-[11px] text-slate-500 italic">No matches completed yet</span>
+              )}
             </div>
           </div>
 
@@ -544,19 +586,23 @@ export const Homepage: React.FC<HomepageProps> = ({
           <div className="md:col-span-4 grid grid-cols-4 gap-2 text-center text-xs">
             <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">PL</span>
-              <span className="font-mono font-black text-white text-sm">{currentStanding.played}</span>
+              <span className="font-mono font-black text-white text-sm">{currentStanding?.played ?? 0}</span>
             </div>
             <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">W-D-L</span>
-              <span className="font-mono font-bold text-slate-300 text-xs">{currentStanding.won}-{currentStanding.drawn}-{currentStanding.lost}</span>
+              <span className="font-mono font-bold text-slate-300 text-xs">
+                {currentStanding ? `${currentStanding.won}-${currentStanding.drawn}-${currentStanding.lost}` : '0-0-0'}
+              </span>
             </div>
             <div className="bg-[#161B22] p-2 rounded-xl border border-[#2A3441]">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">GD</span>
-              <span className="font-mono font-black text-emerald-400 text-sm">{currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}</span>
+              <span className="font-mono font-black text-emerald-400 text-sm">
+                {currentStanding ? (currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference) : 0}
+              </span>
             </div>
             <div className="bg-[#161B22] p-2 rounded-xl border border-amber-500/30">
               <span className="text-[10px] text-amber-400 block uppercase font-bold">PTS</span>
-              <span className="font-mono font-black text-amber-400 text-sm">{currentStanding.points}</span>
+              <span className="font-mono font-black text-amber-400 text-sm">{currentStanding?.points ?? 0}</span>
             </div>
           </div>
         </div>
@@ -588,11 +634,11 @@ export const Homepage: React.FC<HomepageProps> = ({
               <Crown className="w-4 h-4 text-amber-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-white font-mono">#{currentStanding.position}</span>
-              <span className="text-[10px] sm:text-xs font-bold text-slate-400">/ {standings.length || 20}</span>
+              <span className="text-2xl sm:text-3xl font-black text-white font-mono">#{currentStanding?.position ?? '-'}</span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400">/ {standings.length || 1}</span>
             </div>
             <div className="text-[10px] font-extrabold text-amber-400">
-              {currentStanding.points} PTS • GD: {currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}
+              {currentStanding?.points ?? 0} PTS • GD: {currentStanding ? (currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference) : 0}
             </div>
           </div>
 
@@ -603,11 +649,13 @@ export const Homepage: React.FC<HomepageProps> = ({
               <Trophy className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-white font-mono">{currentStanding.won}W</span>
-              <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">{currentStanding.drawn}D-{currentStanding.lost}L</span>
+              <span className="text-2xl sm:text-3xl font-black text-white font-mono">{currentStanding?.won ?? 0}W</span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">
+                {currentStanding ? `${currentStanding.drawn}D-${currentStanding.lost}L` : '0D-0L'}
+              </span>
             </div>
             <div className="text-[10px] font-extrabold text-emerald-400">
-              {currentStanding.played} Matches Played
+              {currentStanding?.played ?? 0} Matches Played
             </div>
           </div>
 
@@ -622,7 +670,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               <span className="text-[10px] sm:text-xs font-bold text-blue-400 font-mono">{activePlayers}/{totalPlayers}</span>
             </div>
             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-              <div style={{ width: `${fitPercentage}%` }} className="h-full bg-blue-500 rounded-full" />
+              <div style={{ width: `${fitPercentage}%` }} className="h-full bg-blue-500 rounded-full transition-all duration-500" />
             </div>
           </div>
 
@@ -633,11 +681,13 @@ export const Homepage: React.FC<HomepageProps> = ({
               <Sparkles className="w-4 h-4 text-purple-400" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-black text-purple-400 font-mono">{currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference}</span>
-              <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">{currentStanding.goalsFor} GF</span>
+              <span className="text-2xl sm:text-3xl font-black text-purple-400 font-mono">
+                {currentStanding ? (currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference) : 0}
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono">{currentStanding?.goalsFor ?? 0} GF</span>
             </div>
             <div className="text-[10px] font-extrabold text-purple-400">
-              {currentStanding.goalsAgainst} Conceded
+              {currentStanding?.goalsAgainst ?? 0} Conceded
             </div>
           </div>
         </div>

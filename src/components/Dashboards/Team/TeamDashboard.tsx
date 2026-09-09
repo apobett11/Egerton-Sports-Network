@@ -148,7 +148,7 @@ export const TeamDashboard: React.FC = () => {
         />
 
         {/* MAIN VIEWS WORKSPACE CANVAS */}
-        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto overflow-y-auto pb-24 lg:pb-8">
+        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto overflow-y-auto pb-28">
           {/* PAGE 1: OVERVIEW / HOMEPAGE */}
           {activeView === 'DASHBOARD' && (
             <Homepage
@@ -166,6 +166,7 @@ export const TeamDashboard: React.FC = () => {
               matches={teamFixtures}
               linesmanMatches={linesmanMatches}
               standings={standings}
+              teamInfo={teamInfo}
             />
           )}
 
@@ -194,7 +195,7 @@ export const TeamDashboard: React.FC = () => {
             <StandingsPage
               standings={standings}
               fixtures={teamFixtures}
-              teamForm={teamForm}
+              teamForm={teamForm as any}
             />
           )}
 

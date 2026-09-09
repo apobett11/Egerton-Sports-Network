@@ -84,6 +84,10 @@ export interface Match {
     id: string;
     opponentName: string;
     opponentLogo: string;
+    homeTeamName?: string;
+    homeTeamLogo?: string;
+    awayTeamName?: string;
+    awayTeamLogo?: string;
     date: string;
     time: string;
     location: string;
@@ -210,6 +214,7 @@ export interface DBTeam {
     temporary_match_squad?: Record<string, any>;
     tactics_config?: TacticalSliders & { formation: string };
     kits_config?: KitConfig[];
+    competition_id?: string;
     created_at: string;
     updated_at: string;
 }

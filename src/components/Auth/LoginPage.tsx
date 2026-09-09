@@ -3,7 +3,7 @@ import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
 import { useSubmitLock } from '../../hooks/useSubmitLock';
 import { useFormResilience } from '../../hooks/useFormResilience';
 import { useToast } from '../../contexts/ToastContext';
-import { LogIn, Loader2 } from 'lucide-react';
+import { LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export type AllowedRole = 'ADMIN' | 'COACH' | 'JOURNALIST' | 'PRESIDENT' | 'REFEREE' | 'DOCTOR';
 
@@ -19,6 +19,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [redirectingMessage, setRedirectingMessage] = useState<string | null>(null);
 
@@ -121,16 +122,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
             <label htmlFor="login-password" className="block font-bold text-gray-400 uppercase tracking-wider">
               Password
             </label>
-            <input
-              id="login-password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#111111] border border-gray-800 text-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-50"
-              required
-            />
+            <div className="relative flex items-center">
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full pl-3.5 pr-11 py-2.5 rounded-xl bg-[#111111] border border-gray-800 text-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none focus:border-emerald-500 min-h-[44px] disabled:opacity-50"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute right-2.5 text-gray-400 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none disabled:opacity-50"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4 text-gray-400 hover:text-gray-200" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
 
           <button

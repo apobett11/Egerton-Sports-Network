@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Player, UserRole, PracticeSession, Match, DBTeam, FormationName, TacticalSliders, PitchNodeCoordinate, LinesmanMatch } from '../types';
-import { initialRoster, initialPracticeSchedule, initialFixtures, initialStandings, initialTeamForm, calculateDynamicPitchCoordinates } from '../mockData';
+import type { Player, UserRole, PracticeSession, Match, DBTeam, FormationName, TacticalSliders, PitchNodeCoordinate, LinesmanMatch, StandingEntry } from '../types';
+import { calculateDynamicPitchCoordinates } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { supabase } from '../../../../lib/supabase';
 import {
   fetchAuthenticatedUserTeam,
   fetchTeamPlayers,
@@ -46,8 +47,8 @@ export const useTeamDashboard = () => {
   const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
   const [teamFixtures, setTeamFixtures] = useState<Match[]>([]);
   const [linesmanMatches, setLinesmanMatches] = useState<LinesmanMatch[]>([]);
-  const [standings, setStandings] = useState<any[]>([]);
-  const [teamForm, setTeamForm] = useState<any[]>([]);
+  const [standings, setStandings] = useState<StandingEntry[]>([]);
+  const [teamForm, setTeamForm] = useState<('W' | 'D' | 'L')[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [publishedNews, setPublishedNews] = useState<any[]>([]);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
@@ -61,8 +62,8 @@ export const useTeamDashboard = () => {
     return saved ? saved === 'dark' : true;
   });
 
-  const [roster, setRoster] = useState<Player[]>(initialRoster);
-  const [practiceSchedule, setPracticeSchedule] = useState<PracticeSession[]>(initialPracticeSchedule);
+  const [roster, setRoster] = useState<Player[]>([]);
+  const [practiceSchedule, setPracticeSchedule] = useState<PracticeSession[]>([]);
 
   // Formations & Tactical Physics State
   const [formation, setFormation] = useState<FormationName>('4-3-3 Attack');
@@ -75,14 +76,14 @@ export const useTeamDashboard = () => {
   });
 
   // Starting XI Indices in Roster
-  const [startingXI, setStartingXI] = useState<number[]>([0, 1, 3, 7, 9, 10, 5, 6, 12, 4, 8]);
+  const [startingXI, setStartingXI] = useState<number[]>([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   const [roleAssignments, setRoleAssignments] = useState<RoleAssignments>({
-    captainId: 'p2',
-    viceCaptainId: 'p6',
-    penaltyTakerId: 'p5',
-    freeKickTakerId: 'p6',
-    leftCornerTakerId: 'p6',
-    rightCornerTakerId: 'p2',
+    captainId: '',
+    viceCaptainId: '',
+    penaltyTakerId: '',
+    freeKickTakerId: '',
+    leftCornerTakerId: '',
+    rightCornerTakerId: '',
   });
 
   const [isSubmittingSquad, setIsSubmittingSquad] = useState<boolean>(false);
@@ -118,87 +119,102 @@ export const useTeamDashboard = () => {
   };
 
   // Synchronize Live Supabase Data
-  useEffect(() => {
-    let isMounted = true;
-    async function initData() {
-      setIsLoadingData(true);
-      try {
-        const coachUserId = user?.id || DEFAULT_COACH_UUID;
-        const team = await fetchAuthenticatedUserTeam(coachUserId);
-        const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
-        if (isMounted) {
-          setTeamInfo(team);
-          setTeamId(resolvedTeamId);
-          if (team?.tactics_config?.formation) {
-            setFormation(team.tactics_config.formation as FormationName);
-          }
-          if (team?.tactics_config?.attackingDepth) {
-            setPlaystyleSliders({
-              attackingDepth: team.tactics_config.attackingDepth,
-              defensiveLineHeight: team.tactics_config.defensiveLineHeight || 65,
-              teamSupportWidth: team.tactics_config.teamSupportWidth || 60,
-              pressingIntensity: team.tactics_config.pressingIntensity || 75,
-              buildUpStyle: team.tactics_config.buildUpStyle || 'Short Pass',
-            });
-          }
-          if (team?.practice_schedule && Array.isArray(team.practice_schedule) && team.practice_schedule.length > 0) {
-            setPracticeSchedule(team.practice_schedule);
-          }
-        }
+  const refreshLiveDashboard = useCallback(async () => {
+    setIsLoadingData(true);
+    try {
+      const coachUserId = user?.id || '';
+      const team = await fetchAuthenticatedUserTeam(coachUserId);
+      const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
 
-        const dbPlayers = await fetchTeamPlayers(resolvedTeamId);
-        if (isMounted && dbPlayers.length > 0) {
-          setRoster(dbPlayers);
-          // If starting_xi_str saved in DB, map IDs back to indices
-          if (team?.starting_xi_str) {
-            const savedIds = team.starting_xi_str.split(',').map((id: string) => id.trim());
-            const resolvedIndices = savedIds
-              .map((id: string) => dbPlayers.findIndex((p) => p.id === id))
-              .filter((idx: number) => idx !== -1);
-            if (resolvedIndices.length === 11) {
-              setStartingXI(resolvedIndices);
-            }
-          }
-        }
+      setTeamInfo(team);
+      setTeamId(resolvedTeamId);
 
-        const dbFixtures = await fetchTeamFixtures(resolvedTeamId);
-        if (isMounted && dbFixtures.length > 0) {
-          setTeamFixtures(dbFixtures);
-        }
-
-        const dbLinesman = await fetchTeamLinesmanMatches(resolvedTeamId, user.id);
-        if (isMounted) {
-          setLinesmanMatches(dbLinesman);
-        }
-
-        const dbStandings = await fetchTeamStandings(resolvedTeamId);
-        if (isMounted && dbStandings.length > 0) {
-          setStandings(dbStandings);
-          // Calculate team form entries from standings / fixtures
-          const curTeam = dbStandings.find((s) => s.isCurrent) || dbStandings[0];
-          if (curTeam && curTeam.recentForm) {
-            setTeamForm(curTeam.recentForm);
-          }
-        }
-
-        const dbAnnouncements = await fetchTeamAnnouncements();
-        if (isMounted && dbAnnouncements.length > 0) {
-          setAnnouncements(dbAnnouncements);
-        }
-
-        const dbNews = await fetchTeamNews();
-        if (isMounted && dbNews.length > 0) {
-          setPublishedNews(dbNews);
-        }
-      } catch (err) {
-        console.warn('Data initialization error:', err);
-      } finally {
-        if (isMounted) setIsLoadingData(false);
+      if (team?.tactics_config?.formation) {
+        setFormation(team.tactics_config.formation as FormationName);
       }
+      if (team?.tactics_config?.attackingDepth) {
+        setPlaystyleSliders({
+          attackingDepth: team.tactics_config.attackingDepth,
+          defensiveLineHeight: team.tactics_config.defensiveLineHeight || 65,
+          teamSupportWidth: team.tactics_config.teamSupportWidth || 60,
+          pressingIntensity: team.tactics_config.pressingIntensity || 75,
+          buildUpStyle: team.tactics_config.buildUpStyle || 'Short Pass',
+        });
+      }
+      if (team?.practice_schedule && Array.isArray(team.practice_schedule)) {
+        setPracticeSchedule(team.practice_schedule);
+      }
+
+      // Parallel fetch from database
+      const [dbPlayers, dbFixtures, dbStandings, dbLinesman, dbAnnouncements, dbNews] = await Promise.all([
+        fetchTeamPlayers(resolvedTeamId),
+        fetchTeamFixtures(resolvedTeamId),
+        fetchTeamStandings(resolvedTeamId, team?.competition_id),
+        fetchTeamLinesmanMatches(resolvedTeamId, user?.id),
+        fetchTeamAnnouncements(),
+        fetchTeamNews(),
+      ]);
+
+      setRoster(dbPlayers);
+
+      if (team?.starting_xi_str && dbPlayers.length > 0) {
+        const savedIds = team.starting_xi_str.split(',').map((id: string) => id.trim());
+        const resolvedIndices = savedIds
+          .map((id: string) => dbPlayers.findIndex((p) => p.id === id))
+          .filter((idx: number) => idx !== -1);
+        if (resolvedIndices.length === 11) {
+          setStartingXI(resolvedIndices);
+        }
+      }
+
+      setTeamFixtures(dbFixtures);
+      setStandings(dbStandings);
+      setLinesmanMatches(dbLinesman);
+      setAnnouncements(dbAnnouncements || []);
+      setPublishedNews(dbNews || []);
+
+      // Derive authentic team form strictly from database
+      const myStanding = dbStandings.find((s) => s.isCurrent) || dbStandings.find((s) => s.teamName === team?.name);
+      if (myStanding && myStanding.recentForm && myStanding.recentForm.length > 0) {
+        setTeamForm(myStanding.recentForm);
+      } else {
+        const finishedOutcomes = dbFixtures
+          .filter((f) => f.status === 'FINISHED' && f.result)
+          .map((f) => f.result as 'W' | 'D' | 'L')
+          .slice(-6);
+        setTeamForm(finishedOutcomes);
+      }
+    } catch (err) {
+      console.warn('[useTeamDashboard] Error loading fresh database records:', err);
+    } finally {
+      setIsLoadingData(false);
     }
-    initData();
-    return () => { isMounted = false; };
   }, [user]);
+
+  useEffect(() => {
+    refreshLiveDashboard();
+
+    // Subscribe to realtime database updates so data is always fresh
+    const channel = supabase
+      .channel('coach_dashboard_live_feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+        refreshLiveDashboard();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
+        refreshLiveDashboard();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
+        refreshLiveDashboard();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
+        refreshLiveDashboard();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshLiveDashboard]);
 
   // Compute Dynamic Pitch Coordinates from Tactical Physics Math
   const pitchNodes: PitchNodeCoordinate[] = useMemo(() => {
