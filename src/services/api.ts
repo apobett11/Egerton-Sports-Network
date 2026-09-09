@@ -243,6 +243,7 @@ export const ApiService = {
           competition:competitions(id, name, season),
           team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
           team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
+          referee_prof:profiles!referee_id(first_name, last_name),
           ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
           ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
           fo_prof:profiles!fourth_official_id(first_name, last_name)

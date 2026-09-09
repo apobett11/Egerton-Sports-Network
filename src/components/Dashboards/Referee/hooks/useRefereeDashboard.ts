@@ -946,7 +946,7 @@ export const useRefereeDashboard = () => {
           await matchRepository.saveRefereeWorkingSet({
             match_uid: selectedFixture.id,
             opened_by_uid: effectiveRefereeId,
-            status: 'OPEN',
+            period: 'FULL_TIME' as any,
             home_score: reportData.scoreHome,
             away_score: reportData.scoreAway,
             events: [
@@ -955,7 +955,7 @@ export const useRefereeDashboard = () => {
                 match_uid: selectedFixture.id,
                 team_uid: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
                 player_uid: g.playerId || null,
-                player_number: g.jerseyNumber ? parseInt(g.jerseyNumber, 10) : null,
+                player_number: g.jerseyNumber ? Number(g.jerseyNumber) : null,
                 type: 'GOAL' as const,
                 goal_type: (g.goalType === 'penalty' ? 'PENALTY' : 'OTHER') as any,
                 minute: Number(g.minute) || 1,
@@ -972,7 +972,7 @@ export const useRefereeDashboard = () => {
                 match_uid: selectedFixture.id,
                 team_uid: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
                 player_uid: c.playerId || null,
-                player_number: c.jerseyNumber ? parseInt(c.jerseyNumber, 10) : null,
+                player_number: c.jerseyNumber ? Number(c.jerseyNumber) : null,
                 type: (c.cardType === 'yellow' ? 'YELLOW_CARD' : 'RED_CARD') as any,
                 card_type: (c.cardType === 'yellow' ? 'YELLOW' : 'RED') as any,
                 minute: Number(c.minute) || 1,
@@ -984,7 +984,7 @@ export const useRefereeDashboard = () => {
                 is_derived_red: false,
                 created_at: new Date().toISOString(),
               })),
-            ],
+            ] as any,
             opened_at: new Date().toISOString(),
             base_live_version: 1,
           }).catch((wsErr) => console.warn('Working set save note:', wsErr));
