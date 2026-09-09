@@ -6,10 +6,6 @@ import {
   Trophy,
   Newspaper,
   Settings,
-  Shirt,
-  Calendar,
-  Sparkles,
-  Crown,
   Briefcase
 } from 'lucide-react';
 import type { DashboardView } from '../../hooks/useTeamDashboard';
@@ -24,63 +20,57 @@ interface TeamSidebarProps {
 export const TeamSidebar: React.FC<TeamSidebarProps> = ({
   activeView,
   setActiveView,
-  currentRole,
+  currentRole: _currentRole,
 }) => {
-  const navItems: { view: DashboardView; label: string; icon: React.ReactNode; badge?: string; color: string }[] = [
+  const navItems: { view: DashboardView; label: string; icon: React.ReactNode; badge?: string }[] = [
     {
       view: 'DASHBOARD',
-      label: 'Overview',
+      label: 'OVERVIEW',
       icon: <LayoutDashboard className="w-4 h-4" />,
-      color: 'text-emerald-400'
     },
     {
       view: 'TACTICS',
-      label: 'Team Squad',
+      label: 'TEAM SQUAD',
       icon: <Users className="w-4 h-4" />,
       badge: '2D Pitch',
-      color: 'text-emerald-400'
     },
     {
       view: 'ROSTER',
-      label: 'Players List & Kits',
+      label: 'PLAYERS & KITS',
       icon: <Shield className="w-4 h-4" />,
-      color: 'text-blue-400'
     },
     {
       view: 'STANDINGS',
-      label: 'Table & Fixtures',
+      label: 'TABLE & FIXTURES',
       icon: <Trophy className="w-4 h-4" />,
-      color: 'text-amber-400'
     },
     {
       view: 'NEWS',
-      label: 'Newsroom & Press',
+      label: 'NEWSROOM & PRESS',
       icon: <Newspaper className="w-4 h-4" />,
-      color: 'text-purple-400'
     },
     {
       view: 'SETTINGS',
-      label: 'Team Settings',
+      label: 'TEAM SETTINGS',
       icon: <Settings className="w-4 h-4" />,
-      color: 'text-slate-400'
     },
   ];
 
   return (
-    <aside className="w-full bg-[#161B22] border border-[#2A3441] rounded-2xl p-4 shadow-xl space-y-4">
+    <aside className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-md p-3 shadow-xs space-y-3 select-none">
       {/* Role Badge Indicator */}
-      <div className="p-3 rounded-xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-between">
+      <div className="p-3 rounded-md bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            <Briefcase className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-sm flex items-center justify-center font-black bg-[#ff0046] text-white">
+            <Briefcase className="w-3.5 h-3.5" />
           </div>
           <div>
-            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Current Role</div>
-            <div className="text-xs font-black text-white">HEAD COACH</div>
+            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">ROLE GOVERNANCE</div>
+            <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">HEAD COACH</div>
           </div>
         </div>
-        <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400">
-          Exclusive Manager
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/25">
+          Exclusive
         </span>
       </div>
 
@@ -91,21 +81,22 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
           return (
             <button
               key={item.view}
+              type="button"
               onClick={() => setActiveView(item.view)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md font-black text-xs transition-colors cursor-pointer uppercase tracking-wider ${
                 isActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40 font-black'
-                  : 'text-slate-300 hover:bg-[#1F2937] hover:text-white'
+                  ? 'bg-[#ff0046] text-white shadow-xs'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <span className={isActive ? 'text-white' : item.color}>{item.icon}</span>
+              <div className="flex items-center gap-2.5">
+                <span className={isActive ? 'text-white' : 'text-slate-400'}>{item.icon}</span>
                 <span>{item.label}</span>
               </div>
 
               {item.badge && (
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-400'
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-600 dark:text-slate-400'
                 }`}>
                   {item.badge}
                 </span>
@@ -117,3 +108,5 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
     </aside>
   );
 };
+
+export default TeamSidebar;

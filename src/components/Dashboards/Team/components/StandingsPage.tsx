@@ -8,10 +8,8 @@ import {
   ChevronUp,
   MapPin,
   Activity,
-  UserCheck,
-  Flame,
   Clock,
-  Shield,
+  Radio,
 } from 'lucide-react';
 
 interface StandingsPageProps {
@@ -60,42 +58,38 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
     return fixtures;
   }, [fixtures, activeFixtureFilter]);
 
-  const renderFormBadge = (outcome: 'W' | 'D' | 'L', idx: number) => {
-    if (outcome === 'W') {
-      return (
-        <span
-          key={idx}
-          className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-[10px] md:text-xs font-black shadow-xs"
-          title="Win"
-        >
-          ✓
-        </span>
-      );
+  // Flashscore Guest 6-Form Badges
+  const render6FormBadges = (formList: ('W' | 'D' | 'L')[]) => {
+    if (!formList || formList.length === 0) {
+      return <span className="text-[11px] text-slate-400 font-medium">—</span>;
     }
-    if (outcome === 'L') {
-      return (
-        <span
-          key={idx}
-          className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] md:text-xs font-black shadow-xs"
-          title="Loss"
-        >
-          ✗
-        </span>
-      );
-    }
+    const form6 = formList.slice(-6);
+
     return (
-      <span
-        key={idx}
-        className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[10px] md:text-xs font-black shadow-xs"
-        title="Draw"
-      >
-        –
-      </span>
+      <div className="flex items-center gap-1 justify-center">
+        {form6.map((res, i) => (
+          <span
+            key={i}
+            className={`w-4 h-4 rounded-[2px] flex items-center justify-center font-bold text-[9px] text-white select-none ${
+              res === 'W'
+                ? 'bg-[#00b04f]'
+                : res === 'D'
+                ? 'bg-[#ff9800]'
+                : res === 'L'
+                ? 'bg-[#d63031]'
+                : 'bg-[#8fa1b4]'
+            }`}
+            title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
+          >
+            {res}
+          </span>
+        ))}
+      </div>
     );
   };
 
   const calculateFormPoints = (formList: ('W' | 'D' | 'L')[]) => {
-    return formList.reduce((sum, outcome) => {
+    return (formList || []).slice(-6).reduce((sum, outcome) => {
       if (outcome === 'W') return sum + 3;
       if (outcome === 'D') return sum + 1;
       return sum;
@@ -103,406 +97,388 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full select-none pb-16">
-      {/* 1. PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#2A3441] pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-amber-400" />
-              <span>Table & Fixtures Desk</span>
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
-              Season 2026/27
-            </span>
-          </div>
-          <p className="text-xs text-slate-400">
-            Points standings snippet, 6-match form spectrum, and full-width matchday fixtures schedule.
-          </p>
-        </div>
-
+    <div className="space-y-4 max-w-7xl mx-auto w-full select-none pb-16">
+      {/* 1. PAGE HEADER BAR */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-slate-400 bg-[#161B22] border border-[#2A3441] px-3 py-1.5 rounded-xl">
-            Live Database Synced
+          <Trophy className="w-5 h-5 text-[#ff0046]" />
+          <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            Table & Fixtures Desk
+          </h2>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#ff0046] text-white">
+            2026/27
           </span>
         </div>
+
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-[#eef1f5] dark:bg-[#14263b] px-3 py-1 rounded-full self-start sm:self-auto">
+          Synced Live with Competition Engine
+        </span>
       </div>
 
-      {/* 2. TABLE 1: LEAGUE POINTS STANDINGS (5-TEAM SNIPPET) */}
-      <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
-          <div>
-            <h3 className="font-black text-sm md:text-base text-white tracking-tight flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald-400" />
-              <span>{showFullStandings ? 'Full League Standings' : 'League Standings Snippet (2 Above, Our Club, 2 Below)'}</span>
+      {/* 2. TABLE 1: LEAGUE STANDINGS (FLASHSCORE GUEST STYLE) */}
+      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+        {/* Table Header Banner */}
+        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-[#ff0046]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              {showFullStandings ? 'Full League Standings' : 'League Standings Snippet (2 Above, Our Club, 2 Below)'}
             </h3>
-            <p className="text-[11px] text-slate-400">
-              Current table position, points total, and goal differential.
-            </p>
           </div>
 
           <button
+            type="button"
             onClick={() => setShowFullStandings((prev) => !prev)}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0D1117] hover:bg-slate-800 text-slate-300 hover:text-white font-extrabold text-xs transition-colors border border-[#2A3441] flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1 rounded-full text-xs font-black bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
           >
             {showFullStandings ? (
               <>
-                <ChevronUp className="w-4 h-4 text-amber-400" />
+                <ChevronUp className="w-3.5 h-3.5 text-[#ff0046]" />
                 <span>Show 5-Team Snippet</span>
               </>
             ) : (
               <>
-                <ChevronDown className="w-4 h-4 text-amber-400" />
-                <span>Expand Full Table ({standings.length} Teams)</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#ff0046]" />
+                <span>Expand Full Table ({standings.length})</span>
               </>
             )}
           </button>
         </div>
 
-        {/* TABLE 1 WRAPPER */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[700px] border-collapse">
+        {/* Table Content */}
+        <div className="w-full overflow-x-auto no-scrollbar">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-[#2A3441] text-slate-400 font-mono text-[10px] uppercase font-black tracking-wider">
-                <th className="py-3 px-3 text-center w-12">POS</th>
-                <th className="py-3 px-4">CLUB / TEAM</th>
-                <th className="py-3 px-3 text-center">PL</th>
-                <th className="py-3 px-3 text-center">W</th>
-                <th className="py-3 px-3 text-center">D</th>
-                <th className="py-3 px-3 text-center">L</th>
-                <th className="py-3 px-3 text-center">GF</th>
-                <th className="py-3 px-3 text-center">GA</th>
-                <th className="py-3 px-3 text-center">GD</th>
-                <th className="py-3 px-4 text-center font-black">PTS</th>
+              <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                <th className="py-2 px-2 text-center w-8"># ▲</th>
+                <th className="py-2 px-3 min-w-[140px] sm:min-w-[200px]">TEAM</th>
+                <th className="py-2 px-2 text-center w-8">MP</th>
+                <th className="py-2 px-2 text-center w-8">W</th>
+                <th className="py-2 px-2 text-center w-8">D</th>
+                <th className="py-2 px-2 text-center w-8">L</th>
+                <th className="py-2 px-2 text-center w-14 hidden sm:table-cell">G</th>
+                <th className="py-2 px-2 text-center w-10 hidden sm:table-cell">GD</th>
+                <th className="py-2 px-3 text-center w-12 font-black text-slate-900 dark:text-white">PTS</th>
               </tr>
             </thead>
-            <tbody>
-              {contextualStandings.map((team, idx) => {
-                const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
-                return (
-                  <tr
-                    key={idx}
-                    className={`border-b last:border-0 border-[#2A3441]/50 transition-all font-semibold ${
-                      isOurTeam
-                        ? 'bg-gradient-to-r from-emerald-950/60 to-teal-950/40 text-emerald-400 border-l-4 border-l-emerald-400'
-                        : 'hover:bg-white/5 text-slate-200'
-                    }`}
-                  >
-                    <td className="py-3.5 px-3 text-center font-mono font-black text-xs">
-                      {team.position}
-                    </td>
+            <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              {contextualStandings.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    No standings data recorded.
+                  </td>
+                </tr>
+              ) : (
+                contextualStandings.map((team, idx) => {
+                  const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
+                  const zoneBorder = isOurTeam
+                    ? 'border-l-[3px] border-l-[#ff0046] bg-[#ff0046]/5 dark:bg-[#ff0046]/10'
+                    : team.position <= 4
+                    ? 'border-l-[3px] border-l-[#00b04f]'
+                    : 'border-l-[3px] border-l-transparent';
 
-                    <td className="py-3.5 px-4 font-extrabold flex items-center gap-3">
-                      <img src={team.teamLogo} alt={team.teamName} className="w-6 h-6 object-contain rounded-md" />
-                      <span className={isOurTeam ? 'text-white font-black text-sm' : ''}>{team.teamName}</span>
-                      {isOurTeam && (
-                        <span className="text-[9px] bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                          Our Club
-                        </span>
-                      )}
-                    </td>
+                  return (
+                    <tr
+                      key={team.teamName || idx}
+                      className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${zoneBorder}`}
+                    >
+                      <td className="py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
+                        {team.position}.
+                      </td>
 
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.played}</td>
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-300">{team.won}</td>
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.drawn}</td>
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.lost}</td>
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.goalsFor}</td>
-                    <td className="py-3.5 px-3 text-center font-mono text-slate-400">{team.goalsAgainst}</td>
-                    <td className="py-3.5 px-3 text-center font-mono font-bold">
-                      {team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-mono font-black text-sm text-amber-400">
-                      {team.points}
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {team.teamLogo ? (
+                            <img
+                              src={team.teamLogo}
+                              alt={team.teamName}
+                              className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-4.5 h-4.5 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0 flex items-center justify-center text-[8px] font-black">
+                              {team.teamName.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className={`truncate ${
+                            isOurTeam ? 'font-black text-[#ff0046] dark:text-[#ff0046]' : 'font-extrabold text-slate-900 dark:text-white'
+                          }`}>
+                            {team.teamName}
+                          </span>
+                          {isOurTeam && (
+                            <span className="text-[9px] bg-[#ff0046] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider shrink-0">
+                              Our Club
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.played}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.won}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.drawn}</td>
+                      <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.lost}</td>
+                      <td className="py-2.5 px-2 text-center font-mono text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                        {team.goalsFor}:{team.goalsAgainst}
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                        {team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">
+                        {team.points}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* 3. TABLE 2: FORM & MOMENTUM SPECTRUM (5-TEAM SNIPPET) */}
-      <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
-          <div>
-            <h3 className="font-black text-sm md:text-base text-white tracking-tight flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-400" />
-              <span>{showFullFormTable ? 'Full Form Standings' : 'Form Standings Snippet (Latest 6 Games Spectrum)'}</span>
+      {/* 3. TABLE 2: FORM STANDINGS (FLASHSCORE GUEST STYLE) */}
+      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-[#00b04f]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              {showFullFormTable ? 'Full Recent Form Standings' : 'Form Standings Snippet (Latest 6 Games Spectrum)'}
             </h3>
-            <p className="text-[11px] text-slate-400">
-              Match outcomes with green tick (Win), red cross (Loss), yellow dash (Draw), and recent form points.
-            </p>
           </div>
 
           <button
+            type="button"
             onClick={() => setShowFullFormTable((prev) => !prev)}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0D1117] hover:bg-slate-800 text-slate-300 hover:text-white font-extrabold text-xs transition-colors border border-[#2A3441] flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1 rounded-full text-xs font-black bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
           >
             {showFullFormTable ? (
               <>
-                <ChevronUp className="w-4 h-4 text-purple-400" />
+                <ChevronUp className="w-3.5 h-3.5 text-[#ff0046]" />
                 <span>Show 5-Team Snippet</span>
               </>
             ) : (
               <>
-                <ChevronDown className="w-4 h-4 text-purple-400" />
-                <span>Expand Full Form Table ({standings.length} Teams)</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#ff0046]" />
+                <span>Expand Full Form Table ({standings.length})</span>
               </>
             )}
           </button>
         </div>
 
-        {/* TABLE 2 WRAPPER */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[700px] border-collapse">
+        <div className="w-full overflow-x-auto no-scrollbar">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-[#2A3441] text-slate-400 font-mono text-[10px] uppercase font-black tracking-wider">
-                <th className="py-3 px-3 text-center w-12">POS</th>
-                <th className="py-3 px-4">CLUB / TEAM</th>
-                <th className="py-3 px-6 text-center">LAST 6 MATCHES</th>
-                <th className="py-3 px-4 text-center">PTS (L6)</th>
-                <th className="py-3 px-4 text-center">STREAK / STATUS</th>
+              <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                <th className="py-2.5 px-3 text-center w-8">#</th>
+                <th className="py-2.5 px-3 min-w-[140px] sm:min-w-[200px]">TEAM</th>
+                <th className="py-2.5 px-3 text-center w-12">PLAYED</th>
+                <th className="py-2.5 px-3 text-center min-w-[140px]">LAST 6 MATCHES</th>
+                <th className="py-2.5 px-4 text-center w-14 font-black text-slate-900 dark:text-white">PTS (L6)</th>
               </tr>
             </thead>
-            <tbody>
-              {contextualFormStandings.map((team, idx) => {
-                const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
-                const formList = team.recentForm || ['W', 'W', 'D', 'W', 'L', 'W'];
-                const ptsL6 = calculateFormPoints(formList);
+            <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              {contextualFormStandings.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    No recent form data available.
+                  </td>
+                </tr>
+              ) : (
+                contextualFormStandings.map((team, idx) => {
+                  const isOurTeam = team.isCurrent || team.teamName.toLowerCase().includes('egerton');
+                  const formList = (team.recentForm && team.recentForm.length > 0)
+                    ? team.recentForm
+                    : ['W', 'W', 'D', 'W', 'L', 'W'] as ('W' | 'D' | 'L')[];
+                  const ptsL6 = calculateFormPoints(formList);
 
-                return (
-                  <tr
-                    key={idx}
-                    className={`border-b last:border-0 border-[#2A3441]/50 transition-all font-semibold ${
-                      isOurTeam
-                        ? 'bg-gradient-to-r from-purple-950/50 to-indigo-950/40 text-purple-300 border-l-4 border-l-purple-400'
-                        : 'hover:bg-white/5 text-slate-200'
-                    }`}
-                  >
-                    <td className="py-3.5 px-3 text-center font-mono font-black text-xs">
-                      {team.position}
-                    </td>
+                  return (
+                    <tr
+                      key={team.teamName || idx}
+                      className={`hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors ${
+                        isOurTeam ? 'bg-[#ff0046]/5 dark:bg-[#ff0046]/10 border-l-[3px] border-l-[#ff0046]' : 'border-l-[3px] border-l-transparent'
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-400">
+                        {team.position}.
+                      </td>
 
-                    <td className="py-3.5 px-4 font-extrabold flex items-center gap-3">
-                      <img src={team.teamLogo} alt={team.teamName} className="w-6 h-6 object-contain rounded-md" />
-                      <span className={isOurTeam ? 'text-white font-black text-sm' : ''}>{team.teamName}</span>
-                      {isOurTeam && (
-                        <span className="text-[9px] bg-purple-500/20 border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                          Our Club
-                        </span>
-                      )}
-                    </td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {team.teamLogo ? (
+                            <img
+                              src={team.teamLogo}
+                              alt={team.teamName}
+                              className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-4.5 h-4.5 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0 flex items-center justify-center text-[8px] font-black">
+                              {team.teamName.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className={`truncate ${
+                            isOurTeam ? 'font-black text-[#ff0046]' : 'font-extrabold text-slate-900 dark:text-white'
+                          }`}>
+                            {team.teamName}
+                          </span>
+                          {isOurTeam && (
+                            <span className="text-[9px] bg-[#ff0046] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider shrink-0">
+                              Our Club
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* LATEST 6 GAMES FORM BREAKDOWN WITH TICKS/CROSSES/DASHES */}
-                    <td className="py-3.5 px-6 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {formList.map((outcome, fIdx) => renderFormBadge(outcome, fIdx))}
-                      </div>
-                    </td>
+                      <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">
+                        {team.played}
+                      </td>
 
-                    <td className="py-3.5 px-4 text-center font-mono font-black text-sm text-emerald-400">
-                      {ptsL6} / 18
-                    </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {render6FormBadges(formList)}
+                      </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#0D1117] border border-[#2A3441] text-slate-300">
-                        {ptsL6 >= 13 ? '🔥 High Momentum' : ptsL6 >= 9 ? '⚡ Steady Form' : '⚠️ Mixed Form'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-[#00b04f]">
+                        {ptsL6}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* 4. FIXTURES & PAST GAMES IN STRETCHED INLINE CARDS WITH BREATHING SPACE */}
-      <section className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-5 md:p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between border-b border-[#2A3441] pb-3 gap-2">
-          <div>
-            <h3 className="font-black text-sm md:text-base text-white tracking-tight flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-400" />
-              <span>Fixtures & Match Calendar</span>
+      {/* 4. FIXTURES & MATCH SCHEDULE (FLASHSCORE GUEST FEED STYLE) */}
+      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+        {/* Flashscore Filter Row */}
+        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[#ff0046]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              Fixtures & Match Results
             </h3>
-            <p className="text-[11px] text-slate-400">
-              Official league schedule, venue assignments, and referee designations.
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {([
+              { id: 'ALL' as const, label: 'All Matches' },
+              { id: 'UPCOMING' as const, label: 'Upcoming' },
+              { id: 'FINISHED' as const, label: 'Past Results' },
+            ]).map((filter) => {
+              const isActive = activeFixtureFilter === filter.id;
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFixtureFilter(filter.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-[#ff0046] text-white shadow-xs'
+                      : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Fixtures Feed */}
+        {filteredFixtures.length === 0 ? (
+          <div className="py-12 px-4 text-center space-y-1">
+            <Calendar className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+            <p className="text-xs font-bold text-slate-800 dark:text-white">
+              No matches found for filter: {activeFixtureFilter.toLowerCase()}
             </p>
           </div>
+        ) : (
+          <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+            {filteredFixtures.map((fixture) => {
+              const isFinished = fixture.status === 'FINISHED';
+              const isLive = fixture.status === 'LIVE';
 
-          <div className="flex items-center p-1 rounded-xl bg-[#0D1117] border border-[#2A3441]">
-            <button
-              onClick={() => setActiveFixtureFilter('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                activeFixtureFilter === 'ALL' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              All Matches
-            </button>
-            <button
-              onClick={() => setActiveFixtureFilter('UPCOMING')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                activeFixtureFilter === 'UPCOMING' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Upcoming
-            </button>
-            <button
-              onClick={() => setActiveFixtureFilter('FINISHED')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                activeFixtureFilter === 'FINISHED' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Past Results
-            </button>
+              return (
+                <div
+                  key={fixture.id}
+                  className="flex items-center justify-between px-4 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors"
+                >
+                  {/* Left Column: Match Status / Time & Matchday */}
+                  <div className="w-20 text-center flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[9px] font-mono text-slate-400 uppercase block">
+                      MD {fixture.matchday || 1}
+                    </span>
+                    {isLive ? (
+                      <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
+                        <Radio className="w-3 h-3 animate-pulse" />
+                        LIVE
+                      </span>
+                    ) : isFinished ? (
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        Finished
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {fixture.time || '16:00'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Middle Column: Two Stacked Teams */}
+                  <div className="flex-1 px-3 flex flex-col justify-center gap-1.5 min-w-0">
+                    {/* Team Home */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold">
+                          {fixture.isHome !== false ? 'E' : (fixture.opponentName?.slice(0, 1) || 'O')}
+                        </div>
+                        <span className={`text-xs truncate ${
+                          fixture.isHome !== false ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
+                        }`}>
+                          {fixture.isHome !== false ? 'Egerton FC' : fixture.opponentName}
+                        </span>
+                      </div>
+                      {fixture.score && (
+                        <span className="font-mono font-black text-xs text-slate-900 dark:text-white ml-2">
+                          {fixture.score.split('-')[0]?.trim() || '0'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Team Away */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold">
+                          {fixture.isHome !== false ? (fixture.opponentName?.slice(0, 1) || 'O') : 'E'}
+                        </div>
+                        <span className={`text-xs truncate ${
+                          fixture.isHome === false ? 'font-black text-[#ff0046]' : 'font-bold text-slate-800 dark:text-slate-100'
+                        }`}>
+                          {fixture.isHome !== false ? fixture.opponentName : 'Egerton FC'}
+                        </span>
+                      </div>
+                      {fixture.score && (
+                        <span className="font-mono font-black text-xs text-slate-900 dark:text-white ml-2">
+                          {fixture.score.split('-')[1]?.trim() || '0'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Venue & Date */}
+                  <div className="text-right hidden sm:flex flex-col items-end justify-center text-[10px] text-slate-400 shrink-0 min-w-[120px]">
+                    <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-[#ff0046]" />
+                      <span className="truncate max-w-[110px]">{fixture.location}</span>
+                    </span>
+                    <span className="mt-0.5">{fixture.date}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-
-        {/* INLINE STRETCHED FIXTURES LIST WITH GENEROUS BREATHING SPACE */}
-        <div className="space-y-3.5">
-          {filteredFixtures.map((fixture) => {
-            const isFinished = fixture.status === 'FINISHED';
-            const isLive = fixture.status === 'LIVE';
-
-            return (
-              <div
-                key={fixture.id}
-                className="w-full p-4 md:p-5 rounded-2xl bg-[#0D1117] border border-[#2A3441] hover:border-emerald-500/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md"
-              >
-                {/* LEFT: MATCHDAY & METADATA */}
-                <div className="space-y-1.5 md:w-1/4">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black uppercase bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                      MD {fixture.matchday || 24}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-300 truncate">
-                      {fixture.league}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                      {fixture.date}
-                    </span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      {fixture.time}
-                    </span>
-                  </div>
-                </div>
-
-                {/* CENTER: MATCHUP BOARD (HOME VS AWAY) */}
-                <div className="flex-1 flex items-center justify-between sm:justify-center gap-4 md:gap-8 py-2 border-y md:border-y-0 md:border-x border-[#2A3441]/60 px-2 md:px-6">
-                  {fixture.isHome !== false ? (
-                    <>
-                      {/* HOME / OUR CLUB */}
-                      <div className="flex items-center gap-2.5 sm:w-44 justify-end">
-                        <span className="font-extrabold text-xs md:text-sm text-white text-right">
-                          Egerton FC
-                        </span>
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
-                          EFC
-                        </div>
-                      </div>
-
-                      {/* SCORELINE / VS BADGE */}
-                      <div className="px-3.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 text-center shrink-0">
-                        {fixture.score ? (
-                          <span className="font-mono font-black text-sm md:text-base text-emerald-400">
-                            {fixture.score}
-                          </span>
-                        ) : (
-                          <span className="font-mono font-black text-xs text-amber-400 uppercase">
-                            VS
-                          </span>
-                        )}
-                      </div>
-
-                      {/* AWAY / OPPONENT */}
-                      <div className="flex items-center gap-2.5 sm:w-44 justify-start">
-                        <img
-                          src={fixture.opponentLogo}
-                          alt={fixture.opponentName}
-                          className="w-8 h-8 object-contain rounded-xl shrink-0"
-                        />
-                        <span className="font-extrabold text-xs md:text-sm text-slate-200 truncate">
-                          {fixture.opponentName}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* HOME / OPPONENT */}
-                      <div className="flex items-center gap-2.5 sm:w-44 justify-end">
-                        <span className="font-extrabold text-xs md:text-sm text-slate-200 truncate text-right">
-                          {fixture.opponentName}
-                        </span>
-                        <img
-                          src={fixture.opponentLogo}
-                          alt={fixture.opponentName}
-                          className="w-8 h-8 object-contain rounded-xl shrink-0"
-                        />
-                      </div>
-
-                      {/* SCORELINE / VS BADGE */}
-                      <div className="px-3.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 text-center shrink-0">
-                        {fixture.score ? (
-                          <span className="font-mono font-black text-sm md:text-base text-emerald-400">
-                            {fixture.score}
-                          </span>
-                        ) : (
-                          <span className="font-mono font-black text-xs text-amber-400 uppercase">
-                            VS
-                          </span>
-                        )}
-                      </div>
-
-                      {/* AWAY / OUR CLUB */}
-                      <div className="flex items-center gap-2.5 sm:w-44 justify-start">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
-                          EFC
-                        </div>
-                        <span className="font-extrabold text-xs md:text-sm text-white text-left">
-                          Egerton FC
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* RIGHT: VENUE, REFEREE & STATUS */}
-                <div className="flex items-center justify-between md:justify-end gap-4 md:w-1/4">
-                  <div className="text-left md:text-right space-y-0.5">
-                    <div className="text-[11px] text-slate-300 font-semibold flex items-center md:justify-end gap-1">
-                      <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span className="truncate">{fixture.location}</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 flex items-center md:justify-end gap-1">
-                      <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span>{fixture.referee || 'Ref. Kiplagat'}</span>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase shrink-0 shadow-xs ${
-                      isFinished
-                        ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                        : isLive
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    }`}
-                  >
-                    {fixture.status}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        )}
       </section>
     </div>
   );
 };
+
+export default StandingsPage;

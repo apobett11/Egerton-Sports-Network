@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Shield } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 import { registerPlayerToTeam } from '../../lib/supabaseClient';
 
 interface InvitePlayerModalProps {
@@ -50,7 +50,7 @@ export const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       if (res.error) {
         onShowToast(`Notice: ${res.error}`);
       } else {
-        onShowToast(`Successfully added #${jerseyNumber} ${firstName} ${lastName} to squad!`);
+        onShowToast(`Successfully registered #${jerseyNumber} ${firstName} ${lastName}!`);
       }
 
       if (onPlayerAdded) onPlayerAdded();
@@ -64,49 +64,51 @@ export const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#161B22] border border-[#2A3441] rounded-3xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-[#2A3441] pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <UserPlus className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-black text-base text-white">Squad Player Intake</h3>
-              <p className="text-xs text-slate-400">Official club player intake and roster registration</p>
-            </div>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-[#ff0046]" />
+            <h3 className="font-black text-xs sm:text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+              Direct Squad Intake
+            </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[#0D1117] border border-[#2A3441] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-sm cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="p-4 space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-bold mb-1">First Name</label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                First Name
+              </label>
               <input
                 type="text"
                 id="invite-player-firstname"
                 placeholder="e.g. Victor"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
                 required
               />
             </div>
+
             <div>
-              <label className="block text-slate-300 font-bold mb-1">Last Name</label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Last Name
+              </label>
               <input
                 type="text"
-                id="invite-player-lastname"
-                placeholder="e.g. Wanyama"
+                placeholder="e.g. Ouma"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
                 required
               />
             </div>
@@ -114,51 +116,28 @@ export const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-300 font-bold mb-1">Student ID / Reg No</label>
-              <input
-                type="text"
-                id="invite-player-studentid"
-                placeholder="e.g. S13/12345/22"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Phone / WhatsApp</label>
-              <input
-                type="tel"
-                id="invite-player-phone"
-                placeholder="0712345678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-300 font-bold mb-1">Jersey Number</label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Jersey Number
+              </label>
               <input
                 type="number"
-                id="invite-jersey-number"
                 min={1}
                 max={99}
                 value={jerseyNumber}
-                onChange={(e) => setJerseyNumber(Number(e.target.value))}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                onChange={(e) => setJerseyNumber(parseInt(e.target.value, 10) || 1)}
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-bold font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 font-bold mb-1">Pitch Position</label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Position
+              </label>
               <select
-                id="invite-position"
                 value={position}
                 onChange={(e) => setPosition(e.target.value as any)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046] cursor-pointer"
               >
                 <option value="GK">Goalkeeper (GK)</option>
                 <option value="DEF">Defender (DEF)</option>
@@ -168,42 +147,64 @@ export const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-slate-300 font-bold mb-1">Preferred Foot</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['right', 'left', 'both'] as const).map((foot) => (
-                <button
-                  type="button"
-                  key={foot}
-                  onClick={() => setPreferredFoot(foot)}
-                  className={`py-1.5 rounded-lg border text-xs font-bold capitalize transition-all ${
-                    preferredFoot === foot
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-[#0D1117] text-slate-400 border-[#2A3441]'
-                  }`}
-                >
-                  {foot}
-                </button>
-              ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Preferred Foot
+              </label>
+              <select
+                value={preferredFoot}
+                onChange={(e) => setPreferredFoot(e.target.value as any)}
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-bold text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046] cursor-pointer"
+              >
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+                <option value="both">Both / Dual</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Student ID # (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. S13/12345/23"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+              />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#2A3441] flex items-center justify-end gap-2">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Phone Contact (Optional)
+            </label>
+            <input
+              type="tel"
+              placeholder="+254 700 000000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 cursor-pointer"
+              disabled={isSubmitting}
+              className="px-4 py-1.5 rounded-full bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              id="btn-submit-invite-player"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black hover:brightness-110 cursor-pointer shadow-md transition-all flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-full bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs cursor-pointer shadow-xs"
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Registering...' : 'Register Player'}</span>
+              {isSubmitting ? 'Registering...' : 'Register Player'}
             </button>
           </div>
         </form>
@@ -211,3 +212,5 @@ export const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     </div>
   );
 };
+
+export default InvitePlayerModal;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Share2, UserPlus, MessageCircle, Sparkles, Shield } from 'lucide-react';
+import { X, Copy, Check, MessageCircle, Shield, UserPlus } from 'lucide-react';
 
 interface ShareTeamLinkModalProps {
   isOpen: boolean;
@@ -43,95 +43,107 @@ export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-[#161B22] border border-[#2A3441] rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm shadow-2xl overflow-hidden p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-[#2A3441] pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-              <Sparkles className="w-6 h-6" />
+        <div className="flex items-start justify-between border-b border-[#e6e8ec] dark:border-[#1a2e45] pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-sm bg-[#ff0046]/15 flex items-center justify-center text-[#ff0046] shrink-0">
+              <Shield className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-lg text-white">Welcome Coach!</h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  0 Players Registered
+                <h3 className="font-black text-sm uppercase tracking-wider text-slate-900 dark:text-white">
+                  Welcome Coach!
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  Squad Onboarding
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Onboard your squad for <span className="text-emerald-400 font-bold">{teamName}</span> via your team link.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Onboard players for <strong className="text-slate-900 dark:text-white">{teamName}</strong> via your custom link.
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[#0D1117] border border-[#2A3441] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-sm cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Informative explanation */}
-        <div className="bg-[#0D1117] border border-emerald-500/20 rounded-2xl p-4 text-xs space-y-2">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold">
-            <Shield className="w-4 h-4" />
+        {/* Informative Explanation */}
+        <div className="bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm p-3 text-xs space-y-1">
+          <div className="flex items-center gap-1.5 text-[#00b04f] font-bold">
+            <Check className="w-3.5 h-3.5" />
             <span>Direct Team-Specific Player Registration</span>
           </div>
-          <p className="text-slate-300 leading-relaxed text-[11.5px]">
-            Players registering through your custom team link are automatically assigned the <span className="text-white font-semibold">Player</span> role, linked to <span className="text-emerald-300 font-semibold">{teamName}</span>, and displayed immediately in your squad roster.
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+            Players registering through this link are automatically assigned to <strong className="text-slate-900 dark:text-white">{teamName}</strong> and appear in your squad list.
           </p>
         </div>
 
         {/* Link Box */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-300">Your Team Registration Link</label>
-          <div className="flex items-center gap-2 bg-[#0D1117] border border-[#2A3441] rounded-xl p-2">
+        <div className="space-y-1">
+          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            Team Registration Link
+          </label>
+          <div className="flex items-center gap-2 bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm p-1.5">
             <input
               type="text"
               readOnly
               value={registrationUrl}
-              className="flex-1 bg-transparent text-xs text-slate-200 font-mono focus:outline-none px-2 select-all"
+              className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none px-2 select-all truncate"
             />
             <button
+              type="button"
               onClick={handleCopy}
-              className="px-3 py-1.5 bg-[#1F2937] hover:bg-[#374151] text-slate-200 hover:text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="px-3 py-1 bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-bold rounded-full transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-[#00b04f]" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
         </div>
 
-        {/* WhatsApp Direct Share Button */}
-        <div className="space-y-2 pt-1">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-[#e6e8ec] dark:border-[#1a2e45]">
           <button
+            type="button"
             onClick={handleWhatsAppShare}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-emerald-950/40 cursor-pointer active:scale-[0.98]"
+            className="flex-1 px-4 py-2 bg-[#00b04f] hover:bg-[#009944] text-white text-xs font-black rounded-full flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
           >
-            <MessageCircle className="w-5 h-5 fill-white text-transparent" />
-            <span>Share to Players via WhatsApp Direct</span>
+            <MessageCircle className="w-4 h-4 fill-white" />
+            <span>Share via WhatsApp</span>
           </button>
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          {onOpenManualAdd && (
             <button
+              type="button"
               onClick={() => {
                 onClose();
-                if (onOpenManualAdd) onOpenManualAdd();
+                onOpenManualAdd();
               }}
-              className="py-2.5 px-3 bg-[#0D1117] hover:bg-[#1C2331] border border-[#2A3441] text-slate-300 hover:text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              className="px-4 py-2 bg-[#ff0046] hover:bg-[#e0003c] text-white text-xs font-black rounded-full flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
-              <UserPlus className="w-4 h-4 text-emerald-400" />
-              <span>Add Player Manually</span>
+              <UserPlus className="w-4 h-4" />
+              <span>Add Manually</span>
             </button>
-            <button
-              onClick={onClose}
-              className="py-2.5 px-3 bg-[#0D1117] hover:bg-[#1C2331] border border-[#2A3441] text-slate-400 hover:text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center cursor-pointer transition-all"
-            >
-              <span>Maybe Later</span>
-            </button>
-          </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450] text-xs font-bold rounded-full transition-colors cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
+export default ShareTeamLinkModal;

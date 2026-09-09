@@ -1,19 +1,9 @@
 import React from 'react';
 import {
   Zap,
-  X,
-  ArrowRightLeft,
-  LayoutDashboard,
-  Users,
-  Trophy,
-  Settings,
   Newspaper,
-  Calendar,
-  Shirt,
   PenTool,
-  Shield,
 } from 'lucide-react';
-import { initialFixtures, initialStandings } from './mockData';
 import { useTeamDashboard } from './hooks/useTeamDashboard';
 import { Homepage } from './components/Homepage';
 import { SettingsPage } from './components/SettingsPage';
@@ -31,7 +21,7 @@ import { NewsFeed } from '../../MainFeed/NewsFeed';
 
 export const TeamDashboard: React.FC = () => {
   const {
-    isLoggedIn,
+    isLoggedIn: _isLoggedIn,
     currentRole,
     canPublish,
     teamId,
@@ -51,23 +41,23 @@ export const TeamDashboard: React.FC = () => {
     roster,
     refreshRoster,
     startingXI,
-    formation,
-    setFormation,
-    playstyleSliders,
-    setPlaystyleSliders,
-    pitchNodes,
-    selectedPitchSlot,
-    setSelectedPitchSlot,
-    handleSwapPitchSlots,
-    showSwapModal,
-    setShowSwapModal,
+    formation: _formation,
+    setFormation: _setFormation,
+    playstyleSliders: _playstyleSliders,
+    setPlaystyleSliders: _setPlaystyleSliders,
+    pitchNodes: _pitchNodes,
+    selectedPitchSlot: _selectedPitchSlot,
+    setSelectedPitchSlot: _setSelectedPitchSlot,
+    handleSwapPitchSlots: _handleSwapPitchSlots,
+    showSwapModal: _showSwapModal,
+    setShowSwapModal: _setShowSwapModal,
     showRolesModal,
     setShowRolesModal,
     roleAssignments,
     setRoleAssignments,
     handleSaveMatchLineup,
-    activeSquadType,
-    setActiveSquadType,
+    activeSquadType: _activeSquadType,
+    setActiveSquadType: _setActiveSquadType,
     handleOpenNextGameSquad,
     searchTerm,
     setSearchTerm,
@@ -82,13 +72,13 @@ export const TeamDashboard: React.FC = () => {
     toastMessage,
     showToast,
     handleLogout,
-    collectiveRating,
-    collectiveStrength,
-    benchPlayers,
+    collectiveRating: _collectiveRating,
+    collectiveStrength: _collectiveStrength,
+    benchPlayers: _benchPlayers,
     handleSaveRoles,
-    handleSaveFormation,
-    handleSaveSquad,
-    handleSwapPlayer,
+    handleSaveFormation: _handleSaveFormation,
+    handleSaveSquad: _handleSaveSquad,
+    handleSwapPlayer: _handleSwapPlayer,
     handleUpdatePlayerStatus,
     handleDeletePlayer,
     showSharePopup,
@@ -99,6 +89,7 @@ export const TeamDashboard: React.FC = () => {
   } = useTeamDashboard();
 
   // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
+  // Per strict instructions: You must not touch the squad page.
   if (activeView === 'TACTICS') {
     return (
       <div className="fixed inset-0 z-[9999] w-screen h-screen overflow-hidden bg-[#030716] select-none touch-none">
@@ -118,17 +109,17 @@ export const TeamDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-slate-100 antialiased flex flex-col md:flex-row font-sans selection:bg-emerald-500 selection:text-white">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-[#f2f4f7] dark:bg-[#081018] text-slate-900 dark:text-slate-100 antialiased flex flex-col lg:flex-row font-sans selection:bg-[#ff0046] selection:text-white">
+      {/* Toast Notification (Flashscore Capsule Style) */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-[100] bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center gap-2.5 animate-bounce text-xs font-black">
-          <Zap className="w-4 h-4 text-emerald-200 shrink-0" />
+        <div className="fixed top-5 right-5 z-[100] bg-[#0e1e2d] text-white px-4 py-2.5 rounded-full shadow-2xl border border-[#1a2e45] flex items-center gap-2 animate-fade-in text-xs font-black">
+          <Zap className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* DESKTOP SIDEBAR NAVIGATION */}
-      <div className="hidden lg:block w-72 p-4 shrink-0">
+      <div className="hidden lg:block w-64 p-3 shrink-0">
         <TeamSidebar
           activeView={activeView}
           setActiveView={setActiveView}
@@ -148,7 +139,7 @@ export const TeamDashboard: React.FC = () => {
         />
 
         {/* MAIN VIEWS WORKSPACE CANVAS */}
-        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto overflow-y-auto pb-28">
+        <main className="flex-1 p-3 md:p-5 max-w-7xl w-full mx-auto overflow-y-auto pb-28">
           {/* PAGE 1: OVERVIEW / HOMEPAGE */}
           {activeView === 'DASHBOARD' && (
             <Homepage
@@ -215,23 +206,24 @@ export const TeamDashboard: React.FC = () => {
           {/* PAGE 6: NEWSROOM & PRESS */}
           {activeView === 'NEWS' && (
             <div className="space-y-4">
-              <div className="bg-[#161B22] p-5 rounded-3xl border border-[#2A3441] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+              <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    <Newspaper className="w-5 h-5 text-emerald-400" />
-                    <span>Egerton FC Press Releases & Announcements</span>
+                  <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <Newspaper className="w-4 h-4 text-[#ff0046]" />
+                    <span>Official Newsroom & Press Releases</span>
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Official club communications, injury bulletins, transfer statements, and tactical briefings.
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Official club communications, tactical statements, and injury bulletins.
                   </p>
                 </div>
                 {canPublish && (
                   <button
+                    type="button"
                     onClick={() => setIsComposeModalOpen(true)}
-                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer shrink-0 self-start sm:self-auto"
+                    className="px-4 py-1.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
                   >
-                    <PenTool className="w-4 h-4" />
-                    <span>Compose Journal</span>
+                    <PenTool className="w-3.5 h-3.5" />
+                    <span>Compose Release</span>
                   </button>
                 )}
               </div>
@@ -246,7 +238,7 @@ export const TeamDashboard: React.FC = () => {
                         excerpt: art.excerpt || art.title,
                         content: art.content,
                         category: art.category || 'general',
-                        author: 'Team Official',
+                        author: 'Head Coach',
                         authorRole: 'Official Club Representative',
                         verified: true,
                         publishedAt: new Date(art.published_at || art.created_at).toLocaleDateString(),
@@ -334,6 +326,5 @@ export const TeamDashboard: React.FC = () => {
     </div>
   );
 };
-
 
 export default TeamDashboard;
