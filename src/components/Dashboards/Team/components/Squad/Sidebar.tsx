@@ -37,24 +37,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="relative z-30 flex flex-col items-start justify-between h-full py-3.5 pl-3 sm:pl-4 pr-1 select-none pointer-events-auto flex-shrink-0">
       {/* Top Stack of 4 Action Icons in curved dark dock */}
       <div className="flex flex-col items-center gap-2.5 bg-[#03091e]/90 p-1.5 rounded-[22px] border border-[#142352]/70 shadow-2xl backdrop-blur-md">
-        {/* 1. Dynamic Top Avatar: Coach sees Captain; Captain sees Coach */}
+        {/* 1. Coach Profile Avatar: Shows Coach details */}
         <button
-          onClick={isCoach ? onOpenRoles : onOpenManager}
-          title={isCoach ? `Team Captain: ${captain?.name || 'Captain'}` : `Head Coach: ${manager.name}`}
+          onClick={onOpenManager}
+          title={`Head Coach: ${manager.name}`}
           className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer group"
         >
           <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-[#0c1a40] border-[2px] border-[#6b8cbe] shadow-md overflow-hidden flex items-end justify-center p-0.5 relative hover:border-white transition-colors">
             <img
-              src={isCoach ? (captain?.photoUrl || manager.photoUrl) : manager.photoUrl}
-              alt={isCoach ? (captain?.name || 'Captain') : manager.name}
+              src={manager.photoUrl}
+              alt={manager.name}
               className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
             />
-            {/* Captain Badge if Coach is viewing Captain */}
-            {isCoach && (
-              <div className="absolute bottom-0.5 right-0.5 bg-amber-400 text-black font-black text-[8.5px] px-1 rounded shadow leading-tight">
-                C
-              </div>
-            )}
+            {/* Coach Badge */}
+            <div className="absolute bottom-0.5 right-0.5 bg-blue-500 text-white font-black text-[8px] px-1 rounded shadow leading-tight">
+              COACH
+            </div>
           </div>
         </button>
 

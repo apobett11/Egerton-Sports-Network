@@ -24,9 +24,9 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-y-0 left-0 z-40 flex animate-in fade-in duration-100">
-      {/* Sliding Panel Container */}
-      <div className="w-[195px] sm:w-[215px] h-full bg-[#0d1424] text-white shadow-2xl flex flex-col justify-start pt-3 pb-2 px-2.5 animate-in slide-in-from-left duration-150 border-r border-[#1e2d4d] select-none">
+    <div className="absolute inset-y-0 left-0 z-40 flex pointer-events-auto select-none">
+      {/* Sliding Panel Container positioned alongside left dock */}
+      <div className="w-[195px] sm:w-[220px] h-full bg-[#0d1424]/95 backdrop-blur-md text-white shadow-2xl flex flex-col justify-start pt-3 pb-2 px-2.5 animate-in slide-in-from-left duration-150 border-r border-[#1e2d4d] z-50">
         {/* Drawer Header with Title and X Close Button */}
         <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#1e2d4d] px-1">
           <div className="flex items-center gap-1.5">
@@ -44,7 +44,12 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
           </button>
         </div>
 
-        {/* 2-Column Grid of Substitute/Reserve Players with Position Borders */}
+        {/* Info hint */}
+        <div className="px-1 mb-2 text-[10px] text-blue-300 font-medium">
+          Drag player onto pitch or tap to substitute.
+        </div>
+
+        {/* 2-Column Grid of Substitute/Reserve Players */}
         <div className="flex-1 overflow-y-auto pr-0.5 no-scrollbar">
           {substitutes.length === 0 ? (
             <div className="text-center text-xs text-slate-500 py-8 px-2">
@@ -59,6 +64,7 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
                     size="sm"
                     onClick={() => onSubDirectly && onSubDirectly(sub)}
                     onDragStart={(e, p) => {
+                      e.dataTransfer.setData('text/plain', p.id);
                       onDragStart(e, p);
                     }}
                   />
@@ -69,10 +75,12 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
         </div>
       </div>
 
-      {/* Dimmed backdrop area (click to close) */}
+      {/* Non-blocking dimmed area: click outside to close, but transparent to drag events */}
       <div
         onClick={onClose}
-        className="flex-1 bg-black/40 backdrop-blur-[1px] cursor-pointer"
+        onDragOver={(e) => e.preventDefault()}
+        className="flex-1 bg-black/20 backdrop-blur-[0.5px] cursor-pointer"
+        style={{ pointerEvents: 'auto' }}
       />
     </div>
   );

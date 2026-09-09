@@ -114,9 +114,27 @@ export const Pitch: React.FC<PitchProps> = ({
     setSwapTargetId(null);
   };
 
+  // Prevent mobile pull-to-refresh reload while dragging
+  useEffect(() => {
+    const blockReloadOnTouch = (e: TouchEvent) => {
+      if (activeDragId && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    if (activeDragId) {
+      document.addEventListener('touchmove', blockReloadOnTouch, { passive: false });
+    }
+
+    return () => {
+      document.removeEventListener('touchmove', blockReloadOnTouch);
+    };
+  }, [activeDragId]);
+
   // Pointer Move handler
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isCoach || !activeDragId || !dragStartRef.current) return;
+    if (e.cancelable) e.preventDefault();
     handleDragUpdate(e.clientX, e.clientY);
   };
 
@@ -142,11 +160,12 @@ export const Pitch: React.FC<PitchProps> = ({
     dragStartRef.current = null;
   };
 
-  // Touch handlers for mobile devices (0s drag start)
+  // Touch handlers for mobile devices (0s drag start + reload block)
   const handleTouchStart = (e: React.TouchEvent, player: Player) => {
     if (!isCoach) return;
     const touch = e.touches[0];
     if (!touch || !pitchRef.current) return;
+    if (e.cancelable) e.preventDefault();
 
     dragStartRef.current = {
       clientX: touch.clientX,
@@ -164,6 +183,7 @@ export const Pitch: React.FC<PitchProps> = ({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isCoach || !activeDragId || !dragStartRef.current) return;
+    if (e.cancelable) e.preventDefault();
     const touch = e.touches[0];
     if (!touch) return;
     handleDragUpdate(touch.clientX, touch.clientY);

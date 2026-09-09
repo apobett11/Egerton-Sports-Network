@@ -44,9 +44,20 @@ export type FormationType =
   | '4-2-2-2' 
   | '3-2-4-1';
 
+export interface InMatchRoles {
+  captainId: string;
+  cornerTakerId: string;
+  rightFreeKickTakerId: string;
+  leftFreeKickTakerId: string;
+  penaltyTakerId: string;
+}
+
 export interface Manager {
   name: string;
   photoUrl: string;
+  phone?: string;
+  email?: string;
+  title?: string;
   proficiencies: Record<Playstyle, number>;
 }
 

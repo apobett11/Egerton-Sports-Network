@@ -5,7 +5,8 @@ import {
   Playstyle, 
   ActiveModal,
   Manager,
-  TeamData
+  TeamData,
+  InMatchRoles
 } from './types';
 import { 
   TEAMS_DATA,
@@ -100,33 +101,108 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     return null;
   }, [roster, teamCrest]);
 
-  const [currentTeamId, setCurrentTeamId] = useState<string>(dbMappedSquad ? 'egerton_fc' : 'man_united');
+  const CACHE_KEY = `esn_squad_tactics_${teamId}`;
 
-  const [startingXI, setStartingXI] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.startingXI : initialTeam.startingXI);
-  const [substitutes, setSubstitutes] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.substitutes : initialTeam.substitutes.slice(0, 7));
-  const [reserves, setReserves] = useState<Player[]>(dbMappedSquad ? dbMappedSquad.reserves : initialTeam.substitutes.slice(7));
-  const [manager, setManager] = useState<Manager>(dbMappedSquad ? dbMappedSquad.manager : initialTeam.manager);
-  const [formation, setFormation] = useState<FormationType>('4-3-3');
-  const [playstyle, setPlaystyle] = useState<Playstyle>('Possession Game');
+  // Read local storage cache for instant restore without resetting to default on reload
+  const cachedData = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, [CACHE_KEY]);
+
+  const [currentTeamId, setCurrentTeamId] = useState<string>(cachedData?.teamId || (dbMappedSquad ? 'egerton_fc' : 'man_united'));
+
+  const [startingXI, setStartingXI] = useState<Player[]>(() => {
+    if (cachedData?.startingXI && cachedData.startingXI.length === 11) return cachedData.startingXI;
+    return dbMappedSquad ? dbMappedSquad.startingXI : initialTeam.startingXI;
+  });
+  const [substitutes, setSubstitutes] = useState<Player[]>(() => {
+    if (cachedData?.substitutes) return cachedData.substitutes;
+    return dbMappedSquad ? dbMappedSquad.substitutes : initialTeam.substitutes.slice(0, 7);
+  });
+  const [reserves, setReserves] = useState<Player[]>(() => {
+    if (cachedData?.reserves) return cachedData.reserves;
+    return dbMappedSquad ? dbMappedSquad.reserves : initialTeam.substitutes.slice(7);
+  });
+  const [manager, setManager] = useState<Manager>(() => {
+    if (cachedData?.manager) return cachedData.manager;
+    return dbMappedSquad ? dbMappedSquad.manager : initialTeam.manager;
+  });
+  const [formation, setFormation] = useState<FormationType>(() => {
+    if (cachedData?.formation) return cachedData.formation;
+    return '4-3-3';
+  });
+  const [playstyle, setPlaystyle] = useState<Playstyle>(() => {
+    if (cachedData?.playstyle) return cachedData.playstyle;
+    return 'Possession Game';
+  });
+  const [customCrest, setCustomCrest] = useState<string>(() => {
+    return cachedData?.crestUrl || teamCrest || '';
+  });
+  const [inMatchRoles, setInMatchRoles] = useState<any>(() => {
+    if (cachedData?.inMatchRoles) return cachedData.inMatchRoles;
+    return {
+      captainId: startingXI[0]?.id || '',
+      cornerTakerId: startingXI[1]?.id || '',
+      rightFreeKickTakerId: startingXI[2]?.id || '',
+      leftFreeKickTakerId: startingXI[3]?.id || '',
+      penaltyTakerId: startingXI[0]?.id || '',
+    };
+  });
+
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Preserve local cache on reload - only fall back to default template if no cache exists
   React.useEffect(() => {
+    if (cachedData) return;
     if (dbMappedSquad) {
       setStartingXI(dbMappedSquad.startingXI);
       setSubstitutes(dbMappedSquad.substitutes);
       setReserves(dbMappedSquad.reserves);
       setManager(dbMappedSquad.manager);
     }
-  }, [dbMappedSquad]);
+  }, [dbMappedSquad, cachedData]);
 
   const autoSaveTimeoutRef = useRef<any>(null);
+
+  // Save full state locally so refresh/re-login persists exactly
+  const saveToLocalCache = (data: {
+    startingXI: Player[];
+    substitutes: Player[];
+    reserves: Player[];
+    formation: FormationType;
+    playstyle: Playstyle;
+    inMatchRoles?: any;
+    manager?: Manager;
+    crestUrl?: string;
+  }) => {
+    try {
+      const payload = {
+        teamId,
+        startingXI: data.startingXI,
+        substitutes: data.substitutes,
+        reserves: data.reserves,
+        formation: data.formation,
+        playstyle: data.playstyle,
+        inMatchRoles: data.inMatchRoles || inMatchRoles,
+        manager: data.manager || manager,
+        crestUrl: data.crestUrl || customCrest,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.warn('LocalStorage save error:', err);
+    }
+  };
 
   const currentTeam: TeamData = {
     id: teamId,
     name: teamName || (dbMappedSquad ? 'Egerton FC First Team' : initialTeam.name),
     shortName: 'EFC',
-    crestUrl: teamCrest || (dbMappedSquad ? 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80' : initialTeam.crestUrl),
+    crestUrl: customCrest || teamCrest || (dbMappedSquad ? 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80' : initialTeam.crestUrl),
     formation,
     playstyle,
     manager,
@@ -147,14 +223,28 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     showToast(msg);
   };
 
-  // Card position intelligence: Auto-save squad and tactics to Database
+  // Card position intelligence: Immediate cache + silent auto-save to Database
   const triggerAutoSave = (
     newXI: Player[],
     newSubs: Player[],
     newReserves: Player[],
     newFormation: FormationType,
-    newPlaystyle: Playstyle
+    newPlaystyle: Playstyle,
+    newRoles?: any,
+    newManager?: Manager,
+    newCrest?: string
   ) => {
+    saveToLocalCache({
+      startingXI: newXI,
+      substitutes: newSubs,
+      reserves: newReserves,
+      formation: newFormation,
+      playstyle: newPlaystyle,
+      inMatchRoles: newRoles,
+      manager: newManager,
+      crestUrl: newCrest,
+    });
+
     if (!isCoach) return;
 
     if (autoSaveTimeoutRef.current) {
@@ -460,6 +550,8 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     try {
       const newUrl = await uploadTeamCrest(teamId, file);
       if (newUrl) {
+        setCustomCrest(newUrl);
+        triggerAutoSave(startingXI, substitutes, reserves, formation, playstyle, inMatchRoles, manager, newUrl);
         showToast('Team logo updated successfully!');
       }
     } catch {
@@ -467,10 +559,44 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     }
   };
 
+  // Handle upload coach photo
+  const handleUploadCoachPhoto = async (file: File) => {
+    const url = URL.createObjectURL(file);
+    const updatedMgr = { ...manager, photoUrl: url };
+    setManager(updatedMgr);
+    triggerAutoSave(startingXI, substitutes, reserves, formation, playstyle, inMatchRoles, updatedMgr, customCrest);
+    showToast('Coach photo updated');
+  };
+
+  // Handle update manager info
+  const handleUpdateManager = (updated: Partial<Manager>) => {
+    const updatedMgr = { ...manager, ...updated };
+    setManager(updatedMgr);
+    triggerAutoSave(startingXI, substitutes, reserves, formation, playstyle, inMatchRoles, updatedMgr, customCrest);
+    showToast('Coach profile updated');
+  };
+
+  // Handle select sample crest
+  const handleSelectSampleCrest = (url: string) => {
+    setCustomCrest(url);
+    triggerAutoSave(startingXI, substitutes, reserves, formation, playstyle, inMatchRoles, manager, url);
+    showToast('Team crest updated');
+  };
+
+  // Handle update in-match roles
+  const handleUpdateInMatchRoles = (roles: InMatchRoles) => {
+    setInMatchRoles(roles);
+    triggerAutoSave(startingXI, substitutes, reserves, formation, playstyle, roles, manager, customCrest);
+    showToast('In-match roles saved');
+  };
+
   return (
     <LandscapeGuard>
       {/* Container with generous side padding to protect all side dock icons and collective strength */}
-      <main className="relative w-full h-full overflow-hidden bg-efootball-pattern flex items-stretch px-2 sm:px-6 select-none">
+      <main
+        className="relative w-full h-full overflow-hidden bg-efootball-pattern flex items-stretch px-2 sm:px-6 select-none"
+        style={{ overscrollBehavior: 'none' }}
+      >
         {/* Abstract Curved Glowing Background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -left-[10%] -top-[20%] w-[55%] h-[90%] rounded-full bg-gradient-to-br from-[#0c2269]/40 to-transparent blur-3xl" />
@@ -486,7 +612,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           teamCrest={currentTeam.crestUrl}
           onOpenManager={() => setActiveModal('manager')}
           onOpenTeam={() => setActiveModal('team')}
-          onOpenRoles={() => setActiveModal('manager')}
+          onOpenRoles={() => setActiveModal('team')}
           onOpenSubstitutes={() =>
             setActiveModal(activeModal === 'substitutes' ? 'none' : 'substitutes')
           }
@@ -544,32 +670,20 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onSubDirectly={handleSubDirectly}
         />
 
-        {/* 5. Manager / Captain Detail Modal */}
+        {/* 5. Head Coach Detail Modal (Coach Photo, Phone, Email, License) */}
         <ManagerModal
-          isOpen={activeModal === 'manager' || activeModal === 'formation' || activeModal === 'playstyle'}
-          initialSubView={activeModal === 'formation' ? 'formation' : activeModal === 'playstyle' ? 'playstyle' : 'main'}
+          isOpen={activeModal === 'manager'}
           onClose={() => setActiveModal('none')}
           manager={manager}
-          captain={currentCaptain}
-          currentFormation={formation}
-          currentPlaystyle={playstyle}
-          onSelectFormation={handleSelectFormation}
-          onSelectPlaystyle={(p) => {
-            if (!isCoach) {
-              showToast('Permission Denied: Only Head Coach can change team tactical playstyle.');
-              return;
-            }
-            setPlaystyle(p);
-            triggerAutoSave(startingXI, substitutes, reserves, formation, p);
-            showToast(`Team Playstyle changed to ${p}`);
-          }}
+          onUploadCoachPhoto={handleUploadCoachPhoto}
+          onUpdateManager={handleUpdateManager}
           isCoach={isCoach}
           onPermissionDenied={handlePermissionDenied}
         />
 
-        {/* 6. Team Modal (Upload Crest, View Formation & Playstyle) */}
+        {/* 6. Team Modal (Upload Crest, Sample Crests, In-Match Roles, Formation & Playstyle) */}
         <TeamModal
-          isOpen={activeModal === 'team'}
+          isOpen={activeModal === 'team' || activeModal === 'formation' || activeModal === 'playstyle'}
           onClose={() => setActiveModal('none')}
           collectiveStrength={collectiveStrength}
           players={startingXI}
@@ -579,9 +693,23 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           teamsList={Object.values(TEAMS_DATA)}
           onSelectTeam={handleSelectTeam}
           onSetCaptain={handleSetCaptain}
+          inMatchRoles={inMatchRoles}
+          onUpdateInMatchRoles={handleUpdateInMatchRoles}
           onUploadCrest={handleUploadCrest}
+          onSelectSampleCrest={handleSelectSampleCrest}
           formation={formation}
           playstyle={playstyle}
+          onSelectFormation={handleSelectFormation}
+          onSelectPlaystyle={(p) => {
+            if (!isCoach) {
+              showToast('Permission Denied: Only Head Coach can change team tactical playstyle.');
+              return;
+            }
+            setPlaystyle(p);
+            triggerAutoSave(startingXI, substitutes, reserves, formation, p, inMatchRoles, manager, customCrest);
+            showToast(`Team Playstyle changed to ${p}`);
+          }}
+          onAutoPick={handleAutoPick}
           isCoach={isCoach}
           onPermissionDenied={handlePermissionDenied}
         />

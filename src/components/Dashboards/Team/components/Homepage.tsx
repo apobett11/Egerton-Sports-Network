@@ -205,323 +205,309 @@ export const Homepage: React.FC<HomepageProps> = ({
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-16 select-none">
-      {/* 1. MATCHDAY FOCUS HERO CARD (FLASHSCORE STYLE) */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-        {/* FLASHCORE LEAGUE HEADER BAND */}
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              Impending Matchday Focus
-            </span>
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-[#eef1f5] dark:bg-[#14263b] px-2 py-0.5 rounded-full">
-              {nextMatch ? `${nextMatch.league} • MD ${nextMatch.matchday || 1}` : 'No Impending Fixture'}
-            </span>
-          </div>
-
-          {/* Clock Countdown Capsule */}
-          {nextMatch?.scheduled_time ? (
-            <div className="flex items-center gap-1.5 font-mono text-[11px] font-black text-white bg-[#0e1e2d] border border-[#1a2e45] px-3 py-1 rounded-full shadow-xs">
-              <Clock className="w-3.5 h-3.5 text-[#ff0046]" />
-              <span>
-                {fd(timeLeft.days)}d : {fd(timeLeft.hours)}h : {fd(timeLeft.minutes)}m : {fd(timeLeft.seconds)}s
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-400 bg-[#eef1f5] dark:bg-[#14263b] px-2.5 py-0.5 rounded-full">
-              <Clock className="w-3 h-3 text-slate-400" />
-              <span>Schedule Pending</span>
-            </div>
-          )}
-        </div>
-
-        {/* MATCHUP DISPLAY */}
-        {nextMatch ? (
-          <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            {nextMatch.isHome !== false ? (
-              <>
-                {/* HOME CLUB */}
-                <div className="flex-1 flex items-center gap-3 w-full sm:w-auto">
-                  <div className="w-12 h-12 rounded-sm bg-[#152a40] border border-white/10 p-1.5 flex items-center justify-center shrink-0 shadow-xs">
-                    {ourTeamLogo ? (
-                      <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="font-black text-xs text-white">{ourTeamShort}</span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                      {ourTeamName}
-                    </h3>
-                    <span className="text-[10px] text-[#00b04f] font-bold uppercase tracking-wider block">
-                      Home Club
-                    </span>
-                  </div>
-                </div>
-
-                {/* VS / TIME BADGE */}
-                <div className="px-4 py-2 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] text-center shrink-0">
-                  <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-                  <span className="text-xs font-mono font-black text-[#ff0046]">{nextMatch.time || '16:00 EAT'}</span>
-                </div>
-
-                {/* AWAY CLUB */}
-                <div className="flex-1 flex items-center justify-start sm:justify-end gap-3 w-full sm:w-auto text-left sm:text-right">
-                  <div className="min-w-0 order-2 sm:order-1">
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                      {nextMatch.opponentName}
-                    </h3>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
-                      Away Opponent
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] p-1.5 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
-                    {nextMatch.opponentLogo ? (
-                      <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="font-black text-xs text-slate-600 dark:text-slate-300">
-                        {nextMatch.opponentName.slice(0, 3).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* HOME CLUB (OPPONENT) */}
-                <div className="flex-1 flex items-center gap-3 w-full sm:w-auto">
-                  <div className="w-12 h-12 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] p-1.5 flex items-center justify-center shrink-0 shadow-xs">
-                    {nextMatch.opponentLogo ? (
-                      <img src={nextMatch.opponentLogo} alt={nextMatch.opponentName} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="font-black text-xs text-slate-600 dark:text-slate-300">
-                        {nextMatch.opponentName.slice(0, 3).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                      {nextMatch.opponentName}
-                    </h3>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider block">
-                      Home Club
-                    </span>
-                  </div>
-                </div>
-
-                {/* VS / TIME BADGE */}
-                <div className="px-4 py-2 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] text-center shrink-0">
-                  <span className="text-[10px] font-black text-slate-400 uppercase block tracking-wider">VS</span>
-                  <span className="text-xs font-mono font-black text-[#ff0046]">{nextMatch.time || '16:00 EAT'}</span>
-                </div>
-
-                {/* AWAY CLUB (OUR CLUB) */}
-                <div className="flex-1 flex items-center justify-start sm:justify-end gap-3 w-full sm:w-auto text-left sm:text-right">
-                  <div className="min-w-0 order-2 sm:order-1">
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                      {ourTeamName}
-                    </h3>
-                    <span className="text-[10px] text-[#00b04f] font-bold uppercase tracking-wider block">
-                      Away Club
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 rounded-sm bg-[#152a40] border border-white/10 p-1.5 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
-                    {ourTeamLogo ? (
-                      <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="font-black text-xs text-white">{ourTeamShort}</span>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="p-8 text-center space-y-1">
-            <Trophy className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-            <p className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
-              No Upcoming Matches Scheduled
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              League fixtures assigned to your team will automatically appear here.
-            </p>
-          </div>
-        )}
-
-        {/* METADATA BAR & ACTION BUTTONS */}
-        <div className="px-4 py-3 bg-[#f8f9fa] dark:bg-[#112236] border-t border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col sm:flex-row items-center justify-between gap-3">
-          {nextMatch ? (
-            <div className="flex items-center gap-3 sm:gap-4 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
-              <span className="flex items-center gap-1 font-semibold">
-                <MapPin className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
-                {nextMatch.location || 'Pavilion Grounds'}
-              </span>
-              <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1 font-semibold">
-                <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                {nextMatch.date}
-              </span>
-              <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
-                <span>{nextMatch.referee || 'Ref. Appointed'}</span>
-              </span>
-            </div>
-          ) : (
-            <span className="text-xs text-slate-500 dark:text-slate-400">Awaiting match day designation</span>
-          )}
-
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
-            <button
-              type="button"
-              onClick={() => onNavigateView('TACTICS')}
-              className="px-4 py-1.5 rounded-full text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] text-white shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Configure Match Squad</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateView('STANDINGS')}
-              className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
-            >
-              <Calendar className="w-3 h-3" />
-              <span>Fixtures</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateView('STANDINGS')}
-              className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
-            >
-              <Trophy className="w-3 h-3 text-amber-400" />
-              <span>Standings</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. LINESMAN MATCH STRIP */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-sm bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-            <Flag className="w-4 h-4" />
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[9px] font-black uppercase tracking-wider bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">
-                Official Linesman Duty
-              </span>
-              {nextLinesmanMatch && (
-                <span className="text-[9px] font-black uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] px-2 py-0.5 rounded-full">
-                  {nextLinesmanMatch.role} • MD {nextLinesmanMatch.matchday || 1}
-                </span>
-              )}
-            </div>
-
-            {nextLinesmanMatch ? (
-              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate mt-0.5">
-                {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal">vs</span> {nextLinesmanMatch.awayTeamName}
-                <span className="text-slate-400 font-medium text-[11px] ml-2">
-                  • {nextLinesmanMatch.pitch} • {nextLinesmanMatch.time}
-                </span>
-              </h4>
-            ) : (
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                No linesman assignments currently allocated for your team.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowLinesmanModal(true)}
-          className="px-3.5 py-1.5 rounded-full text-xs font-black bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-auto"
-        >
-          <span>All Linesman Matches</span>
-          {linesmanMatches.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-[#ff0046] text-white text-[9px] font-black">
-              {linesmanMatches.length}
-            </span>
-          )}
-          <ArrowRight className="w-3 h-3 ml-0.5" />
-        </button>
-      </section>
-
-      {/* 3. QUICK ACTION PILLS ROW */}
-      <section className="space-y-2">
+    <div className="space-y-7 max-w-7xl mx-auto pb-16 select-none">
+      {/* 1. SECTION: IMPENDING FIXTURES & OFFICIAL DUTIES */}
+      <section className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-[#ff0046]" />
-            <span>Coach Command Center</span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Matchday Focus & Official Duties
+            </h2>
+          </div>
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-200/60 dark:bg-slate-800/80 px-2.5 py-0.5 rounded-full">
+            {nextMatch ? `${nextMatch.league} • MD ${nextMatch.matchday || 1}` : 'Impending Schedule'}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* THIN STRIP NEXT MATCH CARD */}
+        <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl shadow-xs overflow-hidden transition-all">
+          {nextMatch ? (
+            <div className="p-3 sm:p-3.5 flex flex-col lg:flex-row items-center justify-between gap-3">
+              {/* TEAMS INLINE THIN STRIP */}
+              <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-4 w-full lg:w-auto min-w-0 flex-1">
+                {/* HOME TEAM */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial">
+                  <div className="w-8 h-8 rounded-lg bg-[#152a40] border border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                    {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
+                      <img
+                        src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
+                        alt="Home Team"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="font-black text-[10px] text-white">
+                        {nextMatch.isHome !== false ? ourTeamShort : nextMatch.opponentName.slice(0, 3).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
+                      {nextMatch.isHome !== false ? ourTeamName : nextMatch.opponentName}
+                    </span>
+                    <span className="text-[9px] text-[#00b04f] font-semibold uppercase tracking-wide block leading-none">
+                      Home
+                    </span>
+                  </div>
+                </div>
+
+                {/* VS / TIME PILL */}
+                <div className="flex flex-col items-center justify-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] shrink-0">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">VS</span>
+                  <span className="text-[11px] font-mono font-black text-[#ff0046] mt-0.5 leading-none">
+                    {nextMatch.time || '16:00'}
+                  </span>
+                </div>
+
+                {/* AWAY TEAM */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial text-right sm:text-left justify-end sm:justify-start">
+                  <div className="min-w-0 order-2 sm:order-1">
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
+                      {nextMatch.isHome !== false ? nextMatch.opponentName : ourTeamName}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wide block leading-none">
+                      Away
+                    </span>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
+                    {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
+                      <img
+                        src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
+                        alt="Away Team"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="font-black text-[10px] text-slate-600 dark:text-slate-300">
+                        {nextMatch.isHome !== false ? nextMatch.opponentName.slice(0, 3).toUpperCase() : ourTeamShort}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* METADATA (LOCATION & TIME COUNTDOWN) */}
+              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0 flex-wrap justify-center sm:justify-start">
+                <span className="flex items-center gap-1 font-medium text-[11px]">
+                  <MapPin className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
+                  <span className="truncate max-w-[140px]">{nextMatch.location || 'Pavilion Grounds'}</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1 font-medium text-[11px]">
+                  <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span>{nextMatch.date}</span>
+                </span>
+                {nextMatch.scheduled_time && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-[#ff0046] bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                      <Clock className="w-3 h-3 text-[#ff0046]" />
+                      <span>
+                        {fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m
+                      </span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* ACTION BUTTONS (OUTLINED BY DEFAULT, ACCENT ACTIVE) */}
+              <div className="flex items-center gap-2 shrink-0 w-full lg:w-auto justify-end pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('TACTICS')}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-[#ff0046] text-[#ff0046] hover:bg-[#ff0046] hover:text-white active:bg-[#ff0046] active:text-white bg-transparent transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Configure Match Squad</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigateView('STANDINGS')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-transparent transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                >
+                  <Calendar className="w-3 h-3 text-blue-500" />
+                  <span>Fixtures</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-slate-400" />
+                <span className="font-semibold text-slate-700 dark:text-slate-300">No Upcoming Match Scheduled</span>
+              </div>
+              <span className="text-[11px] text-slate-400">Fixtures assigned by the league will appear here automatically.</span>
+            </div>
+          )}
+        </div>
+
+        {/* THIN STRIP LINESMAN DUTY CARD (Directly after Next Match) */}
+        <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+              <Flag className="w-4 h-4" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                  Official Linesman Duty
+                </span>
+                {nextLinesmanMatch && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] px-2 py-0.5 rounded-full">
+                    {nextLinesmanMatch.role} • MD {nextLinesmanMatch.matchday || 1}
+                  </span>
+                )}
+              </div>
+
+              {nextLinesmanMatch ? (
+                <div className="flex items-center gap-2 mt-1 truncate">
+                  <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                    {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal text-xs">vs</span> {nextLinesmanMatch.awayTeamName}
+                  </span>
+                  <span className="text-slate-400 font-normal text-[11px] shrink-0">
+                    • {nextLinesmanMatch.pitch} • {nextLinesmanMatch.time}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                  No linesman duties currently scheduled for your team.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Linesman Action Button with Outline styling */}
+          <button
+            type="button"
+            onClick={() => setShowLinesmanModal(true)}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-cyan-500 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white active:bg-cyan-500 active:text-white bg-transparent shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-auto"
+          >
+            <span>All Linesman Matches</span>
+            {linesmanMatches.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-cyan-500 text-white text-[9px] font-black">
+                {linesmanMatches.length}
+              </span>
+            )}
+            <ArrowRight className="w-3 h-3 ml-0.5" />
+          </button>
+        </div>
+      </section>
+
+      {/* 2. SECTION: COACH COMMAND CENTER (SPACED, TRUE CALL-TO-ACTION BUTTONS) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-emerald-500" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Coach Command Center
+            </h2>
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline font-medium">
+            Primary Matchday Controls
+          </span>
+        </div>
+
+        {/* OUTLINED CALL TO ACTION BUTTONS WITH ACCENT COLOR ON ACTIVE/HOVER */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Button 1: Team Squad */}
           <button
             type="button"
             onClick={() => onNavigateView('TACTICS')}
-            className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer shadow-xs flex items-center gap-2.5 text-left"
+            className="group p-3.5 bg-white dark:bg-[#0e1c2b] border-2 border-[#00b04f] rounded-xl hover:bg-[#00b04f] active:bg-[#00b04f] transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-sm bg-[#00b04f]/15 text-[#00b04f] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-[#00b04f]/15 text-[#00b04f] group-hover:bg-white group-hover:text-[#00b04f] group-active:bg-white group-active:text-[#00b04f] flex items-center justify-center shrink-0 transition-colors">
               <Users className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">Team Squad</div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">2D Tactical Pitch</p>
+              <div className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-white group-active:text-white uppercase tracking-tight truncate transition-colors">
+                Team Squad
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-100 group-active:text-emerald-100 font-medium truncate transition-colors">
+                2D Tactical Pitch
+              </p>
             </div>
           </button>
 
+          {/* Button 2: Players & Kits */}
           <button
             type="button"
             onClick={() => onNavigateView('ROSTER')}
-            className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer shadow-xs flex items-center gap-2.5 text-left"
+            className="group p-3.5 bg-white dark:bg-[#0e1c2b] border-2 border-blue-500 rounded-xl hover:bg-blue-500 active:bg-blue-500 transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-sm bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-500 group-hover:bg-white group-hover:text-blue-500 group-active:bg-white group-active:text-blue-500 flex items-center justify-center shrink-0 transition-colors">
               <Shield className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">Players & Kits</div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Roster & Kit Config</p>
+              <div className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-white group-active:text-white uppercase tracking-tight truncate transition-colors">
+                Players & Kits
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-blue-100 group-active:text-blue-100 font-medium truncate transition-colors">
+                Roster & Uniforms
+              </p>
             </div>
           </button>
 
+          {/* Button 3: Standings */}
           <button
             type="button"
             onClick={() => onNavigateView('STANDINGS')}
-            className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer shadow-xs flex items-center gap-2.5 text-left"
+            className="group p-3.5 bg-white dark:bg-[#0e1c2b] border-2 border-amber-500 rounded-xl hover:bg-amber-500 active:bg-amber-500 transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-sm bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-500 group-hover:bg-white group-hover:text-amber-500 group-active:bg-white group-active:text-amber-500 flex items-center justify-center shrink-0 transition-colors">
               <Trophy className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">Standings</div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">League Table & Form</p>
+              <div className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-white group-active:text-white uppercase tracking-tight truncate transition-colors">
+                Standings
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-amber-100 group-active:text-amber-100 font-medium truncate transition-colors">
+                Table & Form Guide
+              </p>
             </div>
           </button>
 
+          {/* Button 4: Newsroom */}
           <button
             type="button"
             onClick={() => onNavigateView('NEWS')}
-            className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer shadow-xs flex items-center gap-2.5 text-left"
+            className="group p-3.5 bg-white dark:bg-[#0e1c2b] border-2 border-purple-500 rounded-xl hover:bg-purple-500 active:bg-purple-500 transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-sm bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-purple-500/15 text-purple-500 group-hover:bg-white group-hover:text-purple-500 group-active:bg-white group-active:text-purple-500 flex items-center justify-center shrink-0 transition-colors">
               <Activity className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">Newsroom</div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">Official Press Desk</p>
+              <div className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-white group-active:text-white uppercase tracking-tight truncate transition-colors">
+                Newsroom
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-purple-100 group-active:text-purple-100 font-medium truncate transition-colors">
+                Club Press Releases
+              </p>
             </div>
           </button>
         </div>
       </section>
 
-      {/* 4. LEAGUE STANDINGS & RECENT FORM SNIPPET (FLASHSCORE CARD FORMAT) */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+      {/* 3. SECTION: LEAGUE STANDINGS & RECENT FORM SNIPPET */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              League Standing & Competitive Form
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateView('STANDINGS')}
+            className="text-xs font-semibold text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Full Standings</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl overflow-hidden shadow-xs">
         <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-500" />
@@ -602,197 +588,200 @@ export const Homepage: React.FC<HomepageProps> = ({
             </div>
           </div>
         </div>
+        </div>
       </section>
 
-      {/* 5. TEAM PERFORMANCE & ANALYTICS CHARTS SECTION */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs space-y-0">
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+      {/* 4. SECTION: TEAM PERFORMANCE & ANALYTICS CHARTS */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <PieChartIcon className="w-4 h-4 text-[#ff0046]" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <PieChartIcon className="w-4 h-4 text-cyan-500" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
               Tactical Performance & Squad Analytics
-            </h3>
+            </h2>
           </div>
-          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
+          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
             Realtime Analytics
           </span>
         </div>
 
-        {/* METRICS & PIE CHARTS */}
-        <div className="p-4 space-y-4">
-          {/* STATS TILES */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
-              <span className="text-[10px] font-black uppercase text-amber-500 tracking-wider block">Position</span>
-              <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
-                #{currentStanding?.position ?? '-'}
-              </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                {currentStanding?.points ?? 0} Total Points
-              </span>
-            </div>
-
-            <div className="p-3 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
-              <span className="text-[10px] font-black uppercase text-[#00b04f] tracking-wider block">Win Ratio</span>
-              <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
-                {currentStanding && currentStanding.played > 0
-                  ? `${Math.round((currentStanding.won / currentStanding.played) * 100)}%`
-                  : '0%'}
-              </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                {currentStanding?.won ?? 0} Wins of {currentStanding?.played ?? 0}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
-              <span className="text-[10px] font-black uppercase text-blue-500 tracking-wider block">Squad Fitness</span>
-              <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
-                {fitPercentage}%
-              </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                {activePlayers} of {totalPlayers} Available
-              </span>
-            </div>
-
-            <div className="p-3 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
-              <span className="text-[10px] font-black uppercase text-purple-500 tracking-wider block">Goal Differential</span>
-              <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
-                {currentStanding ? (currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference) : 0}
-              </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                {currentStanding?.goalsFor ?? 0} GF : {currentStanding?.goalsAgainst ?? 0} GA
-              </span>
-            </div>
-          </div>
-
-          {/* TWO RECHARTS PIE CHARTS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            {/* Chart 1: Win / Draw / Loss Distribution */}
-            <div className="p-4 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
-                Match Results Distribution
-              </h4>
-              <div className="w-full h-44 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={recordChartData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={65}
-                      paddingAngle={4}
-                    >
-                      {recordChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0e1e2d',
-                        borderColor: '#1a2e45',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        color: '#ffffff',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              {/* Legend */}
-              <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
-                  Wins ({currentStanding?.won ?? 0})
+        <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl overflow-hidden shadow-xs space-y-0">
+          {/* METRICS & PIE CHARTS */}
+          <div className="p-4 space-y-4">
+            {/* STATS TILES */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
+                <span className="text-[10px] font-bold uppercase text-amber-500 tracking-wider block">Position</span>
+                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
+                  #{currentStanding?.position ?? '-'}
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                  {currentStanding?.points ?? 0} Total Points
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
-                  Draws ({currentStanding?.drawn ?? 0})
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
+                <span className="text-[10px] font-bold uppercase text-[#00b04f] tracking-wider block">Win Ratio</span>
+                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
+                  {currentStanding && currentStanding.played > 0
+                    ? `${Math.round((currentStanding.won / currentStanding.played) * 100)}%`
+                    : '0%'}
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                  {currentStanding?.won ?? 0} Wins of {currentStanding?.played ?? 0}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#d63031]" />
-                  Losses ({currentStanding?.lost ?? 0})
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
+                <span className="text-[10px] font-bold uppercase text-blue-500 tracking-wider block">Squad Fitness</span>
+                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
+                  {fitPercentage}%
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                  {activePlayers} of {totalPlayers} Available
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45]">
+                <span className="text-[10px] font-bold uppercase text-purple-500 tracking-wider block">Goal Differential</span>
+                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white mt-1">
+                  {currentStanding ? (currentStanding.goalDifference > 0 ? `+${currentStanding.goalDifference}` : currentStanding.goalDifference) : 0}
+                </div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                  {currentStanding?.goalsFor ?? 0} GF : {currentStanding?.goalsAgainst ?? 0} GA
                 </span>
               </div>
             </div>
 
-            {/* Chart 2: Squad Fitness & Status Breakdown */}
-            <div className="p-4 rounded-sm bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
-                Squad Status & Fitness Distribution
-              </h4>
-              <div className="w-full h-44 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={fitnessChartData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={65}
-                      paddingAngle={4}
-                    >
-                      {fitnessChartData.map((entry, index) => (
-                        <Cell key={`fit-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0e1e2d',
-                        borderColor: '#1a2e45',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        color: '#ffffff',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+            {/* TWO RECHARTS PIE CHARTS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Chart 1: Win / Draw / Loss Distribution */}
+              <div className="p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
+                  Match Results Distribution
+                </h4>
+                <div className="w-full h-44 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={recordChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={42}
+                        outerRadius={65}
+                        paddingAngle={4}
+                      >
+                        {recordChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0e1e2d',
+                          borderColor: '#1a2e45',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          color: '#ffffff',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Legend */}
+                <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
+                    Wins ({currentStanding?.won ?? 0})
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
+                    Draws ({currentStanding?.drawn ?? 0})
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#d63031]" />
+                    Losses ({currentStanding?.lost ?? 0})
+                  </span>
+                </div>
               </div>
-              {/* Legend */}
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2 flex-wrap justify-center">
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
-                  Fit ({roster.filter(p => p.status === 'Fit' || p.status === 'Active').length})
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1565c0]" />
-                  Recovering ({roster.filter(p => p.status === 'Recovering').length})
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046]" />
-                  Injured ({roster.filter(p => p.status === 'Injured').length})
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
-                  Suspended ({roster.filter(p => p.status === 'Suspended').length})
-                </span>
+
+              {/* Chart 2: Squad Fitness & Status Breakdown */}
+              <div className="p-4 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex flex-col items-center">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white mb-2 self-start">
+                  Squad Status & Fitness Distribution
+                </h4>
+                <div className="w-full h-44 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={fitnessChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={42}
+                        outerRadius={65}
+                        paddingAngle={4}
+                      >
+                        {fitnessChartData.map((entry, index) => (
+                          <Cell key={`fit-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0e1e2d',
+                          borderColor: '#1a2e45',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          color: '#ffffff',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Legend */}
+                <div className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 mt-2 flex-wrap justify-center">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00b04f]" />
+                    Fit ({roster.filter(p => p.status === 'Fit' || p.status === 'Active').length})
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#1565c0]" />
+                    Recovering ({roster.filter(p => p.status === 'Recovering').length})
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046]" />
+                    Injured ({roster.filter(p => p.status === 'Injured').length})
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff9800]" />
+                    Suspended ({roster.filter(p => p.status === 'Suspended').length})
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 6. TRAINING DAYS & DRILL SESSIONS */}
-      <section className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between flex-wrap gap-2">
+      {/* 5. SECTION: TRAINING DAYS & DRILL SESSIONS */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-amber-500" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              Training Schedule & Tactical Conditioning
-            </h3>
+            <Dumbbell className="w-4 h-4 text-indigo-500" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Training Schedule & Conditioning
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowAddPracticeModal(true)}
-              className="px-3.5 py-1.5 rounded-full text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-[#ff0046] text-[#ff0046] hover:bg-[#ff0046] hover:text-white active:bg-[#ff0046] active:text-white bg-transparent transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Practice Day</span>
@@ -806,7 +795,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                     onApprovePracticeDay(s.id);
                   });
                 }}
-                className="px-3.5 py-1.5 rounded-full text-xs font-black bg-[#00b04f] hover:bg-[#009944] text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-[#00b04f] text-[#00b04f] hover:bg-[#00b04f] hover:text-white active:bg-[#00b04f] active:text-white bg-transparent transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Sign Off All</span>
@@ -814,6 +803,8 @@ export const Homepage: React.FC<HomepageProps> = ({
             )}
           </div>
         </div>
+
+        <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl overflow-hidden shadow-xs">
 
         {/* PRACTICE SESSIONS LIST */}
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -877,7 +868,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                   <button
                     type="button"
                     onClick={() => onApprovePracticeDay(session.id)}
-                    className="px-2.5 py-1 bg-[#00b04f] hover:bg-[#009944] text-white font-black text-[10px] rounded-full cursor-pointer transition-colors shrink-0"
+                    className="px-2.5 py-1 border border-[#00b04f] text-[#00b04f] hover:bg-[#00b04f] hover:text-white font-bold text-[10px] rounded-lg cursor-pointer transition-colors shrink-0"
                   >
                     Sign Off
                   </button>
@@ -885,6 +876,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </div>
           ))}
+        </div>
         </div>
       </section>
 
