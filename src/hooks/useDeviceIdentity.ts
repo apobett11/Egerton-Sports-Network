@@ -78,24 +78,37 @@ export function useDeviceIdentity() {
     });
   }, [deviceId]);
 
-  const toggleDeviceFavorite = useCallback(async (matchId: string) => {
-    if (!matchId) return;
-    setDeviceFavorites((prev) => {
-      const next = prev.includes(matchId) ? prev.filter((id) => id !== matchId) : [...prev, matchId];
-      try {
-        localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(next));
-        localStorage.setItem('favorites', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+  const toggleDeviceFavorite = useCallback(async (matchId: string): Promise<boolean> => {
+    if (!matchId) return false;
+
+    const localKey = `esn_device_favorites_${deviceId}`;
+    let current = deviceFavorites;
+    try {
+      const stored = localStorage.getItem(localKey) || localStorage.getItem('favorites');
+      if (stored) {
+        current = JSON.parse(stored);
+      }
+    } catch {}
+
+    const isFav = current.includes(matchId);
+    const isAdding = !isFav;
+    const nextList = isFav
+      ? current.filter((id) => id !== matchId)
+      : Array.from(new Set([...current, matchId]));
+
+    setDeviceFavorites(nextList);
+
+    try {
+      localStorage.setItem(localKey, JSON.stringify(nextList));
+      localStorage.setItem('favorites', JSON.stringify(nextList));
+    } catch {}
 
     if (deviceId) {
-      const updated = await DeviceService.toggleFavoriteMatch(deviceId, matchId);
-      if (updated && Array.isArray(updated)) {
-        setDeviceFavorites(updated);
-      }
+      DeviceService.setFavoriteMatches(deviceId, nextList);
     }
-  }, [deviceId]);
+
+    return isAdding;
+  }, [deviceId, deviceFavorites]);
 
   const saveLocalPreference = useCallback((teamId: string | null) => {
     try {

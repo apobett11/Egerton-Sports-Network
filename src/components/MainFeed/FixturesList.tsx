@@ -154,17 +154,23 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <button
                                                     type="button"
+                                                    data-testid={`favorite-btn-${match.id}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         toggleFavorite(match.id);
                                                     }}
-                                                    className="p-1 text-slate-300 dark:text-slate-600 hover:text-amber-400 cursor-pointer"
-                                                    aria-label="Toggle favorite"
+                                                    className={`w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                                                        isFav
+                                                            ? 'bg-amber-500 text-white shadow-xs'
+                                                            : 'text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:bg-amber-500/10'
+                                                    }`}
+                                                    aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+                                                    title={isFav ? 'Remove from favourites' : 'Add to favourites'}
                                                 >
                                                     <Star
-                                                        className={`w-4 h-4 transition-colors ${
+                                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
                                                             isFav
-                                                                ? 'fill-amber-400 text-amber-400'
+                                                                ? 'fill-white text-white animate-favorite-pop'
                                                                 : 'hover:fill-amber-400'
                                                         }`}
                                                     />

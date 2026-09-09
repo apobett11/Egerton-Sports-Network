@@ -60,6 +60,49 @@ async function runTests() {
   const completeRes = await DeviceService.completeOnboarding(deviceId, null);
   console.log('✓ completeOnboarding callable without errors');
 
+  // Test 8: Deduplication test
+  const duplicateList = [match1, match1, match2, match1, match2];
+  const deduplicated = await DeviceService.setFavoriteMatches(deviceId, duplicateList);
+  assert.strictEqual(deduplicated.length, 2, 'Duplicates must be stripped');
+  console.log('✓ Strict deduplication verified: no match can be registered twice');
+
+  // Test 9: Matchday Completion Reset / Pruning
+  const md3_match1 = '33333333-0001-4000-8000-000000000001';
+  const md3_match2 = '33333333-0002-4000-8000-000000000002';
+  const md4_match1 = '44444444-0001-4000-8000-000000000001';
+  const md4_match2 = '44444444-0002-4000-8000-000000000002';
+
+  // Device favorites md3_match1 (Matchday 3) and md4_match1 (Matchday 4)
+  await DeviceService.setFavoriteMatches(deviceId, [md3_match1, md4_match1]);
+
+  // Fixtures dataset where all Matchday 3 matches are finished (FT),
+  // while Matchday 4 matches are still UPCOMING
+  const fixturesState = [
+    { id: md3_match1, status: 'FT', matchday: 3 },
+    { id: md3_match2, status: 'FT', matchday: 3 },
+    { id: md4_match1, status: 'UPCOMING', matchday: 4 },
+    { id: md4_match2, status: 'UPCOMING', matchday: 4 },
+  ];
+
+  const prunedList = await DeviceService.pruneCompletedMatchdayFavorites(deviceId, fixturesState as any);
+  assert.strictEqual(prunedList.includes(md3_match1), false, 'Matchday 3 favorite must be reset/cleared when matchday 3 is over');
+  assert.strictEqual(prunedList.includes(md4_match1), true, 'Future Matchday 4 favorite must remain untouched');
+  console.log('✓ Matchday reset verified: completed matchdays clear while future matchdays remain untouched');
+
+  // Test 10: If a matchday is still ongoing (e.g. 1 match FT, 1 match LIVE), favorites in that matchday are NOT cleared
+  const ongoingMd5_match1 = '55555555-0001-4000-8000-000000000001';
+  const ongoingMd5_match2 = '55555555-0002-4000-8000-000000000002';
+  await DeviceService.setFavoriteMatches(deviceId, [ongoingMd5_match1]);
+
+  const ongoingFixtures = [
+    { id: ongoingMd5_match1, status: 'FT', matchday: 5 },
+    { id: ongoingMd5_match2, status: 'LIVE', matchday: 5 }, // Matchday 5 is still ongoing!
+  ];
+
+  const ongoingPruned = await DeviceService.pruneCompletedMatchdayFavorites(deviceId, ongoingFixtures as any);
+  assert.strictEqual(ongoingPruned.includes(ongoingMd5_match1), true, 'Ongoing matchday favorites must NOT clear until entire matchday is over');
+  console.log('✓ Ongoing matchday verification: favorites remain until entire matchday has concluded');
+
   console.log('\n======================================================');
   console.log('🎉 ALL ANONYMOUS DEVICE FAVORITES TESTS PASSED! 🎉');
   console.log('======================================================');

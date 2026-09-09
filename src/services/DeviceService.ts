@@ -273,6 +273,9 @@ export const DeviceService = {
       }
     } catch {}
 
+    // Guarantee deduplication of cached favorites
+    cachedList = Array.from(new Set(cachedList));
+
     try {
       const { data, error } = await supabase
         .from('anonymous_devices')
@@ -306,6 +309,7 @@ export const DeviceService = {
   /**
    * Records or toggles a match as favorite equated to the anonymous device.
    * Instant local update + non-blocking background Supabase persistence.
+   * Strictly prevents duplicate entries for the device.
    */
   async toggleFavoriteMatch(deviceId: string, matchId: string): Promise<string[]> {
     if (!deviceId || !isValidUUID(deviceId) || !matchId) return [];
@@ -322,64 +326,29 @@ export const DeviceService = {
     const isFav = currentList.includes(matchId);
     const updatedList = isFav
       ? currentList.filter((id) => id !== matchId)
-      : [...currentList, matchId];
+      : Array.from(new Set([...currentList, matchId]));
 
-    // 1. Instant local persistence (0ms latency for smooth UX)
-    try {
-      localStorage.setItem(localKey, JSON.stringify(updatedList));
-      localStorage.setItem('favorites', JSON.stringify(updatedList));
-    } catch {}
-
-    // 2. Non-blocking remote persistence to anonymous_devices table
-    (async () => {
-      try {
-        const payload: any = {
-          device_id: deviceId,
-          favorite_matches: updatedList,
-          last_seen_at: new Date().toISOString()
-        };
-
-        const { error: upsertErr } = await supabase
-          .from('anonymous_devices')
-          .upsert(payload, { onConflict: 'device_id' });
-
-        if (upsertErr) {
-          // Fallback to interaction_history JSONB
-          await supabase
-            .from('anonymous_devices')
-            .upsert(
-              {
-                device_id: deviceId,
-                interaction_history: { favorite_matches: updatedList },
-                last_seen_at: new Date().toISOString()
-              },
-              { onConflict: 'device_id' }
-            );
-        }
-      } catch (e) {
-        console.warn('Failed to sync favorite match to Supabase:', e);
-      }
-    })();
-
-    return updatedList;
+    return this.setFavoriteMatches(deviceId, updatedList);
   },
 
   /**
    * Sets the favorite matches list for the anonymous device directly.
+   * Strictly prevents duplicate entries for the device.
    */
   async setFavoriteMatches(deviceId: string, matchIds: string[]): Promise<string[]> {
     if (!deviceId || !isValidUUID(deviceId)) return [];
+    const uniqueList = Array.from(new Set(matchIds || []));
     const localKey = `esn_device_favorites_${deviceId}`;
     try {
-      localStorage.setItem(localKey, JSON.stringify(matchIds));
-      localStorage.setItem('favorites', JSON.stringify(matchIds));
+      localStorage.setItem(localKey, JSON.stringify(uniqueList));
+      localStorage.setItem('favorites', JSON.stringify(uniqueList));
     } catch {}
 
     (async () => {
       try {
         const payload: any = {
           device_id: deviceId,
-          favorite_matches: matchIds,
+          favorite_matches: uniqueList,
           last_seen_at: new Date().toISOString()
         };
         const { error: upsertErr } = await supabase
@@ -392,7 +361,7 @@ export const DeviceService = {
             .upsert(
               {
                 device_id: deviceId,
-                interaction_history: { favorite_matches: matchIds },
+                interaction_history: { favorite_matches: uniqueList },
                 last_seen_at: new Date().toISOString()
               },
               { onConflict: 'device_id' }
@@ -403,7 +372,29 @@ export const DeviceService = {
       }
     })();
 
-    return matchIds;
+    return uniqueList;
+  },
+
+  /**
+   * Automatically clears favorites for completed matchdays for the device,
+   * while preserving next and future matchday favorites intact.
+   */
+  async pruneCompletedMatchdayFavorites(
+    deviceId: string,
+    allFixtures: any[]
+  ): Promise<string[]> {
+    if (!deviceId || !isValidUUID(deviceId) || !allFixtures || allFixtures.length === 0) {
+      return this.getFavoriteMatches(deviceId);
+    }
+
+    const current = await this.getFavoriteMatches(deviceId);
+    const { pruned, hasChanges } = pruneCompletedFavorites(current, allFixtures);
+
+    if (hasChanges) {
+      return this.setFavoriteMatches(deviceId, pruned);
+    }
+
+    return current;
   },
 
   /**
@@ -413,4 +404,90 @@ export const DeviceService = {
     return this.setFavoriteTeam(deviceId, teamId);
   }
 };
+
+/**
+ * Pure helper to prune completed matchday favorites while preserving future/upcoming matchdays.
+ * A matchday is considered "over" if every fixture in that matchday has concluded
+ * ('FT', 'FINAL', 'ARCHIVED', 'CANCELLED').
+ * If any fixture in that matchday is still ongoing, live, or scheduled, the favorites in that matchday remain.
+ * Favorites on future matchdays are strictly preserved.
+ */
+export function pruneCompletedFavorites(
+  favorites: string[],
+  allFixtures: Array<{ id: string; status: string; matchday?: number; scheduledTime?: string }>
+): { pruned: string[]; hasChanges: boolean } {
+  if (!favorites || favorites.length === 0 || !allFixtures || allFixtures.length === 0) {
+    return { pruned: favorites || [], hasChanges: false };
+  }
+
+  const FINISHED_STATUSES = new Set(['FT', 'FINAL', 'ARCHIVED', 'CANCELLED']);
+
+  // 1. Group fixtures by matchday (for fixtures with matchday defined)
+  const matchdayFixturesMap = new Map<number, Array<{ id: string; status: string }>>();
+  // And by play date (for fixtures without matchday)
+  const dateFixturesMap = new Map<string, Array<{ id: string; status: string }>>();
+  const fixtureById = new Map<string, { id: string; status: string; matchday?: number; scheduledTime?: string }>();
+
+  for (const f of allFixtures) {
+    fixtureById.set(f.id, f);
+    if (f.matchday !== undefined && f.matchday !== null) {
+      const list = matchdayFixturesMap.get(f.matchday) || [];
+      list.push(f);
+      matchdayFixturesMap.set(f.matchday, list);
+    } else if (f.scheduledTime) {
+      const dateKey = f.scheduledTime.split('T')[0];
+      const list = dateFixturesMap.get(dateKey) || [];
+      list.push(f);
+      dateFixturesMap.set(dateKey, list);
+    }
+  }
+
+  // 2. Identify which matchdays are completely over (all matches in that matchday are finished)
+  const completedMatchdays = new Set<number>();
+  for (const [matchday, fixtures] of matchdayFixturesMap.entries()) {
+    if (fixtures.length > 0 && fixtures.every((fx) => FINISHED_STATUSES.has(fx.status))) {
+      completedMatchdays.add(matchday);
+    }
+  }
+
+  // 3. Identify which play dates are completely over (for matches without a matchday number)
+  const completedDates = new Set<string>();
+  for (const [dateKey, fixtures] of dateFixturesMap.entries()) {
+    if (fixtures.length > 0 && fixtures.every((fx) => FINISHED_STATUSES.has(fx.status))) {
+      completedDates.add(dateKey);
+    }
+  }
+
+  // 4. Filter favorites: remove favorites from completed matchdays/dates
+  const pruned = favorites.filter((matchId) => {
+    const f = fixtureById.get(matchId);
+    // If fixture is not in allFixtures, keep it (never discard un-queried fixtures)
+    if (!f) return true;
+
+    if (f.matchday !== undefined && f.matchday !== null) {
+      // If this matchday is completely over, reset it!
+      if (completedMatchdays.has(f.matchday)) {
+        return false;
+      }
+      // Otherwise (future or ongoing matchday), keep it untouched
+      return true;
+    }
+
+    if (f.scheduledTime) {
+      const dateKey = f.scheduledTime.split('T')[0];
+      if (completedDates.has(dateKey)) {
+        return false;
+      }
+      return true;
+    }
+
+    // Fallback: if status is finished
+    return !FINISHED_STATUSES.has(f.status);
+  });
+
+  const uniquePruned = Array.from(new Set(pruned));
+  const hasChanges = uniquePruned.length !== favorites.length;
+
+  return { pruned: uniquePruned, hasChanges };
+}
 

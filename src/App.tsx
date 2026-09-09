@@ -10,7 +10,8 @@ import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { type AllowedRole } from './components/Auth/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ToastProvider } from './contexts/ToastContext';
+import { ToastProvider, useToast } from './contexts/ToastContext';
+import { guestCache } from './lib/guestCache';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
@@ -131,12 +132,15 @@ export const AppContent: React.FC = () => {
     };
   }, [user, role]);
 
+  const { showSuccess } = useToast();
+
   // Device Identity & Fan Onboarding State
   const { 
     deviceId, 
     isInitializing: isDeviceInitializing, 
     cachedCompleted, 
-    deviceFavorites, 
+    deviceFavorites: favorites, 
+    setDeviceFavorites: setFavorites, 
     toggleDeviceFavorite, 
     saveLocalPreference 
   } = useDeviceIdentity();
@@ -284,12 +288,6 @@ export const AppContent: React.FC = () => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
-  // Favorites list equated to the anonymous device
-  const [favorites, setFavorites] = useState<string[]>(deviceFavorites);
-
-  useEffect(() => {
-    setFavorites(deviceFavorites);
-  }, [deviceFavorites]);
 
   const [activeSport, setActiveSport] = useState<string>('football');
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -448,8 +446,11 @@ export const AppContent: React.FC = () => {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
-  const toggleFavorite = (matchId: string) => {
-    toggleDeviceFavorite(matchId);
+  const toggleFavorite = async (matchId: string) => {
+    const isAdding = await toggleDeviceFavorite(matchId);
+    if (isAdding) {
+      showSuccess('Added to favourites');
+    }
   };
 
   const handleMatchClick = (match: Match) => {
@@ -510,6 +511,17 @@ export const AppContent: React.FC = () => {
     }
   }, [liveMatches]);
 
+  // Auto-reset completed matchday favorites when a matchday finishes, keeping future matchdays intact
+  useEffect(() => {
+    if (!deviceId || favorites.length === 0 || !liveMatches || liveMatches.length === 0) return;
+
+    DeviceService.pruneCompletedMatchdayFavorites(deviceId, liveMatches).then((pruned) => {
+      if (pruned && pruned.length !== favorites.length) {
+        setFavorites(pruned);
+      }
+    });
+  }, [deviceId, liveMatches, favorites.length, setFavorites]);
+
   // Dynamically computed standings derived strictly from finalized matches in liveMatches
   const currentStandings = useMemo(() => {
     const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
@@ -536,7 +548,19 @@ export const AppContent: React.FC = () => {
   };
 
   const currentFixtures = getFilteredMatches();
-  const favoriteMatches = liveMatches.filter((m) => favorites.includes(m.id));
+
+  // Favorited matches resolution with guestCache fallback
+  const favoriteMatches = useMemo(() => {
+    const map = new Map<string, Match>();
+    (liveMatches || []).forEach((m) => map.set(m.id, m));
+
+    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall') || [];
+    allCached.forEach((m) => {
+      if (!map.has(m.id)) map.set(m.id, m);
+    });
+
+    return favorites.map((id) => map.get(id)).filter((m): m is Match => Boolean(m));
+  }, [liveMatches, favorites]);
 
   // --- DIRECT UNPROMPTED DASHBOARD ROUTING WITH ROLE GUARDS ---
   if (route === 'admin') {

@@ -49,10 +49,15 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                     <button
                         type="button"
                         onClick={onToggleFavorite}
-                        className="p-1 text-slate-300 hover:text-amber-400 cursor-pointer"
-                        title="Favorite Match"
+                        className={`w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                            isFavorite
+                                ? 'bg-amber-500 text-white shadow-xs'
+                                : 'text-slate-300 hover:text-amber-500 hover:bg-amber-500/10'
+                        }`}
+                        title={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+                        aria-label={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
                     >
-                        <Star className={`w-4 h-4 ${isFavorite ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                        <Star className={`w-3.5 h-3.5 transition-transform duration-200 ${isFavorite ? 'fill-white text-white animate-favorite-pop' : 'text-slate-300 hover:fill-amber-400'}`} />
                     </button>
                     <button
                         type="button"
