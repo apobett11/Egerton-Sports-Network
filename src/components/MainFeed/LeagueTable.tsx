@@ -12,7 +12,7 @@ interface LeagueTableProps {
   title?: string;
   allowHistoricalView?: boolean;
   selectedCompetitionId?: string;
-  onSelectTeam?: (teamId: string) => void;
+  onSelectTeam?: (teamId: string, teamName: string) => void;
 }
 
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
@@ -288,7 +288,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                         className={`py-2.5 px-2 ${row.teamId && onSelectTeam ? 'cursor-pointer group' : ''}`}
                         onClick={() => {
                           if (row.teamId && onSelectTeam) {
-                            onSelectTeam(row.teamId);
+                            onSelectTeam(row.teamId, row.teamName);
                           }
                         }}
                         title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
@@ -380,7 +380,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       className={`py-2.5 px-3 ${row.teamId && onSelectTeam ? 'cursor-pointer group' : ''}`}
                       onClick={() => {
                         if (row.teamId && onSelectTeam) {
-                          onSelectTeam(row.teamId);
+                          onSelectTeam(row.teamId, row.teamName);
                         }
                       }}
                       title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}

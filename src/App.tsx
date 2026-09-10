@@ -53,6 +53,32 @@ const getHashRoute = (): string => {
   return window.location.hash.replace(/^#\/?/, '').toLowerCase() || 'home';
 };
 
+/** Convert any name to a URL-safe slug: lowercase, spaces/special chars → hyphens */
+const nameToSlug = (name: string): string =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+/** Resolve a team slug → UUID by fetching the team from Supabase by name */
+const resolveTeamSlug = async (slug: string): Promise<string | null> => {
+  try {
+    const { data } = await supabase
+      .from('teams')
+      .select('id, name')
+      .is('deleted_at', null);
+    if (!data) return null;
+    const match = data.find((t: any) => nameToSlug(t.name) === slug);
+    return match?.id ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/** Build a safe match slug from home/away team names and matchday */
+const buildMatchSlug = (homeTeam: string, awayTeam: string, matchday?: number): string => {
+  const h = nameToSlug(homeTeam);
+  const a = nameToSlug(awayTeam);
+  return matchday ? `${h}-vs-${a}-md${matchday}` : `${h}-vs-${a}`;
+};
+
 export const AppContent: React.FC = () => {
   // Hash route state for direct UI link switching without auth prompt
   const [route, setRoute] = useState<string>(() => {
@@ -287,13 +313,7 @@ export const AppContent: React.FC = () => {
     return 'scores';
   });
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(() => {
-    const h = getHashRoute();
-    if (h.startsWith('team/')) {
-      return h.replace(/^team\/?/, '').split('/')[0];
-    }
-    return null;
-  });
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
 
@@ -389,9 +409,15 @@ export const AppContent: React.FC = () => {
 
   // Sync route on hash change
   useEffect(() => {
-    if (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/') {
-      window.location.hash = '/home';
+    // On initial load, resolve current hash immediately
+    const initialRoute = getHashRoute();
+    if (initialRoute.startsWith('team/')) {
+      const slug = initialRoute.replace(/^team\/?/, '').split('/')[0];
+      resolveTeamSlug(slug).then((id) => {
+        if (id) setSelectedTeamId(id);
+      });
     }
+
     const handleHash = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
@@ -405,7 +431,10 @@ export const AppContent: React.FC = () => {
         setSelectedMatch(null);
       }
       if (newRoute.startsWith('team/')) {
-        setSelectedTeamId(newRoute.replace(/^team\/?/, '').split('/')[0]);
+        const slug = newRoute.replace(/^team\/?/, '').split('/')[0];
+        resolveTeamSlug(slug).then((id) => {
+          if (id) setSelectedTeamId(id);
+        });
       } else {
         setSelectedTeamId(null);
       }
@@ -414,19 +443,6 @@ export const AppContent: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Fetch match details on deep link (e.g. #/match/<id>) or page refresh
-  useEffect(() => {
-    if (route.startsWith('match/')) {
-      const matchId = route.replace(/^match\/?/, '').trim();
-      if (matchId && (!selectedMatch || selectedMatch.id !== matchId)) {
-        ApiService.getMatchDetails(matchId).then((res: any) => {
-          if (res?.data) {
-            setSelectedMatch(res.data);
-          }
-        });
-      }
-    }
-  }, [route, selectedMatch]);
 
   // Lock body scroll and add Esc listener when mobile sidebar is open
   useEffect(() => {
@@ -468,9 +484,13 @@ export const AppContent: React.FC = () => {
 
   const handleMatchClick = (match: Match) => {
     setSelectedMatch(match);
-    const targetRoute = `match/${match.id}`;
+    // Build a human-readable slug; keep match.id only in memory — never in the URL
+    const homeTeam = (match as any).homeTeamName || (match as any).home_team || 'home';
+    const awayTeam = (match as any).awayTeamName || (match as any).away_team || 'away';
+    const slug = buildMatchSlug(homeTeam, awayTeam, match.matchday);
+    const targetRoute = `match/${slug}`;
     setRoute(targetRoute);
-    window.location.hash = `/match/${match.id}`;
+    window.location.hash = `/match/${slug}`;
     try {
       sessionStorage.setItem('esn_current_route', targetRoute);
     } catch {}
@@ -479,17 +499,19 @@ export const AppContent: React.FC = () => {
   const handleBackToHome = () => {
     setSelectedMatch(null);
     setRoute('home');
-    window.location.hash = '/home';
+    // Clear hash completely so the URL is just the bare domain
+    history.pushState(null, '', window.location.pathname + window.location.search);
     try {
       sessionStorage.setItem('esn_current_route', 'home');
     } catch {}
   };
 
-  const handleTeamClick = (teamId: string) => {
+  const handleTeamClick = (teamId: string, teamName: string) => {
     setSelectedTeamId(teamId);
-    const targetRoute = `team/${teamId}`;
+    const slug = nameToSlug(teamName);
+    const targetRoute = `team/${slug}`;
     setRoute(targetRoute);
-    window.location.hash = `/team/${teamId}`;
+    window.location.hash = `/team/${slug}`;
     try {
       sessionStorage.setItem('esn_current_route', targetRoute);
     } catch {}
@@ -498,11 +520,13 @@ export const AppContent: React.FC = () => {
   const handleBackFromTeam = () => {
     setSelectedTeamId(null);
     setRoute('home');
-    window.location.hash = '/home';
+    // Clear hash completely so the URL is just the bare domain
+    history.pushState(null, '', window.location.pathname + window.location.search);
     try {
       sessionStorage.setItem('esn_current_route', 'home');
     } catch {}
   };
+
 
   const handleNavigateHash = (targetHash: string) => {
     window.location.hash = targetHash;

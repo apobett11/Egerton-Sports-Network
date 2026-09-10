@@ -148,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 ESN
                             </span>
                             <span className="text-[8.5px] font-bold tracking-widest uppercase text-slate-400">
-                                EGERTON SPORTS
+                                EGERTON SPORTS NETWORK
                             </span>
                         </div>
                     </div>

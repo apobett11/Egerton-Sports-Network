@@ -407,8 +407,9 @@ export const PublicLeaguePage: React.FC = () => {
       <LeagueTable
         tableData={table}
         allowHistoricalView={true}
-        onSelectTeam={(teamId) => {
-          window.location.hash = `/team/${teamId}`;
+        onSelectTeam={(teamId, teamName) => {
+          const slug = teamName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          window.location.hash = `/team/${slug}`;
         }}
       />
     </div>
