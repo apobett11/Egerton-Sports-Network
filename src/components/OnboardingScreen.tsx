@@ -40,7 +40,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   onClose
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [availableTeams, setAvailableTeams] = useState<TeamOption[]>(getInitialFallbackTeams);
+  const [availableTeams, setAvailableTeams] = useState<TeamOption[]>([]);
+
   const [, setLoading] = useState<boolean>(true);
   const [selectedTeam, setSelectedTeam] = useState<TeamOption | null>(null);
   const [showCongratulations, setShowCongratulations] = useState<boolean>(false);

@@ -208,22 +208,22 @@ export const AppContent: React.FC = () => {
         usageCount = 1;
       }
 
-      // 3. Prevent popup on 1st and 2nd use (protects coaches, captains, referees during registration).
-      // Trigger target is randomly chosen between the 3rd or 4th time the app is opened.
-      let targetOpen = 3;
+      // 3. Prevent popup on early sessions (protects coaches, captains, referees during registration).
+      // Trigger target is randomly chosen between the 5th and 10th time the app is opened.
+      let targetOpen = 5;
       try {
         const storedTarget = parseInt(localStorage.getItem('esn_onboarding_target_open') || '0', 10);
-        if (storedTarget === 3 || storedTarget === 4) {
+        if (storedTarget >= 5 && storedTarget <= 10) {
           targetOpen = storedTarget;
         } else {
-          targetOpen = Math.random() < 0.5 ? 3 : 4;
+          targetOpen = Math.floor(Math.random() * 6) + 5; // random int: 5, 6, 7, 8, 9 or 10
           localStorage.setItem('esn_onboarding_target_open', String(targetOpen));
         }
       } catch {
-        targetOpen = 3;
+        targetOpen = 5;
       }
 
-      // If device usage count reaches the random threshold (3rd or 4th open),
+      // If device usage count reaches the random threshold (5th–10th open),
       // bring up the fan popup at a random time interval while on the fanpage
       if (usageCount >= targetOpen) {
         const randomDelayMs = Math.floor(Math.random() * 2000) + 1500; // random time between 1.5s and 3.5s
