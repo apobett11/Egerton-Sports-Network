@@ -183,6 +183,7 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
             fixtures={fixtures}
             currentTeamName={team.name}
             currentTeamLogo={team.logo_url}
+            teamId={team.id}
             onSelectMatch={onSelectMatch}
           />
         )}
@@ -193,6 +194,8 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
             roster={players}
             teamName={team.name}
             teamCrest={team.logo_url}
+            team={team}
+            startingXIIds={startingXIIds}
             onNavigateBack={() => setActiveTab('fixtures')}
           />
         )}

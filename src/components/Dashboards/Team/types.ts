@@ -101,6 +101,8 @@ export interface Match {
     referee?: string;
     matchday?: number;
     scheduled_time?: string;
+    homeTeamId?: string;
+    awayTeamId?: string;
 }
 
 export interface LinesmanMatch {
