@@ -404,7 +404,13 @@ export const PublicLeaguePage: React.FC = () => {
         </div>
       </div>
 
-      <LeagueTable tableData={table} allowHistoricalView={true} />
+      <LeagueTable
+        tableData={table}
+        allowHistoricalView={true}
+        onSelectTeam={(teamId) => {
+          window.location.hash = `/team/${teamId}`;
+        }}
+      />
     </div>
   );
 };

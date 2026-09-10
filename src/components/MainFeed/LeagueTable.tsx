@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { LeagueTableEntry } from '../../types';
 import { ApiService } from '../../services/api';
+import { supabase } from '../../lib/supabase';
 import { 
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
   ArrowUpRight, ChevronRight, Activity, Sparkles, Filter
@@ -11,6 +12,7 @@ interface LeagueTableProps {
   title?: string;
   allowHistoricalView?: boolean;
   selectedCompetitionId?: string;
+  onSelectTeam?: (teamId: string) => void;
 }
 
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
@@ -18,7 +20,8 @@ const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 
 export const LeagueTable: React.FC<LeagueTableProps> = ({
   tableData,
-  selectedCompetitionId = 'all'
+  selectedCompetitionId = 'all',
+  onSelectTeam
 }) => {
   // Navigation & Filter States
   const [selectedCompFilter, setSelectedCompFilter] = useState<'all' | 'epl' | 'champ'>('all');
@@ -72,7 +75,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
   }, [selectedCompetitionId]);
 
-  useEffect(() => {
+  const refreshAllTableData = useCallback(() => {
     // 1. Fetch EPL & Champ Standings
     ApiService.getLeagueTable(EPL_COMP_ID).then((res) => {
       if (res.data && res.data.length > 0) setEplStandings(res.data);
@@ -102,6 +105,28 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       if (res.data) setAssistsList(res.data);
     });
   }, [tableData]);
+
+  useEffect(() => {
+    refreshAllTableData();
+
+    // Event-driven real-time auto-reload: When match end algorithm (Algorithm 2) updates tables
+    const channel = supabase
+      .channel('public_league_table_realtime_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
+        refreshAllTableData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
+        refreshAllTableData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
+        refreshAllTableData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshAllTableData]);
 
   // Fetch Team Form Sequences
   useEffect(() => {
@@ -259,14 +284,22 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       <td className="py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400">
                         {row.position}.
                       </td>
-                      <td className="py-2.5 px-2">
+                      <td
+                        className={`py-2.5 px-2 ${row.teamId && onSelectTeam ? 'cursor-pointer group' : ''}`}
+                        onClick={() => {
+                          if (row.teamId && onSelectTeam) {
+                            onSelectTeam(row.teamId);
+                          }
+                        }}
+                        title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
+                      >
                         <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={row.teamLogo}
                             alt={row.teamName}
-                            className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                            className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
                           />
-                          <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                          <span className="font-extrabold text-slate-900 dark:text-white truncate group-hover:text-[#ff0046] transition-colors">
                             {row.teamName}
                           </span>
                         </div>
@@ -343,10 +376,24 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 list.map((row) => (
                   <tr key={row.teamId || row.position} className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
                     <td className="py-2.5 px-3 text-center font-bold text-slate-400">{row.position}.</td>
-                    <td className="py-2.5 px-3">
+                    <td
+                      className={`py-2.5 px-3 ${row.teamId && onSelectTeam ? 'cursor-pointer group' : ''}`}
+                      onClick={() => {
+                        if (row.teamId && onSelectTeam) {
+                          onSelectTeam(row.teamId);
+                        }
+                      }}
+                      title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
+                    >
                       <div className="flex items-center gap-2 min-w-0">
-                        <img src={row.teamLogo} alt={row.teamName} className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0" />
-                        <span className="font-extrabold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                        <img
+                          src={row.teamLogo}
+                          alt={row.teamName}
+                          className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
+                        />
+                        <span className="font-extrabold text-slate-900 dark:text-white truncate group-hover:text-[#ff0046] transition-colors">
+                          {row.teamName}
+                        </span>
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">{row.played}</td>

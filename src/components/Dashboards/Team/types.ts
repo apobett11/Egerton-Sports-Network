@@ -136,6 +136,7 @@ export interface TeamFormEntry {
 
 export interface StandingEntry {
     position: number;
+    teamId?: string;
     teamName: string;
     teamLogo: string;
     played: number;

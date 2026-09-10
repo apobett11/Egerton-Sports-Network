@@ -308,7 +308,7 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
                 if (aId) {
                     const arr = formMap.get(aId) || [];
                     if (arr.length < 6) {
-                        arr.push(sa > sa ? 'W' : sa === sh ? 'D' : 'L');
+                        arr.push(sa > sh ? 'W' : sa === sh ? 'D' : 'L');
                         formMap.set(aId, arr);
                     }
                 }
@@ -1009,21 +1009,78 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
     }
 }
 
+export interface FullTeamRecord extends DBTeam {
+    coach_name?: string;
+    coach_avatar?: string;
+    competition_name?: string;
+}
+
 /**
- * Fetches team metadata by its UUID.
+ * Fetches full team information by team UUID including coach profile and competition details.
  */
-export async function fetchTeamById(teamId: string): Promise<DBTeam | null> {
+export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | null> {
+    if (!teamId) return null;
     const teamUuid = toUuid(teamId);
     try {
         const { data, error } = await supabase
             .from('teams')
             .select(`
                 *,
-                competition:competitions!competition_id (id, name)
+                coach:profiles!coach_id (
+                    id, first_name, last_name, avatar_url
+                ),
+                competition:competitions!competition_id (
+                    id, name
+                )
             `)
             .eq('id', teamUuid)
-            .single();
-        if (!error && data) return data as DBTeam;
+            .maybeSingle();
+
+        if (error) {
+            const { data: simpleData, error: simpleErr } = await supabase
+                .from('teams')
+                .select('*')
+                .eq('id', teamUuid)
+                .maybeSingle();
+
+            if (simpleErr || !simpleData) return null;
+
+            let coachName = 'Head Coach';
+            let coachAvatar = '';
+            if (simpleData.coach_id) {
+                const { data: cProf } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name, avatar_url')
+                    .eq('id', simpleData.coach_id)
+                    .maybeSingle();
+                if (cProf) {
+                    coachName = `${cProf.first_name || ''} ${cProf.last_name || ''}`.trim() || 'Head Coach';
+                    coachAvatar = cProf.avatar_url || '';
+                }
+            }
+
+            return {
+                ...simpleData,
+                coach_name: coachName,
+                coach_avatar: coachAvatar,
+                competition_name: 'Egerton League',
+            };
+        }
+
+        if (data) {
+            const coachProfile = data.coach as any;
+            const comp = data.competition as any;
+            const coachName = coachProfile?.first_name || coachProfile?.last_name
+                ? `${coachProfile.first_name || ''} ${coachProfile.last_name || ''}`.trim()
+                : 'Head Coach';
+
+            return {
+                ...data,
+                coach_name: coachName,
+                coach_avatar: coachProfile?.avatar_url || '',
+                competition_name: comp?.name || 'Egerton League',
+            };
+        }
         return null;
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch team by ID:', err);

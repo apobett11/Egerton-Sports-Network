@@ -8,6 +8,7 @@ import { LeagueTable } from './components/MainFeed/LeagueTable';
 import { PublicNewsPage } from './pages/public/PublicPages';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
+import { TeamDetailsContainer } from './components/TeamDetails/TeamDetailsContainer';
 import { type AllowedRole } from './components/Auth/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
@@ -286,6 +287,13 @@ export const AppContent: React.FC = () => {
     return 'scores';
   });
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(() => {
+    const h = getHashRoute();
+    if (h.startsWith('team/')) {
+      return h.replace(/^team\/?/, '').split('/')[0];
+    }
+    return null;
+  });
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
 
 
@@ -396,6 +404,11 @@ export const AppContent: React.FC = () => {
       if (!newRoute.startsWith('match/')) {
         setSelectedMatch(null);
       }
+      if (newRoute.startsWith('team/')) {
+        setSelectedTeamId(newRoute.replace(/^team\/?/, '').split('/')[0]);
+      } else {
+        setSelectedTeamId(null);
+      }
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
@@ -472,6 +485,25 @@ export const AppContent: React.FC = () => {
     } catch {}
   };
 
+  const handleTeamClick = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    const targetRoute = `team/${teamId}`;
+    setRoute(targetRoute);
+    window.location.hash = `/team/${teamId}`;
+    try {
+      sessionStorage.setItem('esn_current_route', targetRoute);
+    } catch {}
+  };
+
+  const handleBackFromTeam = () => {
+    setSelectedTeamId(null);
+    setRoute('home');
+    window.location.hash = '/home';
+    try {
+      sessionStorage.setItem('esn_current_route', 'home');
+    } catch {}
+  };
+
   const handleNavigateHash = (targetHash: string) => {
     window.location.hash = targetHash;
     const cleanRoute = targetHash.replace(/^\//, '').toLowerCase();
@@ -481,6 +513,9 @@ export const AppContent: React.FC = () => {
     } catch {}
     if (!cleanRoute.startsWith('match/')) {
       setSelectedMatch(null);
+    }
+    if (!cleanRoute.startsWith('team/')) {
+      setSelectedTeamId(null);
     }
   };
 
@@ -791,7 +826,13 @@ export const AppContent: React.FC = () => {
         )}
 
         {/* Main Switch Router */}
-        {selectedMatch || route.startsWith('match/') ? (
+        {selectedTeamId || route.startsWith('team/') ? (
+          <TeamDetailsContainer
+            teamId={selectedTeamId || route.replace(/^team\/?/, '').split('/')[0]}
+            onBack={handleBackFromTeam}
+            onSelectMatch={handleMatchClick}
+          />
+        ) : selectedMatch || route.startsWith('match/') ? (
           selectedMatch ? (
             <MatchDetailsContainer
               match={selectedMatch}
@@ -870,7 +911,13 @@ export const AppContent: React.FC = () => {
                 />
               )}
 
-              {activeTab === 'table' && <LeagueTable tableData={currentStandings} selectedCompetitionId={selectedCompetitionId} />}
+              {activeTab === 'table' && (
+                <LeagueTable
+                  tableData={currentStandings}
+                  selectedCompetitionId={selectedCompetitionId}
+                  onSelectTeam={handleTeamClick}
+                />
+              )}
 
               {activeTab === 'news' && <PublicNewsPage />}
 
