@@ -41,7 +41,7 @@ export const getRouteForRole = (role: UserRole): string => {
   }
 };
 
-const INACTIVITY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 hours (1 day) session validity
 const STORAGE_KEY_LAST_ACTIVITY = 'esn_last_activity_timestamp';
 const STORAGE_KEY_SESSION_START = 'esn_session_start_timestamp';
 const STORAGE_KEY_CACHED_USER = 'esn_cached_user';
@@ -66,14 +66,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Helper to check if last activity is within the 3-hour window
+  // Helper to check if current session is within the 1-day (24-hour) auto-login window
   const isSessionActive = (): boolean => {
     try {
-      const lastActiveStr = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
-      if (!lastActiveStr) return true; // fresh
-      const lastActive = parseInt(lastActiveStr, 10);
-      if (isNaN(lastActive)) return true;
-      return Date.now() - lastActive < INACTIVITY_TIMEOUT_MS;
+      const sessionStartStr = localStorage.getItem(STORAGE_KEY_SESSION_START);
+      if (!sessionStartStr) {
+        const cached = localStorage.getItem(STORAGE_KEY_CACHED_USER);
+        if (cached) {
+          localStorage.setItem(STORAGE_KEY_SESSION_START, String(Date.now()));
+          return true;
+        }
+        return true;
+      }
+      const sessionStart = parseInt(sessionStartStr, 10);
+      if (isNaN(sessionStart)) return true;
+      // Auto-login active within the 1-day (24h) window
+      return Date.now() - sessionStart < ONE_DAY_MS;
     } catch {
       return true;
     }
@@ -234,23 +242,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(STORAGE_KEY_SESSION_START);
       sessionStorage.removeItem('intended_redirect_route');
       if (isExpired) {
-        sessionStorage.setItem('auth_session_expired', 'Session expired after 3 hours of inactivity. Please log in again.');
+        sessionStorage.setItem('auth_session_expired', 'Your 1-day session has elapsed. Please log in again.');
       }
       setIsLoading(false);
     }
   }, []);
 
-  // Inactivity Checking Routine (3 Hours timeout)
-  const checkInactivity = useCallback(() => {
+  // Daily Session Expiration Checking Routine (24 Hours)
+  const checkDailySessionExpiration = useCallback(() => {
     try {
-      const lastActiveStr = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
-      if (!lastActiveStr) return;
-      const lastActive = parseInt(lastActiveStr, 10);
-      if (isNaN(lastActive)) return;
+      const sessionStartStr = localStorage.getItem(STORAGE_KEY_SESSION_START);
+      if (!sessionStartStr) return;
+      const sessionStart = parseInt(sessionStartStr, 10);
+      if (isNaN(sessionStart)) return;
       
       const now = Date.now();
-      if (now - lastActive >= INACTIVITY_TIMEOUT_MS) {
-        console.warn('Session expired due to 3 hours of inactivity.');
+      if (now - sessionStart >= ONE_DAY_MS) {
+        console.warn('Daily session elapsed (24 hours). Requiring re-login.');
         logout(true);
         window.location.hash = '/login';
       }
@@ -270,23 +278,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkInactivity();
+        checkDailySessionExpiration();
         recordActivity();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Inactivity interval check every 30 seconds
-    const inactivityInterval = setInterval(checkInactivity, 30000);
+    // Periodic daily session expiration check (every 5 minutes)
+    const sessionCheckInterval = setInterval(checkDailySessionExpiration, 5 * 60 * 1000);
 
     return () => {
       events.forEach(evt => {
         window.removeEventListener(evt, handleUserActivity);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(inactivityInterval);
+      clearInterval(sessionCheckInterval);
     };
-  }, [recordActivity, checkInactivity]);
+  }, [recordActivity, checkDailySessionExpiration]);
 
   // Periodic database session uptime heartbeat (every 5 minutes)
   useEffect(() => {
@@ -310,9 +318,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function initAuth() {
       try {
-        // First check if 3-hour inactivity expired
+        // First check if 1-day (24h) session expired
         if (!isSessionActive()) {
-          console.warn('Initial session expired due to 3-hour inactivity.');
+          console.warn('Initial session expired: 1 day (24 hours) has elapsed.');
           await logout(true);
           if (isMounted) setIsLoading(false);
           return;
