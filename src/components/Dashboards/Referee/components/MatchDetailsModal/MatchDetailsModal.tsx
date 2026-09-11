@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { 
   X, MapPin, Clock, CloudSun, UserCheck, 
-  CheckCircle, XCircle, Trophy, AlertTriangle, Save, Loader2 
+  CheckCircle, XCircle, Trophy, AlertTriangle, Save, Loader2, Lock 
 } from 'lucide-react';
+import { useToast } from '../../../../../contexts/ToastContext';
 import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
 import type { Match, MatchStatus } from '../../../../../types';
 
@@ -39,6 +40,7 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
   onCancelMatch,
   onOpenWalkover,
 }) => {
+  const { showWarning } = useToast();
   // Unified Match Operations: All matches are editable and actionable by any logged-in referee
   const assigned = true;
 
@@ -385,17 +387,15 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
           <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-[#1a2e45]">
             <button
               type="button"
-              disabled={!assigned}
               onClick={() => {
-                if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
-                  onCancelMatch(match.id);
-                  onClose();
-                }
+                showWarning("The President can only cancel the matches.");
+                onCancelMatch(match.id);
               }}
-              className="px-4 py-2.5 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-md bg-rose-500/10 text-rose-400/60 border border-rose-500/20 text-xs font-black uppercase tracking-wider transition-colors cursor-not-allowed flex items-center gap-1.5 opacity-70"
+              title="The President can only cancel the matches"
             >
-              <XCircle className="w-4 h-4" />
-              <span>Cancel Match</span>
+              <Lock className="w-4 h-4 text-rose-400/60" />
+              <span>Cancel Match (President Only)</span>
             </button>
 
             <button

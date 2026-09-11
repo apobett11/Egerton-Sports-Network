@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { 
   Trophy, Calendar, MapPin, Clock, Eye, ChevronRight, 
   X, CheckCircle, XCircle, UserCheck, ShieldAlert, AlertCircle,
-  Radio, CheckCircle2
+  Radio, CheckCircle2, Lock
 } from 'lucide-react';
 import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
+import { useToast } from '../../../../../contexts/ToastContext';
 import type { Match } from '../../../../../types';
 import type { RefereeTab, MatchdayScheduleGroup } from '../../types';
 import { canRefereeActOnMatch } from '../../hooks/useRefereeDashboard';
@@ -30,8 +31,8 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
   onOpenWalkover,
   setActiveTab,
 }) => {
+  const { showWarning } = useToast();
   const [activeMatchdayModal, setActiveMatchdayModal] = useState<MatchdayScheduleGroup | null>(null);
-  const [mobileActionMatch, setMobileActionMatch] = useState<Match | null>(null);
   const displayMatches = todayMatches && todayMatches.length > 0 ? todayMatches : (myNextMatches && myNextMatches.length > 0 ? myNextMatches : []);
 
   const renderStatusBadge = (status: string) => {
@@ -145,13 +146,7 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                 return (
                   <div
                     key={match.id}
-                    onClick={() => {
-                      if (window.innerWidth < 640) {
-                        setMobileActionMatch(match);
-                      } else {
-                        onEndMatch(match);
-                      }
-                    }}
+                    onClick={() => onSelectMatch(match)}
                     className="flex items-center justify-between px-3 py-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
                   >
                     {/* Left Column: Match Status / Time */}
@@ -246,12 +241,15 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                         </button>
                       </div>
 
-                      {/* Both Mobile and Desktop: PREVIEW Button on the strip */}
+                      {/* Both Mobile and Desktop: PREVIEW Button on the strip (opens same match actions) */}
                       <button
                         type="button"
-                        onClick={() => onSelectMatch(match)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectMatch(match);
+                        }}
                         className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] hover:bg-[#1a385d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs transition-colors cursor-pointer"
-                        title="Match Preview & Lineups"
+                        title="Match Actions"
                       >
                         PREVIEW
                       </button>
@@ -263,85 +261,6 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
           </div>
         )}
       </section>
-
-      {/* MOBILE 3-BUTTON MODAL POPUP FOR TODAY'S MATCHES */}
-      {mobileActionMatch && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/75 backdrop-blur-xs animate-fadeIn select-none"
-          onClick={() => setMobileActionMatch(null)}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="w-full max-w-md bg-white dark:bg-[#0d1b2a] border border-slate-200 dark:border-[#1e3857] rounded-xl p-5 space-y-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046] animate-pulse" />
-                <div>
-                  <h4 className="font-black text-xs uppercase tracking-tight text-slate-900 dark:text-white">
-                    {mobileActionMatch.teamA.shortName || mobileActionMatch.teamA.name} vs {mobileActionMatch.teamB.shortName || mobileActionMatch.teamB.name}
-                  </h4>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    {mobileActionMatch.league || 'Egerton League'} • Matchday {mobileActionMatch.matchday || 1}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileActionMatch(null)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* 3 Selectable Action Options */}
-            <div className="space-y-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const m = mobileActionMatch;
-                  setMobileActionMatch(null);
-                  onEndMatch(m);
-                }}
-                className="w-full py-3 px-4 rounded-lg bg-[#00b04f] hover:bg-[#009643] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm active:scale-98 transition-all cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>End Match (Official Final Score)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const m = mobileActionMatch;
-                  setMobileActionMatch(null);
-                  onOpenWalkover(m);
-                }}
-                className="w-full py-3 px-4 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
-              >
-                <Trophy className="w-4 h-4" />
-                <span>Award Walkover (3-0)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const m = mobileActionMatch;
-                  setMobileActionMatch(null);
-                  onSelectMatch(m);
-                }}
-                className="w-full py-3 px-4 rounded-lg bg-slate-100 dark:bg-[#152a40] hover:bg-slate-200 dark:hover:bg-[#1e3857] text-slate-800 dark:text-slate-200 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
-              >
-                <Eye className="w-4 h-4" />
-                <span>Preview Details & Lineups</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* SECTION 2: MATCHDAYS & DATES (WITH INTERACTIVE POPUP) */}
       <section className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 sm:p-5 shadow-xs space-y-4">
@@ -551,8 +470,8 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                         }}
                         className="px-3 py-1.5 rounded-md bg-slate-200 dark:bg-[#152a40] hover:bg-slate-300 dark:hover:bg-[#1c3857] text-slate-700 dark:text-white font-bold text-xs uppercase tracking-wider border border-slate-200 dark:border-white/10 transition-colors cursor-pointer flex items-center gap-1.5"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Inspect Match</span>
+                        <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Match Actions</span>
                       </button>
 
                       {!isFinished && !isCancelled && (
@@ -563,14 +482,13 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (window.confirm(`Cancel match ${match.teamA.name} vs ${match.teamB.name}?`)) {
-                                    onCancelMatch(match.id);
-                                    setActiveMatchdayModal(null);
-                                  }
+                                  showWarning("The President can only cancel the matches.");
+                                  onCancelMatch(match.id);
                                 }}
-                                className="px-2.5 py-1.5 rounded-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1.5 rounded-md bg-rose-500/10 text-rose-400/60 border border-rose-500/20 text-xs font-bold uppercase tracking-wider transition-all cursor-not-allowed flex items-center gap-1 opacity-70"
+                                title="The President can only cancel the matches"
                               >
-                                <XCircle className="w-3.5 h-3.5" />
+                                <Lock className="w-3.5 h-3.5 text-rose-400/60" />
                                 <span>Cancel</span>
                               </button>
 

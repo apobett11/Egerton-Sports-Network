@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { EmptyState } from '../../../../common/UIComponents';
-import { Trophy, MapPin, Clock, CloudSun, UserCheck, XCircle, CheckCircle, ArrowLeft, ShieldCheck, FileText } from 'lucide-react';
+import { Trophy, MapPin, Clock, CloudSun, UserCheck, XCircle, CheckCircle, ArrowLeft, ShieldCheck, FileText, Lock } from 'lucide-react';
 import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
+import { useToast } from '../../../../../contexts/ToastContext';
 import type { Match } from '../../../../../types';
 import type { RefereeTab } from '../../types';
 
@@ -20,6 +21,7 @@ export const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
   onCancelMatch,
   setActiveTab,
 }) => {
+  const { showWarning } = useToast();
   const [isCancelling, setIsCancelling] = useState(false);
 
   if (!selectedFixture) {
@@ -45,16 +47,9 @@ export const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
   const isCancelled = selectedFixture.status === 'CANCELLED';
   const isLive = selectedFixture.status === 'LIVE' || selectedFixture.status === 'HT';
 
-  const handleCancel = async () => {
-    if (window.confirm(`Are you sure you want to cancel the match ${selectedFixture.teamA.name} vs ${selectedFixture.teamB.name}?`)) {
-      setIsCancelling(true);
-      try {
-        await onCancelMatch(selectedFixture.id);
-        setActiveTab('my_matches');
-      } finally {
-        setIsCancelling(false);
-      }
-    }
+  const handleCancel = () => {
+    showWarning("The President can only cancel the matches.");
+    onCancelMatch(selectedFixture.id);
   };
 
   const renderStatusBadge = (status: string) => {
@@ -281,12 +276,12 @@ export const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#14263b]">
             <button
               type="button"
-              disabled={isCancelling}
               onClick={handleCancel}
-              className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-bold uppercase text-xs tracking-wider rounded-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-rose-500/10 text-rose-400/60 border border-rose-500/20 font-bold uppercase text-xs tracking-wider rounded-md transition-all flex items-center justify-center gap-2 cursor-not-allowed opacity-70"
+              title="The President can only cancel the matches"
             >
-              <XCircle className="w-4 h-4" />
-              <span>Cancel Match</span>
+              <Lock className="w-4 h-4 text-rose-400/60" />
+              <span>Cancel Match (President Only)</span>
             </button>
 
             <button

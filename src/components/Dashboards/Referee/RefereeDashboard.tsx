@@ -10,8 +10,9 @@ import { RefereeReconciliationWorkflow } from './components/Reconciliation/Refer
 import { RefereeProfileView } from './components/Profile/RefereeProfileView';
 import { RefereeAnnouncementsView } from './components/Announcements/RefereeAnnouncementsView';
 import { WalkoverModal } from './components/WalkoverModal/WalkoverModal';
-import { MatchDetailsModal } from './components/MatchDetailsModal/MatchDetailsModal';
+import { MatchActionModal } from './components/MatchActionModal/MatchActionModal';
 import { EndMatchModal } from './components/EndMatchModal/EndMatchModal';
+import { useToast } from '../../../contexts/ToastContext';
 import type { Match } from '../../../types';
 
 export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
@@ -62,7 +63,12 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     handleUpdateProfile,
   } = useRefereeDashboard();
 
+  const { showWarning } = useToast();
   const [endMatchFixture, setEndMatchFixture] = useState<Match | null>(null);
+
+  const handlePresidentOnlyCancel = async () => {
+    showWarning('The President can only cancel the matches.');
+  };
 
   if (isLoading) {
     return <LoadingSpinner label="Loading official referee match center..." />;
@@ -74,7 +80,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
   };
 
   return (
-    <div className="min-h-screen bg-[#f2f4f7] dark:bg-[#081018] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 pb-24 md:pb-12 font-sans select-none">
+    <div className="min-h-screen bg-black text-slate-100 flex flex-col transition-colors duration-300 pb-24 md:pb-12 font-sans select-none">
       {/* 1. GUEST-STYLED TOP NAVIGATION */}
       <RefereeHeader
         currentUserName={currentUserName}
@@ -113,7 +119,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             activeRefereeId={activeRefereeId}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
-            onCancelMatch={cancelMatch}
+            onCancelMatch={handlePresidentOnlyCancel}
             onOpenWalkover={(match) => setWalkoverFixture(match)}
             setActiveTab={setActiveTab}
           />
@@ -127,7 +133,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             matchdayGroups={matchdayGroups}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
-            onCancelMatch={cancelMatch}
+            onCancelMatch={handlePresidentOnlyCancel}
             onOpenWalkover={(match) => setWalkoverFixture(match)}
             setActiveTab={setActiveTab}
           />
@@ -177,7 +183,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             setEndMatchFixture(null);
           }}
           onAwardWalkover={awardWalkover}
-          onCancelMatch={cancelMatch}
+          onCancelMatch={handlePresidentOnlyCancel}
           isSubmitting={isSubmitting}
           homeSquad={homeLineup}
           awaySquad={awayLineup}
@@ -194,17 +200,13 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         />
       )}
 
-      {/* Match Details Popup Modal (Preview & Technical Inspection) */}
+      {/* Match Action Modal (Replaces legacy game preview with direct End Match & Walkover choices) */}
       {inspectedMatch && (
-        <MatchDetailsModal
+        <MatchActionModal
           match={inspectedMatch}
-          currentUserName={currentUserName}
-          activeRefereeId={activeRefereeId}
-          isAssignedToMe={isAssignedToMe(inspectedMatch, activeRefereeId)}
-          onSaveMatchDetails={handleSaveMatchDetails}
+          isOpen={!!inspectedMatch}
           onClose={() => setInspectedMatch(null)}
           onEndMatch={handleLaunchEndMatch}
-          onCancelMatch={cancelMatch}
           onOpenWalkover={(match) => setWalkoverFixture(match)}
         />
       )}
