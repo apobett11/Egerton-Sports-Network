@@ -798,46 +798,101 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
 /**
  * Fetches the Coach and Captain user profile details for the team.
  */
-export async function fetchCoachCaptainProfiles(teamId: string): Promise<{
-    coach?: { id: string; name: string; email?: string; avatarUrl?: string; role?: string };
-    captain?: { id: string; name: string; email?: string; avatarUrl?: string; role?: string };
+export async function fetchCoachCaptainProfiles(teamId: string, coachUserId?: string): Promise<{
+    coach?: { id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string };
+    captain?: { id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string };
 }> {
     const teamUuid = toUuid(teamId);
+    let coachData: any = null;
+    let captainData: any = null;
+
     try {
+        // 1. If coachUserId is explicitly passed (authenticated coach UID), query profile directly
+        if (coachUserId && isValidUuid(coachUserId)) {
+            const { data: directCoach } = await supabase
+                .from('profiles')
+                .select('id, first_name, last_name, email, phone, avatar_url, role')
+                .eq('id', coachUserId)
+                .maybeSingle();
+
+            if (directCoach) {
+                coachData = directCoach;
+            }
+        }
+
+        // 2. Fetch team's coach_id and captain_id references
         const { data: teamData } = await supabase
             .from('teams')
             .select(`
                 coach_id,
                 captain_id,
-                coach_profile:coach_id (id, first_name, last_name, email, avatar_url, role),
-                captain_profile:captain_id (id, first_name, last_name, email, avatar_url, role)
+                coach_profile:coach_id (id, first_name, last_name, email, phone, avatar_url, role),
+                captain_profile:captain_id (id, first_name, last_name, email, phone, avatar_url, role)
             `)
             .eq('id', teamUuid)
-            .single();
+            .maybeSingle();
 
         if (teamData) {
-            const cp: any = teamData.coach_profile;
-            const cap: any = teamData.captain_profile;
-
-            return {
-                coach: cp ? {
-                    id: cp.id,
-                    name: `${cp.first_name || ''} ${cp.last_name || ''}`.trim() || 'Head Coach',
-                    email: cp.email,
-                    avatarUrl: cp.avatar_url,
-                    role: cp.role || 'COACH'
-                } : undefined,
-                captain: cap ? {
-                    id: cap.id,
-                    name: `${cap.first_name || ''} ${cap.last_name || ''}`.trim() || 'Team Captain',
-                    email: cap.email,
-                    avatarUrl: cap.avatar_url,
-                    role: cap.role || 'CAPTAIN'
-                } : undefined,
-            };
+            if (!coachData && teamData.coach_profile) {
+                coachData = teamData.coach_profile;
+            }
+            if (teamData.captain_profile) {
+                captainData = teamData.captain_profile;
+            }
         }
-        return {};
+
+        // 3. If captain profile not directly linked on team, find via team players
+        if (!captainData) {
+            const { data: capPlayer } = await supabase
+                .from('players')
+                .select(`
+                    id,
+                    profile_id,
+                    first_name,
+                    last_name,
+                    profiles:profile_id (id, first_name, last_name, email, phone, avatar_url, role)
+                `)
+                .eq('team_id', teamUuid)
+                .order('jersey_number', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+            if (capPlayer) {
+                const cp = (capPlayer as any).profiles;
+                if (cp) {
+                    captainData = cp;
+                } else if (capPlayer.first_name || capPlayer.last_name) {
+                    captainData = {
+                        id: capPlayer.profile_id || capPlayer.id,
+                        first_name: capPlayer.first_name,
+                        last_name: capPlayer.last_name,
+                        avatar_url: '',
+                        role: 'CAPTAIN'
+                    };
+                }
+            }
+        }
+
+        return {
+            coach: coachData ? {
+                id: coachData.id,
+                name: `${coachData.first_name || ''} ${coachData.last_name || ''}`.trim() || 'Head Coach',
+                email: coachData.email,
+                phone: coachData.phone,
+                avatarUrl: coachData.avatar_url || '',
+                role: coachData.role || 'COACH'
+            } : undefined,
+            captain: captainData ? {
+                id: captainData.id,
+                name: `${captainData.first_name || ''} ${captainData.last_name || ''}`.trim() || 'Team Captain',
+                email: captainData.email,
+                phone: captainData.phone,
+                avatarUrl: captainData.avatar_url || '',
+                role: captainData.role || 'CAPTAIN'
+            } : undefined,
+        };
     } catch (e) {
+        console.warn('[fetchCoachCaptainProfiles] Failed to fetch profiles from DB:', e);
         return {};
     }
 }

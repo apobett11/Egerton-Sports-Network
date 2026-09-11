@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Manager, Player } from './types';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, User } from 'lucide-react';
 
 interface SidebarProps {
   manager: Manager;
@@ -20,9 +20,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   manager,
   captain,
-  currentRole = 'COACH',
+  currentRole: _currentRole = 'COACH',
   teamName,
-  teamCrest,
+  teamCrest: _teamCrest,
   onOpenManager,
   onOpenTeam,
   onOpenRoles,
@@ -31,24 +31,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeDrawer,
   onBack,
 }) => {
-  const isCoach = currentRole === 'COACH';
+  const [coachImgError, setCoachImgError] = useState(false);
+  const [playerImgError, setPlayerImgError] = useState(false);
 
   return (
     <aside className="relative z-30 flex flex-col items-start justify-between h-full py-3.5 pl-3 sm:pl-4 pr-1 select-none pointer-events-auto flex-shrink-0">
       {/* Top Stack of 4 Action Icons in curved dark dock */}
       <div className="flex flex-col items-center gap-2.5 bg-[#03091e]/90 p-1.5 rounded-[22px] border border-[#142352]/70 shadow-2xl backdrop-blur-md">
-        {/* 1. Coach Profile Avatar: Shows Coach details */}
+        {/* 1. Coach Profile Avatar: Shows Coach details, avatar fallback in absence */}
         <button
           onClick={onOpenManager}
-          title={`Head Coach: ${manager.name}`}
+          title={`Head Coach: ${manager.name || 'Head Coach'}`}
           className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer group"
         >
           <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-[#0c1a40] border-[2px] border-[#6b8cbe] shadow-md overflow-hidden flex items-end justify-center p-0.5 relative hover:border-white transition-colors">
-            <img
-              src={manager.photoUrl}
-              alt={manager.name}
-              className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
-            />
+            {manager.photoUrl && !coachImgError ? (
+              <img
+                src={manager.photoUrl}
+                alt={manager.name || 'Coach'}
+                className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
+                onError={() => setCoachImgError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-blue-300">
+                <User className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+            )}
             {/* Coach Badge */}
             <div className="absolute bottom-0.5 right-0.5 bg-blue-500 text-white font-black text-[8px] px-1 rounded shadow leading-tight">
               COACH
@@ -56,18 +64,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </button>
 
-        {/* 2. Team Crest Button */}
+        {/* 2. Player / Team Icon: Actually shows player/captain icon, avatar in absence */}
         <button
-          onClick={onOpenTeam}
-          title={`${teamName} Game Plan`}
-          className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer"
+          onClick={onOpenRoles || onOpenTeam}
+          title={`Team Player / Captain: ${captain?.name || 'Player'}`}
+          className="relative transition-transform duration-150 hover:scale-105 active:scale-95 focus:outline-none cursor-pointer group"
         >
-          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-white border border-white/90 shadow-md overflow-hidden flex items-center justify-center p-1.5 hover:shadow-[0_0_12px_rgba(255,255,255,0.4)] transition-all">
-            <img
-              src={teamCrest}
-              alt={teamName}
-              className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
-            />
+          <div className="w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-[16px] bg-[#0c1a40] border-[2px] border-[#6b8cbe] shadow-md overflow-hidden flex items-end justify-center p-0.5 relative hover:border-white transition-colors">
+            {captain?.photoUrl && !playerImgError ? (
+              <img
+                src={captain.photoUrl}
+                alt={captain.name || 'Captain'}
+                className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
+                onError={() => setPlayerImgError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-amber-300">
+                <User className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+            )}
+            {/* Captain / Player Badge */}
+            <div className="absolute bottom-0.5 right-0.5 bg-amber-500 text-slate-950 font-black text-[8px] px-1 rounded shadow leading-tight">
+              CAPT
+            </div>
           </div>
         </button>
 

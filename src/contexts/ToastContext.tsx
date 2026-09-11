@@ -62,9 +62,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return [...existing, newToast];
       });
 
+      if (type !== 'loading') {
+        const autoDismissMs = duration && duration > 0 ? duration : 4000;
+        setTimeout(() => {
+          dismissToast(id);
+        }, autoDismissMs);
+      }
+
       return id;
     },
-    []
+    [dismissToast]
   );
 
   const showSuccess = useCallback(

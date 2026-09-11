@@ -11,6 +11,8 @@ interface SubstitutesDrawerProps {
   onDragStart: (e: React.DragEvent, player: Player) => void;
   onSwapWithPitch: (subPlayerId: string, pitchPlayerId: string) => void;
   onSubDirectly?: (player: Player) => void;
+  onTouchDragStart?: (e: React.TouchEvent, player: Player) => void;
+  onPointerDragStart?: (e: React.PointerEvent, player: Player) => void;
 }
 
 export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
@@ -20,13 +22,15 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
   substitutes,
   onDragStart,
   onSubDirectly,
+  onTouchDragStart,
+  onPointerDragStart,
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="absolute inset-y-0 left-0 z-40 flex pointer-events-auto select-none">
       {/* Sliding Panel Container positioned alongside left dock */}
-      <div className="w-[195px] sm:w-[220px] h-full bg-[#0d1424]/95 backdrop-blur-md text-white shadow-2xl flex flex-col justify-start pt-3 pb-2 px-2.5 animate-in slide-in-from-left duration-150 border-r border-[#1e2d4d] z-50">
+      <div className="w-[210px] sm:w-[235px] h-full bg-[#0d1424]/95 backdrop-blur-md text-white shadow-2xl flex flex-col justify-start pt-3 pb-2 px-2.5 animate-in slide-in-from-left duration-150 border-r border-[#1e2d4d] z-50">
         {/* Drawer Header with Title and X Close Button */}
         <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#1e2d4d] px-1">
           <div className="flex items-center gap-1.5">
@@ -51,17 +55,18 @@ export const SubstitutesDrawer: React.FC<SubstitutesDrawerProps> = ({
 
         {/* 2-Column Grid of Substitute/Reserve Players */}
         <div className="flex-1 overflow-y-auto pr-0.5 no-scrollbar">
-          {substitutes.length === 0 ? (
-            <div className="text-center text-xs text-slate-500 py-8 px-2">
-              No players available in this list.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3 auto-rows-max items-start justify-items-center">
+          {substitutes.length === 0 ? null : (
+            <div className="grid grid-cols-2 gap-x-1.5 gap-y-3 auto-rows-max items-start justify-items-center">
               {substitutes.map((sub) => (
-                <div key={sub.id} className="flex justify-center">
+                <div
+                  key={sub.id}
+                  className="flex justify-center touch-none cursor-grab active:cursor-grabbing"
+                  onPointerDown={(e) => onPointerDragStart && onPointerDragStart(e, sub)}
+                  onTouchStart={(e) => onTouchDragStart && onTouchDragStart(e, sub)}
+                >
                   <PlayerCard
                     player={sub}
-                    size="sm"
+                    size="md"
                     onClick={() => onSubDirectly && onSubDirectly(sub)}
                     onDragStart={(e, p) => {
                       e.dataTransfer.setData('text/plain', p.id);

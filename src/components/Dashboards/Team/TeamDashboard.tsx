@@ -27,6 +27,8 @@ export const TeamDashboard: React.FC = () => {
     canPublish,
     teamId,
     teamInfo,
+    coachProfile,
+    captainProfile,
     teamFixtures,
     linesmanMatches,
     announcements,
@@ -100,6 +102,8 @@ export const TeamDashboard: React.FC = () => {
           roster={roster}
           teamName={teamInfo?.name}
           teamCrest={teamInfo?.logo_url}
+          coachProfile={coachProfile}
+          captainProfile={captainProfile}
           activeFixtureId={teamFixtures && teamFixtures.length > 0 ? teamFixtures[0].id : undefined}
           onNavigateBack={() => setActiveView('DASHBOARD')}
           onShowToast={showToast}

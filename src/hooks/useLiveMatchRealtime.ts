@@ -43,7 +43,7 @@ export const useLiveMatchRealtime = (
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3200);
+    }, 4000);
   }, []);
 
   const dismissToast = useCallback((id: string) => {

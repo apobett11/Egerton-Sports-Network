@@ -11,6 +11,7 @@ interface PitchProps {
   onOpenFormationModal: () => void;
   onOpenPlaystyleModal: () => void;
   isCoach?: boolean;
+  externalSwapTargetId?: string | null;
 }
 
 export const Pitch: React.FC<PitchProps> = ({
@@ -22,6 +23,7 @@ export const Pitch: React.FC<PitchProps> = ({
   onOpenFormationModal,
   onOpenPlaystyleModal,
   isCoach = true,
+  externalSwapTargetId = null,
 }) => {
   const [viewMode, setViewMode] = useState<'standard' | 'detailed'>('standard');
   const [isMoveMode, setIsMoveMode] = useState(false);
@@ -328,36 +330,54 @@ export const Pitch: React.FC<PitchProps> = ({
 
         {/* All Players on Pitch Layer with Touch & Drag Engine */}
         {players.map((player) => {
+          const effectiveSwapTargetId = swapTargetId || externalSwapTargetId;
           const isDraggingThis = activeDragId === player.id;
-          const isSwapTargetThis = swapTargetId === player.id;
+          const isSwapTargetThis = effectiveSwapTargetId === player.id;
 
-          const xPos = isDraggingThis && currentDragCoord ? currentDragCoord.x : (player.coord?.x ?? 50);
-          const yPos = isDraggingThis && currentDragCoord ? currentDragCoord.y : (player.coord?.y ?? 50);
+          // When dragging and hovering over a target player, snap completely over the target!
+          const targetPlayer = isDraggingThis && effectiveSwapTargetId ? players.find((p) => p.id === effectiveSwapTargetId) : null;
+          const xPos = isDraggingThis
+            ? (targetPlayer ? (targetPlayer.coord?.x ?? 50) : (currentDragCoord?.x ?? player.coord?.x ?? 50))
+            : (player.coord?.x ?? 50);
+          const yPos = isDraggingThis
+            ? (targetPlayer ? (targetPlayer.coord?.y ?? 50) : (currentDragCoord?.y ?? player.coord?.y ?? 50))
+            : (player.coord?.y ?? 50);
 
           return (
             <div
               key={player.id}
+              data-player-id={player.id}
               onPointerDown={(e) => handlePointerDown(e, player)}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onTouchStart={(e) => handleTouchStart(e, player)}
+              onDragEnter={() => {
+                if (isCoach) setSwapTargetId(player.id);
+              }}
               onDragOver={(e) => {
                 if (isCoach) {
                   e.preventDefault();
-                  e.dataTransfer.dropEffect = 'copy';
+                  e.dataTransfer.dropEffect = 'move';
+                  if (swapTargetId !== player.id) setSwapTargetId(player.id);
                 }
               }}
-              onDrop={(e) => handleHTML5DropOnPlayer(e, player)}
+              onDragLeave={() => {
+                if (swapTargetId === player.id) setSwapTargetId(null);
+              }}
+              onDrop={(e) => {
+                handleHTML5DropOnPlayer(e, player);
+                setSwapTargetId(null);
+              }}
               style={{
                 left: `${xPos}%`,
                 top: `${yPos}%`,
                 transform: isDraggingThis
-                  ? 'translate(calc(-50% + 14px), calc(-50% - 48px)) scale(1.14)'
+                  ? 'translate(-50%, -50%) scale(1.14)'
                   : isSwapTargetThis
-                  ? 'translate(-50%, -50%) scale(1.12)'
+                  ? 'translate(-50%, -50%) scale(1.08)'
                   : 'translate(-50%, -50%)',
                 transition: isDraggingThis
-                  ? 'none'
+                  ? (targetPlayer ? 'left 0.12s ease-out, top 0.12s ease-out, transform 0.12s ease-out' : 'none')
                   : 'left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s ease',
                 zIndex: isDraggingThis ? 60 : isSwapTargetThis ? 45 : 20,
               }}

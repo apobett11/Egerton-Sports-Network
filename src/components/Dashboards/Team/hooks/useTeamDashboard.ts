@@ -21,7 +21,8 @@ import {
   updatePlayerStatusInDb,
   savePracticeScheduleToDb,
   saveMatchLineup,
-  deletePlayerFromTeam
+  deletePlayerFromTeam,
+  fetchCoachCaptainProfiles
 } from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
@@ -54,6 +55,8 @@ export const useTeamDashboard = () => {
   const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
   const [isSubmittingJournal, setIsSubmittingJournal] = useState<boolean>(false);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [coachProfile, setCoachProfile] = useState<{ id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string } | null>(null);
+  const [captainProfile, setCaptainProfile] = useState<{ id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string } | null>(null);
 
   const [activeView, setActiveView] = useState<DashboardView>('DASHBOARD');
 
@@ -145,8 +148,9 @@ export const useTeamDashboard = () => {
         setPracticeSchedule(team.practice_schedule);
       }
 
-      // Parallel fetch from database
-      const [dbPlayers, dbFixtures, dbStandings, dbLinesman, dbAnnouncements, dbNews] = await Promise.all([
+      // Parallel fetch from database using UID
+      const [coachCapProfiles, dbPlayers, dbFixtures, dbStandings, dbLinesman, dbAnnouncements, dbNews] = await Promise.all([
+        fetchCoachCaptainProfiles(resolvedTeamId, coachUserId),
         fetchTeamPlayers(resolvedTeamId),
         fetchTeamFixtures(resolvedTeamId),
         fetchTeamStandings(resolvedTeamId, team?.competition_id),
@@ -154,6 +158,13 @@ export const useTeamDashboard = () => {
         fetchTeamAnnouncements(),
         fetchTeamNews(),
       ]);
+
+      if (coachCapProfiles?.coach) {
+        setCoachProfile(coachCapProfiles.coach);
+      }
+      if (coachCapProfiles?.captain) {
+        setCaptainProfile(coachCapProfiles.captain);
+      }
 
       setRoster(dbPlayers);
 
@@ -483,6 +494,8 @@ export const useTeamDashboard = () => {
     canPublish,
     teamId,
     teamInfo,
+    coachProfile,
+    captainProfile,
     activeView,
     setActiveView,
     darkMode,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Player } from './types';
+import { User } from 'lucide-react';
 
 interface PlayerCardProps {
   player: Player;
@@ -106,18 +107,28 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           </span>
         </div>
 
-        {/* Player Portrait Image */}
+        {/* Player Portrait Image or Avatar in absence */}
         <div
           className={`absolute right-[-2px] bottom-0 z-0 pointer-events-none flex items-end justify-end ${
             isSmall ? 'w-[36px] h-[46px]' : 'w-[42px] h-[54px] sm:w-[46px] sm:h-[58px]'
           }`}
         >
-          <img
-            src={player.photoUrl}
-            alt={player.name}
-            className="w-full h-full object-contain object-bottom drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)]"
-            draggable={false}
-          />
+          {player.photoUrl ? (
+            <img
+              src={player.photoUrl}
+              alt={player.name}
+              className="w-full h-full object-contain object-bottom drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)]"
+              draggable={false}
+              onError={(e) => {
+                (e.currentTarget as HTMLElement).style.display = 'none';
+                const fallback = e.currentTarget.parentElement?.querySelector('.player-avatar-fallback');
+                if (fallback) fallback.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <div className={`player-avatar-fallback ${player.photoUrl ? 'hidden' : ''} w-full h-full flex items-center justify-center text-white/30`}>
+            <User className={isSmall ? 'w-6 h-6' : 'w-8 h-8'} />
+          </div>
         </div>
 
         {/* Bottom Left: Flag / Badge */}

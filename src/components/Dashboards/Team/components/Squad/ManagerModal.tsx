@@ -23,11 +23,20 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [phone, setPhone] = useState(manager.phone || '+254 712 345 678');
-  const [email, setEmail] = useState(manager.email || 'coach.marcus@egerton.ac.ke');
-  const [name, setName] = useState(manager.name || 'Coach Marcus');
-  const [title, setTitle] = useState(manager.title || 'Head Coach • CAF A Licensed');
+  const [phone, setPhone] = useState(manager.phone || '');
+  const [email, setEmail] = useState(manager.email || '');
+  const [name, setName] = useState(manager.name || 'Head Coach');
+  const [title, setTitle] = useState(manager.title || 'Head Coach');
   const [isEditing, setIsEditing] = useState(false);
+  const [coachImgError, setCoachImgError] = useState(false);
+
+  React.useEffect(() => {
+    setName(manager.name || 'Head Coach');
+    setPhone(manager.phone || '');
+    setEmail(manager.email || '');
+    setTitle(manager.title || 'Head Coach');
+    setCoachImgError(false);
+  }, [manager]);
 
   if (!isOpen) return null;
 
@@ -96,11 +105,18 @@ export const ManagerModal: React.FC<ManagerModalProps> = ({
           {/* Avatar & Upload Option */}
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
             <div className="relative group w-24 h-24 rounded-2xl bg-[#1E293B] border-2 border-blue-500 shadow-md overflow-hidden flex items-end justify-center p-0.5 shrink-0">
-              <img
-                src={manager.photoUrl}
-                alt={manager.name}
-                className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
-              />
+              {manager.photoUrl && !coachImgError ? (
+                <img
+                  src={manager.photoUrl}
+                  alt={manager.name}
+                  className="w-full h-full object-contain object-bottom scale-110 pointer-events-none"
+                  onError={() => setCoachImgError(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-blue-300">
+                  <User className="w-12 h-12" />
+                </div>
+              )}
               {isCoach && (
                 <button
                   type="button"

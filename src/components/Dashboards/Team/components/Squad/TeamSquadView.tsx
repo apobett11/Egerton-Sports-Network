@@ -19,7 +19,8 @@ import { SubstitutesDrawer } from './SubstitutesDrawer';
 import { ManagerModal } from './ManagerModal';
 import { TeamModal } from './TeamModal';
 import { LandscapeGuard } from './LandscapeGuard';
-import { saveTeamTacticsAndSquad, uploadTeamCrest } from '../../lib/supabaseClient';
+import { PlayerCard } from './PlayerCard';
+import { saveTeamTacticsAndSquad, uploadTeamCrest, fetchCoachCaptainProfiles } from '../../lib/supabaseClient';
 
 interface TeamSquadViewProps {
   currentRole?: 'COACH' | 'CAPTAIN' | 'PLAYER' | 'GUEST' | string;
@@ -27,6 +28,8 @@ interface TeamSquadViewProps {
   roster?: any[];
   teamName?: string;
   teamCrest?: string;
+  coachProfile?: { id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string };
+  captainProfile?: { id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string };
   activeFixtureId?: string;
   onNavigateBack?: () => void;
   onShowToast?: (msg: string) => void;
@@ -39,67 +42,107 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   roster,
   teamName,
   teamCrest,
+  coachProfile,
+  captainProfile,
   activeFixtureId,
   onNavigateBack,
   onShowToast,
   onSaveMatchLineup,
 }) => {
   const isCoach = currentRole === 'COACH';
-  const initialTeam = TEAMS_DATA['man_united'];
 
-  // Map real database roster to pitch player models if available
-  const dbMappedSquad = React.useMemo(() => {
-    if (roster && roster.length > 0) {
-      const template = FORMATIONS['4-3-3'];
-      const mapped: Player[] = roster.map((p, idx) => {
-        let pos: any = 'CMF';
-        if (p.position === 'GK') pos = 'GK';
-        else if (p.position === 'DF') pos = idx % 2 === 0 ? 'CB' : 'LB';
-        else if (p.position === 'FW') pos = idx % 2 === 0 ? 'CF' : 'RWF';
+  // Builder for exactly 11 pitch simulation cards: filled with DB players; remaining cards remain empty position slots with avatar
+  const buildPitchStartingXI = React.useCallback(
+    (rosterList?: any[], targetFormation: FormationType = '4-3-3', capId?: string) => {
+      const template = FORMATIONS[targetFormation] || FORMATIONS['4-3-3'];
+      const xi: Player[] = [];
+      for (let i = 0; i < 11; i++) {
+        const slot = template.coords[i] || { x: 50, y: 50, position: 'CMF' };
+        const realP = rosterList && rosterList[i] ? rosterList[i] : null;
+        if (realP) {
+          let pos = (realP.position as any) || slot.position;
+          if (pos === 'DEF' || pos === 'DF') pos = slot.position;
+          if (pos === 'FWD' || pos === 'FW') pos = slot.position;
+          if (pos === 'MID' || pos === 'MD') pos = slot.position;
 
-        return {
-          id: p.id,
-          name: p.name,
-          number: p.number || idx + 1,
-          position: pos,
-          defaultPosition: pos,
-          rating: p.rating || 78,
-          photoUrl: p.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-          flagUrl: 'https://flagcdn.com/w80/ke.png',
-          clubLogoUrl: teamCrest || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-          cardTheme: p.rating >= 85 ? 'epic' : p.rating >= 80 ? 'gold' : 'blue',
-          isCaptain: idx === 0,
-        };
-      });
+          xi.push({
+            id: realP.id,
+            name: realP.name,
+            number: realP.number || i + 1,
+            position: slot.position as any,
+            defaultPosition: pos,
+            rating: realP.rating || 75,
+            photoUrl: realP.cardImage || realP.photoUrl || '',
+            flagUrl: realP.flagUrl || 'https://flagcdn.com/w80/ke.png',
+            clubLogoUrl: teamCrest || '',
+            cardTheme: (realP.rating || 75) >= 85 ? 'epic' : (realP.rating || 75) >= 80 ? 'gold' : 'blue',
+            isCaptain: realP.id === (capId || captainProfile?.id) || i === 0,
+            coord: { x: slot.x, y: slot.y },
+          });
+        } else {
+          // Exactly 11 cards maintained at all times: unfilled card slot with position and avatar
+          xi.push({
+            id: `slot_empty_${i + 1}`,
+            name: slot.position,
+            number: i + 1,
+            position: slot.position as any,
+            defaultPosition: slot.position as any,
+            rating: 70,
+            photoUrl: '', // In absence, shows avatar
+            flagUrl: '',
+            clubLogoUrl: teamCrest || '',
+            cardTheme: 'blue',
+            isCaptain: false,
+            coord: { x: slot.x, y: slot.y },
+          });
+        }
+      }
+      return xi;
+    },
+    [teamCrest, captainProfile]
+  );
 
-      const xi = mapped.slice(0, 11).map((player, idx) => {
-        const slot = template.coords[idx] || { x: 50, y: 50, position: 'CMF' };
-        return {
-          ...player,
-          position: slot.position as any,
-          coord: { x: slot.x, y: slot.y },
-        };
-      });
+  // Substitutes: strictly from database roster (blank if <= 11 players)
+  const buildSubstitutes = React.useCallback(
+    (rosterList?: any[]) => {
+      if (!rosterList || rosterList.length <= 11) return [];
+      return rosterList.slice(11, 18).map((p, idx) => ({
+        id: p.id,
+        name: p.name,
+        number: p.number || 12 + idx,
+        position: (p.position as any) || 'CMF',
+        defaultPosition: (p.position as any) || 'CMF',
+        rating: p.rating || 75,
+        photoUrl: p.cardImage || p.photoUrl || '',
+        flagUrl: 'https://flagcdn.com/w80/ke.png',
+        clubLogoUrl: teamCrest || '',
+        cardTheme: (p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue',
+        isCaptain: false,
+      }));
+    },
+    [teamCrest]
+  );
 
-      return {
-        startingXI: xi,
-        substitutes: mapped.slice(11, 18),
-        reserves: mapped.slice(18),
-        manager: {
-          name: 'Coach Marcus',
-          photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-          proficiencies: {
-            'Possession Game': 85,
-            'Quick Counter': 80,
-            'Long Ball Counter': 75,
-            'Out Wide': 70,
-            'Long Ball': 65,
-          },
-        },
-      };
-    }
-    return null;
-  }, [roster, teamCrest]);
+  // Reserves: strictly from database roster (blank if <= 18 players)
+  const buildReserves = React.useCallback(
+    (rosterList?: any[]) => {
+      if (!rosterList || rosterList.length <= 18) return [];
+      return rosterList.slice(18).map((p, idx) => ({
+        id: p.id,
+        name: p.name,
+        number: p.number || 19 + idx,
+        position: (p.position as any) || 'CMF',
+        defaultPosition: (p.position as any) || 'CMF',
+        rating: p.rating || 75,
+        photoUrl: p.cardImage || p.photoUrl || '',
+        flagUrl: 'https://flagcdn.com/w80/ke.png',
+        clubLogoUrl: teamCrest || '',
+        cardTheme: (p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue',
+        isCaptain: false,
+      }));
+    },
+    [teamCrest]
+  );
 
   const CACHE_KEY = `esn_squad_tactics_${teamId}`;
 
@@ -107,28 +150,51 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   const cachedData = React.useMemo(() => {
     try {
       const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Discard old cache if it contains fallback players (e.g. mu_)
+        if (
+          parsed?.startingXI &&
+          Array.isArray(parsed.startingXI) &&
+          !parsed.startingXI.some((p: any) => String(p.id).startsWith('mu_'))
+        ) {
+          return parsed;
+        }
+      }
     } catch {}
     return null;
   }, [CACHE_KEY]);
 
-  const [currentTeamId, setCurrentTeamId] = useState<string>(cachedData?.teamId || (dbMappedSquad ? 'egerton_fc' : 'man_united'));
+  const [currentTeamId, setCurrentTeamId] = useState<string>(cachedData?.teamId || 'egerton_fc');
 
   const [startingXI, setStartingXI] = useState<Player[]>(() => {
     if (cachedData?.startingXI && cachedData.startingXI.length === 11) return cachedData.startingXI;
-    return dbMappedSquad ? dbMappedSquad.startingXI : initialTeam.startingXI;
+    return buildPitchStartingXI(roster, '4-3-3');
   });
   const [substitutes, setSubstitutes] = useState<Player[]>(() => {
     if (cachedData?.substitutes) return cachedData.substitutes;
-    return dbMappedSquad ? dbMappedSquad.substitutes : initialTeam.substitutes.slice(0, 7);
+    return buildSubstitutes(roster);
   });
   const [reserves, setReserves] = useState<Player[]>(() => {
     if (cachedData?.reserves) return cachedData.reserves;
-    return dbMappedSquad ? dbMappedSquad.reserves : initialTeam.substitutes.slice(7);
+    return buildReserves(roster);
   });
   const [manager, setManager] = useState<Manager>(() => {
     if (cachedData?.manager) return cachedData.manager;
-    return dbMappedSquad ? dbMappedSquad.manager : initialTeam.manager;
+    return {
+      name: coachProfile?.name || 'Head Coach',
+      photoUrl: coachProfile?.avatarUrl || '',
+      phone: coachProfile?.phone || '',
+      email: coachProfile?.email || '',
+      title: 'Head Coach',
+      proficiencies: {
+        'Possession Game': 85,
+        'Quick Counter': 80,
+        'Long Ball Counter': 75,
+        'Out Wide': 70,
+        'Long Ball': 65,
+      },
+    };
   });
   const [formation, setFormation] = useState<FormationType>(() => {
     if (cachedData?.formation) return cachedData.formation;
@@ -155,16 +221,47 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Preserve local cache on reload - only fall back to default template if no cache exists
+  // Touch drag state for smooth dragging of substitutes/reserves onto pitch
+  const [subTouchDragPlayer, setSubTouchDragPlayer] = useState<Player | null>(null);
+  const [subTouchPos, setSubTouchPos] = useState<{ x: number; y: number } | null>(null);
+  const [subTouchTargetId, setSubTouchTargetId] = useState<string | null>(null);
+
+  // Synchronize authentic database roster when loaded or updated
   React.useEffect(() => {
-    if (cachedData) return;
-    if (dbMappedSquad) {
-      setStartingXI(dbMappedSquad.startingXI);
-      setSubstitutes(dbMappedSquad.substitutes);
-      setReserves(dbMappedSquad.reserves);
-      setManager(dbMappedSquad.manager);
+    if (roster !== undefined) {
+      const newXI = buildPitchStartingXI(roster, formation, inMatchRoles?.captainId);
+      const newSubs = buildSubstitutes(roster);
+      const newRes = buildReserves(roster);
+      setStartingXI(newXI);
+      setSubstitutes(newSubs);
+      setReserves(newRes);
     }
-  }, [dbMappedSquad, cachedData]);
+  }, [roster, formation, buildPitchStartingXI, buildSubstitutes, buildReserves, inMatchRoles?.captainId]);
+
+  // Synchronize coach details using UID from database profiles
+  React.useEffect(() => {
+    if (coachProfile) {
+      setManager((prev) => ({
+        ...prev,
+        name: coachProfile.name || prev.name,
+        photoUrl: coachProfile.avatarUrl || '',
+        email: coachProfile.email || prev.email,
+        phone: coachProfile.phone || prev.phone,
+      }));
+    } else if (teamId) {
+      fetchCoachCaptainProfiles(teamId).then((res) => {
+        if (res.coach) {
+          setManager((prev) => ({
+            ...prev,
+            name: res.coach?.name || prev.name,
+            photoUrl: res.coach?.avatarUrl || '',
+            email: res.coach?.email || prev.email,
+            phone: res.coach?.phone || prev.phone,
+          }));
+        }
+      });
+    }
+  }, [coachProfile, teamId]);
 
   const autoSaveTimeoutRef = useRef<any>(null);
 
@@ -200,16 +297,61 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
   const currentTeam: TeamData = {
     id: teamId,
-    name: teamName || (dbMappedSquad ? 'Egerton FC First Team' : initialTeam.name),
+    name: teamName || 'Egerton FC First Team',
     shortName: 'EFC',
-    crestUrl: customCrest || teamCrest || (dbMappedSquad ? 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80' : initialTeam.crestUrl),
+    crestUrl: customCrest || teamCrest || '',
     formation,
     playstyle,
     manager,
     startingXI,
     substitutes,
   };
-  const currentCaptain = startingXI.find((p) => p.isCaptain) || startingXI[0];
+
+  // Captain detail loaded from database using captainProfile UID or startingXI
+  const currentCaptain: Player = React.useMemo(() => {
+    if (captainProfile) {
+      const foundInXI = startingXI.find(
+        (p) => p.id === captainProfile.id || p.name.toLowerCase() === captainProfile.name.toLowerCase()
+      );
+      if (foundInXI) {
+        return {
+          ...foundInXI,
+          isCaptain: true,
+          photoUrl: captainProfile.avatarUrl || foundInXI.photoUrl,
+        };
+      }
+      return {
+        id: captainProfile.id,
+        name: captainProfile.name,
+        number: 10,
+        position: 'CMF',
+        defaultPosition: 'CMF',
+        rating: 85,
+        photoUrl: captainProfile.avatarUrl || '',
+        flagUrl: 'https://flagcdn.com/w80/ke.png',
+        clubLogoUrl: teamCrest || '',
+        cardTheme: 'gold',
+        isCaptain: true,
+      };
+    }
+    const capInXI = startingXI.find((p) => p.isCaptain && !p.id.startsWith('slot_empty_'));
+    return (
+      capInXI ||
+      startingXI[0] || {
+        id: 'cap_placeholder',
+        name: 'Team Captain',
+        number: 10,
+        position: 'CMF',
+        defaultPosition: 'CMF',
+        rating: 80,
+        photoUrl: '',
+        flagUrl: 'https://flagcdn.com/w80/ke.png',
+        clubLogoUrl: teamCrest || '',
+        cardTheme: 'blue',
+        isCaptain: true,
+      }
+    );
+  }, [captainProfile, startingXI, teamCrest]);
 
   const showToast = (msg: string) => {
     if (onShowToast) {
@@ -356,16 +498,18 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           : p
       );
 
-      const updatedSubs = substitutes.map((p) =>
-        p.id === sourceId
-          ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
-          : p
-      );
+      const updatedSubs = targetInXI.id.startsWith('slot_empty_')
+        ? substitutes.filter((p) => p.id !== sourceId)
+        : substitutes.map((p) =>
+            p.id === sourceId
+              ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
+              : p
+          );
 
       setStartingXI(updatedXI);
       setSubstitutes(updatedSubs);
       triggerAutoSave(updatedXI, updatedSubs, reserves, formation, playstyle);
-      showToast(`Substituted ${sourceInSub.name} in for ${targetInXI.name}`);
+      showToast(`Substituted ${sourceInSub.name} into squad`);
       return;
     }
 
@@ -380,16 +524,18 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           : p
       );
 
-      const updatedRes = reserves.map((p) =>
-        p.id === sourceId
-          ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
-          : p
-      );
+      const updatedRes = targetInXI.id.startsWith('slot_empty_')
+        ? reserves.filter((p) => p.id !== sourceId)
+        : reserves.map((p) =>
+            p.id === sourceId
+              ? { ...targetInXI, coord: undefined, position: targetInXI.defaultPosition }
+              : p
+          );
 
       setStartingXI(updatedXI);
       setReserves(updatedRes);
       triggerAutoSave(updatedXI, substitutes, updatedRes, formation, playstyle);
-      showToast(`Substituted ${sourceInRes.name} in for ${targetInXI.name}`);
+      showToast(`Substituted ${sourceInRes.name} into squad`);
       return;
     }
 
@@ -454,6 +600,129 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       handleSwapPlayers(playerToSubIn.id, target.id);
     }
   };
+
+  // Substitute & Reserve Player Drag Engine onto Pitch
+  const [subDragPlayer, setSubDragPlayer] = useState<Player | null>(null);
+  const [subDragPos, setSubDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [subTargetPlayerId, setSubTargetPlayerId] = useState<string | null>(null);
+  const subDragStartRef = useRef<{ clientX: number; clientY: number; player: Player; moved: boolean } | null>(null);
+
+  const handleSubPointerDragStart = (e: React.PointerEvent, player: Player) => {
+    if (!isCoach) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    subDragStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      player,
+      moved: false,
+    };
+  };
+
+  const handleSubTouchDragStart = (e: React.TouchEvent, player: Player) => {
+    if (!isCoach) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    subDragStartRef.current = {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      player,
+      moved: false,
+    };
+  };
+
+  useEffect(() => {
+    const handleMove = (clientX: number, clientY: number) => {
+      if (!subDragStartRef.current) return;
+
+      const start = subDragStartRef.current;
+      if (!start.moved) {
+        const dist = Math.hypot(clientX - start.clientX, clientY - start.clientY);
+        if (dist > 6) {
+          start.moved = true;
+          setSubDragPlayer(start.player);
+        }
+      }
+
+      if (start.moved) {
+        setSubDragPos({ x: clientX, y: clientY });
+
+        // Direct hit-test using elementsFromPoint
+        const elements = document.elementsFromPoint(clientX, clientY);
+        let targetId: string | null = null;
+        for (const el of elements) {
+          const pId = el.getAttribute('data-player-id');
+          if (pId) {
+            targetId = pId;
+            break;
+          }
+        }
+
+        // Proximity snap for pitch player cards if near within 80px
+        if (!targetId) {
+          let closestDist = 80;
+          for (const p of startingXI) {
+            const el = document.querySelector(`[data-player-id="${p.id}"]`);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              const dist = Math.hypot(centerX - clientX, centerY - clientY);
+              if (dist < closestDist) {
+                closestDist = dist;
+                targetId = p.id;
+              }
+            }
+          }
+        }
+
+        setSubTargetPlayerId(targetId);
+      }
+    };
+
+    const handleEnd = () => {
+      if (subDragStartRef.current) {
+        const { player, moved } = subDragStartRef.current;
+        if (moved && subTargetPlayerId) {
+          handleSwapPlayers(player.id, subTargetPlayerId);
+        }
+      }
+      subDragStartRef.current = null;
+      setSubDragPlayer(null);
+      setSubDragPos(null);
+      setSubTargetPlayerId(null);
+    };
+
+    const onPointerMove = (e: PointerEvent) => handleMove(e.clientX, e.clientY);
+    const onPointerUp = () => handleEnd();
+    const onTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) {
+        if (subDragStartRef.current?.moved && e.cancelable) {
+          e.preventDefault();
+        }
+        handleMove(touch.clientX, touch.clientY);
+      }
+    };
+    const onTouchEnd = () => handleEnd();
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [subTargetPlayerId, startingXI, handleSwapPlayers]);
 
   // Move player coordinate on pitch in real time & auto-save
   const handleMovePlayer = (playerId: string, coord: { x: number; y: number }) => {
@@ -633,6 +902,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onOpenFormationModal={() => setActiveModal('formation')}
           onOpenPlaystyleModal={() => setActiveModal('playstyle')}
           isCoach={isCoach}
+          externalSwapTargetId={subTargetPlayerId}
         />
 
         {/* 3. Right Panel (Collective Strength + Auto-pick with safe mobile bounds) */}
@@ -666,6 +936,8 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
           onDragStart={(e, player) => {
             e.dataTransfer.setData('text/plain', player.id);
           }}
+          onTouchDragStart={handleSubTouchDragStart}
+          onPointerDragStart={handleSubPointerDragStart}
           onSwapWithPitch={handleSwapPlayers}
           onSubDirectly={handleSubDirectly}
         />
@@ -720,6 +992,43 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
             {toastMessage}
           </div>
         )}
+
+        {/* Floating Substitute Dragged Card (Snaps completely over target pitch player) */}
+        {subDragPlayer && subDragPos && (() => {
+          let renderX = subDragPos.x;
+          let renderY = subDragPos.y;
+          let hasSnapped = false;
+
+          if (subTargetPlayerId) {
+            const targetEl = document.querySelector(`[data-player-id="${subTargetPlayerId}"]`);
+            if (targetEl) {
+              const rect = targetEl.getBoundingClientRect();
+              renderX = rect.left + rect.width / 2;
+              renderY = rect.top + rect.height / 2;
+              hasSnapped = true;
+            }
+          }
+
+          return (
+            <div
+              className="fixed pointer-events-none z-[100] card-dragging-glow"
+              style={{
+                left: `${renderX}px`,
+                top: `${renderY}px`,
+                transform: 'translate(-50%, -50%) scale(1.14)',
+                transition: hasSnapped
+                  ? 'left 0.12s ease-out, top 0.12s ease-out, transform 0.12s ease-out'
+                  : 'none',
+              }}
+            >
+              <PlayerCard
+                player={subDragPlayer}
+                size="md"
+                isDragging={true}
+              />
+            </div>
+          );
+        })()}
       </main>
     </LandscapeGuard>
   );
