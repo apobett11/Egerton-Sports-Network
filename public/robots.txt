@@ -1,0 +1,21 @@
+# Googlebot & General Web Crawlers
+User-agent: *
+Allow: /
+Allow: /fixtures
+Allow: /standings
+Allow: /news
+Allow: /teams/
+Allow: /matches/
+Allow: /favorites
+Allow: /register
+
+# Disallow private administrative & official portals
+Disallow: /admin
+Disallow: /doctor
+Disallow: /referee
+Disallow: /president
+Disallow: /superadmin
+Disallow: /team-manager
+
+# Authoritative Sitemap Location
+Sitemap: https://egerscore.com/sitemap.xml

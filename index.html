@@ -4,29 +4,82 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ESN: Egerton Sports Network</title>
+    <title>Egerton Sports Network | Egerton University Campus Sports, Fixtures &amp; Live Scores</title>
+    <link rel="canonical" href="https://egerscore.com/" />
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="ESN – Egerton Sports Network: the official campus sports portal for Egerton University students. Live scores, fixtures, standings, and match reports for Egerton Athletics." />
+    <meta name="description" content="Egerton Sports Network (ESN) is the official sports portal for Egerton University. Follow live scores, football fixtures, league standings, player stats, and campus match reports." />
     <meta name="keywords" content="Egerton, Egerton University, students, students portal, sports, campus sports, ESN, Egerton Sports Network, Kenya university sports, Egerton Athletics, campus league, football Kenya, Egerton FC, university football, Egerton scores, Egerton fixtures, Egerton standings, campus football Kenya, Njoro, Egerton University Njoro" />
     <meta name="author" content="Egerton Sports Network" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
     <!-- Open Graph / Social Sharing -->
+    <meta property="og:locale" content="en_KE" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://egerscore.com" />
-    <meta property="og:title" content="ESN: Egerton Sports Network" />
-    <meta property="og:description" content="The official campus sports portal for Egerton University. Live scores, fixtures, league standings and match reports." />
-    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:url" content="https://egerscore.com/" />
+    <meta property="og:title" content="Egerton Sports Network | Egerton University Campus Sports &amp; Live Scores" />
+    <meta property="og:description" content="The official campus sports hub for Egerton University. Live scores, football fixtures, league standings and match reports." />
+    <meta property="og:image" content="https://egerscore.com/favicon.svg" />
     <meta property="og:site_name" content="Egerton Sports Network" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="ESN: Egerton Sports Network" />
+    <meta name="twitter:title" content="Egerton Sports Network | Egerton University Campus Sports" />
     <meta name="twitter:description" content="Live campus sports scores, fixtures and standings for Egerton University." />
-    <meta name="twitter:image" content="/favicon.svg" />
+    <meta name="twitter:image" content="https://egerscore.com/favicon.svg" />
+
+    <!-- Structured Data (JSON-LD) for Google Rich Snippets & Entity Graph -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SportsOrganization",
+          "@id": "https://egerscore.com/#organization",
+          "name": "Egerton Sports Network",
+          "alternateName": ["ESN", "Egerton Athletics", "Egerton Live Score"],
+          "url": "https://egerscore.com/",
+          "logo": "https://egerscore.com/favicon.svg",
+          "description": "The official campus sports portal for Egerton University students and athletics.",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Njoro",
+            "addressRegion": "Nakuru",
+            "addressCountry": "KE"
+          },
+          "sport": "Football / Soccer"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://egerscore.com/#website",
+          "url": "https://egerscore.com/",
+          "name": "Egerton Sports Network",
+          "description": "Live scores, fixtures, standings, and match reports for Egerton University campus leagues.",
+          "publisher": {
+            "@id": "https://egerscore.com/#organization"
+          },
+          "inLanguage": "en-KE"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
+    <noscript>
+      <div style="padding: 2rem; font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
+        <h1>Egerton Sports Network (ESN)</h1>
+        <p>The official sports portal for Egerton University students. Access live scores, fixtures, standings, match reports, and campus athletic statistics.</p>
+        <nav aria-label="Campus Sports Navigation">
+          <ul>
+            <li><a href="/fixtures">Fixtures &amp; Live Scores</a></li>
+            <li><a href="/standings">League Standings</a></li>
+            <li><a href="/news">Campus Sports News &amp; Match Reports</a></li>
+            <li><a href="/favorites">Favourite Teams</a></li>
+          </ul>
+        </nav>
+        <p>Please enable JavaScript for real-time live match updates, referee feeds, and interactive league tables.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -50,7 +50,11 @@ const DashboardLoader: React.FC = () => (
 );
 
 const getHashRoute = (): string => {
-  return window.location.hash.replace(/^#\/?/, '').toLowerCase() || 'home';
+  if (window.location.hash) {
+    return window.location.hash.replace(/^#\/?/, '').toLowerCase() || 'home';
+  }
+  const cleanPath = window.location.pathname.replace(/^\/?/, '').toLowerCase();
+  return cleanPath || 'home';
 };
 
 /** Convert any name to a URL-safe slug: lowercase, spaces/special chars → hyphens */
@@ -440,8 +444,72 @@ export const AppContent: React.FC = () => {
       }
     };
     window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
+    window.addEventListener('popstate', handleHash);
+    return () => {
+      window.removeEventListener('hashchange', handleHash);
+      window.removeEventListener('popstate', handleHash);
+    };
   }, []);
+
+  // Dynamic SEO Document Title & Description synchronization
+  useEffect(() => {
+    if (selectedMatch) {
+      const home = (selectedMatch as any).homeTeamName || (selectedMatch as any).home_team || 'Home';
+      const away = (selectedMatch as any).awayTeamName || (selectedMatch as any).away_team || 'Away';
+      document.title = `${home} vs ${away} | Egerton Sports Network`;
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) {
+        desc.setAttribute('content', `Live scores, statistics, lineups, and match updates for ${home} vs ${away} in the Egerton University campus league.`);
+      }
+      return;
+    }
+
+    if (route.startsWith('team/')) {
+      const teamSlug = route.replace(/^team\/?/, '').replace(/-/g, ' ');
+      const formattedName = teamSlug.replace(/\b\w/g, (c) => c.toUpperCase());
+      document.title = `${formattedName} | Egerton Sports Network`;
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) {
+        desc.setAttribute('content', `${formattedName} squad profile, fixtures, results, and statistics on Egerton Sports Network.`);
+      }
+      return;
+    }
+
+    if (activeTab === 'table' || route === 'standings') {
+      document.title = 'Egerton League Standings & Table | Egerton Sports Network';
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) {
+        desc.setAttribute('content', 'Official Egerton University campus football league table, standings, points, goal difference, and team rankings.');
+      }
+      return;
+    }
+
+    if (activeTab === 'news' || route === 'news') {
+      document.title = 'Egerton Campus Sports News & Reports | Egerton Sports Network';
+      const desc = document.querySelector('meta[name="description"]');
+      if (desc) {
+        desc.setAttribute('content', 'Latest sports news, match recaps, journalist reports, and athletic updates from Egerton University.');
+      }
+      return;
+    }
+
+    if (activeTab === 'favorites' || route === 'favorites') {
+      document.title = 'My Favourite Teams | Egerton Sports Network';
+      return;
+    }
+
+    if (route === 'register') {
+      document.title = 'Player Registration | Egerton Sports Network';
+      return;
+    }
+
+    // Default / Scores tab
+    document.title = 'Egerton Sports Network | Egerton University Campus Sports, Fixtures & Live Scores';
+    const desc = document.querySelector('meta[name="description"]');
+    if (desc) {
+      desc.setAttribute('content', 'Egerton Sports Network (ESN) is the official sports portal for Egerton University. Follow live scores, football fixtures, league standings, player stats, and campus match reports.');
+    }
+  }, [route, activeTab, selectedMatch]);
 
 
   // Lock body scroll and add Esc listener when mobile sidebar is open
