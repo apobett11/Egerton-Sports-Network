@@ -27,6 +27,7 @@ interface RefereeHomeOverviewProps {
   onCancelMatch: (fixtureId: string) => Promise<void>;
   onOpenWalkover: (match: Match) => void;
   setActiveTab: (tab: RefereeTab) => void;
+  isSubmitting?: boolean;
 }
 
 export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
@@ -40,6 +41,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   onEndMatch,
   onOpenWalkover,
   setActiveTab,
+  isSubmitting = false,
 }) => {
   const stats = profileData.statistics;
 
@@ -319,36 +321,48 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
 
                   {/* Right Column: Action Buttons */}
                   <div className="shrink-0 flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
-                    {/* Desktop Direct Buttons */}
-                    <div className="hidden sm:flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onEndMatch(match)}
-                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                        title="Open End Match Modal"
-                      >
-                        End Match
-                      </button>
+                    {match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed ? (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Result Confirmed</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Desktop Direct Buttons */}
+                        <div className="hidden sm:flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => onEndMatch(match)}
+                            className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                            title="Open End Match Modal"
+                          >
+                            End Match
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onOpenWalkover(match)}
-                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-sm active:scale-95"
-                        title="Award 3-0 Walkover"
-                      >
-                        Walkover (3-0)
-                      </button>
-                    </div>
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => onOpenWalkover(match)}
+                            className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-sm active:scale-95"
+                            title="Award 3-0 Walkover"
+                          >
+                            Walkover (3-0)
+                          </button>
+                        </div>
 
-                    {/* PREVIEW Button: Reacts identically by opening Match Actions */}
-                    <button
-                      type="button"
-                      onClick={() => onSelectMatch(match)}
-                      className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-white/10 hover:bg-white/15 text-slate-200 border border-white/15 shadow-sm transition-all cursor-pointer active:scale-95"
-                      title="Match Officiating Actions"
-                    >
-                      PREVIEW
-                    </button>
+                        {/* PREVIEW Button: Reacts identically by opening Match Actions */}
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => onSelectMatch(match)}
+                          className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 border border-white/15 shadow-sm transition-all cursor-pointer active:scale-95"
+                          title="Match Officiating Actions"
+                        >
+                          PREVIEW
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

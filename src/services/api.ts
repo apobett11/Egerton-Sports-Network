@@ -755,26 +755,123 @@ export const ApiService = {
       detailText?: string;
       playerId?: string;
       teamId?: string;
+      assistPlayerId?: string;
+      id?: string;
     }>;
+    winningTeamId?: string;
+    idempotencyKey?: string;
+    outcome?: 'NORMAL' | 'WALKOVER';
   }): Promise<ApiResponse<any>> {
     if (!params.fixtureId || !params.refereeId) {
       return { success: false, data: null, message: 'Validation Error: Fixture ID and Referee ID required.' };
     }
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser().catch(() => ({ data: null }));
       const rawOfficialId = userData?.user?.id || params.refereeId;
       const verifiedOfficialId = (rawOfficialId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawOfficialId))
         ? rawOfficialId
-        : null;
+        : params.refereeId;
+
+      const isWalkover = params.outcome === 'WALKOVER' || (params.status === 'WALKOVER') || (params.reportText && params.reportText.includes('WALKOVER'));
+      const outcome = isWalkover ? 'WALKOVER' : (params.outcome || 'NORMAL');
 
       const fullReportText = [
         sanitizeHtmlText(params.reportText),
         params.attendance ? `Attendance: ${params.attendance}` : '',
         params.weather ? `Weather: ${sanitizeHtmlText(params.weather)}` : '',
-        params.incidents ? `Incidents: ${sanitizeHtmlText(params.incidents)}` : ''
+        params.incidents ? `Incidents: ${sanitizeHtmlText(params.incidents)}` : '',
+        params.remarks ? `Remarks: ${sanitizeHtmlText(params.remarks)}` : '',
+        params.notes ? `Notes: ${sanitizeHtmlText(params.notes)}` : '',
       ].filter(Boolean).join('\n\n');
 
+      const mappedOfficialEvents = (params.officialEvents || []).map((evt: any) => ({
+        id: evt.id || evt.event_uid,
+        minute: Math.max(0, evt.minute ?? 1),
+        type: (evt.type || '').toUpperCase(),
+        event_target: evt.eventTarget || evt.event_target || 'match',
+        team_id: (evt.teamId || evt.team_uid) && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.teamId || evt.team_uid)
+          ? (evt.teamId || evt.team_uid) : null,
+        player_id: (evt.playerId || evt.player_uid) && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.playerId || evt.player_uid)
+          ? (evt.playerId || evt.player_uid) : null,
+        assist_player_id: (evt.assistPlayerId || evt.assist_player_id) && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.assistPlayerId || evt.assist_player_id)
+          ? (evt.assistPlayerId || evt.assist_player_id) : null,
+        detail_text: sanitizeHtmlText(evt.detailText || evt.detail_text) || null,
+      }));
+
+      let winningTeamId = params.winningTeamId;
+      if (outcome === 'WALKOVER' && !winningTeamId) {
+        const { data: fix } = await supabase
+          .from('fixtures')
+          .select('home_team_id, away_team_id')
+          .eq('id', params.fixtureId)
+          .maybeSingle()
+          .catch(() => ({ data: null }));
+
+        if (fix) {
+          if (params.scoreHome > params.scoreAway) {
+            winningTeamId = fix.home_team_id;
+          } else if (params.scoreAway > params.scoreHome) {
+            winningTeamId = fix.away_team_id;
+          } else if (params.reportText && (params.reportText.includes('Home Team') || params.reportText.toLowerCase().includes('home'))) {
+            winningTeamId = fix.home_team_id;
+          } else if (params.reportText && (params.reportText.includes('Away Team') || params.reportText.toLowerCase().includes('away'))) {
+            winningTeamId = fix.away_team_id;
+          }
+        }
+      }
+
+      // Primary transactional execution via atomic PostgreSQL RPC
+      try {
+        if (typeof supabase.rpc === 'function') {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('finalize_match_transaction', {
+            p_fixture_id: params.fixtureId,
+            p_referee_id: verifiedOfficialId,
+            p_outcome: outcome,
+            p_home_score: Math.max(0, params.scoreHome),
+            p_away_score: Math.max(0, params.scoreAway),
+            p_winning_team_id: winningTeamId || null,
+            p_report_text: fullReportText,
+            p_official_events: outcome === 'WALKOVER' ? [] : mappedOfficialEvents,
+            p_idempotency_key: params.idempotencyKey || null,
+            p_attendance: params.attendance || null,
+            p_weather: params.weather || null,
+            p_incidents: params.incidents || null,
+            p_remarks: params.remarks || null,
+          });
+
+          if (!rpcError && rpcData) {
+            await this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, {
+              scoreHome: rpcData.home_score ?? params.scoreHome,
+              scoreAway: rpcData.away_score ?? params.scoreAway,
+              status: rpcData.status,
+              outcome,
+            }).catch(() => {});
+
+            return { success: true, data: rpcData };
+          }
+
+          // If the RPC returned a business validation error, return it directly
+          if (rpcError) {
+            const msg = rpcError.message || '';
+            if (
+              msg.includes('FIXTURE_NOT_FOUND') ||
+              msg.includes('INVALID_REFEREE_ID') ||
+              msg.includes('INVALID_WALKOVER') ||
+              msg.includes('INVALID_WALKOVER_WINNER') ||
+              msg.includes('INVALID_WALKOVER_TEAMS')
+            ) {
+              return { success: false, data: null, message: msg };
+            }
+            console.warn('finalize_match_transaction RPC error, attempting fallback:', rpcError);
+          }
+        }
+      } catch (rpcCallErr: any) {
+        console.warn('finalize_match_transaction RPC invocation failed, falling back:', rpcCallErr);
+      }
+
+      // Fallback path: Client-side sequence for offline / mock environments without RPC
+      await supabase.from('match_reports').delete().eq('fixture_id', params.fixtureId);
       await supabase.from('match_reports').insert({
         fixture_id: params.fixtureId,
         official_id: verifiedOfficialId,
@@ -783,50 +880,35 @@ export const ApiService = {
         submitted_at: new Date().toISOString()
       });
 
-      // Deduplication Guarantee: clean up any pre-existing events for this fixture before writing official batch
       await supabase.from('match_events').delete().eq('fixture_id', params.fixtureId);
 
-      if (params.officialEvents && params.officialEvents.length > 0) {
-        for (const evt of params.officialEvents) {
-          const validPlayerId = (evt.playerId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.playerId))
-            ? evt.playerId
-            : null;
-          const validTeamId = (evt.teamId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evt.teamId))
-            ? evt.teamId
-            : null;
-
+      if (outcome !== 'WALKOVER' && mappedOfficialEvents.length > 0) {
+        for (const evt of mappedOfficialEvents) {
           await supabase.from('match_events').insert({
             fixture_id: params.fixtureId,
             minute: Math.max(0, evt.minute),
             type: evt.type,
-            event_target: evt.eventTarget,
-            team_id: validTeamId,
-            player_id: validPlayerId,
-            detail_text: sanitizeHtmlText(evt.detailText) || null,
+            event_target: evt.event_target,
+            team_id: evt.team_id,
+            player_id: evt.player_id,
+            assist_player_id: evt.assist_player_id,
+            detail_text: evt.detail_text,
             is_official: true,
             created_by: verifiedOfficialId
           });
         }
       }
 
-      // Check current fixture competition_id to prevent null-constraint failure in Algorithm 2
-      const { data: curFix } = await supabase
-        .from('fixtures')
-        .select('competition_id')
-        .eq('id', params.fixtureId)
-        .maybeSingle();
-
       const fixUpdatePayload: any = {
         score_home: Math.max(0, params.scoreHome),
         score_away: Math.max(0, params.scoreAway),
-        status: params.status || 'FT',
+        status: 'FT',
         verified_by_referee_id: verifiedOfficialId,
-        referee_verification_status: 'VERIFIED'
+        referee_verification_status: 'VERIFIED',
+        updated_at: new Date().toISOString()
       };
-
-      if (!curFix?.competition_id) {
-        fixUpdatePayload.competition_id = '11111111-1111-1111-1111-111111111111';
-      }
+      if (params.attendance !== undefined) fixUpdatePayload.attendance = params.attendance;
+      if (params.weather !== undefined) fixUpdatePayload.weather = params.weather;
 
       const { data: updatedFixture } = await supabase
         .from('fixtures')
@@ -835,7 +917,28 @@ export const ApiService = {
         .select()
         .single();
 
-      await this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, { scoreHome: params.scoreHome, scoreAway: params.scoreAway });
+      try {
+        await supabase
+          .from('canonical_permanent_results')
+          .insert({
+            match_uid: params.fixtureId,
+            outcome,
+            home_score: Math.max(0, params.scoreHome),
+            away_score: Math.max(0, params.scoreAway),
+            events: outcome === 'WALKOVER' ? [] : mappedOfficialEvents,
+            referee_uid: verifiedOfficialId,
+            finalized_at: new Date().toISOString(),
+            locked_at: new Date().toISOString(),
+          });
+      } catch {
+        // Idempotent: record already finalized
+      }
+
+      await this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, {
+        scoreHome: params.scoreHome,
+        scoreAway: params.scoreAway
+      }).catch(() => {});
+
       return { success: true, data: updatedFixture || { id: params.fixtureId } };
     } catch (err: any) {
       const appErr = classifyError(err);

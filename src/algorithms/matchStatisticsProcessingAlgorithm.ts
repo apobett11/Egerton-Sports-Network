@@ -102,6 +102,7 @@ export interface ProcessMatchStatisticsCommand {
   score_home?: number;
   score_away?: number;
   status?: string;
+  is_walkover?: boolean;
   official_events?: OfficialMatchEvent[];
   now?: string;
 }
@@ -315,78 +316,90 @@ export class MatchStatisticsProcessingEngine {
       // MODULE C: PLAYER STATS (Goals, Assists & Clean Sheets)
       // ==========================================
       try {
-        const events = command.official_events || (await tx.getOfficialMatchEvents(fixture_id));
+        const isWalkover = Boolean(
+          command.is_walkover ||
+          command.status === 'WALKOVER' ||
+          fixture.status === 'WALKOVER' ||
+          (command as any).outcome === 'WALKOVER' ||
+          (fixture as any).outcome === 'WALKOVER'
+        );
 
-        // 1. Goals by player
-        const goalsByPlayer = new Map<UUID, number>();
-        const assistsByPlayer = new Map<UUID, number>();
+        // Strict Walkover Invariant: In a walkover (3-0), exactly zero player goal attribution
+        // and zero goalkeeper clean sheets are awarded.
+        if (!isWalkover) {
+          const events = command.official_events || (await tx.getOfficialMatchEvents(fixture_id));
 
-        for (const e of events) {
-          const typeLower = (e.type || '').toLowerCase();
-          if (typeLower === 'goal' || typeLower === 'penalty') {
-            if (e.player_id) {
-              goalsByPlayer.set(e.player_id, (goalsByPlayer.get(e.player_id) || 0) + 1);
-            }
-            if (e.assist_player_id) {
-              assistsByPlayer.set(e.assist_player_id, (assistsByPlayer.get(e.assist_player_id) || 0) + 1);
+          // 1. Goals by player
+          const goalsByPlayer = new Map<UUID, number>();
+          const assistsByPlayer = new Map<UUID, number>();
+
+          for (const e of events) {
+            const typeLower = (e.type || '').toLowerCase();
+            if (typeLower === 'goal' || typeLower === 'penalty') {
+              if (e.player_id) {
+                goalsByPlayer.set(e.player_id, (goalsByPlayer.get(e.player_id) || 0) + 1);
+              }
+              if (e.assist_player_id) {
+                assistsByPlayer.set(e.assist_player_id, (assistsByPlayer.get(e.assist_player_id) || 0) + 1);
+              }
             }
           }
-        }
 
-        // Save goals
-        for (const [playerId, goalCount] of goalsByPlayer.entries()) {
-          const existing = await tx.getPlayerStats(playerId, competition_id);
-          await tx.savePlayerStats({
-            player_id: playerId,
-            competition_id,
-            goals: (existing?.goals ?? 0) + goalCount,
-            assists: existing?.assists ?? 0,
-            clean_sheets: existing?.clean_sheets ?? 0,
-            last_updated: new Date().toISOString(),
-          });
-        }
-
-        // Save assists
-        for (const [playerId, assistCount] of assistsByPlayer.entries()) {
-          const existing = await tx.getPlayerStats(playerId, competition_id);
-          await tx.savePlayerStats({
-            player_id: playerId,
-            competition_id,
-            goals: existing?.goals ?? 0,
-            assists: (existing?.assists ?? 0) + assistCount,
-            clean_sheets: existing?.clean_sheets ?? 0,
-            last_updated: new Date().toISOString(),
-          });
-        }
-
-        // 2. Clean sheets
-        if (v_away_goals === 0) {
-          const homeGk = await tx.getTeamGoalkeeper(home_team_id);
-          if (homeGk) {
-            const existing = await tx.getPlayerStats(homeGk, competition_id);
+          // Save goals
+          for (const [playerId, goalCount] of goalsByPlayer.entries()) {
+            const existing = await tx.getPlayerStats(playerId, competition_id);
             await tx.savePlayerStats({
-              player_id: homeGk,
+              player_id: playerId,
               competition_id,
-              goals: existing?.goals ?? 0,
+              goals: (existing?.goals ?? 0) + goalCount,
               assists: existing?.assists ?? 0,
-              clean_sheets: (existing?.clean_sheets ?? 0) + 1,
+              clean_sheets: existing?.clean_sheets ?? 0,
               last_updated: new Date().toISOString(),
             });
           }
-        }
 
-        if (v_home_goals === 0) {
-          const awayGk = await tx.getTeamGoalkeeper(away_team_id);
-          if (awayGk) {
-            const existing = await tx.getPlayerStats(awayGk, competition_id);
+          // Save assists
+          for (const [playerId, assistCount] of assistsByPlayer.entries()) {
+            const existing = await tx.getPlayerStats(playerId, competition_id);
             await tx.savePlayerStats({
-              player_id: awayGk,
+              player_id: playerId,
               competition_id,
               goals: existing?.goals ?? 0,
-              assists: existing?.assists ?? 0,
-              clean_sheets: (existing?.clean_sheets ?? 0) + 1,
+              assists: (existing?.assists ?? 0) + assistCount,
+              clean_sheets: existing?.clean_sheets ?? 0,
               last_updated: new Date().toISOString(),
             });
+          }
+
+          // 2. Clean sheets (strictly 0 clean sheets for walkovers)
+          if (v_away_goals === 0) {
+            const homeGk = await tx.getTeamGoalkeeper(home_team_id);
+            if (homeGk) {
+              const existing = await tx.getPlayerStats(homeGk, competition_id);
+              await tx.savePlayerStats({
+                player_id: homeGk,
+                competition_id,
+                goals: existing?.goals ?? 0,
+                assists: existing?.assists ?? 0,
+                clean_sheets: (existing?.clean_sheets ?? 0) + 1,
+                last_updated: new Date().toISOString(),
+              });
+            }
+          }
+
+          if (v_home_goals === 0) {
+            const awayGk = await tx.getTeamGoalkeeper(away_team_id);
+            if (awayGk) {
+              const existing = await tx.getPlayerStats(awayGk, competition_id);
+              await tx.savePlayerStats({
+                player_id: awayGk,
+                competition_id,
+                goals: existing?.goals ?? 0,
+                assists: existing?.assists ?? 0,
+                clean_sheets: (existing?.clean_sheets ?? 0) + 1,
+                last_updated: new Date().toISOString(),
+              });
+            }
           }
         }
 

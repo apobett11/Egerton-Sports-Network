@@ -26,7 +26,7 @@ export const MatchActionModal: React.FC<MatchActionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isFT = match.status === 'FT';
+  const isConcluded = match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed;
   const isCancelled = match.status === 'CANCELLED';
 
   const handleCancelClick = () => {
@@ -115,61 +115,73 @@ export const MatchActionModal: React.FC<MatchActionModalProps> = ({
         </div>
 
         {/* Primary Action Choices */}
-        <div className="space-y-2.5">
-          {/* Action 1: End Match */}
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onEndMatch(match);
-            }}
-            className="w-full text-left p-4 rounded-xl bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 hover:from-emerald-500/25 hover:to-emerald-500/15 border border-emerald-500/30 hover:border-emerald-500/50 transition-all cursor-pointer group flex items-center justify-between shadow-sm active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-sm text-white group-hover:text-emerald-300 transition-colors">
-                  {isFT ? 'Review & Submit Final Match Report' : 'End Match & Submit Final Score'}
-                </h4>
-                <p className="text-xs text-slate-400">
-                  Log official goals, yellow/red cards, substitutions, and verify full-time score.
-                </p>
-              </div>
+        {isConcluded ? (
+          <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
-            <ArrowRight className="w-5 h-5 text-emerald-400 shrink-0 group-hover:translate-x-1 transition-transform" />
-          </button>
-
-          {/* Action 2: Award Walkover */}
-          {!isFT && !isCancelled && (
+            <h4 className="font-black text-sm uppercase tracking-wider text-emerald-400">
+              Match Concluded & Result Locked
+            </h4>
+            <p className="text-xs text-slate-400">
+              Official full-time score and match events have been finalized in league records. Further updates are locked to prevent duplicate processing.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {/* Action 1: End Match */}
             <button
               type="button"
               onClick={() => {
                 onClose();
-                onOpenWalkover(match);
+                onEndMatch(match);
               }}
-              className="w-full text-left p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-500/5 hover:from-amber-500/25 hover:to-amber-500/15 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer group flex items-center justify-between shadow-sm active:scale-[0.99]"
+              className="w-full text-left p-4 rounded-xl bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 hover:from-emerald-500/25 hover:to-emerald-500/15 border border-emerald-500/30 hover:border-emerald-500/50 transition-all cursor-pointer group flex items-center justify-between shadow-sm active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Trophy className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-white group-hover:text-amber-300 transition-colors">
-                    Award Walkover (3 — 0)
+                  <h4 className="font-extrabold text-sm text-white group-hover:text-emerald-300 transition-colors">
+                    End Match & Submit Final Score
                   </h4>
                   <p className="text-xs text-slate-400">
-                    Award automatic 3-0 victory if an opponent forfeits or fails to arrive.
+                    Log official goals, yellow/red cards, substitutions, and verify full-time score.
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-amber-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="w-5 h-5 text-emerald-400 shrink-0 group-hover:translate-x-1 transition-transform" />
             </button>
-          )}
 
-          {/* Action 3: Cancel Match (Explicitly Disabled with Warning Toast) */}
-          {!isFT && (
+            {/* Action 2: Award Walkover */}
+            {!isCancelled && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenWalkover(match);
+                }}
+                className="w-full text-left p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-500/5 hover:from-amber-500/25 hover:to-amber-500/15 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer group flex items-center justify-between shadow-sm active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-white group-hover:text-amber-300 transition-colors">
+                      Award Walkover (3 — 0)
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Award automatic 3-0 victory if an opponent forfeits or fails to arrive.
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-amber-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
+
+            {/* Action 3: Cancel Match (Explicitly Disabled with Warning Toast) */}
             <button
               type="button"
               onClick={handleCancelClick}
@@ -195,8 +207,8 @@ export const MatchActionModal: React.FC<MatchActionModalProps> = ({
                 </div>
               </div>
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Footer Dismiss Button */}
         <div className="pt-2 border-t border-white/5 flex justify-end">

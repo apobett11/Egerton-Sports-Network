@@ -67,6 +67,9 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
   // Submit Confirmation Modal State
   const [isConfirmSubmitOpen, setIsConfirmSubmitOpen] = useState<boolean>(false);
+  const [isLocallySubmitting, setIsLocallySubmitting] = useState<boolean>(false);
+
+  const isMatchLocked = match.status === 'FT' || (match.status as any) === 'WALKOVER' || Boolean((match as any).stats_processed);
 
   // Smart Hierarchy Form State (No Defaults / Pre-selection)
   const [selectedTeam, setSelectedTeam] = useState<'home' | 'away' | null>(null);
@@ -315,43 +318,51 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
   // Submit Final Match Report & End Match Instantly
   const handleConfirmSubmitFT = async () => {
-    const goals: GoalEntry[] = events
-      .filter((e) => e.type === 'goal')
-      .map((g) => ({
-        id: g.id,
-        teamTarget: g.teamTarget,
-        minute: g.minute,
-        jerseyNumber: g.jerseyNumber ?? '',
-        playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
-        playerName: g.playerName,
-        goalType: g.goalType === 'penalty' ? 'penalty' : g.goalType === 'own_goal' ? 'own_goal' : 'normal',
-      }));
+    if (isSubmitting || isLocallySubmitting || isMatchLocked) return;
 
-    const cards: CardEntry[] = events
-      .filter((e) => e.type === 'yellow' || e.type === 'red')
-      .map((c) => ({
-        id: c.id,
-        teamTarget: c.teamTarget,
-        minute: c.minute,
-        jerseyNumber: c.jerseyNumber ?? '',
-        playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
-        playerName: c.playerName,
-        cardType: c.type === 'yellow' ? 'yellow' : 'red',
-      }));
+    setIsLocallySubmitting(true);
+    try {
+      const goals: GoalEntry[] = events
+        .filter((e) => e.type === 'goal')
+        .map((g) => ({
+          id: g.id,
+          teamTarget: g.teamTarget,
+          minute: g.minute,
+          jerseyNumber: g.jerseyNumber ?? '',
+          playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
+          playerName: g.playerName,
+          goalType: g.goalType === 'penalty' ? 'penalty' : g.goalType === 'own_goal' ? 'own_goal' : 'normal',
+        }));
 
-    // Instantly close dialogs to guarantee 0ms perceptual lag
-    setIsConfirmSubmitOpen(false);
-    onClose();
+      const cards: CardEntry[] = events
+        .filter((e) => e.type === 'yellow' || e.type === 'red')
+        .map((c) => ({
+          id: c.id,
+          teamTarget: c.teamTarget,
+          minute: c.minute,
+          jerseyNumber: c.jerseyNumber ?? '',
+          playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
+          playerName: c.playerName,
+          cardType: c.type === 'yellow' ? 'yellow' : 'red',
+        }));
 
-    // Fire up the match end algorithms
-    await onSubmitReport({
-      scoreHome: calculatedScore.home,
-      scoreAway: calculatedScore.away,
-      matchState: 'FT',
-      goals,
-      cards,
-      injuries: [],
-    });
+      // Fire up the match end algorithms
+      await onSubmitReport({
+        scoreHome: calculatedScore.home,
+        scoreAway: calculatedScore.away,
+        matchState: 'FT',
+        goals,
+        cards,
+        injuries: [],
+      });
+
+      setIsConfirmSubmitOpen(false);
+      onClose();
+    } catch (err) {
+      console.error('Submit match report error:', err);
+    } finally {
+      setIsLocallySubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -617,15 +628,22 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
               Exit
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsConfirmSubmitOpen(true)}
-              disabled={isSubmitting}
-              className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <span>Submit Match Details</span>
-              <ArrowRight className="w-4 h-4 text-black" />
-            </button>
+            {isMatchLocked ? (
+              <div className="px-5 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Result Locked (FT)</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsConfirmSubmitOpen(true)}
+                disabled={isSubmitting || isLocallySubmitting}
+                className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <span>Submit Match Report (FT)</span>
+                <ArrowRight className="w-4 h-4 text-black" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -1070,7 +1088,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                   </div>
                   <div>
                     <h3 className="font-black text-sm uppercase tracking-wider text-white">
-                      Confirmation of Scores and Events
+                      Confirm Official Match Report (FT)
                     </h3>
                     <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
                       Instant Match Finalization
@@ -1081,6 +1099,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsConfirmSubmitOpen(false)}
+                  disabled={isSubmitting || isLocallySubmitting}
                   className="p-1 rounded-lg text-slate-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
@@ -1136,7 +1155,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsConfirmSubmitOpen(false)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLocallySubmitting}
                   className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   Back
@@ -1145,11 +1164,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <button
                   type="button"
                   onClick={handleConfirmSubmitFT}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLocallySubmitting || isMatchLocked}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00b04f] hover:from-emerald-400 hover:to-emerald-500 text-black text-xs font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Ending Match...' : 'Confirm & End Match Instantly'}</span>
+                  <span>{isSubmitting || isLocallySubmitting ? 'Ending Match...' : 'Confirm & End Match Instantly'}</span>
                 </button>
               </div>
             </div>

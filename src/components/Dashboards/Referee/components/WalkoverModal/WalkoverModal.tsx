@@ -16,9 +16,21 @@ export const WalkoverModal: React.FC<WalkoverModalProps> = ({
   isSubmitting,
 }) => {
   const [selectedWinner, setSelectedWinner] = useState<'home' | 'away'>('home');
+  const [isLocallySubmitting, setIsLocallySubmitting] = useState<boolean>(false);
+
+  const isMatchLocked = match.status === 'FT' || (match.status as any) === 'WALKOVER' || Boolean((match as any).stats_processed);
 
   const handleConfirm = async () => {
-    await onConfirmWalkover(match.id, selectedWinner);
+    if (isSubmitting || isLocallySubmitting || isMatchLocked) return;
+    setIsLocallySubmitting(true);
+    try {
+      await onConfirmWalkover(match.id, selectedWinner);
+      onClose();
+    } catch (err) {
+      console.error('Walkover error:', err);
+    } finally {
+      setIsLocallySubmitting(false);
+    }
   };
 
   const winningTeamName = selectedWinner === 'home' ? match.teamA.name : match.teamB.name;
@@ -188,23 +200,31 @@ export const WalkoverModal: React.FC<WalkoverModalProps> = ({
           </p>
         </div>
 
+        {isMatchLocked && (
+          <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold text-center flex items-center justify-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>This match is already finalized (Result Locked). Walkover cannot be awarded.</span>
+          </div>
+        )}
+
         {/* Modal Actions with obvious next step */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+            disabled={isSubmitting || isLocallySubmitting}
+            className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
           >
             Dismiss
           </button>
 
           <button
             type="button"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLocallySubmitting || isMatchLocked}
             onClick={handleConfirm}
             className="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            <span>NEXT STEP: Confirm & Award 3-0 Win</span>
+            <span>{isSubmitting || isLocallySubmitting ? 'Awarding Walkover...' : 'Confirm Walkover Win (3-0 FT)'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

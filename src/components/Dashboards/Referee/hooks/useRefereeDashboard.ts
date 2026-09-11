@@ -28,7 +28,9 @@ export const canRefereeActOnMatch = (
   activeMatchday?: number | string
 ): { canAct: boolean; reason?: string } => {
   if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
+  if ((match.status as any) === 'WALKOVER') return { canAct: false, reason: 'Match concluded (Walkover 3-0)' };
   if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
+  if ((match as any).stats_processed) return { canAct: false, reason: 'Match statistics already processed' };
 
   // Matchday Integrity: Fixtures must be written within the active matchday
   if (typeof activeMatchday === 'number' && match.matchday !== undefined && match.matchday !== activeMatchday) {
@@ -301,7 +303,9 @@ export const useRefereeDashboard = () => {
 
   // 1. Determine active matchday: the lowest matchday that has at least one UPCOMING or LIVE fixture.
   const activeMatchday = useMemo(() => {
-    const activeOne = fixtures.find((f) => f.status !== 'FT' && f.status !== 'CANCELLED');
+    const activeOne = fixtures.find(
+      (f) => f.status !== 'FT' && f.status !== 'CANCELLED' && (f.status as any) !== 'WALKOVER' && !(f as any).stats_processed
+    );
     if (activeOne && activeOne.matchday) {
       return activeOne.matchday;
     }
@@ -316,7 +320,9 @@ export const useRefereeDashboard = () => {
   // 3. Unified Homepage: Top 3 active events for the current matchday. When one is filled/submitted, another automatically slides in.
   const activeThreeMatches = useMemo<Match[]>(() => {
     return matchdayMatches
-      .filter((m) => m.status !== 'FT' && m.status !== 'CANCELLED')
+      .filter(
+        (m) => m.status !== 'FT' && m.status !== 'CANCELLED' && (m.status as any) !== 'WALKOVER' && !(m as any).stats_processed
+      )
       .sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
         const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
@@ -328,7 +334,12 @@ export const useRefereeDashboard = () => {
   // 4. Alterability guard: matches must be non-finalized and within the active matchday
   const isMatchAlterable = useCallback((match: Match | null | undefined): boolean => {
     if (!match) return false;
-    if (match.status === 'FT' || match.status === 'CANCELLED') return false;
+    if (
+      match.status === 'FT' ||
+      match.status === 'CANCELLED' ||
+      (match.status as any) === 'WALKOVER' ||
+      Boolean((match as any).stats_processed)
+    ) return false;
     // Matches must be within the active matchday
     if (match.matchday && match.matchday !== activeMatchday) return false;
     return true;
@@ -793,6 +804,7 @@ export const useRefereeDashboard = () => {
               scoreA: scoreHome,
               scoreB: scoreAway,
               events: [],
+              stats_processed: true,
             }
           : f
       )
@@ -816,7 +828,10 @@ export const useRefereeDashboard = () => {
       score_home: scoreHome,
       score_away: scoreAway,
       verified_by_referee_id: currentUserId,
+      referee_verification_status: 'VERIFIED',
     };
+
+    const idempotencyKey = `walkover_${fixtureId}`;
 
     try {
       await executeWithRetry(async () => {
@@ -824,7 +839,7 @@ export const useRefereeDashboard = () => {
           match_uid: fixtureId,
           referee_uid: effectiveRefereeId,
           winning_team_uid: winningTeamUid,
-          idempotency_key: crypto.randomUUID(),
+          idempotency_key: idempotencyKey,
         }).catch((engineErr) => {
           console.warn('Algorithm 1 walkover note:', engineErr);
         });
@@ -859,6 +874,7 @@ export const useRefereeDashboard = () => {
 
   // Submit Match Report Action
   const submitMatchReport = async (reportData: {
+    fixtureId?: string;
     scoreHome: number;
     scoreAway: number;
     matchState: MatchStatus;
@@ -866,9 +882,10 @@ export const useRefereeDashboard = () => {
     cards: CardEntry[];
     injuries: InjuryEntry[];
   }) => {
-    if (!selectedFixture) return;
+    const targetMatch = (reportData.fixtureId ? fixtures.find((f) => f.id === reportData.fixtureId) : null) || selectedFixture;
+    if (!targetMatch) return;
 
-    if (!isMatchAlterable(selectedFixture)) {
+    if (!isMatchAlterable(targetMatch)) {
       setAuthError('Confirmed past matches or finalized results cannot be altered.');
       return;
     }
@@ -892,7 +909,7 @@ export const useRefereeDashboard = () => {
       ...reportData.goals.map((g) => ({
         type: (g.goalType === 'penalty' ? 'penalty' : 'goal') as MatchEventType,
         eventTarget: g.teamTarget,
-        teamId: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
+        teamId: g.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
         minute: Number(g.minute) || 1,
         detailText: `Goal: ${g.playerName} (#${g.jerseyNumber || '-'})`,
         playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
@@ -900,7 +917,7 @@ export const useRefereeDashboard = () => {
       ...reportData.cards.map((c) => ({
         type: (c.cardType === 'yellow' ? 'yellow' : 'red') as MatchEventType,
         eventTarget: c.teamTarget,
-        teamId: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
+        teamId: c.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
         minute: Number(c.minute) || 1,
         detailText: `${c.cardType.toUpperCase()} Card: ${c.playerName} (#${c.jerseyNumber || '-'})`,
         playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
@@ -908,7 +925,7 @@ export const useRefereeDashboard = () => {
       ...reportData.injuries.map((i) => ({
         type: 'injury' as MatchEventType,
         eventTarget: i.teamTarget,
-        teamId: i.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
+        teamId: i.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
         minute: Number(i.minute) || 1,
         detailText: `Injury: ${i.playerName} (#${i.jerseyNumber || '-'})`,
         playerId: isValidUuid(i.playerId) ? i.playerId : undefined,
@@ -918,19 +935,20 @@ export const useRefereeDashboard = () => {
     // Optimistic UI update
     setFixtures((prev) =>
       prev.map((f) =>
-        f.id === selectedFixture.id
+        f.id === targetMatch.id
           ? {
               ...f,
               status: reportData.matchState || 'FT',
               scoreA: reportData.scoreHome,
               scoreB: reportData.scoreAway,
+              stats_processed: true,
             }
           : f
       )
     );
 
     const reportParams = {
-      fixtureId: selectedFixture.id,
+      fixtureId: targetMatch.id,
       refereeId: effectiveRefereeId,
       scoreHome: reportData.scoreHome,
       scoreAway: reportData.scoreAway,
@@ -939,62 +957,62 @@ export const useRefereeDashboard = () => {
       officialEvents: compiledEvents,
     };
 
+    const idempotencyKey = `ref_confirm_${targetMatch.id}_${Date.now()}`;
+
     try {
       const result = await executeWithRetry(async () => {
         // Sync Algorithm 1 working set with the official events BEFORE refereeConfirmNormalResult
-        if (reportData.goals.length > 0 || reportData.cards.length > 0) {
-          await matchRepository.saveRefereeWorkingSet({
-            match_uid: selectedFixture.id,
-            opened_by_uid: effectiveRefereeId,
-            period: 'FULL_TIME' as any,
-            home_score: reportData.scoreHome,
-            away_score: reportData.scoreAway,
-            events: [
-              ...reportData.goals.map((g) => ({
-                event_uid: g.id || crypto.randomUUID(),
-                match_uid: selectedFixture.id,
-                team_uid: g.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
-                player_uid: g.playerId || null,
-                player_number: g.jerseyNumber ? Number(g.jerseyNumber) : null,
-                type: 'GOAL' as const,
-                goal_type: (g.goalType === 'penalty' ? 'PENALTY' : 'OTHER') as any,
-                minute: Number(g.minute) || 1,
-                period: 'FIRST_HALF' as const,
-                status: 'ACTIVE' as const,
-                created_by_role: 'REFEREE' as const,
-                created_by_uid: effectiveRefereeId,
-                idempotency_key: `ref_goal_${g.id || crypto.randomUUID()}`,
-                is_derived_red: false,
-                created_at: new Date().toISOString(),
-              })),
-              ...reportData.cards.map((c) => ({
-                event_uid: c.id || crypto.randomUUID(),
-                match_uid: selectedFixture.id,
-                team_uid: c.teamTarget === 'home' ? selectedFixture.teamA.id : selectedFixture.teamB.id,
-                player_uid: c.playerId || null,
-                player_number: c.jerseyNumber ? Number(c.jerseyNumber) : null,
-                type: (c.cardType === 'yellow' ? 'YELLOW_CARD' : 'RED_CARD') as any,
-                card_type: (c.cardType === 'yellow' ? 'YELLOW' : 'RED') as any,
-                minute: Number(c.minute) || 1,
-                period: 'FIRST_HALF' as const,
-                status: 'ACTIVE' as const,
-                created_by_role: 'REFEREE' as const,
-                created_by_uid: effectiveRefereeId,
-                idempotency_key: `ref_card_${c.id || crypto.randomUUID()}`,
-                is_derived_red: false,
-                created_at: new Date().toISOString(),
-              })),
-            ] as any,
-            opened_at: new Date().toISOString(),
-            base_live_version: 1,
-          }).catch((wsErr) => console.warn('Working set save note:', wsErr));
-        }
+        await matchRepository.saveRefereeWorkingSet({
+          match_uid: targetMatch.id,
+          opened_by_uid: effectiveRefereeId,
+          period: 'FULL_TIME' as any,
+          home_score: reportData.scoreHome,
+          away_score: reportData.scoreAway,
+          events: [
+            ...reportData.goals.map((g) => ({
+              event_uid: g.id || crypto.randomUUID(),
+              match_uid: targetMatch.id,
+              team_uid: g.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
+              player_uid: g.playerId || null,
+              player_number: g.jerseyNumber ? Number(g.jerseyNumber) : null,
+              type: 'GOAL' as const,
+              goal_type: (g.goalType === 'penalty' ? 'PENALTY' : 'OTHER') as any,
+              minute: Number(g.minute) || 1,
+              period: 'FIRST_HALF' as const,
+              status: 'ACTIVE' as const,
+              created_by_role: 'REFEREE' as const,
+              created_by_uid: effectiveRefereeId,
+              idempotency_key: `ref_goal_${g.id || crypto.randomUUID()}`,
+              is_derived_red: false,
+              created_at: new Date().toISOString(),
+            })),
+            ...reportData.cards.map((c) => ({
+              event_uid: c.id || crypto.randomUUID(),
+              match_uid: targetMatch.id,
+              team_uid: c.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
+              player_uid: c.playerId || null,
+              player_number: c.jerseyNumber ? Number(c.jerseyNumber) : null,
+              type: (c.cardType === 'yellow' ? 'YELLOW_CARD' : 'RED_CARD') as any,
+              card_type: (c.cardType === 'yellow' ? 'YELLOW' : 'RED') as any,
+              minute: Number(c.minute) || 1,
+              period: 'FIRST_HALF' as const,
+              status: 'ACTIVE' as const,
+              created_by_role: 'REFEREE' as const,
+              created_by_uid: effectiveRefereeId,
+              idempotency_key: `ref_card_${c.id || crypto.randomUUID()}`,
+              is_derived_red: false,
+              created_at: new Date().toISOString(),
+            })),
+          ] as any,
+          opened_at: new Date().toISOString(),
+          base_live_version: 1,
+        }).catch((wsErr) => console.warn('Working set save note:', wsErr));
 
         // Harmonize Algorithm 1: Confirm normal result and create permanent canonical state
         await matchLiveEngine.refereeConfirmNormalResult({
-          match_uid: selectedFixture.id,
+          match_uid: targetMatch.id,
           referee_uid: effectiveRefereeId,
-          idempotency_key: crypto.randomUUID(),
+          idempotency_key: idempotencyKey,
         }).catch((engineErr) => {
           console.warn('Algorithm 1 normal result note:', engineErr);
         });

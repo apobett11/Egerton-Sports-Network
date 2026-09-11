@@ -19,6 +19,7 @@ interface MyMatchesViewProps {
   onCancelMatch: (fixtureId: string) => Promise<void>;
   onOpenWalkover: (match: Match) => void;
   setActiveTab: (tab: RefereeTab) => void;
+  isSubmitting?: boolean;
 }
 
 export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
@@ -30,6 +31,7 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
   onCancelMatch,
   onOpenWalkover,
   setActiveTab,
+  isSubmitting = false,
 }) => {
   const { showWarning } = useToast();
   const [activeMatchdayModal, setActiveMatchdayModal] = useState<MatchdayScheduleGroup | null>(null);
@@ -220,39 +222,51 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
 
                     {/* Right Column: Action Buttons */}
                     <div className="shrink-0 flex items-center gap-1.5 pl-2" onClick={(e) => e.stopPropagation()}>
-                      {/* Desktop only: End Match & Walkover */}
-                      <div className="hidden sm:flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onEndMatch(match)}
-                          className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f] hover:bg-[#009643] text-white transition-colors cursor-pointer shadow-2xs"
-                          title="Open End Match Modal"
-                        >
-                          End Match
-                        </button>
+                      {match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed ? (
+                        <div className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Result Confirmed</span>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Desktop only: End Match & Walkover */}
+                          <div className="hidden sm:flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => onEndMatch(match)}
+                              className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f] hover:bg-[#009643] disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors cursor-pointer shadow-2xs"
+                              title="Open End Match Modal"
+                            >
+                              End Match
+                            </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onOpenWalkover(match)}
-                          className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer shadow-2xs"
-                          title="Award 3-0 Walkover"
-                        >
-                          Walkover (3-0)
-                        </button>
-                      </div>
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => onOpenWalkover(match)}
+                              className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer shadow-2xs"
+                              title="Award 3-0 Walkover"
+                            >
+                              Walkover (3-0)
+                            </button>
+                          </div>
 
-                      {/* Both Mobile and Desktop: PREVIEW Button on the strip (opens same match actions) */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectMatch(match);
-                        }}
-                        className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] hover:bg-[#1a385d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs transition-colors cursor-pointer"
-                        title="Match Actions"
-                      >
-                        PREVIEW
-                      </button>
+                          {/* Both Mobile and Desktop: PREVIEW Button on the strip (opens same match actions) */}
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectMatch(match);
+                            }}
+                            className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] hover:bg-[#1a385d] disabled:opacity-50 disabled:cursor-not-allowed text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs transition-colors cursor-pointer"
+                            title="Match Actions"
+                          >
+                            PREVIEW
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );

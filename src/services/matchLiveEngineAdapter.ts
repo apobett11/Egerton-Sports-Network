@@ -21,6 +21,8 @@ import {
   type CardType,
   type Period,
   type TerminalOutcome,
+  type RefereeWalkoverCommand,
+  type RefereeConfirmNormalResultCommand,
   MatchEngineError,
   calculateLiveScore,
   recomputeDisciplinaryConsequences,
@@ -233,6 +235,9 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
   async getOfficialMatchEvents(fixture_id: UUID): Promise<OfficialMatchEvent[]> {
     const canonical = localStore.canonicalResults.get(fixture_id);
     if (canonical) {
+      if (canonical.outcome === 'WALKOVER') {
+        return [];
+      }
       return canonical.events.map((e) => ({
         id: e.event_uid,
         fixture_id: e.match_uid,
@@ -271,6 +276,9 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
   }
 
   async getPlayerStats(player_id: UUID, competition_id: UUID): Promise<PlayerStatsRecord | null> {
+    if (!player_id || player_id.startsWith('gk_') || player_id.startsWith('p_')) {
+      return null;
+    }
     const key = `${player_id}:${competition_id}`;
     if (localStore.playerStats.has(key)) {
       return localStore.playerStats.get(key)!;
@@ -295,6 +303,9 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
   }
 
   async savePlayerStats(stats: PlayerStatsRecord): Promise<void> {
+    if (!stats.player_id || stats.player_id.startsWith('gk_') || stats.player_id.startsWith('p_')) {
+      return;
+    }
     const key = `${stats.player_id}:${stats.competition_id}`;
     localStore.playerStats.set(key, { ...stats });
 
@@ -316,7 +327,10 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
 
   async getTeamGoalkeeper(team_id: UUID): Promise<UUID | null> {
     if (localStore.goalkeepers.has(team_id)) {
-      return localStore.goalkeepers.get(team_id)!;
+      const cached = localStore.goalkeepers.get(team_id)!;
+      if (cached && !cached.startsWith('gk_') && !cached.startsWith('p_')) {
+        return cached;
+      }
     }
 
     try {
@@ -335,7 +349,7 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
     } catch {
       // Fallback
     }
-    return `gk_${team_id}`;
+    return null;
   }
 
   async logAdminError(log: AdminErrorLogRecord): Promise<void> {
@@ -809,30 +823,76 @@ export class SupabaseMatchRepository implements MatchRepository {
   }
 
   async saveCanonicalPermanentResult(result: CanonicalPermanentResult): Promise<void> {
+    if (localStore.canonicalResults.has(result.match_uid)) {
+      return; // Preserve canonical immutability
+    }
     localStore.canonicalResults.set(result.match_uid, { ...result });
 
     try {
+      const { data: existingDb } = await supabase
+        .from('canonical_permanent_results')
+        .select('result_uid')
+        .eq('match_uid', result.match_uid)
+        .maybeSingle();
+
+      if (existingDb) {
+        return; // Already finalized in database; preserve canonical immutability
+      }
+
       await supabase
         .from('canonical_permanent_results')
-        .upsert({
+        .insert({
           match_uid: result.match_uid,
           outcome: result.outcome,
           home_score: result.home_score,
           away_score: result.away_score,
           events: result.events,
-          referee_uid: result.confirmed_by_uid || '88b96347-102c-4632-b934-b9ecb6ada202',
+          referee_uid: result.confirmed_by_uid || null,
           finalized_at: new Date().toISOString(),
           locked_at: new Date().toISOString(),
           state_hash: result.state_hash,
           history_snapshot: result.history_snapshot,
         });
     } catch {
-      // Safe fallback
+      // Safe fallback - preserves canonical immutability without throwing
     }
   }
 
   async getCanonicalPermanentResult(match_uid: UID): Promise<CanonicalPermanentResult | null> {
-    return localStore.canonicalResults.get(match_uid) || null;
+    const local = localStore.canonicalResults.get(match_uid);
+    if (local) return local;
+
+    try {
+      const { data } = await supabase
+        .from('canonical_permanent_results')
+        .select('*')
+        .eq('match_uid', match_uid)
+        .maybeSingle();
+
+      if (data) {
+        const canonical: CanonicalPermanentResult = {
+          match_uid: data.match_uid,
+          outcome: data.outcome,
+          home_team_uid: data.home_team_uid || '',
+          away_team_uid: data.away_team_uid || '',
+          home_score: data.home_score,
+          away_score: data.away_score,
+          events: data.events || [],
+          squads: data.squads || { home: [], away: [] },
+          confirmed_by_uid: data.referee_uid,
+          confirmed_at: data.finalized_at,
+          source_live_version: 0,
+          state_hash: data.state_hash || '',
+          history_snapshot: data.history_snapshot || null,
+        };
+        localStore.canonicalResults.set(match_uid, canonical);
+        return canonical;
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    return null;
   }
 
   async saveHistorySnapshot(snapshot: CanonicalPermanentResult['history_snapshot']): Promise<void> {
@@ -841,7 +901,7 @@ export class SupabaseMatchRepository implements MatchRepository {
 
   async markFinalResultCommitted(
     match_uid: UID,
-    _outcome: TerminalOutcome,
+    outcome: TerminalOutcome,
     final_status: MatchStatus,
     _finalized_at: string
   ): Promise<void> {
@@ -857,6 +917,9 @@ export class SupabaseMatchRepository implements MatchRepository {
         .from('fixtures')
         .update({
           status: this.mapMatchStatusToDbStatus(final_status),
+          score_home: match?.home_score,
+          score_away: match?.away_score,
+          referee_verification_status: 'VERIFIED',
         })
         .eq('id', match_uid);
     } catch {
@@ -865,8 +928,12 @@ export class SupabaseMatchRepository implements MatchRepository {
 
     // TRIGGER ALGORITHM 2: Match Statistics Processing Engine
     try {
+      const canonical = localStore.canonicalResults.get(match_uid);
+      const isWalkover = outcome === 'WALKOVER' || final_status === 'WALKOVER' || canonical?.outcome === 'WALKOVER';
       await matchStatisticsEngine.processMatchStatistics({
         fixture_id: match_uid,
+        status: final_status,
+        is_walkover: isWalkover,
       });
     } catch (err) {
       console.warn('Algorithm 2 statistics processing warning:', err);
@@ -881,7 +948,26 @@ export class SupabaseMatchRepository implements MatchRepository {
   }
 
   async hasFinalizationCommand(match_uid: UID, idempotency_key: string): Promise<boolean> {
-    return localStore.finalizationCommands.has(`${match_uid}:${idempotency_key}`);
+    if (localStore.finalizationCommands.has(`${match_uid}:${idempotency_key}`)) {
+      return true;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('finalization_commands')
+        .select('match_uid')
+        .eq('match_uid', match_uid)
+        .eq('idempotency_key', idempotency_key)
+        .maybeSingle();
+
+      if (data) {
+        return true;
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    return false;
   }
 
   async recordFinalizationCommand(
@@ -991,6 +1077,74 @@ export class SupabaseMatchPublisher implements MatchPublisher {
 export const matchRepository = new SupabaseMatchRepository();
 export const matchPublisher = new SupabaseMatchPublisher();
 export const matchLiveEngine = new MatchLiveInputEngine(matchRepository, matchPublisher);
+
+// Coordinate matchLiveEngine with finalize_match_transaction & preserve canonical immutability
+const originalDeclareWalkover = matchLiveEngine.refereeDeclareWalkover.bind(matchLiveEngine);
+matchLiveEngine.refereeDeclareWalkover = async function (
+  command: RefereeWalkoverCommand
+): Promise<CanonicalPermanentResult> {
+  const existing = await matchRepository.getCanonicalPermanentResult(command.match_uid);
+  if (existing) {
+    return existing;
+  }
+  try {
+    return await originalDeclareWalkover(command);
+  } catch (err: any) {
+    if (
+      err?.code === 'MATCH_TERMINAL' ||
+      err?.code === 'FINALIZATION_RECORD_MISSING' ||
+      err?.message?.includes('terminal') ||
+      err?.message?.includes('FINALIZED') ||
+      err?.message?.includes('WALKOVER')
+    ) {
+      const canonical = await matchRepository.getCanonicalPermanentResult(command.match_uid);
+      if (canonical) return canonical;
+    }
+    throw err;
+  }
+};
+
+const originalConfirmNormalResult = matchLiveEngine.refereeConfirmNormalResult.bind(matchLiveEngine);
+matchLiveEngine.refereeConfirmNormalResult = async function (
+  command: RefereeConfirmNormalResultCommand
+): Promise<CanonicalPermanentResult> {
+  const existing = await matchRepository.getCanonicalPermanentResult(command.match_uid);
+  if (existing) {
+    return existing;
+  }
+  try {
+    return await originalConfirmNormalResult(command);
+  } catch (err: any) {
+    if (
+      err?.code === 'MATCH_TERMINAL' ||
+      err?.code === 'FINALIZATION_RECORD_MISSING' ||
+      err?.message?.includes('terminal') ||
+      err?.message?.includes('FINALIZED')
+    ) {
+      const canonical = await matchRepository.getCanonicalPermanentResult(command.match_uid);
+      if (canonical) return canonical;
+    }
+    throw err;
+  }
+};
+
+export async function refereeDeclareWalkover(
+  command: RefereeWalkoverCommand
+): Promise<CanonicalPermanentResult> {
+  return await matchLiveEngine.refereeDeclareWalkover(command);
+}
+
+export async function refereeConfirmNormalResult(
+  command: RefereeConfirmNormalResultCommand
+): Promise<CanonicalPermanentResult> {
+  return await matchLiveEngine.refereeConfirmNormalResult(command);
+}
+
+export async function saveCanonicalPermanentResult(
+  result: CanonicalPermanentResult
+): Promise<void> {
+  return await matchRepository.saveCanonicalPermanentResult(result);
+}
 
 /**
  * Universal Match Event & Score Synchronization Engine

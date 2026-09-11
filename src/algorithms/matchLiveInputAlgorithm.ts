@@ -2318,7 +2318,6 @@ export class MatchLiveInputEngine {
       const match = await tx.getMatchForUpdate(match_uid);
 
       ensureMatchIdentity(match, match_uid);
-      assertRefereeActionWindow(match, now);
 
       const alreadyFinalized = await tx.hasFinalizationCommand(
         match_uid,
@@ -2338,6 +2337,8 @@ export class MatchLiveInputEngine {
 
         return existing;
       }
+
+      assertRefereeActionWindow(match, now);
 
       const squads = await tx.getSquads(match_uid);
 
@@ -2464,20 +2465,6 @@ export class MatchLiveInputEngine {
       const match = await tx.getMatchForUpdate(match_uid);
 
       ensureMatchIdentity(match, match_uid);
-      assertRefereeActionWindow(match, now);
-      assertTeamBelongsToMatch(match, winning_team_uid);
-
-      const losing_team_uid =
-        winning_team_uid === match.home_team_uid
-          ? match.away_team_uid
-          : match.home_team_uid;
-
-      if (winning_team_uid === losing_team_uid) {
-        throw new MatchEngineError(
-          "INVALID_WALKOVER_WINNER",
-          "Winning team and losing team cannot be the same team."
-        );
-      }
 
       const alreadyFinalized = await tx.hasFinalizationCommand(
         match_uid,
@@ -2496,6 +2483,21 @@ export class MatchLiveInputEngine {
         }
 
         return existing;
+      }
+
+      assertRefereeActionWindow(match, now);
+      assertTeamBelongsToMatch(match, winning_team_uid);
+
+      const losing_team_uid =
+        winning_team_uid === match.home_team_uid
+          ? match.away_team_uid
+          : match.home_team_uid;
+
+      if (winning_team_uid === losing_team_uid) {
+        throw new MatchEngineError(
+          "INVALID_WALKOVER_WINNER",
+          "Winning team and losing team cannot be the same team."
+        );
       }
 
       const homeWins =
@@ -2627,8 +2629,6 @@ export class MatchLiveInputEngine {
       const match = await tx.getMatchForUpdate(match_uid);
 
       ensureMatchIdentity(match, match_uid);
-      assertRefereeActionWindow(match, now);
-      assertNormalFinalizationWindow(match);
 
       const alreadyFinalized = await tx.hasFinalizationCommand(
         match_uid,
@@ -2648,6 +2648,9 @@ export class MatchLiveInputEngine {
 
         return existing;
       }
+
+      assertRefereeActionWindow(match, now);
+      assertNormalFinalizationWindow(match);
 
       const workingSet =
         await this.ensureRefereeWorkingSet(
@@ -3152,6 +3155,16 @@ export class MatchLiveInputEngine {
       assertMinute(event.minute);
       assertPeriod(event.period);
     }
+  }
+
+  /**
+   * Public helper method to retrieve the canonical permanent result for a match.
+   */
+  async getCanonicalPermanentResult(
+    match_uid: UID
+  ): Promise<CanonicalPermanentResult | null> {
+    const clean_uid = requireUID(match_uid, "match_uid");
+    return await this.repo.getCanonicalPermanentResult(clean_uid);
   }
 }
 
