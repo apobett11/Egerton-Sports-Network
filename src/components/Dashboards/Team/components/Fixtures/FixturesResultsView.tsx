@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, MapPin, Trophy } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import { initialFixtures } from '../../mockData';
 import type { Match } from '../../types';
 
@@ -63,13 +64,13 @@ export const FixturesResultsView: React.FC<FixturesResultsViewProps> = ({ fixtur
             </div>
           ) : (
             displayedList.map((match, idx) => {
-              const isHome = idx % 2 === 0;
-              const homeTeamName = isHome ? 'Egerton FC' : match.opponentName;
-              const awayTeamName = isHome ? match.opponentName : 'Egerton FC';
+              const isHome = match.isHome ?? (idx % 2 === 0);
+              const homeTeamName = match.homeTeamName || (isHome ? 'Egerton FC' : match.opponentName);
+              const awayTeamName = match.awayTeamName || (isHome ? match.opponentName : 'Egerton FC');
               const egertonCrest =
                 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZhG6dvXVnCTj57MdspJa73P-F8qYvkI0_9IJGuRTnRHwc8G4kixfeSPzaw6Kpzrf1agcR4SzQVcmUmrbJk5sdlCe3FL8ViUpi6vOevQ2rM_XCry_Q3s_ejoAkBJ24eTcZvL0vsc9qfJnfdKqPEaDtMEBE-UW90XIpwBcKj06Pt3AQz2K0_y6ux1217HyL0tw44OZ7jGDbwkIn4XUsGHS04JKiSJ-E7sKC3e7bqltCB7L7MwXX1KeyB3cB9GgAonsdpktmZK2HkJgN';
-              const homeLogo = isHome ? egertonCrest : match.opponentLogo;
-              const awayLogo = isHome ? match.opponentLogo : egertonCrest;
+              const homeLogo = match.homeTeamLogo || (isHome ? egertonCrest : match.opponentLogo);
+              const awayLogo = match.awayTeamLogo || (isHome ? match.opponentLogo : egertonCrest);
 
               return (
                 <div
@@ -81,12 +82,14 @@ export const FixturesResultsView: React.FC<FixturesResultsViewProps> = ({ fixtur
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-emerald-400" />
-                        <span>{match.date} • {match.time}</span>
+                        <span>{match.date} • {formatMatchTime(match.scheduled_time || match.time)}</span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-emerald-400" />
-                        <span>{match.location}</span>
-                      </span>
+                      {(match.location || match.venue) && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-emerald-400" />
+                          <span>{formatMatchPitch(match.location || match.venue, true) || match.location || match.venue}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -106,7 +109,7 @@ export const FixturesResultsView: React.FC<FixturesResultsViewProps> = ({ fixtur
                     <div className="col-span-2 flex flex-col items-center justify-center">
                       {activeTab === 'RESULTS' ? (
                         <div className="px-3 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 font-mono font-black text-sm md:text-base rounded-lg shadow-inner">
-                          {match.score || '2 - 1'}
+                          {match.score || (match.scoreHome !== undefined && match.scoreAway !== undefined ? `${match.scoreHome} - ${match.scoreAway}` : '0 - 0')}
                         </div>
                       ) : (
                         <div className="px-3 py-1 bg-[#1F1F1F] border border-[#2A2A2A] text-gray-400 font-mono font-bold text-xs rounded-lg">

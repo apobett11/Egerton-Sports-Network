@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { formatMatchPitch } from '../../lib/matchdayHelper';
 import {
   matchRepository,
   syncMatchEventsAndScores,
@@ -94,7 +95,7 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
           scheduledTime: fixData.scheduled_time,
           scoreA: fixData.score_home ?? 0,
           scoreB: fixData.score_away ?? 0,
-          venue: fixData.venue || 'Pavilion Stadium',
+          venue: fixData.venue || '',
           matchday: fixData.matchday || 1,
           competition: (fixData.competition as any)?.name || 'Egerton Premier League',
           teamA: {
@@ -374,7 +375,7 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
 
           <div className="flex items-center gap-2">
             <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-              📍 {matchData?.venue || 'Egerton Pavilion'}
+              📍 {formatMatchPitch(matchData?.venue) || matchData?.venue || 'TBD'}
             </span>
             <span
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${

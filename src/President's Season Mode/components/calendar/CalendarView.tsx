@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, Plus, X } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import type { OperationalMatch } from '../../types/seasonMode';
 import { COMPETITIONS } from '../../constants/seasonConstants';
 
@@ -259,13 +260,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       <span className="text-[#ff0046]">
                         {m.is_friendly ? 'FRIENDLY' : `Matchday ${m.matchday}`}
                       </span>
-                      <span className="text-slate-400">{m.scheduled_time?.split('T')[1]?.slice(0, 5) || '15:00'}</span>
+                      <span className="text-slate-400">{formatMatchTime(m.scheduled_time)}</span>
                     </div>
                     <div className="font-extrabold text-sm text-white">
                       {m.home_team?.name || 'Team A'} vs {m.away_team?.name || 'Team B'}
                     </div>
                     <div className="text-[11px] text-slate-400">
-                      Pitch: {m.venue} | Referee: {m.referee?.name || 'Unassigned'}
+                      Pitch: {formatMatchPitch(m.venue, true) || m.venue || 'TBD'} | Referee: {m.referee?.name || 'Unassigned'}
                     </div>
                   </div>
                 ))}

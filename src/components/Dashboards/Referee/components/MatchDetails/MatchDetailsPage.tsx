@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { EmptyState } from '../../../../common/UIComponents';
 import { Trophy, MapPin, Clock, CloudSun, UserCheck, XCircle, CheckCircle, ArrowLeft, ShieldCheck, FileText } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match } from '../../../../../types';
 import type { RefereeTab } from '../../types';
 
@@ -155,12 +156,12 @@ export const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs bg-slate-100 dark:bg-[#15273b] p-4 rounded-md border border-slate-200 dark:border-[#223b56]">
           <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
             <MapPin className="w-4 h-4 text-rose-500" />
-            <span className="uppercase tracking-wider font-medium">Venue: <strong className="text-slate-900 dark:text-white font-bold">{selectedFixture.venue || 'Main Stadium'}</strong></span>
+            <span className="uppercase tracking-wider font-medium">Venue: <strong className="text-slate-900 dark:text-white font-bold">{formatMatchPitch(selectedFixture.venue) || selectedFixture.venue || 'TBD'}</strong></span>
           </div>
 
           <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
             <Clock className="w-4 h-4 text-[#00b04f]" />
-            <span className="uppercase tracking-wider font-medium">Kickoff: <strong className="text-slate-900 dark:text-white font-bold">{selectedFixture.time || '16:00'}</strong></span>
+            <span className="uppercase tracking-wider font-medium">Kickoff: <strong className="text-slate-900 dark:text-white font-bold">{formatMatchTime(selectedFixture.scheduledTime || selectedFixture.time)}</strong></span>
           </div>
 
           <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">

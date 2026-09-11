@@ -91,6 +91,7 @@ export interface Match {
     date: string;
     time: string;
     location: string;
+    venue?: string;
     league: string;
     status: MatchStatus;
     score?: string;

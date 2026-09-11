@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { UserRole, Player, PracticeSession, Match, StandingEntry, LinesmanMatch } from '../types';
 import {
   Users,
@@ -255,7 +256,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                 <div className="flex flex-col items-center justify-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] shrink-0">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">VS</span>
                   <span className="text-[11px] font-mono font-black text-[#ff0046] mt-0.5 leading-none">
-                    {nextMatch.time || '16:00'}
+                    {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
                   </span>
                 </div>
 
@@ -289,7 +290,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0 flex-wrap justify-center sm:justify-start">
                 <span className="flex items-center gap-1 font-medium text-[11px]">
                   <MapPin className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
-                  <span className="truncate max-w-[140px]">{nextMatch.location || 'Pavilion Grounds'}</span>
+                  <span className="truncate max-w-[140px]">{formatMatchPitch(nextMatch.location || nextMatch.venue, true) || nextMatch.location || 'TBD'}</span>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1 font-medium text-[11px]">

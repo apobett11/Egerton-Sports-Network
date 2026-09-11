@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../../../../contexts/AuthContext';
 import { useRefereeReconciliationAlgorithm } from '../../../../../hooks/useRefereeReconciliationAlgorithm';
 import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
+import { formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match } from '../../../../../types';
 import type { RefereeTab, PlayerLookupItem } from '../../types';
 import type {
@@ -427,7 +428,7 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
               {selectedFixture.teamA.name} vs {selectedFixture.teamB.name}
             </h2>
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">
-              Venue: {selectedFixture.venue || 'Campus Pitch'} • Matchday {selectedFixture.matchday || 1}
+              Venue: {formatMatchPitch(selectedFixture.venue) || selectedFixture.venue || 'TBD'} • Matchday {selectedFixture.matchday || 1}
             </p>
           </div>
 

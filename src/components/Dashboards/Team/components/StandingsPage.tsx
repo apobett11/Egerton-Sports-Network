@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { StandingEntry, Match, TeamFormEntry } from '../types';
 import {
   Trophy,
@@ -428,7 +429,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                       </span>
                     ) : (
                       <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-0.5">
-                        {fixture.time || '16:00'}
+                        {formatMatchTime(fixture.scheduled_time || fixture.time)}
                       </span>
                     )}
                   </div>
@@ -495,7 +496,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     {fixture.location && (
                       <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#ff0046]" />
-                        <span className="truncate max-w-[110px]">{fixture.location}</span>
+                        <span className="truncate max-w-[110px]">{formatMatchPitch(fixture.location, true) || fixture.location}</span>
                       </span>
                     )}
                   </div>

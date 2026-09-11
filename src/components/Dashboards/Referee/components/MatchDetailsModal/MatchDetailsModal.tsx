@@ -44,21 +44,21 @@ export const MatchDetailsModal: React.FC<MatchDetailsModalProps> = ({
 
   // Game Fill editable state (editable at any time by assigned referee)
   const [kickoffTime, setKickoffTime] = useState<string>(() => {
+    if (match.scheduledTime) {
+      const timePart = match.scheduledTime.includes('T') ? match.scheduledTime.split('T')[1]?.slice(0, 5) : '';
+      if (timePart) return timePart;
+    }
     if (match.time && match.time.includes(':')) {
       const parts = match.time.split(':');
       return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
     }
-    if (match.scheduledTime) {
-      const d = new Date(match.scheduledTime);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    }
-    return '16:00';
+    return '';
   });
 
   const [scoreHome, setScoreHome] = useState<number>(match.scoreA ?? 0);
   const [scoreAway, setScoreAway] = useState<number>(match.scoreB ?? 0);
   const [matchStatus, setMatchStatus] = useState<MatchStatus>(match.status || 'UPCOMING');
-  const [venue, setVenue] = useState<string>(match.venue || 'Pitch A — Main Stadium Pitch');
+  const [venue, setVenue] = useState<string>(match.venue || '');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 

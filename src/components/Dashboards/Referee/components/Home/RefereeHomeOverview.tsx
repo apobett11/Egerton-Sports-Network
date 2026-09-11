@@ -3,6 +3,7 @@ import {
   Trophy, Clock, MapPin, Eye, CheckCircle, 
   XCircle, Award, Calendar, CheckCircle2, ShieldCheck, Radio, X
 } from 'lucide-react';
+import { formatMatchTime } from '../../../../../lib/matchdayHelper';
 import type { Match, Announcement } from '../../../../../types';
 import type { RefereeTab, RefereeProfileData } from '../../types';
 
@@ -279,7 +280,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
                         <span className="text-[10px] font-bold text-[#00b04f]">Finished</span>
                       ) : (
                         <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono">
-                          {match.time || '16:00'}
+                          {formatMatchTime(match.scheduledTime || match.time)}
                         </span>
                       )}
                     </div>

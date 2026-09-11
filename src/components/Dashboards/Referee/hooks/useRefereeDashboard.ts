@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
+import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { matchLiveEngine, matchRepository } from '../../../../services/matchLiveEngineAdapter';
 import { executeWithRetry } from '../../../../lib/retryPolicy';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
@@ -156,8 +157,7 @@ export const useRefereeDashboard = () => {
             const ar2Prof = null;
             const foProf = null;
 
-            const matchDate = f.scheduled_time ? new Date(f.scheduled_time) : new Date();
-            const timeStr = matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timeStr = formatMatchTime(f.scheduled_time);
 
             return {
               id: f.id,
@@ -184,7 +184,7 @@ export const useRefereeDashboard = () => {
               events: [],
               stats: [],
               lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
-              venue: f.venue || 'Egerton Sports Ground',
+              venue: f.venue || '',
               referee: refProf ? `${refProf.first_name || ''} ${refProf.last_name || ''}`.trim() : currentUserName,
               refereeId: f.referee_id,
               referee_id: f.referee_id,

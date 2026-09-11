@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, MapPin, UserCheck, Trophy, Award, Search, Sparkles, AlertCircle } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import type { SeasonFixture, SeasonTeam, SeasonReferee, SeasonPitch } from '../../types/seasonMode';
 import { COMPETITIONS } from '../../constants/seasonConstants';
 
@@ -201,15 +202,22 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                       <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-[#1a2e45]">
                         <span className="flex items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{f.venue || 'Egerton Pitch'}</span>
+                          <span className="truncate">{formatMatchPitch(f.venue, true) || f.venue || 'TBD'}</span>
                         </span>
-                        <span className={`px-2 py-0.5 rounded-xs text-[9px] font-extrabold uppercase ${
-                          f.status === 'FT'
-                            ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
-                            : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
-                        }`}>
-                          {f.status}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {f.scheduled_time && (
+                            <span className="font-mono text-[10px] text-slate-400">
+                              {formatMatchTime(f.scheduled_time)}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded-xs text-[9px] font-extrabold uppercase ${
+                            f.status === 'FT'
+                              ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                              : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
+                          }`}>
+                            {f.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

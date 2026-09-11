@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
 import type { Match, MatchEvent } from '../../types';
 import { MatchEventsDetailView } from '../shared/MatchEventsDetailView';
 
@@ -116,13 +117,13 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                         <span className="font-bold text-slate-800 dark:text-slate-200">Referee:</span> {match.referee || 'Official Referee'}
                     </div>
                     <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">Venue:</span> {match.venue || 'Egerton Main Ground'}
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Venue:</span> {formatMatchPitch(match.venue) || match.venue || 'TBD'}
                     </div>
                     <div>
                         <span className="font-bold text-slate-800 dark:text-slate-200">Matchday:</span> Round {match.matchday || 1}
                     </div>
                     <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">Kickoff:</span> {match.time || '15:00 EAT'}
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Kickoff:</span> {formatMatchTime(match.scheduledTime || match.time)}
                     </div>
                 </div>
             </div>

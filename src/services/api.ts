@@ -20,6 +20,7 @@ import { logger } from '../lib/logger';
 import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
 import { guestCache } from '../lib/guestCache';
+import { formatMatchTime } from '../lib/matchdayHelper';
 
 // Helper for unwrapping Supabase joins (object vs 1-element array)
 const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
@@ -156,7 +157,7 @@ export const ApiService = {
           return {
             id: f.id,
             status: f.status as MatchStatus,
-            time: new Date(f.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: formatMatchTime(f.scheduled_time),
             minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
             league: comp?.name || 'Egerton Premier League',
             teamA: {
@@ -183,7 +184,7 @@ export const ApiService = {
               formationA: '4-3-3',
               formationB: '4-3-3'
             },
-            venue: f.venue || 'Egerton Pavilion Stadium',
+            venue: f.venue || '',
             referee: 'Official Referee',
             refereeId: f.referee_id,
             attendance: f.attendance,
@@ -523,7 +524,7 @@ export const ApiService = {
       const matchDetail: Match = {
         id: f.id,
         status: f.status as MatchStatus,
-        time: new Date(f.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatMatchTime(f.scheduled_time),
         minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
         league: comp?.name || 'Egerton League',
         season: comp?.season,
@@ -559,7 +560,7 @@ export const ApiService = {
           formationA,
           formationB
         },
-        venue: f.venue || 'Egerton Main Stadium',
+        venue: f.venue || '',
         referee: refName,
         refereeId: f.referee_id,
         assistantReferee1: ar1Name,
@@ -902,7 +903,7 @@ export const ApiService = {
           scoreA,
           scoreB,
           winner,
-          venue: f.venue || 'Campus Stadium',
+          venue: f.venue || '',
           comp: comp?.name ? (comp.name.includes('Premier') ? 'EPL' : comp.name.includes('Champ') ? 'CHP' : 'FRN') : 'EPL',
           homeName: home?.name || 'Home Team',
           awayName: away?.name || 'Away Team'
@@ -2407,7 +2408,7 @@ export const ApiService = {
           home_team_id: f.home_team_id,
           away_team_id: f.away_team_id,
           scheduled_time: new Date(f.scheduled_time).toISOString(),
-          venue: f.venue || 'Egerton Main Stadium',
+          venue: f.venue || '',
           referee_id: f.referee_id || null,
           matchday: f.matchday || 1,
           status: 'UPCOMING',

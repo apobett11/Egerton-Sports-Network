@@ -1,4 +1,5 @@
 import { supabase } from '../../../../lib/supabase';
+import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry, LinesmanMatch } from '../types';
 
 export { supabase };
@@ -220,8 +221,9 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                     awayTeamName: f.away_team?.name || 'Away Team',
                     awayTeamLogo: f.away_team?.logo_url || '',
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
-                    time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    location: f.venue || 'Pavilion Main Stadium',
+                    time: formatMatchTime(f.scheduled_time),
+                    location: f.venue || '',
+                    venue: f.venue || '',
                     league: f.competition?.name || 'Egerton Premier League',
                     status: uiStatus,
                     score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
@@ -919,7 +921,7 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                     ? (s.end_time ? `${s.start_time} - ${s.end_time}` : `${s.start_time} EAT`)
                     : 'Time TBA';
 
-                const pitchName = pitch?.name || (s.pitch_id ? `Pitch ${s.pitch_id}` : 'Pavilion Main Stadium');
+                const pitchName = pitch?.name || (s.pitch_id ? `Pitch ${s.pitch_id}` : '');
 
                 const key = s.fixture_id || s.id;
                 matchesMap.set(key, {
@@ -981,7 +983,7 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
 
                 const d = new Date(f.scheduled_time || Date.now());
                 const dateFormatted = d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
-                const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' EAT';
+                const timeStr = formatMatchTime(f.scheduled_time);
 
                 matchesMap.set(f.id, {
                     id: f.id,
@@ -992,7 +994,7 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                     awayTeamName: f.away_team?.name || 'Away Team',
                     awayTeamLogo: f.away_team?.logo_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
                     awayTeamShortName: f.away_team?.short_name || 'AWY',
-                    pitch: f.venue || 'Pavilion Main Stadium',
+                    pitch: f.venue || '',
                     time: timeStr,
                     playDate: f.scheduled_time ? f.scheduled_time.split('T')[0] : '',
                     dateFormatted,

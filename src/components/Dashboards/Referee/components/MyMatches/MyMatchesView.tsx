@@ -4,6 +4,7 @@ import {
   X, CheckCircle, XCircle, UserCheck, ShieldAlert, AlertCircle,
   Radio, CheckCircle2
 } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match } from '../../../../../types';
 import type { RefereeTab, MatchdayScheduleGroup } from '../../types';
 import { canRefereeActOnMatch } from '../../hooks/useRefereeDashboard';
@@ -166,7 +167,7 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                         <span className="text-[10px] font-bold text-[#00b04f]">Finished</span>
                       ) : (
                         <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono">
-                          {match.time || '16:00'}
+                          {formatMatchTime(match.scheduledTime || match.time)}
                         </span>
                       )}
                     </div>
@@ -479,11 +480,11 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
                         </span>
                         <span className="text-slate-400 dark:text-slate-600">•</span>
                         <span className="font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-[#00b04f]" /> {match.time || '16:00'} EAT
+                          <Clock className="w-3 h-3 text-[#00b04f]" /> {formatMatchTime(match.scheduledTime || match.time)}
                         </span>
                         <span className="text-slate-400 dark:text-slate-600">•</span>
                         <span className="font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate max-w-[150px]">
-                          <MapPin className="w-3 h-3 text-rose-500" /> {match.venue || 'Egerton Ground'}
+                          <MapPin className="w-3 h-3 text-rose-500" /> {formatMatchPitch(match.venue) || match.venue || 'TBD'}
                         </span>
                       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Match } from '../../Dashboards/Team/types';
+import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
@@ -62,7 +63,7 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
     const appMatch = {
       id: f.id,
       status: f.status === 'FINISHED' ? 'FT' : f.status === 'LIVE' ? 'LIVE' : 'UPCOMING',
-      time: f.time || '16:00',
+      time: formatMatchTime(f.scheduled_time || f.time),
       minute: f.status === 'LIVE' ? "45'" : f.status === 'FINISHED' ? 'FT' : '-',
       league: f.league || 'Egerton Premier League',
       teamA: {
@@ -89,7 +90,7 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
         formationA: '4-3-3',
         formationB: '4-3-3',
       },
-      venue: f.location || 'Pavilion Main Stadium',
+      venue: f.location || f.venue || '',
       referee: f.referee || 'Official Referee',
     };
 
@@ -282,13 +283,18 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                                 Finished
                               </span>
                             ) : (
-                              <div className="flex flex-col items-center">
-                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                                  {match.time || '16:00'}
+                              <div className="flex flex-col items-center leading-tight">
+                                <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                                  {formatMatchTime(match.scheduled_time || match.time)}
                                 </span>
                                 {match.date && (
-                                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500">
+                                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
                                     {match.date.split(',')[0]}
+                                  </span>
+                                )}
+                                {(match.location || (match as any).venue) && (
+                                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap mt-0.5">
+                                    {formatMatchPitch(match.location || (match as any).venue, true)}
                                   </span>
                                 )}
                               </div>

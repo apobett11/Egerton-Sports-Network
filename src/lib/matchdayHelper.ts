@@ -64,3 +64,61 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
   const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7;
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSaturday, 12, 0, 0);
 }
+
+/**
+ * Formats a fixture scheduled time or time string cleanly into official kickoff time (e.g., '8:30 AM', '10:30 AM', '1:00 PM', '3:00 PM').
+ * Deterministic and timezone-independent: parses directly from ISO timestamp or time string without unwanted timezone shift.
+ */
+export function formatMatchTime(timeOrIso?: string | null): string {
+  if (!timeOrIso) return '';
+  const str = String(timeOrIso).trim();
+  if (!str) return '';
+
+  // If already formatted with AM/PM (e.g. '8:30 AM' or '08:30 AM')
+  const ampmMatch = str.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (ampmMatch) {
+    const hours = parseInt(ampmMatch[1], 10);
+    const mins = ampmMatch[2];
+    const ampm = ampmMatch[3].toUpperCase();
+    return `${hours}:${mins} ${ampm}`;
+  }
+
+  // If simple time format 'HH:mm' or 'HH:mm:ss'
+  const timeOnlyMatch = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (timeOnlyMatch) {
+    const hours = parseInt(timeOnlyMatch[1], 10);
+    const mins = timeOnlyMatch[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${mins} ${ampm}`;
+  }
+
+  // If ISO string like '2026-09-05T08:30:00.000Z' or '2026-09-05 08:30:00'
+  const isoTimeMatch = str.match(/[T\s](\d{2}):(\d{2})/);
+  if (isoTimeMatch) {
+    const hours = parseInt(isoTimeMatch[1], 10);
+    const mins = isoTimeMatch[2];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${mins} ${ampm}`;
+  }
+
+  return str;
+}
+
+/**
+ * Formats pitch allocation name. If short is true, returns 'Pitch A', 'Pitch B', or 'Pitch C'.
+ * Otherwise returns the full venue name (e.g., 'Pitch A — Main Stadium Pitch').
+ */
+export function formatMatchPitch(venueOrPitch?: string | null, short = false): string {
+  if (!venueOrPitch) return '';
+  const str = String(venueOrPitch).trim();
+  if (!str) return '';
+
+  if (short) {
+    const m = str.match(/^(Pitch\s+[A-C])/i);
+    if (m) return m[1];
+  }
+  return str;
+}
+

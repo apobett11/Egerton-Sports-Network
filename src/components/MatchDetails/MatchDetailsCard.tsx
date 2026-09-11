@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapPin, UserCheck, SunMedium, Trophy, Clock, Users } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
 import type { Match } from '../../types';
 
 interface MatchDetailsCardProps {
@@ -34,7 +35,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Stadium / Venue
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
-                            {match.venue || 'Egerton University Main Pavilion Ground'}
+                            {formatMatchPitch(match.venue) || match.venue || 'TBD'}
                         </p>
                     </div>
                 </div>
@@ -99,7 +100,7 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                             Scheduled Kickoff
                         </span>
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100 font-mono">
-                            {match.time ? `${match.time} EAT` : 'Scheduled Matchday'}
+                            {(match.scheduledTime || match.time) ? formatMatchTime(match.scheduledTime || match.time) : 'Scheduled Matchday'}
                         </p>
                     </div>
                 </div>

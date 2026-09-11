@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, Pin, ChevronUp, ChevronDown, Table, Volume2, VolumeX, Radio } from 'lucide-react';
 import type { Match } from '../../types';
+import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
 
 interface FixturesListProps {
     matches: Match[];
@@ -177,7 +178,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                 </button>
 
                                                 {/* Status indicator / Time */}
-                                                <div className="w-12 text-center flex flex-col items-center justify-center">
+                                                <div className="w-16 text-center flex flex-col items-center justify-center shrink-0">
                                                     {isMatchLive ? (
                                                         <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
                                                             <Radio className="w-3 h-3 animate-pulse" />
@@ -192,9 +193,16 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                             Finished
                                                         </span>
                                                     ) : (
-                                                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                                                            {match.time || '16:00'}
-                                                        </span>
+                                                        <div className="flex flex-col items-center leading-tight">
+                                                            <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 tracking-tight whitespace-nowrap">
+                                                                {formatMatchTime(match.scheduledTime || match.time)}
+                                                            </span>
+                                                            {match.venue && (
+                                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap mt-0.5">
+                                                                    {formatMatchPitch(match.venue, true)}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

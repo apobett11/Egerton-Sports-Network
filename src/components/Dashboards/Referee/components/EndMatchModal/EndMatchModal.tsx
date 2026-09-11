@@ -5,6 +5,7 @@ import {
   Ban, CornerUpRight
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
+import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match, MatchStatus, MatchEventType } from '../../../../../types';
 import type { GoalEntry, CardEntry, InjuryEntry } from '../../types';
 
@@ -431,14 +432,14 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                 <span className="text-[11px] font-bold truncate">
-                  Venue: <span className="text-slate-800 dark:text-slate-200">{match.venue || 'Egerton Sports Ground'}</span>
+                  Venue: <span className="text-slate-800 dark:text-slate-200">{formatMatchPitch(match.venue) || match.venue || 'TBD'}</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <Clock className="w-3.5 h-3.5 text-[#00b04f]" />
                 <span className="text-[11px] font-bold">
-                  Scheduled: <span className="text-slate-800 dark:text-slate-200">{match.time || '16:00'} EAT</span>
+                  Scheduled: <span className="text-slate-800 dark:text-slate-200">{formatMatchTime(match.scheduledTime || match.time)}</span>
                 </span>
               </div>
             </div>

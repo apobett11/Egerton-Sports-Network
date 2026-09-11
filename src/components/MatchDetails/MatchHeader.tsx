@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Star, Share2 } from 'lucide-react';
+import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
 import type { Match } from '../../types';
 
 interface MatchHeaderProps {
@@ -97,7 +98,7 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                         </div>
                     ) : (
                         <div className="text-xs font-bold tracking-widest text-slate-300">
-                            {match.time || '15:00 EAT'} • {match.venue || 'Campus Stadium'}
+                            {formatMatchTime(match.scheduledTime || match.time)}{match.venue ? ` • ${formatMatchPitch(match.venue)}` : ''}
                         </div>
                     )}
                 </div>

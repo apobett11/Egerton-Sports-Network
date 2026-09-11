@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '../../../../services/api';
+import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import {
   TabType,
   ArticleCategory,
@@ -147,9 +148,9 @@ export const useJournalistDashboard = () => {
           scoreAway: f.scoreB ?? 0,
           status: (f.status as any) || 'UPCOMING',
           minute: f.minute,
-          kickoff: f.time || '16:00',
-          time: f.time || 'Today',
-          venue: f.venue || 'Pavilion Grounds',
+          kickoff: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
+          time: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
+          venue: formatMatchPitch(f.venue) || f.venue || '',
           matchday: (f as any).matchday || 1,
         }));
         setMatches(dbMatches);
