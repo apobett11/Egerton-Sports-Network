@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, Clock, Trophy, CheckCircle2, AlertTriangle, Plus, Trash2, 
-  ArrowRight, ShieldCheck, Sparkles, User, Flame
+  ArrowRight, ShieldCheck, Sparkles, User, Flame, MapPin
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
+import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match, MatchStatus, MatchEventType } from '../../../../../types';
 import type { GoalEntry, CardEntry, InjuryEntry } from '../../types';
 
@@ -357,17 +358,17 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn select-none"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="relative w-full max-w-3xl bg-[#090f17] border border-white/10 rounded-3xl shadow-2xl overflow-hidden my-auto text-white flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-3xl bg-[#090f17] border border-white/10 rounded-3xl shadow-2xl overflow-hidden my-auto text-white flex flex-col h-[95vh] sm:h-auto max-h-[96vh] sm:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* TOP BAR: Clean Apple Header */}
-        <div className="flex items-center justify-between px-5 sm:px-7 py-4 border-b border-white/10 bg-[#070c13]">
+        <div className="flex items-center justify-between px-5 sm:px-7 py-3.5 border-b border-white/10 bg-[#070c13] shrink-0">
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             <div>
@@ -391,183 +392,205 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         </div>
 
         {/* SCROLLABLE BODY CONTAINER */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          {/* 1. THE STEPS (Apple Minimalist Pipeline) */}
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
-            <div className="flex items-center justify-between gap-2 overflow-x-auto text-[11px] font-bold">
-              {/* Step 1 */}
-              <div className="flex items-center gap-2 text-emerald-400 shrink-0">
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center font-mono font-black text-xs text-emerald-400">
-                  ✓
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* TEAMS STRIP: Thinner capsule at the top within the card with border radius */}
+          <div className="space-y-2">
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl sm:rounded-full py-2 px-4 sm:px-6 shadow-md">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                {/* Home Team */}
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 justify-start">
+                  <img
+                    src={match.teamA.logo}
+                    alt={match.teamA.name}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10 shadow-xs"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="font-black text-xs sm:text-sm uppercase tracking-tight text-white truncate">
+                      {match.teamA.name}
+                    </h3>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+                      Home
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block uppercase text-[9px] text-slate-400 font-black">Step 1</span>
-                  <span className="font-bold text-white">Teams & Lineup</span>
-                </div>
-              </div>
-              <div className="h-0.5 w-6 bg-white/10 shrink-0 hidden sm:block" />
 
-              {/* Step 2 */}
-              <div className="flex items-center gap-2 text-amber-400 shrink-0">
-                <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center font-mono font-black text-xs text-amber-400">
-                  2
+                {/* Digital Score Capsule */}
+                <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/60 border border-emerald-500/30 shrink-0 shadow-inner">
+                  <span className="text-base sm:text-xl font-mono font-black text-emerald-400">
+                    {calculatedScore.home}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">—</span>
+                  <span className="text-base sm:text-xl font-mono font-black text-emerald-400">
+                    {calculatedScore.away}
+                  </span>
                 </div>
-                <div>
-                  <span className="block uppercase text-[9px] text-amber-300 font-black">Step 2 • Active</span>
-                  <span className="font-bold text-white">Add Match Events ({events.length})</span>
-                </div>
-              </div>
-              <div className="h-0.5 w-6 bg-white/10 shrink-0 hidden sm:block" />
 
-              {/* Step 3 */}
-              <div className="flex items-center gap-2 text-[#00b04f] shrink-0">
-                <div className="w-6 h-6 rounded-full bg-[#00b04f]/20 border border-[#00b04f]/40 flex items-center justify-center font-mono font-black text-xs text-[#00b04f]">
-                  3
-                </div>
-                <div>
-                  <span className="block uppercase text-[9px] text-slate-400 font-black">Step 3</span>
-                  <span className="font-bold text-white">Submit Match Details</span>
+                {/* Away Team */}
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 justify-end text-right">
+                  <div className="min-w-0">
+                    <h3 className="font-black text-xs sm:text-sm uppercase tracking-tight text-white truncate">
+                      {match.teamB.name}
+                    </h3>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+                      Away
+                    </span>
+                  </div>
+                  <img
+                    src={match.teamB.logo}
+                    alt={match.teamB.name}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10 shadow-xs"
+                  />
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* 2. THE TEAMS (Clean Apple Matchup Card - No bulky meta clutter) */}
-          <div className="bg-[#0b131e] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-xl">
-            <div className="grid grid-cols-11 items-center gap-2">
-              {/* Home Team */}
-              <div className="col-span-4 flex items-center justify-start gap-3 min-w-0">
-                <img
-                  src={match.teamA.logo}
-                  alt={match.teamA.name}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-contain bg-black/40 p-1.5 shrink-0 border border-white/10 shadow-md"
-                />
-                <div className="min-w-0">
-                  <h3 className="font-black text-sm sm:text-base uppercase tracking-tight text-white truncate">
-                    {match.teamA.name}
-                  </h3>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Home Team
-                  </span>
-                </div>
-              </div>
-
-              {/* Digital Scoreboard */}
-              <div className="col-span-3 flex flex-col items-center justify-center text-center">
-                <div className="flex items-center gap-2.5 text-3xl sm:text-5xl font-mono font-black tracking-tight text-white">
-                  <span className="text-emerald-400">{calculatedScore.home}</span>
-                  <span className="text-slate-500 font-sans text-2xl sm:text-3xl">-</span>
-                  <span className="text-emerald-400">{calculatedScore.away}</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mt-1">
-                  Full Time Target
+            {/* Venue & Kickoff Meta Strip */}
+            <div className="flex items-center justify-between px-3 text-[10px] text-slate-400">
+              <div className="flex items-center gap-1.5 truncate">
+                <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <span className="truncate">
+                  Venue: <span className="text-slate-300 font-semibold">{formatMatchPitch(match.venue) || match.venue || 'Main Stadium'}</span>
                 </span>
               </div>
-
-              {/* Away Team */}
-              <div className="col-span-4 flex items-center justify-end gap-3 min-w-0 text-right">
-                <div className="min-w-0">
-                  <h3 className="font-black text-sm sm:text-base uppercase tracking-tight text-white truncate">
-                    {match.teamB.name}
-                  </h3>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Away Team
-                  </span>
-                </div>
-                <img
-                  src={match.teamB.logo}
-                  alt={match.teamB.name}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-contain bg-black/40 p-1.5 shrink-0 border border-white/10 shadow-md"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 3. VISIBLE "ADD MATCH EVENT" BUTTON (Right Below Teams) */}
-          <div className="flex justify-center pt-1">
-            <button
-              type="button"
-              onClick={() => setIsAddEventModalOpen(true)}
-              className="w-full sm:w-auto min-w-[280px] px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2.5 group"
-            >
-              <div className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4 text-black" />
-              </div>
-              <span>+ Add Match Event</span>
-            </button>
-          </div>
-
-          {/* 4. ADDED EVENTS LIST (WITH VISIBLE "CANCEL EVENT" BUTTON) */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                Logged Events ({events.length})
+                <span>
+                  Kickoff: <span className="text-slate-300 font-semibold">{formatMatchTime(match.scheduledTime || match.time)}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* VERTICAL TIMELINE OF THE CHRONOLOGICAL ORDER */}
+          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                Match Events Timeline ({events.length})
               </span>
-              <span className="text-[10px] font-mono text-slate-400 uppercase">
-                {events.length === 0 ? 'Draw 0 — 0' : 'Chronological Order'}
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                Chronological Minute Ordering
               </span>
             </div>
 
+            {/* Vertical Timeline Body */}
             {events.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-1.5">
-                <p className="text-xs font-bold text-slate-300">No match events logged yet</p>
+              <div className="py-8 text-center space-y-2">
+                <Clock className="w-7 h-7 mx-auto text-slate-600" />
+                <p className="text-xs font-bold text-slate-300">
+                  No match events registered yet.
+                </p>
                 <p className="text-[11px] text-slate-500">
-                  If the match concluded 0 — 0 without cards or substitutions, you can proceed directly to Submit Match Details.
+                  Click "+ Add Match Event" below to log goals, cautions, dismissals, or substitutions.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                {events.map((evt) => (
-                  <div
-                    key={evt.id}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#0e1724] border border-white/10 hover:border-white/20 transition-all shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Minute Badge */}
-                      <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center font-mono font-black text-xs text-emerald-400 shrink-0">
-                        {evt.minute}'
-                      </div>
+              <div className="relative py-3">
+                {/* Center Spine Line */}
+                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-white/10" />
 
-                      {/* Event Icon */}
-                      <div className="text-lg shrink-0">
-                        {evt.type === 'goal' ? '⚽' : evt.type === 'yellow' ? '🟨' : evt.type === 'red' ? '🟥' : '🔄'}
-                      </div>
+                {/* Event Rows */}
+                <div className="space-y-3 relative z-10">
+                  {events.map((evt) => {
+                    const isHome = evt.teamTarget === 'home';
 
-                      {/* Event Details */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-xs text-white truncate">{evt.playerName}</span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            • {evt.teamName}
-                          </span>
+                    return (
+                      <div
+                        key={evt.id}
+                        className="grid grid-cols-[1fr_56px_1fr] items-center gap-2 group"
+                      >
+                        {/* LEFT COLUMN: HOME EVENT */}
+                        <div className="flex items-center justify-end pr-2">
+                          {isHome && (
+                            <div className="flex items-center gap-2 bg-[#0c1522] border border-white/10 hover:border-white/20 p-2 sm:p-2.5 rounded-xl shadow-md max-w-full">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEvent(evt.id)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+                                title="Cancel event"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <div className="text-right min-w-0">
+                                <div className="flex items-center justify-end gap-1.5 font-black text-xs text-white truncate">
+                                  <span className="truncate">{evt.playerName}</span>
+                                  <span className="shrink-0">
+                                    {evt.type === 'goal' ? '⚽' : evt.type === 'yellow' ? '🟨' : evt.type === 'red' ? '🟥' : '🔄'}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-bold text-emerald-400 block truncate">
+                                  {evt.type === 'goal'
+                                    ? `Goal (${evt.goalType === 'penalty' ? 'Penalty' : evt.goalType === 'own_goal' ? 'Own Goal' : 'Open Play'})`
+                                    : evt.type === 'yellow'
+                                    ? 'Yellow Card'
+                                    : evt.type === 'red'
+                                    ? 'Red Card'
+                                    : `Sub: ${evt.subPlayerInName || 'Player In'}`}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-400 block">
-                          {evt.type === 'goal'
-                            ? `Goal (${evt.goalType === 'penalty' ? 'Penalty' : evt.goalType === 'own_goal' ? 'Own Goal' : 'Open Play'})`
-                            : evt.type === 'yellow'
-                            ? 'Yellow Card'
-                            : evt.type === 'red'
-                            ? 'Red Card'
-                            : `Substitution: Off #${evt.jerseyNumber || ''} → In ${evt.subPlayerInName || 'Player In'}`}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* VISIBLE CANCEL EVENT BUTTON */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveEvent(evt.id)}
-                      className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/25 hover:border-rose-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
-                      title="Cancel this event"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Cancel Event</span>
-                    </button>
-                  </div>
-                ))}
+                        {/* CENTER COLUMN: MINUTE BADGE */}
+                        <div className="flex justify-center">
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0c1522] border-2 border-emerald-400 text-emerald-400 flex items-center justify-center font-mono font-black text-xs shadow-md z-20">
+                            {evt.minute}'
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: AWAY EVENT */}
+                        <div className="flex items-center justify-start pl-2">
+                          {!isHome && (
+                            <div className="flex items-center gap-2 bg-[#0c1522] border border-white/10 hover:border-white/20 p-2 sm:p-2.5 rounded-xl shadow-md max-w-full">
+                              <div className="text-left min-w-0">
+                                <div className="flex items-center gap-1.5 font-black text-xs text-white truncate">
+                                  <span className="shrink-0">
+                                    {evt.type === 'goal' ? '⚽' : evt.type === 'yellow' ? '🟨' : evt.type === 'red' ? '🟥' : '🔄'}
+                                  </span>
+                                  <span className="truncate">{evt.playerName}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-emerald-400 block truncate">
+                                  {evt.type === 'goal'
+                                    ? `Goal (${evt.goalType === 'penalty' ? 'Penalty' : evt.goalType === 'own_goal' ? 'Own Goal' : 'Open Play'})`
+                                    : evt.type === 'yellow'
+                                    ? 'Yellow Card'
+                                    : evt.type === 'red'
+                                    ? 'Red Card'
+                                    : `Sub: ${evt.subPlayerInName || 'Player In'}`}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEvent(evt.id)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+                                title="Cancel event"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
+
+            {/* "+ ADD MATCH EVENT" BUTTON: As previous at bottom of timeline, but colored */}
+            <div className="pt-3 flex justify-center border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsAddEventModalOpen(true)}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4 text-black" />
+                <span>+ Add Match Event</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -646,25 +669,41 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 </button>
               </div>
 
-              {/* DYNAMIC PROGRESS STEP TRACKER */}
+              {/* CLEAN STEP TRACKER: ACTIVE STEP HIGHLIGHTED, NO GREEN BORDERS */}
               <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10 text-center text-[10px] font-bold">
                 <div className={`py-1.5 px-1 rounded-lg transition-all ${
-                  selectedTeam ? 'bg-emerald-500/20 text-emerald-300 font-black' : currentFocusStep === 1 ? 'bg-emerald-400 text-black font-black shadow-sm' : 'text-slate-500'
+                  currentFocusStep === 1
+                    ? 'bg-emerald-400 text-black font-black shadow-xs'
+                    : selectedTeam
+                    ? 'text-slate-300 font-bold bg-white/5'
+                    : 'text-slate-500'
                 }`}>
                   1. Team {selectedTeam && '✓'}
                 </div>
                 <div className={`py-1.5 px-1 rounded-lg transition-all ${
-                  selectedAction ? 'bg-emerald-500/20 text-emerald-300 font-black' : currentFocusStep === 2 || currentFocusStep === 2.5 ? 'bg-emerald-400 text-black font-black shadow-sm' : 'text-slate-500'
+                  currentFocusStep === 2 || currentFocusStep === 2.5
+                    ? 'bg-emerald-400 text-black font-black shadow-xs'
+                    : selectedAction
+                    ? 'text-slate-300 font-bold bg-white/5'
+                    : 'text-slate-500'
                 }`}>
                   2. Event {selectedAction && '✓'}
                 </div>
                 <div className={`py-1.5 px-1 rounded-lg transition-all ${
-                  isMinuteValid ? 'bg-emerald-500/20 text-emerald-300 font-black' : currentFocusStep === 3 ? 'bg-emerald-400 text-black font-black shadow-sm' : 'text-slate-500'
+                  currentFocusStep === 3
+                    ? 'bg-emerald-400 text-black font-black shadow-xs'
+                    : isMinuteValid
+                    ? 'text-slate-300 font-bold bg-white/5'
+                    : 'text-slate-500'
                 }`}>
                   3. Minute {isMinuteValid && '✓'}
                 </div>
                 <div className={`py-1.5 px-1 rounded-lg transition-all ${
-                  selectedPlayerId ? 'bg-emerald-500/20 text-emerald-300 font-black' : currentFocusStep === 4 ? 'bg-emerald-400 text-black font-black shadow-sm' : 'text-slate-500'
+                  currentFocusStep === 4
+                    ? 'bg-emerald-400 text-black font-black shadow-xs'
+                    : selectedPlayerId
+                    ? 'text-slate-300 font-bold bg-white/5'
+                    : 'text-slate-500'
                 }`}>
                   4. Player {selectedPlayerId && '✓'}
                 </div>
@@ -676,10 +715,8 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <div
                   className={`rounded-2xl p-3.5 transition-all duration-300 ${
                     currentFocusStep === 1
-                      ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/20 bg-emerald-500/[0.06] shadow-[0_0_25px_rgba(16,185,129,0.25)] scale-[1.01]'
-                      : selectedTeam
-                      ? 'border border-emerald-500/30 bg-white/[0.02]'
-                      : 'border border-white/5 opacity-50'
+                      ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]'
+                      : 'border border-transparent bg-white/[0.02]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -689,11 +726,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     </label>
                     {currentFocusStep === 1 ? (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
-                        👉 Start Here
+                        Active Input
                       </span>
                     ) : selectedTeam ? (
-                      <span className="text-[10px] font-bold text-emerald-400">
-                        ✓ {selectedTeam === 'home' ? match.teamA.name : match.teamB.name}
+                      <span className="text-[10px] font-bold text-slate-300">
+                        {selectedTeam === 'home' ? match.teamA.name : match.teamB.name}
                       </span>
                     ) : null}
                   </div>
@@ -745,10 +782,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <div
                   className={`rounded-2xl p-3.5 transition-all duration-300 ${
                     currentFocusStep === 2
-                      ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/20 bg-emerald-500/[0.06] shadow-[0_0_25px_rgba(16,185,129,0.25)] scale-[1.01]'
-                      : selectedAction
-                      ? 'border border-emerald-500/30 bg-white/[0.02]'
-                      : 'border border-white/5 opacity-40 pointer-events-none'
+                      ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]'
+                      : !selectedTeam
+                      ? 'border border-transparent opacity-40 pointer-events-none'
+                      : 'border border-transparent bg-white/[0.02]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -758,11 +795,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     </label>
                     {currentFocusStep === 2 ? (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
-                        👉 Select Action
+                        Active Input
                       </span>
                     ) : selectedAction ? (
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase">
-                        ✓ {selectedAction}
+                      <span className="text-[10px] font-bold text-slate-300 uppercase">
+                        {selectedAction}
                       </span>
                     ) : null}
                   </div>
@@ -799,10 +836,8 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                   <div
                     className={`rounded-2xl p-3.5 transition-all duration-300 ${
                       currentFocusStep === 2.5
-                        ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/20 bg-emerald-500/[0.06] shadow-[0_0_25px_rgba(16,185,129,0.25)] scale-[1.01]'
-                        : selectedGoalType
-                        ? 'border border-emerald-500/30 bg-white/[0.02]'
-                        : 'border border-white/5 opacity-50'
+                        ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]'
+                        : 'border border-transparent bg-white/[0.02]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -812,7 +847,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                       </label>
                       {currentFocusStep === 2.5 && (
                         <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
-                          👉 Select Type
+                          Active Input
                         </span>
                       )}
                     </div>
@@ -845,10 +880,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <div
                   className={`rounded-2xl p-3.5 transition-all duration-300 ${
                     currentFocusStep === 3
-                      ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/20 bg-emerald-500/[0.06] shadow-[0_0_25px_rgba(16,185,129,0.25)] scale-[1.01]'
-                      : isMinuteValid
-                      ? 'border border-emerald-500/30 bg-white/[0.02]'
-                      : 'border border-white/5 opacity-40 pointer-events-none'
+                      ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]'
+                      : !selectedAction || (selectedAction === 'goal' && !selectedGoalType)
+                      ? 'border border-transparent opacity-40 pointer-events-none'
+                      : 'border border-transparent bg-white/[0.02]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -858,11 +893,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     </label>
                     {currentFocusStep === 3 ? (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
-                        👉 Enter Minute
+                        Active Input
                       </span>
                     ) : isMinuteValid ? (
-                      <span className="text-[10px] font-bold text-emerald-400 font-mono">
-                        ✓ Minute: {minuteInput}'
+                      <span className="text-[10px] font-bold text-slate-300 font-mono">
+                        {minuteInput}'
                       </span>
                     ) : null}
                   </div>
@@ -900,10 +935,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 <div
                   className={`rounded-2xl p-3.5 transition-all duration-300 ${
                     currentFocusStep === 4
-                      ? 'border-2 border-emerald-400 ring-4 ring-emerald-500/20 bg-emerald-500/[0.06] shadow-[0_0_25px_rgba(16,185,129,0.25)] scale-[1.01]'
-                      : selectedPlayerId
-                      ? 'border border-emerald-500/30 bg-white/[0.02]'
-                      : 'border border-white/5 opacity-40 pointer-events-none'
+                      ? 'border-2 border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]'
+                      : !isMinuteValid
+                      ? 'border border-transparent opacity-40 pointer-events-none'
+                      : 'border border-transparent bg-white/[0.02]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -913,11 +948,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     </label>
                     {currentFocusStep === 4 ? (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
-                        👉 Pick Player
+                        Active Input
                       </span>
                     ) : selectedPlayerId ? (
-                      <span className="text-[10px] font-bold text-emerald-400 truncate max-w-[150px]">
-                        ✓ {activeSquad.find((p) => p.id === selectedPlayerId)?.name || 'Player Selected'}
+                      <span className="text-[10px] font-bold text-slate-300 truncate max-w-[150px]">
+                        {activeSquad.find((p) => p.id === selectedPlayerId)?.name || 'Player Selected'}
                       </span>
                     ) : null}
                   </div>
@@ -1000,9 +1035,9 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                   type="button"
                   onClick={handleAddEvent}
                   disabled={currentFocusStep !== 5}
-                  className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
                     currentFocusStep === 5
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black border-2 border-emerald-400 ring-4 ring-emerald-500/30 shadow-lg shadow-emerald-500/40 animate-pulse scale-105 active:scale-95'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-lg shadow-emerald-500/30 active:scale-95'
                       : 'bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-50'
                   }`}
                 >
