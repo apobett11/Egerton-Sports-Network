@@ -74,15 +74,15 @@ CREATE INDEX IF NOT EXISTS idx_players_position
   ON public.players (position);
 
 -- 6. Player Stats & Clean Sheets
-DO  BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'player_stats') THEN
-    CREATE INDEX IF NOT EXISTS idx_player_stats_fixture_player 
-      ON public.player_stats (fixture_id, player_id);
+    CREATE INDEX IF NOT EXISTS idx_player_stats_competition_player 
+      ON public.player_stats (competition_id, player_id);
     CREATE INDEX IF NOT EXISTS idx_player_stats_clean_sheets 
       ON public.player_stats (clean_sheets DESC) 
       WHERE clean_sheets > 0;
   END IF;
-END ;
+END $$;
 
 -- 7. System Audit Logs & Reports
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created 
@@ -98,9 +98,9 @@ CREATE INDEX IF NOT EXISTS idx_match_reports_fixture
   ON public.match_reports (fixture_id);
 
 -- 8. Anonymous Devices (if table exists)
-DO  BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'anonymous_devices') THEN
     CREATE INDEX IF NOT EXISTS idx_anon_devices_device_id 
       ON public.anonymous_devices (device_id);
   END IF;
-END ;
+END $$;
