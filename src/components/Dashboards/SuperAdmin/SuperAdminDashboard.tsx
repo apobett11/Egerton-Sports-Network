@@ -14,6 +14,7 @@ import { AdminPerformanceView } from './components/Views/AdminPerformanceView';
 import { AdminSettingsAnnouncementsView } from './components/Views/AdminSettingsAnnouncementsView';
 import { AdminProfileView } from './components/Views/AdminProfileView';
 import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApprovalsView';
+import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -249,6 +250,10 @@ export const SuperAdminDashboard: React.FC = () => {
               setActionFilter={setAuditActionFilter}
               onExportCSV={handleExportAuditLogsCSV}
             />
+          )}
+
+          {activeTab === 'potw' && (
+            <AdminPotwAuditView showToast={showToast} />
           )}
 
           {activeTab === 'performance' && (

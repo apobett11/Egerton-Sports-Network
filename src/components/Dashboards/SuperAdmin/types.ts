@@ -9,7 +9,8 @@ export type AdminTabType =
   | 'audit_logs'
   | 'performance'
   | 'settings'
-  | 'profile';
+  | 'profile'
+  | 'potw';
 
 export interface AdminPlayerRow {
   id: string;

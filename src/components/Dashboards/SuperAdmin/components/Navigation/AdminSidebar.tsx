@@ -13,6 +13,7 @@ import {
   LogOut,
   RefreshCw,
   Zap,
+  Award,
 } from 'lucide-react';
 import type { AdminTabType } from '../../types';
 
@@ -75,6 +76,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'audit_logs' as AdminTabType,
       label: 'System Audit Logs',
       icon: FileText,
+    },
+    {
+      id: 'potw' as AdminTabType,
+      label: 'POTW Audit Portal',
+      icon: Award,
     },
     {
       id: 'performance' as AdminTabType,

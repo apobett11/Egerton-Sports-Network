@@ -14,6 +14,7 @@ import { MatchActionModal } from './components/MatchActionModal/MatchActionModal
 import { EndMatchModal } from './components/EndMatchModal/EndMatchModal';
 import { useToast } from '../../../contexts/ToastContext';
 import type { Match } from '../../../types';
+import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../services/potwService';
 
 export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const {
@@ -192,9 +193,25 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           }}
           onSubmitReport={async (reportData) => {
             const targetId = endMatchFixture.id;
+            const competitionId =
+              (endMatchFixture as any).competitionId ||
+              (endMatchFixture as any).competition_id ||
+              (endMatchFixture.league?.toLowerCase().includes('champ')
+                ? CHAMP_COMP_ID
+                : EPL_COMP_ID);
             setEndMatchFixture(null);
             setInspectedMatch(null);
-            await submitMatchReport({ ...reportData, fixtureId: targetId });
+            await submitMatchReport({
+              ...reportData,
+              fixtureId: targetId,
+              competitionId,
+              motmNomination: reportData.motmNomination
+                ? {
+                    ...reportData.motmNomination,
+                    competitionId: reportData.motmNomination.competitionId || competitionId,
+                  }
+                : undefined,
+            });
           }}
           onAwardWalkover={awardWalkover}
           onCancelMatch={handlePresidentOnlyCancel}

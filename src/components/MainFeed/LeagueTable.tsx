@@ -6,6 +6,7 @@ import {
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
   ArrowUpRight, ChevronRight, Activity, Sparkles, Filter
 } from 'lucide-react';
+import { PlayerOfTheWeekSpotlight } from '../POTW/PlayerOfTheWeekSpotlight';
 
 interface LeagueTableProps {
   tableData: LeagueTableEntry[];
@@ -13,6 +14,7 @@ interface LeagueTableProps {
   allowHistoricalView?: boolean;
   selectedCompetitionId?: string;
   onSelectTeam?: (teamId: string, teamName: string) => void;
+  onNavigateToVoting?: () => void;
 }
 
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
@@ -21,7 +23,8 @@ const CHAMP_COMP_ID = '22222222-2222-2222-2222-222222222222';
 export const LeagueTable: React.FC<LeagueTableProps> = ({
   tableData,
   selectedCompetitionId = 'all',
-  onSelectTeam
+  onSelectTeam,
+  onNavigateToVoting,
 }) => {
   // Navigation & Filter States
   const [selectedCompFilter, setSelectedCompFilter] = useState<'all' | 'epl' | 'champ'>('all');
@@ -74,6 +77,25 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       setSelectedCompFilter('epl');
     }
   }, [selectedCompetitionId]);
+
+  // On mount: smoothly scroll to potwRef if URL indicates section=potw, potw_winner=1, or hash has potw
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isPotwParam = params.get('section') === 'potw' || params.get('potw_winner') === '1';
+      const isPotwHash = window.location.hash.toLowerCase().includes('potw');
+
+      if (isPotwParam || isPotwHash) {
+        setActiveSection('potw');
+        const timer = setTimeout(() => {
+          if (potwRef.current) {
+            potwRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
 
   const refreshAllTableData = useCallback(() => {
     // 1. Fetch EPL & Champ Standings
@@ -672,7 +694,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       {/* ======================================================== */}
       {/* SECTION 4: PLAYER OF THE WEEK (SINGLE UNIFIED TABLE)    */}
       {/* ======================================================== */}
-      <div ref={potwRef} className="space-y-3 pt-2">
+      <div ref={potwRef} className="space-y-6 pt-2">
+        <PlayerOfTheWeekSpotlight
+          selectedCompetitionId={selectedCompetitionId}
+          onNavigateToVoting={onNavigateToVoting}
+        />
+
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-amber-500 fill-amber-500" />

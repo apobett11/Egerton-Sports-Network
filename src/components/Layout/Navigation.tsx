@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trophy, Star, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
-export type MainTabType = 'scores' | 'table' | 'news' | 'favorites' | 'login';
+export type MainTabType = 'scores' | 'table' | 'news' | 'favorites' | 'login' | 'potw';
 
 interface NavigationProps {
     activeTab: MainTabType;

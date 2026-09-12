@@ -7,6 +7,8 @@ import { matchLiveEngine, matchRepository } from '../../../../services/matchLive
 import { executeWithRetry } from '../../../../lib/retryPolicy';
 import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../../types';
 import { mockMatches } from '../../../../mockData';
+import * as potwService from '../../../../services/potwService';
+import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../../services/potwService';
 import type {
   RefereeTab,
   PlayerLookupItem,
@@ -87,7 +89,7 @@ export const useRefereeDashboard = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [rawEvents, setRawEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [selectedFixtureId, setSelectedFixtureId] = useState<string>('');
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
 
   const [homeLineup, setHomeLineup] = useState<PlayerLookupItem[]>([]);
   const [awayLineup, setAwayLineup] = useState<PlayerLookupItem[]>([]);
@@ -201,6 +203,8 @@ export const useRefereeDashboard = () => {
               matchday: f.matchday || 1,
               verifiedByRefereeId: f.verified_by_referee_id,
               scheduledTime: f.scheduled_time,
+              competitionId: comp?.id || f.competition_id || (comp?.name?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID),
+              competition_id: comp?.id || f.competition_id || (comp?.name?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID),
             } as any;
           });
         }
@@ -225,6 +229,8 @@ export const useRefereeDashboard = () => {
           scheduledTime: m.scheduledTime || new Date(Date.now() + (idx === 0 ? 3600000 : idx * 86400000)).toISOString(),
           refereeId: refId,
           verifiedByRefereeId: refId,
+          competitionId: (m as any).competitionId || EPL_COMP_ID,
+          competition_id: (m as any).competition_id || EPL_COMP_ID,
         }));
       }
 
@@ -696,6 +702,15 @@ export const useRefereeDashboard = () => {
         try {
           if (item.type === 'report') {
             await ApiService.verifyOfficialMatchResult(item.params);
+            if (item.motmNomination && item.motmNomination.playerId && item.motmNomination.teamId) {
+              await potwService.submitMotmNomination({
+                fixtureId: item.motmNomination.fixtureId || item.fixtureId,
+                playerId: item.motmNomination.playerId,
+                teamId: item.motmNomination.teamId,
+                competitionId: item.motmNomination.competitionId,
+                refereeId: item.motmNomination.refereeId,
+              }).catch((mErr) => console.warn('Offline MOTM sync note:', mErr));
+            }
           } else if (item.type === 'walkover') {
             await supabase.from('fixtures').update(item.fixtureUpdate).eq('id', item.fixtureId);
             await ApiService.verifyOfficialMatchResult(item.params);
@@ -855,6 +870,14 @@ export const useRefereeDashboard = () => {
 
         if (error) throw error;
 
+        // Invariant: 3-0 walkovers strictly bypass MOTM nomination (zero player stats attribution)
+        try {
+          await supabase
+            .from('man_of_the_match_nominations')
+            .delete()
+            .eq('fixture_id', fixtureId);
+        } catch {}
+
         await ApiService.verifyOfficialMatchResult(walkoverParams);
       }, { maxRetries: 3, initialDelayMs: 400 });
 
@@ -883,15 +906,31 @@ export const useRefereeDashboard = () => {
   // Submit Match Report Action
   const submitMatchReport = async (reportData: {
     fixtureId?: string;
+    competitionId?: string;
     scoreHome: number;
     scoreAway: number;
     matchState: MatchStatus;
     goals: GoalEntry[];
     cards: CardEntry[];
     injuries: InjuryEntry[];
+    motmNomination?: {
+      fixtureId?: string;
+      playerId: string;
+      teamId: string;
+      competitionId?: string;
+      refereeId?: string;
+      playerName?: string;
+      jerseyNumber?: number;
+    };
   }) => {
     const targetMatch = (reportData.fixtureId ? fixtures.find((f) => f.id === reportData.fixtureId) : null) || selectedFixture;
     if (!targetMatch) return;
+
+    const competitionId =
+      reportData.competitionId ||
+      (targetMatch as any).competitionId ||
+      (targetMatch as any).competition_id ||
+      (targetMatch.league?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID);
 
     if (!isMatchAlterable(targetMatch)) {
       setAuthError('Confirmed past matches or finalized results cannot be altered.');
@@ -1033,6 +1072,22 @@ export const useRefereeDashboard = () => {
         if (!res.success && !res.data) {
           throw new Error(res.message || 'Server rejected official report verification.');
         }
+
+        // Submit Man of the Match (MOTM) Nomination if provided
+        if (reportData.motmNomination && reportData.motmNomination.playerId && reportData.motmNomination.teamId) {
+          try {
+            await potwService.submitMotmNomination({
+              fixtureId: targetMatch.id,
+              playerId: reportData.motmNomination.playerId,
+              teamId: reportData.motmNomination.teamId,
+              competitionId,
+              refereeId: effectiveRefereeId,
+            });
+          } catch (motmErr) {
+            console.warn('MOTM nomination submit note:', motmErr);
+          }
+        }
+
         return res;
       }, { maxRetries: 4, initialDelayMs: 500 });
 
@@ -1053,6 +1108,15 @@ export const useRefereeDashboard = () => {
         type: 'report',
         fixtureId: targetMatch.id,
         params: reportParams,
+        motmNomination: reportData.motmNomination ? {
+          fixtureId: targetMatch.id,
+          playerId: reportData.motmNomination.playerId,
+          teamId: reportData.motmNomination.teamId,
+          competitionId,
+          refereeId: effectiveRefereeId,
+          playerName: reportData.motmNomination.playerName,
+          jerseyNumber: reportData.motmNomination.jerseyNumber,
+        } : undefined,
       });
       setSuccessMsg(
         `Official Match Report saved locally! Result (${reportData.scoreHome}-${reportData.scoreAway}) is queued for guaranteed sync.`

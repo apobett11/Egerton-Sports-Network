@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Player, 
+  CardTheme,
   FormationType, 
   Playstyle, 
   ActiveModal,
@@ -116,7 +117,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         photoUrl: p.cardImage || p.photoUrl || '',
         flagUrl: 'https://flagcdn.com/w80/ke.png',
         clubLogoUrl: teamCrest || '',
-        cardTheme: (p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue',
+        cardTheme: ((p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue') as CardTheme,
         isCaptain: false,
       }));
     },
@@ -137,7 +138,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         photoUrl: p.cardImage || p.photoUrl || '',
         flagUrl: 'https://flagcdn.com/w80/ke.png',
         clubLogoUrl: teamCrest || '',
-        cardTheme: (p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue',
+        cardTheme: ((p.rating || 75) >= 85 ? 'epic' : (p.rating || 75) >= 80 ? 'gold' : 'blue') as CardTheme,
         isCaptain: false,
       }));
     },

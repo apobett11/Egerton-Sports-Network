@@ -102,8 +102,8 @@ export const TeamDashboard: React.FC = () => {
           roster={roster}
           teamName={teamInfo?.name}
           teamCrest={teamInfo?.logo_url}
-          coachProfile={coachProfile}
-          captainProfile={captainProfile}
+          coachProfile={coachProfile || undefined}
+          captainProfile={captainProfile || undefined}
           activeFixtureId={teamFixtures && teamFixtures.length > 0 ? teamFixtures[0].id : undefined}
           onNavigateBack={() => setActiveView('DASHBOARD')}
           onShowToast={showToast}

@@ -321,7 +321,7 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
 
                   {/* Right Column: Action Buttons */}
                   <div className="shrink-0 flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
-                    {match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed ? (
+                    {match.status === 'FT' || (match.status as string) === 'WALKOVER' || (match as any).stats_processed ? (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Result Confirmed</span>

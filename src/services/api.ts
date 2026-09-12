@@ -773,7 +773,7 @@ export const ApiService = {
         ? rawOfficialId
         : params.refereeId;
 
-      const isWalkover = params.outcome === 'WALKOVER' || (params.status === 'WALKOVER') || (params.reportText && params.reportText.includes('WALKOVER'));
+      const isWalkover = params.outcome === 'WALKOVER' || ((params.status as string) === 'WALKOVER') || (params.reportText && params.reportText.includes('WALKOVER'));
       const outcome = isWalkover ? 'WALKOVER' : (params.outcome || 'NORMAL');
 
       const fullReportText = [
@@ -801,12 +801,17 @@ export const ApiService = {
 
       let winningTeamId = params.winningTeamId;
       if (outcome === 'WALKOVER' && !winningTeamId) {
-        const { data: fix } = await supabase
-          .from('fixtures')
-          .select('home_team_id, away_team_id')
-          .eq('id', params.fixtureId)
-          .maybeSingle()
-          .catch(() => ({ data: null }));
+        let fix: { home_team_id: string; away_team_id: string } | null = null;
+        try {
+          const res = await supabase
+            .from('fixtures')
+            .select('home_team_id, away_team_id')
+            .eq('id', params.fixtureId)
+            .maybeSingle();
+          fix = res.data as { home_team_id: string; away_team_id: string } | null;
+        } catch {
+          fix = null;
+        }
 
         if (fix) {
           if (params.scoreHome > params.scoreAway) {

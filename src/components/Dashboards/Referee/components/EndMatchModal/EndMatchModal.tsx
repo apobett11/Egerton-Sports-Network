@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, Clock, Trophy, CheckCircle2, AlertTriangle, Plus, Trash2, 
-  ArrowRight, ShieldCheck, Sparkles, User, Flame, MapPin
+  ArrowRight, ShieldCheck, Sparkles, User, Flame, MapPin, Star, Award
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
 import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match, MatchStatus, MatchEventType } from '../../../../../types';
 import type { GoalEntry, CardEntry, InjuryEntry } from '../../types';
+import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../../../services/potwService';
 
 export interface RecordedEvent {
   id: string;
@@ -31,6 +32,14 @@ export interface PlayerRosterItem {
   position?: string;
 }
 
+export interface MotmNominationData {
+  playerId: string;
+  teamId: string;
+  competitionId?: string;
+  playerName?: string;
+  jerseyNumber?: number;
+}
+
 interface EndMatchModalProps {
   match: Match;
   isOpen: boolean;
@@ -42,6 +51,7 @@ interface EndMatchModalProps {
     goals: GoalEntry[];
     cards: CardEntry[];
     injuries: InjuryEntry[];
+    motmNomination?: MotmNominationData;
   }) => Promise<void>;
   onAwardWalkover?: (fixtureId: string, winningTeamTarget: 'home' | 'away') => Promise<void>;
   onCancelMatch?: (fixtureId: string) => Promise<void>;
@@ -68,6 +78,27 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   // Submit Confirmation Modal State
   const [isConfirmSubmitOpen, setIsConfirmSubmitOpen] = useState<boolean>(false);
   const [isLocallySubmitting, setIsLocallySubmitting] = useState<boolean>(false);
+
+  // Man of the Match (MOTM) Nomination State
+  const [isMotmModalOpen, setIsMotmModalOpen] = useState<boolean>(false);
+  const [motmTeamTab, setMotmTeamTab] = useState<'home' | 'away'>('home');
+  const [selectedMotmPlayer, setSelectedMotmPlayer] = useState<{
+    playerId: string;
+    teamId: string;
+    teamName: string;
+    playerName: string;
+    jerseyNumber?: number;
+    position?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedMotmPlayer(null);
+      setIsMotmModalOpen(false);
+      setIsConfirmSubmitOpen(false);
+      setMotmTeamTab('home');
+    }
+  }, [isOpen, match.id]);
 
   const isMatchLocked = match.status === 'FT' || (match.status as any) === 'WALKOVER' || Boolean((match as any).stats_processed);
 
@@ -376,7 +407,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
       // Instantly close modal dialogs so referee is immediately returned to homepage overview
       setIsConfirmSubmitOpen(false);
+      setIsMotmModalOpen(false);
       onClose();
+
+      const compId = (match as any).competitionId || (match as any).competition_id || (match.league?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID);
 
       // Fire up the match end algorithms
       await onSubmitReport({
@@ -386,6 +420,15 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         goals,
         cards,
         injuries: [],
+        motmNomination: selectedMotmPlayer
+          ? {
+              playerId: selectedMotmPlayer.playerId,
+              teamId: selectedMotmPlayer.teamId,
+              competitionId: compId,
+              playerName: selectedMotmPlayer.playerName,
+              jerseyNumber: selectedMotmPlayer.jerseyNumber,
+            }
+          : undefined,
       });
     } catch (err) {
       console.error('Submit match report error:', err);
@@ -657,6 +700,28 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
               Exit
             </button>
 
+            {!isMatchLocked && (
+              <button
+                type="button"
+                onClick={() => setIsMotmModalOpen(true)}
+                className={`px-3.5 py-2.5 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                  selectedMotmPlayer
+                    ? 'bg-[#ff0046]/15 border-[#ff0046] text-white shadow-sm shadow-[#ff0046]/20'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                }`}
+              >
+                <Trophy className={`w-4 h-4 ${selectedMotmPlayer ? 'text-[#ff0046]' : 'text-slate-400'}`} />
+                <span className="hidden sm:inline">
+                  {selectedMotmPlayer
+                    ? `MOTM: #${selectedMotmPlayer.jerseyNumber || '-'} ${selectedMotmPlayer.playerName}`
+                    : 'Nominate MOTM'}
+                </span>
+                <span className="sm:hidden">
+                  {selectedMotmPlayer ? 'MOTM' : 'MOTM'}
+                </span>
+              </button>
+            )}
+
             {isMatchLocked ? (
               <div className="px-5 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
@@ -665,7 +730,13 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setIsConfirmSubmitOpen(true)}
+                onClick={() => {
+                  if (!selectedMotmPlayer) {
+                    setIsMotmModalOpen(true);
+                  } else {
+                    setIsConfirmSubmitOpen(true);
+                  }
+                }}
                 disabled={isSubmitting || isLocallySubmitting}
                 className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
@@ -1162,6 +1233,429 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         )}
 
         {/* ========================================================================= */}
+        {/* MAN OF THE MATCH (MOTM) NOMINATION STEP MODAL                             */}
+        {/* ========================================================================= */}
+        {isMotmModalOpen && (
+          <div
+            className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn select-none"
+            onClick={() => setIsMotmModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="relative w-full max-w-2xl bg-[#0b131e] border border-white/15 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-white max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#ff0046]/15 border border-[#ff0046]/30 flex items-center justify-center text-[#ff0046] shadow-sm">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm sm:text-base uppercase tracking-wider text-white flex items-center gap-1.5">
+                      Nominate Man of the Match (MOTM)
+                      <span className="px-2 py-0.5 rounded-full bg-[#ff0046] text-white text-[9px] font-black tracking-wider">
+                        STEP 2 / 3
+                      </span>
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      Official ESN Match Award • Single Player Selection
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsMotmModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* SQUAD ROSTER TOGGLE: Home vs Away Team */}
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-black/40 border border-white/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMotmTeamTab('home')}
+                  className={`flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl transition-all cursor-pointer ${
+                    motmTeamTab === 'home'
+                      ? 'bg-[#152a40] text-white border-2 border-[#ff0046] shadow-lg shadow-[#ff0046]/20'
+                      : 'bg-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 border-2 border-transparent'
+                  }`}
+                >
+                  {match.teamA.logo ? (
+                    <img
+                      src={match.teamA.logo}
+                      alt={match.teamA.name}
+                      className="w-5 h-5 object-contain rounded-full"
+                    />
+                  ) : (
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white"
+                      style={{ backgroundColor: match.teamA.colorCode || '#ff0046' }}
+                    >
+                      {match.teamA.shortName?.[0] || 'H'}
+                    </div>
+                  )}
+                  <div className="text-left truncate">
+                    <span className="text-xs font-black uppercase tracking-wider block truncate">
+                      {match.teamA.name}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">
+                      Home • {resolvedHomeSquad.length} Players
+                    </span>
+                  </div>
+                  {selectedMotmPlayer?.teamId === match.teamA.id && (
+                    <span className="w-2 h-2 rounded-full bg-[#ff0046] shadow-sm ml-auto shrink-0" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMotmTeamTab('away')}
+                  className={`flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl transition-all cursor-pointer ${
+                    motmTeamTab === 'away'
+                      ? 'bg-[#152a40] text-white border-2 border-[#ff0046] shadow-lg shadow-[#ff0046]/20'
+                      : 'bg-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 border-2 border-transparent'
+                  }`}
+                >
+                  {match.teamB.logo ? (
+                    <img
+                      src={match.teamB.logo}
+                      alt={match.teamB.name}
+                      className="w-5 h-5 object-contain rounded-full"
+                    />
+                  ) : (
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white"
+                      style={{ backgroundColor: match.teamB.colorCode || '#2563EB' }}
+                    >
+                      {match.teamB.shortName?.[0] || 'A'}
+                    </div>
+                  )}
+                  <div className="text-left truncate">
+                    <span className="text-xs font-black uppercase tracking-wider block truncate">
+                      {match.teamB.name}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">
+                      Away • {resolvedAwaySquad.length} Players
+                    </span>
+                  </div>
+                  {selectedMotmPlayer?.teamId === match.teamB.id && (
+                    <span className="w-2 h-2 rounded-full bg-[#ff0046] shadow-sm ml-auto shrink-0" />
+                  )}
+                </button>
+              </div>
+
+              {/* SQUAD PLAYERS LIST: Starters & Substitutes */}
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {/* Starting XI Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 px-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Starting XI ({motmTeamTab === 'home' ? resolvedHomeSquad.filter(p => !p.isSub).length : resolvedAwaySquad.filter(p => !p.isSub).length})
+                    </span>
+                    <span className="text-[9px] text-slate-500 font-medium">
+                      Tap player card to nominate
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(motmTeamTab === 'home' ? resolvedHomeSquad : resolvedAwaySquad)
+                      .filter((p) => !p.isSub)
+                      .map((player) => {
+                        const currentTeamId = motmTeamTab === 'home' ? match.teamA.id : match.teamB.id;
+                        const currentTeamName = motmTeamTab === 'home' ? match.teamA.name : match.teamB.name;
+                        const isSelected =
+                          selectedMotmPlayer?.playerId === player.id ||
+                          (selectedMotmPlayer?.teamId === currentTeamId &&
+                            selectedMotmPlayer?.jerseyNumber === player.jerseyNumber &&
+                            selectedMotmPlayer?.playerName === player.name);
+
+                        // Calculate match achievements
+                        const goalsCount = events.filter(
+                          (e) =>
+                            e.type === 'goal' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        ).length;
+
+                        const hasYellow = events.some(
+                          (e) =>
+                            e.type === 'yellow' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        );
+
+                        const hasRed = events.some(
+                          (e) =>
+                            e.type === 'red' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        );
+
+                        return (
+                          <div
+                            key={player.id}
+                            onClick={() => {
+                              setSelectedMotmPlayer({
+                                playerId: player.id,
+                                teamId: currentTeamId,
+                                teamName: currentTeamName,
+                                playerName: player.name,
+                                jerseyNumber: player.jerseyNumber,
+                                position: player.position,
+                              });
+                            }}
+                            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                              isSelected
+                                ? 'bg-[#ff0046]/15 border-[#ff0046] ring-2 ring-[#ff0046]/50 shadow-md shadow-[#ff0046]/20'
+                                : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 ${
+                                  isSelected
+                                    ? 'bg-[#ff0046] text-white'
+                                    : 'bg-white/10 text-slate-300'
+                                }`}
+                              >
+                                #{player.jerseyNumber || '-'}
+                              </span>
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-xs font-bold truncate ${
+                                    isSelected ? 'text-white font-black' : 'text-slate-200'
+                                  }`}
+                                >
+                                  {player.name}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-white/5 text-slate-400 border border-white/5">
+                                    {player.position || 'FWD'}
+                                  </span>
+                                  {goalsCount > 0 && (
+                                    <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/15 px-1.5 py-0.2 rounded border border-emerald-500/25">
+                                      ⚽ {goalsCount} {goalsCount === 1 ? 'Goal' : 'Goals'}
+                                    </span>
+                                  )}
+                                  {hasYellow && (
+                                    <span className="text-[9px] text-amber-400 bg-amber-500/15 px-1 py-0.2 rounded border border-amber-500/25">
+                                      🟨
+                                    </span>
+                                  )}
+                                  {hasRed && (
+                                    <span className="text-[9px] text-red-400 bg-red-500/15 px-1 py-0.2 rounded border border-red-500/25">
+                                      🟥
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {isSelected ? (
+                              <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#ff0046] text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                <Star className="w-2.5 h-2.5 fill-white" />
+                                Nominee
+                              </span>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border border-white/20 shrink-0 flex items-center justify-center text-transparent hover:text-slate-400">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Substitutes Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 px-1 pt-1 border-t border-white/5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Substitutes & Bench ({motmTeamTab === 'home' ? resolvedHomeSquad.filter(p => p.isSub).length : resolvedAwaySquad.filter(p => p.isSub).length})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(motmTeamTab === 'home' ? resolvedHomeSquad : resolvedAwaySquad)
+                      .filter((p) => p.isSub)
+                      .map((player) => {
+                        const currentTeamId = motmTeamTab === 'home' ? match.teamA.id : match.teamB.id;
+                        const currentTeamName = motmTeamTab === 'home' ? match.teamA.name : match.teamB.name;
+                        const isSelected =
+                          selectedMotmPlayer?.playerId === player.id ||
+                          (selectedMotmPlayer?.teamId === currentTeamId &&
+                            selectedMotmPlayer?.jerseyNumber === player.jerseyNumber &&
+                            selectedMotmPlayer?.playerName === player.name);
+
+                        const goalsCount = events.filter(
+                          (e) =>
+                            e.type === 'goal' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        ).length;
+
+                        const hasYellow = events.some(
+                          (e) =>
+                            e.type === 'yellow' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        );
+
+                        const hasRed = events.some(
+                          (e) =>
+                            e.type === 'red' &&
+                            e.teamTarget === motmTeamTab &&
+                            (e.playerId === player.id ||
+                              (e.jerseyNumber && e.jerseyNumber === player.jerseyNumber))
+                        );
+
+                        return (
+                          <div
+                            key={player.id}
+                            onClick={() => {
+                              setSelectedMotmPlayer({
+                                playerId: player.id,
+                                teamId: currentTeamId,
+                                teamName: currentTeamName,
+                                playerName: player.name,
+                                jerseyNumber: player.jerseyNumber,
+                                position: player.position,
+                              });
+                            }}
+                            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                              isSelected
+                                ? 'bg-[#ff0046]/15 border-[#ff0046] ring-2 ring-[#ff0046]/50 shadow-md shadow-[#ff0046]/20'
+                                : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 ${
+                                  isSelected
+                                    ? 'bg-[#ff0046] text-white'
+                                    : 'bg-white/10 text-slate-300'
+                                }`}
+                              >
+                                #{player.jerseyNumber || '-'}
+                              </span>
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-xs font-bold truncate ${
+                                    isSelected ? 'text-white font-black' : 'text-slate-200'
+                                  }`}
+                                >
+                                  {player.name}
+                                </p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-white/5 text-slate-400 border border-white/5">
+                                    SUB
+                                  </span>
+                                  {goalsCount > 0 && (
+                                    <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/15 px-1.5 py-0.2 rounded border border-emerald-500/25">
+                                      ⚽ {goalsCount} {goalsCount === 1 ? 'Goal' : 'Goals'}
+                                    </span>
+                                  )}
+                                  {hasYellow && (
+                                    <span className="text-[9px] text-amber-400 bg-amber-500/15 px-1 py-0.2 rounded border border-amber-500/25">
+                                      🟨
+                                    </span>
+                                  )}
+                                  {hasRed && (
+                                    <span className="text-[9px] text-red-400 bg-red-500/15 px-1 py-0.2 rounded border border-red-500/25">
+                                      🟥
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {isSelected ? (
+                              <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#ff0046] text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                <Star className="w-2.5 h-2.5 fill-white" />
+                                Nominee
+                              </span>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border border-white/20 shrink-0 flex items-center justify-center text-transparent hover:text-slate-400">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Nominee Strip & Actions */}
+              <div className="pt-3 border-t border-white/10 shrink-0 space-y-3">
+                {selectedMotmPlayer ? (
+                  <div className="p-2.5 rounded-xl bg-[#ff0046]/10 border border-[#ff0046]/30 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Star className="w-4 h-4 text-[#ff0046] fill-[#ff0046] shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-[#ff0046] block">
+                          Current Nomination
+                        </span>
+                        <p className="text-xs font-black text-white truncate">
+                          #{selectedMotmPlayer.jerseyNumber || '-'} {selectedMotmPlayer.playerName}
+                          <span className="text-slate-400 font-medium ml-1">
+                            ({selectedMotmPlayer.teamName})
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMotmPlayer(null)}
+                      className="text-[10px] text-slate-400 hover:text-white underline cursor-pointer shrink-0"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Please tap any player above to nominate as Man of the Match.</span>
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsMotmModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Back to Timeline
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMotmModalOpen(false);
+                      setIsConfirmSubmitOpen(true);
+                    }}
+                    disabled={!selectedMotmPlayer}
+                    className="px-6 py-2.5 rounded-xl bg-[#ff0046] hover:bg-[#e0003e] disabled:opacity-40 disabled:hover:bg-[#ff0046] text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-[#ff0046]/25 active:scale-95 disabled:cursor-not-allowed"
+                  >
+                    <span>Proceed to Final Certification</span>
+                    <ArrowRight className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
         {/* SUBMIT CONFIRMATION POPUP: CONFIRMATION OF SCORES AND EVENTS              */}
         {/* ========================================================================= */}
         {isConfirmSubmitOpen && (
@@ -1213,6 +1707,62 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                   <span className="text-slate-200">{match.teamB.name}</span>
                 </div>
               </div>
+
+              {/* Official Man of the Match (MOTM) Nomination Card */}
+              {selectedMotmPlayer ? (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#ff0046]/20 via-[#ff0046]/10 to-transparent border border-[#ff0046]/40 flex items-center justify-between gap-3 shadow-md shadow-[#ff0046]/10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#ff0046] flex items-center justify-center text-white shadow-md shadow-[#ff0046]/30 shrink-0">
+                      <Trophy className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[#ff0046] flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-[#ff0046]" /> Man of the Match Nominee
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded bg-white/10 text-[9px] font-bold text-slate-300">
+                          {selectedMotmPlayer.position || 'FWD'}
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-black text-white truncate">
+                        #{selectedMotmPlayer.jerseyNumber || '-'} {selectedMotmPlayer.playerName}
+                        <span className="text-slate-300 font-medium ml-1.5 text-xs">
+                          ({selectedMotmPlayer.teamName})
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConfirmSubmitOpen(false);
+                      setIsMotmModalOpen(true);
+                    }}
+                    disabled={isSubmitting || isLocallySubmitting}
+                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-bold text-white border border-white/10 transition-colors cursor-pointer shrink-0"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Trophy className="w-4 h-4 text-slate-500" />
+                    <span>No Man of the Match nominated</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConfirmSubmitOpen(false);
+                      setIsMotmModalOpen(true);
+                    }}
+                    disabled={isSubmitting || isLocallySubmitting}
+                    className="text-xs text-[#ff0046] font-bold hover:underline cursor-pointer"
+                  >
+                    + Nominate
+                  </button>
+                </div>
+              )}
 
               {/* Events Summary List */}
               <div className="space-y-2">

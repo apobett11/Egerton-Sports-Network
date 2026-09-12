@@ -222,7 +222,7 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
 
                     {/* Right Column: Action Buttons */}
                     <div className="shrink-0 flex items-center gap-1.5 pl-2" onClick={(e) => e.stopPropagation()}>
-                      {match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed ? (
+                      {match.status === 'FT' || (match.status as string) === 'WALKOVER' || (match as any).stats_processed ? (
                         <div className="flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30">
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Result Confirmed</span>

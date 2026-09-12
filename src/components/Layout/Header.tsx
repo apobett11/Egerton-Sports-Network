@@ -15,8 +15,8 @@ interface HeaderProps {
     onMenuClick?: () => void;
     onNavigateNews?: () => void;
     onNavigateLogin?: () => void;
-    activeMainTab?: 'scores' | 'news' | 'table' | 'favorites';
-    onSelectMainTab?: (tab: 'scores' | 'news' | 'table' | 'favorites') => void;
+    activeMainTab?: 'scores' | 'news' | 'table' | 'favorites' | 'potw';
+    onSelectMainTab?: (tab: 'scores' | 'news' | 'table' | 'favorites' | 'potw') => void;
     favoritesCount?: number;
     isCalendarOpen?: boolean;
     onCloseCalendar?: () => void;
@@ -319,6 +319,29 @@ export const Header: React.FC<HeaderProps> = ({
                             }`}
                         >
                             <span>STANDINGS</span>
+                        </button>
+
+                        {/* 4. PLAYER OF THE WEEK */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (onSelectMainTab) onSelectMainTab('table');
+                                if (typeof window !== 'undefined') {
+                                    window.location.hash = '/standings?section=potw';
+                                    setTimeout(() => {
+                                        const headings = Array.from(document.querySelectorAll('h2, div'));
+                                        const el = headings.find((h) => h.textContent?.includes('PLAYER OF THE WEEK'));
+                                        if (el) {
+                                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    }, 100);
+                                }
+                            }}
+                            className="flex items-center gap-1.5 h-full px-2 text-xs sm:text-sm font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 text-amber-500 hover:text-amber-400 border-transparent hover:border-amber-400/40"
+                            title="Player of the Week Spotlight & Archives"
+                        >
+                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 animate-pulse" />
+                            <span>PLAYER OF THE WEEK</span>
                         </button>
                     </div>
                 </div>

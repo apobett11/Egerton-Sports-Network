@@ -5,6 +5,7 @@ import { Navigation } from './components/Layout/Navigation';
 import type { MainTabType } from './components/Layout/Navigation';
 import { FixturesList } from './components/MainFeed/FixturesList';
 import { LeagueTable } from './components/MainFeed/LeagueTable';
+import { PotwVotingSection } from './components/POTW/PotwVotingSection';
 import { PublicNewsPage } from './pages/public/PublicPages';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
@@ -309,8 +310,21 @@ export const AppContent: React.FC = () => {
   // Navigation & Routing States with Session Persistence across accidental refreshes
   const [activeTab, setActiveTab] = useState<MainTabType>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('potw_player') || params.get('potw') === 'true') {
+          return 'potw';
+        }
+        if (params.get('section') === 'potw' || params.get('potw_winner') === '1') {
+          return 'table';
+        }
+      }
+      const initialRoute = getHashRoute();
+      if (initialRoute === 'potw' || initialRoute.startsWith('potw')) {
+        return 'potw';
+      }
       const saved = sessionStorage.getItem('esn_guest_active_tab');
-      if (saved === 'scores' || saved === 'news' || saved === 'table' || saved === 'favorites') {
+      if (saved === 'scores' || saved === 'news' || saved === 'table' || saved === 'favorites' || saved === 'potw') {
         return saved as MainTabType;
       }
     } catch {}
@@ -413,13 +427,33 @@ export const AppContent: React.FC = () => {
 
   // Sync route on hash change
   useEffect(() => {
-    // On initial load, resolve current hash immediately
+    // On initial load, resolve current hash immediately and check deep links
     const initialRoute = getHashRoute();
     if (initialRoute.startsWith('team/')) {
       const slug = initialRoute.replace(/^team\/?/, '').split('/')[0];
       resolveTeamSlug(slug).then((id) => {
         if (id) setSelectedTeamId(id);
       });
+    }
+
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const potwPlayer = searchParams.get('potw_player');
+      const isPotwVoting = searchParams.get('potw') === 'true' || Boolean(potwPlayer);
+      const isPotwWinner = searchParams.get('potw_winner') === '1' || searchParams.get('section') === 'potw';
+      const leagueParam = searchParams.get('league');
+
+      if (leagueParam === 'champ' || leagueParam === 'championship') {
+        setSelectedCompetitionId('22222222-2222-2222-2222-222222222222');
+      } else if (leagueParam === 'epl' || leagueParam === 'premier') {
+        setSelectedCompetitionId('11111111-1111-1111-1111-111111111111');
+      }
+
+      if (isPotwVoting || initialRoute === 'potw') {
+        setActiveTab('potw');
+      } else if (isPotwWinner) {
+        setActiveTab('table');
+      }
     }
 
     const handleHash = () => {
@@ -430,6 +464,12 @@ export const AppContent: React.FC = () => {
       } catch {}
       if (newRoute === 'favorites' || newRoute === 'favourites') {
         setActiveTab('favorites');
+      }
+      if (newRoute === 'potw' || newRoute.startsWith('potw')) {
+        setActiveTab('potw');
+      }
+      if (newRoute === 'standings' || newRoute === 'table') {
+        setActiveTab('table');
       }
       if (!newRoute.startsWith('match/')) {
         setSelectedMatch(null);
@@ -895,6 +935,10 @@ export const AppContent: React.FC = () => {
                       <Trophy className="w-4 h-4 text-blue-500" />
                       <span>Friendlies</span>
                     </li>
+                    <li onClick={() => { setSidebarOpen(false); setActiveTab('potw'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-amber-400 cursor-pointer">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <span>Player of the Week</span>
+                    </li>
                   </ul>
                 </div>
 
@@ -954,7 +998,7 @@ export const AppContent: React.FC = () => {
               onMenuClick={() => setSidebarOpen(true)}
               onNavigateNews={() => setActiveTab('news')}
               onNavigateLogin={() => handleNavigateHash('/login')}
-              activeMainTab={['scores', 'news', 'table', 'favorites'].includes(activeTab) ? (activeTab as any) : 'scores'}
+              activeMainTab={['scores', 'news', 'table', 'favorites', 'potw'].includes(activeTab) ? (activeTab as any) : 'scores'}
               onSelectMainTab={(tab) => setActiveTab(tab)}
               favoritesCount={favorites.length}
               isCalendarOpen={isCalendarOpen}
@@ -1008,6 +1052,14 @@ export const AppContent: React.FC = () => {
                   tableData={currentStandings}
                   selectedCompetitionId={selectedCompetitionId}
                   onSelectTeam={handleTeamClick}
+                  onNavigateToVoting={() => setActiveTab('potw')}
+                />
+              )}
+
+              {activeTab === 'potw' && (
+                <PotwVotingSection
+                  onNavigateToStandings={() => setActiveTab('table')}
+                  initialLeague={selectedCompetitionId === '22222222-2222-2222-2222-222222222222' ? 'champ' : 'epl'}
                 />
               )}
 

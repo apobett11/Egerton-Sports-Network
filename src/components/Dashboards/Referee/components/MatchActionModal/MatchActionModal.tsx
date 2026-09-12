@@ -26,7 +26,7 @@ export const MatchActionModal: React.FC<MatchActionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isConcluded = match.status === 'FT' || match.status === 'WALKOVER' || (match as any).stats_processed;
+  const isConcluded = match.status === 'FT' || (match.status as string) === 'WALKOVER' || (match as any).stats_processed;
   const isCancelled = match.status === 'CANCELLED';
 
   const handleCancelClick = () => {
