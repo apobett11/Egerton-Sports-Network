@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  X, Trophy, CheckCircle2, AlertTriangle, Plus, Trash2,
-  ArrowRight, ShieldCheck, ShieldAlert, Flag, Minus
+  X, CheckCircle2, AlertTriangle, Trophy, Plus, Minus,
+  ShieldCheck, Flag, ShieldAlert
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
 import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
@@ -60,34 +60,38 @@ interface EndMatchModalProps {
   awaySquad?: PlayerRosterItem[];
 }
 
-// ─── Team Event State ────────────────────────────────────────────────────────
-interface TeamEventState {
-  goalCount: number;
-  goalScorers: string[]; // jersey numbers as strings
-  yellowCards: string[]; // jersey numbers
-  redCards: string[];    // jersey numbers
-}
-
-const emptyTeamState = (): TeamEventState => ({
-  goalCount: 0,
-  goalScorers: [],
-  yellowCards: [],
-  redCards: [],
-});
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 const isValidUuid = (id?: string | null): boolean => {
   if (!id) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 };
 
-const resolvePlayerFromSquad = (jerseyStr: string, squad: PlayerRosterItem[]) => {
-  const num = parseInt(jerseyStr, 10);
-  if (isNaN(num)) return null;
-  return squad.find((p) => p.jerseyNumber === num) || null;
-};
-
-type ModalStep = 'type-select' | 'team-a' | 'team-b' | 'confirm' | 'walkover';
+// ─── Counter widget ───────────────────────────────────────────────────────────
+const Counter: React.FC<{
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  accentClass?: string;
+}> = ({ value, onChange, min = 0, accentClass = 'bg-emerald-500' }) => (
+  <div className="flex items-center gap-1.5">
+    <button
+      type="button"
+      onClick={() => onChange(Math.max(min, value - 1))}
+      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0"
+    >
+      <Minus className="w-3.5 h-3.5" />
+    </button>
+    <span className={`w-8 text-center font-mono font-black text-lg text-white select-none`}>
+      {value}
+    </span>
+    <button
+      type="button"
+      onClick={() => onChange(value + 1)}
+      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0"
+    >
+      <Plus className="w-3.5 h-3.5" />
+    </button>
+  </div>
+);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const EndMatchModal: React.FC<EndMatchModalProps> = ({
@@ -97,183 +101,77 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   onSubmitReport,
   onAwardWalkover,
   isSubmitting,
-  homeSquad = [],
-  awaySquad = [],
 }) => {
-  const [step, setStep] = useState<ModalStep>('type-select');
-  const [teamAState, setTeamAState] = useState<TeamEventState>(emptyTeamState());
-  const [teamBState, setTeamBState] = useState<TeamEventState>(emptyTeamState());
-  const [walkoverWinner, setWalkoverWinner] = useState<'home' | 'away'>('home');
+  const [scoreA, setScoreA] = useState(0);
+  const [scoreB, setScoreB] = useState(0);
+  const [yellowA, setYellowA] = useState(0);
+  const [yellowB, setYellowB] = useState(0);
+  const [redA, setRedA] = useState(0);
+  const [redB, setRedB] = useState(0);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isLocallySubmitting, setIsLocallySubmitting] = useState(false);
 
-  // Squads
-  const [fetchedHomeSquad, setFetchedHomeSquad] = useState<PlayerRosterItem[]>([]);
-  const [fetchedAwaySquad, setFetchedAwaySquad] = useState<PlayerRosterItem[]>([]);
+  // Walkover state (used when modal is opened via walkover path)
+  const [walkoverWinner, setWalkoverWinner] = useState<'home' | 'away'>('home');
+  const [isWalkoverMode] = useState(false); // driven by parent — kept for compat
 
   const isMatchLocked =
     match.status === 'FT' ||
     (match.status as any) === 'WALKOVER' ||
     Boolean((match as any).stats_processed);
 
-  // Reset on open/close
   useEffect(() => {
     if (!isOpen) {
-      setStep('type-select');
-      setTeamAState(emptyTeamState());
-      setTeamBState(emptyTeamState());
-      setWalkoverWinner('home');
+      setScoreA(0); setScoreB(0);
+      setYellowA(0); setYellowB(0);
+      setRedA(0); setRedB(0);
+      setIsConfirmOpen(false);
       setIsLocallySubmitting(false);
+      setWalkoverWinner('home');
     }
   }, [isOpen, match.id]);
 
-  // Pre-fetch rosters
+  // Pre-seed scores from existing match data
   useEffect(() => {
-    if (!isOpen) return;
-    let isMounted = true;
-    async function loadRosters() {
-      try {
-        const homeId = match.teamA.id;
-        const awayId = match.teamB.id;
-        const { data: lineups } = await supabase
-          .from('match_lineups')
-          .select('*')
-          .eq('fixture_id', match.id);
-        if (!isMounted || !lineups?.length) return;
-        const homeL = lineups.find((l: any) => l.team_id === homeId);
-        const awayL = lineups.find((l: any) => l.team_id === awayId);
-        const mapPlayer = (p: any, isSub: boolean): PlayerRosterItem => ({
-          id: p.id || p.player_id || `${isSub ? 'sub' : 'xi'}_${p.jersey_number || p.number}`,
-          name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `#${p.jersey_number || p.number}`,
-          jerseyNumber: p.jersey_number || p.number || 0,
-          position: p.position || (isSub ? 'SUB' : 'FWD'),
-          isSub,
-        });
-        if (homeL) {
-          setFetchedHomeSquad([
-            ...(homeL.starting_xi || []).map((p: any) => mapPlayer(p, false)),
-            ...(homeL.substitutes || []).map((p: any) => mapPlayer(p, true)),
-          ]);
-        }
-        if (awayL) {
-          setFetchedAwaySquad([
-            ...(awayL.starting_xi || []).map((p: any) => mapPlayer(p, false)),
-            ...(awayL.substitutes || []).map((p: any) => mapPlayer(p, true)),
-          ]);
-        }
-      } catch { /* non-blocking */ }
+    if (isOpen && match.status !== 'UPCOMING') {
+      setScoreA(match.scoreA ?? 0);
+      setScoreB(match.scoreB ?? 0);
     }
-    loadRosters();
-    return () => { isMounted = false; };
-  }, [isOpen, match.id, match.teamA.id, match.teamB.id]);
+  }, [isOpen, match.id]);
 
-  const resolvedHomeSquad = useMemo(() =>
-    fetchedHomeSquad.length ? fetchedHomeSquad : homeSquad,
-  [fetchedHomeSquad, homeSquad]);
+  // ── Build synthetic events from counts ────────────────────────────────────
+  const buildPayload = () => {
+    const goals: GoalEntry[] = [];
+    const cards: CardEntry[] = [];
+    const DUMMY_MIN = 1;
 
-  const resolvedAwaySquad = useMemo(() =>
-    fetchedAwaySquad.length ? fetchedAwaySquad : awaySquad,
-  [fetchedAwaySquad, awaySquad]);
-
-  // ── Build events from team states for submission ──────────────────────────
-  const buildEvents = (): RecordedEvent[] => {
-    const evts: RecordedEvent[] = [];
-    const DUMMY_MINUTE = 1;
-
-    const addTeamEvents = (
-      state: TeamEventState,
-      teamTarget: 'home' | 'away',
-      teamName: string,
-      squad: PlayerRosterItem[],
-    ) => {
-      // Goals
-      state.goalScorers.forEach((jerseyStr, i) => {
-        const player = resolvePlayerFromSquad(jerseyStr, squad);
-        const jerseyNum = parseInt(jerseyStr, 10);
-        evts.push({
-          id: `evt_g_${teamTarget}_${i}_${Date.now()}`,
-          minute: DUMMY_MINUTE,
-          type: 'goal',
-          goalType: 'open_play',
-          teamTarget,
-          teamName,
-          playerId: player && isValidUuid(player.id) ? player.id : '',
-          playerName: player?.name || (jerseyStr ? `Player #${jerseyStr}` : 'Player'),
-          jerseyNumber: isNaN(jerseyNum) ? '' : jerseyNum,
-        });
-      });
-      // Yellow cards
-      state.yellowCards.forEach((jerseyStr, i) => {
-        const player = resolvePlayerFromSquad(jerseyStr, squad);
-        const jerseyNum = parseInt(jerseyStr, 10);
-        evts.push({
-          id: `evt_y_${teamTarget}_${i}_${Date.now()}`,
-          minute: DUMMY_MINUTE,
-          type: 'yellow',
-          teamTarget,
-          teamName,
-          playerId: player && isValidUuid(player.id) ? player.id : '',
-          playerName: player?.name || (jerseyStr ? `Player #${jerseyStr}` : 'Player'),
-          jerseyNumber: isNaN(jerseyNum) ? '' : jerseyNum,
-        });
-      });
-      // Red cards
-      state.redCards.forEach((jerseyStr, i) => {
-        const player = resolvePlayerFromSquad(jerseyStr, squad);
-        const jerseyNum = parseInt(jerseyStr, 10);
-        evts.push({
-          id: `evt_r_${teamTarget}_${i}_${Date.now()}`,
-          minute: DUMMY_MINUTE,
-          type: 'red',
-          teamTarget,
-          teamName,
-          playerId: player && isValidUuid(player.id) ? player.id : '',
-          playerName: player?.name || (jerseyStr ? `Player #${jerseyStr}` : 'Player'),
-          jerseyNumber: isNaN(jerseyNum) ? '' : jerseyNum,
-        });
-      });
-    };
-
-    addTeamEvents(teamAState, 'home', match.teamA.name, resolvedHomeSquad);
-    addTeamEvents(teamBState, 'away', match.teamB.name, resolvedAwaySquad);
-    return evts;
+    for (let i = 0; i < scoreA; i++) {
+      goals.push({ id: `g_a_${i}`, teamTarget: 'home', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', goalType: 'normal' });
+    }
+    for (let i = 0; i < scoreB; i++) {
+      goals.push({ id: `g_b_${i}`, teamTarget: 'away', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', goalType: 'normal' });
+    }
+    for (let i = 0; i < yellowA; i++) {
+      cards.push({ id: `y_a_${i}`, teamTarget: 'home', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', cardType: 'yellow' });
+    }
+    for (let i = 0; i < yellowB; i++) {
+      cards.push({ id: `y_b_${i}`, teamTarget: 'away', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', cardType: 'yellow' });
+    }
+    for (let i = 0; i < redA; i++) {
+      cards.push({ id: `r_a_${i}`, teamTarget: 'home', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', cardType: 'red' });
+    }
+    for (let i = 0; i < redB; i++) {
+      cards.push({ id: `r_b_${i}`, teamTarget: 'away', minute: DUMMY_MIN, jerseyNumber: '', playerName: 'Player', cardType: 'red' });
+    }
+    return { goals, cards };
   };
 
-  const scoreA = teamAState.goalCount;
-  const scoreB = teamBState.goalCount;
-
-  // ── Submit FT ─────────────────────────────────────────────────────────────
   const handleConfirmFT = async () => {
     if (isSubmitting || isLocallySubmitting || isMatchLocked) return;
     setIsLocallySubmitting(true);
     try {
-      const allEvents = buildEvents();
-      const goals: GoalEntry[] = allEvents
-        .filter((e) => e.type === 'goal')
-        .map((g) => ({
-          id: g.id,
-          teamTarget: g.teamTarget,
-          minute: g.minute,
-          jerseyNumber: g.jerseyNumber ?? '',
-          playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
-          playerName: g.playerName,
-          goalType: 'normal',
-        }));
-      const cards: CardEntry[] = allEvents
-        .filter((e) => e.type === 'yellow' || e.type === 'red')
-        .map((c) => ({
-          id: c.id,
-          teamTarget: c.teamTarget,
-          minute: c.minute,
-          jerseyNumber: c.jerseyNumber ?? '',
-          playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
-          playerName: c.playerName,
-          cardType: c.type === 'yellow' ? 'yellow' : 'red',
-        }));
+      const { goals, cards } = buildPayload();
       onClose();
-      const compId =
-        (match as any).competitionId ||
-        (match as any).competition_id ||
-        (match.league?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID);
       await onSubmitReport({
         scoreHome: scoreA,
         scoreAway: scoreB,
@@ -289,43 +187,29 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     }
   };
 
-  // ── Submit Walkover ────────────────────────────────────────────────────────
-  const handleConfirmWalkover = async () => {
-    if (isSubmitting || isLocallySubmitting || isMatchLocked || !onAwardWalkover) return;
-    setIsLocallySubmitting(true);
-    try {
-      await onAwardWalkover(match.id, walkoverWinner);
-      onClose();
-    } catch (err) {
-      console.error('Walkover error:', err);
-    } finally {
-      setIsLocallySubmitting(false);
-    }
-  };
-
   if (!isOpen) return null;
+
+  const totalCards = yellowA + yellowB + redA + redB;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn select-none"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="relative w-full max-w-lg bg-[#090f17] border border-white/10 rounded-3xl shadow-2xl overflow-hidden my-auto text-white flex flex-col max-h-[96vh] sm:max-h-[90vh]"
+        className="relative w-full max-w-md bg-[#090f17] border border-white/10 rounded-3xl shadow-2xl text-white flex flex-col max-h-[96vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── TOP BAR ────────────────────────────────────────────────────── */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-[#070c13] shrink-0">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <div>
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">
-                End Match Portal
-              </h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {match.teamA.name} vs {match.teamB.name}
+              <h2 className="text-sm font-black uppercase tracking-wider text-white">End Match</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                {match.league || 'ESN'} · MD {match.matchday || 1}
               </p>
             </div>
           </div>
@@ -339,636 +223,235 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
           </button>
         </div>
 
-        {/* ── MATCH HEADER STRIP ─────────────────────────────────────────── */}
-        <div className="px-5 py-3 bg-[#070c13] border-b border-white/[0.06] shrink-0">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <img src={match.teamA.logo} alt={match.teamA.name} className="w-7 h-7 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10" />
-              <span className="font-black text-xs uppercase text-white truncate">{match.teamA.name}</span>
+        {/* ── Scrollable body ─────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+          {isMatchLocked ? (
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <div>
+                <p className="font-black text-sm text-emerald-400">Result Locked</p>
+                <p className="text-xs text-slate-400">This match is already finalized.</p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 border border-emerald-500/30 shrink-0">
-              <span className="text-base font-mono font-black text-emerald-400">{scoreA}</span>
-              <span className="text-xs text-slate-500">—</span>
-              <span className="text-base font-mono font-black text-emerald-400">{scoreB}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-              <span className="font-black text-xs uppercase text-white truncate">{match.teamB.name}</span>
-              <img src={match.teamB.logo} alt={match.teamB.name} className="w-7 h-7 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10" />
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-1.5 text-[10px] text-slate-400">
-            <span>{formatMatchPitch(match.venue) || match.venue || 'Main Stadium'}</span>
-            <span>·</span>
-            <span>KO: {formatMatchTime(match.scheduledTime || match.time)}</span>
-          </div>
+          ) : (
+            <>
+              {/* ── SCORE ROW ─────────────────────────────────────────────
+                  [Home logo] [Home name]  [▲ score ▼]  vs  [▲ score ▼]  [Away name] [Away logo]
+              ─────────────────────────────────────────────────────────── */}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center mb-3">
+                  Final Score
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  {/* Home team (highlighted) */}
+                  <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 p-3 rounded-2xl bg-emerald-500/[0.07] border border-emerald-500/30">
+                    <img
+                      src={match.teamA.logo}
+                      alt={match.teamA.name}
+                      className="w-9 h-9 rounded-full object-contain bg-black/40 p-0.5 border border-white/10 shrink-0"
+                    />
+                    <span className="font-black text-[11px] uppercase text-emerald-300 truncate max-w-full text-center leading-tight">
+                      {match.teamA.name}
+                    </span>
+                    <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Home</span>
+                    <Counter value={scoreA} onChange={setScoreA} />
+                  </div>
+
+                  {/* VS divider */}
+                  <div className="shrink-0 text-center">
+                    <span className="font-mono font-black text-xl text-slate-500">vs</span>
+                  </div>
+
+                  {/* Away team */}
+                  <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0 p-3 rounded-2xl bg-white/[0.03] border border-white/10">
+                    <img
+                      src={match.teamB.logo}
+                      alt={match.teamB.name}
+                      className="w-9 h-9 rounded-full object-contain bg-black/40 p-0.5 border border-white/10 shrink-0"
+                    />
+                    <span className="font-black text-[11px] uppercase text-white truncate max-w-full text-center leading-tight">
+                      {match.teamB.name}
+                    </span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Away</span>
+                    <Counter value={scoreB} onChange={setScoreB} />
+                  </div>
+                </div>
+
+                {/* Live score preview */}
+                <div className="mt-3 flex items-center justify-center gap-3 font-mono font-black text-2xl text-white">
+                  <span className="text-emerald-400">{scoreA}</span>
+                  <span className="text-slate-500 text-lg">—</span>
+                  <span className="text-slate-200">{scoreB}</span>
+                </div>
+              </div>
+
+              {/* ── CARDS ROW ─────────────────────────────────────────────
+                  [Home yellow]  🟨  [Away yellow]
+                  [Home red]     🟥  [Away red]
+              ─────────────────────────────────────────────────────────── */}
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                  Cards
+                </p>
+
+                {/* Yellow cards */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex justify-end">
+                    <Counter value={yellowA} onChange={setYellowA} />
+                  </div>
+                  <div className="flex items-center justify-center w-12 shrink-0">
+                    <span className="text-2xl leading-none">🟨</span>
+                  </div>
+                  <div className="flex-1 flex justify-start">
+                    <Counter value={yellowB} onChange={setYellowB} />
+                  </div>
+                </div>
+
+                {/* Red cards */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex justify-end">
+                    <Counter value={redA} onChange={setRedA} />
+                  </div>
+                  <div className="flex items-center justify-center w-12 shrink-0">
+                    <span className="text-2xl leading-none">🟥</span>
+                  </div>
+                  <div className="flex-1 flex justify-start">
+                    <Counter value={redB} onChange={setRedB} />
+                  </div>
+                </div>
+
+                {/* Label row */}
+                <div className="flex items-center gap-3 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  <span className="flex-1 text-right truncate">{match.teamA.shortName || match.teamA.name}</span>
+                  <span className="w-12 text-center shrink-0"></span>
+                  <span className="flex-1 text-left truncate">{match.teamB.shortName || match.teamB.name}</span>
+                </div>
+              </div>
+
+              {/* ── Venue / time meta ─────────────────────────────────── */}
+              <div className="flex items-center justify-center gap-3 text-[10px] text-slate-500">
+                <span>{formatMatchPitch(match.venue) || match.venue || 'Stadium'}</span>
+                <span>·</span>
+                <span>KO {formatMatchTime(match.scheduledTime || match.time)}</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* ── SCROLLABLE BODY ─────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── Bottom action bar ────────────────────────────────────────────── */}
+        {!isMatchLocked && (
+          <div className="px-5 pb-5 pt-3 border-t border-white/10 bg-[#070c13] shrink-0">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(true)}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Confirm Results
+              </button>
+            </div>
+          </div>
+        )}
 
-          {/* ════════════════════════════════════════════════════════════════
-              STEP: TYPE SELECT
-          ════════════════════════════════════════════════════════════════ */}
-          {step === 'type-select' && (
-            <div className="p-5 space-y-4">
-              <div className="text-center space-y-1">
-                <h3 className="font-black text-sm uppercase tracking-wider text-white">
-                  How did the match end?
-                </h3>
-                <p className="text-[11px] text-slate-400">Choose the match outcome to proceed.</p>
+        {/* ════════════════════════════════════════════════════════════════════
+            CONFIRM POPUP
+        ════════════════════════════════════════════════════════════════════ */}
+        {isConfirmOpen && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center p-5 bg-black/80 backdrop-blur-sm animate-fadeIn rounded-3xl"
+            onClick={() => setIsConfirmOpen(false)}
+          >
+            <div
+              className="w-full bg-[#0b131e] border border-white/15 rounded-2xl p-5 space-y-4 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wider text-white">Confirm Results</h3>
+                  <p className="text-[10px] text-slate-400">Full Time — this will lock the result.</p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                {/* Normal End */}
-                <button
-                  type="button"
-                  onClick={() => setStep('team-a')}
-                  disabled={isMatchLocked}
-                  className="group p-4 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.12] hover:border-emerald-400 text-left transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                      <span className="text-xl">⚽</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-black text-sm text-white uppercase tracking-wider">Normal Match End</p>
-                      <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">Full Time (FT) — enter goals &amp; cards for each team</p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-emerald-400 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
-
-                {/* Walkover */}
-                <button
-                  type="button"
-                  onClick={() => setStep('walkover')}
-                  disabled={isMatchLocked || !onAwardWalkover}
-                  className="group p-4 rounded-2xl border-2 border-amber-500/30 bg-amber-500/[0.05] hover:bg-amber-500/[0.10] hover:border-amber-400 text-left transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                      <Flag className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-black text-sm text-white uppercase tracking-wider">Walkover</p>
-                      <p className="text-[11px] text-amber-400 font-semibold mt-0.5">Team failed to appear — award 3-0 victory</p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-amber-400 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
+              {/* Score summary */}
+              <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 text-center">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Final Score</p>
+                <div className="flex items-center justify-center gap-3 font-mono font-black text-2xl">
+                  <span className="text-emerald-400">{scoreA}</span>
+                  <span className="text-slate-500">—</span>
+                  <span className="text-white">{scoreB}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {match.teamA.name} vs {match.teamB.name}
+                </p>
               </div>
 
-              {isMatchLocked && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>This match result is already locked (FT / Walkover).</span>
+              {/* Cards summary */}
+              {totalCards > 0 && (
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  {yellowA > 0 && (
+                    <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[0.03] border border-white/5">
+                      <span>🟨</span>
+                      <span className="text-slate-300">{match.teamA.shortName || match.teamA.name}: {yellowA}</span>
+                    </div>
+                  )}
+                  {yellowB > 0 && (
+                    <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[0.03] border border-white/5">
+                      <span>🟨</span>
+                      <span className="text-slate-300">{match.teamB.shortName || match.teamB.name}: {yellowB}</span>
+                    </div>
+                  )}
+                  {redA > 0 && (
+                    <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[0.03] border border-white/5">
+                      <span>🟥</span>
+                      <span className="text-slate-300">{match.teamA.shortName || match.teamA.name}: {redA}</span>
+                    </div>
+                  )}
+                  {redB > 0 && (
+                    <div className="flex items-center gap-1.5 p-2 rounded-lg bg-white/[0.03] border border-white/5">
+                      <span>🟥</span>
+                      <span className="text-slate-300">{match.teamB.shortName || match.teamB.name}: {redB}</span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* ════════════════════════════════════════════════════════════════
-              STEP: TEAM A EVENTS
-          ════════════════════════════════════════════════════════════════ */}
-          {step === 'team-a' && (
-            <TeamEventPanel
-              teamName={match.teamA.name}
-              teamLogo={match.teamA.logo}
-              teamLabel="Team A (Home)"
-              stepBadge="Step 1 of 2"
-              accentColor="emerald"
-              state={teamAState}
-              onChange={setTeamAState}
-              onConfirm={() => setStep('team-b')}
-              onBack={() => setStep('type-select')}
-            />
-          )}
-
-          {/* ════════════════════════════════════════════════════════════════
-              STEP: TEAM B EVENTS
-          ════════════════════════════════════════════════════════════════ */}
-          {step === 'team-b' && (
-            <TeamEventPanel
-              teamName={match.teamB.name}
-              teamLogo={match.teamB.logo}
-              teamLabel="Team B (Away)"
-              stepBadge="Step 2 of 2"
-              accentColor="blue"
-              state={teamBState}
-              onChange={setTeamBState}
-              onConfirm={() => setStep('confirm')}
-              onBack={() => setStep('team-a')}
-            />
-          )}
-
-          {/* ════════════════════════════════════════════════════════════════
-              STEP: CONFIRM RESULTS
-          ════════════════════════════════════════════════════════════════ */}
-          {step === 'confirm' && (
-            <ConfirmResultsPanel
-              match={match}
-              scoreA={scoreA}
-              scoreB={scoreB}
-              teamAState={teamAState}
-              teamBState={teamBState}
-              isSubmitting={isSubmitting || isLocallySubmitting}
-              onBack={() => setStep('team-b')}
-              onConfirm={handleConfirmFT}
-            />
-          )}
-
-          {/* ════════════════════════════════════════════════════════════════
-              STEP: WALKOVER
-          ════════════════════════════════════════════════════════════════ */}
-          {step === 'walkover' && (
-            <WalkoverPanel
-              match={match}
-              winner={walkoverWinner}
-              onChangeWinner={setWalkoverWinner}
-              isMatchLocked={isMatchLocked}
-              isSubmitting={isSubmitting || isLocallySubmitting}
-              onBack={() => setStep('type-select')}
-              onConfirm={handleConfirmWalkover}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TeamEventPanel — collect goals / yellow / red for one team
-// ─────────────────────────────────────────────────────────────────────────────
-interface TeamEventPanelProps {
-  teamName: string;
-  teamLogo: string;
-  teamLabel: string;
-  stepBadge: string;
-  accentColor: 'emerald' | 'blue';
-  state: TeamEventState;
-  onChange: (s: TeamEventState) => void;
-  onConfirm: () => void;
-  onBack: () => void;
-}
-
-const TeamEventPanel: React.FC<TeamEventPanelProps> = ({
-  teamName, teamLogo, teamLabel, stepBadge, accentColor,
-  state, onChange, onConfirm, onBack,
-}) => {
-  const accent = accentColor === 'emerald'
-    ? { border: 'border-emerald-400', ring: 'ring-emerald-500/20', bg: 'bg-emerald-500/10', text: 'text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
-    : { border: 'border-blue-400', ring: 'ring-blue-500/20', bg: 'bg-blue-500/10', text: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30' };
-
-  const setGoalCount = (n: number) => {
-    const clamped = Math.max(0, n);
-    const scorers = [...state.goalScorers];
-    while (scorers.length < clamped) scorers.push('');
-    onChange({ ...state, goalCount: clamped, goalScorers: scorers.slice(0, clamped) });
-  };
-
-  const setScorer = (idx: number, val: string) => {
-    const scorers = [...state.goalScorers];
-    scorers[idx] = val;
-    onChange({ ...state, goalScorers: scorers });
-  };
-
-  const addCard = (type: 'yellow' | 'red') => {
-    if (type === 'yellow') onChange({ ...state, yellowCards: [...state.yellowCards, ''] });
-    else onChange({ ...state, redCards: [...state.redCards, ''] });
-  };
-
-  const setCard = (type: 'yellow' | 'red', idx: number, val: string) => {
-    if (type === 'yellow') {
-      const arr = [...state.yellowCards]; arr[idx] = val;
-      onChange({ ...state, yellowCards: arr });
-    } else {
-      const arr = [...state.redCards]; arr[idx] = val;
-      onChange({ ...state, redCards: arr });
-    }
-  };
-
-  const removeCard = (type: 'yellow' | 'red', idx: number) => {
-    if (type === 'yellow') onChange({ ...state, yellowCards: state.yellowCards.filter((_, i) => i !== idx) });
-    else onChange({ ...state, redCards: state.redCards.filter((_, i) => i !== idx) });
-  };
-
-  return (
-    <div className="p-5 space-y-5">
-      {/* Team header */}
-      <div className={`flex items-center gap-3 p-3 rounded-2xl ${accent.bg} border ${accent.border}/40`}>
-        <img src={teamLogo} alt={teamName} className="w-10 h-10 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10" />
-        <div className="min-w-0">
-          <span className={`text-[10px] font-black uppercase tracking-widest ${accent.text}`}>{stepBadge} · {teamLabel}</span>
-          <h3 className="font-black text-sm uppercase text-white truncate">{teamName}</h3>
-        </div>
-        <span className={`ml-auto shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${accent.badge}`}>{stepBadge}</span>
-      </div>
-
-      {/* ── Goals section ─────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <span>⚽</span> Goals Scored
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setGoalCount(state.goalCount - 1)}
-              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="w-8 text-center font-mono font-black text-lg text-white">{state.goalCount}</span>
-            <button
-              type="button"
-              onClick={() => setGoalCount(state.goalCount + 1)}
-              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {state.goalCount > 0 && (
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-              Scorer jersey numbers ({state.goalCount} goal{state.goalCount > 1 ? 's' : ''})
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {Array.from({ length: state.goalCount }).map((_, i) => (
-                <div key={i} className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-500 select-none">#{i + 1}</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="99"
-                    value={state.goalScorers[i] ?? ''}
-                    onChange={(e) => setScorer(i, e.target.value)}
-                    placeholder="No."
-                    className="w-full pl-8 pr-2 py-2.5 rounded-xl bg-black/60 border border-white/20 font-mono text-sm font-bold text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-slate-500">Enter jersey number for each scorer. Leave blank if unknown.</p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Yellow Cards section ──────────────────────────── */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <span>🟨</span> Yellow Cards
-          </label>
-          <button
-            type="button"
-            onClick={() => addCard('yellow')}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-black uppercase tracking-wider hover:bg-amber-500/25 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3 h-3" /> Add
-          </button>
-        </div>
-        {state.yellowCards.length === 0 && (
-          <p className="text-[10px] text-slate-500 italic">No yellow cards. Tap "Add" to add one.</p>
-        )}
-        {state.yellowCards.map((val, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              max="99"
-              value={val}
-              onChange={(e) => setCard('yellow', i, e.target.value)}
-              placeholder="Jersey No."
-              className="flex-1 px-3 py-2.5 rounded-xl bg-black/60 border border-amber-500/30 font-mono text-sm font-bold text-white placeholder-slate-500 focus:border-amber-400 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => removeCard('yellow', i)}
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Red Cards section ─────────────────────────────── */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <span>🟥</span> Red Cards
-          </label>
-          <button
-            type="button"
-            onClick={() => addCard('red')}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-[10px] font-black uppercase tracking-wider hover:bg-red-500/25 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3 h-3" /> Add
-          </button>
-        </div>
-        {state.redCards.length === 0 && (
-          <p className="text-[10px] text-slate-500 italic">No red cards. Tap "Add" to add one.</p>
-        )}
-        {state.redCards.map((val, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              max="99"
-              value={val}
-              onChange={(e) => setCard('red', i, e.target.value)}
-              placeholder="Jersey No."
-              className="flex-1 px-3 py-2.5 rounded-xl bg-black/60 border border-red-500/30 font-mono text-sm font-bold text-white placeholder-slate-500 focus:border-red-400 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => removeCard('red', i)}
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Actions ───────────────────────────────────────── */}
-      <div className="flex items-center gap-3 pt-3 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase transition-colors cursor-pointer"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
-            accentColor === 'emerald'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-lg shadow-emerald-500/25'
-              : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white shadow-lg shadow-blue-500/25'
-          }`}
-        >
-          <span>Confirm {teamLabel.split(' ')[0]} {teamLabel.split(' ')[1]}</span>
-          <CheckCircle2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ConfirmResultsPanel — final review before submission
-// ─────────────────────────────────────────────────────────────────────────────
-interface ConfirmResultsPanelProps {
-  match: Match;
-  scoreA: number;
-  scoreB: number;
-  teamAState: TeamEventState;
-  teamBState: TeamEventState;
-  isSubmitting: boolean;
-  onBack: () => void;
-  onConfirm: () => void;
-}
-
-const ConfirmResultsPanel: React.FC<ConfirmResultsPanelProps> = ({
-  match, scoreA, scoreB, teamAState, teamBState, isSubmitting, onBack, onConfirm,
-}) => {
-  const totalEvents =
-    teamAState.goalScorers.length + teamAState.yellowCards.length + teamAState.redCards.length +
-    teamBState.goalScorers.length + teamBState.yellowCards.length + teamBState.redCards.length;
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="text-center space-y-1">
-        <h3 className="font-black text-sm uppercase tracking-wider text-white flex items-center justify-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          Confirm Results
-        </h3>
-        <p className="text-[11px] text-slate-400">Review the match summary below, then confirm to finalize.</p>
-      </div>
-
-      {/* Score */}
-      <div className="p-4 rounded-2xl bg-black/60 border border-emerald-500/30 text-center space-y-1.5">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Final Score — Full Time</span>
-        <div className="flex items-center justify-center gap-3 font-mono font-black text-2xl text-white">
-          <span className="text-slate-200 text-base truncate max-w-[100px]">{match.teamA.name}</span>
-          <span className="px-4 py-1 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-2xl">
-            {scoreA} — {scoreB}
-          </span>
-          <span className="text-slate-200 text-base truncate max-w-[100px]">{match.teamB.name}</span>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="space-y-2">
-        <span className="text-[11px] font-black uppercase tracking-wider text-slate-300 block">
-          Match Events ({totalEvents})
-        </span>
-
-        {totalEvents === 0 ? (
-          <p className="text-xs text-slate-500 italic p-3 rounded-xl bg-white/[0.02] border border-white/5">
-            No events recorded. Match will be finalized as 0 — 0.
-          </p>
-        ) : (
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {/* Team A events */}
-            {(teamAState.goalScorers.length + teamAState.yellowCards.length + teamAState.redCards.length) > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">{match.teamA.name}</span>
-                {teamAState.goalScorers.map((j, i) => (
-                  <div key={`ag${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>⚽</span>
-                    <span className="font-bold text-white">Goal</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
-                {teamAState.yellowCards.map((j, i) => (
-                  <div key={`ay${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>🟨</span>
-                    <span className="font-bold text-white">Yellow Card</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
-                {teamAState.redCards.map((j, i) => (
-                  <div key={`ar${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>🟥</span>
-                    <span className="font-bold text-white">Red Card</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p>This will instantly finalize the match and update the standings. Cannot be undone.</p>
               </div>
-            )}
-            {/* Team B events */}
-            {(teamBState.goalScorers.length + teamBState.yellowCards.length + teamBState.redCards.length) > 0 && (
-              <div className="space-y-1 mt-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block">{match.teamB.name}</span>
-                {teamBState.goalScorers.map((j, i) => (
-                  <div key={`bg${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>⚽</span>
-                    <span className="font-bold text-white">Goal</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
-                {teamBState.yellowCards.map((j, i) => (
-                  <div key={`by${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>🟨</span>
-                    <span className="font-bold text-white">Yellow Card</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
-                {teamBState.redCards.map((j, i) => (
-                  <div key={`br${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs">
-                    <span>🟥</span>
-                    <span className="font-bold text-white">Red Card</span>
-                    {j && <span className="text-slate-400">— Jersey #{j}</span>}
-                  </div>
-                ))}
+
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmOpen(false)}
+                  disabled={isSubmitting || isLocallySubmitting}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmFT}
+                  disabled={isSubmitting || isLocallySubmitting}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {isSubmitting || isLocallySubmitting ? 'Finalizing...' : 'Confirm & End Match'}
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
-      </div>
-
-      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 flex items-start gap-2">
-        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <p>Confirming will instantly finalize this match as Full Time and update the standings. This cannot be undone.</p>
-      </div>
-
-      <div className="flex items-center gap-3 pt-2 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isSubmitting}
-          className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase transition-colors cursor-pointer disabled:opacity-50"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={isSubmitting}
-          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{isSubmitting ? 'Finalizing...' : 'Confirm & End Match'}</span>
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// WalkoverPanel — inline walkover flow
-// ─────────────────────────────────────────────────────────────────────────────
-interface WalkoverPanelProps {
-  match: Match;
-  winner: 'home' | 'away';
-  onChangeWinner: (w: 'home' | 'away') => void;
-  isMatchLocked: boolean;
-  isSubmitting: boolean;
-  onBack: () => void;
-  onConfirm: () => void;
-}
-
-const WalkoverPanel: React.FC<WalkoverPanelProps> = ({
-  match, winner, onChangeWinner, isMatchLocked, isSubmitting, onBack, onConfirm,
-}) => {
-  const winnerName = winner === 'home' ? match.teamA.name : match.teamB.name;
-  const loserName = winner === 'home' ? match.teamB.name : match.teamA.name;
-
-  return (
-    <div className="p-5 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-          <Flag className="w-5 h-5" />
-        </div>
-        <div>
-          <h3 className="font-black text-sm uppercase tracking-wider text-white">Walkover</h3>
-          <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Official 3 — 0 Regulatory Decision</p>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-[11px] font-black uppercase tracking-wider text-slate-300 mb-2.5">
-          Which team wins the walkover?
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(['home', 'away'] as const).map((side) => {
-            const team = side === 'home' ? match.teamA : match.teamB;
-            const isSelected = winner === side;
-            return (
-              <button
-                key={side}
-                type="button"
-                onClick={() => onChangeWinner(side)}
-                className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center gap-3 text-left ${
-                  isSelected
-                    ? 'bg-amber-500/15 border-amber-400 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/10'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                }`}
-              >
-                <img src={team.logo} alt={team.name} className="w-10 h-10 rounded-full object-contain bg-black/40 p-0.5 shrink-0 border border-white/10" />
-                <div className="min-w-0">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">{side === 'home' ? 'Home' : 'Away'}</span>
-                  <p className="font-black text-xs uppercase text-white truncate">{team.name}</p>
-                  {isSelected && <span className="text-[10px] text-amber-400 font-bold block">Wins 3 — 0 ✓</span>}
-                </div>
-                <div className="ml-auto shrink-0">
-                  {isSelected
-                    ? <CheckCircle2 className="w-5 h-5 text-amber-400" />
-                    : <div className="w-5 h-5 rounded-full border border-slate-600" />
-                  }
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="p-4 rounded-xl bg-black/60 border border-amber-500/30 text-center space-y-1">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outcome Summary</span>
-        <div className="flex items-center justify-center gap-3 font-mono font-black text-xl text-white py-1">
-          <span className={winner === 'home' ? 'text-amber-400 text-sm' : 'text-slate-400 text-sm'}>{match.teamA.name}</span>
-          <span className="px-3 py-0.5 rounded-lg bg-white/10 text-amber-400 text-lg">
-            {winner === 'home' ? '3 — 0' : '0 — 3'}
-          </span>
-          <span className={winner === 'away' ? 'text-amber-400 text-sm' : 'text-slate-400 text-sm'}>{match.teamB.name}</span>
-        </div>
-        <p className="text-[11px] text-slate-300">
-          <strong className="text-white">{winnerName}</strong> gets 3 points. <strong className="text-white">{loserName}</strong> forfeits.
-        </p>
-      </div>
-
-      {isMatchLocked && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300">
-          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>This match is already finalized. Walkover cannot be awarded.</span>
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 pt-2 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={isSubmitting}
-          className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold uppercase transition-colors cursor-pointer disabled:opacity-50"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={isSubmitting || isMatchLocked}
-          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Trophy className="w-4 h-4" />
-          <span>{isSubmitting ? 'Awarding Walkover...' : 'Confirm Walkover (3-0 FT)'}</span>
-        </button>
       </div>
     </div>
   );
