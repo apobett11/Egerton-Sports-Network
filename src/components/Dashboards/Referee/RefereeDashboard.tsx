@@ -75,6 +75,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
   }
 
   const handleLaunchEndMatch = (match: Match) => {
+    setInspectedMatch(null);
     setSelectedFixtureId(match.id);
     setEndMatchFixture(match);
   };
@@ -120,7 +121,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
             onCancelMatch={handlePresidentOnlyCancel}
-            onOpenWalkover={(match) => setWalkoverFixture(match)}
+            onOpenWalkover={(match) => {
+              setInspectedMatch(null);
+              setWalkoverFixture(match);
+            }}
             setActiveTab={setActiveTab}
             isSubmitting={isSubmitting}
           />
@@ -135,7 +139,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
             onCancelMatch={handlePresidentOnlyCancel}
-            onOpenWalkover={(match) => setWalkoverFixture(match)}
+            onOpenWalkover={(match) => {
+              setInspectedMatch(null);
+              setWalkoverFixture(match);
+            }}
             setActiveTab={setActiveTab}
             isSubmitting={isSubmitting}
           />
@@ -179,10 +186,15 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
         <EndMatchModal
           match={endMatchFixture}
           isOpen={!!endMatchFixture}
-          onClose={() => setEndMatchFixture(null)}
-          onSubmitReport={async (reportData) => {
-            await submitMatchReport({ ...reportData, fixtureId: endMatchFixture.id });
+          onClose={() => {
             setEndMatchFixture(null);
+            setInspectedMatch(null);
+          }}
+          onSubmitReport={async (reportData) => {
+            const targetId = endMatchFixture.id;
+            setEndMatchFixture(null);
+            setInspectedMatch(null);
+            await submitMatchReport({ ...reportData, fixtureId: targetId });
           }}
           onAwardWalkover={awardWalkover}
           onCancelMatch={handlePresidentOnlyCancel}
@@ -196,8 +208,15 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
       {walkoverFixture && (
         <WalkoverModal
           match={walkoverFixture}
-          onClose={() => setWalkoverFixture(null)}
-          onConfirmWalkover={awardWalkover}
+          onClose={() => {
+            setWalkoverFixture(null);
+            setInspectedMatch(null);
+          }}
+          onConfirmWalkover={async (fixtureId, winningTeam) => {
+            setWalkoverFixture(null);
+            setInspectedMatch(null);
+            await awardWalkover(fixtureId, winningTeam);
+          }}
           isSubmitting={isSubmitting}
         />
       )}
@@ -209,7 +228,10 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           isOpen={!!inspectedMatch}
           onClose={() => setInspectedMatch(null)}
           onEndMatch={handleLaunchEndMatch}
-          onOpenWalkover={(match) => setWalkoverFixture(match)}
+          onOpenWalkover={(match) => {
+            setInspectedMatch(null);
+            setWalkoverFixture(match);
+          }}
         />
       )}
     </div>

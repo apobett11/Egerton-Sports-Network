@@ -298,7 +298,11 @@ export const useRefereeDashboard = () => {
 
   // Selected Fixture
   const selectedFixture = useMemo(() => {
-    return fixtures.find((f) => f.id === selectedFixtureId) || fixtures[0] || null;
+    if (selectedFixtureId) {
+      const match = fixtures.find((f) => f.id === selectedFixtureId);
+      if (match) return match;
+    }
+    return fixtures[0] || null;
   }, [fixtures, selectedFixtureId]);
 
   // 1. Determine active matchday: the lowest matchday that has at least one UPCOMING or LIVE fixture.
@@ -855,8 +859,10 @@ export const useRefereeDashboard = () => {
       }, { maxRetries: 3, initialDelayMs: 400 });
 
       setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed).`);
+      setActiveTab('overview');
+      setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4000);
-      loadDashboardData();
+      await loadDashboardData();
     } catch (err: any) {
       console.warn('Network issue while awarding walkover, saving to offline resilient queue:', err);
       enqueueOfflineSubmission({
@@ -866,6 +872,8 @@ export const useRefereeDashboard = () => {
         params: walkoverParams,
       });
       setSuccessMsg(`Walkover (3-0) recorded locally! Queued for guaranteed server confirmation.`);
+      setActiveTab('overview');
+      setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
       setIsSubmitting(false);
@@ -904,6 +912,7 @@ export const useRefereeDashboard = () => {
       minute: number;
       detailText?: string;
       playerId?: string;
+      playerNumber?: number;
       teamId?: string;
     }> = [
       ...reportData.goals.map((g) => ({
@@ -913,6 +922,7 @@ export const useRefereeDashboard = () => {
         minute: Number(g.minute) || 1,
         detailText: `Goal: ${g.playerName} (#${g.jerseyNumber || '-'})`,
         playerId: isValidUuid(g.playerId) ? g.playerId : undefined,
+        playerNumber: g.jerseyNumber ? Number(g.jerseyNumber) : undefined,
       })),
       ...reportData.cards.map((c) => ({
         type: (c.cardType === 'yellow' ? 'yellow' : 'red') as MatchEventType,
@@ -921,6 +931,7 @@ export const useRefereeDashboard = () => {
         minute: Number(c.minute) || 1,
         detailText: `${c.cardType.toUpperCase()} Card: ${c.playerName} (#${c.jerseyNumber || '-'})`,
         playerId: isValidUuid(c.playerId) ? c.playerId : undefined,
+        playerNumber: c.jerseyNumber ? Number(c.jerseyNumber) : undefined,
       })),
       ...reportData.injuries.map((i) => ({
         type: 'injury' as MatchEventType,
@@ -929,6 +940,7 @@ export const useRefereeDashboard = () => {
         minute: Number(i.minute) || 1,
         detailText: `Injury: ${i.playerName} (#${i.jerseyNumber || '-'})`,
         playerId: isValidUuid(i.playerId) ? i.playerId : undefined,
+        playerNumber: i.jerseyNumber ? Number(i.jerseyNumber) : undefined,
       })),
     ];
 
@@ -1029,6 +1041,7 @@ export const useRefereeDashboard = () => {
           `Official Match Report submitted! Score: ${reportData.scoreHome}-${reportData.scoreAway}. Status: ${reportData.matchState}.`
         );
         setActiveTab('overview');
+        setSelectedFixtureId(null);
         setTimeout(() => setSuccessMsg(null), 4000);
         await loadDashboardData();
       } else {
@@ -1038,13 +1051,14 @@ export const useRefereeDashboard = () => {
       console.warn('Network issue during report submit, queueing for resilient sync:', err);
       enqueueOfflineSubmission({
         type: 'report',
-        fixtureId: selectedFixture.id,
+        fixtureId: targetMatch.id,
         params: reportParams,
       });
       setSuccessMsg(
         `Official Match Report saved locally! Result (${reportData.scoreHome}-${reportData.scoreAway}) is queued for guaranteed sync.`
       );
       setActiveTab('overview');
+      setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
       setIsSubmitting(false);

@@ -2928,6 +2928,17 @@ export class MatchLiveInputEngine {
     );
 
     if (!player) {
+      if (player_uid.startsWith('num_')) {
+        return {
+          player_uid,
+          team_uid,
+          jersey_number: 0,
+          display_name: 'Player',
+          is_starting_xi: true,
+          is_substitute: false,
+          eligible_for_match: true,
+        };
+      }
       throw new MatchEngineError(
         "PLAYER_NOT_IN_SQUAD",
         `Player ${player_uid} is not part of team ${team_uid}'s match squad.`
@@ -2994,6 +3005,17 @@ export class MatchLiveInputEngine {
     }
 
     if (!player) {
+      if (player_number !== undefined) {
+        return {
+          player_uid: player_uid || `num_${team_uid}_${player_number}`,
+          team_uid,
+          jersey_number: player_number,
+          display_name: `Player #${player_number}`,
+          is_starting_xi: true,
+          is_substitute: false,
+          eligible_for_match: true,
+        };
+      }
       throw new MatchEngineError(
         "PLAYER_NOT_FOUND",
         "The supplied player identity could not be resolved from the match squad."
@@ -3091,23 +3113,18 @@ export class MatchLiveInputEngine {
       if (event.type === "CARD") {
         assertCardType(event.card_type);
 
-        if (!event.player_uid) {
+        if (!event.player_uid && (event.player_number === undefined || event.player_number === null)) {
           throw new MatchEngineError(
             "CARD_PLAYER_REQUIRED",
-            `Final card ${event.event_uid} must have a resolved player.`
+            `Final card ${event.event_uid} must have a resolved player or player number.`
           );
         }
       }
 
-      if (event.type === "GOAL" && !event.player_uid) {
-        /**
-         * Normal match goal may still be unattributed only if the referee
-         * explicitly permits it. This engine defaults to requiring a player
-         * for ordinary play. Walkover is the only permanently anonymous 3-0.
-         */
+      if (event.type === "GOAL" && !event.player_uid && (event.player_number === undefined || event.player_number === null)) {
         throw new MatchEngineError(
           "GOAL_PLAYER_REQUIRED",
-          `Final goal ${event.event_uid} must have a resolved player.`
+          `Final goal ${event.event_uid} must have a resolved player or player number.`
         );
       }
 
@@ -3134,15 +3151,10 @@ export class MatchLiveInputEngine {
             event.player_number
         );
 
-        if (!found) {
-          throw new MatchEngineError(
-            "PLAYER_NUMBER_NOT_IN_SQUAD",
-            `Player number ${event.player_number} is not in the match squad.`
-          );
-        }
-
         if (
+          found &&
           event.player_uid &&
+          !event.player_uid.startsWith("num_") &&
           found.player_uid !== event.player_uid
         ) {
           throw new MatchEngineError(

@@ -78,6 +78,8 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
   const [minuteInput, setMinuteInput] = useState<string>('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
   const [selectedSubPlayerInId, setSelectedSubPlayerInId] = useState<string>('');
+  const [playerNumberInput, setPlayerNumberInput] = useState<string>('');
+  const [subPlayerInNumberInput, setSubPlayerInNumberInput] = useState<string>('');
 
   // Local fetched squad rosters (guaranteed starters + substitutes)
   const [fetchedHomeSquad, setFetchedHomeSquad] = useState<PlayerRosterItem[]>([]);
@@ -264,9 +266,12 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     if (!selectedAction) return 2;
     if (selectedAction === 'goal' && !selectedGoalType) return 2.5;
     if (!isMinuteValid) return 3;
-    if (!selectedPlayerId || (selectedAction === 'substitution' && !selectedSubPlayerInId)) return 4;
+    const isPlayerStepComplete = selectedAction === 'substitution'
+      ? Boolean(playerNumberInput.trim() || selectedPlayerId) && Boolean(subPlayerInNumberInput.trim() || selectedSubPlayerInId)
+      : Boolean(playerNumberInput.trim() || selectedPlayerId);
+    if (!isPlayerStepComplete) return 4;
     return 5;
-  }, [selectedTeam, selectedAction, selectedGoalType, isMinuteValid, selectedPlayerId, selectedSubPlayerInId]);
+  }, [selectedTeam, selectedAction, selectedGoalType, isMinuteValid, selectedPlayerId, selectedSubPlayerInId, playerNumberInput, subPlayerInNumberInput]);
 
   const isValidUuid = (id?: string | null): boolean => {
     if (!id) return false;
@@ -275,12 +280,33 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
 
   // Add Event Handler (Instant local state update)
   const handleAddEvent = () => {
-    if (!selectedTeam || !selectedAction || !isMinuteValid || !selectedPlayerId) return;
-    if (selectedAction === 'goal' && !selectedGoalType) return;
-    if (selectedAction === 'substitution' && !selectedSubPlayerInId) return;
+    const isPlayerStepComplete = selectedAction === 'substitution'
+      ? Boolean(playerNumberInput.trim() || selectedPlayerId) && Boolean(subPlayerInNumberInput.trim() || selectedSubPlayerInId)
+      : Boolean(playerNumberInput.trim() || selectedPlayerId);
 
-    const primaryPlayer = activeSquad.find((p) => p.id === selectedPlayerId);
-    const subInPlayer = activeSquad.find((p) => p.id === selectedSubPlayerInId);
+    if (!selectedTeam || !selectedAction || !isMinuteValid || !isPlayerStepComplete) return;
+    if (selectedAction === 'goal' && !selectedGoalType) return;
+
+    const primaryNum = playerNumberInput.trim() ? parseInt(playerNumberInput.trim(), 10) : undefined;
+    const subInNum = subPlayerInNumberInput.trim() ? parseInt(subPlayerInNumberInput.trim(), 10) : undefined;
+
+    let primaryPlayer = activeSquad.find((p) => p.id === selectedPlayerId);
+    if (!primaryPlayer && primaryNum !== undefined) {
+      primaryPlayer = activeSquad.find((p) => p.jerseyNumber === primaryNum);
+    }
+
+    let subInPlayer = activeSquad.find((p) => p.id === selectedSubPlayerInId);
+    if (!subInPlayer && subInNum !== undefined) {
+      subInPlayer = activeSquad.find((p) => p.jerseyNumber === subInNum);
+    }
+
+    const resolvedJerseyNumber = primaryNum ?? primaryPlayer?.jerseyNumber ?? '';
+    const resolvedPlayerName = primaryPlayer?.name || (resolvedJerseyNumber ? `Player #${resolvedJerseyNumber}` : 'Player');
+    const resolvedPlayerId = primaryPlayer && isValidUuid(primaryPlayer.id) ? primaryPlayer.id : '';
+
+    const resolvedSubNumber = subInNum ?? subInPlayer?.jerseyNumber ?? '';
+    const resolvedSubName = subInPlayer?.name || (resolvedSubNumber ? `Player #${resolvedSubNumber}` : 'Player In');
+    const resolvedSubId = subInPlayer && isValidUuid(subInPlayer.id) ? subInPlayer.id : undefined;
 
     const newEventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const teamName = selectedTeam === 'home' ? match.teamA.name : match.teamB.name;
@@ -292,11 +318,11 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
       goalType: selectedAction === 'goal' ? selectedGoalType! : undefined,
       teamTarget: selectedTeam,
       teamName,
-      playerId: selectedPlayerId,
-      playerName: primaryPlayer?.name || 'Player',
-      jerseyNumber: primaryPlayer?.jerseyNumber || '',
-      subPlayerInId: selectedAction === 'substitution' ? selectedSubPlayerInId : undefined,
-      subPlayerInName: selectedAction === 'substitution' ? subInPlayer?.name : undefined,
+      playerId: resolvedPlayerId,
+      playerName: resolvedPlayerName,
+      jerseyNumber: resolvedJerseyNumber,
+      subPlayerInId: selectedAction === 'substitution' ? resolvedSubId : undefined,
+      subPlayerInName: selectedAction === 'substitution' ? resolvedSubName : undefined,
     };
 
     setEvents((prev) => [...prev, newEvent].sort((a, b) => a.minute - b.minute));
@@ -309,6 +335,8 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
     setMinuteInput('');
     setSelectedPlayerId('');
     setSelectedSubPlayerInId('');
+    setPlayerNumberInput('');
+    setSubPlayerInNumberInput('');
   };
 
   // Cancel / Remove Event Handler
@@ -346,6 +374,10 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
           cardType: c.type === 'yellow' ? 'yellow' : 'red',
         }));
 
+      // Instantly close modal dialogs so referee is immediately returned to homepage overview
+      setIsConfirmSubmitOpen(false);
+      onClose();
+
       // Fire up the match end algorithms
       await onSubmitReport({
         scoreHome: calculatedScore.home,
@@ -355,9 +387,6 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
         cards,
         injuries: [],
       });
-
-      setIsConfirmSubmitOpen(false);
-      onClose();
     } catch (err) {
       console.error('Submit match report error:', err);
     } finally {
@@ -968,73 +997,138 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
                         Active Input
                       </span>
-                    ) : selectedPlayerId ? (
+                    ) : (playerNumberInput || selectedPlayerId) ? (
                       <span className="text-[10px] font-bold text-slate-300 truncate max-w-[150px]">
-                        {activeSquad.find((p) => p.id === selectedPlayerId)?.name || 'Player Selected'}
+                        {playerNumberInput ? `#${playerNumberInput} ` : ''}{activeSquad.find((p) => p.id === selectedPlayerId)?.name || 'Player Selected'}
                       </span>
                     ) : null}
                   </div>
 
                   {selectedAction === 'substitution' ? (
                     <div className="space-y-3">
-                      <div>
-                        <span className="text-[10px] font-bold text-rose-400 uppercase block mb-1">
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-rose-400 uppercase block">
                           Player Coming Off (Starter)
                         </span>
-                        <select
-                          value={selectedPlayerId}
-                          onChange={(e) => setSelectedPlayerId(e.target.value)}
-                          className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none"
-                        >
-                          <option value="">-- Select Starter Coming Off --</option>
-                          {activeStarters.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              #{p.jerseyNumber || '-'} {p.name} ({p.position || 'Starter'})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            value={playerNumberInput}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPlayerNumberInput(val);
+                              const matchP = activeStarters.find((p) => p.jerseyNumber === parseInt(val, 10));
+                              if (matchP) setSelectedPlayerId(matchP.id);
+                            }}
+                            placeholder="No."
+                            className="w-20 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-mono font-bold text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shrink-0"
+                          />
+                          <select
+                            value={selectedPlayerId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSelectedPlayerId(val);
+                              const matchP = activeSquad.find((p) => p.id === val);
+                              if (matchP?.jerseyNumber) setPlayerNumberInput(String(matchP.jerseyNumber));
+                            }}
+                            className="flex-1 min-w-0 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none truncate"
+                          >
+                            <option value="">-- Starter Coming Off --</option>
+                            {activeStarters.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                #{p.jerseyNumber || '-'} {p.name} ({p.position || 'Starter'})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
-                      <div>
-                        <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-1">
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase block">
                           Substitute Coming On (Bench)
                         </span>
-                        <select
-                          value={selectedSubPlayerInId}
-                          onChange={(e) => setSelectedSubPlayerInId(e.target.value)}
-                          className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none"
-                        >
-                          <option value="">-- Select Substitute Coming On --</option>
-                          {activeSubstitutes.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              #{p.jerseyNumber || '-'} {p.name} (Substitute)
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            value={subPlayerInNumberInput}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSubPlayerInNumberInput(val);
+                              const matchP = activeSubstitutes.find((p) => p.jerseyNumber === parseInt(val, 10));
+                              if (matchP) setSelectedSubPlayerInId(matchP.id);
+                            }}
+                            placeholder="No."
+                            className="w-20 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-mono font-bold text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shrink-0"
+                          />
+                          <select
+                            value={selectedSubPlayerInId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSelectedSubPlayerInId(val);
+                              const matchP = activeSquad.find((p) => p.id === val);
+                              if (matchP?.jerseyNumber) setSubPlayerInNumberInput(String(matchP.jerseyNumber));
+                            }}
+                            className="flex-1 min-w-0 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none truncate"
+                          >
+                            <option value="">-- Substitute Coming On --</option>
+                            {activeSubstitutes.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                #{p.jerseyNumber || '-'} {p.name} (Substitute)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <select
-                      value={selectedPlayerId}
-                      onChange={(e) => setSelectedPlayerId(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none"
-                    >
-                      <option value="">-- Select Official Player --</option>
-                      <optgroup label="Starting XI (Starters)">
-                        {activeStarters.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            #{p.jerseyNumber || '-'} {p.name} ({p.position || 'Starter'})
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Bench Substitutes">
-                        {activeSubstitutes.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            #{p.jerseyNumber || '-'} {p.name} (Substitute)
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          value={playerNumberInput}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPlayerNumberInput(val);
+                            const matchP = activeSquad.find((p) => p.jerseyNumber === parseInt(val, 10));
+                            if (matchP) setSelectedPlayerId(matchP.id);
+                          }}
+                          placeholder="Player #"
+                          className="w-24 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-mono font-bold text-white placeholder-slate-500 focus:border-emerald-400 focus:outline-none shrink-0"
+                        />
+                        <select
+                          value={selectedPlayerId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedPlayerId(val);
+                            const matchP = activeSquad.find((p) => p.id === val);
+                            if (matchP?.jerseyNumber) setPlayerNumberInput(String(matchP.jerseyNumber));
+                          }}
+                          className="flex-1 min-w-0 p-2.5 rounded-xl bg-black/60 border border-white/20 text-xs font-bold text-white focus:border-emerald-400 focus:outline-none truncate"
+                        >
+                          <option value="">-- Select Official Player (or enter number) --</option>
+                          <optgroup label="Starting XI (Starters)">
+                            {activeStarters.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                #{p.jerseyNumber || '-'} {p.name} ({p.position || 'Starter'})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Bench Substitutes">
+                            {activeSubstitutes.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                #{p.jerseyNumber || '-'} {p.name} (Substitute)
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
