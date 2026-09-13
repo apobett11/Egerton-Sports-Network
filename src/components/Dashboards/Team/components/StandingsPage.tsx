@@ -151,8 +151,8 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
         </div>
 
         {/* Table Content */}
-        <div className="w-full overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse min-w-[480px] sm:min-w-full">
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 <th className="py-2 px-2 text-center w-8"># ▲</th>
@@ -161,7 +161,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                 <th className="py-2 px-2 text-center w-8">W</th>
                 <th className="py-2 px-2 text-center w-8">D</th>
                 <th className="py-2 px-2 text-center w-8">L</th>
-                <th className="py-2 px-2 text-center w-24 hidden sm:table-cell">GD</th>
+                <th className="py-2 px-2 text-center w-20 whitespace-nowrap">GD</th>
                 <th className="py-2 px-3 text-center w-12 font-black text-slate-900 dark:text-white">PTS</th>
               </tr>
             </thead>
@@ -220,7 +220,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                       <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.won}</td>
                       <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.drawn}</td>
                       <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">{team.lost}</td>
-                      <td className="py-2.5 px-2 text-center font-mono font-medium text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                      <td className="py-2.5 px-2 text-center font-mono font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {team.goalsFor}:{team.goalsAgainst} {team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference}
                       </td>
                       <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">

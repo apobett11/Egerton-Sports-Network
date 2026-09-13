@@ -92,8 +92,8 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
           </button>
         </div>
 
-        <div className="w-full overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse min-w-[480px] sm:min-w-full">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-[#112236]/60 border-b border-[#e6e8ec] dark:border-[#1a2e45] text-[10px] font-black text-slate-400 uppercase">
                 <th className="py-2.5 px-3 text-center w-8">#</th>
@@ -102,7 +102,7 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                 <th className="py-2.5 px-2 text-center w-8">W</th>
                 <th className="py-2.5 px-2 text-center w-8">D</th>
                 <th className="py-2.5 px-2 text-center w-8">L</th>
-                <th className="py-2.5 px-2 text-center w-24 hidden sm:table-cell">GD</th>
+                <th className="py-2.5 px-2 text-center w-20 whitespace-nowrap">GD</th>
                 <th className="py-2.5 px-3 text-center w-12 font-black text-slate-900 dark:text-white">PTS</th>
               </tr>
             </thead>
@@ -173,7 +173,7 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                       <td className="py-2.5 px-2 text-center font-medium text-slate-600 dark:text-slate-300">
                         {row.lost}
                       </td>
-                      <td className="py-2.5 px-2 text-center font-mono font-medium text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                      <td className="py-2.5 px-2 text-center font-mono font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {row.goalsFor}:{row.goalsAgainst} {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
                       </td>
                       <td className="py-2.5 px-3 text-center font-black font-mono text-sm text-slate-900 dark:text-white">
