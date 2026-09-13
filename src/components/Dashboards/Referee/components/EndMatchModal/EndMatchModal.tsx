@@ -67,12 +67,15 @@ type GuideStep = 1 | 2 | 3;
 const Counter: React.FC<{
   value: number;
   onChange: (n: number) => void;
-}> = ({ value, onChange }) => (
-  <div className="flex items-center gap-2">
+  testId?: string;
+}> = ({ value, onChange, testId }) => (
+  <div className="flex items-center gap-2" data-testid={testId}>
     <button
       type="button"
+      data-testid={testId ? `${testId}-minus` : undefined}
       onClick={() => onChange(Math.max(0, value - 1))}
       className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+      aria-label="Decrease"
     >
       <Minus className="w-3.5 h-3.5" />
     </button>
@@ -81,8 +84,10 @@ const Counter: React.FC<{
     </span>
     <button
       type="button"
+      data-testid={testId ? `${testId}-plus` : undefined}
       onClick={() => onChange(value + 1)}
       className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+      aria-label="Increase"
     >
       <Plus className="w-3.5 h-3.5" />
     </button>
@@ -300,7 +305,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     {match.teamA.name}
                   </span>
                   <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Home</span>
-                  <Counter value={scoreA} onChange={setScoreA} />
+                  <Counter value={scoreA} onChange={setScoreA} testId="counter-score-home" />
                 </div>
 
                 {/* VS */}
@@ -319,7 +324,7 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                     {match.teamB.name}
                   </span>
                   <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Away</span>
-                  <Counter value={scoreB} onChange={setScoreB} />
+                  <Counter value={scoreB} onChange={setScoreB} testId="counter-score-away" />
                 </div>
               </div>
 
@@ -360,26 +365,26 @@ export const EndMatchModal: React.FC<EndMatchModalProps> = ({
                 {/* Yellow cards */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1 flex justify-end">
-                    <Counter value={yellowA} onChange={setYellowA} />
+                    <Counter value={yellowA} onChange={setYellowA} testId="counter-yellow-home" />
                   </div>
                   <div className="w-12 flex items-center justify-center shrink-0">
                     <span className="text-2xl leading-none" role="img" aria-label="Yellow card">🟨</span>
                   </div>
                   <div className="flex-1 flex justify-start">
-                    <Counter value={yellowB} onChange={setYellowB} />
+                    <Counter value={yellowB} onChange={setYellowB} testId="counter-yellow-away" />
                   </div>
                 </div>
 
                 {/* Red cards */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1 flex justify-end">
-                    <Counter value={redA} onChange={setRedA} />
+                    <Counter value={redA} onChange={setRedA} testId="counter-red-home" />
                   </div>
                   <div className="w-12 flex items-center justify-center shrink-0">
                     <span className="text-2xl leading-none" role="img" aria-label="Red card">🟥</span>
                   </div>
                   <div className="flex-1 flex justify-start">
-                    <Counter value={redB} onChange={setRedB} />
+                    <Counter value={redB} onChange={setRedB} testId="counter-red-away" />
                   </div>
                 </div>
               </div>
