@@ -61,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
 
     // Calendar Modal State
     const [showCalendarModal, setShowCalendarModal] = useState(false);
+    const [showPotwComingSoonModal, setShowPotwComingSoonModal] = useState(false);
     const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
 
     React.useEffect(() => {
@@ -324,21 +325,9 @@ export const Header: React.FC<HeaderProps> = ({
                         {/* 4. PLAYER OF THE WEEK */}
                         <button
                             type="button"
-                            onClick={() => {
-                                if (onSelectMainTab) onSelectMainTab('table');
-                                if (typeof window !== 'undefined') {
-                                    window.location.hash = '/standings?section=potw';
-                                    setTimeout(() => {
-                                        const headings = Array.from(document.querySelectorAll('h2, div'));
-                                        const el = headings.find((h) => h.textContent?.includes('PLAYER OF THE WEEK'));
-                                        if (el) {
-                                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                        }
-                                    }, 100);
-                                }
-                            }}
+                            onClick={() => setShowPotwComingSoonModal(true)}
                             className="flex items-center gap-1.5 h-full px-2 text-xs sm:text-sm font-black tracking-wider uppercase whitespace-nowrap cursor-pointer transition-colors border-b-2 text-amber-500 hover:text-amber-400 border-transparent hover:border-amber-400/40"
-                            title="Player of the Week Spotlight & Archives"
+                            title="Player of the Week — Coming Soon"
                         >
                             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 animate-pulse" />
                             <span>PLAYER OF THE WEEK</span>
@@ -516,6 +505,89 @@ export const Header: React.FC<HeaderProps> = ({
                                     Close
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PLAYER OF THE WEEK - COMING SOON POPUP MODAL */}
+            {showPotwComingSoonModal && (
+                <div
+                    className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setShowPotwComingSoonModal(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Player of the Week Coming Soon"
+                >
+                    <div
+                        className="relative w-full max-w-sm bg-[#0e1c2b] border border-amber-500/30 rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-4 select-none animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close Button */}
+                        <button
+                            type="button"
+                            onClick={() => setShowPotwComingSoonModal(false)}
+                            className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="Close"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        {/* Icon Header */}
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400/20 to-amber-600/10 border border-amber-400/40 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+                            <Star className="w-8 h-8 text-amber-400 fill-amber-400 animate-pulse" />
+                        </div>
+
+                        {/* Title & Badge */}
+                        <div className="space-y-3 text-left">
+                            <div className="text-center">
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black uppercase tracking-widest">
+                                    ✨ Official Award Process
+                                </div>
+                                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight mt-1.5">
+                                    Player of the Week
+                                </h3>
+                            </div>
+
+                            <div className="space-y-2.5 bg-black/40 border border-white/10 rounded-2xl p-3.5 text-xs">
+                                <div className="flex items-start gap-2.5">
+                                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                                        1
+                                    </span>
+                                    <p className="text-slate-300 leading-snug">
+                                        <strong className="text-white">Official Nomination:</strong> The match officials nominate the official Player of the Match at the conclusion of every fixture.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-start gap-2.5">
+                                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                                        2
+                                    </span>
+                                    <p className="text-slate-300 leading-snug">
+                                        <strong className="text-white">Public Fan Poll:</strong> All students and fans cast their votes from the weekend nominees in the official public poll.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-start gap-2.5">
+                                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                                        🏆
+                                    </span>
+                                    <p className="text-slate-300 leading-snug">
+                                        <strong className="text-emerald-400">Player of the Season:</strong> The player accumulating the most Player of the Week awards across the campaign will be crowned <strong className="text-white">Player of the Season</strong> and receive grand awards!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-1">
+                            <button
+                                type="button"
+                                onClick={() => setShowPotwComingSoonModal(false)}
+                                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+                            >
+                                Understood & Back
+                            </button>
                         </div>
                     </div>
                 </div>
