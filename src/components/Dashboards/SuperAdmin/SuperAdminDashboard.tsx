@@ -19,7 +19,7 @@ import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApproval
 import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
-import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock } from 'lucide-react';
+import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock, Activity } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
@@ -112,11 +112,24 @@ export const SuperAdminDashboard: React.FC = () => {
     setSelectedItemForModal(null);
   };
 
-  if (isLoading && platformHealth.totalUsers === 0) {
+  if (!isAdmin2FaVerified) {
     return (
-      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center gap-4 text-emerald-400 font-sans">
-        <Loader2 className="w-10 h-10 animate-spin text-emerald-500" />
-        <span className="text-sm font-semibold tracking-wide text-gray-400">
+      <AdminTwoFactorModal
+        isOpen={true}
+        onVerified={verify2FaClearance}
+        adminEmail={user?.email || 'apobett11@gmail.com'}
+        onCancel={handleLogout}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4 animate-pulse">
+          <Activity className="w-6 h-6 text-emerald-400" />
+        </div>
+        <span className="text-sm font-bold text-white tracking-wide">
           Connecting to Supabase Platform Operations...
         </span>
       </div>
@@ -125,14 +138,6 @@ export const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-200 font-sans antialiased flex flex-col md:flex-row pb-16 md:pb-0">
-      {/* 2FA Security Modal Guard */}
-      <AdminTwoFactorModal
-        isOpen={!isAdmin2FaVerified}
-        onVerified={verify2FaClearance}
-        adminEmail={user?.email || 'admin@egerton.ac.ke'}
-        onCancel={handleLogout}
-      />
-
       {/* Admin 2 Password Protection Gate */}
       {activeTab === 'admin_2' && !isAdmin2Unlocked && (
         <Admin2PasswordGateModal
@@ -345,6 +350,7 @@ export const SuperAdminDashboard: React.FC = () => {
             <AdminProfileView
               onLogout={handleLogout}
               showToast={showToast}
+              onUpdateAdmin2Password={updateAdmin2Password}
             />
           )}
         </main>

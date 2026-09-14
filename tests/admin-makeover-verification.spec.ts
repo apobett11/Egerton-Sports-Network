@@ -2,8 +2,8 @@ import { test, expect, Route } from '@playwright/test';
 
 test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
   test('Complete Admin Journey: 2FA Challenge -> Navigation -> Plain Health -> Admin 2 Master Password Gate', async ({ page }) => {
-    const adminId = '11141f21-eea1-4bc1-8114-cab7ba60f819';
-    const adminEmail = 'admin1@gmail.com';
+    const adminId = 'b6e63390-3116-4dbc-a7a8-65fc13b86a8e';
+    const adminEmail = 'apobett11@gmail.com';
 
     const headerBase64 = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const payloadBase64 = Buffer.from(JSON.stringify({

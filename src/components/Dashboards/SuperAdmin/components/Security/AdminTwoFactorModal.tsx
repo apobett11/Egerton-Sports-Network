@@ -35,7 +35,7 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
     setError(null);
 
     setTimeout(() => {
-      if (cleanCode.length === 6 || cleanCode === 'Apo1574bett7687' || cleanCode === '157487') {
+      if (cleanCode.length === 6 || cleanCode === '157487') {
         if (trustDevice) {
           try {
             sessionStorage.setItem('esn_admin_2fa_verified', 'true');

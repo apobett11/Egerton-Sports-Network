@@ -21,8 +21,6 @@ import type {
   SupabaseSlowQuery,
 } from '../types';
 
-const ADMIN_2_DEFAULT_PASS = 'Apo1574bett7687';
-
 const INITIAL_SLOW_QUERIES: SupabaseSlowQuery[] = [
   {
     id: 'q1',
@@ -261,13 +259,6 @@ export const useAdminOperationsData = () => {
         supabase.from('admin_error_logs').select('*').order('created_at', { ascending: false }).limit(30),
         supabase.from('system_settings').select('*').eq('key', 'admin_2_security').maybeSingle(),
       ]);
-
-      if (!admin2Setting) {
-        supabase.from('system_settings').upsert({
-          key: 'admin_2_security',
-          value: { password: ADMIN_2_DEFAULT_PASS, updated_at: new Date().toISOString() },
-        }).then();
-      }
 
 
       if (profErr) throw profErr;
@@ -1058,18 +1049,14 @@ export const useAdminOperationsData = () => {
         .eq('key', 'admin_2_security')
         .maybeSingle();
 
-      if (error || !data) {
-        await supabase.from('system_settings').upsert({
-          key: 'admin_2_security',
-          value: { password: ADMIN_2_DEFAULT_PASS, updated_at: new Date().toISOString() },
-        });
-        return passwordInput === ADMIN_2_DEFAULT_PASS;
+      if (error || !data?.value?.password) {
+        return false;
       }
 
-      const storedPass = data.value?.password || ADMIN_2_DEFAULT_PASS;
-      return passwordInput === storedPass;
+      const storedPass = data.value.password;
+      return passwordInput.trim() === storedPass.trim();
     } catch {
-      return passwordInput === ADMIN_2_DEFAULT_PASS;
+      return false;
     }
   }, []);
 

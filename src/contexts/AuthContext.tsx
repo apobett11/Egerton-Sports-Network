@@ -41,7 +41,7 @@ export const getRouteForRole = (role: UserRole): string => {
   }
 };
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 24 hours (1 day) session validity
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (weekly) session validity
 const STORAGE_KEY_LAST_ACTIVITY = 'esn_last_activity_timestamp';
 const STORAGE_KEY_SESSION_START = 'esn_session_start_timestamp';
 const STORAGE_KEY_CACHED_USER = 'esn_cached_user';
@@ -66,7 +66,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Helper to check if current session is within the 1-day (24-hour) auto-login window
+  // Helper to check if current session is within the weekly (7-day) auto-login window
   const isSessionActive = (): boolean => {
     try {
       const sessionStartStr = localStorage.getItem(STORAGE_KEY_SESSION_START);
@@ -80,8 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const sessionStart = parseInt(sessionStartStr, 10);
       if (isNaN(sessionStart)) return true;
-      // Auto-login active within the 1-day (24h) window
-      return Date.now() - sessionStart < ONE_DAY_MS;
+      // Auto-login active within the weekly (7-day) window
+      return Date.now() - sessionStart < ONE_WEEK_MS;
     } catch {
       return true;
     }
@@ -242,14 +242,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(STORAGE_KEY_SESSION_START);
       sessionStorage.removeItem('intended_redirect_route');
       if (isExpired) {
-        sessionStorage.setItem('auth_session_expired', 'Your 1-day session has elapsed. Please log in again.');
+        sessionStorage.setItem('auth_session_expired', 'Your weekly session has elapsed. Please log in again.');
       }
       setIsLoading(false);
     }
   }, []);
 
-  // Daily Session Expiration Checking Routine (24 Hours)
-  const checkDailySessionExpiration = useCallback(() => {
+  // Weekly Session Expiration Checking Routine (7 Days)
+  const checkWeeklySessionExpiration = useCallback(() => {
     try {
       const sessionStartStr = localStorage.getItem(STORAGE_KEY_SESSION_START);
       if (!sessionStartStr) return;
@@ -257,8 +257,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isNaN(sessionStart)) return;
       
       const now = Date.now();
-      if (now - sessionStart >= ONE_DAY_MS) {
-        console.warn('Daily session elapsed (24 hours). Requiring re-login.');
+      if (now - sessionStart >= ONE_WEEK_MS) {
+        console.warn('Weekly session elapsed (7 days). Requiring re-login.');
         logout(true);
         window.location.hash = '/login';
       }
@@ -278,14 +278,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        checkDailySessionExpiration();
+        checkWeeklySessionExpiration();
         recordActivity();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Periodic daily session expiration check (every 5 minutes)
-    const sessionCheckInterval = setInterval(checkDailySessionExpiration, 5 * 60 * 1000);
+    // Periodic weekly session expiration check (every 5 minutes)
+    const sessionCheckInterval = setInterval(checkWeeklySessionExpiration, 5 * 60 * 1000);
 
     return () => {
       events.forEach(evt => {
@@ -294,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(sessionCheckInterval);
     };
-  }, [recordActivity, checkDailySessionExpiration]);
+  }, [recordActivity, checkWeeklySessionExpiration]);
 
   // Periodic database session uptime heartbeat (every 5 minutes)
   useEffect(() => {
@@ -318,9 +318,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function initAuth() {
       try {
-        // First check if 1-day (24h) session expired
+        // First check if weekly (7-day) session expired
         if (!isSessionActive()) {
-          console.warn('Initial session expired: 1 day (24 hours) has elapsed.');
+          console.warn('Initial session expired: weekly (7 days) has elapsed.');
           await logout(true);
           if (isMounted) setIsLoading(false);
           return;
