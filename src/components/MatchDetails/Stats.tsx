@@ -1,145 +1,315 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Shirt, Shield, CheckCircle2, Sparkles, Layers } from 'lucide-react';
 import type { Match } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface StatsProps {
     match: Match;
 }
 
-export const Stats: React.FC<StatsProps> = ({ match }) => {
-    const [period, setPeriod] = useState<'all' | '1st' | '2nd'>('all');
-    const { events = [], teamA, teamB } = match;
+interface TeamKitDisplay {
+    id: string;
+    type: 'outfield' | 'gk';
+    name: string;
+    description: string;
+    primaryBg: string;
+    stripeColor: string | null;
+    accentColor: string;
+    collarColor: string;
+    imageUrl?: string;
+}
 
-    // Filter events based on selected period
-    const filteredEvents = events.filter((e) => {
-        if (period === '1st') return e.minute <= 45;
-        if (period === '2nd') return e.minute > 45;
-        return true;
+export const Stats: React.FC<StatsProps> = ({ match }) => {
+    const { teamA, teamB } = match;
+
+    const [kitsA, setKitsA] = useState<{ outfield: TeamKitDisplay; gk: TeamKitDisplay }>({
+        outfield: {
+            id: 'home',
+            type: 'outfield',
+            name: `${teamA.name} Home Kit`,
+            description: 'Official primary home colors selected for regulation fixture play.',
+            primaryBg: teamA.colorCode || '#ff0046',
+            stripeColor: null,
+            accentColor: '#ffffff',
+            collarColor: '#ffffff',
+            imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=600&auto=format&fit=crop&q=80',
+        },
+        gk: {
+            id: 'gk',
+            type: 'gk',
+            name: `${teamA.name} Goalkeeper Kit`,
+            description: 'High-visibility neon goalkeeper jersey engineered for reach and pitch clarity.',
+            primaryBg: '#F43F5E',
+            stripeColor: null,
+            accentColor: '#ffffff',
+            collarColor: '#111827',
+            imageUrl: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80',
+        },
     });
 
-    const eventGoalsA = filteredEvents.filter((e) => e.teamId === teamA.id && (e.type === 'goal' || e.type === 'penalty')).length;
-    const eventGoalsB = filteredEvents.filter((e) => e.teamId === teamB.id && (e.type === 'goal' || e.type === 'penalty')).length;
+    const [kitsB, setKitsB] = useState<{ outfield: TeamKitDisplay; gk: TeamKitDisplay }>({
+        outfield: {
+            id: 'away',
+            type: 'outfield',
+            name: `${teamB.name} Away Kit`,
+            description: 'Official alternate away colors selected to guarantee high television contrast.',
+            primaryBg: teamB.colorCode || '#1565c0',
+            stripeColor: '#0F172A',
+            accentColor: '#ffffff',
+            collarColor: '#ffffff',
+            imageUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=600&auto=format&fit=crop&q=80',
+        },
+        gk: {
+            id: 'gk',
+            type: 'gk',
+            name: `${teamB.name} Goalkeeper Kit`,
+            description: 'High-contrast goalkeeper jersey chosen for maximum pitch visibility.',
+            primaryBg: '#10B981',
+            stripeColor: null,
+            accentColor: '#ffffff',
+            collarColor: '#111827',
+            imageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=600&auto=format&fit=crop&q=80',
+        },
+    });
 
-    // Use event goals if present; otherwise for 'all' period use recorded match score
-    const goalsA = eventGoalsA > 0 ? eventGoalsA : period === 'all' ? (match.scoreA || 0) : 0;
-    const goalsB = eventGoalsB > 0 ? eventGoalsB : period === 'all' ? (match.scoreB || 0) : 0;
+    useEffect(() => {
+        let isMounted = true;
 
-    const yellowA = filteredEvents.filter((e) => e.teamId === teamA.id && e.type === 'yellow').length;
-    const yellowB = filteredEvents.filter((e) => e.teamId === teamB.id && e.type === 'yellow').length;
+        const fetchKits = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('teams')
+                    .select('id, name, color_code, kits_config')
+                    .in('id', [teamA.id, teamB.id]);
 
-    const redA = filteredEvents.filter((e) => e.teamId === teamA.id && e.type === 'red').length;
-    const redB = filteredEvents.filter((e) => e.teamId === teamB.id && e.type === 'red').length;
+                if (!isMounted || error || !data) return;
 
-    const subsA = filteredEvents.filter((e) => e.teamId === teamA.id && e.type === 'sub_in').length;
-    const subsB = filteredEvents.filter((e) => e.teamId === teamB.id && e.type === 'sub_in').length;
+                const teamARec = data.find((t) => t.id === teamA.id);
+                const teamBRec = data.find((t) => t.id === teamB.id);
 
-    const pensA = filteredEvents.filter((e) => e.teamId === teamA.id && e.type === 'penalty').length;
-    const pensB = filteredEvents.filter((e) => e.teamId === teamB.id && e.type === 'penalty').length;
+                if (teamARec?.kits_config && Array.isArray(teamARec.kits_config) && teamARec.kits_config.length > 0) {
+                    const homeKit = teamARec.kits_config.find((k: any) => k.id === 'home') || teamARec.kits_config[0];
+                    const gkKit = teamARec.kits_config.find((k: any) => k.id === 'gk') || teamARec.kits_config.find((k: any) => k.id === 'third');
 
-    // Derived possession & shots from attacks/events or match score
-    const totalGoalWeight = goalsA + goalsB;
-    const possessionA = totalGoalWeight > 0 ? Math.round(45 + (goalsA / totalGoalWeight) * 10) : 50;
-    const possessionB = 100 - possessionA;
+                    if (homeKit) {
+                        setKitsA((prev) => ({
+                            ...prev,
+                            outfield: {
+                                ...prev.outfield,
+                                name: homeKit.name || prev.outfield.name,
+                                description: homeKit.description || prev.outfield.description,
+                                primaryBg: homeKit.primaryBg || prev.outfield.primaryBg,
+                                stripeColor: homeKit.stripeColor || null,
+                                accentColor: homeKit.accentColor || prev.outfield.accentColor,
+                                collarColor: homeKit.collarColor || prev.outfield.collarColor,
+                                imageUrl: homeKit.imageUrl || prev.outfield.imageUrl,
+                            },
+                        }));
+                    }
+                    if (gkKit) {
+                        setKitsA((prev) => ({
+                            ...prev,
+                            gk: {
+                                ...prev.gk,
+                                name: gkKit.name || prev.gk.name,
+                                description: gkKit.description || prev.gk.description,
+                                primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
+                                stripeColor: gkKit.stripeColor || null,
+                                accentColor: gkKit.accentColor || prev.gk.accentColor,
+                                collarColor: gkKit.collarColor || prev.gk.collarColor,
+                                imageUrl: gkKit.imageUrl || prev.gk.imageUrl,
+                            },
+                        }));
+                    }
+                }
 
-    const shotsOnTargetA = goalsA + Math.max(0, eventGoalsA > 0 ? 3 : goalsA * 2);
-    const shotsOnTargetB = goalsB + Math.max(0, eventGoalsB > 0 ? 3 : goalsB * 2);
+                if (teamBRec?.kits_config && Array.isArray(teamBRec.kits_config) && teamBRec.kits_config.length > 0) {
+                    const awayKit = teamBRec.kits_config.find((k: any) => k.id === 'away') || teamBRec.kits_config.find((k: any) => k.id === 'third') || teamBRec.kits_config[0];
+                    const gkKit = teamBRec.kits_config.find((k: any) => k.id === 'gk');
 
-    const displayStats = [
-        { label: 'Goals', teamAValue: goalsA, teamBValue: goalsB },
-        { label: 'Ball Possession (%)', teamAValue: possessionA, teamBValue: possessionB },
-        { label: 'Shots on Target', teamAValue: shotsOnTargetA, teamBValue: shotsOnTargetB },
-        { label: 'Yellow Cards', teamAValue: yellowA, teamBValue: yellowB },
-        { label: 'Red Cards', teamAValue: redA, teamBValue: redB },
-        { label: 'Substitutions', teamAValue: subsA, teamBValue: subsB },
-        { label: 'Penalty Kicks', teamAValue: pensA, teamBValue: pensB },
-    ];
+                    if (awayKit) {
+                        setKitsB((prev) => ({
+                            ...prev,
+                            outfield: {
+                                ...prev.outfield,
+                                name: awayKit.name || prev.outfield.name,
+                                description: awayKit.description || prev.outfield.description,
+                                primaryBg: awayKit.primaryBg || prev.outfield.primaryBg,
+                                stripeColor: awayKit.stripeColor || null,
+                                accentColor: awayKit.accentColor || prev.outfield.accentColor,
+                                collarColor: awayKit.collarColor || prev.outfield.collarColor,
+                                imageUrl: awayKit.imageUrl || prev.outfield.imageUrl,
+                            },
+                        }));
+                    }
+                    if (gkKit) {
+                        setKitsB((prev) => ({
+                            ...prev,
+                            gk: {
+                                ...prev.gk,
+                                name: gkKit.name || prev.gk.name,
+                                description: gkKit.description || prev.gk.description,
+                                primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
+                                stripeColor: gkKit.stripeColor || null,
+                                accentColor: gkKit.accentColor || prev.gk.accentColor,
+                                collarColor: gkKit.collarColor || prev.gk.collarColor,
+                                imageUrl: gkKit.imageUrl || prev.gk.imageUrl,
+                            },
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading team kits:', err);
+            }
+        };
 
-    const hasAnyData = events.length > 0 || (match.status !== 'UPCOMING' && (goalsA > 0 || goalsB > 0));
+        fetchKits();
 
-    return (
-        <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-3">
-            {/* 1. PERIOD SELECTOR PILLS (ALL | 1ST HALF | 2ND HALF) */}
-            <div className="flex items-center justify-center gap-1.5 p-1 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm">
-                {[
-                    { id: 'all', label: 'ALL' },
-                    { id: '1st', label: '1ST HALF' },
-                    { id: '2nd', label: '2ND HALF' },
-                ].map((p) => (
-                    <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setPeriod(p.id as any)}
-                        className={`px-4 py-1 rounded-full text-xs font-black uppercase cursor-pointer transition-colors ${
-                            period === p.id
-                                ? 'bg-[#ff0046] text-white shadow-xs'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+        return () => {
+            isMounted = false;
+        };
+    }, [teamA.id, teamB.id]);
+
+    const renderKitCard = (kit: TeamKitDisplay, teamName: string, teamLogo: string, isGK: boolean) => {
+        return (
+            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs flex flex-col">
+                {/* Kit Header */}
+                <div className="px-3.5 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <img src={teamLogo} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                        <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                            {teamName}
+                        </span>
+                    </div>
+                    <span
+                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-xs tracking-wider shrink-0 ${
+                            isGK
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                                : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                         }`}
                     >
-                        {p.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* 2. MATCH STATS SECTION */}
-            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-                <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-extrabold uppercase text-slate-800 dark:text-white tracking-wider">
-                    MATCH STATISTICS
+                        {isGK ? 'GOALKEEPER JERSEY' : 'OUTFIELD JERSEY'}
+                    </span>
                 </div>
 
-                {!hasAnyData ? (
-                    <div className="p-8 text-center text-xs text-slate-400">
-                        No match events recorded yet for this fixture. Live match statistics will update in realtime as events are logged by match officials.
+                {/* Kit Image / Visual Showcase */}
+                <div className="relative w-full aspect-video bg-slate-950/80 overflow-hidden flex items-center justify-center p-4">
+                    {kit.imageUrl ? (
+                        <img
+                            src={kit.imageUrl}
+                            alt={kit.name}
+                            className="w-full h-full object-cover object-center transition-transform hover:scale-105 duration-300"
+                        />
+                    ) : (
+                        <div className="relative flex flex-col items-center justify-center">
+                            <div
+                                className="w-24 h-28 rounded-t-2xl shadow-xl flex items-center justify-center relative overflow-hidden"
+                                style={{ backgroundColor: kit.primaryBg }}
+                            >
+                                <div
+                                    className="absolute top-0 w-10 h-3 rounded-b-md"
+                                    style={{ backgroundColor: kit.collarColor || '#ffffff' }}
+                                />
+                                {kit.stripeColor && (
+                                    <div
+                                        className="w-4 h-full absolute"
+                                        style={{ backgroundColor: kit.stripeColor }}
+                                    />
+                                )}
+                                <Shirt className="w-10 h-10 text-white/90 z-10" />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-xs text-white text-[9px] font-black uppercase px-2 py-1 rounded-xs flex items-center gap-1.5 shadow-md">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>Selected for Match</span>
                     </div>
-                ) : (
-                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b] p-3 sm:p-4 space-y-3">
-                        {displayStats.map((item, idx) => {
-                            const total = (item.teamAValue || 0) + (item.teamBValue || 0);
-                            const pctA = total > 0 ? (item.teamAValue / total) * 100 : 50;
-                            const pctB = total > 0 ? (item.teamBValue / total) * 100 : 50;
-                            const isHomeSuperior = item.teamAValue > item.teamBValue;
-                            const isAwaySuperior = item.teamBValue > item.teamAValue;
 
-                            return (
-                                <div key={`${item.label}-${idx}`} className="pt-2">
-                                    {/* Label and Values */}
-                                    <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
-                                        <span className={`font-mono ${isHomeSuperior ? 'text-[#ff0046] font-black' : 'text-slate-700 dark:text-slate-300'}`}>
-                                            {item.teamAValue}
-                                        </span>
-                                        <span className="text-[11px] text-slate-500 uppercase font-bold text-center">
-                                            {item.label}
-                                        </span>
-                                        <span className={`font-mono ${isAwaySuperior ? 'text-[#1565c0] font-black' : 'text-slate-700 dark:text-slate-300'}`}>
-                                            {item.teamBValue}
-                                        </span>
-                                    </div>
+                    <div
+                        className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-xs text-[10px] font-mono font-bold text-white shadow-md border border-white/20"
+                        style={{ backgroundColor: kit.primaryBg }}
+                    >
+                        {kit.primaryBg}
+                    </div>
+                </div>
 
-                                    {/* Dual Split Bars */}
-                                    <div className="grid grid-cols-2 gap-1.5 h-1.5 w-full">
-                                        {/* Home Team Bar */}
-                                        <div className="bg-[#eef1f5] dark:bg-[#14263b] rounded-xs overflow-hidden flex justify-end">
-                                            <div
-                                                style={{ width: `${total > 0 ? pctA : 0}%` }}
-                                                className={`h-full rounded-xs transition-all ${
-                                                    isHomeSuperior ? 'bg-[#ff0046]' : 'bg-slate-400 dark:bg-slate-600'
-                                                }`}
-                                            />
-                                        </div>
+                {/* Details Section */}
+                <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                            {kit.name}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {kit.description}
+                        </p>
+                    </div>
 
-                                        {/* Away Team Bar */}
-                                        <div className="bg-[#eef1f5] dark:bg-[#14263b] rounded-xs overflow-hidden flex justify-start">
-                                            <div
-                                                style={{ width: `${total > 0 ? pctB : 0}%` }}
-                                                className={`h-full rounded-xs transition-all ${
-                                                    isAwaySuperior ? 'bg-[#1565c0]' : 'bg-slate-400 dark:bg-slate-600'
-                                                }`}
-                                            />
-                                        </div>
-                                    </div>
+                    {/* Color Swatch Specs */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-slate-400 uppercase">Colors:</span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: kit.primaryBg }} />
+                                <span className="font-mono text-slate-600 dark:text-slate-300">Base</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: kit.accentColor }} />
+                                <span className="font-mono text-slate-600 dark:text-slate-300">Accent</span>
+                            </div>
+                            {kit.collarColor && (
+                                <div className="flex items-center gap-1">
+                                    <span className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: kit.collarColor }} />
+                                    <span className="font-mono text-slate-600 dark:text-slate-300">Collar</span>
                                 </div>
-                            );
-                        })}
+                            )}
+                        </div>
                     </div>
-                )}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-6">
+            {/* MATCHDAY UNIFORM VERIFICATION BANNER */}
+            <div className="px-4 py-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm shadow-xs flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                    <Shirt className="w-4 h-4 text-[#ff0046]" />
+                    <span className="text-xs font-black uppercase text-slate-900 dark:text-white tracking-wider">
+                        MATCHDAY KITS & UNIFORMS
+                    </span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Officials Kit Contrast Approved
+                </span>
+            </div>
+
+            {/* 1. HOME TEAM KITS: OUTFIELD & GOALKEEPER */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-800 dark:text-white">
+                    <img src={teamA.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    <span>{teamA.name} • Selected Matchday Kits</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderKitCard(kitsA.outfield, teamA.name, teamA.logo, false)}
+                    {renderKitCard(kitsA.gk, teamA.name, teamA.logo, true)}
+                </div>
+            </div>
+
+            {/* 2. AWAY TEAM KITS: OUTFIELD & GOALKEEPER */}
+            <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-800 dark:text-white">
+                    <img src={teamB.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    <span>{teamB.name} • Selected Matchday Kits</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {renderKitCard(kitsB.outfield, teamB.name, teamB.logo, false)}
+                    {renderKitCard(kitsB.gk, teamB.name, teamB.logo, true)}
+                </div>
             </div>
         </div>
     );

@@ -2,13 +2,13 @@ import React from 'react';
 import type { MatchStatus } from '../../types';
 
 export type MatchDetailTabType =
-    | 'overview'
-    | 'stats'
-    | 'lineups'
-    | 'ratings'
+    | 'squad'
     | 'timeline'
-    | 'form'
-    | 'h2h';
+    | 'details'
+    | 'motm'
+    | 'reports'
+    | 'jerseys'
+    | 'h2h_form';
 
 interface TabBarProps {
     activeTab: MatchDetailTabType;
@@ -18,13 +18,13 @@ interface TabBarProps {
 
 export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab }) => {
     const mainTabs: { id: MatchDetailTabType; label: string }[] = [
-        { id: 'overview', label: 'SUMMARY' },
-        { id: 'stats', label: 'STATS' },
-        { id: 'lineups', label: 'LINEUPS' },
-        { id: 'ratings', label: 'PLAYER STATS' },
-        { id: 'timeline', label: 'COMMENTARY' },
-        { id: 'form', label: 'FORM' },
-        { id: 'h2h', label: 'H2H' },
+        { id: 'squad', label: 'SQUAD' },
+        { id: 'timeline', label: 'PLAY TIMELINE' },
+        { id: 'details', label: 'MATCH DETAILS' },
+        { id: 'motm', label: 'MAN OF THE MATCH' },
+        { id: 'reports', label: 'REPORTS' },
+        { id: 'jerseys', label: 'JERSEYS' },
+        { id: 'h2h_form', label: 'H2H & FORM' },
     ];
 
     return (

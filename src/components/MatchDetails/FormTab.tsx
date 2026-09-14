@@ -177,44 +177,84 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                 )}
             </div>
 
-            {/* 3. HEAD-TO-HEAD MATCHES */}
-            <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-                <div className="px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-900 dark:text-white">
-                    HEAD-TO-HEAD MATCHES
+            {/* 3. HEAD-TO-HEAD HISTORICAL SUMMARY & MATCHES */}
+            <div className="space-y-3 pt-2">
+                {/* H2H Historical Metrics Card */}
+                <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 shadow-xs">
+                    <div className="text-[10px] font-black uppercase text-amber-500 tracking-wider mb-3 text-center">
+                        Head-to-Head Historical Summary
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-3">
+                        <div>
+                            <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">
+                                {h2hList.filter(r => r.winner === teamA.name || r.winner === teamA.shortName || r.scoreA > r.scoreB).length}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 block truncate">{teamA.shortName} Wins</span>
+                        </div>
+                        <div>
+                            <span className="text-2xl font-black font-mono text-slate-500">
+                                {h2hList.filter(r => r.winner === 'Draw' || r.scoreA === r.scoreB).length}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 block">Draws</span>
+                        </div>
+                        <div>
+                            <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">
+                                {h2hList.filter(r => r.winner === teamB.name || r.winner === teamB.shortName || r.scoreB > r.scoreA).length}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 block truncate">{teamB.shortName} Wins</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                        <span>Total Encounters: <b className="text-slate-800 dark:text-white">{h2hList.length}</b></span>
+                        <span>
+                            Goals Scored: <b className="text-slate-800 dark:text-white">
+                                {h2hList.reduce((acc, r) => acc + (r.scoreA || 0), 0)} - {h2hList.reduce((acc, r) => acc + (r.scoreB || 0), 0)}
+                            </b>
+                        </span>
+                    </div>
                 </div>
 
-                {h2hList.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">
-                        {loading ? 'Loading H2H records...' : 'No prior completed head-to-head fixtures recorded in the database between these two teams.'}
+                {/* Previous H2H Encounters */}
+                <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+                    <div className="px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-900 dark:text-white">
+                        PREVIOUS DIRECT ENCOUNTERS
                     </div>
-                ) : (
-                    <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {h2hList.map((m) => {
-                            let resChar: 'W' | 'D' | 'L' = 'D';
-                            if (m.scoreA > m.scoreB) resChar = 'W';
-                            else if (m.scoreB > m.scoreA) resChar = 'L';
 
-                            return (
-                                <div key={m.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp || 'EPL'}</span>
-                                        <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
-                                            {m.homeName || teamA.name} - {m.awayName || teamB.name}
-                                        </span>
-                                    </div>
+                    {h2hList.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400">
+                            {loading ? 'Loading H2H records...' : 'No prior completed head-to-head fixtures recorded in the database between these two clubs.'}
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+                            {h2hList.map((m) => {
+                                let resChar: 'W' | 'D' | 'L' = 'D';
+                                if (m.scoreA > m.scoreB) resChar = 'W';
+                                else if (m.scoreB > m.scoreA) resChar = 'L';
 
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-mono font-black text-slate-900 dark:text-white">
-                                            {m.scoreA} - {m.scoreB}
-                                        </span>
-                                        {renderBadge(resChar)}
+                                return (
+                                    <div key={m.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp || 'EPL'}</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                                                {m.homeName || teamA.name} - {m.awayName || teamB.name}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-mono font-black text-slate-900 dark:text-white">
+                                                {m.scoreA} - {m.scoreB}
+                                            </span>
+                                            {renderBadge(resChar)}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
