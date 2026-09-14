@@ -18,11 +18,11 @@ interface TabBarProps {
 
 export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab }) => {
     const mainTabs: { id: MatchDetailTabType; label: string }[] = [
-        { id: 'squad', label: 'SQUAD' },
-        { id: 'timeline', label: 'PLAY TIMELINE' },
         { id: 'details', label: 'MATCH DETAILS' },
-        { id: 'motm', label: 'MAN OF THE MATCH' },
         { id: 'reports', label: 'REPORTS' },
+        { id: 'motm', label: 'MAN OF THE MATCH' },
+        { id: 'timeline', label: 'MATCH EVENTS' },
+        { id: 'squad', label: 'TEAM SQUADS' },
         { id: 'jerseys', label: 'JERSEYS' },
         { id: 'h2h_form', label: 'H2H & FORM' },
     ];
