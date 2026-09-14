@@ -60,13 +60,18 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      // Dispatch confirmation notice via reset flow or notification
+      // Record security event in audit logs without triggering broken magic link emails
       try {
-        await supabase.auth.resetPasswordForEmail(email);
+        await supabase.from('audit_logs').insert({
+          action: 'ADMIN_PASSWORD_1_UPDATED',
+          resource_type: 'auth.users',
+          resource_id: email,
+          metadata: { updated_by: email, timestamp: new Date().toISOString() },
+        });
       } catch {}
 
       setPass1EmailSent(true);
-      showToast('Login Password (Password 1) updated in database. Email confirmation dispatched.');
+      showToast('Login Password (Password 1) updated in database.');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {

@@ -106,7 +106,14 @@ export const useAdminOperationsData = () => {
 
   const [isAdmin2FaVerified, setIsAdmin2FaVerified] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('esn_admin_2fa_verified') === 'true';
+      if (sessionStorage.getItem('esn_admin_2fa_verified') === 'true') {
+        return true;
+      }
+      const weeklyClearedUntil = localStorage.getItem('esn_admin_2fa_cleared_until');
+      if (weeklyClearedUntil && Number(weeklyClearedUntil) > Date.now()) {
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -1115,10 +1122,12 @@ export const useAdminOperationsData = () => {
 
   const verify2FaClearance = useCallback(() => {
     setIsAdmin2FaVerified(true);
+    const weeklyClearedUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
     try {
       sessionStorage.setItem('esn_admin_2fa_verified', 'true');
+      localStorage.setItem('esn_admin_2fa_cleared_until', String(weeklyClearedUntil));
     } catch {}
-    showToast('Two-factor authentication clearance granted.');
+    showToast('Two-factor authentication clearance granted for 1 week.');
   }, [showToast]);
 
   return {
