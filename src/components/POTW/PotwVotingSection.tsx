@@ -57,6 +57,38 @@ export const PotwVotingSection: React.FC<PotwVotingSectionProps> = ({
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [cycleStage, setCycleStage] = useState<string>('VOTING_ACTIVE');
   const [isVotingOpen, setIsVotingOpen] = useState<boolean>(true);
+  const [screenshotShieldActive, setScreenshotShieldActive] = useState<boolean>(false);
+
+  // Anti-Screenshot & Screen Capture Protection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === 'PrintScreen' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) ||
+        (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5')) ||
+        (e.ctrlKey && (e.key === 'p' || e.key === 'P'))
+      ) {
+        setScreenshotShieldActive(true);
+        setTimeout(() => setScreenshotShieldActive(false), 3000);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setScreenshotShieldActive(true);
+      } else {
+        setTimeout(() => setScreenshotShieldActive(false), 800);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Parse URL search params for deep link if present
   useEffect(() => {
@@ -215,7 +247,37 @@ export const PotwVotingSection: React.FC<PotwVotingSectionProps> = ({
   const selectedCandidate = candidates.find((c) => c.player_id === selectedPlayerId);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6 select-none">
+    <div
+      onContextMenu={(e) => e.preventDefault()}
+      className="relative w-full max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6 select-none print:hidden"
+      style={{
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}
+    >
+      {/* SCREENSHOT & SPOILER SHIELD OVERLAY */}
+      {screenshotShieldActive && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-150">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mb-3 shadow-lg shadow-rose-500/20">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h4 className="text-base font-black uppercase tracking-wider text-white">
+            Screenshots Protected
+          </h4>
+          <p className="text-xs text-slate-300 max-w-sm mt-1.5 leading-relaxed">
+            Player of the Week ballot and voting options are protected to prevent spoilers. Share the official mystery invite link instead!
+          </p>
+          <button
+            type="button"
+            onClick={() => setScreenshotShieldActive(false)}
+            className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-bold rounded-xl"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* SECTION HEADER & LEAGUE SELECTOR */}
       <div className="bg-[#0e1c2b] border border-white/10 rounded-2xl p-5 sm:p-7 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

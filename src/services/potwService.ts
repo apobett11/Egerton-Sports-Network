@@ -532,6 +532,30 @@ export function buildMondayMysteryTeaserUrl(
 }
 
 /**
+ * 9.5 Build Mystery Winner Announcement share template for WhatsApp & social.
+ * Strictly conceals the winner's name to create massive suspense,
+ * hooking fans to visit the website to uncover the laureate and check the standings.
+ */
+export function buildMysteryWinnerShareText(
+  competitionName: string,
+  matchweek: number
+): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : `https://${ESN_DOMAIN}`;
+  const league = getLeagueSlug(competitionName);
+  const targetUrl = `${origin}/#standings?section=potw&league=${league}`;
+
+  return `👑 THE OFFICIAL PLAYER OF THE WEEK HAS BEEN ANNOUNCED! 🏆🔥\n\nThe ${competitionName} Matchweek ${matchweek} Player of the Week has just been officially crowned on Egerton Sports Network after a dramatic campus fan vote! ⭐⚽\n\n👀 Who won the crown?\n[Winner Identity: 🔒 REVEALED ON ESN]\n\n👉 Tap here to reveal the winner, view updated league standings, golden boot race & upcoming weekend fixtures:\n${targetUrl}\n\n⚡ Egerton Sports Network (${ESN_DOMAIN})\n📢 The #1 Home for Live Campus Football Scores, Stats & Standings!`;
+}
+
+export function buildMysteryWinnerShareUrl(
+  competitionName: string,
+  matchweek: number
+): string {
+  const text = buildMysteryWinnerShareText(competitionName, matchweek);
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+/**
  * 10. Weekly Lifecycle status helper (East Africa Time: UTC+3)
  * Voting Closes: Tuesday 5:00 PM EAT
  * Table Reset: Friday 11:00 AM EAT

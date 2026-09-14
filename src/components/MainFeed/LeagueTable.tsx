@@ -694,6 +694,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         <PlayerOfTheWeekSpotlight
           selectedCompetitionId={selectedCompetitionId}
           onNavigateToVoting={onNavigateToVoting}
+          onScrollToStandings={() => scrollToTarget(standingsRef, 'standings')}
         />
 
         <div className="flex items-center justify-between px-1">
