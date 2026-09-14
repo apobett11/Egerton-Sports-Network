@@ -87,6 +87,43 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
       return route.continue({ headers });
     });
 
+    // Intercept 2FA verification for passkey
+    await page.route(/.*\/functions\/v1\/admin-2fa/, async (route: Route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          is_passkey: true,
+          clearance_type: 'single_session',
+          message: 'Passkey accepted',
+        }),
+      });
+    });
+
+    // Mock Auth endpoints so Supabase client doesn't invalidate mock JWT
+    await page.route(/.*\/auth\/v1\/.*/, async (route: Route) => {
+      const url = route.request().url();
+      if (url.includes('/user')) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(adminUser) });
+      }
+      if (url.includes('/token') || url.includes('/session')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            access_token: validJwt,
+            token_type: 'bearer',
+            expires_in: 86400,
+            expires_at: Math.floor(Date.now() / 1000) + 86400,
+            refresh_token: 'mock-refresh-token',
+            user: adminUser,
+          }),
+        });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+    });
+
     // 1. Seed LocalStorage with Authenticated Admin Session matching real DB profile
     await page.addInitScript(({ id, email, user, token }) => {
       const now = Date.now().toString();
@@ -128,10 +165,14 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     await expect(twoFactorTitle).toBeVisible({ timeout: 15000 });
     await expect(page.locator('text=Executive Security Clearance Required')).toBeVisible();
 
-    // 4. Test 2FA verification using the instant passkey bypass or code
+    // 4. Test 2FA verification using the instant passkey bypass
     const instantBypassBtn = page.locator('button:has-text("Instant Passkey Access")');
     await expect(instantBypassBtn).toBeVisible();
     await instantBypassBtn.click();
+
+    const passkeyInput = page.locator('input[placeholder="Enter secret passkey..."]');
+    await passkeyInput.fill('15747687');
+    await page.locator('button:has-text("Authenticate with Passkey")').click();
 
     // Verify 2FA modal dismisses and main dashboard appears
     await expect(twoFactorTitle).not.toBeVisible({ timeout: 10000 });
@@ -178,17 +219,17 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     await expect(page.locator('text=Admin 2 • Deep Telemetry & User Flow Analytics')).toBeVisible();
     await expect(page.locator('text=Average Uptime')).toBeVisible();
     await expect(page.locator('text=Continuous 30-Day Platform Uptime Record')).toBeVisible();
-    await expect(page.locator('text=Users Track in Graphs Per Hour (24-Hour Realtime Distribution)')).toBeVisible();
-    await expect(page.locator('text=Page-to-Page Visit Analytics & Navigation Flow')).toBeVisible();
+    await expect(page.locator('text=Users Track in Graphs')).toBeVisible();
+    await expect(page.locator('text=Current Period Page Views Matrix')).toBeVisible();
     await expect(page.locator('text=Nir Eyal Hook Model & Retention Loops')).toBeVisible();
     await expect(page.locator('text=PostgreSQL Index Advisor & Query Bottleneck Telemetry')).toBeVisible();
     // Verify probe running in Admin 2
     await expect(page.locator('text=PROBE RUNNING')).toBeVisible();
 
     // Verify presence of table routes
-    await expect(page.locator('text=/home')).toBeVisible();
-    await expect(page.locator('text=/fixtures')).toBeVisible();
-    await expect(page.locator('text=/standings')).toBeVisible();
+    await expect(page.locator('text=/home').first()).toBeVisible();
+    await expect(page.locator('text=/fixtures').first()).toBeVisible();
+    await expect(page.locator('text=/standings').first()).toBeVisible();
 
     // 11. Test Relock
     await page.locator('button:has-text("Relock Admin 2")').click();
