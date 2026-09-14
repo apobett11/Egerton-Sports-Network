@@ -83,12 +83,12 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
   };
 
   const quickActions = [
-    { label: 'Manage Users', icon: Users, tab: 'users' as AdminTabType, color: 'text-emerald-400' },
+    { label: 'Health & Diagnostics', icon: Activity, tab: 'health' as AdminTabType, color: 'text-emerald-400' },
+    { label: 'Admin 2 Telemetry 🔒', icon: Lock, tab: 'admin_2' as AdminTabType, color: 'text-amber-400' },
+    { label: 'User Directory', icon: Users, tab: 'users' as AdminTabType, color: 'text-blue-400' },
+    { label: 'Role Permissions', icon: ShieldCheck, tab: 'roles' as AdminTabType, color: 'text-cyan-400' },
     { label: 'System Audit Logs', icon: FileText, tab: 'audit_logs' as AdminTabType, color: 'text-purple-400' },
-    { label: 'Announcements', icon: Megaphone, modal: 'announcement', color: 'text-amber-400' },
-    { label: 'Role Management', icon: ShieldCheck, tab: 'roles' as AdminTabType, color: 'text-blue-400' },
-    { label: 'Performance Telemetry', icon: Activity, tab: 'performance' as AdminTabType, color: 'text-cyan-400' },
-    { label: 'Platform Settings', icon: Settings, modal: 'settings', color: 'text-gray-300' },
+    { label: 'Announcements', icon: Megaphone, modal: 'announcement', color: 'text-rose-400' },
   ];
 
   return (
@@ -245,9 +245,13 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
                 System Infrastructure Status
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-gray-400">
-              Updated {systemHealth.lastChecked}
-            </span>
+            <button
+              onClick={() => setActiveTab('health')}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>Inspect Plain English</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -1,16 +1,62 @@
 export type AdminTabType =
   | 'overview'
-  | 'overviews'
-  | 'insights'
-  | 'agent0'
+  | 'health'
   | 'users'
   | 'players'
   | 'roles'
+  | 'announcements'
   | 'audit_logs'
-  | 'performance'
-  | 'settings'
+  | 'potw'
+  | 'agent0'
+  | 'admin_2'
   | 'profile'
-  | 'potw';
+  | 'overviews'
+  | 'insights'
+  | 'performance'
+  | 'settings';
+
+export interface PlainLanguageHealthItem {
+  id: string;
+  name: string;
+  category: 'database' | 'api' | 'auth' | 'storage' | 'realtime';
+  status: HealthStatusType;
+  latencyMs: number;
+  simpleStatus: string;
+  explanation: string;
+  technicalDetails: string;
+  troubleshootingTip: string;
+}
+
+export interface FailedApiCallRecord {
+  id: string;
+  timestamp: string;
+  endpoint: string;
+  method: string;
+  statusCode: number;
+  errorName: string;
+  plainExplanation: string;
+  rootCause: string;
+  actionToFix: string;
+  resolved: boolean;
+}
+
+export interface HourlyTrafficData {
+  hour: string;
+  users: number;
+  pageViews: number;
+  apiRequests: number;
+}
+
+export interface PageVisitAnalytics {
+  route: string;
+  title: string;
+  visits: number;
+  uniqueVisitors: number;
+  percentageShare: number;
+  avgDwellTime: string;
+  bounceRate: string;
+}
+
 
 export interface AdminPlayerRow {
   id: string;

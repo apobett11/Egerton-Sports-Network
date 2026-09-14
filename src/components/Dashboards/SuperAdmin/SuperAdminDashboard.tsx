@@ -1,24 +1,28 @@
+import React, { useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAdminOperationsData } from './hooks/useAdminOperationsData';
 import { AdminSidebar } from './components/Navigation/AdminSidebar';
 import { AdminBottomNav } from './components/Navigation/AdminBottomNav';
 import { AdminModals } from './components/Modals/AdminModals';
 import { AdminOverviewView } from './components/Views/AdminOverviewView';
+import { AdminHealthDiagnosticsView } from './components/Views/AdminHealthDiagnosticsView';
+import { Admin2DashboardView } from './components/Views/Admin2DashboardView';
 import { AdminAgent0View } from './components/Views/AdminAgent0View';
 import { AdminDashboardOverviewsView } from './components/Views/AdminDashboardOverviewsView';
 import { AdminPlatformInsightsView } from './components/Views/AdminPlatformInsightsView';
 import { AdminUserDirectoryView } from './components/Views/AdminUserDirectoryView';
 import { AdminRoleManagementView } from './components/Views/AdminRoleManagementView';
 import { AdminAuditLogsView } from './components/Views/AdminAuditLogsView';
-import { AdminPerformanceView } from './components/Views/AdminPerformanceView';
 import { AdminSettingsAnnouncementsView } from './components/Views/AdminSettingsAnnouncementsView';
 import { AdminProfileView } from './components/Views/AdminProfileView';
 import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApprovalsView';
 import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
-import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
+import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
+import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
+import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const {
     activeTab,
     setActiveTab,
@@ -66,7 +70,32 @@ export const SuperAdminDashboard: React.FC = () => {
     handleApprovePlayer,
     handleRejectPlayer,
     refreshData,
+    failedCalls,
+    slowQueries,
+    hourlyTraffic,
+    pageVisitAnalytics,
+    isAdmin2Unlocked,
+    unlockAdmin2,
+    relockAdmin2,
+    isAdmin2FaVerified,
+    verify2FaClearance,
+    runLiveDiagnostic,
+    isProbeRunning,
+    toggleProbe,
+    probeCount,
+    verifyAdmin2Password,
+    updateAdmin2Password,
+    applyIndexOptimization,
+    clearFailedCalls,
   } = useAdminOperationsData();
+
+  // Check if hash routes directly to Admin 2 on initial render
+  useEffect(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash === '#admin2' || hash === '#admin-2' || hash === '#/admin2') {
+      setActiveTab('admin_2');
+    }
+  }, [setActiveTab]);
 
   const handleLogout = async () => {
     await logout();
@@ -96,6 +125,24 @@ export const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-200 font-sans antialiased flex flex-col md:flex-row pb-16 md:pb-0">
+      {/* 2FA Security Modal Guard */}
+      <AdminTwoFactorModal
+        isOpen={!isAdmin2FaVerified}
+        onVerified={verify2FaClearance}
+        adminEmail={user?.email || 'admin@egerton.ac.ke'}
+        onCancel={handleLogout}
+      />
+
+      {/* Admin 2 Password Protection Gate */}
+      {activeTab === 'admin_2' && !isAdmin2Unlocked && (
+        <Admin2PasswordGateModal
+          isOpen={true}
+          onUnlocked={unlockAdmin2}
+          onCancel={() => setActiveTab('overview')}
+          verifyPassword={verifyAdmin2Password}
+        />
+      )}
+
       {/* Toast Banner */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl border border-emerald-500/30 flex items-center gap-2.5 animate-bounce text-xs md:text-sm font-bold">
@@ -112,12 +159,13 @@ export const SuperAdminDashboard: React.FC = () => {
         onLogout={handleLogout}
         insightsCount={platformInsights.filter((i) => i.severity === 'critical' || i.severity === 'warning').length}
         pendingPlayersCount={playersList.filter((p) => !p.isApproved).length}
+        isAdmin2Unlocked={isAdmin2Unlocked}
       />
 
       {/* Main Content Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Desktop & Mobile Header Bar */}
-        <header className="bg-[#161616] border-b border-[#2A2A2A] px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-20">
+        {/* Header Bar */}
+        <header className="bg-[#161616] border-b border-[#262626] px-4 sm:px-8 py-3.5 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={handleLogout}
@@ -128,13 +176,18 @@ export const SuperAdminDashboard: React.FC = () => {
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <h1 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider">
-                  {activeTab.replace('_', ' ')}
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    activeTab === 'admin_2' ? 'bg-amber-400' : 'bg-emerald-400'
+                  } animate-pulse`}
+                />
+                <h1 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span>{activeTab === 'admin_2' ? 'ADMIN 2 • DEEP TELEMETRY' : activeTab.replace('_', ' ')}</span>
+                  {activeTab === 'admin_2' && <Lock className="w-3.5 h-3.5 text-amber-400" />}
                 </h1>
               </div>
               <p className="text-[11px] text-gray-400 hidden sm:block">
-                Live Supabase connection • Synced at {systemHealth.lastChecked}
+                Live Supabase Connection • Synced at {systemHealth.lastChecked}
               </p>
             </div>
           </div>
@@ -181,26 +234,30 @@ export const SuperAdminDashboard: React.FC = () => {
             />
           )}
 
-          {activeTab === 'agent0' && (
-            <AdminAgent0View
+          {activeTab === 'health' && (
+            <AdminHealthDiagnosticsView
+              systemHealth={systemHealth}
+              failedCalls={failedCalls}
+              onRunDiagnostic={runLiveDiagnostic}
+              isLoading={isLoading}
+              onClearErrors={clearFailedCalls}
+              isProbeRunning={isProbeRunning}
+              onToggleProbe={toggleProbe}
+              probeCount={probeCount}
+            />
+          )}
+
+          {activeTab === 'admin_2' && isAdmin2Unlocked && (
+            <Admin2DashboardView
+              performanceMetrics={performanceMetrics}
+              platformHealth={platformHealth}
+              hourlyTraffic={hourlyTraffic}
+              pageVisitAnalytics={pageVisitAnalytics}
+              slowQueries={slowQueries}
+              onApplyIndex={applyIndexOptimization}
+              onRelock={relockAdmin2}
+              onUpdatePassword={updateAdmin2Password}
               showToast={showToast}
-            />
-          )}
-
-          {activeTab === 'overviews' && (
-            <AdminDashboardOverviewsView
-              journalistOverview={journalistOverview}
-              teamOverview={teamOverview}
-              refereeOverview={refereeOverview}
-              presidentOverview={presidentOverview}
-              onOpenModal={handleOpenModal}
-            />
-          )}
-
-          {activeTab === 'insights' && (
-            <AdminPlatformInsightsView
-              insights={platformInsights}
-              setActiveTab={setActiveTab}
             />
           )}
 
@@ -239,6 +296,13 @@ export const SuperAdminDashboard: React.FC = () => {
             />
           )}
 
+          {(activeTab === 'announcements' || activeTab === 'settings') && (
+            <AdminSettingsAnnouncementsView
+              onPostAnnouncement={handlePostAnnouncement}
+              showToast={showToast}
+            />
+          )}
+
           {activeTab === 'audit_logs' && (
             <AdminAuditLogsView
               auditLogs={filteredAuditLogs}
@@ -256,17 +320,24 @@ export const SuperAdminDashboard: React.FC = () => {
             <AdminPotwAuditView showToast={showToast} />
           )}
 
-          {activeTab === 'performance' && (
-            <AdminPerformanceView
-              metrics={performanceMetrics}
-              systemHealth={systemHealth}
+          {activeTab === 'agent0' && (
+            <AdminAgent0View showToast={showToast} />
+          )}
+
+          {activeTab === 'overviews' && (
+            <AdminDashboardOverviewsView
+              journalistOverview={journalistOverview}
+              teamOverview={teamOverview}
+              refereeOverview={refereeOverview}
+              presidentOverview={presidentOverview}
+              onOpenModal={handleOpenModal}
             />
           )}
 
-          {activeTab === 'settings' && (
-            <AdminSettingsAnnouncementsView
-              onPostAnnouncement={handlePostAnnouncement}
-              showToast={showToast}
+          {activeTab === 'insights' && (
+            <AdminPlatformInsightsView
+              insights={platformInsights}
+              setActiveTab={setActiveTab}
             />
           )}
 
@@ -283,7 +354,7 @@ export const SuperAdminDashboard: React.FC = () => {
       <AdminBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        insightsCount={platformInsights.filter((i) => i.severity === 'critical' || i.severity === 'warning').length}
+        pendingPlayersCount={playersList.filter((p) => !p.isApproved).length}
       />
 
       {/* Detail Popups & Modals */}

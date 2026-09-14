@@ -730,7 +730,7 @@ export const AppContent: React.FC = () => {
   }, [liveMatches, favorites]);
 
   // --- DIRECT UNPROMPTED DASHBOARD ROUTING WITH ROLE GUARDS ---
-  if (route === 'admin') {
+  if (route === 'admin' || route === 'admin2' || route === 'admin-2' || route === 'dashboard/admin') {
     return (
       <ProtectedRoute allowedRoles={['admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>

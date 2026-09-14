@@ -15,7 +15,77 @@ import type {
   PlatformInsightItem,
   PlatformPerformanceMetrics,
   AdminPlayerRow,
+  FailedApiCallRecord,
+  HourlyTrafficData,
+  PageVisitAnalytics,
+  SupabaseSlowQuery,
 } from '../types';
+
+const ADMIN_2_DEFAULT_PASS = 'Apo1574bett7687';
+
+const INITIAL_SLOW_QUERIES: SupabaseSlowQuery[] = [
+  {
+    id: 'q1',
+    query: 'SELECT * FROM fixtures WHERE status = "LIVE" ORDER BY scheduled_time ASC',
+    durationMs: 68,
+    tableName: 'fixtures',
+    recommendedIndex: 'CREATE INDEX idx_fixtures_live_status ON fixtures (status, scheduled_time);',
+    isOptimized: false,
+  },
+  {
+    id: 'q2',
+    query: 'SELECT * FROM players WHERE team_id = $1 AND status = "Fit"',
+    durationMs: 54,
+    tableName: 'players',
+    recommendedIndex: 'CREATE INDEX idx_players_team_fit ON players (team_id, status);',
+    isOptimized: false,
+  },
+  {
+    id: 'q3',
+    query: 'SELECT * FROM news_articles WHERE status = "published" ORDER BY created_at DESC',
+    durationMs: 42,
+    tableName: 'news_articles',
+    recommendedIndex: 'CREATE INDEX idx_news_published_created ON news_articles (status, created_at DESC);',
+    isOptimized: true,
+  },
+];
+
+const INITIAL_HOURLY_TRAFFIC: HourlyTrafficData[] = [
+  { hour: '00:00', users: 8, pageViews: 24, apiRequests: 42 },
+  { hour: '01:00', users: 5, pageViews: 14, apiRequests: 28 },
+  { hour: '02:00', users: 3, pageViews: 8, apiRequests: 16 },
+  { hour: '03:00', users: 2, pageViews: 6, apiRequests: 12 },
+  { hour: '04:00', users: 4, pageViews: 10, apiRequests: 19 },
+  { hour: '05:00', users: 9, pageViews: 22, apiRequests: 38 },
+  { hour: '06:00', users: 18, pageViews: 45, apiRequests: 74 },
+  { hour: '07:00', users: 34, pageViews: 92, apiRequests: 148 },
+  { hour: '08:00', users: 58, pageViews: 160, apiRequests: 270 },
+  { hour: '09:00', users: 72, pageViews: 210, apiRequests: 350 },
+  { hour: '10:00', users: 85, pageViews: 260, apiRequests: 410 },
+  { hour: '11:00', users: 92, pageViews: 290, apiRequests: 460 },
+  { hour: '12:00', users: 124, pageViews: 410, apiRequests: 620 },
+  { hour: '13:00', users: 110, pageViews: 370, apiRequests: 580 },
+  { hour: '14:00', users: 98, pageViews: 310, apiRequests: 490 },
+  { hour: '15:00', users: 135, pageViews: 480, apiRequests: 740 },
+  { hour: '16:00', users: 168, pageViews: 620, apiRequests: 950 },
+  { hour: '17:00', users: 186, pageViews: 740, apiRequests: 1180 },
+  { hour: '18:00', users: 154, pageViews: 580, apiRequests: 920 },
+  { hour: '19:00', users: 120, pageViews: 430, apiRequests: 680 },
+  { hour: '20:00', users: 128, pageViews: 460, apiRequests: 710 },
+  { hour: '21:00', users: 95, pageViews: 320, apiRequests: 510 },
+  { hour: '22:00', users: 62, pageViews: 190, apiRequests: 310 },
+  { hour: '23:00', users: 28, pageViews: 85, apiRequests: 140 },
+];
+
+const INITIAL_PAGE_ANALYTICS: PageVisitAnalytics[] = [
+  { route: '/home', title: 'Main Matchday Feed & Top Stories', visits: 5840, uniqueVisitors: 2190, percentageShare: 41, avgDwellTime: '4m 12s', bounceRate: '16%' },
+  { route: '/fixtures', title: 'Campus League Fixtures & Results', visits: 2920, uniqueVisitors: 1480, percentageShare: 20.5, avgDwellTime: '2m 45s', bounceRate: '22%' },
+  { route: '/standings', title: 'Premier League Table & Form Guide', visits: 2150, uniqueVisitors: 1120, percentageShare: 15.1, avgDwellTime: '3m 10s', bounceRate: '19%' },
+  { route: '/match-details', title: 'Live Match Center & Realtime Events', visits: 1680, uniqueVisitors: 890, percentageShare: 11.8, avgDwellTime: '8m 34s', bounceRate: '11%' },
+  { route: '/team-details', title: 'Club Rosters, Pitch Tactics & Kits', visits: 780, uniqueVisitors: 410, percentageShare: 5.5, avgDwellTime: '3m 22s', bounceRate: '28%' },
+  { route: '/potw', title: 'Player of the Week Voting Portal', visits: 540, uniqueVisitors: 380, percentageShare: 3.8, avgDwellTime: '1m 55s', bounceRate: '14%' },
+  { route: '/news', title: 'Sports Journalism & Match Reports', visits: 330, uniqueVisitors: 240, percentageShare: 2.3, avgDwellTime: '4m 48s', bounceRate: '25%' },
+];
 
 export const useAdminOperationsData = () => {
   const [activeTab, setActiveTab] = useState<AdminTabType>('overview');
@@ -23,6 +93,27 @@ export const useAdminOperationsData = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [playersList, setPlayersList] = useState<AdminPlayerRow[]>([]);
+  const [failedCalls, setFailedCalls] = useState<FailedApiCallRecord[]>([]);
+  const [slowQueries, setSlowQueries] = useState<SupabaseSlowQuery[]>(INITIAL_SLOW_QUERIES);
+  const [hourlyTraffic, setHourlyTraffic] = useState<HourlyTrafficData[]>(INITIAL_HOURLY_TRAFFIC);
+  const [pageVisitAnalytics, setPageVisitAnalytics] = useState<PageVisitAnalytics[]>(INITIAL_PAGE_ANALYTICS);
+
+  const [isAdmin2Unlocked, setIsAdmin2Unlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('esn_admin_2_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isAdmin2FaVerified, setIsAdmin2FaVerified] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('esn_admin_2fa_verified') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
 
   // Core Data States
   const [platformHealth, setPlatformHealth] = useState<PlatformHealthMetrics>({
@@ -52,6 +143,9 @@ export const useAdminOperationsData = () => {
     realtimeStatus: 'healthy',
     lastChecked: new Date().toLocaleTimeString(),
   });
+
+  const [isProbeRunning, setIsProbeRunning] = useState<boolean>(true);
+  const [probeCount, setProbeCount] = useState<number>(1);
 
   const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
   const [platformErrors, setPlatformErrors] = useState<PlatformErrorItem[]>([]);
@@ -152,7 +246,9 @@ export const useAdminOperationsData = () => {
         { data: articles, error: artErr },
         { data: announcements, error: annErr },
         { data: rawLogs, error: logErr },
-        { data: matchReports }
+        { data: matchReports },
+        { data: adminErrorLogs },
+        { data: admin2Setting },
       ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(300),
         supabase.from('teams').select('*').limit(100),
@@ -162,7 +258,17 @@ export const useAdminOperationsData = () => {
         supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('match_reports').select('*').limit(100),
+        supabase.from('admin_error_logs').select('*').order('created_at', { ascending: false }).limit(30),
+        supabase.from('system_settings').select('*').eq('key', 'admin_2_security').maybeSingle(),
       ]);
+
+      if (!admin2Setting) {
+        supabase.from('system_settings').upsert({
+          key: 'admin_2_security',
+          value: { password: ADMIN_2_DEFAULT_PASS, updated_at: new Date().toISOString() },
+        }).then();
+      }
+
 
       if (profErr) throw profErr;
       if (teamErr) throw teamErr;
@@ -171,14 +277,14 @@ export const useAdminOperationsData = () => {
       if (artErr) throw artErr;
       if (annErr) throw annErr;
 
-      const allProfiles = profiles || [];
-      const allTeams = teams || [];
-      const allPlayers = players || [];
-      const allFixtures = fixtures || [];
-      const allArticles = articles || [];
-      const allAnnouncements = announcements || [];
-      const allAuditLogs = rawLogs || [];
-      const allMatchReports = matchReports || [];
+      const allProfiles = Array.isArray(profiles) ? profiles : (profiles ? [profiles] : []);
+      const allTeams = Array.isArray(teams) ? teams : (teams ? [teams] : []);
+      const allPlayers = Array.isArray(players) ? players : (players ? [players] : []);
+      const allFixtures = Array.isArray(fixtures) ? fixtures : (fixtures ? [fixtures] : []);
+      const allArticles = Array.isArray(articles) ? articles : (articles ? [articles] : []);
+      const allAnnouncements = Array.isArray(announcements) ? announcements : (announcements ? [announcements] : []);
+      const allAuditLogs = Array.isArray(rawLogs) ? rawLogs : (rawLogs ? [rawLogs] : []);
+      const allMatchReports = Array.isArray(matchReports) ? matchReports : (matchReports ? [matchReports] : []);
 
       const endPing = performance.now();
       const pingMs = Math.round(endPing - startPing);
@@ -364,6 +470,41 @@ export const useAdminOperationsData = () => {
       }));
 
       setPlatformErrors(computedErrors);
+
+      // Populate Plain-Language Failed API Calls
+      const mappedFailed: FailedApiCallRecord[] = [];
+      (adminErrorLogs || []).forEach((el: any) => {
+        mappedFailed.push({
+          id: el.id,
+          timestamp: new Date(el.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          endpoint: `/rest/v1/fixtures/${el.fixture_id ? el.fixture_id.slice(0, 8) : 'stats'}`,
+          method: 'POST',
+          statusCode: 422,
+          errorName: el.module_name || 'Calculation Error',
+          plainExplanation: el.error_message || 'A match statistics calculation failed database business logic validation.',
+          rootCause: 'Data inconsistency or missing foreign key in match events table during finalization.',
+          actionToFix: 'Verify match roster entries and ensure jersey numbers are correctly registered.',
+          resolved: false,
+        });
+      });
+
+      errorLogs.forEach((al: any) => {
+        mappedFailed.push({
+          id: `audit-${al.id}`,
+          timestamp: new Date(al.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          endpoint: `/rest/v1/${al.resource_type || 'platform'}`,
+          method: 'PATCH/POST',
+          statusCode: 403,
+          errorName: al.action,
+          plainExplanation: typeof al.details === 'string' ? al.details : (al.details?.reason || 'Security policy blocked an unauthorized operation.'),
+          rootCause: `Action ${al.action} blocked on ${al.resource_type} table.`,
+          actionToFix: 'Check user role privileges or verify database Row Level Security policies.',
+          resolved: false,
+        });
+      });
+
+      setFailedCalls(mappedFailed);
+
 
       // Journalist Overview Summary
       const publishedArt = allArticles.filter((a) => a.status === 'published');
@@ -830,6 +971,169 @@ export const useAdminOperationsData = () => {
     return insights;
   }, [refereeOverview, teamOverview, journalistOverview]);
 
+  const runLiveDiagnostic = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const t0 = performance.now();
+      const { error: dbErr } = await supabase.from('profiles').select('id', { head: true, count: 'exact' });
+      const dbMs = Math.round(performance.now() - t0);
+
+      const t1 = performance.now();
+      const { error: authErr } = await supabase.auth.getSession();
+      const authMs = Math.round(performance.now() - t1);
+
+      const t2 = performance.now();
+      const { error: storErr } = await supabase.storage.listBuckets();
+      const storMs = Math.round(performance.now() - t2);
+
+      const avgMs = Math.max(12, Math.round((dbMs + authMs + storMs) / 3));
+
+      setSystemHealth({
+        apiStatus: avgMs < 400 ? 'healthy' : avgMs < 900 ? 'warning' : 'offline',
+        apiLatencyMs: avgMs,
+        dbStatus: !dbErr && dbMs < 300 ? 'healthy' : 'warning',
+        dbLatencyMs: dbMs || 18,
+        authStatus: !authErr ? 'healthy' : 'warning',
+        storageStatus: !storErr ? 'healthy' : 'warning',
+        realtimeStatus: 'healthy',
+        lastChecked: new Date().toLocaleTimeString(),
+      });
+
+      if (dbErr || authErr || storErr) {
+        const err = dbErr || authErr || storErr;
+        setFailedCalls((prev) => [
+          {
+            id: `diag-err-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            endpoint: '/rest/v1/health-check',
+            method: 'GET',
+            statusCode: 500,
+            errorName: 'Diagnostic Ping Intercept',
+            plainExplanation: 'A diagnostic query returned an unexpected response.',
+            rootCause: err?.message || 'High network latency between client and cloud database.',
+            actionToFix: 'Check internet connection and verify Supabase project status in cloud console.',
+            resolved: false,
+          },
+          ...prev,
+        ]);
+      }
+
+      setProbeCount((c) => c + 1);
+      if (!isSilent) {
+        showToast('Live diagnostic completed successfully.');
+      }
+    } catch (err: any) {
+      if (!isSilent) {
+        showToast(`Diagnostic failed: ${err.message}`);
+      }
+    } finally {
+      if (!isSilent) {
+        setIsLoading(false);
+      }
+    }
+  }, [showToast]);
+
+  const toggleProbe = useCallback(() => {
+    setIsProbeRunning((prev) => {
+      const next = !prev;
+      showToast(next ? 'Health probe activated (30s interval).' : 'Health probe paused.');
+      return next;
+    });
+  }, [showToast]);
+
+  // Automated background health probe running every 30 seconds
+  useEffect(() => {
+    if (!isProbeRunning) return;
+    const interval = setInterval(() => {
+      runLiveDiagnostic(true);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isProbeRunning, runLiveDiagnostic]);
+
+  const verifyAdmin2Password = useCallback(async (passwordInput: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'admin_2_security')
+        .maybeSingle();
+
+      if (error || !data) {
+        await supabase.from('system_settings').upsert({
+          key: 'admin_2_security',
+          value: { password: ADMIN_2_DEFAULT_PASS, updated_at: new Date().toISOString() },
+        });
+        return passwordInput === ADMIN_2_DEFAULT_PASS;
+      }
+
+      const storedPass = data.value?.password || ADMIN_2_DEFAULT_PASS;
+      return passwordInput === storedPass;
+    } catch {
+      return passwordInput === ADMIN_2_DEFAULT_PASS;
+    }
+  }, []);
+
+  const updateAdmin2Password = useCallback(async (newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({
+          key: 'admin_2_security',
+          value: { password: newPassword, updated_at: new Date().toISOString() },
+        });
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        action: 'UPDATE_ADMIN_2_PASSWORD',
+        resource_type: 'system_settings',
+        details: { updated_at: new Date().toISOString() },
+      });
+
+      showToast('Admin 2 Master Password updated in database.');
+      return true;
+    } catch (err: any) {
+      showToast(`Failed to update password: ${err.message}`);
+      return false;
+    }
+  }, [showToast]);
+
+  const applyIndexOptimization = useCallback((queryId: string) => {
+    setSlowQueries((prev) =>
+      prev.map((q) => (q.id === queryId ? { ...q, isOptimized: true, durationMs: Math.round(q.durationMs * 0.25) } : q))
+    );
+    showToast('Applied index optimization simulation.');
+  }, [showToast]);
+
+  const clearFailedCalls = useCallback(() => {
+    setFailedCalls([]);
+    showToast('Failed calls log cleared.');
+  }, [showToast]);
+
+  const unlockAdmin2 = useCallback(() => {
+    setIsAdmin2Unlocked(true);
+    try {
+      sessionStorage.setItem('esn_admin_2_unlocked', 'true');
+    } catch {}
+  }, []);
+
+  const relockAdmin2 = useCallback(() => {
+    setIsAdmin2Unlocked(false);
+    try {
+      sessionStorage.removeItem('esn_admin_2_unlocked');
+    } catch {}
+    setActiveTab('overview');
+    showToast('Admin 2 locked.');
+  }, [showToast]);
+
+  const verify2FaClearance = useCallback(() => {
+    setIsAdmin2FaVerified(true);
+    try {
+      sessionStorage.setItem('esn_admin_2fa_verified', 'true');
+    } catch {}
+    showToast('Two-factor authentication clearance granted.');
+  }, [showToast]);
+
   return {
     activeTab,
     setActiveTab,
@@ -877,6 +1181,24 @@ export const useAdminOperationsData = () => {
     handleApprovePlayer,
     handleRejectPlayer,
     refreshData: fetchOperationsData,
+    failedCalls,
+    slowQueries,
+    hourlyTraffic,
+    pageVisitAnalytics,
+    isAdmin2Unlocked,
+    unlockAdmin2,
+    relockAdmin2,
+    isAdmin2FaVerified,
+    verify2FaClearance,
+    runLiveDiagnostic,
+    isProbeRunning,
+    toggleProbe,
+    probeCount,
+    verifyAdmin2Password,
+    updateAdmin2Password,
+    applyIndexOptimization,
+    clearFailedCalls,
   };
 };
+
 
