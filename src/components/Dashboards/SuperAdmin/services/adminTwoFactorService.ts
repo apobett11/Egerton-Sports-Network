@@ -15,6 +15,8 @@ export interface Admin2FAVerifyResult {
   success: boolean;
   message?: string;
   clearedUntil?: number;
+  isPasskey?: boolean;
+  clearanceType?: 'weekly' | 'single_session';
   error?: string;
   isStale?: boolean;
 }
@@ -31,8 +33,16 @@ const MAX_REQUESTS_PER_DAY = 7;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
+async function computeSha256(str: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /**
- * Request a 6-digit 2FA verification code via Supabase Edge Function
+ * Request a 6-digit 2FA verification code via Supabase Edge Function & Supabase Auth mailer
  * Enforces strictly 6-minute validity and maximum 7 requests per day.
  */
 export async function requestAdmin2FACode(
@@ -40,8 +50,23 @@ export async function requestAdmin2FACode(
 ): Promise<Admin2FARequestResult> {
   const cleanEmail = email.trim().toLowerCase();
 
+  // 1. Trigger Supabase Auth OTP delivery to email
   try {
-    // 1. Invoke Supabase Edge Function 'admin-2fa'
+    const { data: userSession } = await supabase.auth.getSession();
+    if (userSession?.session) {
+      await supabase.auth.reauthenticate();
+    } else {
+      await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { shouldCreateUser: false },
+      });
+    }
+  } catch (authMailErr) {
+    console.warn('[2FA Service] Supabase Auth mail dispatch warning:', authMailErr);
+  }
+
+  // 2. Invoke Supabase Edge Function 'admin-2fa'
+  try {
     const { data, error } = await supabase.functions.invoke('admin-2fa', {
       body: { action: 'request_code', email: cleanEmail },
     });
@@ -58,7 +83,7 @@ export async function requestAdmin2FACode(
       };
     }
 
-    if (data?.error) {
+    if (data && (data.success === false || data.error)) {
       return {
         success: false,
         message: data.error,
@@ -143,8 +168,9 @@ export async function requestAdmin2FACode(
 }
 
 /**
- * Verify a 6-digit 2FA code against the database & Edge Function
- * Validates expiration (6 minutes) and grants 1-week clearance.
+ * Verify a 6-digit 2FA code or Emergency Passkey against the Edge Function & database.
+ * - If Passkey: Grants single-session ("once pass") clearance only. Subsequent visits still demand 2FA.
+ * - If 2FA OTP: Grants full 7-day weekly clearance.
  */
 export async function verifyAdmin2FACode(
   email: string = DEFAULT_ADMIN_EMAIL,
@@ -154,7 +180,7 @@ export async function verifyAdmin2FACode(
   const cleanCode = code.trim().replace(/\s+/g, '');
 
   if (!cleanCode) {
-    return { success: false, error: 'Please enter the 6-digit verification code.' };
+    return { success: false, error: 'Please enter the verification code or passkey.' };
   }
 
   // 1. Attempt verification via Supabase Edge Function
@@ -164,6 +190,22 @@ export async function verifyAdmin2FACode(
     });
 
     if (!error && data && data.success) {
+      if (data.is_passkey) {
+        // Passkey: Single-session clearance ("once pass") ONLY
+        try {
+          sessionStorage.setItem('esn_admin_2fa_verified', 'true');
+          // Do not grant weekly clearance in localStorage
+        } catch {}
+
+        return {
+          success: true,
+          message: data.message || 'Emergency passkey accepted for this session.',
+          isPasskey: true,
+          clearanceType: 'single_session',
+        };
+      }
+
+      // Email 2FA OTP: Full 7-day weekly clearance
       const clearedUntil = data.weekly_cleared_until || Date.now() + ONE_WEEK_MS;
       try {
         sessionStorage.setItem('esn_admin_2fa_verified', 'true');
@@ -174,6 +216,8 @@ export async function verifyAdmin2FACode(
         success: true,
         message: data.message || 'Two-factor clearance verified successfully.',
         clearedUntil,
+        isPasskey: false,
+        clearanceType: 'weekly',
       };
     }
 
@@ -191,6 +235,32 @@ export async function verifyAdmin2FACode(
   // 2. Direct database fallback
   try {
     const now = Date.now();
+
+    // Check passkey hash in system_settings
+    const { data: passkeyRow } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'admin_passkey_security')
+      .maybeSingle();
+
+    const storedHash = passkeyRow?.value?.passkey_hash;
+    const inputHash = await computeSha256(cleanCode);
+
+    if (storedHash && inputHash === storedHash) {
+      // Passkey matched! Single-session once pass
+      try {
+        sessionStorage.setItem('esn_admin_2fa_verified', 'true');
+      } catch {}
+
+      return {
+        success: true,
+        message: 'Emergency passkey accepted for this session.',
+        isPasskey: true,
+        clearanceType: 'single_session',
+      };
+    }
+
+    // Not passkey — check Email 2FA OTP record
     const { data: row } = await supabase
       .from('system_settings')
       .select('value')
@@ -209,9 +279,9 @@ export async function verifyAdmin2FACode(
       };
     }
 
-    const isMatch = cleanCode === activeCode || cleanCode === '157487';
+    const isMatch = cleanCode === activeCode;
     if (!isMatch) {
-      return { success: false, error: 'Invalid verification code. Please try again.' };
+      return { success: false, error: 'Invalid verification code or passkey. Please try again.' };
     }
 
     const weeklyClearedUntil = now + ONE_WEEK_MS;
@@ -236,9 +306,49 @@ export async function verifyAdmin2FACode(
       success: true,
       message: 'Two-factor clearance verified successfully. Session valid for 1 week.',
       clearedUntil: weeklyClearedUntil,
+      isPasskey: false,
+      clearanceType: 'weekly',
     };
   } catch (fallbackErr: any) {
     return { success: false, error: fallbackErr.message || 'Verification failed.' };
+  }
+}
+
+/**
+ * Update the Executive Passkey stored securely hashed in the database
+ */
+export async function updateAdminPasskey(newPasskey: string): Promise<{ success: boolean; error?: string }> {
+  const cleanPasskey = newPasskey.trim();
+  if (cleanPasskey.length < 6) {
+    return { success: false, error: 'Passkey must be at least 6 characters long.' };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('admin-2fa', {
+      body: { action: 'update_passkey', new_passkey: cleanPasskey },
+    });
+
+    if (!error && data && data.success) {
+      return { success: true };
+    }
+  } catch {}
+
+  // Fallback direct database hash update
+  try {
+    const hash = await computeSha256(cleanPasskey);
+    const { error: dbErr } = await supabase.from('system_settings').upsert({
+      key: 'admin_passkey_security',
+      value: {
+        passkey_hash: hash,
+        updated_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    });
+
+    if (dbErr) throw dbErr;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update passkey.' };
   }
 }
 

@@ -57,7 +57,7 @@ test.describe('Admin 2FA Edge Request, 6-Minute Expiration, and Rate Limiting Te
       }
 
       if (action === 'verify_code') {
-        if (code === generatedCode || code === '157487') {
+        if (code === generatedCode) {
           return route.fulfill({
             status: 200,
             contentType: 'application/json',

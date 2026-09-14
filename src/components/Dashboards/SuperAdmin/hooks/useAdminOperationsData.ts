@@ -1120,14 +1120,19 @@ export const useAdminOperationsData = () => {
     showToast('Admin 2 locked.');
   }, [showToast]);
 
-  const verify2FaClearance = useCallback(() => {
+  const verify2FaClearance = useCallback((clearanceType: 'weekly' | 'single_session' = 'weekly') => {
     setIsAdmin2FaVerified(true);
-    const weeklyClearedUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
     try {
       sessionStorage.setItem('esn_admin_2fa_verified', 'true');
-      localStorage.setItem('esn_admin_2fa_cleared_until', String(weeklyClearedUntil));
+      if (clearanceType === 'weekly') {
+        const weeklyClearedUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        localStorage.setItem('esn_admin_2fa_cleared_until', String(weeklyClearedUntil));
+        showToast('Two-factor authentication clearance granted for 1 week.');
+      } else {
+        localStorage.removeItem('esn_admin_2fa_cleared_until');
+        showToast('Emergency passkey accepted for current session.');
+      }
     } catch {}
-    showToast('Two-factor authentication clearance granted for 1 week.');
   }, [showToast]);
 
   return {

@@ -10,9 +10,11 @@ import {
   ShieldCheck,
   Clock,
   CheckCircle,
+  Key,
 } from 'lucide-react';
 
 import { supabase } from '../../../../../lib/supabase';
+import { updateAdminPasskey } from '../../services/adminTwoFactorService';
 
 interface AdminProfileViewProps {
   onLogout: () => void;
@@ -35,6 +37,11 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
   const [admin2ConfirmPass, setAdmin2ConfirmPass] = useState('');
   const [isUpdatingPass2, setIsUpdatingPass2] = useState(false);
   const [pass2EmailSent, setPass2EmailSent] = useState(false);
+
+  const [newPasskey, setNewPasskey] = useState('');
+  const [confirmPasskey, setConfirmPasskey] = useState('');
+  const [isUpdatingPasskey, setIsUpdatingPasskey] = useState(false);
+  const [passkeyEmailSent, setPasskeyEmailSent] = useState(false);
 
   const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'System Administrator';
   const email = profile?.email || user?.email || 'apobett11@gmail.com';
@@ -119,6 +126,43 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
     }
   };
 
+  const handleChangePasskey = async () => {
+    if (!newPasskey || newPasskey !== confirmPasskey) {
+      showToast('Please ensure passkeys match.');
+      return;
+    }
+    if (newPasskey.length < 6) {
+      showToast('Passkey must be at least 6 characters long.');
+      return;
+    }
+
+    setIsUpdatingPasskey(true);
+    try {
+      const res = await updateAdminPasskey(newPasskey);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to update passkey.');
+      }
+
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'ADMIN_EMERGENCY_PASSKEY_UPDATED',
+          resource_type: 'system_settings.admin_passkey_security',
+          resource_id: email,
+          metadata: { updated_by: email, timestamp: new Date().toISOString() },
+        });
+      } catch {}
+
+      setPasskeyEmailSent(true);
+      showToast('Emergency 2FA Passkey updated securely in database.');
+      setNewPasskey('');
+      setConfirmPasskey('');
+    } catch (err: any) {
+      showToast(`Failed to update passkey: ${err.message}`);
+    } finally {
+      setIsUpdatingPasskey(false);
+    }
+  };
+
   const activeSessions = [
     {
       device: 'Current Browser Session',
@@ -143,7 +187,7 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Details */}
         <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4">
           <div className="flex items-center gap-3">
@@ -174,6 +218,61 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
           </div>
         </div>
 
+        {/* Sessions & Logout */}
+        <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Laptop className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                Active Administrator Sessions
+              </h3>
+            </div>
+
+            <div className="space-y-2.5">
+              {activeSessions.map((s, i) => {
+                const Icon = s.icon;
+                return (
+                  <div key={i} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <div className="text-xs font-bold text-white">{s.device}</div>
+                        <div className="text-[10px] text-gray-400">{s.location} • {s.ip}</div>
+                      </div>
+                    </div>
+                    {s.isCurrent && (
+                      <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold">
+                        Active Now
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={onLogout}
+            className="w-full py-3 px-4 bg-rose-950/40 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-900/50 transition-all flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out of Operations Console</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Security Credentials & Passwords Section */}
+      <div className="pt-2">
+        <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Security Credentials & Access Passwords</span>
+        </h3>
+        <p className="text-[11px] text-gray-500 mt-0.5">
+          Manage login credentials, Admin 2 deep access password, and emergency 2FA passkey stored securely in the database.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Change Password 1 (Login Password) */}
         <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4">
           <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
@@ -290,46 +389,62 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Sessions & Logout */}
-        <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4 flex flex-col justify-between">
-          <div className="space-y-4">
+        {/* Change Passkey (Emergency 2FA Passkey) */}
+        <div className="p-6 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] space-y-4">
+          <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
             <div className="flex items-center gap-2">
-              <Laptop className="w-5 h-5 text-cyan-400" />
-              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
-                Active Administrator Sessions
-              </h3>
+              <Key className="w-5 h-5 text-purple-400" />
+              <div>
+                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+                  Change Passkey (Emergency 2FA)
+                </h3>
+                <span className="text-[10px] text-gray-400">Instant single-session clearance • Securely hashed</span>
+              </div>
             </div>
-
-            <div className="space-y-2.5">
-              {activeSessions.map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <div key={i} className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A] flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 text-emerald-400" />
-                      <div>
-                        <div className="text-xs font-bold text-white">{s.device}</div>
-                        <div className="text-[10px] text-gray-400">{s.location} • {s.ip}</div>
-                      </div>
-                    </div>
-                    {s.isCurrent && (
-                      <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold">
-                        Active Now
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              Hashed SHA-256
+            </span>
           </div>
 
-          <button
-            onClick={onLogout}
-            className="w-full py-3 px-4 bg-rose-950/40 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl border border-rose-900/50 transition-all flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out of Operations Console</span>
-          </button>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">New Emergency Passkey</label>
+              <input
+                type="password"
+                placeholder="Enter new emergency passkey"
+                value={newPasskey}
+                onChange={(e) => setNewPasskey(e.target.value)}
+                className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl p-3 text-xs text-white outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Confirm New Emergency Passkey</label>
+              <input
+                type="password"
+                placeholder="Confirm new emergency passkey"
+                value={confirmPasskey}
+                onChange={(e) => setConfirmPasskey(e.target.value)}
+                className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl p-3 text-xs text-white outline-none focus:border-purple-500"
+              />
+            </div>
+
+            {passkeyEmailSent && (
+              <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/60 text-purple-300 text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0 text-purple-400" />
+                <span>Passkey hash updated in database. Single-session emergency access refreshed.</span>
+              </div>
+            )}
+
+            <button
+              onClick={handleChangePasskey}
+              disabled={isUpdatingPasskey}
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all min-h-[44px] cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Key className="w-4 h-4" />
+              <span>{isUpdatingPasskey ? 'Updating in Database...' : 'Change Passkey (Update Database Hash)'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

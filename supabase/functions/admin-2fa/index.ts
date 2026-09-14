@@ -14,6 +14,14 @@ const MAX_REQUESTS_PER_DAY = 7; // Maximum 7 requests within rolling 24-hour day
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000; // Weekly session clearance
 
+async function sha256(str: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -35,9 +43,53 @@ serve(async (req: Request) => {
     });
 
     const body = await req.json().catch(() => ({}));
-    const { action = 'request_code', email = ADMIN_EMAIL, code: inputCode = '' } = body;
+    const { action = 'request_code', email = ADMIN_EMAIL, code: inputCode = '', new_passkey = '' } = body;
     const cleanEmail = String(email || ADMIN_EMAIL).trim().toLowerCase();
     const now = Date.now();
+
+    // =========================================================================
+    // ACTION: UPDATE_PASSKEY
+    // =========================================================================
+    if (action === 'update_passkey') {
+      const cleanPasskey = String(new_passkey || '').trim();
+      if (cleanPasskey.length < 6) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Passkey must be at least 6 characters long.' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const hashed = await sha256(cleanPasskey);
+      const { error: updateErr } = await supabaseAdmin.from('system_settings').upsert({
+        key: 'admin_passkey_security',
+        value: {
+          passkey_hash: hashed,
+          updated_at: new Date(now).toISOString(),
+        },
+        updated_at: new Date(now).toISOString(),
+      });
+
+      if (updateErr) {
+        return new Response(
+          JSON.stringify({ success: false, error: updateErr.message }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        await supabaseAdmin.from('audit_logs').insert({
+          action: 'ADMIN_PASSKEY_UPDATED',
+          resource_type: 'auth.passkey',
+          resource_id: cleanEmail,
+          metadata: { timestamp: new Date(now).toISOString() },
+        });
+      } catch {}
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Executive passkey updated securely in database.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // 1. Fetch current 2FA settings from database
     const { data: existingRow } = await supabaseAdmin
@@ -132,22 +184,61 @@ serve(async (req: Request) => {
     }
 
     // =========================================================================
-    // ACTION: VERIFY_CODE
+    // ACTION: VERIFY_CODE (OTP OR PASSKEY)
     // =========================================================================
     if (action === 'verify_code') {
       const cleanInput = String(inputCode).trim().replace(/\s+/g, '');
 
       if (!cleanInput) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Please enter the 6-digit verification code.' }),
+          JSON.stringify({ success: false, error: 'Please enter the verification code or passkey.' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      // 1. Check if input matches the securely stored Passkey Hash
+      const { data: passkeyRow } = await supabaseAdmin
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'admin_passkey_security')
+        .maybeSingle();
+
+      const storedPasskeyHash = passkeyRow?.value?.passkey_hash;
+      const inputHash = await sha256(cleanInput);
+
+      if (storedPasskeyHash && inputHash === storedPasskeyHash) {
+        // Passkey accepted!
+        // Instant clearance at any time, but ONLY single-session ("once pass"):
+        // Next time still requires 2FA until weekly 2FA is done!
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            action: 'ADMIN_PASSKEY_LOGIN_SINGLE_SESSION',
+            resource_type: 'auth.passkey',
+            resource_id: cleanEmail,
+            metadata: {
+              timestamp: new Date(now).toISOString(),
+              ip: req.headers.get('x-forwarded-for') || 'edge-client',
+            },
+          });
+        } catch {}
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Emergency passkey verified. Single-session clearance granted (weekly 2FA still required for subsequent sessions).',
+            is_passkey: true,
+            clearance_type: 'single_session',
+            weekly_cleared_until: null,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // 2. Not a passkey — check as Email 2FA OTP Code
       const activeCode = String(currentRecord.code || '').trim();
       const expiresAtMs = Number(currentRecord.expires_at_ms) || 0;
 
-      // 1. Expiration check: valid strictly for 6 minutes
+      // Expiration check: valid strictly for 6 minutes
       if (!activeCode || !expiresAtMs || now > expiresAtMs) {
         return new Response(
           JSON.stringify({
@@ -159,8 +250,8 @@ serve(async (req: Request) => {
         );
       }
 
-      // 2. Code match check (or emergency passkey bypass)
-      const isMatch = cleanInput === activeCode || cleanInput === '157487';
+      // Code match check
+      const isMatch = cleanInput === activeCode;
 
       if (!isMatch) {
         const attempts = (Number(currentRecord.attempts) || 0) + 1;
@@ -173,12 +264,12 @@ serve(async (req: Request) => {
           .eq('key', 'admin_2fa_verification');
 
         return new Response(
-          JSON.stringify({ success: false, error: 'Invalid verification code. Please try again.' }),
+          JSON.stringify({ success: false, error: 'Invalid verification code or passkey. Please try again.' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // 3. Success: Grant 7-day weekly clearance
+      // 3. Success via Email OTP: Grant full 7-day weekly clearance
       const weeklyClearedUntil = now + ONE_WEEK_MS;
 
       await supabaseAdmin
@@ -187,7 +278,7 @@ serve(async (req: Request) => {
           key: 'admin_2fa_verification',
           value: {
             ...currentRecord,
-            code: null, // Clear used code
+            code: null, // Clear used code immediately
             verified: true,
             verified_at: new Date(now).toISOString(),
             weekly_cleared_until: weeklyClearedUntil,
@@ -211,6 +302,8 @@ serve(async (req: Request) => {
         JSON.stringify({
           success: true,
           message: 'Two-factor clearance verified successfully. Session valid for 1 week.',
+          is_passkey: false,
+          clearance_type: 'weekly',
           weekly_cleared_until: weeklyClearedUntil,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

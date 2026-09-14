@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Lock, Smartphone, AlertCircle, CheckCircle2, RotateCw, Clock, Mail } from 'lucide-react';
+import { ShieldCheck, Lock, KeyRound, AlertCircle, CheckCircle2, RotateCw, Clock, Mail, ShieldAlert } from 'lucide-react';
 import { requestAdmin2FACode, verifyAdmin2FACode } from '../../services/adminTwoFactorService';
 
 interface AdminTwoFactorModalProps {
   isOpen: boolean;
-  onVerified: () => void;
+  onVerified: (clearanceType?: 'weekly' | 'single_session') => void;
   adminEmail?: string;
   onCancel?: () => void;
 }
@@ -21,9 +21,10 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [isRequestingCode, setIsRequestingCode] = useState<boolean>(false);
   const [trustDevice, setTrustDevice] = useState<boolean>(true);
-  const [showSecretKey, setShowSecretKey] = useState<boolean>(false);
+  const [isPasskeyMode, setIsPasskeyMode] = useState<boolean>(false);
+  const [passkeyInput, setPasskeyInput] = useState<string>('');
 
-  // Expiry & Countdown State (strictly 6 minutes)
+  // Expiry & Countdown State (strictly 6 minutes for OTP)
   const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
   const [isExpired, setIsExpired] = useState<boolean>(false);
@@ -104,66 +105,42 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  // Verification handler (supports both OTP code and Passkey)
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanCode = code.trim().replace(/\s+/g, '');
+    const tokenToVerify = isPasskeyMode ? passkeyInput.trim() : code.trim().replace(/\s+/g, '');
 
-    if (!cleanCode) {
-      setError('Please enter your 6-digit two-factor verification code.');
-      return;
-    }
-
-    if (isExpired && cleanCode !== '157487') {
-      setError('This verification code has expired (6-minute limit). Please request a new code.');
+    if (!tokenToVerify) {
+      setError(isPasskeyMode ? 'Please enter your executive passkey.' : 'Please enter your 6-digit verification code.');
       return;
     }
 
     setIsVerifying(true);
     setError(null);
 
-    const result = await verifyAdmin2FACode(adminEmail, cleanCode);
+    const result = await verifyAdmin2FACode(adminEmail, tokenToVerify);
     setIsVerifying(false);
 
     if (result.success) {
-      if (trustDevice) {
-        try {
-          sessionStorage.setItem('esn_admin_2fa_verified', 'true');
-          if (result.clearedUntil) {
-            localStorage.setItem('esn_admin_2fa_cleared_until', String(result.clearedUntil));
-          }
-        } catch {}
+      if (result.isPasskey) {
+        // Passkey: Single-session "once pass" clearance ONLY.
+        // Weekly clearance is NOT granted; next session will demand 2FA.
+        setSuccessMsg('Emergency Passkey accepted (Single-Session Clearance). Weekly 2FA still required on next session.');
+        setTimeout(() => {
+          onVerified('single_session');
+        }, 300);
+      } else {
+        // Email OTP: Full weekly clearance granted.
+        setSuccessMsg('Two-factor authentication clearance granted for 1 week.');
+        setTimeout(() => {
+          onVerified('weekly');
+        }, 300);
       }
-      onVerified();
     } else {
-      setError(result.error || 'Invalid two-factor authentication code. Please try again.');
+      setError(result.error || 'Invalid verification code or passkey. Please try again.');
       if (result.isStale) {
         setIsExpired(true);
       }
-    }
-  };
-
-  const handleQuickBypass = async () => {
-    setCode('157487');
-    setError(null);
-    setIsVerifying(true);
-
-    const result = await verifyAdmin2FACode(adminEmail, '157487');
-    setIsVerifying(false);
-
-    if (result.success) {
-      try {
-        sessionStorage.setItem('esn_admin_2fa_verified', 'true');
-        if (result.clearedUntil) {
-          localStorage.setItem('esn_admin_2fa_cleared_until', String(result.clearedUntil));
-        }
-      } catch {}
-      onVerified();
-    } else {
-      // Direct passkey fallback
-      try {
-        sessionStorage.setItem('esn_admin_2fa_verified', 'true');
-      } catch {}
-      onVerified();
     }
   };
 
@@ -188,7 +165,7 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
             </div>
           </div>
           <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-            EDGE OTP
+            {isPasskeyMode ? 'PASSKEY' : 'EDGE OTP'}
           </span>
         </div>
 
@@ -202,26 +179,37 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
             <span className="font-mono text-emerald-400 font-semibold">{adminEmail}</span>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#222222]">
-            <span className="flex items-center gap-1 text-gray-400">
-              <Clock className="w-3.5 h-3.5 text-teal-400" />
-              Code Validity (6 mins):
-            </span>
-            {isExpired ? (
-              <span className="font-mono text-rose-400 font-bold">EXPIRED</span>
-            ) : (
-              <span className="font-mono text-emerald-400 font-bold tracking-wider">
-                {formatTimer(secondsRemaining)}
-              </span>
-            )}
-          </div>
+          {!isPasskeyMode ? (
+            <>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#222222]">
+                <span className="flex items-center gap-1 text-gray-400">
+                  <Clock className="w-3.5 h-3.5 text-teal-400" />
+                  Code Validity (6 mins):
+                </span>
+                {isExpired ? (
+                  <span className="font-mono text-rose-400 font-bold">EXPIRED</span>
+                ) : (
+                  <span className="font-mono text-emerald-400 font-bold tracking-wider">
+                    {formatTimer(secondsRemaining)}
+                  </span>
+                )}
+              </div>
 
-          <div className="flex items-center justify-between text-[10px] text-gray-500 pt-0.5">
-            <span>Daily Requests Limit:</span>
-            <span>
-              <strong className="text-gray-300">{requestsToday}</strong> of {maxRequests} used ({remainingRequests} remaining)
-            </span>
-          </div>
+              <div className="flex items-center justify-between text-[10px] text-gray-500 pt-0.5">
+                <span>Daily Requests Limit:</span>
+                <span>
+                  <strong className="text-gray-300">{requestsToday}</strong> of {maxRequests} used ({remainingRequests} remaining)
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="pt-1 border-t border-[#222222] text-[11px] text-amber-400/90 flex items-start gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+              <span>
+                <strong>Single-Session Notice:</strong> The Emergency Passkey grants one-time access for this session only. Weekly 2FA remains required on subsequent sessions.
+              </span>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -239,116 +227,130 @@ export const AdminTwoFactorModal: React.FC<AdminTwoFactorModalProps> = ({
         )}
 
         <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
-                Authentication Code
-              </label>
-              {isExpired && (
-                <span className="text-[10px] text-rose-400 font-medium">
-                  Stale • Request a new code
+          {!isPasskeyMode ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                  Authentication Code
+                </label>
+                {isExpired && (
+                  <span className="text-[10px] text-rose-400 font-medium">
+                    Stale • Request a new code
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  autoFocus
+                  maxLength={32}
+                  value={code}
+                  onChange={(e) => {
+                    setCode(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="000000"
+                  className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-emerald-400 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                />
+                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                  Executive Passkey
+                </label>
+                <span className="text-[10px] text-amber-400 font-medium">
+                  One-time session pass
                 </span>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                autoFocus
-                maxLength={6}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value);
-                  setError(null);
-                }}
-                placeholder="000000"
-                className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-emerald-400 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-              />
-              <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <label className="flex items-center gap-2 text-gray-400 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={trustDevice}
-                onChange={(e) => setTrustDevice(e.target.checked)}
-                className="rounded bg-[#222222] border-gray-700 text-emerald-500 focus:ring-emerald-500/30"
-              />
-              <span>Remember 7-day weekly session</span>
-            </label>
-
-            <button
-              type="button"
-              disabled={isRequestingCode || remainingRequests === 0}
-              onClick={() => handleRequestCode(true)}
-              className="text-[11px] text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <RotateCw className={`w-3 h-3 ${isRequestingCode ? 'animate-spin' : ''}`} />
-              <span>Resend Code</span>
-            </button>
-          </div>
-
-          {showSecretKey && (
-            <div className="p-3 bg-[#131313] border border-dashed border-[#333333] rounded-xl text-xs space-y-1">
-              <div className="text-[10px] uppercase font-bold text-gray-400 flex items-center justify-between">
-                <span>Direct Security Clearance</span>
-                <span className="text-emerald-400 font-mono">6 Mins Limit</span>
               </div>
-              <div className="font-mono text-emerald-400 bg-black/60 px-2 py-1 rounded text-center select-all text-xs tracking-wider">
-                ESN-ADM-1574-8768-EG7N
+              <div className="relative">
+                <input
+                  type="password"
+                  autoFocus
+                  maxLength={32}
+                  value={passkeyInput}
+                  onChange={(e) => {
+                    setPasskeyInput(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Enter secret passkey..."
+                  className="w-full bg-[#111111] border border-amber-500/40 focus:border-amber-400 rounded-xl px-4 py-3 text-center text-xl font-mono tracking-wider text-amber-300 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all"
+                />
+                <KeyRound className="w-4 h-4 text-amber-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               </div>
-              <p className="text-[10px] text-gray-500">
-                Emergency bypass passkey: <code className="text-gray-300">157487</code>
-              </p>
+            </div>
+          )}
+
+          {!isPasskeyMode && (
+            <div className="flex items-center justify-between text-xs pt-0.5">
+              <label className="flex items-center gap-2 text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                  className="rounded bg-[#222222] border-gray-700 text-emerald-500 focus:ring-emerald-500/30"
+                />
+                <span>Remember 7-day weekly session</span>
+              </label>
+
+              <button
+                type="button"
+                disabled={isRequestingCode || remainingRequests === 0}
+                onClick={() => handleRequestCode(true)}
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <RotateCw className={`w-3 h-3 ${isRequestingCode ? 'animate-spin' : ''}`} />
+                <span>Resend Code</span>
+              </button>
             </div>
           )}
 
           <div className="space-y-2 pt-2">
             <button
               type="submit"
-              disabled={isVerifying || (isExpired && code !== '157487')}
-              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-[#252525] disabled:text-gray-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all cursor-pointer min-h-[44px]"
+              disabled={isVerifying || (!isPasskeyMode && isExpired && !code)}
+              className={`w-full py-3 px-4 ${
+                isPasskeyMode
+                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30'
+              } disabled:bg-[#252525] disabled:text-gray-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer min-h-[44px]`}
             >
               {isVerifying ? (
-                <span>Verifying 2FA Clearance...</span>
+                <span>Verifying Clearance...</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Verify 2FA Clearance</span>
+                  <span>{isPasskeyMode ? 'Authenticate with Passkey' : 'Verify 2FA Clearance'}</span>
                 </>
               )}
             </button>
 
             <button
               type="button"
-              onClick={handleQuickBypass}
+              onClick={() => {
+                setIsPasskeyMode(!isPasskeyMode);
+                setError(null);
+              }}
               className="w-full py-2.5 px-3 bg-[#202020] hover:bg-[#282828] text-gray-300 hover:text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-[#2F2F2F] transition-all cursor-pointer min-h-[40px]"
             >
-              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Instant Passkey Access (Quick Verify)</span>
+              <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isPasskeyMode ? 'Switch to Email 2FA Code' : 'Instant Passkey Access (Single-Session Pass)'}</span>
             </button>
           </div>
         </form>
 
-        <div className="mt-4 pt-3 border-t border-[#262626] flex items-center justify-between text-xs text-gray-500">
-          <button
-            type="button"
-            onClick={() => setShowSecretKey(!showSecretKey)}
-            className="hover:text-gray-300 transition-colors cursor-pointer"
-          >
-            {showSecretKey ? 'Hide Passkey Info' : 'View Passkey Reference'}
-          </button>
-
-          {onCancel && (
+        {onCancel && (
+          <div className="mt-4 pt-3 border-t border-[#262626] text-center">
             <button
               onClick={onCancel}
-              className="hover:text-gray-300 transition-colors cursor-pointer"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
             >
               Exit to Home
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
