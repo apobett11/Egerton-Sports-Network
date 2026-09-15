@@ -158,18 +158,18 @@ async function runTestSuite() {
   // -------------------------------------------------------------------------
   console.log('\n--- SUITE 2: Zero-Player & Boundary Reliability ---');
 
-  await recordTest('T2.1', 'Super Eagles: Query players table and handle 0-player roster gracefully', 'Reliability', async () => {
+  await recordTest('T2.1', 'Super Eagles: Query players table and verify live 30-player squad unit delivery', 'Reliability', async () => {
     const { data, fromCache, queryDurationMs } = await fetchSquadAsUnitWithCache(superEaglesTeamId);
 
-    // Verify invariant: must return an array (not null/undefined/error), exactly 0 elements
     if (!Array.isArray(data)) throw new Error('Expected data to be an Array');
+    if (data.length !== 30) throw new Error(`Expected 30 players for Super Eagles, received ${data.length}`);
 
     return {
       teamId: superEaglesTeamId,
       playerCount: data.length,
       fromCache,
       queryDurationMs: Math.round(queryDurationMs * 100) / 100,
-      behavior: 'Graceful empty array returned without hanging'
+      behavior: 'Delivered complete 30-player squad as a single unit on time'
     };
   });
 
@@ -398,6 +398,39 @@ async function runTestSuite() {
       p95LatencyMs: p95,
       p99LatencyMs: p99,
       averagePerQueryMs: Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 100) / 100
+    };
+  });
+
+  await recordTest('T5.3', 'EPL-Wide Audit: Verify all 12 EPL teams have registered live players', 'Integrity', async () => {
+    const { data: teams, error } = await supabase
+      .from('teams')
+      .select('id, name, short_name')
+      .is('deleted_at', null);
+
+    if (error) throw error;
+    const eplTeams = (teams || []).filter(t => t.id.startsWith('10000000-'));
+    if (eplTeams.length !== 12) throw new Error(`Expected 12 EPL teams, found ${eplTeams.length}`);
+
+    const teamPlayerAudits: Record<string, number> = {};
+    let totalPlayers = 0;
+
+    for (const t of eplTeams) {
+      const { data: pl, count } = await supabase
+        .from('players')
+        .select('id', { count: 'exact' })
+        .eq('team_id', t.id);
+
+      const pCount = count || pl?.length || 0;
+      if (pCount === 0) throw new Error(`EPL team ${t.name} (${t.id}) has 0 players!`);
+      teamPlayerAudits[t.name] = pCount;
+      totalPlayers += pCount;
+    }
+
+    return {
+      totalEplTeams: eplTeams.length,
+      all12TeamsHavePlayers: true,
+      totalEplPlayers: totalPlayers,
+      squadBreakdown: teamPlayerAudits
     };
   });
 
