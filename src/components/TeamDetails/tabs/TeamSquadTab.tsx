@@ -317,6 +317,19 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
         <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 w-20 sm:w-28 h-8 sm:h-10 border-2 border-b-0 border-white/50 pointer-events-none" />
         <div className="absolute bottom-18 sm:bottom-22 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white/70 rounded-full pointer-events-none" />
 
+        {/* Empty Squad Pitch Overlay when team has no registered players */}
+        {startingXI.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-30 bg-black/40 backdrop-blur-xs">
+            <Users className="w-12 h-12 text-white/70 mb-2 animate-pulse" />
+            <h4 className="text-sm sm:text-base font-black text-white uppercase tracking-wider">
+              Awaiting Squad Registration
+            </h4>
+            <p className="text-xs text-white/80 max-w-xs mt-1">
+              {teamName} squad is pending official registration with the league.
+            </p>
+          </div>
+        )}
+
         {/* 11 STARTING PLAYERS SIMULATION PITCH TOKENS */}
         {activeSlots.map((slot, index) => {
           const player = startingXI[index];
@@ -417,7 +430,18 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
           </div>
 
           <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-            {startingXI.map((player, idx) => {
+            {startingXI.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+                <Users className="w-10 h-10 mx-auto mb-2 text-slate-400 opacity-60" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  No Players Registered Yet
+                </p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  Official matchday squad list for {teamName} has not been published to the league database yet.
+                </p>
+              </div>
+            ) : (
+              startingXI.map((player, idx) => {
               const isCap = captain?.id === player.id;
               const posColor = getPositionBadgeColor(player.position);
 
@@ -475,7 +499,7 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 

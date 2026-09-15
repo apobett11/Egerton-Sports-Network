@@ -26,15 +26,31 @@ export function fromUuid(uuid: string): string {
     return uuid;
 }
 
+const teamResolutionCache = new Map<string, string>();
+const squadUnitCache = new Map<string, { timestamp: number; data: Player[] }>();
+const SQUAD_CACHE_TTL_MS = 30000; // 30s cache TTL to deliver as a unit and eliminate database stress
+
 export async function resolveRealTeamId(input: string): Promise<string> {
     if (!input) return DEFAULT_TEAM_UUID;
     if (isValidUuid(input)) return input;
+    const cleanKey = input.toLowerCase().trim();
+    if (teamResolutionCache.has(cleanKey)) {
+        return teamResolutionCache.get(cleanKey)!;
+    }
     try {
         const { data } = await supabase
             .from('teams')
             .select('id, name, short_name')
             .is('deleted_at', null);
         if (data && data.length > 0) {
+            data.forEach((t: any) => {
+                if (t.name) {
+                    teamResolutionCache.set(t.name.toLowerCase().trim(), t.id);
+                    teamResolutionCache.set(t.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'), t.id);
+                }
+                if (t.short_name) teamResolutionCache.set(t.short_name.toLowerCase().trim(), t.id);
+                teamResolutionCache.set(t.id, t.id);
+            });
             const clean = input.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
             const match = data.find((t: any) => 
                 t.id === input ||
@@ -42,10 +58,15 @@ export async function resolveRealTeamId(input: string): Promise<string> {
                 (t.short_name && t.short_name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') === clean) ||
                 t.name.toLowerCase() === input.toLowerCase()
             );
-            if (match) return match.id;
+            if (match) {
+                teamResolutionCache.set(cleanKey, match.id);
+                return match.id;
+            }
         }
     } catch {}
-    return toUuid(input);
+    const fallback = toUuid(input);
+    teamResolutionCache.set(cleanKey, fallback);
+    return fallback;
 }
 
 /**
@@ -109,6 +130,13 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
     if (!teamId) return [];
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
+
+        // Check in-memory squad unit cache to deliver on time without stressing database
+        const cached = squadUnitCache.get(actualTeamId);
+        if (cached && Date.now() - cached.timestamp < SQUAD_CACHE_TTL_MS) {
+            return cached.data;
+        }
+
         const { data, error } = await supabase
             .from('players')
             .select(`
@@ -136,8 +164,9 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
 
         if (error) throw error;
 
+        let result: Player[] = [];
         if (data && data.length > 0) {
-            return data.map((item: any, index: number) => {
+            result = data.map((item: any, index: number) => {
                 const profile = item.profiles || {};
                 const fullName = profile.first_name || profile.last_name
                     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
@@ -176,7 +205,8 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 };
             });
         }
-        return [];
+        squadUnitCache.set(actualTeamId, { timestamp: Date.now(), data: result });
+        return result;
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch players from DB:', err);
         return [];
