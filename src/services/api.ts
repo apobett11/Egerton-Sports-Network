@@ -218,7 +218,7 @@ export const ApiService = {
     }
 
     const cached = guestCache.get<Match>('match_details', fixtureId);
-    if (cached) return { success: true, data: cached };
+    if (cached && cached.lineups?.teamA && cached.lineups.teamA.length > 0) return { success: true, data: cached };
 
     try {
       const { data: f, error: fixErr } = await supabase
@@ -242,12 +242,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name), captain:profiles!captain_id(first_name, last_name)),
-          referee_prof:profiles!referee_id(first_name, last_name),
-          ar1_prof:profiles!assistant_referee_1_id(first_name, last_name),
-          ar2_prof:profiles!assistant_referee_2_id(first_name, last_name),
-          fo_prof:profiles!fourth_official_id(first_name, last_name)
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name)),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name))
         `)
         .eq('id', fixtureId)
         .single();
@@ -259,10 +255,28 @@ export const ApiService = {
       const comp = unwrap(f.competition);
       const home = unwrap(f.team_home);
       const away = unwrap(f.team_away);
-      const refProf = unwrap(f.referee_prof);
-      const ar1Prof = unwrap(f.ar1_prof);
-      const ar2Prof = unwrap(f.ar2_prof);
-      const foProf = unwrap(f.fo_prof);
+
+      // Cleanly resolve official profiles in batch without brittle schema relations
+      const officialIds = [
+        f.referee_id,
+        f.assistant_referee_1_id,
+        f.assistant_referee_2_id,
+        f.fourth_official_id
+      ].filter((id): id is string => Boolean(id && typeof id === 'string'));
+
+      const officialProfilesMap = new Map<string, { first_name: string; last_name: string }>();
+      if (officialIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', officialIds);
+        (profs || []).forEach((p: any) => officialProfilesMap.set(p.id, p));
+      }
+
+      const refProf = f.referee_id ? officialProfilesMap.get(f.referee_id) : null;
+      const ar1Prof = f.assistant_referee_1_id ? officialProfilesMap.get(f.assistant_referee_1_id) : null;
+      const ar2Prof = f.assistant_referee_2_id ? officialProfilesMap.get(f.assistant_referee_2_id) : null;
+      const foProf = f.fourth_official_id ? officialProfilesMap.get(f.fourth_official_id) : null;
 
       // Helper to normalize player positions
       const normalizePos = (pos?: string, defaultPos: 'GK' | 'DEF' | 'MID' | 'FWD' = 'MID'): 'GK' | 'DEF' | 'MID' | 'FWD' => {
@@ -416,12 +430,18 @@ export const ApiService = {
         }
 
         if (starterIds.length > 0) {
-          const starters = rawSquadA
-            .filter((p: any) => starterIds.includes(p.id))
-            .map((p: any, i: number) => formatPlayerRecord(p, home, i, false));
-          const subs = rawSquadA
-            .filter((p: any) => !starterIds.includes(p.id))
-            .map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
+          const matchedStarters = rawSquadA.filter((p: any) => starterIds.includes(p.id));
+          const matchedIds = new Set(matchedStarters.map((p: any) => p.id));
+          const remainingPlayers = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
+
+          // Ensure exactly 11 starters if roster permits
+          const startersList = [...matchedStarters];
+          while (startersList.length < 11 && remainingPlayers.length > 0) {
+            startersList.push(remainingPlayers.shift()!);
+          }
+
+          const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, home, i, false));
+          const subs = remainingPlayers.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
           teamAPlayers = [...starters, ...subs];
         } else {
           // Natural division: first 11 starters, remainder substitutes
@@ -474,12 +494,18 @@ export const ApiService = {
         }
 
         if (starterIds.length > 0) {
-          const starters = rawSquadB
-            .filter((p: any) => starterIds.includes(p.id))
-            .map((p: any, i: number) => formatPlayerRecord(p, away, i, false));
-          const subs = rawSquadB
-            .filter((p: any) => !starterIds.includes(p.id))
-            .map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
+          const matchedStarters = rawSquadB.filter((p: any) => starterIds.includes(p.id));
+          const matchedIds = new Set(matchedStarters.map((p: any) => p.id));
+          const remainingPlayers = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
+
+          // Ensure exactly 11 starters if roster permits
+          const startersList = [...matchedStarters];
+          while (startersList.length < 11 && remainingPlayers.length > 0) {
+            startersList.push(remainingPlayers.shift()!);
+          }
+
+          const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, away, i, false));
+          const subs = remainingPlayers.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
           teamBPlayers = [...starters, ...subs];
         } else {
           // Natural division: first 11 starters, remainder substitutes

@@ -50,7 +50,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   onShowToast,
   onSaveMatchLineup,
 }) => {
-  const isCoach = currentRole === 'COACH';
+  const isCoach = currentRole === 'COACH' || (currentRole as string).toLowerCase() === 'coach';
 
   // Builder for exactly 11 pitch simulation cards: filled with DB players; remaining cards remain empty position slots with avatar
   const buildPitchStartingXI = React.useCallback(

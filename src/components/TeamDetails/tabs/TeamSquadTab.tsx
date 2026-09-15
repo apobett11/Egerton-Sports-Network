@@ -136,7 +136,15 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
       const matched = startingXIIds
         .map((id) => roster.find((p) => p.id === id))
         .filter((p): p is Player => p !== undefined);
-      if (matched.length === 11) return matched;
+      if (matched.length > 0) {
+        const matchedIdSet = new Set(matched.map(p => p.id));
+        const remaining = roster.filter(p => !matchedIdSet.has(p.id));
+        const full11 = [...matched];
+        while (full11.length < 11 && remaining.length > 0) {
+          full11.push(remaining.shift()!);
+        }
+        return full11.slice(0, 11);
+      }
     }
     // Fallback: order by GK, DF, MD, FW
     const gks = roster.filter((p) => p.position === 'GK');
@@ -311,13 +319,8 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
 
         {/* 11 STARTING PLAYERS SIMULATION PITCH TOKENS */}
         {activeSlots.map((slot, index) => {
-          const player = startingXI[index] || {
-            id: `slot_${slot.slotId}`,
-            name: `Player ${slot.slotId + 1}`,
-            number: slot.slotId + 1,
-            position: slot.category as any,
-            rating: 78,
-          };
+          const player = startingXI[index];
+          if (!player) return null;
 
           const isCap = captain?.id === player.id;
           const posBadgeColor = getPositionBadgeColor(slot.category);

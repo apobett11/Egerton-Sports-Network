@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://hizfgvgbsguhduxortrx.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpemZndmdic2d1aGR1eG9ydHJ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTM4NTk3MSwiZXhwIjoyMTAwOTYxOTcxfQ.5s2Khn3wBpjbwoVyW8VdKm7cWtckvhrnyjKWNMYgfG4';
@@ -214,7 +214,7 @@ async function main() {
         password: tempPassword,
         email_confirm: true,
         user_metadata: {
-          role: 'COACH',
+          role: 'coach',
           full_name: coach.full_name,
           nickname: coach.nickname,
           phone_number: coach.phone_number
@@ -239,7 +239,7 @@ async function main() {
             password: tempPassword,
             email_confirm: true,
             user_metadata: {
-              role: 'COACH',
+              role: 'coach',
               full_name: coach.full_name,
               nickname: coach.nickname,
               phone_number: coach.phone_number
@@ -268,7 +268,7 @@ async function main() {
         .from('profiles')
         .upsert({
           id: authUserId,
-          role: 'COACH',
+          role: 'coach',
           first_name: firstName,
           last_name: lastName,
           email: cleanEmail,

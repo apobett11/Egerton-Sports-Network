@@ -300,10 +300,10 @@ export const useAdminOperationsData = () => {
       });
 
       // Role Counters
-      const referees = allProfiles.filter((p) => p.role === 'referee');
-      const journalists = allProfiles.filter((p) => p.role === 'journalist');
-      const coaches = allProfiles.filter((p) => p.role === 'coach');
-      const captains = allProfiles.filter((p) => p.role === 'captain');
+      const referees = allProfiles.filter((p) => p.role?.toLowerCase() === 'referee');
+      const journalists = allProfiles.filter((p) => p.role?.toLowerCase() === 'journalist');
+      const coaches = allProfiles.filter((p) => p.role?.toLowerCase() === 'coach');
+      const captains = allProfiles.filter((p) => p.role?.toLowerCase() === 'captain');
       const scheduledFix = allFixtures.filter((f) => f.status === 'UPCOMING' || f.status === 'LIVE');
       const completedFix = allFixtures.filter((f) => f.status === 'FT');
       const revokedCount = allProfiles.filter((p) => (p as any).status === 'suspended' || p.bio?.includes('[SUSPENDED]')).length;

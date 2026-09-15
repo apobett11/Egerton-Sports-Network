@@ -89,7 +89,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   onShowToast,
   onDeletePlayer,
 }) => {
-  const isCoach = currentRole === 'COACH';
+  const isCoach = currentRole === 'COACH' || (currentRole as string).toLowerCase() === 'coach';
 
   // Sub-main menus: Players Directory vs Team Kits
   const [activeSubMenu, setActiveSubMenu] = useState<'players' | 'kits'>('players');

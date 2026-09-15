@@ -15,6 +15,7 @@ import {
   saveTeamTacticsConfig,
   saveTemporaryMatchSquad,
   DEFAULT_TEAM_UUID,
+  DEFAULT_COACH_UUID,
   publishTeamJournal,
   fetchTeamNews,
   fetchTeamStandings,
@@ -161,6 +162,15 @@ export const useTeamDashboard = () => {
 
       if (coachCapProfiles?.coach) {
         setCoachProfile(coachCapProfiles.coach);
+      } else {
+        setCoachProfile({
+          id: DEFAULT_COACH_UUID,
+          name: 'Head Coach',
+          email: 'coach@egerton.ac.ke',
+          phone: '',
+          avatarUrl: '',
+          role: 'coach',
+        });
       }
       if (coachCapProfiles?.captain) {
         setCaptainProfile(coachCapProfiles.captain);

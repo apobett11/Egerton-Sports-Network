@@ -26,6 +26,28 @@ export function fromUuid(uuid: string): string {
     return uuid;
 }
 
+export async function resolveRealTeamId(input: string): Promise<string> {
+    if (!input) return DEFAULT_TEAM_UUID;
+    if (isValidUuid(input)) return input;
+    try {
+        const { data } = await supabase
+            .from('teams')
+            .select('id, name, short_name')
+            .is('deleted_at', null);
+        if (data && data.length > 0) {
+            const clean = input.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+            const match = data.find((t: any) => 
+                t.id === input ||
+                t.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') === clean ||
+                (t.short_name && t.short_name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') === clean) ||
+                t.name.toLowerCase() === input.toLowerCase()
+            );
+            if (match) return match.id;
+        }
+    } catch {}
+    return toUuid(input);
+}
+
 /**
  * Resolves the authenticated user's assigned team record from Supabase 'teams' table.
  */
@@ -86,6 +108,7 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
 export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
     if (!teamId) return [];
     try {
+        const actualTeamId = await resolveRealTeamId(teamId);
         const { data, error } = await supabase
             .from('players')
             .select(`
@@ -108,7 +131,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                     role
                 )
             `)
-            .eq('team_id', teamId)
+            .eq('team_id', actualTeamId)
             .order('jersey_number', { ascending: true });
 
         if (error) throw error;
@@ -166,6 +189,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
 export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
     if (!teamId) return [];
     try {
+        const actualTeamId = await resolveRealTeamId(teamId);
         const { data, error } = await supabase
             .from('fixtures')
             .select(`
@@ -180,14 +204,14 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 away_team:teams!away_team_id (id, name, short_name, logo_url),
                 competition:competitions!competition_id (name)
             `)
-            .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+            .or(`home_team_id.eq.${actualTeamId},away_team_id.eq.${actualTeamId}`)
             .order('scheduled_time', { ascending: true });
 
         if (error) throw error;
 
         if (data && data.length > 0) {
             return data.map((f: any) => {
-                const isHome = f.home_team?.id === teamId;
+                const isHome = f.home_team?.id === actualTeamId;
                 const opponent = isHome ? f.away_team : f.home_team;
                 const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
                 const oppScore = isHome ? (f.score_away ?? 0) : (f.score_home ?? 0);
@@ -250,13 +274,14 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
 export async function fetchTeamStandings(teamId: string, competitionId?: string): Promise<StandingEntry[]> {
     try {
         let targetCompId = competitionId;
+        const actualTeamId = await resolveRealTeamId(teamId);
 
         // If competitionId was not passed, resolve from team record
-        if (!targetCompId && teamId) {
+        if (!targetCompId && actualTeamId) {
             const { data: teamRec } = await supabase
                 .from('teams')
                 .select('competition_id')
-                .eq('id', teamId)
+                .eq('id', actualTeamId)
                 .maybeSingle();
 
             if (teamRec?.competition_id) {
@@ -880,8 +905,15 @@ export async function fetchCoachCaptainProfiles(teamId: string, coachUserId?: st
                 email: coachData.email,
                 phone: coachData.phone,
                 avatarUrl: coachData.avatar_url || '',
-                role: coachData.role || 'COACH'
-            } : undefined,
+                role: (coachData.role || 'coach').toLowerCase() === 'coach' ? 'coach' : coachData.role
+            } : {
+                id: DEFAULT_COACH_UUID,
+                name: 'Head Coach',
+                email: 'coach@egerton.ac.ke',
+                phone: '',
+                avatarUrl: '',
+                role: 'coach'
+            },
             captain: captainData ? {
                 id: captainData.id,
                 name: `${captainData.first_name || ''} ${captainData.last_name || ''}`.trim() || 'Team Captain',
@@ -1079,7 +1111,7 @@ export interface FullTeamRecord extends DBTeam {
  */
 export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | null> {
     if (!teamId) return null;
-    const teamUuid = toUuid(teamId);
+    const teamUuid = await resolveRealTeamId(teamId);
     try {
         const { data, error } = await supabase
             .from('teams')

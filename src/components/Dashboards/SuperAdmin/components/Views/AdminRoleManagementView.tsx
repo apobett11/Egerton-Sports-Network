@@ -47,7 +47,7 @@ export const AdminRoleManagementView: React.FC<AdminRoleManagementViewProps> = (
     },
     {
       role: 'Coach',
-      count: userDirectory.filter((u) => u.role === 'coach').length,
+      count: userDirectory.filter((u) => u.role?.toLowerCase() === 'coach').length,
       description: 'Team tactics, starting XI selection, roster management, squad submissions.',
       canSubmitSquads: true,
       canSubmitReports: false,

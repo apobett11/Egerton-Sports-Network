@@ -84,6 +84,27 @@ const buildMatchSlug = (homeTeam: string, awayTeam: string, matchday?: number): 
   return matchday ? `${h}-vs-${a}-md${matchday}` : `${h}-vs-${a}`;
 };
 
+/** Resolve match slug → Match object by matching fixtures */
+const resolveMatchSlug = async (slug: string): Promise<Match | null> => {
+  try {
+    const res = await ApiService.getFixtures();
+    if (res.data && res.data.length > 0) {
+      const found = res.data.find((m: any) => {
+        const homeName = m.teamA?.name || m.homeTeamName || '';
+        const awayName = m.teamB?.name || m.awayTeamName || '';
+        return buildMatchSlug(homeName, awayName, m.matchday) === slug ||
+               buildMatchSlug(homeName, awayName) === slug ||
+               m.id === slug;
+      });
+      if (found) {
+        const detailed = await ApiService.getMatchDetails(found.id);
+        return detailed.data || found;
+      }
+    }
+  } catch {}
+  return null;
+};
+
 export const AppContent: React.FC = () => {
   // Hash route state for direct UI link switching without auth prompt
   const [route, setRoute] = useState<string>(() => {
@@ -435,6 +456,12 @@ export const AppContent: React.FC = () => {
         if (id) setSelectedTeamId(id);
       });
     }
+    if (initialRoute.startsWith('match/')) {
+      const slug = initialRoute.replace(/^match\/?/, '').split('/')[0];
+      resolveMatchSlug(slug).then((m) => {
+        if (m) setSelectedMatch(m);
+      });
+    }
 
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -473,6 +500,11 @@ export const AppContent: React.FC = () => {
       }
       if (!newRoute.startsWith('match/')) {
         setSelectedMatch(null);
+      } else {
+        const slug = newRoute.replace(/^match\/?/, '').split('/')[0];
+        resolveMatchSlug(slug).then((m) => {
+          if (m) setSelectedMatch(m);
+        });
       }
       if (newRoute.startsWith('team/')) {
         const slug = newRoute.replace(/^team\/?/, '').split('/')[0];

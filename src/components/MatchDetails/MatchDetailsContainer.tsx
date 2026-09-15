@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HelpCircle } from 'lucide-react';
-import type { Match } from '../../types';
+import type { Match, Player } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 import { MatchHeader } from './MatchHeader';
@@ -34,12 +34,51 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
         setCurrentMatch(match);
 
         // Fetch deep match details from database
-        ApiService.getMatchDetails(match.id).then((res) => {
-            if (res.data) {
+        ApiService.getMatchDetails(match.id).then(async (res) => {
+            if (res.data && res.data.lineups?.teamA && res.data.lineups.teamA.length > 0) {
                 setCurrentMatch(res.data);
+            } else {
+                // Direct database query fallback for team players:
+                // SELECT * FROM players WHERE team_id = team.id
+                const homeId = match.teamA?.id;
+                const awayId = match.teamB?.id;
+
+                const [pARes, pBRes] = await Promise.all([
+                    homeId ? supabase.from('players').select('id, jersey_number, position, first_name, last_name, profile_id').eq('team_id', homeId).order('jersey_number', { ascending: true }) : Promise.resolve({ data: [] as any[] }),
+                    awayId ? supabase.from('players').select('id, jersey_number, position, first_name, last_name, profile_id').eq('team_id', awayId).order('jersey_number', { ascending: true }) : Promise.resolve({ data: [] as any[] })
+                ]);
+
+                const mapDbPlayer = (p: any, idx: number, isSub: boolean): Player => ({
+                    id: p.id,
+                    name: (p.first_name && p.last_name) ? `${p.first_name} ${p.last_name}`.trim() : (p.name || `Player #${p.jersey_number || idx + 1}`),
+                    number: p.jersey_number || idx + 1,
+                    position: (p.position === 'GK' || p.position === 'DEF' || p.position === 'MID' || p.position === 'FWD') ? p.position : 'MID',
+                    isCaptain: false,
+                    isSub,
+                    profile_id: p.profile_id
+                });
+
+                const rawA = pARes.data || [];
+                const rawB = pBRes.data || [];
+
+                const startersA = rawA.slice(0, 11).map((p: any, i: number) => mapDbPlayer(p, i, false));
+                const subsA = rawA.slice(11).map((p: any, i: number) => mapDbPlayer(p, 11 + i, true));
+                const startersB = rawB.slice(0, 11).map((p: any, i: number) => mapDbPlayer(p, i, false));
+                const subsB = rawB.slice(11).map((p: any, i: number) => mapDbPlayer(p, 11 + i, true));
+
+                const base = res.data || match;
+                setCurrentMatch({
+                    ...base,
+                    lineups: {
+                        teamA: [...startersA, ...subsA],
+                        teamB: [...startersB, ...subsB],
+                        formationA: base.lineups?.formationA || '4-3-3',
+                        formationB: base.lineups?.formationB || '4-3-3'
+                    }
+                });
             }
         });
-    }, [match.id]);
+    }, [match.id, match.teamA?.id, match.teamB?.id]);
 
     useEffect(() => {
         const channel = supabase
