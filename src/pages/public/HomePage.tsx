@@ -488,20 +488,30 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showOddsModal, setShowOddsModal] = useState<boolean>(false);
   const [showOddsTooltip, setShowOddsTooltip] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('esn_odds_tooltip_dismissed') !== 'true';
+      // Clear legacy session storage flag starting from now
+      sessionStorage.removeItem('esn_odds_tooltip_dismissed');
+      // If odds page was already opened on this device, do not show popup
+      return localStorage.getItem('esn_odds_page_opened') !== 'true';
     } catch {
       return true;
     }
   });
 
-  // Collapsible by clicking anywhere else on the screen (non-clickable tooltip)
+  // Mark odds page opened permanently on this device
+  const markOddsOpened = useCallback(() => {
+    setShowOddsTooltip(false);
+    try {
+      localStorage.setItem('esn_odds_page_opened', 'true');
+    } catch {}
+  }, []);
+
+  // Collapsible by clicking anywhere else on the screen (non-clickable popup card)
+  // If ignored (clicked outside without opening odds), collapse for current view only.
+  // The ignored will always see the popup again on their next visit / page load.
   useEffect(() => {
     if (!showOddsTooltip) return;
     const handleGlobalClick = () => {
       setShowOddsTooltip(false);
-      try {
-        sessionStorage.setItem('esn_odds_tooltip_dismissed', 'true');
-      } catch {}
     };
     const timer = setTimeout(() => {
       window.addEventListener('click', handleGlobalClick);
@@ -511,6 +521,13 @@ export const HomePage: React.FC<HomePageProps> = ({
       window.removeEventListener('click', handleGlobalClick);
     };
   }, [showOddsTooltip]);
+
+  // Once odds page or modal is active, mark it permanently opened
+  useEffect(() => {
+    if (filterStatus === 'ODDS' || showOddsModal) {
+      markOddsOpened();
+    }
+  }, [filterStatus, showOddsModal, markOddsOpened]);
 
   // Filter fixtures by active filter status
   const filteredMatches = useMemo(() => {
@@ -610,10 +627,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowOddsTooltip(false);
-                      try {
-                        sessionStorage.setItem('esn_odds_tooltip_dismissed', 'true');
-                      } catch {}
+                      markOddsOpened();
                       setShowOddsModal(true);
                       setFilterStatus('ODDS');
                     }}
@@ -725,7 +739,10 @@ export const HomePage: React.FC<HomePageProps> = ({
             </p>
             <button
               type="button"
-              onClick={() => setShowOddsModal(true)}
+              onClick={() => {
+                markOddsOpened();
+                setShowOddsModal(true);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />

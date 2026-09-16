@@ -72,16 +72,24 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     // Navigate to homepage
     await page.goto('/');
 
-    // 1. Verify New Feature Tooltip is visible on the fixtures filters row
+    // 1. Verify New Feature Tooltip is visible on the fixtures filters row for a new visit
     const tooltip = page.locator('text=Match Predictions & Fan Poll');
     await expect(tooltip).toBeVisible({ timeout: 5000 });
 
-    // 2. Click the ODDS button
+    // 2. Ignore the popup: click somewhere else on the page to collapse it
+    await page.mouse.click(10, 10);
+    await expect(tooltip).not.toBeVisible({ timeout: 2000 });
+
+    // 3. Re-visit / reload the page: since the user only ignored it, the popup will appear again!
+    await page.reload();
+    await expect(page.locator('text=Match Predictions & Fan Poll')).toBeVisible({ timeout: 5000 });
+
+    // 4. Click the ODDS button to open odds page and modal
     const oddsButton = page.locator('button', { hasText: 'ODDS' }).first();
     await expect(oddsButton).toBeVisible();
     await oddsButton.click();
 
-    // 3. Verify modal opened with title, explanation, and psychological fun & personal safety notice
+    // 5. Verify modal opened with title, explanation, and psychological fun & personal safety notice
     const modalTitle = page.locator('text=Weekend Match Predictor Challenge');
     await expect(modalTitle).toBeVisible();
 
@@ -90,17 +98,21 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     await expect(page.locator('text=Zero Money:')).toBeVisible();
     await expect(page.locator('text=100% Private:')).toBeVisible();
 
-    // 4. Verify determinant question and options are visible
+    // 6. Verify determinant question and options are visible
     const yesButton = page.locator('button', { hasText: 'Yes, Great Idea!' });
     const noButton = page.locator('button', { hasText: 'No, Prefer Not' });
     await expect(yesButton).toBeVisible();
     await expect(noButton).toBeVisible();
 
-    // 5. Cast vote "Yes"
+    // 7. Cast vote "Yes"
     await yesButton.click();
 
-    // 6. Verify modal closes and user is returned to homepage with ALL filter active
+    // 8. Verify modal closes and user is returned to homepage with ALL filter active
     await expect(modalTitle).not.toBeVisible({ timeout: 3000 });
+
+    // 9. On subsequent visit/reload: since odds was opened, popup will not appear anymore
+    await page.reload();
+    await expect(page.locator('text=Match Predictions & Fan Poll')).not.toBeVisible({ timeout: 2000 });
   });
 
   test('Admin 2 Dashboard: Switch to Polls & Feature Determinants sub-page and verify metrics display', async ({ page }) => {
