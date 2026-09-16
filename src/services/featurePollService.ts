@@ -49,6 +49,29 @@ export class FeaturePollService {
   }
 
   /**
+   * Reset local storage flags for this feature poll to give every device a clean slate
+   */
+  static applyCleanSlate(featureKey: string = DEFAULT_FEATURE_KEY): void {
+    try {
+      const slateToken = 'esn_clean_slate_v3_applied';
+      if (localStorage.getItem(slateToken) !== 'true') {
+        localStorage.removeItem('esn_odds_popup_shown_v1');
+        localStorage.removeItem('esn_odds_popup_shown_v2');
+        localStorage.removeItem('esn_odds_popup_shown_v3');
+        localStorage.removeItem('esn_odds_page_opened');
+        localStorage.removeItem('esn_odds_page_opened_v1');
+        localStorage.removeItem('esn_odds_page_opened_v2');
+        localStorage.removeItem('esn_odds_tooltip_dismissed');
+        localStorage.removeItem(this.getStorageKey(featureKey));
+        sessionStorage.removeItem('esn_odds_tooltip_dismissed');
+        sessionStorage.removeItem(`esn_guest_visit_recorded_${featureKey}`);
+        sessionStorage.removeItem(`esn_odds_open_recorded_${featureKey}`);
+        localStorage.setItem(slateToken, 'true');
+      }
+    } catch {}
+  }
+
+  /**
    * Record that a device loaded/opened the guest homepage
    */
   static async recordGuestPageVisit(
@@ -102,6 +125,7 @@ export class FeaturePollService {
           {
             device_id: deviceId,
             feature_key: featureKey,
+            opened_guest_page: true,
             opened_odds_page: true,
             updated_at: timestamp,
           },

@@ -489,47 +489,51 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showOddsModal, setShowOddsModal] = useState<boolean>(false);
   const [showOddsTooltip, setShowOddsTooltip] = useState<boolean>(() => {
     try {
-      // Popup card with pointer only comes once per device
-      return localStorage.getItem('esn_odds_popup_shown_v2') !== 'true';
+      // Apply clean slate on initial read so all devices start fresh
+      FeaturePollService.applyCleanSlate();
+      // On fresh clean slate, popup appears until user opens the odds page
+      return localStorage.getItem('esn_odds_page_opened_v3') !== 'true';
     } catch {
       return true;
     }
   });
 
-  // Automatically track when this device opens/visits the guest homepage
+  // Automatically track when this device opens/visits the guest homepage (1 row per device)
   useEffect(() => {
     if (deviceId) {
       FeaturePollService.recordGuestPageVisit(deviceId);
     }
   }, [deviceId]);
 
-  // Dismiss popup permanently for this device (comes once per device)
-  const dismissOddsPopup = useCallback(() => {
+  // Open the odds preview modal, permanently suppress popup, and record odds telemetry
+  const handleOpenOdds = useCallback(() => {
     setShowOddsTooltip(false);
     try {
-      localStorage.setItem('esn_odds_popup_shown_v2', 'true');
+      localStorage.setItem('esn_odds_page_opened_v3', 'true');
     } catch {}
-  }, []);
-
-  // Open the odds preview modal and record telemetry
-  const handleOpenOdds = useCallback(() => {
-    dismissOddsPopup();
     if (deviceId) {
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
     setShowOddsModal(true);
     setFilterStatus('ODDS');
-  }, [dismissOddsPopup, deviceId]);
+  }, [deviceId]);
 
-  // Collapsible by clicking anywhere else on the screen (non-clickable popup card, once per device)
+  // Dismiss popup on current view when user clicks outside or close button
+  const dismissOddsPopup = useCallback(() => {
+    setShowOddsTooltip(false);
+  }, []);
+
+  // Collapsible by clicking anywhere else on the screen
   useEffect(() => {
     if (!showOddsTooltip) return;
-    const handleGlobalClick = () => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.closest('[data-odds-popup="true"]')) return;
       dismissOddsPopup();
     };
     const timer = setTimeout(() => {
       window.addEventListener('click', handleGlobalClick);
-    }, 80);
+    }, 150);
     return () => {
       clearTimeout(timer);
       window.removeEventListener('click', handleGlobalClick);
@@ -539,10 +543,13 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Track when odds filter is active directly
   useEffect(() => {
     if (filterStatus === 'ODDS' && deviceId) {
-      dismissOddsPopup();
+      setShowOddsTooltip(false);
+      try {
+        localStorage.setItem('esn_odds_page_opened_v3', 'true');
+      } catch {}
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
-  }, [filterStatus, deviceId, dismissOddsPopup]);
+  }, [filterStatus, deviceId]);
 
   // Filter fixtures by active filter status
   const filteredMatches = useMemo(() => {
@@ -598,9 +605,15 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div key={st} className="relative inline-flex items-center shrink-0">
                   {showOddsTooltip && (
-                    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 pointer-events-none z-40 flex flex-col items-center select-none w-64 sm:w-72 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div 
+                      data-odds-popup="true"
+                      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none w-64 sm:w-72 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                    >
                       {/* Moderately large popup card */}
-                      <div className="w-full bg-[#0d1e30] border border-emerald-400/50 rounded-xl p-3.5 shadow-2xl shadow-black/80 ring-1 ring-emerald-400/30 text-left space-y-2 backdrop-blur-md">
+                      <div 
+                        onClick={handleOpenOdds}
+                        className="w-full bg-[#0d1e30] border border-emerald-400/50 rounded-xl p-3.5 shadow-2xl shadow-black/80 ring-1 ring-emerald-400/30 text-left space-y-2 backdrop-blur-md cursor-pointer hover:border-emerald-400 transition-colors"
+                      >
                         {/* Top indicator row */}
                         <div className="flex items-center justify-between pb-1 border-b border-white/10">
                           <div className="flex items-center gap-1.5">
@@ -612,9 +625,22 @@ export const HomePage: React.FC<HomePageProps> = ({
                               NEW FEATURE
                             </span>
                           </div>
-                          <span className="text-[9px] font-mono text-amber-300 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded-full border border-amber-400/25">
-                            FAN POLL
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono text-amber-300 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded-full border border-amber-400/25">
+                              FAN POLL
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissOddsPopup();
+                              }}
+                              className="p-0.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              aria-label="Dismiss popup"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Title */}
@@ -630,13 +656,13 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                         {/* Directional prompt pointing downwards to the button */}
                         <div className="pt-1.5 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300">
-                          <span>Click the button below to view</span>
+                          <span>Click here or button below</span>
                           <span className="animate-bounce text-xs">👇</span>
                         </div>
                       </div>
 
                       {/* Directional pointer caret pointing directly at ODDS button */}
-                      <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/50 shadow-sm"></div>
+                      <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/50 shadow-sm pointer-events-none"></div>
                     </div>
                   )}
                   <button
