@@ -11,6 +11,8 @@ import { supabase } from '../../lib/supabase';
 import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
 import { resolveGuestMatchdayDate } from '../../lib/matchdayHelper';
+import { useDeviceIdentity } from '../../hooks/useDeviceIdentity';
+import { MatchPredictionNoticeModal } from '../../components/Polls/MatchPredictionNoticeModal';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -481,6 +483,35 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
+  // Device identity & Match Predictions Preview State
+  const { deviceId } = useDeviceIdentity();
+  const [showOddsModal, setShowOddsModal] = useState<boolean>(false);
+  const [showOddsTooltip, setShowOddsTooltip] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('esn_odds_tooltip_dismissed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  // Collapsible by clicking anywhere else on the screen (non-clickable tooltip)
+  useEffect(() => {
+    if (!showOddsTooltip) return;
+    const handleGlobalClick = () => {
+      setShowOddsTooltip(false);
+      try {
+        sessionStorage.setItem('esn_odds_tooltip_dismissed', 'true');
+      } catch {}
+    };
+    const timer = setTimeout(() => {
+      window.addEventListener('click', handleGlobalClick);
+    }, 80);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('click', handleGlobalClick);
+    };
+  }, [showOddsTooltip]);
+
   // Filter fixtures by active filter status
   const filteredMatches = useMemo(() => {
     const list = fixturesState.data.filter(m => {
@@ -531,6 +562,42 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
           {['ALL', 'LIVE', 'ODDS', 'FINISHED', 'SCHEDULED'].map((st) => {
             const isActive = filterStatus === st;
+            if (st === 'ODDS') {
+              return (
+                <div key={st} className="relative inline-flex items-center shrink-0">
+                  {showOddsTooltip && (
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex flex-col items-center animate-bounce">
+                      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded-lg shadow-xl shadow-black/70 whitespace-nowrap border border-emerald-400/40 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                        <span>NEW: Match Predictor Poll & Odds!</span>
+                      </div>
+                      <div className="w-2 h-2 bg-teal-600 rotate-45 -mt-1 border-r border-b border-emerald-400/40"></div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOddsTooltip(false);
+                      try {
+                        sessionStorage.setItem('esn_odds_tooltip_dismissed', 'true');
+                      } catch {}
+                      setShowOddsModal(true);
+                      setFilterStatus('ODDS');
+                    }}
+                    className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                      isActive
+                        ? 'bg-[#ff0046] text-white shadow-xs'
+                        : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+                    }`}
+                  >
+                    <span>{st}</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider">
+                      NEW
+                    </span>
+                  </button>
+                </div>
+              );
+            }
             return (
               <button
                 key={st}
@@ -618,14 +685,22 @@ export const HomePage: React.FC<HomePageProps> = ({
             <p className="text-xs font-bold text-rose-500">{fixturesState.error}</p>
           </div>
         ) : filterStatus === 'ODDS' ? (
-          <div className="py-12 px-6 text-center space-y-2">
+          <div className="py-12 px-6 text-center space-y-3">
             <span className="text-3xl">📊</span>
             <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
               Match Odds & Fan Probabilities
             </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              The odds is based on fans votes. Coming soon.
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+              Match predictions and fan odds will be open weekly from Thursday evening to kickoff. Strictly for casual fun and personal scores.
             </p>
+            <button
+              type="button"
+              onClick={() => setShowOddsModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>View Predictor Details & Fan Poll</span>
+            </button>
           </div>
         ) : filteredMatches.length === 0 ? (
           <div className="py-12 px-6 text-center space-y-1">
@@ -1165,6 +1240,16 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </div>
       </section>
+
+      {/* MATCH PREDICTION PREVIEW & COMMUNITY DETERMINANT POLL MODAL */}
+      <MatchPredictionNoticeModal
+        isOpen={showOddsModal}
+        onClose={() => {
+          setShowOddsModal(false);
+          setFilterStatus('ALL');
+        }}
+        deviceId={deviceId}
+      />
     </div>
   );
 };
