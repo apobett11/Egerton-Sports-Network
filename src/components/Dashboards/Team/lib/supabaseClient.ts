@@ -1491,18 +1491,22 @@ export async function saveCoachMatchEvents(
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
 
-        // 1. Delete prior events strictly belonging to this team for this fixture
-        const { error: delError } = await supabase
+        // 1. One-time write enforcement: Prevent rewriting already submitted match events
+        const { data: existingEvents } = await supabase
             .from('match_events')
-            .delete()
+            .select('id')
             .eq('fixture_id', fixtureId)
-            .eq('team_id', actualTeamId);
+            .eq('team_id', actualTeamId)
+            .limit(1);
 
-        if (delError) {
-            console.warn('[Supabase Client] Notice during prior events cleanup:', delError.message);
+        if (existingEvents && existingEvents.length > 0) {
+            return {
+                success: false,
+                error: 'Match events have already been recorded for this match and cannot be rewritten.'
+            };
         }
 
-        // 2. Prepare new rows strictly for this team
+        // 2. Prepare new rows strictly for this team (only player events, NEVER the score itself)
         const rowsToInsert: any[] = [];
         const targetSide = isHome ? 'home' : 'away';
 
