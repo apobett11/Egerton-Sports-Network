@@ -45,7 +45,9 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
       const method = route.request().method();
       if (method === 'POST') {
         const postData = route.request().postDataJSON();
-        recordedVote = postData?.vote || 'yes';
+        if (postData?.vote) {
+          recordedVote = postData.vote;
+        }
         return route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -72,29 +74,31 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     // Navigate to homepage
     await page.goto('/');
 
-    // 1. Verify New Feature Tooltip is visible on the fixtures filters row for a new visit
+    // 1. Verify ODDS button has the permanent NEW badge
+    const oddsButton = page.locator('button', { hasText: 'ODDS' }).first();
+    await expect(oddsButton).toBeVisible();
+    await expect(oddsButton.locator('text=NEW')).toBeVisible();
+
+    // 2. Verify New Feature Tooltip is visible on the fixtures filters row for a first-time device
     const tooltip = page.locator('text=Match Predictions & Fan Poll');
     await expect(tooltip).toBeVisible({ timeout: 5000 });
 
-    // 2. Ignore the popup: click somewhere else on the page to collapse it
+    // 3. Dismiss the popup: click somewhere else on the page to collapse it (comes once per device)
     await page.mouse.click(10, 10);
     await expect(tooltip).not.toBeVisible({ timeout: 2000 });
 
-    // 3. Re-visit / reload the page: since the user only ignored it, the popup will appear again!
-    await page.reload();
-    await expect(page.locator('text=Match Predictions & Fan Poll')).toBeVisible({ timeout: 5000 });
-
-    // 4. Click the ODDS button to open odds page and modal
-    const oddsButton = page.locator('button', { hasText: 'ODDS' }).first();
-    await expect(oddsButton).toBeVisible();
+    // 4. Click the ODDS button to open odds page and redesigned modal
     await oddsButton.click();
 
-    // 5. Verify modal opened with title, explanation, and psychological fun & personal safety notice
+    // 5. Verify modal opened with title, How It Works, and NB guidelines below the poll
     const modalTitle = page.locator('text=Weekend Match Predictor Challenge');
     await expect(modalTitle).toBeVisible();
 
-    const funNotice = page.locator('text=Important: A Fun & Purely Personal Experience');
-    await expect(funNotice).toBeVisible();
+    const howItWorks = page.locator('text=How It Works');
+    await expect(howItWorks).toBeVisible();
+
+    const nbNotice = page.locator('text=NB: Important Guidelines & Mental Peace');
+    await expect(nbNotice).toBeVisible();
     await expect(page.locator('text=Zero Money:')).toBeVisible();
     await expect(page.locator('text=100% Private:')).toBeVisible();
 
@@ -110,9 +114,10 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     // 8. Verify modal closes and user is returned to homepage with ALL filter active
     await expect(modalTitle).not.toBeVisible({ timeout: 3000 });
 
-    // 9. On subsequent visit/reload: since odds was opened, popup will not appear anymore
+    // 9. On subsequent visit/reload: since popup only comes once per device, popup stays dismissed, while NEW badge remains on button
     await page.reload();
     await expect(page.locator('text=Match Predictions & Fan Poll')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.locator('button', { hasText: 'ODDS' }).first().locator('text=NEW')).toBeVisible();
   });
 
   test('Admin 2 Dashboard: Switch to Polls & Feature Determinants sub-page and verify metrics display', async ({ page }) => {
@@ -173,9 +178,9 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify([
-            { id: 'p1', device_id: 'dev_mock_alpha_123', vote: 'yes', created_at: new Date().toISOString() },
-            { id: 'p2', device_id: 'dev_mock_beta_456', vote: 'no', created_at: new Date().toISOString() },
-            { id: 'p3', device_id: 'dev_mock_gamma_789', vote: 'yes', created_at: new Date().toISOString() },
+            { id: 'p1', device_id: 'dev_mock_alpha_123', opened_guest_page: true, opened_odds_page: true, voted: true, vote: 'yes', created_at: new Date().toISOString() },
+            { id: 'p2', device_id: 'dev_mock_beta_456', opened_guest_page: true, opened_odds_page: true, voted: true, vote: 'no', created_at: new Date().toISOString() },
+            { id: 'p3', device_id: 'dev_mock_gamma_789', opened_guest_page: true, opened_odds_page: false, voted: false, vote: null, created_at: new Date().toISOString() },
           ]),
         });
       }
@@ -248,9 +253,10 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
 
     // Verify Admin 2 Polls view rendered
     await expect(page.locator('text=Admin 2 • Polls & Feature Determinants')).toBeVisible();
-    await expect(page.locator('text=Total Unique Devices')).toBeVisible();
-    await expect(page.locator('text=In Favor (Yes)')).toBeVisible();
-    await expect(page.locator('text=Opposed (No)')).toBeVisible();
+    await expect(page.locator('text=Guest Page').first()).toBeVisible();
+    await expect(page.locator('text=Odds Opened').first()).toBeVisible();
+    await expect(page.locator('text=Total Voted').first()).toBeVisible();
+    await expect(page.locator('text=Yes (In Favor)').first()).toBeVisible();
     await expect(page.locator('text=Weekly Fixtures Match Prediction Lifecycle')).toBeVisible();
     await expect(page.locator('text=Device Determinant Responses Log')).toBeVisible();
   });

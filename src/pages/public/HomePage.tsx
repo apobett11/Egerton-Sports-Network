@@ -13,6 +13,7 @@ import { guestCache } from '../../lib/guestCache';
 import { resolveGuestMatchdayDate } from '../../lib/matchdayHelper';
 import { useDeviceIdentity } from '../../hooks/useDeviceIdentity';
 import { MatchPredictionNoticeModal } from '../../components/Polls/MatchPredictionNoticeModal';
+import { FeaturePollService } from '../../services/featurePollService';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -488,30 +489,43 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showOddsModal, setShowOddsModal] = useState<boolean>(false);
   const [showOddsTooltip, setShowOddsTooltip] = useState<boolean>(() => {
     try {
-      // Clear legacy session storage flag starting from now
-      sessionStorage.removeItem('esn_odds_tooltip_dismissed');
-      // If odds page was already opened on this device, do not show popup
-      return localStorage.getItem('esn_odds_page_opened') !== 'true';
+      // Popup card with pointer only comes once per device
+      return localStorage.getItem('esn_odds_popup_shown_v2') !== 'true';
     } catch {
       return true;
     }
   });
 
-  // Mark odds page opened permanently on this device
-  const markOddsOpened = useCallback(() => {
+  // Automatically track when this device opens/visits the guest homepage
+  useEffect(() => {
+    if (deviceId) {
+      FeaturePollService.recordGuestPageVisit(deviceId);
+    }
+  }, [deviceId]);
+
+  // Dismiss popup permanently for this device (comes once per device)
+  const dismissOddsPopup = useCallback(() => {
     setShowOddsTooltip(false);
     try {
-      localStorage.setItem('esn_odds_page_opened', 'true');
+      localStorage.setItem('esn_odds_popup_shown_v2', 'true');
     } catch {}
   }, []);
 
-  // Collapsible by clicking anywhere else on the screen (non-clickable popup card)
-  // If ignored (clicked outside without opening odds), collapse for current view only.
-  // The ignored will always see the popup again on their next visit / page load.
+  // Open the odds preview modal and record telemetry
+  const handleOpenOdds = useCallback(() => {
+    dismissOddsPopup();
+    if (deviceId) {
+      FeaturePollService.recordOddsPageOpen(deviceId);
+    }
+    setShowOddsModal(true);
+    setFilterStatus('ODDS');
+  }, [dismissOddsPopup, deviceId]);
+
+  // Collapsible by clicking anywhere else on the screen (non-clickable popup card, once per device)
   useEffect(() => {
     if (!showOddsTooltip) return;
     const handleGlobalClick = () => {
-      setShowOddsTooltip(false);
+      dismissOddsPopup();
     };
     const timer = setTimeout(() => {
       window.addEventListener('click', handleGlobalClick);
@@ -520,14 +534,15 @@ export const HomePage: React.FC<HomePageProps> = ({
       clearTimeout(timer);
       window.removeEventListener('click', handleGlobalClick);
     };
-  }, [showOddsTooltip]);
+  }, [showOddsTooltip, dismissOddsPopup]);
 
-  // Once odds page or modal is active, mark it permanently opened
+  // Track when odds filter is active directly
   useEffect(() => {
-    if (filterStatus === 'ODDS' || showOddsModal) {
-      markOddsOpened();
+    if (filterStatus === 'ODDS' && deviceId) {
+      dismissOddsPopup();
+      FeaturePollService.recordOddsPageOpen(deviceId);
     }
-  }, [filterStatus, showOddsModal, markOddsOpened]);
+  }, [filterStatus, deviceId, dismissOddsPopup]);
 
   // Filter fixtures by active filter status
   const filteredMatches = useMemo(() => {
@@ -626,18 +641,17 @@ export const HomePage: React.FC<HomePageProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() => {
-                      markOddsOpened();
-                      setShowOddsModal(true);
-                      setFilterStatus('ODDS');
-                    }}
-                    className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
+                    onClick={handleOpenOdds}
+                    className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                       isActive
                         ? 'bg-[#ff0046] text-white shadow-xs'
                         : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
                     }`}
                   >
-                    {st}
+                    <span>{st}</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider shadow-xs">
+                      NEW
+                    </span>
                   </button>
                 </div>
               );
@@ -739,10 +753,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </p>
             <button
               type="button"
-              onClick={() => {
-                markOddsOpened();
-                setShowOddsModal(true);
-              }}
+              onClick={handleOpenOdds}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />

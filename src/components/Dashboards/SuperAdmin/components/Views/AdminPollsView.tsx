@@ -20,6 +20,8 @@ interface AdminPollsViewProps {
 
 export const AdminPollsView: React.FC<AdminPollsViewProps> = ({ showToast }) => {
   const [stats, setStats] = useState<FeaturePollStats>({
+    totalGuestVisits: 0,
+    totalOddsOpens: 0,
     totalVotes: 0,
     yesCount: 0,
     noCount: 0,
@@ -68,7 +70,7 @@ export const AdminPollsView: React.FC<AdminPollsViewProps> = ({ showToast }) => 
 
   const filteredVotes = stats.recentVotes.filter((v) =>
     v.deviceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    v.vote.toLowerCase().includes(searchTerm.toLowerCase())
+    (v.vote && v.vote.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -117,81 +119,85 @@ export const AdminPollsView: React.FC<AdminPollsViewProps> = ({ showToast }) => 
         </div>
       </div>
 
-      {/* 2. Determinant Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Unique Devices */}
-        <div className="p-5 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-2">
+      {/* 2. Determinant Metric Cards (Telemetry Funnel: Guest -> Odds -> Votes -> Verdict) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Guest Page Visitors */}
+        <div className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-1.5">
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-bold uppercase tracking-wider">Total Unique Devices</span>
+            <span className="font-bold uppercase tracking-wider">Guest Page</span>
             <Users className="w-4 h-4 text-sky-400" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-white">
+          <div className="text-2xl font-black text-white">
+            {stats.totalGuestVisits}
+          </div>
+          <p className="text-[10px] text-gray-400">
+            Opened guest homepage
+          </p>
+        </div>
+
+        {/* Odds Page Opened */}
+        <div className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span className="font-bold uppercase tracking-wider text-amber-400">Odds Opened</span>
+            <Sparkles className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="text-2xl font-black text-amber-400">
+            {stats.totalOddsOpens}
+          </div>
+          <p className="text-[10px] text-gray-400">
+            Clicked odds button / modal
+          </p>
+        </div>
+
+        {/* Total Votes Cast */}
+        <div className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400">
+            <span className="font-bold uppercase tracking-wider text-emerald-400">Total Voted</span>
+            <Vote className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-2xl font-black text-white">
             {stats.totalVotes}
           </div>
-          <p className="text-[11px] text-gray-400">
-            1 vote per device identifier
+          <p className="text-[10px] text-gray-400">
+            Cast 1-device vote
           </p>
         </div>
 
         {/* Yes / In Favor */}
-        <div className="p-5 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-2">
+        <div className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-1.5">
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-emerald-400">In Favor (Yes)</span>
+            <span className="font-bold uppercase tracking-wider text-emerald-400">Yes (In Favor)</span>
             <ThumbsUp className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-400">
+            <span className="text-2xl font-black text-emerald-400">
               {stats.yesCount}
             </span>
             <span className="text-xs font-bold text-emerald-500">
               ({stats.yesPercentage}%)
             </span>
           </div>
-          <p className="text-[11px] text-gray-400">
-            Fans supporting feature rollout
+          <p className="text-[10px] text-gray-400">
+            Supporting feature rollout
           </p>
         </div>
 
         {/* No / Opposed */}
-        <div className="p-5 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-2">
+        <div className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-1.5">
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-bold uppercase tracking-wider text-amber-400">Opposed (No)</span>
-            <ThumbsDown className="w-4 h-4 text-amber-400" />
+            <span className="font-bold uppercase tracking-wider text-rose-400">No (Opposed)</span>
+            <ThumbsDown className="w-4 h-4 text-rose-400" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-amber-400">
+            <span className="text-2xl font-black text-rose-400">
               {stats.noCount}
             </span>
-            <span className="text-xs font-bold text-amber-500">
+            <span className="text-xs font-bold text-rose-500">
               ({stats.noPercentage}%)
             </span>
           </div>
-          <p className="text-[11px] text-gray-400">
-            Prefer not having the feature
-          </p>
-        </div>
-
-        {/* Current Verdict */}
-        <div className="p-5 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-bold uppercase tracking-wider">Determinant Verdict</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-sm font-black uppercase tracking-wider">
-            {stats.totalVotes === 0 ? (
-              <span className="text-gray-400">Awaiting Feedback</span>
-            ) : stats.yesPercentage >= 60 ? (
-              <span className="text-emerald-400">Strong Approval</span>
-            ) : stats.yesPercentage >= 45 ? (
-              <span className="text-amber-400">Mixed Sentiment</span>
-            ) : (
-              <span className="text-rose-400">Feature On Hold</span>
-            )}
-          </div>
-          <p className="text-[11px] text-gray-400">
-            {stats.totalVotes === 0
-              ? 'No device votes recorded yet'
-              : `${stats.yesPercentage}% approval across ${stats.totalVotes} devices`}
+          <p className="text-[10px] text-gray-400">
+            Prefer not having feature
           </p>
         </div>
       </div>
@@ -318,7 +324,10 @@ export const AdminPollsView: React.FC<AdminPollsViewProps> = ({ showToast }) => 
               <thead className="text-[10px] font-mono text-gray-400 uppercase border-b border-[#262626]">
                 <tr>
                   <th className="py-2.5 px-3">Device UID</th>
-                  <th className="py-2.5 px-3">Determinant Choice</th>
+                  <th className="py-2.5 px-3 text-center">Guest Page</th>
+                  <th className="py-2.5 px-3 text-center">Odds Page</th>
+                  <th className="py-2.5 px-3 text-center">Voted</th>
+                  <th className="py-2.5 px-3">Vote Choice</th>
                   <th className="py-2.5 px-3">Timestamp</th>
                 </tr>
               </thead>
@@ -328,17 +337,46 @@ export const AdminPollsView: React.FC<AdminPollsViewProps> = ({ showToast }) => 
                     <td className="py-2.5 px-3 text-gray-300">
                       {row.deviceId.slice(0, 16)}...
                     </td>
+                    <td className="py-2.5 px-3 text-center">
+                      {row.openedGuestPage ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          true
+                        </span>
+                      ) : (
+                        <span className="text-gray-600 text-[10px]">-</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      {row.openedOddsPage ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          true
+                        </span>
+                      ) : (
+                        <span className="text-gray-600 text-[10px]">-</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-center">
+                      {row.voted ? (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                          true
+                        </span>
+                      ) : (
+                        <span className="text-gray-600 text-[10px]">-</span>
+                      )}
+                    </td>
                     <td className="py-2.5 px-3">
                       {row.vote === 'yes' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                           <ThumbsUp className="w-3 h-3" />
                           <span>Yes</span>
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      ) : row.vote === 'no' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30">
                           <ThumbsDown className="w-3 h-3" />
                           <span>No</span>
                         </span>
+                      ) : (
+                        <span className="text-gray-600 text-[10px]">No vote yet</span>
                       )}
                     </td>
                     <td className="py-2.5 px-3 text-gray-400 text-[11px]">

@@ -8,21 +8,30 @@
 
 import { supabase } from '../lib/supabase';
 
+export interface DevicePollRecord {
+  id: string;
+  deviceId: string;
+  openedGuestPage: boolean;
+  openedOddsPage: boolean;
+  voted: boolean;
+  vote: 'yes' | 'no' | null;
+  createdAt: string;
+}
+
 export interface FeaturePollStats {
+  totalGuestVisits: number;
+  totalOddsOpens: number;
   totalVotes: number;
   yesCount: number;
   noCount: number;
   yesPercentage: number;
   noPercentage: number;
-  recentVotes: Array<{
-    id: string;
-    deviceId: string;
-    vote: 'yes' | 'no';
-    createdAt: string;
-  }>;
+  recentVotes: DevicePollRecord[];
 }
 
 export interface DevicePollStatus {
+  openedGuestPage?: boolean;
+  openedOddsPage?: boolean;
   hasVoted: boolean;
   vote: 'yes' | 'no' | null;
   votedAt?: string;
@@ -37,6 +46,70 @@ export class FeaturePollService {
    */
   private static getStorageKey(featureKey: string = DEFAULT_FEATURE_KEY): string {
     return `${LOCAL_STORAGE_KEY_PREFIX}${featureKey}`;
+  }
+
+  /**
+   * Record that a device loaded/opened the guest homepage
+   */
+  static async recordGuestPageVisit(
+    deviceId: string,
+    featureKey: string = DEFAULT_FEATURE_KEY
+  ): Promise<void> {
+    if (!deviceId) return;
+    const sessionKey = `esn_guest_visit_recorded_${featureKey}`;
+    try {
+      if (sessionStorage.getItem(sessionKey)) return;
+      sessionStorage.setItem(sessionKey, 'true');
+    } catch {}
+
+    const timestamp = new Date().toISOString();
+    try {
+      await supabase
+        .from('feature_feedback_polls')
+        .upsert(
+          {
+            device_id: deviceId,
+            feature_key: featureKey,
+            opened_guest_page: true,
+            updated_at: timestamp,
+          },
+          { onConflict: 'device_id,feature_key' }
+        );
+    } catch (err) {
+      console.warn('[FeaturePollService] Guest page visit record warning:', err);
+    }
+  }
+
+  /**
+   * Record that a device opened the odds feature page or modal
+   */
+  static async recordOddsPageOpen(
+    deviceId: string,
+    featureKey: string = DEFAULT_FEATURE_KEY
+  ): Promise<void> {
+    if (!deviceId) return;
+    const sessionKey = `esn_odds_open_recorded_${featureKey}`;
+    try {
+      if (sessionStorage.getItem(sessionKey)) return;
+      sessionStorage.setItem(sessionKey, 'true');
+    } catch {}
+
+    const timestamp = new Date().toISOString();
+    try {
+      await supabase
+        .from('feature_feedback_polls')
+        .upsert(
+          {
+            device_id: deviceId,
+            feature_key: featureKey,
+            opened_odds_page: true,
+            updated_at: timestamp,
+          },
+          { onConflict: 'device_id,feature_key' }
+        );
+    } catch (err) {
+      console.warn('[FeaturePollService] Odds page open record warning:', err);
+    }
   }
 
   /**
@@ -71,22 +144,27 @@ export class FeaturePollService {
     try {
       const { data, error } = await supabase
         .from('feature_feedback_polls')
-        .select('vote, created_at')
+        .select('vote, opened_guest_page, opened_odds_page, voted, created_at')
         .eq('device_id', deviceId)
         .eq('feature_key', featureKey)
         .maybeSingle();
 
       if (!error && data) {
-        const vote = data.vote as 'yes' | 'no';
-        try {
-          localStorage.setItem(
-            this.getStorageKey(featureKey),
-            JSON.stringify({ vote, timestamp: data.created_at })
-          );
-        } catch {}
+        const vote = (data.vote as 'yes' | 'no') || null;
+        const hasVoted = Boolean(data.voted || vote);
+        if (vote) {
+          try {
+            localStorage.setItem(
+              this.getStorageKey(featureKey),
+              JSON.stringify({ vote, timestamp: data.created_at })
+            );
+          } catch {}
+        }
 
         return {
-          hasVoted: true,
+          openedGuestPage: Boolean(data.opened_guest_page),
+          openedOddsPage: Boolean(data.opened_odds_page),
+          hasVoted,
           vote,
           votedAt: data.created_at,
         };
@@ -128,6 +206,8 @@ export class FeaturePollService {
           {
             device_id: deviceId,
             feature_key: featureKey,
+            opened_odds_page: true,
+            voted: true,
             vote,
             updated_at: timestamp,
           },
@@ -188,22 +268,25 @@ export class FeaturePollService {
   static async getPollAnalytics(
     featureKey: string = DEFAULT_FEATURE_KEY
   ): Promise<FeaturePollStats> {
-    let votesList: Array<{ id: string; deviceId: string; vote: 'yes' | 'no'; createdAt: string }> = [];
+    let recordsList: DevicePollRecord[] = [];
 
     // 1. Try querying the dedicated table
     try {
       const { data, error } = await supabase
         .from('feature_feedback_polls')
-        .select('id, device_id, vote, created_at')
+        .select('id, device_id, opened_guest_page, opened_odds_page, voted, vote, created_at')
         .eq('feature_key', featureKey)
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        votesList = data.map((row: any) => ({
+        recordsList = data.map((row: any) => ({
           id: row.id,
           deviceId: row.device_id,
-          vote: row.vote as 'yes' | 'no',
+          openedGuestPage: Boolean(row.opened_guest_page),
+          openedOddsPage: Boolean(row.opened_odds_page),
+          voted: Boolean(row.voted ?? (row.vote === 'yes' || row.vote === 'no')),
+          vote: (row.vote as 'yes' | 'no') || null,
           createdAt: row.created_at,
         }));
       }
@@ -223,10 +306,13 @@ export class FeaturePollService {
         const fbVotes = fallbackData.value.votes;
         for (const [devId, val] of Object.entries(fbVotes)) {
           const item = val as any;
-          if (item.featureKey === featureKey && !votesList.some((v) => v.deviceId === devId)) {
-            votesList.push({
+          if (item.featureKey === featureKey && !recordsList.some((v) => v.deviceId === devId)) {
+            recordsList.push({
               id: `fb_${devId.slice(0, 8)}`,
               deviceId: devId,
+              openedGuestPage: true,
+              openedOddsPage: true,
+              voted: true,
               vote: item.vote as 'yes' | 'no',
               createdAt: item.timestamp,
             });
@@ -235,19 +321,24 @@ export class FeaturePollService {
       }
     } catch {}
 
-    const totalVotes = votesList.length;
-    const yesCount = votesList.filter((v) => v.vote === 'yes').length;
-    const noCount = votesList.filter((v) => v.vote === 'no').length;
+    const totalGuestVisits = recordsList.filter((v) => v.openedGuestPage).length || recordsList.length;
+    const totalOddsOpens = recordsList.filter((v) => v.openedOddsPage).length;
+    const votedList = recordsList.filter((v) => v.voted && v.vote);
+    const totalVotes = votedList.length;
+    const yesCount = votedList.filter((v) => v.vote === 'yes').length;
+    const noCount = votedList.filter((v) => v.vote === 'no').length;
     const yesPercentage = totalVotes > 0 ? Math.round((yesCount / totalVotes) * 100) : 0;
     const noPercentage = totalVotes > 0 ? Math.round((noCount / totalVotes) * 100) : 0;
 
     return {
+      totalGuestVisits,
+      totalOddsOpens,
       totalVotes,
       yesCount,
       noCount,
       yesPercentage,
       noPercentage,
-      recentVotes: votesList,
+      recentVotes: recordsList,
     };
   }
 
