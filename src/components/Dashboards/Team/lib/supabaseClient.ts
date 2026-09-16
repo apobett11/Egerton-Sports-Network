@@ -1381,3 +1381,35 @@ export async function updatePlayerInfo(payload: {
     }
 }
 
+/**
+ * Convert any team name to a URL-safe slug (e.g. "Med FC" -> "med-fc").
+ */
+export function nameToSlug(name: string): string {
+    return (name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+/**
+ * Resolves a team record by name slug or direct name without exposing UUIDs in public links.
+ */
+export async function fetchTeamBySlugOrName(slugOrName: string): Promise<any | null> {
+    if (!slugOrName) return null;
+    try {
+        const targetSlug = nameToSlug(slugOrName);
+        const { data, error } = await supabase
+            .from('teams')
+            .select('*')
+            .is('deleted_at', null);
+
+        if (error || !data) return null;
+
+        return data.find((t: any) =>
+            nameToSlug(t.name) === targetSlug ||
+            nameToSlug(t.short_name || '') === targetSlug ||
+            t.name.toLowerCase() === slugOrName.toLowerCase() ||
+            t.id === slugOrName
+        ) || null;
+    } catch {
+        return null;
+    }
+}
+

@@ -170,8 +170,8 @@ test.describe('PLAYER SQUAD PROFILE UPDATE DASHBOARD & CONCURRENCY SUITE', () =>
       });
     });
 
-    // 1. Visit Player Update link with team UID
-    await page.goto(`/#/update/player?teamId=${targetTeam.id}`);
+    // 1. Visit Player Update link with team name slug (no UID exposed)
+    await page.goto('/#/update/player?team=egerton-first-team');
     await page.waitForLoadState('domcontentloaded');
 
     // 2. Verify page header

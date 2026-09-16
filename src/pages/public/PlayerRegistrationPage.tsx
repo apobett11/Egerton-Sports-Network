@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { fetchTeamById, updatePlayerInfo } from '../../components/Dashboards/Team/lib/supabaseClient';
+import { fetchTeamById, updatePlayerInfo, fetchTeamBySlugOrName } from '../../components/Dashboards/Team/lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import {
   Shield,
@@ -111,72 +111,80 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Extract teamId from URL hash or query params
+  // Extract team name slug or query params (never requires or exposes UID)
   useEffect(() => {
-    let resolvedId = '';
+    let teamParam = '';
     const hash = window.location.hash || '';
     const searchPart = hash.includes('?') ? hash.split('?')[1] : window.location.search.substring(1);
     if (searchPart) {
       const params = new URLSearchParams(searchPart);
-      resolvedId = params.get('teamId') || params.get('team') || '';
+      teamParam = params.get('team') || params.get('teamId') || '';
     }
 
-    if (resolvedId) {
-      setTeamId(resolvedId);
-      loadTeamAndPlayers(resolvedId);
+    if (teamParam) {
+      loadTeamAndPlayers(teamParam);
     } else {
       loadAllTeams();
     }
   }, []);
 
-  const loadTeamAndPlayers = async (id: string) => {
+  const loadTeamAndPlayers = async (slugOrId: string) => {
     setIsLoadingData(true);
     try {
-      let t = await fetchTeamById(id);
+      let t = await fetchTeamBySlugOrName(slugOrId);
       if (!t) {
-        const { data } = await supabase.from('teams').select('*').eq('id', id).maybeSingle();
+        t = await fetchTeamById(slugOrId);
+      }
+      if (!t) {
+        const { data } = await supabase.from('teams').select('*').eq('id', slugOrId).maybeSingle();
         t = data;
       }
-      setTeamInfo(t);
 
-      const { data: players, error } = await supabase
-        .from('players')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          jersey_number,
-          position,
-          phone,
-          preferred_foot,
-          team_id,
-          profile_id,
-          profiles:profile_id (
+      if (t) {
+        setTeamId(t.id);
+        setTeamInfo(t);
+
+        const { data: players, error } = await supabase
+          .from('players')
+          .select(`
             id,
             first_name,
             last_name,
-            avatar_url,
-            bio,
+            jersey_number,
+            position,
             phone,
-            role
-          )
-        `)
-        .eq('team_id', id)
-        .order('jersey_number', { ascending: true });
+            preferred_foot,
+            team_id,
+            profile_id,
+            profiles:profile_id (
+              id,
+              first_name,
+              last_name,
+              avatar_url,
+              bio,
+              phone,
+              role
+            )
+          `)
+          .eq('team_id', t.id)
+          .order('jersey_number', { ascending: true });
 
-      if (error) {
-        console.warn('[PlayerUpdate] Error loading players:', error);
+        if (error) {
+          console.warn('[PlayerUpdate] Error loading players:', error);
+        }
+
+        const playerList: ExistingPlayer[] = (players || []).map((p: any) => ({
+          ...p,
+          profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
+        }));
+
+        setTeamPlayers(playerList);
+      } else {
+        await loadAllTeams();
       }
-
-      const playerList: ExistingPlayer[] = (players || []).map((p: any) => ({
-        ...p,
-        profiles: Array.isArray(p.profiles) ? p.profiles[0] : p.profiles,
-      }));
-
-      setTeamPlayers(playerList);
-      // NOTE: We deliberately DO NOT pre-select any player or options.
     } catch (err) {
       console.warn('[PlayerUpdate] Load error:', err);
+      await loadAllTeams();
     } finally {
       setIsLoadingData(false);
     }

@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import type { Player, UserRole, PlayerPosition, KitConfig } from '../../types';
 import { initialKits } from '../../mockData';
-import { uploadKitImageToStorage, saveTeamKitsConfig } from '../../lib/supabaseClient';
+import { uploadKitImageToStorage, saveTeamKitsConfig, nameToSlug } from '../../lib/supabaseClient';
 
 interface RosterListViewProps {
   searchTerm: string;
@@ -177,7 +177,8 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
   const kitFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const updateUrl = `${window.location.origin}/#/update/player?teamId=${teamId || ''}`;
+  const teamSlug = nameToSlug(teamName || 'team');
+  const updateUrl = `${window.location.origin}/#/update/player?team=${teamSlug}`;
   const whatsappText = `⚽ Official Squad Update: ${teamName} on Egerton Sports Network!\n\nUpdate your squad profile here:\n${updateUrl}\n\nSelect your name to update your preferred squad name, phone, playing position, and profile avatar.`;
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
 
@@ -515,7 +516,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 </a>
 
                 <a
-                  href={`#/update/player?teamId=${teamId || ''}`}
+                  href={`#/update/player?team=${teamSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3.5 py-1.5 bg-transparent hover:bg-slate-700 active:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-white active:text-white border border-slate-300 dark:border-slate-600 text-xs font-bold rounded-full flex items-center gap-1 transition-all cursor-pointer"

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, MessageCircle, Shield, UserPlus } from 'lucide-react';
+import { nameToSlug } from '../../lib/supabaseClient';
 
 interface ShareTeamLinkModalProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface ShareTeamLinkModalProps {
 export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
   isOpen,
   onClose,
-  teamId,
+  teamId: _teamId,
   teamName = 'Your Team',
   onOpenManualAdd,
   onShowToast,
@@ -22,7 +23,8 @@ export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
 
   if (!isOpen) return null;
 
-  const updateUrl = `${window.location.origin}/#/update/player?teamId=${teamId}`;
+  const teamSlug = nameToSlug(teamName || 'team');
+  const updateUrl = `${window.location.origin}/#/update/player?team=${teamSlug}`;
   const whatsappShareText = `⚽ Official Squad Update: ${teamName} on Egerton Sports Network!\n\nPlease select your name and complete your squad profile details here:\n${updateUrl}\n\nUpdate your preferred squad name, phone number, playing position, and profile avatar.`;
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareText)}`;
 
