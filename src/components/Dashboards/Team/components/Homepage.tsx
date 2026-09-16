@@ -208,31 +208,45 @@ export const Homepage: React.FC<HomepageProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 select-none">
-      {/* 1. SECTION: IMPENDING FIXTURES & OFFICIAL DUTIES */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Impending Matchday Focus
-            </h2>
+    <div className="space-y-8 md:space-y-10 max-w-7xl mx-auto pb-20 select-none">
+      {/* 1. SECTION: IMPENDING FIXTURES & OFFICIAL DUTIES (SINGLE HOUSING CARD) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+        {/* Top color bar enclosing the full card including heading */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-rose-500 to-cyan-500" />
+
+        {/* VIVID CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[#ff0046] flex items-center justify-center shrink-0 border border-rose-500/20 shadow-xs">
+              <Flame className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Impending Matchday Focus
+                </h2>
+                <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Next competitive fixture schedule, countdown & official matchday duties
+              </p>
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider bg-slate-100 dark:bg-[#112236] px-2.5 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-800">
+          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider bg-white dark:bg-[#112236] px-3 py-1 rounded-full border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
             {nextMatch?.league || 'EPL'} • MD{nextMatch?.matchday || 3}
           </span>
         </div>
 
-        {/* MINIMALIST NEXT MATCH CARD */}
-        <div className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] to-rose-500" />
+        {/* CARD BODY WITH MINI-STYLED CONTENT */}
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* NEXT MATCH SUB-BLOCK */}
           {nextMatch ? (
-            <div className="p-4 sm:p-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] flex flex-col lg:flex-row items-center justify-between gap-4">
               {/* TEAMS INLINE STRIP */}
               <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 w-full lg:w-auto min-w-0 flex-1">
                 {/* HOME TEAM */}
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial">
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#152a40] border border-slate-200/60 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs">
                     {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
                       <img
                         src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
@@ -256,7 +270,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                 </div>
 
                 {/* VS / TIME PILL */}
-                <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] shrink-0">
+                <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">VS</span>
                   <span className="text-xs font-mono font-bold text-[#ff0046] mt-0.5 leading-none">
                     {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
@@ -273,7 +287,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                       Away
                     </span>
                   </div>
-                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
+                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
                     {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
                       <img
                         src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
@@ -303,7 +317,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                 {nextMatch.scheduled_time && (
                   <>
                     <span>•</span>
-                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-[#ff0046] bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-[#ff0046] bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
                       <Clock className="w-3 h-3 text-[#ff0046]" />
                       <span>
                         {fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m
@@ -314,7 +328,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="flex items-center gap-2.5 shrink-0 w-full justify-center lg:justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5 shrink-0 w-full justify-center lg:justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200/60 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => onNavigateView('TACTICS')}
@@ -327,7 +341,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigateView('STANDINGS')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-transparent transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-white dark:bg-[#0e1c2b] transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
                 >
                   <Calendar className="w-3 h-3 text-blue-500" />
                   <span>Fixtures</span>
@@ -337,7 +351,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenMatchEventsModal()}
-                    className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 bg-transparent transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                    className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 bg-emerald-500/5 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
                   >
                     <Trophy className="w-3 h-3 text-emerald-500" />
                     <span>Past Events</span>
@@ -346,7 +360,7 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-5 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
               <div className="flex items-center gap-2.5">
                 <Trophy className="w-4 h-4 text-slate-400" />
                 <span className="font-semibold text-slate-700 dark:text-slate-300">No Upcoming Match Scheduled</span>
@@ -354,76 +368,85 @@ export const Homepage: React.FC<HomepageProps> = ({
               <span className="text-[11px] text-slate-400">Fixtures assigned by the league will appear here automatically.</span>
             </div>
           )}
-        </div>
 
-        {/* MINIMALIST LINESMAN DUTY CARD */}
-        <div className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500" />
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-              <Flag className="w-4 h-4" />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
-                  Official Linesman Duty
-                </span>
-                {nextLinesmanMatch && (
-                  <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
-                    {nextLinesmanMatch.role} • MD {nextLinesmanMatch.matchday || 1}
-                  </span>
-                )}
+          {/* OFFICIAL LINESMAN DUTY SUB-BLOCK */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                <Flag className="w-4 h-4" />
               </div>
 
-              {nextLinesmanMatch ? (
-                <div className="flex items-center gap-2 mt-1 truncate">
-                  <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                    {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal text-xs">vs</span> {nextLinesmanMatch.awayTeamName}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
+                    Official Linesman Duty
                   </span>
-                  <span className="text-slate-400 font-normal text-[11px] shrink-0">
-                    • {nextLinesmanMatch.pitch} • {nextLinesmanMatch.time}
-                  </span>
+                  {nextLinesmanMatch && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
+                      {nextLinesmanMatch.role} • MD {nextLinesmanMatch.matchday || 1}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                  No linesman duties currently scheduled for your team.
-                </p>
-              )}
-            </div>
-          </div>
 
-          {/* Linesman Action Button */}
-          <button
-            type="button"
-            onClick={() => setShowLinesmanModal(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 bg-transparent transition-all cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-auto"
-          >
-            <span>All Linesman Matches</span>
-            {linesmanMatches.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-cyan-500 text-white text-[9px] font-bold">
-                {linesmanMatches.length}
-              </span>
-            )}
-            <ArrowRight className="w-3 h-3 ml-0.5" />
-          </button>
+                {nextLinesmanMatch ? (
+                  <div className="flex items-center gap-2 mt-1 truncate">
+                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                      {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal text-xs">vs</span> {nextLinesmanMatch.awayTeamName}
+                    </span>
+                    <span className="text-slate-400 font-normal text-[11px] shrink-0">
+                      • {nextLinesmanMatch.pitch} • {nextLinesmanMatch.time}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                    No linesman duties currently scheduled for your team.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Linesman Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowLinesmanModal(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 bg-white dark:bg-[#0e1c2b] transition-all cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-auto shadow-2xs"
+            >
+              <span>All Linesman Matches</span>
+              {linesmanMatches.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-cyan-500 text-white text-[9px] font-bold">
+                  {linesmanMatches.length}
+                </span>
+              )}
+              <ArrowRight className="w-3 h-3 ml-0.5" />
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 2. SECTION: COACH COMMAND CENTER */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-emerald-500" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Coach Command Center
-            </h2>
+      {/* 2. SECTION: COACH COMMAND CENTER (SINGLE HOUSING CARD) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+
+        {/* VIVID CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Coach Command Center
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Direct access to match tactics, squad roster, league standings & press room
+              </p>
+            </div>
           </div>
           {onOpenMatchEventsModal && (
             <button
               type="button"
               onClick={() => onOpenMatchEventsModal()}
-              className="px-3.5 py-1.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+              className="px-3.5 py-1.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
             >
               <Trophy className="w-3.5 h-3.5" />
               <span>Record Match Events</span>
@@ -431,112 +454,123 @@ export const Homepage: React.FC<HomepageProps> = ({
           )}
         </div>
 
-        {/* MINIMALIST CALL TO ACTION CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* Button 1: Team Squad */}
-          <button
-            type="button"
-            onClick={() => onNavigateView('TACTICS')}
-            className="group p-4 bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-              <Users className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                Team Squad
+        {/* CARD CONTENT */}
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Button 1: Team Squad */}
+            <button
+              type="button"
+              onClick={() => onNavigateView('TACTICS')}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Users className="w-4 h-4" />
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                2D Tactical Pitch
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                  Team Squad
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  2D Tactical Pitch
+                </p>
+              </div>
+            </button>
 
-          {/* Button 2: Players & Kits */}
-          <button
-            type="button"
-            onClick={() => onNavigateView('ROSTER')}
-            className="group p-4 bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                Players & Kits
+            {/* Button 2: Players & Kits */}
+            <button
+              type="button"
+              onClick={() => onNavigateView('ROSTER')}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Shield className="w-4 h-4" />
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                Roster & Uniforms
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                  Players & Kits
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  Roster & Uniforms
+                </p>
+              </div>
+            </button>
 
-          {/* Button 3: Standings */}
-          <button
-            type="button"
-            onClick={() => onNavigateView('STANDINGS')}
-            className="group p-4 bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                Standings
+            {/* Button 3: Standings */}
+            <button
+              type="button"
+              onClick={() => onNavigateView('STANDINGS')}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Trophy className="w-4 h-4" />
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                Table & Form Guide
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                  Standings
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  Table & Form Guide
+                </p>
+              </div>
+            </button>
 
-          {/* Button 4: Newsroom */}
-          <button
-            type="button"
-            onClick={() => onNavigateView('NEWS')}
-            className="group p-4 bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] hover:border-purple-500/50 dark:hover:border-purple-500/50 rounded-2xl transition-all cursor-pointer shadow-xs flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                Newsroom
+            {/* Button 4: Newsroom */}
+            <button
+              type="button"
+              onClick={() => onNavigateView('NEWS')}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-purple-500/50 dark:hover:border-purple-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Activity className="w-4 h-4" />
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                Club Press Releases
-              </p>
-            </div>
-          </button>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                  Newsroom
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  Club Press Releases
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 3. SECTION: LEAGUE STANDINGS & RECENT FORM SNIPPET */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              League Standing & Competitive Form
-            </h2>
+      {/* 3. SECTION: LEAGUE STANDINGS & RECENT FORM SNIPPET (SINGLE HOUSING CARD) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-[#00b04f]" />
+
+        {/* VIVID CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-xs">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                League Standing & Competitive Form
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Official table ranking, recent streak, goal differential & points haul
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => onNavigateView('STANDINGS')}
-            className="text-xs font-semibold text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#ff0046] hover:text-[#e0003c] bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shrink-0 shadow-2xs"
           >
             <span>Full Standings</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl overflow-hidden shadow-xs">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-[#00b04f]" />
-          {/* SNAPSHOT GRID */}
-          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        {/* CARD CONTENT */}
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
             {/* Team Rank & Identity */}
             <div className="md:col-span-5 flex items-center gap-3 border-b md:border-b-0 md:border-r border-slate-100 dark:border-[#1a2e45] pb-3 md:pb-0 md:pr-4">
-              <div className="w-10 h-10 rounded-xl bg-[#152a40] border border-white/10 p-1 flex items-center justify-center font-bold text-xs text-white shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#152a40] border border-white/10 p-1.5 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs">
                 {ourTeamLogo ? (
                   <img src={ourTeamLogo} alt={ourTeamName} className="w-full h-full object-contain" />
                 ) : (
@@ -548,7 +582,7 @@ export const Homepage: React.FC<HomepageProps> = ({
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                     {currentStanding?.teamName || ourTeamName}
                   </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                     Rank #{currentStanding?.position ?? '-'}
                   </span>
                 </div>
@@ -597,22 +631,32 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* 4. SECTION: TEAM PERFORMANCE & ANALYTICS CHARTS */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <PieChartIcon className="w-4 h-4 text-cyan-500" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Tactical Performance & Squad Analytics
-            </h2>
+      {/* 4. SECTION: TEAM PERFORMANCE & ANALYTICS CHARTS (SINGLE HOUSING CARD) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-500" />
+
+        {/* VIVID CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20 shadow-xs">
+              <PieChartIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Tactical Performance & Squad Analytics
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Live team win ratios, physical availability metrics & distribution curves
+              </p>
+            </div>
           </div>
-          <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+          <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0 shadow-2xs">
             Realtime Analytics
           </span>
         </div>
 
-        <div className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl overflow-hidden shadow-xs p-4 sm:p-5 space-y-4">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-500" />
+        {/* CARD CONTENT */}
+        <div className="p-4 sm:p-5 space-y-4">
           {/* STATS TILES */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45]">
@@ -658,7 +702,7 @@ export const Homepage: React.FC<HomepageProps> = ({
             </div>
           </div>
 
-          {/* TWO RECHARTS PIE CHARTS (SIDE BY SIDE IN ALL VIEWS) */}
+          {/* TWO RECHARTS PIE CHARTS (SIDE BY SIDE) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {/* Chart 1: Win / Draw / Loss Distribution */}
             <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] flex flex-col items-center">
@@ -767,17 +811,27 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* 5. SECTION: TRAINING DAYS & DRILL SESSIONS */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Dumbbell className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Training Schedule & Conditioning
-            </h2>
+      {/* 5. SECTION: TRAINING DAYS & DRILL SESSIONS (SINGLE HOUSING CARD) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+
+        {/* VIVID CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20 shadow-xs">
+              <Dumbbell className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Training Schedule & Conditioning
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Practice pitch slots, drill routines & coaching sign-off verification
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowAddPracticeModal(true)}
@@ -804,8 +858,8 @@ export const Homepage: React.FC<HomepageProps> = ({
           </div>
         </div>
 
-        <div className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl overflow-hidden shadow-xs p-4 sm:p-5">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+        {/* CARD CONTENT */}
+        <div className="p-4 sm:p-5">
           {/* PRACTICE SESSIONS LIST */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {practiceSchedule.map((session) => (

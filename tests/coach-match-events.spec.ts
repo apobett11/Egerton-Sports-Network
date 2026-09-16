@@ -88,46 +88,61 @@ test.describe('COACH PAST MATCH EVENTS - STRICT VERIFICATION SUITE', () => {
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
 
-    // Verify modal is open
+    // 1. Verify Guidance Popup is shown first with analytics & rewards warning
     const modalTitle = page.getByRole('heading', { name: /Record Past Match Events/i });
     await expect(modalTitle).toBeVisible();
+    await expect(page.getByText(/your players will not be included in the player analytics/i)).toBeVisible();
 
-    // 1. Verify Score Number is Locked and explicitly labeled as such
+    // 2. Click Proceed to navigate to played matches list
+    const proceedBtn = page.getByRole('button', { name: /Proceed/i });
+    await expect(proceedBtn).toBeVisible();
+    await proceedBtn.click();
+
+    // 3. Select the first played match from the list of played fixtures
+    const matchCard = page.getByRole('button', { name: /vs Med FC/i }).first();
+    await expect(matchCard).toBeVisible();
+    await matchCard.click();
+
+    // 4. Verify Score Number is Locked and explicitly labeled as such
     await expect(page.getByText(/Match Score \(Locked\):/i)).toBeVisible();
     await expect(page.getByText(/2 Goals Scored/i)).toBeVisible();
 
-    // 2. Verify there are NO number inputs or controls to edit the score
+    // 5. Verify there are NO number inputs or controls to edit the score
     const numberInputs = page.locator('input[type="number"]');
     await expect(numberInputs).toHaveCount(0);
 
-    // 3. Verify there are NO buttons to arbitrarily add or remove goals
+    // 6. Verify there are NO buttons to arbitrarily add or remove goals
     const addGoalBtn = page.getByRole('button', { name: /Add Goal/i });
     await expect(addGoalBtn).toHaveCount(0);
 
     const trashGoalBtn = page.locator('button[title*="Remove goal slot"]');
     await expect(trashGoalBtn).toHaveCount(0);
 
-    // 4. Verify exactly 2 goal slots are generated (Goal #1 and Goal #2) matching the 2 goals scored
+    // 7. Verify exactly 2 goal slots are generated (Goal #1 and Goal #2) matching the 2 goals scored
     await expect(page.getByText(/Goal #1/i)).toBeVisible();
     await expect(page.getByText(/Goal #2/i)).toBeVisible();
 
-    // 5. Verify Scorer is required and Assist is optional
+    // 8. Verify Scorer is required and Assist is optional with inline options
     const scorerSelects = page.locator('select').filter({ hasText: /Select Goal Scorer/i });
     await expect(scorerSelects).toHaveCount(2);
 
     const assistSelects = page.locator('select').filter({ hasText: /None \(Solo Goal/i });
     await expect(assistSelects).toHaveCount(2);
+
+    // 9. Verify inline goal type buttons exist
+    await expect(page.getByRole('button', { name: /Solo Goal/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Free Kick/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Penalty/i }).first()).toBeVisible();
   });
 
   test('T2: Database Write & Match Timeline Integration - Writes player events without mutating fixtures table', async () => {
     // Intercept database writes locally to verify payloads
     let fixturesModified = false;
-    let matchEventsInserted: any[] = [];
 
     const simulatedPayload: CoachMatchEventsPayload = {
       goals: [
-        { playerId: 'p-1', assistPlayerId: 'p-2', minute: 34 },
-        { playerId: 'p-3', assistPlayerId: undefined, minute: 78 }, // Solo goal / free kick
+        { playerId: 'p-1', assistPlayerId: 'p-2', minute: 34, goalType: 'regular' },
+        { playerId: 'p-3', assistPlayerId: undefined, minute: 78, goalType: 'solo' }, // Solo goal / free kick
       ],
       yellowCardPlayerIds: ['p-4'],
       redCardPlayerIds: [],
@@ -178,7 +193,14 @@ test.describe('COACH PAST MATCH EVENTS - STRICT VERIFICATION SUITE', () => {
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
 
-    // 1. Verify modal displays the Locked & Finalized badge
+    // Advance past Guidance popup
+    await page.getByRole('button', { name: /Proceed/i }).click();
+
+    // Select the already-recorded match from the list of 4
+    const recordedMatchCard = page.getByRole('button', { name: /vs Med FC/i }).first();
+    await recordedMatchCard.click();
+
+    // 1. Verify modal displays the Locked & Finalized banner
     await expect(page.getByText(/Events Finalized \(One-Time Update\)/i)).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/submitted entries cannot be rewritten/i)).toBeVisible();
 
@@ -237,12 +259,14 @@ test.describe('COACH PAST MATCH EVENTS - STRICT VERIFICATION SUITE', () => {
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
 
-    // Verify the fixture selector only contains Egerton FC fixtures, never other teams' matches
-    const fixtureSelect = page.locator('select').first();
-    const optionsText = await fixtureSelect.innerText();
-    expect(optionsText).toContain('Egerton FC');
-    expect(optionsText).not.toContain('Engineering FC');
-    expect(optionsText).not.toContain('Science FC');
+    // Advance through guidance
+    await page.getByRole('button', { name: /Proceed/i }).click();
+
+    // Verify the match list only contains our team fixtures, never other teams' matches
+    const matchCards = page.locator('button').filter({ hasText: /vs Med FC/i });
+    await expect(matchCards.first()).toBeVisible();
+    await expect(page.getByText(/Engineering FC/i)).toHaveCount(0);
+    await expect(page.getByText(/Science FC/i)).toHaveCount(0);
   });
 
   test('T5: Full Submission Workflow - Validation, Scorer Selection, Optional Assist & Cards Save', async ({ page }) => {
@@ -277,6 +301,13 @@ test.describe('COACH PAST MATCH EVENTS - STRICT VERIFICATION SUITE', () => {
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
 
+    // Step 1: Guidance popup
+    await page.getByRole('button', { name: /Proceed/i }).click();
+
+    // Step 2: Choose match from list of played matches
+    const matchCard = page.getByRole('button', { name: /vs Med FC/i }).first();
+    await matchCard.click();
+
     // 1. Validation check: Click Save without selecting scorer
     const saveBtn = page.getByRole('button', { name: /Save Match Events/i });
     await saveBtn.click();
@@ -290,22 +321,38 @@ test.describe('COACH PAST MATCH EVENTS - STRICT VERIFICATION SUITE', () => {
     const assistSelect1 = page.locator('select').filter({ hasText: /None \(Solo Goal/i }).first();
     await assistSelect1.selectOption('p-2');
 
-    // 4. Select Scorer for Goal #2 (Dennis Oliech), leave Assist as None (Solo / Free Kick)
+    // 4. Select Scorer for Goal #2 (Dennis Oliech), and click Solo Goal button inline
     const scorerSelect2 = page.locator('select').filter({ hasText: /Select Goal Scorer/i }).nth(1);
     await scorerSelect2.selectOption('p-3');
+    const soloGoalBtn = page.getByRole('button', { name: /Solo Goal/i }).nth(1);
+    await soloGoalBtn.click();
 
     // 5. Add Yellow Card for Musa Otieno
     const yellowSelect = page.locator('select').filter({ hasText: /\+ Add Yellow Card/i });
     await yellowSelect.selectOption('p-4');
     await expect(page.locator('span').filter({ hasText: '#4 Musa Otieno' }).first()).toBeVisible();
 
-    // 6. Submit Events
+    // 6. Click Save -> Confirmation Popup appears
     await saveBtn.click();
+    await expect(page.getByRole('heading', { name: /Confirm Match Events Submission/i })).toBeVisible();
+    await expect(page.getByText(/Goal #1:/i)).toBeVisible();
+    await expect(page.getByText(/Goal #2:/i)).toBeVisible();
 
-    // 7. Verify Toast notification appears
+    // 7. Click Confirm & Submit in confirmation popup
+    const confirmBtn = page.getByRole('button', { name: /Confirm & Submit/i });
+    await confirmBtn.click();
+
+    // 8. Verify Toast notification appears
     await expect(page.getByText(/Match scorers and events recorded successfully!/i)).toBeVisible({ timeout: 10000 });
 
-    // 8. Verify the modal closed after saving
+    // 9. Verify Post-Submission popup for remaining matches is shown
+    await expect(page.getByRole('heading', { name: /Match Events Recorded!/i })).toBeVisible();
+
+    // 10. Close from the completion popup
+    const finishBtn = page.getByRole('button', { name: /Complete & Close|Done for Now/i });
+    await finishBtn.click();
+
+    // 11. Verify modal is closed
     const modalTitle = page.getByRole('heading', { name: /Record Past Match Events/i });
     await expect(modalTitle).not.toBeVisible();
   });

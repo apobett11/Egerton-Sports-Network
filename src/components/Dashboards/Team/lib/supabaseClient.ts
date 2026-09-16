@@ -1417,12 +1417,35 @@ export interface CoachGoalEvent {
     playerId: string;
     assistPlayerId?: string;
     minute?: number;
+    goalType?: 'regular' | 'solo' | 'freekick' | 'penalty';
 }
 
 export interface CoachMatchEventsPayload {
     goals: CoachGoalEvent[];
     yellowCardPlayerIds: string[];
     redCardPlayerIds: string[];
+}
+
+/**
+ * Fetches list of fixture IDs that already have match events submitted by this team.
+ */
+export async function fetchRecordedFixtureIds(fixtureIds: string[], teamId: string): Promise<string[]> {
+    if (!fixtureIds || fixtureIds.length === 0 || !teamId) return [];
+    try {
+        const actualTeamId = await resolveRealTeamId(teamId);
+        const { data, error } = await supabase
+            .from('match_events')
+            .select('fixture_id')
+            .eq('team_id', actualTeamId)
+            .in('fixture_id', fixtureIds);
+
+        if (error || !data) return [];
+        const unique = Array.from(new Set(data.map((d: any) => d.fixture_id).filter(Boolean)));
+        return unique as string[];
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch recorded fixture IDs:', err);
+        return [];
+    }
 }
 
 /**
@@ -1436,7 +1459,7 @@ export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): 
         const actualTeamId = await resolveRealTeamId(teamId);
         const { data, error } = await supabase
             .from('match_events')
-            .select('id, fixture_id, minute, type, team_id, player_id, assist_player_id')
+            .select('id, fixture_id, minute, type, team_id, player_id, assist_player_id, detail_text')
             .eq('fixture_id', fixtureId)
             .eq('team_id', actualTeamId)
             .order('minute', { ascending: true });
@@ -1450,11 +1473,22 @@ export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): 
         const redCardPlayerIds: string[] = [];
 
         data.forEach((evt: any) => {
-            if (evt.type === 'goal' && evt.player_id) {
+            if ((evt.type === 'goal' || evt.type === 'penalty') && evt.player_id) {
+                let detectedGoalType: 'regular' | 'solo' | 'freekick' | 'penalty' = 'regular';
+                const detailLower = (evt.detail_text || '').toLowerCase();
+                if (evt.type === 'penalty' || detailLower.includes('penalty')) {
+                    detectedGoalType = 'penalty';
+                } else if (detailLower.includes('free kick')) {
+                    detectedGoalType = 'freekick';
+                } else if (detailLower.includes('solo')) {
+                    detectedGoalType = 'solo';
+                }
+
                 goals.push({
                     playerId: evt.player_id,
                     assistPlayerId: evt.assist_player_id || undefined,
                     minute: evt.minute || undefined,
+                    goalType: detectedGoalType,
                 });
             } else if (evt.type === 'yellow' && evt.player_id) {
                 if (!yellowCardPlayerIds.includes(evt.player_id)) {
@@ -1513,14 +1547,22 @@ export async function saveCoachMatchEvents(
         // Goals
         payload.goals.forEach((g, idx) => {
             if (!g.playerId) return;
+
+            const isPenalty = g.goalType === 'penalty';
+            let detail: string | null = null;
+            if (g.goalType === 'solo') detail = 'Solo Goal';
+            else if (g.goalType === 'freekick') detail = 'Free Kick';
+            else if (g.goalType === 'penalty') detail = 'Penalty Kick';
+
             rowsToInsert.push({
                 fixture_id: fixtureId,
                 team_id: actualTeamId,
                 player_id: g.playerId,
                 assist_player_id: g.assistPlayerId || null,
-                type: 'goal',
+                type: isPenalty ? 'penalty' : 'goal',
                 minute: g.minute || Math.min(85, 10 + idx * 25),
                 event_target: targetSide,
+                detail_text: detail,
                 is_official: true,
             });
         });
@@ -1536,6 +1578,7 @@ export async function saveCoachMatchEvents(
                 type: 'yellow',
                 minute: 60,
                 event_target: targetSide,
+                detail_text: null,
                 is_official: true,
             });
         });
@@ -1551,6 +1594,7 @@ export async function saveCoachMatchEvents(
                 type: 'red',
                 minute: 75,
                 event_target: targetSide,
+                detail_text: null,
                 is_official: true,
             });
         });

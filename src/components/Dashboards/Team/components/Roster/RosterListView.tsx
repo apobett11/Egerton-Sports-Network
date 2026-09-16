@@ -394,7 +394,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
       />
 
       {/* ========================================================================= */}
-      {/* SUB-MAIN MENUS: SEGMENTED CONTROLS (APPLE DESIGN HIG) */}
+      {/* SUB-MAIN MENUS: SEGMENTED CONTROLS (2 MAIN: PLAYERS DIRECTORY & TEAM KITS) */}
       {/* ========================================================================= */}
       <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-[#1a2e45] pb-4">
         <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] shadow-2xs">
@@ -442,159 +442,129 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             </span>
           </button>
         </div>
-
-        {activeSubMenu === 'players' && (
-          <button
-            type="button"
-            onClick={onOpenInviteModal}
-            className="px-4 py-2 bg-[#ff0046] hover:bg-[#e0003c] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Invite New Player</span>
-          </button>
-        )}
       </div>
 
       {/* ========================================================================= */}
       {/* SUB-MENU 1: PLAYERS DIRECTORY */}
       {/* ========================================================================= */}
       {activeSubMenu === 'players' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          {/* 1. MAIN HEADING */}
+        <div className="space-y-8 md:space-y-10 animate-in fade-in duration-150">
+          {/* MAIN PAGE BANNER */}
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-blue-500" />
               <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                 Players Directory & Team Kits
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                {roster.length} Athletes Registered
-              </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
               Complete student-athlete roster records, direct player intake link, and squad sorting.
             </p>
           </div>
 
-          {/* 2. PLAYERS YET TO FILL IN DETAILS & INTAKE LINK SECTION */}
-          <section className="relative overflow-hidden bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 shadow-xs space-y-4">
+          {/* 1. ATHLETES CONFIRMATION & INTAKE LINK (HOUSING IN A SINGLE CARD, MINIMAL & INTENTIONAL) */}
+          <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-[#1a2e45] pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                    Athletes Awaiting Details & Profile Completion
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    {pendingPlayers.length} Incomplete
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Athletes registered on squad who need to finalize profile credentials, photos, or jersey numbers.
-                </p>
-              </div>
 
-              {/* Action Buttons for Intake Link */}
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* VIVID CARD HEADER */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-xs">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Athlete Profile Confirmation & Intake
+                  </h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Direct athlete onboarding link to register preferred jersey numbers, phone & avatars
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0 shadow-2xs">
+                Official Intake Link
+              </span>
+            </div>
+
+            {/* CARD CONTENT: MINIMAL & INTENTIONAL LINK, COPY, SHARE TO WHATSAPP */}
+            <div className="p-4 sm:p-5 space-y-4">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                Share this official update link with your team athletes. They can open it on their phones to confirm their personal squad profile, pick their available jersey number, and upload their player photo.
+              </p>
+
+              {/* Minimal & Intentional Link Action Strip */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+                {/* Link input/display */}
+                <div className="flex-1 flex items-center bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2 min-w-0">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 mr-2 shrink-0">Link:</span>
+                  <code className="text-xs font-mono text-slate-700 dark:text-slate-200 truncate select-all flex-1">
+                    {updateUrl}
+                  </code>
+                </div>
+
+                {/* Copy Button */}
                 <button
                   type="button"
                   onClick={handleCopyRegistrationLink}
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copied' : 'Copy Update Link'}</span>
+                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
                 </button>
 
+                {/* WhatsApp Share Button */}
                 <a
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 shrink-0"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Send via WhatsApp</span>
+                  <span>Share via WhatsApp</span>
                 </a>
 
+                {/* Open in new tab icon link */}
                 <a
                   href={`#/update/player?team=${teamSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs font-semibold rounded-xl flex items-center gap-1 transition-all"
+                  className="p-2 rounded-xl border border-slate-200 dark:border-[#1a2e45] text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#152a40] transition-colors flex items-center justify-center shrink-0"
+                  title="Open Update Dashboard in new tab"
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>Open Update Dashboard</span>
+                  <ExternalLink className="w-4 h-4" />
                 </a>
               </div>
             </div>
-
-            {/* Incomplete / Pending athletes horizontal list */}
-            {pendingPlayers.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 pt-1">
-                {pendingPlayers.slice(0, 4).map((player) => (
-                  <div
-                    key={player.id}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#112236] border border-amber-500/20 flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
-                        {player.name.charAt(0)}
-                      </div>
-                      <div className="truncate">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {player.name}
-                        </div>
-                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          <span>Pending profile details</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyRegistrationLink}
-                      className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
-                      title="Copy link to send to athlete"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-2">
-                <UserCheck className="w-4 h-4" />
-                <span>All current athletes have fully completed profile credentials!</span>
-              </div>
-            )}
-
-            {/* Direct Intake URL display */}
-            <div className="pt-2 flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400 shrink-0">Direct Update Link:</span>
-              <code className="text-[11px] font-mono text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#112236] px-3 py-1 rounded-xl border border-slate-200/80 dark:border-[#1a2e45] inline-block select-all truncate flex-1">
-                {updateUrl}
-              </code>
-            </div>
           </section>
 
-          {/* 3. THE PLAYERS SECTION WITH WAYS TO ARRANGE THEM */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Squad Players</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    {sortedRoster.length} Available
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Arrange players by rating, jersey number, name, position, or current fitness status.
-                </p>
+          {/* 2. SQUAD PLAYERS (HOUSING IN A SINGLE CARD) */}
+          <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+
+            {/* VIVID CARD HEADER WITH ARRANGE CONTROLS */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 bg-slate-50/60 dark:bg-[#0b1623]/60">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 shadow-xs">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                      Squad Players
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {sortedRoster.length} Available
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Arrange players by rating, jersey number, name, position, or current fitness status
+                  </p>
+                </div>
               </div>
 
               {/* MULTI-CRITERIA ARRANGE CONTROLS */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
                   <SlidersHorizontal className="w-3 h-3" />
                   <span>Arrange by:</span>
                 </span>
@@ -685,304 +655,324 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
               </div>
             </div>
 
-            {/* SEARCH & POSITION FILTER BAR */}
-            <div className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search player by name or jersey number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 font-medium focus:outline-none focus:border-[#ff0046]"
-                />
+            {/* CARD CONTENT */}
+            <div className="p-4 sm:p-5 space-y-4">
+              {/* SEARCH & POSITION FILTER BAR */}
+              <div className="w-full bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] rounded-xl p-3 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search player by name or jersey number..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 font-medium focus:outline-none focus:border-[#ff0046]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {[
+                    { id: 'ALL', label: 'ALL' },
+                    { id: 'GK', label: 'GK' },
+                    { id: 'DF', label: 'DF' },
+                    { id: 'MD', label: 'MD' },
+                    { id: 'FW', label: 'FW' },
+                  ].map((item) => {
+                    const isActive = positionFilter === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setPositionFilter(item.id)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                          isActive
+                            ? 'bg-[#ff0046] text-white shadow-xs'
+                            : 'bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#152a40]'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                {[
-                  { id: 'ALL', label: 'ALL' },
-                  { id: 'GK', label: 'GK' },
-                  { id: 'DF', label: 'DF' },
-                  { id: 'MD', label: 'MD' },
-                  { id: 'FW', label: 'FW' },
-                ].map((item) => {
-                  const isActive = positionFilter === item.id;
+              {/* PLAYER CARDS GRID */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {sortedRoster.map((player) => {
+                  const isStarting = startingXI.includes(roster.findIndex((p) => p.id === player.id));
                   return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setPositionFilter(item.id)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                        isActive
-                          ? 'bg-[#ff0046] text-white shadow-xs'
-                          : 'bg-slate-100 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
-                      }`}
+                    <div
+                      key={player.id}
+                      className="w-full bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between gap-3 relative group"
                     >
-                      {item.label}
-                    </button>
+                      {/* Top Row: Rating, Position, Number, and Delete */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {/* Rating Badge */}
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold font-mono text-[10px] flex items-center gap-0.5 border border-amber-500/20">
+                            <Star className="w-2.5 h-2.5 fill-current" />
+                            <span>{player.rating}</span>
+                          </span>
+
+                          {/* Position Pill */}
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${getPositionBadgeStyle(player.position)}`}>
+                            {player.position}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-[11px] text-slate-400">
+                            #{player.number}
+                          </span>
+                          {isCoach && onDeletePlayer && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPlayerToDelete(player);
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
+                              title={`Remove ${player.name}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Player Image & Name */}
+                      <div className="flex flex-col items-center text-center space-y-1.5">
+                        <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200/80 dark:border-[#1a2e45] shrink-0 group-hover:border-slate-400 dark:group-hover:border-slate-600 transition-colors">
+                          <img
+                            src={player.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                            alt={player.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {player.name}
+                          </h4>
+                          {isStarting && (
+                            <span className="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                              Starting XI
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom: Status Badge & Quick Selector */}
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-[#1a2e45] flex items-center justify-between gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase truncate ${
+                            player.status === 'Fit' || player.status === 'Active'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                              : player.status === 'Recovering'
+                              ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                              : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                          }`}
+                        >
+                          {player.status}
+                        </span>
+
+                        <select
+                          data-testid="player-status-select"
+                          value={player.status}
+                          onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
+                          className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[10px] font-medium rounded-lg px-2 py-1 focus:outline-none focus:border-[#ff0046] cursor-pointer"
+                        >
+                          <option value="Fit">Fit</option>
+                          <option value="Recovering">Rec</option>
+                          <option value="Injured">Inj</option>
+                          <option value="Suspended">Susp</option>
+                        </select>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             </div>
+          </section>
+        </div>
+      )}
 
-            {/* PLAYER CARDS GRID */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {sortedRoster.map((player) => {
-                const isStarting = startingXI.includes(roster.findIndex((p) => p.id === player.id));
+      {/* ========================================================================= */}
+      {/* SUB-MENU 2: TEAM KITS (HOUSING IN A SINGLE CARD) */}
+      {/* ========================================================================= */}
+      {activeSubMenu === 'kits' && (
+        <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all animate-in fade-in duration-150">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b04f] to-emerald-600" />
+
+          {/* VIVID CARD HEADER */}
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
+                <Shirt className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Official Team Kits
+                </h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Configure uniform identity, upload kit photo imagery, define color names, and edit strip palettes
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30 shrink-0 shadow-2xs">
+              4 Registered Kits
+            </span>
+          </div>
+
+          {/* CARD CONTENT */}
+          <div className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {kits.map((kit) => {
+                const hasPhoto = Boolean(kit.imageUrl);
+                const hasColorName = Boolean(kit.colorName);
+                const hasStripColors = Boolean(kit.primaryColor);
+
                 return (
                   <div
-                    key={player.id}
-                    className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between gap-3 relative group"
+                    key={kit.id}
+                    onClick={() => handleOpenEditKit(kit)}
+                    className="bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-[#00b04f] dark:hover:border-[#00b04f] rounded-2xl p-4 shadow-xs hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between gap-4 group"
                   >
-                    {/* Top Row: Rating, Position, Number, and Delete */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        {/* Rating Badge */}
-                        <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold font-mono text-[10px] flex items-center gap-0.5 border border-amber-500/20">
-                          <Star className="w-2.5 h-2.5 fill-current" />
-                          <span>{player.rating}</span>
-                        </span>
-
-                        {/* Position Pill */}
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${getPositionBadgeStyle(player.position)}`}>
-                          {player.position}
+                    <div className="space-y-3">
+                      {/* Header Row: Kit Type & Edit Prompt */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
+                          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                            {kit.typeLabel}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          {kit.id.toUpperCase()}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono font-bold text-[11px] text-slate-400">
-                          #{player.number}
-                        </span>
-                        {isCoach && onDeletePlayer && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPlayerToDelete(player);
-                            }}
-                            className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
-                            title={`Remove ${player.name}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                      {/* Strip color bar: ONLY SHOW IF SET */}
+                      {hasStripColors && (
+                        <div className="h-2 w-full rounded-full overflow-hidden flex shadow-inner">
+                          <div
+                            style={{ backgroundColor: kit.primaryColor }}
+                            className="h-full flex-1"
+                            title={`Primary: ${kit.primaryColor}`}
+                          />
+                          {kit.stripeColor && (
+                            <div
+                              style={{ backgroundColor: kit.stripeColor }}
+                              className="h-full w-4"
+                              title={`Stripe: ${kit.stripeColor}`}
+                            />
+                          )}
+                          {kit.accentColor && (
+                            <div
+                              style={{ backgroundColor: kit.accentColor }}
+                              className="h-full w-2"
+                              title={`Accent: ${kit.accentColor}`}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Photo: ONLY SHOW IF SET */}
+                      <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] flex items-center justify-center">
+                        {hasPhoto ? (
+                          <img
+                            src={kit.imageUrl}
+                            alt={kit.typeLabel}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1.5 text-slate-400 p-4 text-center">
+                            <Shirt className="w-8 h-8 stroke-1" />
+                            <span className="text-[11px] font-semibold">No photo uploaded</span>
+                          </div>
                         )}
-                      </div>
-                    </div>
 
-                    {/* Player Image & Name */}
-                    <div className="flex flex-col items-center text-center space-y-1.5">
-                      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200/80 dark:border-[#1a2e45] shrink-0 group-hover:border-slate-400 dark:group-hover:border-slate-600 transition-colors">
-                        <img
-                          src={player.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                          alt={player.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="w-full">
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {player.name}
-                        </h4>
-                        {isStarting && (
-                          <span className="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                            Starting XI
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="px-3 py-1.5 rounded-full bg-white/90 text-slate-900 text-xs font-bold shadow-md">
+                            Click to Configure
                           </span>
-                        )}
+                        </div>
                       </div>
+
+                      {/* Color Name: ONLY SHOW IF SET */}
+                      {hasColorName && (
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Color Identity
+                          </span>
+                          <div className="text-xs font-black text-slate-800 dark:text-slate-100">
+                            {kit.colorName}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Strip Colors Palette: ONLY SHOW WHAT HAS BEEN SET */}
+                      {hasStripColors && (
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Strip Palette
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {kit.primaryColor && (
+                              <div className="flex items-center gap-1">
+                                <span
+                                  style={{ backgroundColor: kit.primaryColor }}
+                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                />
+                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                  {kit.primaryColor}
+                                </span>
+                              </div>
+                            )}
+                            {kit.stripeColor && (
+                              <div className="flex items-center gap-1">
+                                <span
+                                  style={{ backgroundColor: kit.stripeColor }}
+                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                />
+                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                  {kit.stripeColor}
+                                </span>
+                              </div>
+                            )}
+                            {kit.accentColor && (
+                              <div className="flex items-center gap-1">
+                                <span
+                                  style={{ backgroundColor: kit.accentColor }}
+                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                />
+                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                                  {kit.accentColor}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Bottom: Status Badge & Quick Selector */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-1.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase truncate ${
-                          player.status === 'Fit' || player.status === 'Active'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                            : player.status === 'Recovering'
-                            ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                            : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                        }`}
-                      >
-                        {player.status}
-                      </span>
-
-                      <select
-                        data-testid="player-status-select"
-                        value={player.status}
-                        onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
-                        className="bg-slate-50 dark:bg-[#112236] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[10px] font-medium rounded-lg px-2 py-1 focus:outline-none focus:border-[#ff0046] cursor-pointer"
-                      >
-                        <option value="Fit">Fit</option>
-                        <option value="Recovering">Rec</option>
-                        <option value="Injured">Inj</option>
-                        <option value="Suspended">Susp</option>
-                      </select>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditKit(kit);
+                      }}
+                      className="w-full py-2 bg-white dark:bg-[#112236] hover:bg-[#00b04f] hover:text-white dark:hover:bg-[#00b04f] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#1a2e45] hover:border-[#00b04f] text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Palette className="w-3.5 h-3.5" />
+                      <span>Customize Kit</span>
+                    </button>
                   </div>
                 );
               })}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUB-MENU 2: TEAM KITS (4 CARDS: HOME, AWAY, THIRD, GK) */}
-      {/* ========================================================================= */}
-      {activeSubMenu === 'kits' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          {/* Main Heading for Team Kits */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <Shirt className="w-5 h-5 text-[#00b04f]" />
-              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                Official Team Kits
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f]">
-                4 Registered Kits
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
-              Configure uniform identity, upload kit photo imagery, define color names, and edit strip palettes in the customizer popup.
-            </p>
-          </div>
-
-          {/* EXACTLY 4 CARDS: HOME, AWAY, THIRD, GK */}
-          {/* Rule: Each card will only show what has been set. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {kits.map((kit) => {
-              const hasPhoto = Boolean(kit.imageUrl);
-              const hasColorName = Boolean(kit.colorName);
-              const hasStripColors = Boolean(kit.primaryColor);
-
-              return (
-                <div
-                  key={kit.id}
-                  onClick={() => handleOpenEditKit(kit)}
-                  className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-[#00b04f] dark:hover:border-[#00b04f] rounded-2xl p-4 shadow-xs hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between gap-4 group"
-                >
-                  <div className="space-y-3">
-                    {/* Header Row: Kit Type & Edit Prompt */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                          {kit.typeLabel}
-                        </h3>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        {kit.id.toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* Strip color bar: ONLY SHOW IF SET */}
-                    {hasStripColors && (
-                      <div className="h-2 w-full rounded-full overflow-hidden flex shadow-inner">
-                        <div
-                          style={{ backgroundColor: kit.primaryColor }}
-                          className="h-full flex-1"
-                          title={`Primary: ${kit.primaryColor}`}
-                        />
-                        {kit.stripeColor && (
-                          <div
-                            style={{ backgroundColor: kit.stripeColor }}
-                            className="h-full w-4"
-                            title={`Stripe: ${kit.stripeColor}`}
-                          />
-                        )}
-                        {kit.accentColor && (
-                          <div
-                            style={{ backgroundColor: kit.accentColor }}
-                            className="h-full w-2"
-                            title={`Accent: ${kit.accentColor}`}
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Photo: ONLY SHOW IF SET */}
-                    <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-slate-50 dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-center">
-                      {hasPhoto ? (
-                        <img
-                          src={kit.imageUrl}
-                          alt={kit.typeLabel}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-1.5 text-slate-400 p-4 text-center">
-                          <Shirt className="w-8 h-8 stroke-1" />
-                          <span className="text-[11px] font-semibold">No photo uploaded</span>
-                        </div>
-                      )}
-
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="px-3 py-1.5 rounded-full bg-white/90 text-slate-900 text-xs font-bold shadow-md">
-                          Click to Configure
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Color Name: ONLY SHOW IF SET */}
-                    {hasColorName && (
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Color Identity
-                        </span>
-                        <div className="text-xs font-black text-slate-800 dark:text-slate-100">
-                          {kit.colorName}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Strip Colors Palette: ONLY SHOW WHAT HAS BEEN SET */}
-                    {hasStripColors && (
-                      <div className="space-y-1 pt-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Strip Palette
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {kit.primaryColor && (
-                            <div className="flex items-center gap-1">
-                              <span
-                                style={{ backgroundColor: kit.primaryColor }}
-                                className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
-                              />
-                              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                {kit.primaryColor}
-                              </span>
-                            </div>
-                          )}
-                          {kit.stripeColor && (
-                            <div className="flex items-center gap-1">
-                              <span
-                                style={{ backgroundColor: kit.stripeColor }}
-                                className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
-                              />
-                              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                {kit.stripeColor}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Button: Edit Kit */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenEditKit(kit);
-                    }}
-                    className="w-full py-2 bg-transparent hover:bg-[#00b04f] active:bg-[#00b04f] text-[#00b04f] hover:text-white active:text-white border border-[#00b04f] text-xs font-black rounded-full transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Palette className="w-3.5 h-3.5" />
-                    <span>Edit Kit Details</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        </section>
       )}
 
       {/* ========================================================================= */}
