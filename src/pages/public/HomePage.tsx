@@ -566,12 +566,45 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div key={st} className="relative inline-flex items-center shrink-0">
                   {showOddsTooltip && (
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex flex-col items-center animate-bounce">
-                      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[10px] sm:text-[11px] font-black px-2.5 py-1 rounded-lg shadow-xl shadow-black/70 whitespace-nowrap border border-emerald-400/40 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                        <span>NEW: Match Predictor Poll & Odds!</span>
+                    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 pointer-events-none z-40 flex flex-col items-center select-none w-64 sm:w-72 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {/* Moderately large popup card */}
+                      <div className="w-full bg-[#0d1e30] border border-emerald-400/50 rounded-xl p-3.5 shadow-2xl shadow-black/80 ring-1 ring-emerald-400/30 text-left space-y-2 backdrop-blur-md">
+                        {/* Top indicator row */}
+                        <div className="flex items-center justify-between pb-1 border-b border-white/10">
+                          <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                              NEW FEATURE
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono text-amber-300 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded-full border border-amber-400/25">
+                            FAN POLL
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <div className="flex items-center gap-1.5 text-xs font-black text-white">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 fill-amber-400" />
+                          <span>Match Predictions & Fan Poll</span>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          Vote for your teams on weekend fixtures! Guess outcomes, test your knowledge, and cast your vote on whether we should launch this game.
+                        </p>
+
+                        {/* Directional prompt pointing downwards to the button */}
+                        <div className="pt-1.5 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300">
+                          <span>Click the button below to view</span>
+                          <span className="animate-bounce text-xs">👇</span>
+                        </div>
                       </div>
-                      <div className="w-2 h-2 bg-teal-600 rotate-45 -mt-1 border-r border-b border-emerald-400/40"></div>
+
+                      {/* Directional pointer caret pointing directly at ODDS button */}
+                      <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/50 shadow-sm"></div>
                     </div>
                   )}
                   <button
@@ -584,16 +617,13 @@ export const HomePage: React.FC<HomePageProps> = ({
                       setShowOddsModal(true);
                       setFilterStatus('ODDS');
                     }}
-                    className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                    className={`px-3 sm:px-4 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
                       isActive
                         ? 'bg-[#ff0046] text-white shadow-xs'
                         : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
                     }`}
                   >
-                    <span>{st}</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider">
-                      NEW
-                    </span>
+                    {st}
                   </button>
                 </div>
               );

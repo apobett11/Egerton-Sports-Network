@@ -73,7 +73,7 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     await page.goto('/');
 
     // 1. Verify New Feature Tooltip is visible on the fixtures filters row
-    const tooltip = page.locator('text=NEW: Match Predictor Poll & Odds!');
+    const tooltip = page.locator('text=Match Predictions & Fan Poll');
     await expect(tooltip).toBeVisible({ timeout: 5000 });
 
     // 2. Click the ODDS button
