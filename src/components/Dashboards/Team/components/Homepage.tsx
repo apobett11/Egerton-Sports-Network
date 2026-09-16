@@ -220,16 +220,11 @@ export const Homepage: React.FC<HomepageProps> = ({
             <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[#ff0046] flex items-center justify-center shrink-0 border border-rose-500/20 shadow-xs">
               <Flame className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                  Impending Matchday Focus
-                </h2>
-                <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Next competitive fixture schedule, countdown & official matchday duties
-              </p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Impending Matchday Focus
+              </h2>
+              <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
             </div>
           </div>
           <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider bg-white dark:bg-[#112236] px-3 py-1 rounded-full border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
@@ -437,9 +432,6 @@ export const Homepage: React.FC<HomepageProps> = ({
               <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 Coach Command Center
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Direct access to match tactics, squad roster, league standings & press room
-              </p>
             </div>
           </div>
           {onOpenMatchEventsModal && (
@@ -550,9 +542,6 @@ export const Homepage: React.FC<HomepageProps> = ({
               <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 League Standing & Competitive Form
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Official table ranking, recent streak, goal differential & points haul
-              </p>
             </div>
           </div>
           <button
@@ -645,9 +634,6 @@ export const Homepage: React.FC<HomepageProps> = ({
               <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 Tactical Performance & Squad Analytics
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Live team win ratios, physical availability metrics & distribution curves
-              </p>
             </div>
           </div>
           <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0 shadow-2xs">
@@ -825,9 +811,6 @@ export const Homepage: React.FC<HomepageProps> = ({
               <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                 Training Schedule & Conditioning
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Practice pitch slots, drill routines & coaching sign-off verification
-              </p>
             </div>
           </div>
 
