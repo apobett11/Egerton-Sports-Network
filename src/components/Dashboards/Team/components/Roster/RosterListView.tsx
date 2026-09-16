@@ -177,18 +177,18 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
   const kitFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const registrationUrl = `${window.location.origin}/#/register/player?teamId=${teamId || ''}`;
-  const whatsappText = `⚽ Official Invitation: Join ${teamName} on Egerton Sports Network!\n\nRegister your player profile here:\n${registrationUrl}\n\nYour profile will appear directly in our squad roster.`;
+  const updateUrl = `${window.location.origin}/#/update/player?teamId=${teamId || ''}`;
+  const whatsappText = `⚽ Official Squad Update: ${teamName} on Egerton Sports Network!\n\nUpdate your squad profile here:\n${updateUrl}\n\nSelect your name to update your preferred squad name, phone, playing position, and profile avatar.`;
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
 
   const handleCopyRegistrationLink = async () => {
     try {
-      await navigator.clipboard.writeText(registrationUrl);
+      await navigator.clipboard.writeText(updateUrl);
       setCopiedLink(true);
-      if (onShowToast) onShowToast('📋 Player registration link copied to clipboard!');
+      if (onShowToast) onShowToast('📋 Player update link copied to clipboard!');
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      if (onShowToast) onShowToast(`Registration Link: ${registrationUrl}`);
+      if (onShowToast) onShowToast(`Update Link: ${updateUrl}`);
     }
   };
 
@@ -501,7 +501,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   className="px-3.5 py-1.5 bg-transparent hover:bg-[#0080ff] active:bg-[#0080ff] text-[#0080ff] hover:text-white active:text-white border border-[#0080ff] text-xs font-bold rounded-full flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copied' : 'Copy Registration Link'}</span>
+                  <span>{copiedLink ? 'Copied' : 'Copy Update Link'}</span>
                 </button>
 
                 <a
@@ -515,13 +515,13 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 </a>
 
                 <a
-                  href={`#/register/player?teamId=${teamId || ''}`}
+                  href={`#/update/player?teamId=${teamId || ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3.5 py-1.5 bg-transparent hover:bg-slate-700 active:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-white active:text-white border border-slate-300 dark:border-slate-600 text-xs font-bold rounded-full flex items-center gap-1 transition-all cursor-pointer"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  <span>Open Intake Form</span>
+                  <span>Open Update Dashboard</span>
                 </a>
               </div>
             </div>
@@ -568,9 +568,9 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
 
             {/* Direct Intake URL display */}
             <div className="pt-2 flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400 shrink-0">Direct Intake Link:</span>
+              <span className="text-[11px] font-bold text-slate-400 shrink-0">Direct Update Link:</span>
               <code className="text-[11px] font-mono text-slate-600 dark:text-slate-300 bg-[#f8f9fa] dark:bg-[#112236] px-3 py-1 rounded-md border border-[#e6e8ec] dark:border-[#1a2e45] inline-block select-all truncate flex-1">
-                {registrationUrl}
+                {updateUrl}
               </code>
             </div>
           </section>

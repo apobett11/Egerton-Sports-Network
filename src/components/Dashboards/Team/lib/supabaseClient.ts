@@ -156,6 +156,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                     last_name,
                     email,
                     avatar_url,
+                    bio,
                     role
                 )
             `)
@@ -184,6 +185,7 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 return {
                     id: item.id,
                     name: fullName,
+                    nickname: profile.bio || undefined,
                     number: item.jersey_number || index + 1,
                     position: uiPos,
                     rating: 75 + ((index * 3) % 15),
@@ -1310,6 +1312,72 @@ export async function registerPlayerToTeam(payload: {
     } catch (err: any) {
         console.warn('[Supabase Client] Register player fallback notice:', err.message);
         return { success: true, playerId: `pl_${Date.now()}` };
+    }
+}
+
+/**
+ * Updates an existing player's squad information: preferred squad name, phone, playing position, and avatar.
+ * Strictly targets the specific player row using their UID and team UID without distorting roles or table structure.
+ */
+export async function updatePlayerInfo(payload: {
+    playerId: string;
+    teamId: string;
+    preferredSquadName?: string;
+    phone?: string;
+    position: 'GK' | 'DEF' | 'MID' | 'FWD' | string;
+    photoUrl?: string;
+    profileId?: string;
+}): Promise<{ success: boolean; error?: string }> {
+    const teamUuid = toUuid(payload.teamId);
+    try {
+        let dbPos: 'GK' | 'DEF' | 'MID' | 'FWD' = 'MID';
+        const posUpper = (payload.position || '').toUpperCase();
+        if (posUpper === 'GK' || posUpper.includes('GOAL') || posUpper.includes('KEEPER')) dbPos = 'GK';
+        else if (posUpper === 'DEF' || posUpper === 'DF' || ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(posUpper) || posUpper.includes('DEFEND')) dbPos = 'DEF';
+        else if (posUpper === 'FWD' || posUpper === 'FW' || ['ST', 'CF', 'LW', 'RW'].includes(posUpper) || posUpper.includes('STRIKE') || posUpper.includes('FORWARD')) dbPos = 'FWD';
+        else dbPos = 'MID';
+
+        const updatePlayerPayload: any = {
+            position: dbPos,
+            updated_at: new Date().toISOString(),
+        };
+        if (payload.phone !== undefined) {
+            updatePlayerPayload.phone = payload.phone.trim();
+        }
+
+        const { error: playerErr } = await supabase
+            .from('players')
+            .update(updatePlayerPayload)
+            .eq('id', payload.playerId)
+            .eq('team_id', teamUuid);
+
+        if (playerErr) {
+            console.warn('[Supabase Client] Player record update notice:', playerErr.message);
+        }
+
+        if (payload.profileId) {
+            const updateProfilePayload: any = {
+                updated_at: new Date().toISOString(),
+            };
+            if (payload.phone !== undefined) updateProfilePayload.phone = payload.phone.trim();
+            if (payload.photoUrl !== undefined) updateProfilePayload.avatar_url = payload.photoUrl;
+            if (payload.preferredSquadName !== undefined) updateProfilePayload.bio = payload.preferredSquadName.trim();
+
+            const { error: profErr } = await supabase
+                .from('profiles')
+                .update(updateProfilePayload)
+                .eq('id', payload.profileId);
+
+            if (profErr) {
+                console.warn('[Supabase Client] Profile record update notice:', profErr.message);
+            }
+        }
+
+        squadUnitCache.delete(teamUuid);
+        return { success: true };
+    } catch (err: any) {
+        console.warn('[Supabase Client] Failed to update player info:', err);
+        return { success: false, error: err.message };
     }
 }
 

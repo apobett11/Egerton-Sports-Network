@@ -22,24 +22,24 @@ export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
 
   if (!isOpen) return null;
 
-  const registrationUrl = `${window.location.origin}/#/register/player?teamId=${teamId}`;
-  const whatsappShareText = `⚽ Official Invitation: Join ${teamName} on Egerton Sports Network!\n\nPlease complete your player registration directly here:\n${registrationUrl}\n\nYour profile will be automatically linked to our squad.`;
+  const updateUrl = `${window.location.origin}/#/update/player?teamId=${teamId}`;
+  const whatsappShareText = `⚽ Official Squad Update: ${teamName} on Egerton Sports Network!\n\nPlease select your name and complete your squad profile details here:\n${updateUrl}\n\nUpdate your preferred squad name, phone number, playing position, and profile avatar.`;
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareText)}`;
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(registrationUrl);
+      await navigator.clipboard.writeText(updateUrl);
       setCopied(true);
-      onShowToast('📋 Registration link copied to clipboard!');
+      onShowToast('📋 Player update link copied to clipboard!');
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      onShowToast('Link: ' + registrationUrl);
+      onShowToast('Link: ' + updateUrl);
     }
   };
 
   const handleWhatsAppShare = () => {
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    onShowToast('Opening WhatsApp to share registration link...');
+    onShowToast('Opening WhatsApp to share update link...');
   };
 
   return (
@@ -56,12 +56,12 @@ export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
                 <h3 className="font-black text-sm uppercase tracking-wider text-slate-900 dark:text-white">
                   Welcome Coach!
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                  Squad Onboarding
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  Squad Profile Update
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Onboard players for <strong className="text-slate-900 dark:text-white">{teamName}</strong> via your custom link.
+                Share this link with players in <strong className="text-slate-900 dark:text-white">{teamName}</strong> to update their squad information.
               </p>
             </div>
           </div>
@@ -78,23 +78,23 @@ export const ShareTeamLinkModal: React.FC<ShareTeamLinkModalProps> = ({
         <div className="bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm p-3 text-xs space-y-1">
           <div className="flex items-center gap-1.5 text-[#00b04f] font-bold">
             <Check className="w-3.5 h-3.5" />
-            <span>Direct Team-Specific Player Registration</span>
+            <span>Direct Team-Specific Player Squad Update</span>
           </div>
           <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
-            Players registering through this link are automatically assigned to <strong className="text-slate-900 dark:text-white">{teamName}</strong> and appear in your squad list.
+            Players access this link, select their name from the squad list, and update their preferred squad name, phone number, playing position, and profile avatar directly.
           </p>
         </div>
 
         {/* Link Box */}
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-            Team Registration Link
+            Team Squad Update Link
           </label>
           <div className="flex items-center gap-2 bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm p-1.5">
             <input
               type="text"
               readOnly
-              value={registrationUrl}
+              value={updateUrl}
               className="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none px-2 select-all truncate"
             />
             <button

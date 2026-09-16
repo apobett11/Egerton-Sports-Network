@@ -850,7 +850,14 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'register' || route.startsWith('register') || route.startsWith('player-registration')) {
+  if (
+    route === 'register' ||
+    route.startsWith('register') ||
+    route.startsWith('player-registration') ||
+    route === 'update' ||
+    route.startsWith('update') ||
+    route.startsWith('player-update')
+  ) {
     return (
       <Suspense fallback={<DashboardLoader />}>
         <PlayerRegistrationPage onNavigate={handleNavigateHash} />
