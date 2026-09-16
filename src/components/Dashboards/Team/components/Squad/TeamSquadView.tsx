@@ -665,49 +665,93 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       </header>
 
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
       {/* MAIN WIZARD CONTAINER                                                     */}
       {/* ========================================================================= */}
-      <main className="relative z-10 flex-1 overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
+      <main className={`relative z-10 flex-1 flex flex-col items-center ${activeStep === 5 ? 'overflow-y-auto justify-start p-2 sm:p-4' : 'overflow-hidden justify-center p-2 sm:p-4'}`}>
+        {/* STEPS OUTSIDE THE CARD, ABOVE STEP HEADING WITH CLEAR FULL WORDINGS */}
+        {activeStep !== 5 && (
+          <div className="w-full max-w-4xl px-2 sm:px-0 mb-3 shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 w-full">
+              {[
+                { step: 1, label: 'Choose Formation' },
+                { step: 2, label: `Select First 11 (${startingXIIds.length}/11)` },
+                { step: 3, label: `Select Substitutes (${substituteIds.length}/6)` },
+                { step: 4, label: 'In-Match Roles' },
+                { step: 5, label: 'Pitch Simulation' },
+              ].map((item) => {
+                const isCurrent = activeStep === item.step;
+                const isCompleted = activeStep > item.step;
+                return (
+                  <button
+                    key={item.step}
+                    onClick={() => setActiveStep(item.step as WizardStep)}
+                    className={`py-2 px-3 rounded-2xl text-center text-xs font-bold transition-all cursor-pointer border truncate ${
+                      isCurrent
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 ring-2 ring-blue-400 border-blue-400'
+                        : isCompleted
+                        ? 'bg-slate-800/90 text-emerald-400 border-emerald-500/30 hover:bg-slate-800'
+                        : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="truncate block">
+                      Step {item.step}: {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* STEPS 1 TO 4 CONTAINER: Structured Card with Internal Scroll & Uniform Blue Confirm Button */}
         {activeStep !== 5 && (
-          <div className="w-full max-w-4xl h-[92vh] max-h-[780px] bg-[#070f24]/95 border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* CARD HEADER: Step Title & Integrated Numbered Stepper (No Lateral Scroll) */}
-            <div className="px-6 pt-5 pb-3 border-b border-slate-800/80 flex flex-col gap-3">
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-wide">
-                {activeStep === 1 && 'Select Formation'}
-                {activeStep === 2 && 'Select First 11'}
-                {activeStep === 3 && 'Select Substitutes'}
-                {activeStep === 4 && 'Assign Roles'}
-              </h2>
-
-              {/* Steps inside the module right below header */}
-              <div className="flex items-center gap-2 w-full">
-                {[
-                  { step: 1, label: 'Formation' },
-                  { step: 2, label: `First 11 (${startingXIIds.length}/11)` },
-                  { step: 3, label: `Subs (${substituteIds.length}/6)` },
-                  { step: 4, label: 'Roles' },
-                  { step: 5, label: 'Pitch' },
-                ].map((item) => {
-                  const isCurrent = activeStep === item.step;
-                  const isCompleted = activeStep > item.step;
-                  return (
-                    <button
-                      key={item.step}
-                      onClick={() => setActiveStep(item.step as WizardStep)}
-                      className={`flex-1 py-1.5 px-2 rounded-xl text-center text-xs font-bold transition-all cursor-pointer truncate ${
-                        isCurrent
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40 ring-1 ring-blue-400'
-                          : isCompleted
-                          ? 'bg-slate-800 text-emerald-400'
-                          : 'bg-slate-900/60 text-slate-500 hover:text-slate-300'
-                      }`}
-                    >
-                      <span>{item.step}. {item.label}</span>
-                    </button>
-                  );
-                })}
+          <div className="w-full max-w-4xl h-[86vh] max-h-[750px] bg-[#070f24]/95 border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* CARD HEADER: Clear Step Heading & 1-line explanation with selection count */}
+            <div className="px-6 py-4 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-wide">
+                  {activeStep === 1 && 'Select Formation'}
+                  {activeStep === 2 && 'Select First 11'}
+                  {activeStep === 3 && 'Select Substitutes'}
+                  {activeStep === 4 && 'In-Match Roles'}
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {activeStep === 1 && 'Choose your squad layout and tactical shape from the available formations.'}
+                  {activeStep === 2 && 'Pick your 11 starting players from the squad roster to take the pitch.'}
+                  {activeStep === 3 && 'Select up to 6 substitute players ready on the matchday bench.'}
+                  {activeStep === 4 && 'Designate key leadership and set-piece taker responsibilities.'}
+                </p>
               </div>
+
+              {/* Dynamic counter in selection of First 11 and Substitutes */}
+              {activeStep === 2 && (
+                <div className={`px-3.5 py-1.5 rounded-xl border text-xs font-black self-start sm:self-center transition-all ${
+                  startingXIIds.length === 11
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                }`}>
+                  {startingXIIds.length === 0
+                    ? '0 selected'
+                    : startingXIIds.length === 1
+                    ? '1 selected'
+                    : `${startingXIIds.length} selected`} of 11
+                </div>
+              )}
+
+              {activeStep === 3 && (
+                <div className={`px-3.5 py-1.5 rounded-xl border text-xs font-black self-start sm:self-center transition-all ${
+                  substituteIds.length === 6
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                }`}>
+                  {substituteIds.length === 0
+                    ? '0 selected'
+                    : substituteIds.length === 1
+                    ? '1 selected'
+                    : `${substituteIds.length} selected`} of 6 (Max)
+                </div>
+              )}
             </div>
 
             {/* INTERNAL SCROLLABLE CONTENT BODY */}
@@ -805,33 +849,45 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
 
               {/* STEP 4: IN-MATCH ROLES (Strictly 5 roles, NO explanation, all in ONE stylish card) */}
               {activeStep === 4 && (
-                <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col gap-4">
-                  {[
-                    { key: 'captainId' as const, label: 'Captain' },
-                    { key: 'penaltyTakerId' as const, label: 'Penalty Taker' },
-                    { key: 'freeKickTakerId' as const, label: 'Free Kick' },
-                    { key: 'rightCornerTakerId' as const, label: 'Right Corner' },
-                    { key: 'leftCornerTakerId' as const, label: 'Left Corner' },
-                  ].map((item) => (
-                    <div key={item.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-3 last:border-b-0 last:pb-0">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">{item.label}</span>
-                      <select
-                        value={roles[item.key] || ''}
-                        onChange={(e) => handleAssignRole(item.key, e.target.value)}
-                        className="w-full sm:w-64 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold cursor-pointer"
-                      >
-                        <option value="">Select Player...</option>
-                        {startingXIIds.map((id) => {
-                          const p = playerIndex.get(id);
-                          return (
-                            <option key={id} value={id}>
-                              {p?.name || 'Player'}
-                            </option>
-                          );
-                        })}
-                      </select>
+                <div className="flex flex-col gap-3">
+                  <div className="p-3.5 rounded-2xl bg-blue-950/40 border border-blue-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-black text-white tracking-wide">Select from the First 11</h3>
+                      <p className="text-xs text-slate-300 mt-0.5">Assign leadership and set-piece responsibilities from your confirmed starting XI.</p>
                     </div>
-                  ))}
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-600/30 text-blue-300 text-xs font-bold border border-blue-500/40 self-start sm:self-center">
+                      5 Roles
+                    </span>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col gap-4">
+                    {[
+                      { key: 'captainId' as const, label: 'Captain' },
+                      { key: 'penaltyTakerId' as const, label: 'Penalty Taker' },
+                      { key: 'freeKickTakerId' as const, label: 'Free Kick' },
+                      { key: 'rightCornerTakerId' as const, label: 'Right Corner' },
+                      { key: 'leftCornerTakerId' as const, label: 'Left Corner' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-3 last:border-b-0 last:pb-0">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">{item.label}</span>
+                        <select
+                          value={roles[item.key] || ''}
+                          onChange={(e) => handleAssignRole(item.key, e.target.value)}
+                          className="w-full sm:w-64 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold cursor-pointer"
+                        >
+                          <option value="">Select Player...</option>
+                          {startingXIIds.map((id) => {
+                            const p = playerIndex.get(id);
+                            return (
+                              <option key={id} value={id}>
+                                {p?.name || 'Player'}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -894,32 +950,52 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 5: FULL PAGE PITCH SIMULATION (No top steps bar, progressive cards)   */}
+        {/* STEP 5: FULL PAGE TALL PITCH SIMULATION                                   */}
         {/* ========================================================================= */}
         {activeStep === 5 && (
-          <div className="w-full h-full flex flex-col justify-between max-w-5xl mx-auto animate-in fade-in zoom-in-95 duration-200 px-2 py-1 overflow-hidden">
-            {/* LATERAL MIDDLE HEADER: Team Name, Formation & Save Button */}
-            <div className="flex flex-col items-center justify-center text-center my-1 z-20">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-wide">{teamName}</h2>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">{formation}</span>
-              <button
-                onClick={handleCommitOfficialLineup}
-                className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-950/60 transition-all duration-200 active:scale-95 cursor-pointer"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Save & Commit Squad</span>
-              </button>
+          <div className="w-full max-w-5xl mx-auto flex flex-col items-center px-3 sm:px-6 py-2 pb-28 animate-in fade-in zoom-in-95 duration-200">
+            {/* LATERAL MIDDLE HEADER: Team Name & Formation only */}
+            <div className="flex flex-col items-center justify-center text-center my-2 shrink-0">
+              <h2 className="text-base sm:text-xl font-black text-white tracking-wide">{teamName}</h2>
+              <span className="text-xs font-bold text-blue-400 uppercase tracking-widest mt-0.5">{formation}</span>
             </div>
 
-            {/* PITCH CANVAS: Unset cards are NOT shown until previous is placed */}
-            <div className="relative w-full max-w-2xl mx-auto aspect-[1.38/1] min-h-[340px] max-h-[500px] rounded-3xl overflow-hidden border border-emerald-500/30 shadow-2xl bg-gradient-to-b from-[#0e3b23] to-[#072414]">
+            {/* DIRECT POSITION SELECTION DIRECTIVE BANNER ON TOP OF THE SIMULATION */}
+            <div className="w-full max-w-2xl mx-auto mb-3 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-blue-950/80 border border-blue-500/40 shadow-xl shrink-0">
+              {nextEmptySlotIndex !== null ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-center sm:text-left">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-[11px] font-black text-white uppercase tracking-wider shadow-sm">
+                      Position {nextEmptySlotIndex + 1} of 11
+                    </span>
+                    <span className="text-xs sm:text-sm font-extrabold text-white">
+                      Select <span className="text-emerald-400 underline underline-offset-2">{currentFormationConfig.slots[nextEmptySlotIndex]?.label} ({currentFormationConfig.slots[nextEmptySlotIndex]?.position})</span> from the list below
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-400 text-center sm:text-right">
+                    Click name below
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-emerald-400 font-extrabold text-xs sm:text-sm py-0.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>All 11 players positioned! Click any card to swap, or save squad below.</span>
+                </div>
+              )}
+            </div>
+
+            {/* TALL PITCH CANVAS: Aspect ratio taller (portrait tactical whiteboard) */}
+            <div className="relative w-full max-w-2xl mx-auto aspect-[1/1.22] min-h-[520px] sm:min-h-[580px] max-h-[720px] rounded-3xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-gradient-to-b from-[#0c351f] via-[#082816] to-[#04160c] shrink-0">
               {/* Pitch markings */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-25" stroke="white" strokeWidth="1.5" fill="none">
-                <rect x="5%" y="5%" width="90%" height="90%" rx="8" />
-                <line x1="5%" y1="50%" x2="95%" y2="50%" />
-                <circle cx="50%" cy="50%" r="12%" />
-                <rect x="25%" y="5%" width="50%" height="18%" />
-                <rect x="25%" y="77%" width="50%" height="18%" />
+                <rect x="4%" y="4%" width="92%" height="92%" rx="10" />
+                <line x1="4%" y1="50%" x2="96%" y2="50%" />
+                <circle cx="50%" cy="50%" r="13%" />
+                <circle cx="50%" cy="50%" r="1.5" fill="white" />
+                <rect x="22%" y="4%" width="56%" height="15%" />
+                <rect x="34%" y="4%" width="32%" height="6%" />
+                <rect x="22%" y="81%" width="56%" height="15%" />
+                <rect x="34%" y="90%" width="32%" height="6%" />
               </svg>
 
               {/* Cards on Pitch: ONLY placed cards and the current active target card are rendered! */}
@@ -973,9 +1049,9 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
                       </div>
                     ) : (
                       // ACTIVE TARGET SLOT (Appears for selection)
-                      <div className="w-13 h-13 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-500/20 shadow-lg scale-105 animate-pulse flex flex-col items-center justify-center">
-                        <span className="text-[10px] font-mono font-bold text-white">{slot.position}</span>
-                        <span className="text-[8px] font-bold text-emerald-300 uppercase">Pick</span>
+                      <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-500/20 shadow-xl scale-105 animate-pulse flex flex-col items-center justify-center">
+                        <span className="text-xs font-mono font-black text-white">{slot.position}</span>
+                        <span className="text-[9px] font-bold text-emerald-300 uppercase">Target</span>
                       </div>
                     )}
                   </div>
@@ -983,36 +1059,89 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
               })}
             </div>
 
-            {/* PLAYER LIST BELOW PITCH: Neat rows, NO lateral scroll. Selected ones dim and blur! */}
-            <div className="w-full max-w-2xl mx-auto mt-2 bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
-                {nextEmptySlotIndex !== null
-                  ? `Select player for ${currentFormationConfig.slots[nextEmptySlotIndex]?.label} (${currentFormationConfig.slots[nextEmptySlotIndex]?.position})`
-                  : 'All 11 players positioned on pitch'}
-              </span>
+            {/* PLAYER LISTS BELOW PITCH (All First XI players + all substitutes below them, within page with padding) */}
+            <div className="w-full max-w-2xl mx-auto mt-4 bg-[#070f24]/90 p-4 sm:p-5 rounded-3xl border border-slate-800 flex flex-col gap-4 shadow-xl">
+              {/* SECTION 1: ALL STARTING XI PLAYERS */}
+              <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                    First 11 Players ({startingXIIds.length})
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-semibold">
+                    {placedPlayerIdsSet.size} / 11 placed
+                  </span>
+                </div>
 
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                {startingXIIds.map((id) => {
-                  const player = playerIndex.get(id);
-                  if (!player) return null;
-                  const isAssigned = placedPlayerIdsSet.has(id);
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {startingXIIds.map((id) => {
+                    const player = playerIndex.get(id);
+                    if (!player) return null;
+                    const isAssigned = placedPlayerIdsSet.has(id);
 
-                  return (
-                    <button
-                      key={id}
-                      disabled={isAssigned}
-                      onClick={() => handleAssignToPitchSlot(id)}
-                      className={`p-2 rounded-xl border text-center transition-all duration-200 ${
-                        isAssigned
-                          ? 'opacity-25 blur-[1px] pointer-events-none scale-95 border-slate-800 bg-slate-900'
-                          : 'bg-slate-800/90 border-slate-700 hover:border-blue-400 hover:bg-slate-750 text-white cursor-pointer active:scale-95'
-                      }`}
-                    >
-                      <span className="text-xs font-bold block truncate">{player.name}</span>
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={id}
+                        disabled={isAssigned}
+                        onClick={() => handleAssignToPitchSlot(id)}
+                        className={`p-2.5 rounded-xl border text-center transition-all duration-200 ${
+                          isAssigned
+                            ? 'opacity-25 blur-[1px] pointer-events-none scale-95 border-slate-800 bg-slate-900'
+                            : 'bg-slate-800/90 border-slate-700 hover:border-blue-400 hover:bg-slate-750 text-white cursor-pointer active:scale-95 shadow-sm'
+                        }`}
+                      >
+                        <span className="text-xs font-bold block truncate">{player.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {/* SECTION 2: ALL SUBSTITUTES BELOW THEM */}
+              <div className="border-t border-slate-800/80 pt-3">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-black text-slate-300 uppercase tracking-wider">
+                    Substitutes ({substituteIds.length})
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-semibold">
+                    Available Bench
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {substituteIds.map((id) => {
+                    const sub = playerIndex.get(id);
+                    if (!sub) return null;
+                    const isAssigned = placedPlayerIdsSet.has(id);
+
+                    return (
+                      <div
+                        key={id}
+                        className={`p-2.5 rounded-xl border text-center transition-all duration-200 flex items-center justify-between gap-1.5 ${
+                          isAssigned
+                            ? 'opacity-30 blur-[1px] border-slate-800 bg-slate-900'
+                            : 'bg-slate-800/60 border-slate-750 text-slate-300'
+                        }`}
+                      >
+                        <span className="text-xs font-semibold truncate text-left">{sub.name}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-700/80 text-blue-300 font-mono font-bold uppercase shrink-0">
+                          SUB
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* SAVE AND COMMIT SQUAD BUTTON AT THE BOTTOM RIGHT OF THE SCREEN */}
+            <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
+              <button
+                onClick={handleCommitOfficialLineup}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-sm shadow-2xl shadow-blue-900/80 border border-blue-400/40 transition-all duration-200 active:scale-95 hover:scale-105 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                <span>Save & Commit Squad</span>
+              </button>
             </div>
           </div>
         )}
