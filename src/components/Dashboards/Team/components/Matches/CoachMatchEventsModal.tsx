@@ -269,30 +269,32 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   const currentClubName = teamName || (activeMatch ? (isHome ? activeMatch.homeTeamName : activeMatch.awayTeamName) : 'Our Team');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in">
       <div
-        className="w-full max-w-2xl bg-[#0e1c2b] border border-[#1a2e45] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-amber-500 to-[#00b04f]" />
+
         {/* MODAL HEADER */}
-        <div className="px-5 py-4 bg-[#112236] border-b border-[#1a2e45] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#ff0046]/15 border border-[#ff0046]/30 flex items-center justify-center text-[#ff0046] shrink-0">
+        <div className="px-6 py-4.5 bg-slate-50/50 dark:bg-[#0b1623]/50 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#ff0046]/10 text-[#ff0046] flex items-center justify-center shrink-0">
               <Trophy className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white">
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   Record Past Match Events
                 </h2>
                 {isAlreadyRecorded && (
-                  <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" />
                     <span>Locked</span>
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Log goal scorers, optional assists, and cards for {currentClubName} (One-Time Update Policy)
               </p>
             </div>
@@ -301,7 +303,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
@@ -309,16 +311,16 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         </div>
 
         {/* MODAL SCROLLABLE BODY */}
-        <div className="p-5 overflow-y-auto space-y-6 flex-1 text-slate-100">
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-900 dark:text-slate-100">
           {/* 1. MATCH SELECTOR CARD */}
-          <div className="bg-[#081018] border border-[#1a2e45] rounded-xl p-4 space-y-3">
-            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl p-4 space-y-3">
+            <label className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-[#ff0046]" />
               <span>Select Past Fixture (Strictly Your Team&apos;s Matches)</span>
             </label>
 
             {pastMatches.length === 0 ? (
-              <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex items-center gap-2">
+              <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>No finished matches available yet for your team.</span>
               </div>
@@ -327,7 +329,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 value={currentMatchId}
                 onChange={(e) => setCurrentMatchId(e.target.value)}
                 disabled={isLoadingExisting || isSaving}
-                className="w-full bg-[#112236] border border-[#1a2e45] text-white text-xs sm:text-sm font-bold rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60"
+                className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs sm:text-sm font-bold rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60"
               >
                 {pastMatches.map((m) => {
                   const homeTxt = m.homeTeamName || (m.isHome ? currentClubName : m.opponentName);
@@ -344,20 +346,20 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
             {/* Match Snapshot Banner */}
             {activeMatch && (
-              <div className="mt-2 pt-3 border-t border-[#1a2e45]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="mt-2 pt-3 border-t border-slate-200/60 dark:border-[#1a2e45]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2">
                   {opponentLogo && (
                     <img
                       src={opponentLogo}
                       alt={opponentName}
-                      className="w-5 h-5 rounded-full object-cover shrink-0"
+                      className="w-5 h-5 rounded-full object-cover shrink-0 border border-slate-200 dark:border-white/10"
                     />
                   )}
-                  <span className="font-bold text-slate-200">
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
                     vs {opponentName} ({isHome ? 'Home' : 'Away'})
                   </span>
                   {activeMatch.location && (
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1 hidden sm:inline-flex">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 hidden sm:inline-flex">
                       <MapPin className="w-3 h-3 text-[#ff0046]" />
                       <span>{activeMatch.location}</span>
                     </span>
@@ -370,7 +372,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     {matchGoalsCount} {matchGoalsCount === 1 ? 'Goal' : 'Goals'} Scored
                   </span>
                   {isAlreadyRecorded && (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-[10px] flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 font-bold text-[10px] flex items-center gap-1">
                       <Lock className="w-3 h-3" />
                       <span>Recorded</span>
                     </span>
@@ -382,8 +384,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
           {/* ONE-TIME UPDATE LOCK BANNER */}
           {isAlreadyRecorded && (
-            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl text-xs flex items-center gap-2.5">
-              <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2.5">
+              <Lock className="w-4 h-4 shrink-0 text-amber-500" />
               <span>
                 <strong>Events Finalized (One-Time Update):</strong> Match events for this fixture have already been submitted. To preserve official league integrity, submitted entries cannot be rewritten.
               </span>
@@ -401,31 +403,31 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
           {!isLoadingExisting && activeMatch && (
             <>
               {/* 2. GOALS SECTION */}
-              <div className="bg-[#081018] border border-[#1a2e45] rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between border-b border-[#1a2e45] pb-2.5">
+              <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-[#1a2e45] pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="text-base">⚽</span>
                     <div>
-                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
+                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                         Goal Scorers & Assists
                       </h3>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         Select each scorer for your team. Assist is optional (e.g. solo goal, free kick). Score numbers cannot be modified.
                       </p>
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-[#112236] px-2.5 py-1 rounded-md border border-[#1a2e45]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-white dark:bg-[#0e1c2b] px-2.5 py-1 rounded-md border border-slate-200 dark:border-[#1a2e45]">
                     {matchGoalsCount} {matchGoalsCount === 1 ? 'Goal Required' : 'Goals Required'}
                   </span>
                 </div>
 
                 {goals.length === 0 ? (
-                  <div className="p-4 rounded-lg bg-[#112236]/40 border border-[#1a2e45] text-center space-y-1">
-                    <p className="text-xs font-semibold text-slate-300">
+                  <div className="p-4 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-center space-y-1">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       0 goals scored by {currentClubName} in this match.
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-400">
                       Official score is locked. You can record cards below if any were received.
                     </p>
                   </div>
@@ -434,10 +436,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     {goals.map((goal, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#112236] border border-[#1a2e45] rounded-xl p-3.5 space-y-3"
+                        className="bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl p-3.5 space-y-3"
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono font-black text-emerald-400 flex items-center gap-1.5">
+                          <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                             <span className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-[10px]">
                               {idx + 1}
                             </span>
@@ -452,17 +454,17 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {/* Scorer Picker (Required) */}
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
                               Goal Scorer <span className="text-[#ff0046]">*</span>
                             </label>
                             <select
                               value={goal.playerId}
                               onChange={(e) => handleUpdateGoal(idx, 'playerId', e.target.value)}
                               disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                              className={`w-full bg-[#081018] border text-xs font-bold rounded-lg px-3 py-2 text-white focus:outline-none transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                              className={`w-full bg-slate-50 dark:bg-[#112236] border text-xs font-bold rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                                 !goal.playerId && validationError
                                   ? 'border-rose-500 focus:border-rose-400'
-                                  : 'border-[#1a2e45] focus:border-[#ff0046]'
+                                  : 'border-slate-200 dark:border-[#1a2e45] focus:border-[#ff0046]'
                               }`}
                             >
                               <option value="">-- Select Goal Scorer --</option>
@@ -476,14 +478,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
                           {/* Assist Picker (Optional) */}
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
                               Assist <span className="text-slate-400 text-[9px] lowercase font-normal">(optional)</span>
                             </label>
                             <select
                               value={goal.assistPlayerId || ''}
                               onChange={(e) => handleUpdateGoal(idx, 'assistPlayerId', e.target.value)}
                               disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                              className="w-full bg-[#081018] border border-[#1a2e45] text-xs font-medium rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200 dark:border-[#1a2e45] text-xs font-medium rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               <option value="">None (Solo Goal / Free Kick / Direct)</option>
                               {sortedRoster
@@ -503,14 +505,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
               </div>
 
               {/* 3. DISCIPLINARY CARDS SECTION */}
-              <div className="bg-[#081018] border border-[#1a2e45] rounded-xl p-4 space-y-4">
-                <div className="border-b border-[#1a2e45] pb-2.5">
-                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl p-4 space-y-4">
+                <div className="border-b border-slate-200/80 dark:border-[#1a2e45] pb-2.5">
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                     <span className="w-2.5 h-3.5 rounded-[2px] bg-amber-400 inline-block"></span>
                     <span className="w-2.5 h-3.5 rounded-[2px] bg-rose-600 inline-block -ml-1"></span>
                     <span>Cards & Disciplinary</span>
                   </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Select players from your roster who received yellow or red cards in this game.
                   </p>
                 </div>
@@ -518,7 +520,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 {/* Yellow Cards Subsection */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                       <span className="w-2.5 h-3.5 rounded-[2px] bg-amber-400 inline-block"></span>
                       <span>Yellow Cards ({yellowCards.length})</span>
                     </label>
@@ -533,7 +535,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             }
                           }}
                           disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                          className="w-full bg-[#112236] border border-[#1a2e45] text-slate-200 text-[11px] font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
+                          className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
                         >
                           <option value="">+ Add Yellow Card</option>
                           {sortedRoster
@@ -556,7 +558,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         return (
                           <span
                             key={pid}
-                            className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold px-2.5 py-1 rounded-lg"
+                            className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold px-2.5 py-1 rounded-lg"
                           >
                             <span className="w-2 h-2.5 rounded-[1px] bg-amber-400 shrink-0"></span>
                             <span>{pName}</span>
@@ -564,7 +566,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleRemoveYellowCard(pid)}
-                                className="text-amber-300 hover:text-white cursor-pointer ml-1"
+                                className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1"
                                 title="Remove card"
                               >
                                 <X className="w-3 h-3" />
@@ -575,14 +577,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                       })}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-500 italic">No yellow cards recorded.</p>
+                    <p className="text-[11px] text-slate-400 italic">No yellow cards recorded.</p>
                   )}
                 </div>
 
                 {/* Red Cards Subsection */}
-                <div className="space-y-2.5 pt-2 border-t border-[#1a2e45]/60">
+                <div className="space-y-2.5 pt-2 border-t border-slate-200/60 dark:border-[#1a2e45]/60">
                   <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                       <span className="w-2.5 h-3.5 rounded-[2px] bg-rose-600 inline-block"></span>
                       <span>Red Cards ({redCards.length})</span>
                     </label>
@@ -597,7 +599,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             }
                           }}
                           disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                          className="w-full bg-[#112236] border border-[#1a2e45] text-slate-200 text-[11px] font-bold rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-rose-400 transition-colors cursor-pointer"
+                          className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-rose-400 transition-colors cursor-pointer"
                         >
                           <option value="">+ Add Red Card</option>
                           {sortedRoster
@@ -620,7 +622,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         return (
                           <span
                             key={pid}
-                            className="inline-flex items-center gap-1.5 bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold px-2.5 py-1 rounded-lg"
+                            className="inline-flex items-center gap-1.5 bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-bold px-2.5 py-1 rounded-lg"
                           >
                             <span className="w-2 h-2.5 rounded-[1px] bg-rose-600 shrink-0"></span>
                             <span>{pName}</span>
@@ -628,7 +630,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleRemoveRedCard(pid)}
-                                className="text-rose-300 hover:text-white cursor-pointer ml-1"
+                                className="text-rose-500 hover:text-rose-700 dark:hover:text-white cursor-pointer ml-1"
                                 title="Remove card"
                               >
                                 <X className="w-3 h-3" />
@@ -639,7 +641,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                       })}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-500 italic">No red cards recorded.</p>
+                    <p className="text-[11px] text-slate-400 italic">No red cards recorded.</p>
                   )}
                 </div>
               </div>
@@ -648,20 +650,20 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
           {/* VALIDATION ERROR BANNER */}
           {validationError && (
-            <div className="p-3 bg-rose-500/15 border border-rose-500/30 text-rose-300 rounded-xl text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
               <span>{validationError}</span>
             </div>
           )}
         </div>
 
         {/* MODAL FOOTER ACTIONS */}
-        <div className="px-5 py-4 bg-[#112236] border-t border-[#1a2e45] flex items-center justify-end gap-3 shrink-0">
+        <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
           >
             {isAlreadyRecorded ? 'Close' : 'Cancel'}
           </button>
@@ -670,7 +672,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
             type="button"
             onClick={handleSave}
             disabled={isAlreadyRecorded || isSaving || isLoadingExisting || !activeMatch}
-            className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-lg shadow-[#ff0046]/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isAlreadyRecorded ? (
               <>

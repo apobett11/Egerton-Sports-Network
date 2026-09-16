@@ -57,19 +57,19 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
   ];
 
   return (
-    <aside className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-md p-3 shadow-xs space-y-3 select-none">
+    <aside className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-3.5 shadow-xs space-y-3 select-none">
       {/* Role Badge Indicator */}
-      <div className="p-3 rounded-md bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-sm flex items-center justify-center font-black bg-[#ff0046] text-white">
-            <Briefcase className="w-3.5 h-3.5" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold bg-[#ff0046] text-white shadow-2xs">
+            <Briefcase className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">ROLE GOVERNANCE</div>
-            <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">HEAD COACH</div>
+            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">ROLE GOVERNANCE</div>
+            <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight">HEAD COACH</div>
           </div>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/25">
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
           Exclusive
         </span>
       </div>
@@ -83,10 +83,10 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
               key={item.view}
               type="button"
               onClick={() => setActiveView(item.view)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md font-black text-xs transition-colors cursor-pointer uppercase tracking-wider ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer uppercase tracking-wider ${
                 isActive
                   ? 'bg-[#ff0046] text-white shadow-xs'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] hover:text-slate-900 dark:hover:text-white'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#13263b] hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -95,8 +95,8 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
               </div>
 
               {item.badge && (
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-600 dark:text-slate-400'
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-[#14263b] text-slate-600 dark:text-slate-400'
                 }`}>
                   {item.badge}
                 </span>

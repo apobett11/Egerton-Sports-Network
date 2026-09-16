@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, PenTool, Send, AlertCircle } from 'lucide-react';
+import { X, PenTool, Send, AlertCircle, Image as ImageIcon } from 'lucide-react';
 
 interface ComposeJournalModalProps {
   isOpen: boolean;
@@ -63,42 +63,49 @@ export const ComposeJournalModal: React.FC<ComposeJournalModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full max-w-2xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-2xl overflow-hidden my-8 relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-purple-500 to-indigo-500" />
+
         {/* Header */}
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <PenTool className="w-4 h-4 text-[#ff0046]" />
+        <div className="px-6 py-4.5 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-[#0b1623]/50">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#ff0046]/10 text-[#ff0046] flex items-center justify-center shrink-0">
+              <PenTool className="w-4 h-4" />
+            </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
                 Compose Team Press Release & Bulletin
               </h3>
+              <p className="text-[11px] text-slate-400">
+                Official statement, tactical briefing, or club announcement
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-sm cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {errorMessage && (
-          <div className="mx-4 mt-4 p-2.5 bg-[#ff0046]/10 border border-[#ff0046]/20 rounded-sm text-[#ff0046] text-xs flex items-center gap-2">
+          <div className="mx-6 mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Headline <span className="text-[#ff0046]">*</span>
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono">
                 {title.length}/120
               </span>
             </div>
@@ -108,19 +115,19 @@ export const ComposeJournalModal: React.FC<ComposeJournalModalProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Head Coach's Matchday Briefing: Tactical Readiness & Squad Focus"
-              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
               required
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#ff0046] cursor-pointer"
+              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] cursor-pointer transition-all"
             >
               <option value="general">General Team Update</option>
               <option value="announcement">Club Bulletin / Announcement</option>
@@ -131,11 +138,11 @@ export const ComposeJournalModal: React.FC<ComposeJournalModalProps> = ({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Summary / Excerpt
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono">
                 {excerpt.length}/300
               </span>
             </div>
@@ -145,52 +152,51 @@ export const ComposeJournalModal: React.FC<ComposeJournalModalProps> = ({
               onChange={(e) => setExcerpt(e.target.value)}
               placeholder="Brief 1-2 sentence overview of the announcement..."
               rows={2}
-              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
             />
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Main Content <span className="text-[#ff0046]">*</span>
-              </label>
-            </div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+              Main Content <span className="text-[#ff0046]">*</span>
+            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Detailed official statement, match notes, or squad announcement..."
               rows={5}
-              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
               required
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-              Featured Image URL (Optional)
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span>Featured Image URL (Optional)</span>
             </label>
             <input
               type="url"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-sm px-3 py-2 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
+              className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
             />
           </div>
 
-          <div className="pt-3 border-t border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-1.5 rounded-full bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-[#1a324e] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 rounded-full bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-xs hover:shadow-md transition-all disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{isSubmitting ? 'Publishing...' : 'Publish to Newsroom'}</span>

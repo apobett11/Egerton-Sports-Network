@@ -124,10 +124,10 @@ export const TeamDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f2f4f7] dark:bg-[#081018] text-slate-900 dark:text-slate-100 antialiased flex flex-col lg:flex-row font-sans selection:bg-[#ff0046] selection:text-white">
-      {/* Toast Notification (Flashscore Capsule Style) */}
+      {/* Toast Notification (Apple Capsule Style) */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-[100] bg-[#0e1e2d] text-white px-4 py-2.5 rounded-full shadow-2xl border border-[#1a2e45] flex items-center gap-2 animate-fade-in text-xs font-black">
-          <Zap className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
+        <div className="fixed top-5 right-5 z-[100] bg-slate-900/95 dark:bg-[#0e1c2b]/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/50 dark:border-[#1a2e45] flex items-center gap-2.5 animate-fade-in text-xs font-bold">
+          <Zap className="w-4 h-4 text-[#ff0046] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -225,13 +225,16 @@ export const TeamDashboard: React.FC = () => {
           {/* PAGE 6: NEWSROOM & PRESS */}
           {activeView === 'NEWS' && (
             <div className="space-y-4">
-              <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                    <Newspaper className="w-4 h-4 text-[#ff0046]" />
+              <div className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] to-purple-600" />
+                <div className="space-y-1">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#ff0046]/10 text-[#ff0046] flex items-center justify-center shrink-0">
+                      <Newspaper className="w-4 h-4" />
+                    </div>
                     <span>Official Newsroom & Press Releases</span>
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pl-9.5">
                     Official club communications, tactical statements, and injury bulletins.
                   </p>
                 </div>
@@ -239,7 +242,7 @@ export const TeamDashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsComposeModalOpen(true)}
-                    className="px-4 py-1.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
+                    className="px-5 py-2.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-xs hover:shadow-md cursor-pointer shrink-0 self-start sm:self-auto"
                   >
                     <PenTool className="w-3.5 h-3.5" />
                     <span>Compose Release</span>

@@ -396,14 +396,14 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
       {/* ========================================================================= */}
       {/* SUB-MAIN MENUS: SEGMENTED CONTROLS (APPLE DESIGN HIG) */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-between border-b border-[#e6e8ec] dark:border-[#1a2e45] pb-4">
-        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] shadow-xs">
+      <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-[#1a2e45] pb-4">
+        <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] shadow-2xs">
           <button
             type="button"
             onClick={() => setActiveSubMenu('players')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
               activeSubMenu === 'players'
-                ? 'bg-white dark:bg-[#1c3554] text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                ? 'bg-white dark:bg-[#1c3554] text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -412,7 +412,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             <span
               className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                 activeSubMenu === 'players'
-                  ? 'bg-[#ff0046]/15 text-[#ff0046]'
+                  ? 'bg-rose-500/10 text-[#ff0046]'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
             >
@@ -423,9 +423,9 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubMenu('kits')}
-            className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
               activeSubMenu === 'kits'
-                ? 'bg-white dark:bg-[#1c3554] text-slate-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                ? 'bg-white dark:bg-[#1c3554] text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -434,7 +434,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             <span
               className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                 activeSubMenu === 'kits'
-                  ? 'bg-[#00b04f]/15 text-[#00b04f]'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
               }`}
             >
@@ -447,7 +447,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
           <button
             type="button"
             onClick={onOpenInviteModal}
-            className="px-4 py-2 bg-transparent hover:bg-[#ff0046] active:bg-[#ff0046] text-[#ff0046] hover:text-white active:text-white border border-[#ff0046] text-xs font-black rounded-full transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+            className="px-4 py-2 bg-[#ff0046] hover:bg-[#e0003c] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Invite New Player</span>
@@ -459,15 +459,15 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
       {/* SUB-MENU 1: PLAYERS DIRECTORY */}
       {/* ========================================================================= */}
       {activeSubMenu === 'players' && (
-        <div className="space-y-7 animate-in fade-in duration-150">
+        <div className="space-y-6 animate-in fade-in duration-150">
           {/* 1. MAIN HEADING */}
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <Shield className="w-5 h-5 text-blue-500" />
-              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                Players Directory
+              <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Players Directory & Team Kits
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                 {roster.length} Athletes Registered
               </span>
             </div>
@@ -477,15 +477,16 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
           </div>
 
           {/* 2. PLAYERS YET TO FILL IN DETAILS & INTAKE LINK SECTION */}
-          <section className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[#e6e8ec] dark:border-[#1a2e45] pb-3">
+          <section className="relative overflow-hidden bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-[#1a2e45] pb-3">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     Athletes Awaiting Details & Profile Completion
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
                     {pendingPlayers.length} Incomplete
                   </span>
                 </div>
@@ -499,9 +500,9 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyRegistrationLink}
-                  className="px-3.5 py-1.5 bg-transparent hover:bg-[#0080ff] active:bg-[#0080ff] text-[#0080ff] hover:text-white active:text-white border border-[#0080ff] text-xs font-bold rounded-full flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
                 >
-                  {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedLink ? 'Copied' : 'Copy Update Link'}</span>
                 </button>
 
@@ -509,7 +510,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 bg-transparent hover:bg-[#00b04f] active:bg-[#00b04f] text-[#00b04f] hover:text-white active:text-white border border-[#00b04f] text-xs font-black rounded-full flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/30 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>Send via WhatsApp</span>
@@ -519,7 +520,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   href={`#/update/player?team=${teamSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 bg-transparent hover:bg-slate-700 active:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-white active:text-white border border-slate-300 dark:border-slate-600 text-xs font-bold rounded-full flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs font-semibold rounded-xl flex items-center gap-1 transition-all"
                 >
                   <ExternalLink className="w-3 h-3" />
                   <span>Open Update Dashboard</span>
@@ -533,17 +534,17 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 {pendingPlayers.slice(0, 4).map((player) => (
                   <div
                     key={player.id}
-                    className="p-2.5 rounded-lg bg-[#f8f9fa] dark:bg-[#112236] border border-dashed border-amber-500/30 flex items-center justify-between gap-2"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#112236] border border-amber-500/20 flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
                         {player.name.charAt(0)}
                       </div>
                       <div className="truncate">
-                        <div className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           {player.name}
                         </div>
-                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />
                           <span>Pending profile details</span>
                         </div>
@@ -552,7 +553,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                     <button
                       type="button"
                       onClick={handleCopyRegistrationLink}
-                      className="p-1.5 text-slate-400 hover:text-[#0080ff] transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
                       title="Copy link to send to athlete"
                     >
                       <Copy className="w-3.5 h-3.5" />
@@ -561,7 +562,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="py-2 text-xs text-[#00b04f] font-semibold flex items-center gap-2">
+              <div className="py-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-2">
                 <UserCheck className="w-4 h-4" />
                 <span>All current athletes have fully completed profile credentials!</span>
               </div>
@@ -570,22 +571,19 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             {/* Direct Intake URL display */}
             <div className="pt-2 flex items-center gap-2">
               <span className="text-[11px] font-bold text-slate-400 shrink-0">Direct Update Link:</span>
-              <code className="text-[11px] font-mono text-slate-600 dark:text-slate-300 bg-[#f8f9fa] dark:bg-[#112236] px-3 py-1 rounded-md border border-[#e6e8ec] dark:border-[#1a2e45] inline-block select-all truncate flex-1">
+              <code className="text-[11px] font-mono text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#112236] px-3 py-1 rounded-xl border border-slate-200/80 dark:border-[#1a2e45] inline-block select-all truncate flex-1">
                 {updateUrl}
               </code>
             </div>
           </section>
 
-          {/* SPACE BETWEEN SECTIONS */}
-          <div className="my-8 border-t border-[#e6e8ec] dark:border-[#1a2e45]" />
-
           {/* 3. THE PLAYERS SECTION WITH WAYS TO ARRANGE THEM */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                   <span>Squad Players</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     {sortedRoster.length} Available
                   </span>
                 </h2>
@@ -605,10 +603,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSortClick('rating')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                     sortBy === 'rating'
                       ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-amber-500'
+                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-amber-500'
                   }`}
                 >
                   <Star className="w-3 h-3 fill-current" />
@@ -622,10 +620,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSortClick('number')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                     sortBy === 'number'
                       ? 'bg-blue-500 text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-blue-500'
+                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-blue-500'
                   }`}
                 >
                   <Hash className="w-3 h-3" />
@@ -639,10 +637,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSortClick('name')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                     sortBy === 'name'
                       ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-slate-500'
+                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-slate-500'
                   }`}
                 >
                   <span>Name</span>
@@ -655,10 +653,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSortClick('position')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                     sortBy === 'position'
-                      ? 'bg-[#00b04f] text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-[#00b04f]'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-emerald-500'
                   }`}
                 >
                   <Shield className="w-3 h-3" />
@@ -672,10 +670,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSortClick('status')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                     sortBy === 'status'
                       ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-[#e6e8ec] dark:border-[#1a2e45] hover:border-[#ff0046]'
+                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-[#ff0046]'
                   }`}
                 >
                   <Activity className="w-3 h-3" />
@@ -688,15 +686,15 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             </div>
 
             {/* SEARCH & POSITION FILTER BAR */}
-            <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search player by name or jersey number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-full pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 font-semibold focus:outline-none focus:ring-1 focus:ring-[#00b04f]"
+                  className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 font-medium focus:outline-none focus:border-[#ff0046]"
                 />
               </div>
 
@@ -714,10 +712,10 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => setPositionFilter(item.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-black transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
                         isActive
-                          ? 'bg-[#00b04f] text-white shadow-xs'
-                          : 'bg-[#eef1f5] dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
+                          ? 'bg-[#ff0046] text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3450]'
                       }`}
                     >
                       {item.label}
@@ -734,25 +732,25 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 return (
                   <div
                     key={player.id}
-                    className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl p-3 shadow-xs hover:border-[#00b04f]/40 hover:shadow-md transition-all flex flex-col justify-between gap-2.5 relative group"
+                    className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between gap-3 relative group"
                   >
                     {/* Top Row: Rating, Position, Number, and Delete */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         {/* Rating Badge */}
-                        <span className="px-1.5 py-0.5 rounded-[4px] bg-amber-500 text-slate-950 font-black font-mono text-[10px] flex items-center gap-0.5 shadow-2xs">
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold font-mono text-[10px] flex items-center gap-0.5 border border-amber-500/20">
                           <Star className="w-2.5 h-2.5 fill-current" />
                           <span>{player.rating}</span>
                         </span>
 
                         {/* Position Pill */}
-                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black uppercase ${getPositionBadgeStyle(player.position)}`}>
+                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${getPositionBadgeStyle(player.position)}`}>
                           {player.position}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <span className="font-mono font-black text-[11px] text-slate-400">
+                        <span className="font-mono font-bold text-[11px] text-slate-400">
                           #{player.number}
                         </span>
                         {isCoach && onDeletePlayer && (
@@ -762,7 +760,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                               e.stopPropagation();
                               setPlayerToDelete(player);
                             }}
-                            className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
+                            className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
                             title={`Remove ${player.name}`}
                           >
                             <Trash2 className="w-3 h-3" />
@@ -773,7 +771,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
 
                     {/* Player Image & Name */}
                     <div className="flex flex-col items-center text-center space-y-1.5">
-                      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-[#e6e8ec] dark:border-[#1a2e45] shrink-0 group-hover:border-[#00b04f] transition-colors">
+                      <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200/80 dark:border-[#1a2e45] shrink-0 group-hover:border-slate-400 dark:group-hover:border-slate-600 transition-colors">
                         <img
                           src={player.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                           alt={player.name}
@@ -781,11 +779,11 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                         />
                       </div>
                       <div className="w-full">
-                        <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           {player.name}
                         </h4>
                         {isStarting && (
-                          <span className="text-[9px] font-black uppercase text-[#00b04f] block mt-0.5">
+                          <span className="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block mt-0.5">
                             Starting XI
                           </span>
                         )}
@@ -793,14 +791,14 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                     </div>
 
                     {/* Bottom: Status Badge & Quick Selector */}
-                    <div className="pt-2 border-t border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between gap-1">
+                    <div className="pt-2 border-t border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-1.5">
                       <span
-                        className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase truncate ${
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase truncate ${
                           player.status === 'Fit' || player.status === 'Active'
-                            ? 'bg-[#00b04f]/15 text-[#00b04f]'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                             : player.status === 'Recovering'
-                            ? 'bg-blue-500/15 text-blue-500'
-                            : 'bg-[#ff0046]/15 text-[#ff0046]'
+                            ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                            : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
                         }`}
                       >
                         {player.status}
@@ -810,7 +808,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                         data-testid="player-status-select"
                         value={player.status}
                         onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
-                        className="bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[9px] font-bold rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#00b04f] cursor-pointer"
+                        className="bg-slate-50 dark:bg-[#112236] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[10px] font-medium rounded-lg px-2 py-1 focus:outline-none focus:border-[#ff0046] cursor-pointer"
                       >
                         <option value="Fit">Fit</option>
                         <option value="Recovering">Rec</option>
