@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { fetchTeamById, updatePlayerInfo } from '../../components/Dashboards/Team/lib/supabaseClient';
+import { useToast } from '../../contexts/ToastContext';
 import {
   Shield,
-  CheckCircle2,
-  ArrowRight,
   ArrowLeft,
   Loader2,
-  Lock,
-  Phone,
-  Sparkles,
   Camera,
-  Check,
+  User,
   AlertCircle,
-  UserCheck
+  Upload,
+  Sparkles
 } from 'lucide-react';
 
 interface PlayerRegistrationPageProps {
@@ -40,7 +37,6 @@ interface ExistingPlayer {
   };
 }
 
-// Preset athletic avatar icons for players who prefer an icon
 const AVATAR_ICON_PRESETS = [
   { id: 'icon_star', label: 'Playmaker', bg: 'from-amber-500 to-orange-600', emoji: '⭐' },
   { id: 'icon_striker', label: 'Striker', bg: 'from-rose-500 to-red-600', emoji: '⚽' },
@@ -54,13 +50,11 @@ const POSITION_CATEGORIES = [
   { key: 'GK', label: 'Goalkeeper', defaultDetail: 'GK' },
   { key: 'DEF', label: 'Defender', defaultDetail: 'CB' },
   { key: 'MID', label: 'Midfielder', defaultDetail: 'CM' },
-  { key: 'FWD', label: 'Striker / Forward', defaultDetail: 'ST' },
+  { key: 'FWD', label: 'Striker', defaultDetail: 'ST' },
 ];
 
 const DETAILED_POSITIONS: Record<string, { code: string; name: string }[]> = {
-  GK: [
-    { code: 'GK', name: 'Goalkeeper (GK)' },
-  ],
+  GK: [{ code: 'GK', name: 'Goalkeeper (GK)' }],
   DEF: [
     { code: 'CB', name: 'Centre Back (CB)' },
     { code: 'LB', name: 'Left Back (LB)' },
@@ -84,13 +78,21 @@ const DETAILED_POSITIONS: Record<string, { code: string; name: string }[]> = {
 };
 
 export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ onNavigate }) => {
+  const toast = (() => {
+    try {
+      return useToast();
+    } catch {
+      return null;
+    }
+  })();
+
   const [teamId, setTeamId] = useState<string>('');
   const [teamInfo, setTeamInfo] = useState<any>(null);
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
   const [teamPlayers, setTeamPlayers] = useState<ExistingPlayer[]>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
-  // Player Selection (from roster dropdown)
+  // Player Selection (NO pre-selected player)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
   const [selectedPlayer, setSelectedPlayer] = useState<ExistingPlayer | null>(null);
 
@@ -100,16 +102,14 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
   const [roleCategory, setRoleCategory] = useState<'GK' | 'DEF' | 'MID' | 'FWD'>('MID');
   const [detailedPosition, setDetailedPosition] = useState<string>('CM');
 
-  // Avatar / Profile Picture
-  const [avatarMode, setAvatarMode] = useState<'upload' | 'icon'>('icon');
+  // Avatar / Profile Picture (Default is 'upload')
+  const [avatarMode, setAvatarMode] = useState<'upload' | 'icon'>('upload');
   const [selectedPresetIcon, setSelectedPresetIcon] = useState<string>('icon_star');
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [updatedSummary, setUpdatedSummary] = useState<any>(null);
 
   // Extract teamId from URL hash or query params
   useEffect(() => {
@@ -132,7 +132,6 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
   const loadTeamAndPlayers = async (id: string) => {
     setIsLoadingData(true);
     try {
-      // 1. Fetch team metadata
       let t = await fetchTeamById(id);
       if (!t) {
         const { data } = await supabase.from('teams').select('*').eq('id', id).maybeSingle();
@@ -140,7 +139,6 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
       }
       setTeamInfo(t);
 
-      // 2. Fetch existing players in this team for dropdown
       const { data: players, error } = await supabase
         .from('players')
         .select(`
@@ -167,7 +165,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         .order('jersey_number', { ascending: true });
 
       if (error) {
-        console.warn('[PlayerUpdateDashboard] Error fetching team players:', error);
+        console.warn('[PlayerUpdate] Error loading players:', error);
       }
 
       const playerList: ExistingPlayer[] = (players || []).map((p: any) => ({
@@ -176,13 +174,9 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
       }));
 
       setTeamPlayers(playerList);
-
-      // Auto-select first player if available and none chosen
-      if (playerList.length > 0 && !selectedPlayerId) {
-        handleSelectPlayer(playerList[0].id, playerList);
-      }
+      // NOTE: We deliberately DO NOT pre-select any player or options.
     } catch (err) {
-      console.warn('[PlayerUpdateDashboard] Load error:', err);
+      console.warn('[PlayerUpdate] Load error:', err);
     } finally {
       setIsLoadingData(false);
     }
@@ -200,7 +194,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         await loadTeamAndPlayers(firstTeamId);
       }
     } catch (err) {
-      console.warn('[PlayerUpdateDashboard] Failed to load teams list:', err);
+      console.warn('[PlayerUpdate] Failed to load teams:', err);
     } finally {
       setIsLoadingData(false);
     }
@@ -210,26 +204,22 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
     setTeamId(newTeamId);
     setSelectedPlayerId('');
     setSelectedPlayer(null);
+    setPreferredSquadName('');
+    setPhone('');
     const sel = availableTeams.find((t) => t.id === newTeamId);
     if (sel) setTeamInfo(sel);
     await loadTeamAndPlayers(newTeamId);
   };
 
-  const handleSelectPlayer = (playerId: string, list: ExistingPlayer[] = teamPlayers) => {
+  const handleSelectPlayer = (playerId: string) => {
     setSelectedPlayerId(playerId);
-    const p = list.find((item) => item.id === playerId) || null;
+    const p = teamPlayers.find((item) => item.id === playerId) || null;
     setSelectedPlayer(p);
 
     if (p) {
-      // Initialize preferred squad name from profile bio or default
-      const currentBio = p.profiles?.bio || '';
-      setPreferredSquadName(currentBio);
+      setPreferredSquadName(p.profiles?.bio || '');
+      setPhone(p.phone || p.profiles?.phone || '');
 
-      // Initialize phone
-      const currentPhone = p.phone || p.profiles?.phone || '';
-      setPhone(currentPhone);
-
-      // Initialize position
       const pos = (p.position || 'MID').toUpperCase();
       if (pos === 'GK' || pos.includes('GOAL')) {
         setRoleCategory('GK');
@@ -245,7 +235,6 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         setDetailedPosition(['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(pos) ? pos : 'CM');
       }
 
-      // Initialize avatar
       const existingAvatar = p.profiles?.avatar_url || '';
       if (existingAvatar.startsWith('data:image') || existingAvatar.startsWith('http')) {
         setAvatarMode('upload');
@@ -254,6 +243,9 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         setAvatarMode('icon');
         setSelectedPresetIcon(existingAvatar);
       }
+    } else {
+      setPreferredSquadName('');
+      setPhone('');
     }
   };
 
@@ -283,27 +275,25 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
     setErrorMsg(null);
 
     if (!selectedPlayer) {
-      setErrorMsg('Please select your name from the team roster list.');
+      setErrorMsg('Please select your name from the dropdown.');
       return;
     }
 
     if (!preferredSquadName.trim()) {
-      setErrorMsg('Please enter your preferred squad name (what people know you as).');
+      setErrorMsg('Please enter your preferred squad name.');
       return;
     }
 
     if (!phone.trim()) {
-      setErrorMsg('Please provide your phone or WhatsApp number.');
+      setErrorMsg('Please enter your phone number.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Determine final avatar string: uploaded image or preset icon
       const finalAvatar = avatarMode === 'upload' ? uploadedImageUrl : selectedPresetIcon;
 
-      // Update player info atomically in database by UID
       const res = await updatePlayerInfo({
         playerId: selectedPlayer.id,
         teamId,
@@ -318,455 +308,268 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         throw new Error(res.error);
       }
 
-      const officialFullName = [selectedPlayer.first_name, selectedPlayer.last_name].filter(Boolean).join(' ') || `Player #${selectedPlayer.jersey_number || '?'}`;
+      // Show toast
+      if (toast?.showSuccess) {
+        toast.showSuccess('Player information updated successfully!');
+      }
 
-      setUpdatedSummary({
-        officialName: officialFullName,
-        preferredSquadName: preferredSquadName.trim(),
-        teamName: teamInfo?.name || 'Selected Team',
-        jersey: selectedPlayer.jersey_number,
-        position: detailedPosition,
-        role: roleCategory,
-        phone: phone.trim(),
-        avatar: finalAvatar,
-        avatarMode,
-      });
-
-      setIsSuccess(true);
+      // Direct to guest page
+      if (onNavigate) {
+        onNavigate('/home');
+      } else {
+        window.location.hash = '/home';
+      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update squad information. Please try again.');
-    } finally {
+      setErrorMsg(err.message || 'Failed to update information. Please try again.');
       setIsSubmitting(false);
     }
   };
 
-  const currentOfficialName = selectedPlayer
-    ? [selectedPlayer.first_name, selectedPlayer.last_name].filter(Boolean).join(' ') || `Player #${selectedPlayer.jersey_number || '?'}`
-    : '';
-
-  // Success view with updated squad card preview
-  if (isSuccess && updatedSummary) {
-    return (
-      <div className="min-h-screen bg-[#0D1117] text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#161B22] border border-emerald-500/40 rounded-3xl p-8 shadow-2xl space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto shadow-lg shadow-emerald-950/50">
-            <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-2xl font-black text-white">Squad Profile Updated!</h2>
-            <p className="text-xs text-slate-300">
-              Your details for <strong className="text-emerald-400">{updatedSummary.teamName}</strong> are active on the roster.
-            </p>
-          </div>
-
-          {/* Player Squad Badge Card */}
-          <div className="bg-[#0D1117] border border-[#2A3441] rounded-2xl p-4 text-xs space-y-3 text-left">
-            <div className="flex items-center gap-3 pb-3 border-b border-[#2A3441]">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-800 flex items-center justify-center text-lg shrink-0 border border-slate-700">
-                {updatedSummary.avatarMode === 'upload' && updatedSummary.avatar ? (
-                  <img src={updatedSummary.avatar} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-2xl">
-                    {AVATAR_ICON_PRESETS.find((p) => p.id === updatedSummary.avatar)?.emoji || '⚽'}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Preferred Squad Name</div>
-                <div className="text-sm font-black text-white truncate">{updatedSummary.preferredSquadName}</div>
-                <div className="text-[11px] text-slate-400 truncate">Official: {updatedSummary.officialName}</div>
-              </div>
-              {updatedSummary.jersey && (
-                <div className="text-right shrink-0">
-                  <span className="text-base font-black font-mono text-emerald-400">#{updatedSummary.jersey}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <span className="text-[10px] uppercase text-slate-400 block font-bold">Position</span>
-                <span className="text-emerald-400 font-bold">{updatedSummary.position} ({updatedSummary.role})</span>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase text-slate-400 block font-bold">Contact</span>
-                <span className="text-slate-200 font-bold truncate block">{updatedSummary.phone}</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-[#2A3441] flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Roster Status:</span>
-              <span className="text-emerald-400 font-bold uppercase flex items-center gap-1">
-                <Check className="w-3 h-3" />
-                <span>Active & Verified</span>
-              </span>
-            </div>
-          </div>
-
-          <p className="text-[11.5px] text-slate-400 leading-relaxed">
-            Your coach can now see your preferred squad name on the tactics board, match lineups, and team roster.
-          </p>
-
-          <div className="pt-2 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (onNavigate) onNavigate('/home');
-                else window.location.hash = '/home';
-              }}
-              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>View Matchdays & Live Scores</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsSuccess(false)}
-              className="w-full py-2.5 bg-[#0D1117] hover:bg-[#1C2331] text-slate-300 hover:text-white font-bold text-xs rounded-xl border border-[#2A3441] transition-all cursor-pointer"
-            >
-              Make Another Update
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6">
-      <div className="max-w-lg w-full mx-auto space-y-6">
-        {/* Navigation Bar */}
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#0D1117] text-slate-100 flex flex-col justify-start py-8 px-4 sm:px-6">
+      <div className="max-w-lg w-full mx-auto space-y-4">
+        {/* Back Link */}
+        <div>
           <button
             type="button"
             onClick={() => {
               if (onNavigate) onNavigate('/home');
               else window.location.hash = '/home';
             }}
-            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to LiveScore</span>
           </button>
-          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-widest font-black flex items-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            <span>Squad Profile Update</span>
-          </span>
         </div>
 
-        {/* Card Container */}
-        <div className="bg-[#161B22] border border-[#2A3441] rounded-3xl p-6 shadow-2xl space-y-6">
-          {/* Team Branding Header */}
-          <div className="flex items-center gap-4 pb-4 border-b border-[#2A3441]">
-            <div className="w-14 h-14 rounded-2xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-center shrink-0 overflow-hidden shadow-md">
-              {teamInfo?.logo_url ? (
-                <img src={teamInfo.logo_url} alt={teamInfo.name} className="w-full h-full object-cover" />
-              ) : (
-                <Shield className="w-7 h-7 text-emerald-400" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">
-                Official Player Update Portal
-              </span>
-              <h1 className="text-xl font-black text-white truncate">
-                {teamInfo?.name || 'Egerton Squad Update'}
+        {/* Minimalist Google Form Header Card */}
+        <div className="bg-[#161B22] border-t-4 border-t-emerald-500 border-x border-b border-[#2A3441] rounded-2xl p-6 shadow-xl space-y-2">
+          <div className="flex items-center gap-3">
+            {teamInfo?.logo_url ? (
+              <img src={teamInfo.logo_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#2A3441]" />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Shield className="w-5 h-5" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-lg font-black text-white">
+                {teamInfo?.name || 'Player Information Update'}
               </h1>
-              <p className="text-xs text-slate-400 truncate">
-                Update your preferred squad name, phone, playing position & avatar
+              <p className="text-xs text-slate-400">
+                Update your squad profile information
               </p>
             </div>
           </div>
 
-          {/* Team Selector if not tied to specific teamId */}
           {availableTeams.length > 1 && (
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-300">Select Team</label>
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Team</label>
               <select
                 value={teamId}
                 onChange={(e) => handleTeamChange(e.target.value)}
-                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-xs text-white font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
               >
                 {availableTeams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.short_name || 'CLUB'})
-                  </option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
           )}
+        </div>
 
-          {errorMsg && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs font-bold text-rose-400 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
+        {errorMsg && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs font-semibold text-rose-400 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
-          {isLoadingData ? (
-            <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-              <span className="text-xs font-bold uppercase tracking-wider">Loading Squad Roster...</span>
+        {isLoadingData ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
+            <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
+            <span className="text-xs font-semibold">Loading...</span>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Question 1: Select your name */}
+            <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-sm space-y-2">
+              <label className="block text-xs font-bold text-slate-200">
+                Select your name <span className="text-rose-400">*</span>
+              </label>
+              <select
+                value={selectedPlayerId}
+                onChange={(e) => handleSelectPlayer(e.target.value)}
+                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
+                required
+              >
+                <option value="" disabled>Select your name</option>
+                {teamPlayers.map((p) => {
+                  const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || `Player #${p.jersey_number || '?'}`;
+                  const jersey = p.jersey_number ? `#${p.jersey_number}` : '';
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {name} {jersey ? `(${jersey})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
-          ) : teamPlayers.length === 0 ? (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-300 space-y-2">
-              <div className="font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                <span>No athletes registered on squad roster yet</span>
+
+            {/* Question 2: Preferred squad name */}
+            <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-sm space-y-2">
+              <label className="block text-xs font-bold text-slate-200">
+                Preferred squad name <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="What people know you as"
+                value={preferredSquadName}
+                onChange={(e) => setPreferredSquadName(e.target.value)}
+                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            {/* Question 3: Phone number */}
+            <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-sm space-y-2">
+              <label className="block text-xs font-bold text-slate-200">
+                Phone number <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="0712345678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            {/* Question 4: Playing position */}
+            <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-sm space-y-3">
+              <label className="block text-xs font-bold text-slate-200">
+                Playing position <span className="text-rose-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {POSITION_CATEGORIES.map((cat) => {
+                  const isSelected = roleCategory === cat.key;
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => handleRoleCategoryChange(cat.key as any)}
+                      className={`py-2 px-2 rounded-xl font-bold text-xs transition-colors cursor-pointer border ${
+                        isSelected
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                          : 'bg-[#0D1117] border-[#2A3441] text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-slate-400">
-                Please ask your coach to register your name first in the Coach Dashboard, then return to update your squad details.
-              </p>
+
+              <select
+                value={detailedPosition}
+                onChange={(e) => setDetailedPosition(e.target.value)}
+                className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                {(DETAILED_POSITIONS[roleCategory] || []).map((pos) => (
+                  <option key={pos.code} value={pos.code}>
+                    {pos.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5 text-xs">
-              {/* STEP 1: Select Player Name from Dropdown */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-bold flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Select Your Name from Roster</span>
-                  <span className="text-rose-400">*</span>
+
+            {/* Question 5: Profile photo (Default: Upload photo) */}
+            <div className="bg-[#161B22] border border-[#2A3441] rounded-2xl p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-200">
+                  Profile photo
                 </label>
-                <select
-                  value={selectedPlayerId}
-                  onChange={(e) => handleSelectPlayer(e.target.value)}
-                  className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2.5 text-xs text-white font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                  required
+                <button
+                  type="button"
+                  onClick={() => setAvatarMode(avatarMode === 'upload' ? 'icon' : 'upload')}
+                  className="text-[11px] font-semibold text-emerald-400 hover:underline cursor-pointer"
                 >
-                  <option value="" disabled>-- Select Your Name --</option>
-                  {teamPlayers.map((p) => {
-                    const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || `Player #${p.jersey_number || '?'}`;
-                    const jersey = p.jersey_number ? `#${p.jersey_number}` : 'No #';
-                    const pos = p.position || 'Player';
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {name} ({jersey} • {pos})
-                      </option>
-                    );
-                  })}
-                </select>
-                <span className="text-[11px] text-slate-400 block">
-                  Select your name to link this update directly to your student record.
-                </span>
+                  {avatarMode === 'upload' ? 'Or choose icon' : 'Upload photo instead'}
+                </button>
               </div>
 
-              {/* STEP 2: Official Registered Name (Unchangeable) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-slate-400 font-bold flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Official Registered Name (Unchangeable)</span>
-                  </label>
-                  <span className="text-[10px] text-amber-400 font-mono font-bold uppercase">Locked</span>
-                </div>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={currentOfficialName || 'No player selected'}
-                  className="w-full bg-[#0D1117]/60 border border-[#2A3441] rounded-xl px-3 py-2 text-slate-400 font-bold cursor-not-allowed select-none"
-                />
-                <span className="text-[10px] text-slate-500 block">
-                  🔒 Your registered official name is locked to preserve academic and league records.
-                </span>
-              </div>
-
-              {/* STEP 3: Preferred Squad Name */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-bold">
-                  Preferred Squad Name (What people know you as) <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Oliech, Mariga, Drogba, El Niño"
-                  value={preferredSquadName}
-                  onChange={(e) => setPreferredSquadName(e.target.value)}
-                  className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2.5 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  required
-                />
-                <span className="text-[11px] text-slate-400 block">
-                  This preferred name will be displayed on the squad list, tactics board, and match scoreboards.
-                </span>
-              </div>
-
-              {/* STEP 4: Phone / WhatsApp Number */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-bold">
-                  Phone / WhatsApp Number <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
+              {avatarMode === 'upload' ? (
+                <div className="space-y-2">
                   <input
-                    type="tel"
-                    placeholder="e.g. 0712345678"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl pl-9 pr-3 py-2.5 text-white font-bold placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    required
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
                   />
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-center overflow-hidden shrink-0">
+                      {uploadedImageUrl ? (
+                        <img src={uploadedImageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-5 h-5 text-slate-500" />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-2 bg-[#0D1117] hover:bg-[#1C2331] text-white border border-[#2A3441] font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{uploadedImageUrl ? 'Change photo' : 'Upload photo'}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              {/* STEP 5: Playing Position & Role (Goalkeeper to Striker) */}
-              <div className="space-y-2 pt-2 border-t border-[#2A3441]/60">
-                <label className="block text-slate-300 font-bold">
-                  Playing Position & Role <span className="text-rose-400">*</span>
-                </label>
-
-                {/* Main Role Category Pills */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {POSITION_CATEGORIES.map((cat) => {
-                    const isSelected = roleCategory === cat.key;
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-1">
+                  {AVATAR_ICON_PRESETS.map((preset) => {
+                    const isChosen = selectedPresetIcon === preset.id;
                     return (
                       <button
-                        key={cat.key}
+                        key={preset.id}
                         type="button"
-                        onClick={() => handleRoleCategoryChange(cat.key as any)}
-                        className={`py-2 px-2 rounded-xl font-bold text-center text-xs transition-all cursor-pointer border ${
-                          isSelected
-                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm'
-                            : 'bg-[#0D1117] border-[#2A3441] text-slate-400 hover:text-white hover:border-slate-600'
+                        onClick={() => setSelectedPresetIcon(preset.id)}
+                        className={`p-2 rounded-xl flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                          isChosen
+                            ? 'bg-gradient-to-b ' + preset.bg + ' border-white text-white scale-105'
+                            : 'bg-[#0D1117] border-[#2A3441] text-slate-400 hover:border-slate-500'
                         }`}
                       >
-                        {cat.label}
+                        <span className="text-lg">{preset.emoji}</span>
+                        <span className="text-[10px] font-medium">{preset.label}</span>
                       </button>
                     );
                   })}
                 </div>
+              )}
+            </div>
 
-                {/* Specific Position Selection */}
-                <div className="space-y-1 pt-1">
-                  <label className="block text-[11px] font-bold text-slate-400">
-                    Specific Tactical Position (from Goalkeeper to Striker)
-                  </label>
-                  <select
-                    value={detailedPosition}
-                    onChange={(e) => setDetailedPosition(e.target.value)}
-                    className="w-full bg-[#0D1117] border border-[#2A3441] rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                  >
-                    {(DETAILED_POSITIONS[roleCategory] || []).map((pos) => (
-                      <option key={pos.code} value={pos.code}>
-                        {pos.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* STEP 6: Profile Picture / Avatar Selection */}
-              <div className="space-y-3 pt-2 border-t border-[#2A3441]/60">
-                <div className="flex items-center justify-between">
-                  <label className="block text-slate-300 font-bold">Profile Picture / Avatar</label>
-                  <div className="flex items-center gap-1 bg-[#0D1117] border border-[#2A3441] rounded-lg p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setAvatarMode('icon')}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                        avatarMode === 'icon'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Use Icon
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAvatarMode('upload')}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                        avatarMode === 'upload'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      Upload Photo
-                    </button>
-                  </div>
-                </div>
-
-                {avatarMode === 'icon' ? (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {AVATAR_ICON_PRESETS.map((preset) => {
-                        const isChosen = selectedPresetIcon === preset.id;
-                        return (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => setSelectedPresetIcon(preset.id)}
-                            className={`p-2.5 rounded-2xl flex flex-col items-center gap-1 border transition-all cursor-pointer ${
-                              isChosen
-                                ? 'bg-gradient-to-b ' + preset.bg + ' border-white text-white scale-105 shadow-md'
-                                : 'bg-[#0D1117] border-[#2A3441] text-slate-400 hover:border-slate-500'
-                            }`}
-                          >
-                            <span className="text-xl">{preset.emoji}</span>
-                            <span className="text-[10px] font-bold truncate max-w-full">{preset.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <span className="text-[11px] text-slate-400 block">
-                      Choose an athletic squad icon to represent your profile on match sheets and lineups.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-2xl bg-[#0D1117] border border-[#2A3441] flex items-center justify-center overflow-hidden shrink-0">
-                        {uploadedImageUrl ? (
-                          <img src={uploadedImageUrl} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <Camera className="w-6 h-6 text-slate-500" />
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="px-3.5 py-1.5 bg-[#0D1117] hover:bg-[#1C2331] text-white border border-[#2A3441] font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                        >
-                          <Camera className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{uploadedImageUrl ? 'Change Photo' : 'Select Photo from Device'}</span>
-                        </button>
-                        <span className="text-[10px] text-slate-400 block">
-                          PNG, JPG, or WebP up to 5MB.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Button */}
+            {/* Final Submit Button */}
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedPlayer}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl transition-all shadow-lg shadow-emerald-950/40 cursor-pointer flex items-center justify-center gap-2 mt-4 active:scale-95 disabled:opacity-50"
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving Squad Profile Updates...</span>
+                    <span>Updating...</span>
                   </>
                 ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Update Squad Information</span>
-                  </>
+                  <span>Update Player Information</span>
                 )}
               </button>
-            </form>
-          )}
-        </div>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -178,51 +178,41 @@ test.describe('PLAYER SQUAD PROFILE UPDATE DASHBOARD & CONCURRENCY SUITE', () =>
     const heading = page.locator('h1');
     await expect(heading).toContainText(targetTeam.name);
 
-    // 3. Verify Player Dropdown contains team athletes
-    const playerSelect = page.locator('select').filter({ hasText: /Select Your Name/i });
+    // 3. Verify Player Dropdown contains team athletes and NOTHING is pre-selected
+    const playerSelect = page.locator('select').filter({ hasText: /Select your name/i });
     await expect(playerSelect).toBeVisible();
+    await expect(playerSelect).toHaveValue('');
 
-    // Select second player (e.g. Victor Wanyama #2)
+    // Select second player
     const options = await playerSelect.locator('option').all();
     expect(options.length).toBeGreaterThan(1);
-    await playerSelect.selectOption({ index: 2 });
+    await playerSelect.selectOption({ index: 1 });
 
-    // 4. Verify Official Registered Name is LOCKED / READONLY
-    const lockedNameInput = page.locator('input[disabled]');
-    await expect(lockedNameInput).toBeVisible();
-    await expect(lockedNameInput).toHaveAttribute('disabled', '');
-    const lockedVal = await lockedNameInput.inputValue();
-    expect(lockedVal.length).toBeGreaterThan(0);
-
-    // 5. Fill Preferred Squad Name ("The Anchor")
-    const squadNameInput = page.locator('input[placeholder*="Oliech"]');
+    // 4. Fill Preferred Squad Name ("The Anchor")
+    const squadNameInput = page.locator('input[placeholder*="What people know you as"]');
     await expect(squadNameInput).toBeVisible();
     await squadNameInput.fill('The Anchor');
 
-    // 6. Fill Phone Number
+    // 5. Fill Phone Number
     const phoneInput = page.locator('input[type="tel"]');
     await expect(phoneInput).toBeVisible();
     await phoneInput.fill('0712345678');
 
-    // 7. Select Playing Position Category and Detailed Position
+    // 6. Select Playing Position Category and Detailed Position
     const midBtn = page.getByRole('button', { name: 'Midfielder' });
     await midBtn.click();
     const positionSelect = page.locator('select').nth(1); // Specific position dropdown
     await positionSelect.selectOption('CDM');
 
-    // 8. Select Avatar Icon
-    const playmakerIcon = page.getByRole('button', { name: 'Playmaker' });
-    await playmakerIcon.click();
+    // 7. Verify Default is Upload photo mode, but icon can be selected
+    await expect(page.getByText('Upload photo')).toBeVisible();
 
-    // 9. Submit update
-    const submitBtn = page.getByRole('button', { name: /Update Squad Information/i });
+    // 8. Submit update with "Update Player Information"
+    const submitBtn = page.getByRole('button', { name: /Update Player Information/i });
     await submitBtn.click();
 
-    // 10. Verify Success Screen
-    await expect(page.getByText('Squad Profile Updated!')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('The Anchor')).toBeVisible();
-    await expect(page.getByText('0712345678')).toBeVisible();
-    await expect(page.getByText(/Active & Verified/i)).toBeVisible();
+    // 9. Verify navigation to guest page
+    await page.waitForURL(/#\/home|#home|\/home/i, { timeout: 10000 });
   });
 
   test('T2: Microsecond Concurrency - Multiple Students of Multiple Teams Post Simultaneously to Own Rows', async () => {
