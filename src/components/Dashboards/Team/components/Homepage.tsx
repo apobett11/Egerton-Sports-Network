@@ -45,6 +45,7 @@ interface HomepageProps {
   linesmanMatches?: LinesmanMatch[];
   standings: StandingEntry[];
   teamInfo?: DBTeam | null;
+  onOpenMatchEventsModal?: (matchId?: string) => void;
 }
 
 export const Homepage: React.FC<HomepageProps> = ({
@@ -63,6 +64,7 @@ export const Homepage: React.FC<HomepageProps> = ({
   linesmanMatches = [],
   standings,
   teamInfo,
+  onOpenMatchEventsModal,
 }) => {
   // State for linesman all-matches popup modal
   const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
@@ -329,6 +331,17 @@ export const Homepage: React.FC<HomepageProps> = ({
                   <Calendar className="w-3 h-3 text-blue-500" />
                   <span>Fixtures</span>
                 </button>
+
+                {onOpenMatchEventsModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenMatchEventsModal()}
+                    className="px-4 py-1.5 rounded-lg text-xs font-semibold border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white active:bg-emerald-500 active:text-white bg-transparent transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shadow-2xs"
+                  >
+                    <Trophy className="w-3 h-3 text-emerald-500" />
+                    <span>Past Events</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -404,9 +417,16 @@ export const Homepage: React.FC<HomepageProps> = ({
               Coach Command Center
             </h2>
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline font-medium">
-            Primary Matchday Controls
-          </span>
+          {onOpenMatchEventsModal && (
+            <button
+              type="button"
+              onClick={() => onOpenMatchEventsModal()}
+              className="px-3 py-1 bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs rounded-full flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Record Match Events</span>
+            </button>
+          )}
         </div>
 
         {/* OUTLINED CALL TO ACTION BUTTONS WITH ACCENT COLOR ON ACTIVE/HOVER */}

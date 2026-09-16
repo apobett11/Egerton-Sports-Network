@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Zap,
   Newspaper,
@@ -17,6 +17,7 @@ import { RoleAssignmentsView } from './components/Roles/RoleAssignmentsView';
 import { ComposeJournalModal } from './components/ComposeJournalModal';
 import { InvitePlayerModal } from './components/Roster/InvitePlayerModal';
 import { ShareTeamLinkModal } from './components/Roster/ShareTeamLinkModal';
+import { CoachMatchEventsModal } from './components/Matches/CoachMatchEventsModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
 import { Footer } from '../../Layout/Footer';
 
@@ -91,6 +92,14 @@ export const TeamDashboard: React.FC = () => {
     teamForm,
   } = useTeamDashboard();
 
+  const [showMatchEventsModal, setShowMatchEventsModal] = useState<boolean>(false);
+  const [selectedMatchForEvents, setSelectedMatchForEvents] = useState<string | undefined>(undefined);
+
+  const handleOpenMatchEventsModal = (matchId?: string) => {
+    setSelectedMatchForEvents(matchId);
+    setShowMatchEventsModal(true);
+  };
+
   // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
   // Per strict instructions: You must not touch the squad page.
   if (activeView === 'TACTICS') {
@@ -164,6 +173,7 @@ export const TeamDashboard: React.FC = () => {
               linesmanMatches={linesmanMatches}
               standings={standings}
               teamInfo={teamInfo}
+              onOpenMatchEventsModal={handleOpenMatchEventsModal}
             />
           )}
 
@@ -195,6 +205,7 @@ export const TeamDashboard: React.FC = () => {
               teamForm={teamForm as any}
               currentTeamName={teamInfo?.name}
               currentTeamLogo={teamInfo?.logo_url}
+              onOpenMatchEventsModal={handleOpenMatchEventsModal}
             />
           )}
 
@@ -333,6 +344,23 @@ export const TeamDashboard: React.FC = () => {
           teamId={teamId}
           teamName={teamInfo?.name}
           onOpenManualAdd={() => setShowInviteModal(true)}
+          onShowToast={showToast}
+        />
+      )}
+
+      {/* COACH PAST MATCH EVENTS MODAL */}
+      {showMatchEventsModal && (
+        <CoachMatchEventsModal
+          isOpen={showMatchEventsModal}
+          onClose={() => {
+            setShowMatchEventsModal(false);
+            setSelectedMatchForEvents(undefined);
+          }}
+          teamId={teamId}
+          teamName={teamInfo?.name}
+          roster={roster}
+          fixtures={teamFixtures}
+          selectedMatchId={selectedMatchForEvents}
           onShowToast={showToast}
         />
       )}

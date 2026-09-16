@@ -11,6 +11,7 @@ import {
   Activity,
   Clock,
   Radio,
+  PenTool,
 } from 'lucide-react';
 
 interface StandingsPageProps {
@@ -19,6 +20,7 @@ interface StandingsPageProps {
   teamForm?: TeamFormEntry[];
   currentTeamName?: string;
   currentTeamLogo?: string;
+  onOpenMatchEventsModal?: (matchId?: string) => void;
 }
 
 export const StandingsPage: React.FC<StandingsPageProps> = ({
@@ -26,6 +28,7 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
   fixtures,
   currentTeamName,
   currentTeamLogo,
+  onOpenMatchEventsModal,
 }) => {
   const [showFullStandings, setShowFullStandings] = useState<boolean>(false);
   const [showFullFormTable, setShowFullFormTable] = useState<boolean>(false);
@@ -380,6 +383,17 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                 </button>
               );
             })}
+
+            {onOpenMatchEventsModal && (
+              <button
+                type="button"
+                onClick={() => onOpenMatchEventsModal()}
+                className="ml-2 px-3 py-1 rounded-full text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-xs"
+              >
+                <PenTool className="w-3 h-3" />
+                <span>Record Events</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -487,13 +501,23 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Right Column: Venue */}
-                  <div className="text-right hidden sm:flex flex-col items-end justify-center text-[10px] text-slate-400 shrink-0 min-w-[100px]">
+                  {/* Right Column: Venue & Match Event Action */}
+                  <div className="text-right flex flex-col items-end justify-center gap-1 text-[10px] text-slate-400 shrink-0 min-w-[90px]">
                     {fixture.location && (
-                      <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                      <span className="font-medium text-slate-600 dark:text-slate-300 hidden sm:flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#ff0046]" />
                         <span className="truncate max-w-[110px]">{formatMatchPitch(fixture.location, true) || fixture.location}</span>
                       </span>
+                    )}
+                    {isFinished && onOpenMatchEventsModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenMatchEventsModal(fixture.id)}
+                        className="px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold transition-all cursor-pointer"
+                        title="Record scorers, assists and cards for this match"
+                      >
+                        Input Events
+                      </button>
                     )}
                   </div>
                 </div>

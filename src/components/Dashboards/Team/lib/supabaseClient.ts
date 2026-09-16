@@ -1413,3 +1413,159 @@ export async function fetchTeamBySlugOrName(slugOrName: string): Promise<any | n
     }
 }
 
+export interface CoachGoalEvent {
+    playerId: string;
+    assistPlayerId?: string;
+    minute?: number;
+}
+
+export interface CoachMatchEventsPayload {
+    goals: CoachGoalEvent[];
+    yellowCardPlayerIds: string[];
+    redCardPlayerIds: string[];
+}
+
+/**
+ * Fetches existing match events recorded for a specific team in a fixture.
+ */
+export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): Promise<CoachMatchEventsPayload> {
+    const fallback: CoachMatchEventsPayload = { goals: [], yellowCardPlayerIds: [], redCardPlayerIds: [] };
+    if (!fixtureId || !teamId) return fallback;
+
+    try {
+        const actualTeamId = await resolveRealTeamId(teamId);
+        const { data, error } = await supabase
+            .from('match_events')
+            .select('id, fixture_id, minute, type, team_id, player_id, assist_player_id')
+            .eq('fixture_id', fixtureId)
+            .eq('team_id', actualTeamId)
+            .order('minute', { ascending: true });
+
+        if (error || !data) {
+            return fallback;
+        }
+
+        const goals: CoachGoalEvent[] = [];
+        const yellowCardPlayerIds: string[] = [];
+        const redCardPlayerIds: string[] = [];
+
+        data.forEach((evt: any) => {
+            if (evt.type === 'goal' && evt.player_id) {
+                goals.push({
+                    playerId: evt.player_id,
+                    assistPlayerId: evt.assist_player_id || undefined,
+                    minute: evt.minute || undefined,
+                });
+            } else if (evt.type === 'yellow' && evt.player_id) {
+                if (!yellowCardPlayerIds.includes(evt.player_id)) {
+                    yellowCardPlayerIds.push(evt.player_id);
+                }
+            } else if (evt.type === 'red' && evt.player_id) {
+                if (!redCardPlayerIds.includes(evt.player_id)) {
+                    redCardPlayerIds.push(evt.player_id);
+                }
+            }
+        });
+
+        return { goals, yellowCardPlayerIds, redCardPlayerIds };
+    } catch (err) {
+        console.warn('[Supabase Client] Failed to fetch coach match events:', err);
+        return fallback;
+    }
+}
+
+/**
+ * Saves match events strictly for the coach's own team in a past fixture.
+ * Automatically purges only this team's prior events for the fixture, leaving other team events untouched.
+ */
+export async function saveCoachMatchEvents(
+    fixtureId: string,
+    teamId: string,
+    isHome: boolean,
+    payload: CoachMatchEventsPayload
+): Promise<{ success: boolean; error?: string }> {
+    if (!fixtureId || !teamId) {
+        return { success: false, error: 'Missing fixture or team ID' };
+    }
+
+    try {
+        const actualTeamId = await resolveRealTeamId(teamId);
+
+        // 1. Delete prior events strictly belonging to this team for this fixture
+        const { error: delError } = await supabase
+            .from('match_events')
+            .delete()
+            .eq('fixture_id', fixtureId)
+            .eq('team_id', actualTeamId);
+
+        if (delError) {
+            console.warn('[Supabase Client] Notice during prior events cleanup:', delError.message);
+        }
+
+        // 2. Prepare new rows strictly for this team
+        const rowsToInsert: any[] = [];
+        const targetSide = isHome ? 'home' : 'away';
+
+        // Goals
+        payload.goals.forEach((g, idx) => {
+            if (!g.playerId) return;
+            rowsToInsert.push({
+                fixture_id: fixtureId,
+                team_id: actualTeamId,
+                player_id: g.playerId,
+                assist_player_id: g.assistPlayerId || null,
+                type: 'goal',
+                minute: g.minute || Math.min(85, 10 + idx * 25),
+                event_target: targetSide,
+                is_official: true,
+            });
+        });
+
+        // Yellow Cards
+        payload.yellowCardPlayerIds.forEach((pid) => {
+            if (!pid) return;
+            rowsToInsert.push({
+                fixture_id: fixtureId,
+                team_id: actualTeamId,
+                player_id: pid,
+                assist_player_id: null,
+                type: 'yellow',
+                minute: 60,
+                event_target: targetSide,
+                is_official: true,
+            });
+        });
+
+        // Red Cards
+        payload.redCardPlayerIds.forEach((pid) => {
+            if (!pid) return;
+            rowsToInsert.push({
+                fixture_id: fixtureId,
+                team_id: actualTeamId,
+                player_id: pid,
+                assist_player_id: null,
+                type: 'red',
+                minute: 75,
+                event_target: targetSide,
+                is_official: true,
+            });
+        });
+
+        if (rowsToInsert.length > 0) {
+            const { error: insError } = await supabase
+                .from('match_events')
+                .insert(rowsToInsert);
+
+            if (insError) {
+                console.error('[Supabase Client] Failed to insert match events:', insError.message);
+                return { success: false, error: insError.message };
+            }
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error('[Supabase Client] Failed to save match events:', err);
+        return { success: false, error: err.message };
+    }
+}
+
