@@ -5,7 +5,8 @@ import { Card, Badge, LoadingSpinner, Input, Button } from '../../components/com
 import { LeagueTable } from '../../components/MainFeed/LeagueTable';
 import { 
   Calendar, Trophy, Newspaper, Search, ExternalLink, Shield, Users, 
-  Clock, X, Share2, ChevronRight 
+  Clock, X, Share2, ChevronRight, ShieldCheck, Mail, MapPin, Phone, 
+  Send, Info, FileText, CheckCircle2, Lock 
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -811,26 +812,420 @@ export const PublicSearchPage: React.FC = () => {
   );
 };
 
-// --- STATIC PAGES ---
-export const PublicStaticPage: React.FC<{ type: 'about' | 'contact' | 'privacy' | 'terms' }> = ({ type }) => {
-  const titles = {
-    about: 'About LiveScore Ecosystem',
-    contact: 'Contact Administration',
-    privacy: 'Privacy Policy',
-    terms: 'Terms of Service',
+// --- COMPLIANT LEGAL & INSTITUTIONAL PAGES (ADSENSE COMPLIANT) ---
+export const PublicStaticPage: React.FC<{ 
+  type: 'about' | 'contact' | 'privacy' | 'terms';
+  onNavigate?: (path: string) => void;
+}> = ({ type, onNavigate }) => {
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    subject: 'General Inquiry',
+    message: ''
+  });
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setContactSubmitted(true);
   };
 
+  if (type === 'privacy') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 py-6 pb-16 text-slate-800 dark:text-slate-200">
+        {/* Header */}
+        <div className="p-6 md:p-8 rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest">
+            <ShieldCheck className="w-3.5 h-3.5" /> Official Privacy Notice
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Privacy Policy & Data Protection
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Last updated: September 2026 • Egerton Sports Network (ESN), Egerton University, Njoro, Kenya
+          </p>
+        </div>
+
+        {/* Content Body */}
+        <div className="space-y-6 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              1. Introduction & Overview
+            </h2>
+            <p>
+              Egerton Sports Network (&quot;ESN&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is the official collegiate athletics publication and live match engine for Egerton University, situated in Njoro, Nakuru County, Kenya. We respect the privacy of our students, athletes, coaches, faculty, and public sports supporters who access our digital sports platform (<strong>sports.egerton.ac.ke</strong> / <strong>egerscore.com</strong>).
+            </p>
+            <p>
+              This Privacy Policy explains how personal and non-personal data is collected, used, protected, and disclosed when you visit our website, follow fixtures, read editorial sports articles, or participate in campus sports engagement activities.
+            </p>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              2. Cookies & Third-Party Advertising (Google AdSense Disclosures)
+            </h2>
+            <p>
+              To maintain the digital infrastructure supporting campus athletics and provide student journalism free of charge, ESN works with third-party advertising partners, including <strong>Google AdSense</strong>. In accordance with Google publisher policies, we explicitly inform you of the following:
+            </p>
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
+              <li>
+                <strong>Third-Party Vendors & Cookies:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user&apos;s prior visits to this website or other websites across the Internet.
+              </li>
+              <li>
+                <strong>Google&apos;s Advertising Cookies:</strong> Google&apos;s use of advertising cookies (such as the DoubleClick cookie) enables it and its partners to serve personalized or contextual advertisements to you based on your visit to ESN and other sites on the web.
+              </li>
+              <li>
+                <strong>Personalized Advertising Opt-Out:</strong> Users may opt out of personalized advertising by visiting the official Google Ads Settings page at{' '}
+                <a 
+                  href="https://www.google.com/settings/ads" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#ff0046] font-bold underline hover:text-[#e0003c]"
+                >
+                  https://www.google.com/settings/ads
+                </a>. Alternatively, users may opt out of a third-party vendor&apos;s use of cookies for personalized advertising by visiting{' '}
+                <a 
+                  href="https://www.aboutads.info/choices/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#ff0046] font-bold underline hover:text-[#e0003c]"
+                >
+                  www.aboutads.info/choices/
+                </a>.
+              </li>
+              <li>
+                <strong>Device Identifiers:</strong> We utilize randomized, non-personally-identifying device keys in local browser storage solely to remember user theme choices (dark/light mode), favourite team selections, and to prevent duplicate submissions on community opinion polls.
+              </li>
+            </ul>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              3. Match Predictions & Fan Probabilities Rules (Non-Gambling Policy)
+            </h2>
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 space-y-2">
+              <p className="font-bold">
+                ⚠️ Strict Non-Monetary Collegiate Sports Entertainment Notice:
+              </p>
+              <p className="text-xs leading-relaxed">
+                The Match Predictions and Fan Outcome Probabilities features on ESN are strictly interactive community sentiment polls designed for campus student entertainment and athletic camaraderie. 
+              </p>
+            </div>
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
+              <li>
+                <strong>Zero Financial Wagering:</strong> ESN does not host, facilitate, accept, or process real-money bets, stakes, deposits, or monetary wagers of any kind.
+              </li>
+              <li>
+                <strong>Community Polls Only:</strong> Prediction percentages and win probabilities displayed on fixture match cards represent aggregated fan votes and collegiate statistical records. No cash prizes, physical rewards, or financial considerations are paid out or awarded.
+              </li>
+              <li>
+                <strong>No Gambling Association:</strong> ESN is an academic and university athletics portal and is not affiliated with any commercial bookmaker, sports betting operator, or gambling establishment.
+              </li>
+            </ul>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              4. Information Collected & Legal Basis
+            </h2>
+            <p>
+              We collect information to ensure seamless delivery of official fixture results, varsity lineups, and match coverage:
+            </p>
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
+              <li><strong>Student & Athlete Roster Records:</strong> Names, jersey numbers, faculty affiliations, and sports statistics provided by team coaches and the Egerton University Sports Council for official league registration.</li>
+              <li><strong>Technical Server Logs:</strong> Anonymized IP addresses, browser types, and timestamped event records used to maintain server performance and secure our API endpoints.</li>
+              <li><strong>Communications:</strong> Name and email addresses submitted voluntarily through our administration contact forms.</li>
+            </ul>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              5. User Rights & Data Protection Inquiries
+            </h2>
+            <p>
+              Under applicable data protection frameworks (including the Kenya Data Protection Act 2019 and international GDPR/CCPA standards), you have the right to access, rectify, or request deletion of any personal information held by ESN.
+            </p>
+            <p>
+              For any questions, requests, or privacy concerns, please contact our Data Governance Desk at{' '}
+              <a href="mailto:privacy@egerscore.com" className="text-[#ff0046] font-bold underline">
+                privacy@egerscore.com
+              </a>{' '}
+              or reach the university sports office at{' '}
+              <a href="mailto:sports@egerton.ac.ke" className="text-[#ff0046] font-bold underline">
+                sports@egerton.ac.ke
+              </a>.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'terms') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 py-6 pb-16 text-slate-800 dark:text-slate-200">
+        {/* Header */}
+        <div className="p-6 md:p-8 rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest">
+            <FileText className="w-3.5 h-3.5" /> Institutional Terms
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Terms of Service & Campus Guidelines
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Effective: September 2026 • Egerton Sports Network (ESN)
+          </p>
+        </div>
+
+        {/* Content Body */}
+        <div className="space-y-6 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              1. Acceptance of Terms
+            </h2>
+            <p>
+              By accessing, browsing, or utilizing Egerton Sports Network (ESN), you agree to be bound by these Terms of Service and all applicable varsity rules established by Egerton University. If you do not agree to these terms, please discontinue using this portal.
+            </p>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              2. Authorized Scope of Services
+            </h2>
+            <p>
+              ESN provides verified fixture scheduling, official referee match recording, digital tournament standings, and accredited campus sports reporting for Egerton University athletics. All fixtures and outcomes are authenticated through official campus match delegates.
+            </p>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              3. Entertainment & Match Predictions Disclaimer
+            </h2>
+            <p>
+              Community match predictions, fan votes, and win percentages displayed on the portal are provided strictly for recreational student entertainment. ESN does not permit or encourage sports betting. No real monetary transactions, stakes, or gambling contracts are permitted or supported by the network.
+            </p>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              4. Intellectual Property
+            </h2>
+            <p>
+              All university athletic marks, competition schedules, digital match summaries, and student editorial content published on ESN are the exclusive intellectual property of the Egerton Sports Network and Egerton University. Unauthorized commercial duplication, automated scraping, or re-distribution without explicit written permission is strictly prohibited.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'about') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 py-6 pb-16 text-slate-800 dark:text-slate-200">
+        {/* Header */}
+        <div className="p-6 md:p-8 rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 text-[10px] font-black uppercase tracking-widest">
+            <Info className="w-3.5 h-3.5" /> University Sports Mission
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            About Egerton Sports Network (ESN)
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            The Digital Heartbeat of Campus Football & Student Athletics
+          </p>
+        </div>
+
+        {/* Content Body */}
+        <div className="space-y-6 text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              Our Mission & History
+            </h2>
+            <p>
+              Egerton Sports Network (ESN) was established to empower university student athletes, coaches, and sports journalists with a modern, high-performance digital infrastructure. Centered at the historic Njoro Main Campus in Kenya, ESN powers the Egerton Premier League, Campus Championships, Champions Cup, and inter-faculty athletic competitions.
+            </p>
+            <p>
+              From real-time goal notifications and official referee reconciliation to verified league tables and student sports journalism, ESN unites over 25,000 students and alumni around collegiate sports excellence.
+            </p>
+          </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-5 bg-[#ff0046] rounded-xs" />
+              Governance & Accreditation
+            </h2>
+            <p>
+              ESN operates in direct alignment with the Egerton University Sports Council (EUSC) and the Campus Athletics Board (CAB). Match officials, doctors, and sports journalists accessing administrative dashboards undergo institutional verification to safeguard data integrity and student safety.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-white/5 space-y-1">
+                <span className="text-[10px] font-black uppercase text-[#ff0046]">EUSC</span>
+                <p className="font-bold text-slate-900 dark:text-white text-xs">University Sports Council</p>
+                <p className="text-[10px] text-slate-400">Collegiate Policy & Sanctions</p>
+              </div>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-white/5 space-y-1">
+                <span className="text-[10px] font-black uppercase text-emerald-500">CAB</span>
+                <p className="font-bold text-slate-900 dark:text-white text-xs">Athletics Board</p>
+                <p className="text-[10px] text-slate-400">Matchday Operations Oversight</p>
+              </div>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-white/5 space-y-1">
+                <span className="text-[10px] font-black uppercase text-amber-500">PSC</span>
+                <p className="font-bold text-slate-900 dark:text-white text-xs">Pavilion Grounds</p>
+                <p className="text-[10px] text-slate-400">Official Stadium Venue</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // contact page
   return (
-    <div className="max-w-3xl mx-auto space-y-6 py-8 pb-12">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{titles[type]}</h1>
-      <Card className="p-6 space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-        <p>
-          The LiveScore platform is an integrated, high-performance football software ecosystem designed to provide live scores, standings, team management, officiating reports, and official news publication.
+    <div className="max-w-4xl mx-auto space-y-8 py-6 pb-16 text-slate-800 dark:text-slate-200">
+      {/* Header */}
+      <div className="p-6 md:p-8 rounded-3xl bg-slate-100/80 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/50 shadow-xl space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 text-[10px] font-black uppercase tracking-widest">
+          <Mail className="w-3.5 h-3.5" /> Support & Communications
+        </div>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          Contact Administration & Editorial Desk
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Reach out to the Egerton Sports Council, Match Delegation, or Media Desk
         </p>
-        <p>
-          Security and role-based access control are enforced natively by PostgreSQL Row Level Security policies to protect user and competition data integrity across all 9 canonical roles.
-        </p>
-      </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Contact Info Col */}
+        <div className="space-y-4 md:col-span-1">
+          <Card className="p-6 space-y-4">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+              Campus Office
+            </h3>
+            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-[#ff0046] shrink-0 mt-0.5" />
+                <p>
+                  Pavilion Sports Complex<br />
+                  Egerton University Njoro Main Campus<br />
+                  P.O. Box 536 - 20115 Egerton, Kenya
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Mail className="w-4 h-4 text-[#ff0046] shrink-0" />
+                <p className="font-mono text-slate-900 dark:text-slate-200 font-bold">
+                  sports@egerton.ac.ke
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Phone className="w-4 h-4 text-[#ff0046] shrink-0" />
+                <p>+254 (0) 51 2217891</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 space-y-2 bg-[#0e1e2d] text-white border-slate-700/60">
+            <h4 className="font-bold text-xs uppercase tracking-wider text-amber-400">
+              Official Press Submissions
+            </h4>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Student journalists seeking press credentials or team managers filing official roster requests can email the Sports Secretariat directly.
+            </p>
+          </Card>
+        </div>
+
+        {/* Form Col */}
+        <Card className="p-6 sm:p-8 md:col-span-2 space-y-5">
+          <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+            Send an Official Message
+          </h3>
+
+          {contactSubmitted ? (
+            <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+              <h4 className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                Message Successfully Received
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+                Thank you for contacting Egerton Sports Network. Your inquiry has been routed to the appropriate campus athletics officer.
+              </p>
+              <button
+                type="button"
+                onClick={() => setContactSubmitted(false)}
+                className="mt-3 px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+              >
+                Send Another Message
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Full Name"
+                  placeholder="e.g. Dennis Kipchumba"
+                  value={contactForm.name}
+                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Email Address"
+                  type="email"
+                  placeholder="student@egerton.ac.ke"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Inquiry Department
+                </label>
+                <select
+                  value={contactForm.subject}
+                  onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-[#ff0046]"
+                >
+                  <option value="General Inquiry">General Sports Inquiries</option>
+                  <option value="Fixtures & Results">Fixtures & Official Match Scores</option>
+                  <option value="Press & Media">Student Press & Media Accreditation</option>
+                  <option value="Data Privacy">Data Privacy & Information Desk</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Message Content
+                </label>
+                <textarea
+                  rows={5}
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                  placeholder="Type your message, inquiry, or correction notice..."
+                  required
+                  className="w-full px-3 py-2 rounded-lg text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-[#ff0046]"
+                />
+              </div>
+
+              <Button type="submit" variant="primary" className="w-full sm:w-auto">
+                <Send className="w-4 h-4 mr-1.5" />
+                Submit Inquiry
+              </Button>
+            </form>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };

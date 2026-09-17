@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell } from 'lucide-react';
 import type { Match } from '../../types';
+import { EsnLogo } from '../common/EsnLogo';
 
 interface HeaderProps {
     darkMode: boolean;
@@ -139,19 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                             window.location.hash = '/home';
                         }}
                     >
-                        {/* ESN Iconic Red Wedge Icon */}
-                        <div className="flex items-center gap-0.5">
-                            <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
-                            <div className="w-1.5 h-6 bg-white transform -skew-x-12 rounded-[1.5px] opacity-90" />
-                        </div>
-                        <div className="flex flex-col leading-none">
-                            <span className="font-black text-xl tracking-tight uppercase text-white font-sans">
-                                ESN
-                            </span>
-                            <span className="text-[8.5px] font-bold tracking-widest uppercase text-slate-400">
-                                EGERTON SPORTS NETWORK
-                            </span>
-                        </div>
+                        <EsnLogo size="md" textColor="text-white" />
                     </div>
 
                     {/* Right Controls: Search + Hamburger Menu */}
