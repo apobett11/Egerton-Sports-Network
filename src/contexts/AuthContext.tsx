@@ -328,6 +328,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
+        // Fast path: if we already have a cached valid user + profile, skip getSession network call
+        const cachedUserStr = localStorage.getItem(STORAGE_KEY_CACHED_USER);
+        const cachedProfileStr = localStorage.getItem(STORAGE_KEY_CACHED_PROFILE);
+        const cachedRole = localStorage.getItem(STORAGE_KEY_CACHED_ROLE) as UserRole | null;
+        if (cachedUserStr && cachedProfileStr && cachedRole) {
+          try {
+            const cachedUser = JSON.parse(cachedUserStr);
+            const cachedProfile = JSON.parse(cachedProfileStr);
+            if (isMounted) {
+              setUser(cachedUser);
+              setProfile(cachedProfile);
+              setRole(cachedRole);
+              setIsLoading(false);
+            }
+            // Verify token validity in background — non-blocking
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (!session && isMounted) {
+                logout(false);
+              }
+            }).catch(() => {});
+            return;
+          } catch {
+            // Cache parse failed — fall through to full getSession
+          }
+        }
+
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Failed to retrieve auth session:', error);
@@ -353,8 +379,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
             setProfile(null);
             setRole('guest');
-          } else if (prof) {
-            syncSessionUptimeToDatabase(initialSession.user.id, prof.role);
           }
         } else {
           setUser(null);
@@ -400,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(Date.now()));
         } catch {}
 
+        // Only re-fetch profile if we don't already have it for this user
         setProfile((prevProfile) => {
           if (!prevProfile || prevProfile.id !== currentSession.user.id) {
             fetchProfile(currentSession.user.id).then((p) => {
@@ -408,8 +433,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(null);
                 setProfile(null);
                 setRole('guest');
-              } else if (p) {
-                syncSessionUptimeToDatabase(currentSession.user.id, p.role);
               }
             });
           }
@@ -461,11 +484,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
         localStorage.setItem(STORAGE_KEY_CACHED_USER, JSON.stringify(data.user));
 
-        const fetchedProf = await fetchProfile(data.user.id);
+        // Fetch profile — parallel with non-blocking session uptime write
+        const [fetchedProf] = await Promise.all([
+          fetchProfile(data.user.id),
+          // Fire-and-forget: don't block login on this DB write
+          Promise.resolve(
+            supabase
+              .from('profiles')
+              .update({ updated_at: new Date().toISOString() })
+              .eq('id', data.user.id)
+          ).then(() => {}).catch(() => {}),
+        ]);
 
         if (!fetchedProf) {
           setIsLoading(false);
-          return { error: 'Authentication succeeded, but user profile could not be loaded from the database.', role: 'guest', profile: null };
+          return { error: 'Profile could not be loaded. Please try again.', role: 'guest', profile: null };
         }
 
         // Access Revocation Check
@@ -480,7 +513,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
           setIsLoading(false);
           return {
-            error: 'Access Denied: Your account access has been revoked by an administrator. Please contact operations support.',
+            error: 'Access Denied: Your account has been suspended. Contact support.',
             role: 'guest',
             profile: null,
           };
@@ -491,9 +524,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole(fetchedProf.role);
         localStorage.setItem(STORAGE_KEY_CACHED_PROFILE, JSON.stringify(fetchedProf));
         localStorage.setItem(STORAGE_KEY_CACHED_ROLE, fetchedProf.role);
-
-        // Database Session Uptime Collaboration
-        syncSessionUptimeToDatabase(data.user.id, fetchedProf.role);
 
         setIsLoading(false);
         return { error: null, role: fetchedProf.role, profile: fetchedProf };
