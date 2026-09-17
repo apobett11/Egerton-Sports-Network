@@ -111,6 +111,11 @@ export class FeaturePollService {
     featureKey: string = DEFAULT_FEATURE_KEY
   ): Promise<void> {
     if (!deviceId) return;
+    try {
+      localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
+      localStorage.setItem('esn_odds_page_opened_v3', 'true');
+    } catch {}
+
     const sessionKey = `esn_odds_open_recorded_${featureKey}`;
     try {
       if (sessionStorage.getItem(sessionKey)) return;
@@ -134,6 +139,48 @@ export class FeaturePollService {
     } catch (err) {
       console.warn('[FeaturePollService] Odds page open record warning:', err);
     }
+  }
+
+  /**
+   * Check whether a device has ever opened the odds page (indexed database lookup)
+   */
+  static async hasDeviceOpenedOddsPage(
+    deviceId: string,
+    featureKey: string = DEFAULT_FEATURE_KEY
+  ): Promise<boolean> {
+    if (!deviceId) return false;
+
+    // 1. Fast path: check per-device local storage cache
+    try {
+      if (localStorage.getItem(`esn_odds_opened_${deviceId}`) === 'true') {
+        return true;
+      }
+    } catch {}
+
+    // 2. Query indexed database table (device_id index)
+    try {
+      const { data, error } = await supabase
+        .from('feature_feedback_polls')
+        .select('opened_odds_page, voted')
+        .eq('device_id', deviceId)
+        .eq('feature_key', featureKey)
+        .maybeSingle();
+
+      if (!error && data) {
+        const opened = Boolean(data.opened_odds_page || data.voted);
+        if (opened) {
+          try {
+            localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
+            localStorage.setItem('esn_odds_page_opened_v3', 'true');
+          } catch {}
+        }
+        return opened;
+      }
+    } catch (err) {
+      console.warn('[FeaturePollService] Error checking odds page status:', err);
+    }
+
+    return false;
   }
 
   /**
@@ -216,6 +263,8 @@ export class FeaturePollService {
 
     // 1. Instantly save to local cache for zero UI latency
     try {
+      localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
+      localStorage.setItem('esn_odds_page_opened_v3', 'true');
       localStorage.setItem(
         this.getStorageKey(featureKey),
         JSON.stringify({ vote, timestamp })

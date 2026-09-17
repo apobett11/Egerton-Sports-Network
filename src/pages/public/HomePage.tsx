@@ -489,62 +489,133 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showOddsModal, setShowOddsModal] = useState<boolean>(false);
   const [showOddsTooltip, setShowOddsTooltip] = useState<boolean>(() => {
     try {
-      // Apply clean slate on initial read so all devices start fresh
-      FeaturePollService.applyCleanSlate();
-      // On fresh clean slate, popup appears until user opens the odds page
-      return localStorage.getItem('esn_odds_page_opened_v3') !== 'true';
-    } catch {
+      // 1. If already shown during this browser session, don't show again during the same session
+      if (sessionStorage.getItem('esn_odds_tooltip_session_shown') === 'true') {
+        return false;
+      }
+      // 2. If device has already opened the odds page, never show
+      const devId = localStorage.getItem('esn_device_id');
+      if (devId && localStorage.getItem(`esn_odds_opened_${devId}`) === 'true') {
+        return false;
+      }
+      if (localStorage.getItem('esn_odds_page_opened_v3') === 'true') {
+        return false;
+      }
+      // Fresh session for device that hasn't opened odds -> show once this session
+      sessionStorage.setItem('esn_odds_tooltip_session_shown', 'true');
       return true;
+    } catch {
+      return false;
     }
   });
 
-  // Automatically track when this device opens/visits the guest homepage (1 row per device)
+  // Track guest page visit & verify device odds status using DB index
   useEffect(() => {
-    if (deviceId) {
-      FeaturePollService.recordGuestPageVisit(deviceId);
-    }
+    if (!deviceId) return;
+    let isMounted = true;
+
+    // Record guest page visit
+    FeaturePollService.recordGuestPageVisit(deviceId);
+
+    // Indexed database check: has this device ever opened the odds page?
+    FeaturePollService.hasDeviceOpenedOddsPage(deviceId).then((hasOpened) => {
+      if (!isMounted) return;
+      if (hasOpened) {
+        // Device already opened odds page in DB -> permanently suppress tooltip
+        try {
+          localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
+          localStorage.setItem('esn_odds_page_opened_v3', 'true');
+        } catch {}
+        setShowOddsTooltip(false);
+      } else {
+        // Device has NOT opened odds page yet:
+        // Check if tooltip has already been shown in this browser session
+        try {
+          const sessionShown = sessionStorage.getItem('esn_odds_tooltip_session_shown') === 'true';
+          if (!sessionShown) {
+            sessionStorage.setItem('esn_odds_tooltip_session_shown', 'true');
+            setShowOddsTooltip(true);
+          }
+        } catch {
+          setShowOddsTooltip(true);
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [deviceId]);
 
-  // Open the odds preview modal, permanently suppress popup, and record odds telemetry
+  // Open the odds preview modal, permanently suppress popup for this device, and record odds telemetry
   const handleOpenOdds = useCallback(() => {
     setShowOddsTooltip(false);
-    try {
-      localStorage.setItem('esn_odds_page_opened_v3', 'true');
-    } catch {}
     if (deviceId) {
+      try {
+        localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
+        localStorage.setItem('esn_odds_page_opened_v3', 'true');
+      } catch {}
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
     setShowOddsModal(true);
     setFilterStatus('ODDS');
   }, [deviceId]);
 
-  // Dismiss popup on current view when user clicks outside or close button
+  // Dismiss popup on current view when user scrolls, taps/clicks anywhere, or closes
   const dismissOddsPopup = useCallback(() => {
     setShowOddsTooltip(false);
   }, []);
 
-  // Collapsible by clicking anywhere else on the screen
+  // Popup dismissal lifecycle:
+  // - Auto-dismiss after brief duration (2.5s)
+  // - Dismiss immediately on scroll or touchmove
+  // - Dismiss immediately when user taps/clicks anywhere outside the tooltip
   useEffect(() => {
     if (!showOddsTooltip) return;
-    const handleGlobalClick = (e: MouseEvent) => {
+
+    // Brief auto-dismiss timer (brief 2 seconds)
+    const autoDismissTimer = setTimeout(() => {
+      setShowOddsTooltip(false);
+    }, 2500);
+
+    // Dismiss on scroll or touch move
+    const handleScrollOrTouch = () => {
+      setShowOddsTooltip(false);
+    };
+
+    // Dismiss on click/tap outside tooltip
+    const handleGlobalClick = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement;
-      if (target && target.closest('[data-odds-popup="true"]')) return;
-      dismissOddsPopup();
+      if (target && target.closest('[data-odds-popup="true"]')) {
+        return;
+      }
+      setShowOddsTooltip(false);
     };
-    const timer = setTimeout(() => {
+
+    window.addEventListener('scroll', handleScrollOrTouch, { passive: true });
+    window.addEventListener('touchmove', handleScrollOrTouch, { passive: true });
+
+    const clickTimer = setTimeout(() => {
       window.addEventListener('click', handleGlobalClick);
+      window.addEventListener('pointerdown', handleGlobalClick);
     }, 150);
+
     return () => {
-      clearTimeout(timer);
+      clearTimeout(autoDismissTimer);
+      clearTimeout(clickTimer);
+      window.removeEventListener('scroll', handleScrollOrTouch);
+      window.removeEventListener('touchmove', handleScrollOrTouch);
       window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('pointerdown', handleGlobalClick);
     };
-  }, [showOddsTooltip, dismissOddsPopup]);
+  }, [showOddsTooltip]);
 
   // Track when odds filter is active directly
   useEffect(() => {
     if (filterStatus === 'ODDS' && deviceId) {
       setShowOddsTooltip(false);
       try {
+        localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
         localStorage.setItem('esn_odds_page_opened_v3', 'true');
       } catch {}
       FeaturePollService.recordOddsPageOpen(deviceId);
@@ -607,14 +678,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                   {showOddsTooltip && (
                     <div 
                       data-odds-popup="true"
-                      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none w-64 sm:w-72 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                      className="absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center select-none w-56 sm:w-64 animate-in fade-in slide-in-from-bottom-2 duration-200"
                     >
-                      {/* Moderately large popup card */}
+                      {/* Midsized Tooltip Card */}
                       <div 
                         onClick={handleOpenOdds}
-                        className="w-full bg-[#0d1e30] border border-emerald-400/50 rounded-xl p-3.5 shadow-2xl shadow-black/80 ring-1 ring-emerald-400/30 text-left space-y-2 backdrop-blur-md cursor-pointer hover:border-emerald-400 transition-colors"
+                        className="w-full bg-[#0d1e30] border border-emerald-400/60 rounded-xl p-3 shadow-2xl shadow-black/80 ring-1 ring-emerald-400/30 text-left space-y-1.5 backdrop-blur-md cursor-pointer hover:border-emerald-400 transition-colors"
                       >
-                        {/* Top indicator row */}
+                        {/* Top Indicator Row */}
                         <div className="flex items-center justify-between pb-1 border-b border-white/10">
                           <div className="flex items-center gap-1.5">
                             <span className="relative flex h-2 w-2">
@@ -622,7 +693,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                             </span>
                             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
-                              NEW FEATURE
+                              NEW
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -636,33 +707,33 @@ export const HomePage: React.FC<HomePageProps> = ({
                                 dismissOddsPopup();
                               }}
                               className="p-0.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                              aria-label="Dismiss popup"
+                              aria-label="Dismiss banner"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
-                        {/* Title */}
+                        {/* Title: New. Check this out! */}
                         <div className="flex items-center gap-1.5 text-xs font-black text-white">
                           <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 fill-amber-400" />
-                          <span>Match Predictions & Fan Poll</span>
+                          <span>New. Check this out!</span>
                         </div>
 
-                        {/* Description */}
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          Vote for your teams on weekend fixtures! Guess outcomes, test your knowledge, and cast your vote on whether we should launch this game.
+                        {/* Subtitle / Context */}
+                        <p className="text-[11px] text-slate-300 leading-snug">
+                          Match Predictions & Fan Poll: Guess outcomes & vote on upcoming fixtures.
                         </p>
 
-                        {/* Directional prompt pointing downwards to the button */}
-                        <div className="pt-1.5 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300">
-                          <span>Click here or button below</span>
+                        {/* Directional Prompt Pointing Downwards to ODDS */}
+                        <div className="pt-1 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300">
+                          <span>Tap here or ODDS below</span>
                           <span className="animate-bounce text-xs">👇</span>
                         </div>
                       </div>
 
                       {/* Directional pointer caret pointing directly at ODDS button */}
-                      <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/50 shadow-sm pointer-events-none"></div>
+                      <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/60 shadow-sm pointer-events-none"></div>
                     </div>
                   )}
                   <button

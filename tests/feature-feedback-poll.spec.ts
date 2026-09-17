@@ -41,12 +41,16 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
 
     // Intercept feature feedback polls API
     let recordedVote: string | null = null;
+    let recordedOpenedOdds: boolean = false;
     await page.route(/.*\/rest\/v1\/feature_feedback_polls.*/, async (route: Route) => {
       const method = route.request().method();
       if (method === 'POST') {
         const postData = route.request().postDataJSON();
         if (postData?.vote) {
           recordedVote = postData.vote;
+        }
+        if (postData?.opened_odds_page) {
+          recordedOpenedOdds = true;
         }
         return route.fulfill({
           status: 201,
@@ -55,11 +59,11 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
         });
       }
       if (method === 'GET') {
-        if (recordedVote) {
+        if (recordedVote || recordedOpenedOdds) {
           return route.fulfill({
             status: 200,
             contentType: 'application/json',
-            body: JSON.stringify([{ id: 'v1', device_id: 'dev-test-1234', vote: recordedVote, created_at: new Date().toISOString() }]),
+            body: JSON.stringify([{ id: 'v1', device_id: 'dev-test-1234', opened_odds_page: recordedOpenedOdds, vote: recordedVote, created_at: new Date().toISOString() }]),
           });
         }
         return route.fulfill({
@@ -80,10 +84,10 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     await expect(oddsButton.locator('text=NEW')).toBeVisible();
 
     // 2. Verify New Feature Tooltip is visible on the fixtures filters row for a first-time device
-    const tooltip = page.locator('text=Match Predictions & Fan Poll');
+    const tooltip = page.locator('text=New. Check this out!');
     await expect(tooltip).toBeVisible({ timeout: 5000 });
 
-    // 3. Dismiss the popup: click somewhere else on the page to collapse it (comes once per device)
+    // 3. Dismiss the popup: click somewhere else on the page to collapse it
     await page.mouse.click(10, 10);
     await expect(tooltip).not.toBeVisible({ timeout: 2000 });
 
@@ -114,9 +118,9 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     // 8. Verify modal closes and user is returned to homepage with ALL filter active
     await expect(modalTitle).not.toBeVisible({ timeout: 3000 });
 
-    // 9. On subsequent visit/reload: since popup only comes once per device, popup stays dismissed, while NEW badge remains on button
+    // 9. On subsequent visit/reload: since device has opened odds page, popup stays permanently dismissed, while NEW badge remains on button
     await page.reload();
-    await expect(page.locator('text=Match Predictions & Fan Poll')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.locator('text=New. Check this out!')).not.toBeVisible({ timeout: 2000 });
     await expect(page.locator('button', { hasText: 'ODDS' }).first().locator('text=NEW')).toBeVisible();
   });
 
@@ -259,5 +263,100 @@ test.describe('Match Predictions Preview & Determinant Poll Tests', () => {
     await expect(page.locator('text=Yes (In Favor)').first()).toBeVisible();
     await expect(page.locator('text=Weekly Fixtures Match Prediction Lifecycle')).toBeVisible();
     await expect(page.locator('text=Device Determinant Responses Log')).toBeVisible();
+  });
+
+  test('Guest Homepage: Tooltip appears once per session for device without opened odds, and never appears once odds is opened', async ({ page }) => {
+    let devOpenedOdds = false;
+    const testDeviceId = 'device-session-check-99';
+
+    await page.route(/.*\/rest\/v1\/fixtures.*/, async (route: Route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'content-range': '0-0/1' },
+        body: JSON.stringify([]),
+      });
+    });
+
+    await page.route(/.*\/rest\/v1\/anonymous_devices.*/, async (route: Route) => {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          device_id: testDeviceId,
+          has_completed_onboarding: true,
+          favorite_team_id: null,
+        }),
+      });
+    });
+
+    await page.route(/.*\/rest\/v1\/feature_feedback_polls.*/, async (route: Route) => {
+      const method = route.request().method();
+      if (method === 'POST') {
+        const postData = route.request().postDataJSON();
+        if (postData?.opened_odds_page) {
+          devOpenedOdds = true;
+        }
+        return route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: true, ...postData }),
+        });
+      }
+      if (method === 'GET') {
+        if (devOpenedOdds) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify([{ id: 'v2', device_id: testDeviceId, opened_odds_page: true, vote: null }]),
+          });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([]),
+        });
+      }
+      return route.continue();
+    });
+
+    // 1. First session load: tooltip must appear
+    await page.goto('/');
+    const tooltip = page.locator('text=New. Check this out!');
+    await expect(tooltip).toBeVisible({ timeout: 5000 });
+
+    // 2. Dismiss by clicking anywhere outside
+    await page.mouse.click(20, 20);
+    await expect(tooltip).not.toBeVisible({ timeout: 2000 });
+
+    // 3. Reload in same session: tooltip must NOT re-appear in same session
+    await page.reload();
+    await expect(tooltip).not.toBeVisible({ timeout: 2000 });
+
+    // 4. Simulate closing session and opening a new session (clear sessionStorage)
+    await page.evaluate(() => {
+      sessionStorage.clear();
+    });
+    await page.reload();
+    // Since opened_odds_page is still false in DB, new session shows tooltip again!
+    await expect(tooltip).toBeVisible({ timeout: 5000 });
+
+    // 5. User opens the ODDS feature
+    const oddsButton = page.locator('button', { hasText: 'ODDS' }).first();
+    await oddsButton.click();
+    await expect(page.locator('text=Weekend Match Predictor Challenge')).toBeVisible();
+
+    // 6. Close the modal
+    const closeBtn = page.locator('button[aria-label="Close"]').first();
+    await closeBtn.click();
+
+    // 7. Simulate another new session (clear sessionStorage)
+    await page.evaluate(() => {
+      sessionStorage.clear();
+    });
+    await page.reload();
+
+    // 8. Because opened_odds_page is now true in DB and localStorage, tooltip NEVER appears again
+    await expect(tooltip).not.toBeVisible({ timeout: 3000 });
   });
 });
