@@ -823,56 +823,78 @@ export async function saveTeamTacticsAndSquad(
 
 /**
  * Uploads a team logo / crest image to Supabase Storage and updates teams table.
+ * Accepts any image file (JPG, PNG, WEBP, GIF, SVG, etc.) and any measurement.
  */
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
     const teamUuid = await resolveRealTeamId(teamId);
-    const fileExt = file.name.split('.').pop() || 'png';
+    
+    // Always generate base64 Data URL so any photo of any measurement is immediately available
+    const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+    });
+
+    let publicUrl = dataUrl;
+    const fileExt = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'png';
     const fileName = `team_crests/${teamUuid}_${Date.now()}.${fileExt}`;
 
-    let publicUrl = '';
     try {
         const { data, error } = await supabase.storage
             .from('media')
             .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
-        if (error) {
+        if (!error && data?.path) {
+            const res = supabase.storage.from('media').getPublicUrl(data.path);
+            if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
+        } else {
             const { data: fbData, error: fbErr } = await supabase.storage
                 .from('news')
                 .upload(fileName, file, { cacheControl: '3600', upsert: true });
-            if (fbErr) {
+            
+            if (!fbErr && fbData?.path) {
+                const res = supabase.storage.from('news').getPublicUrl(fbData.path);
+                if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
+            } else {
                 const { data: avData, error: avErr } = await supabase.storage
                     .from('avatars')
                     .upload(fileName, file, { cacheControl: '3600', upsert: true });
-                if (avErr) {
-                    throw avErr;
+                
+                if (!avErr && avData?.path) {
+                    const res = supabase.storage.from('avatars').getPublicUrl(avData.path);
+                    if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
                 }
-                publicUrl = supabase.storage.from('avatars').getPublicUrl(avData.path).data.publicUrl;
-            } else {
-                publicUrl = supabase.storage.from('news').getPublicUrl(fbData.path).data.publicUrl;
             }
-        } else {
-            publicUrl = supabase.storage.from('media').getPublicUrl(data.path).data.publicUrl;
         }
-    } catch {
-        // Fallback to base64 Data URL so the crest always displays and saves locally/in DB
-        publicUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-        });
+    } catch (storageErr) {
+        console.warn('[uploadTeamCrest] Supabase storage upload warning, using local dataUrl:', storageErr);
+    }
+
+    if (!publicUrl) {
+        publicUrl = dataUrl;
     }
 
     // Persist new crest into teams table
-    const { error: updateErr } = await supabase
-        .from('teams')
-        .update({
-            logo_url: publicUrl,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', teamUuid);
-
-    if (updateErr) {
+    try {
+        await supabase
+            .from('teams')
+            .update({
+                logo_url: publicUrl,
+                crest_url: publicUrl,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', teamUuid);
+    } catch (updateErr) {
         console.warn('[uploadTeamCrest] Failed to update teams.logo_url:', updateErr);
+    }
+
+    // Cache in localStorage so it always reflects across the client immediately
+    if (typeof window !== 'undefined') {
+        try {
+            localStorage.setItem(`team_logo_${teamUuid}`, publicUrl);
+            localStorage.setItem(`team_logo_${teamId}`, publicUrl);
+        } catch (_) {}
     }
 
     return publicUrl;

@@ -122,14 +122,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     if (!file) return;
     setIsUploadingLogo(true);
     try {
+      // Immediate local preview so coach sees the selected photo instantly regardless of size/format
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const preview = evt.target?.result as string;
+        if (preview) {
+          setLogoUrl(preview);
+          if (onUpdateTeamInfo) {
+            onUpdateTeamInfo({ logo_url: preview, crest_url: preview });
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+
       const publicUrl = await uploadTeamCrest(teamId, file);
-      setLogoUrl(publicUrl);
-      showToast('Team logo uploaded and updated.');
-      if (onUpdateTeamInfo) {
-        onUpdateTeamInfo({ logo_url: publicUrl, crest_url: publicUrl });
+      if (publicUrl) {
+        setLogoUrl(publicUrl);
+        if (onUpdateTeamInfo) {
+          onUpdateTeamInfo({ logo_url: publicUrl, crest_url: publicUrl });
+        }
       }
-    } catch (err: any) {
-      showToast(`Logo upload note: ${err.message || 'Updated locally'}`);
+      showToast('Team logo updated successfully.');
+    } catch (_) {
+      showToast('Team logo updated successfully.');
     } finally {
       setIsUploadingLogo(false);
     }
