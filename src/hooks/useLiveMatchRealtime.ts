@@ -22,17 +22,20 @@ export const useLiveMatchRealtime = (
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const matchesRef = useRef<Match[]>(initialMatches);
 
+  const hasFetchedInitialRef = useRef(false);
+
   useEffect(() => {
     if (initialMatches && initialMatches.length > 0) {
       setMatches(initialMatches);
       matchesRef.current = initialMatches;
-    } else {
+    } else if (!hasFetchedInitialRef.current) {
+      hasFetchedInitialRef.current = true;
       ApiService.getFixtures().then((res) => {
         if (res.data) {
           setMatches(res.data);
           matchesRef.current = res.data;
         }
-      });
+      }).catch(() => {});
     }
   }, [initialMatches]);
 

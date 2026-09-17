@@ -625,7 +625,7 @@ export async function updateTeamSettings(
         if (settings.name !== undefined) updatePayload.name = settings.name;
         if (settings.short_name !== undefined) updatePayload.short_name = settings.short_name;
         const resolvedLogo = settings.logo_url !== undefined ? settings.logo_url : settings.crest_url;
-        if (resolvedLogo !== undefined && resolvedLogo.trim() !== '') {
+        if (resolvedLogo !== undefined && resolvedLogo.trim() !== '' && !resolvedLogo.trim().startsWith('data:')) {
             updatePayload.logo_url = resolvedLogo.trim();
         }
         if (settings.description !== undefined) updatePayload.description = settings.description;
@@ -865,25 +865,26 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
         }
     }
 
-    // Step 3: The URL to save in DB — prefer real storage URL, but if unavailable use dataUrl.
-    // Note: base64 dataUrl will work for display but is large. Storage URL is strongly preferred.
-    const urlToSave = storageUrl || dataUrl;
+    // Step 3 & 4: Only persist to teams table if we got a real Storage URL.
+    // NEVER save large base64 dataUrls to Postgres rows — it balloons JSON responses and causes database timeouts.
+    if (storageUrl && !storageUrl.startsWith('data:')) {
+        try {
+            const { error: updateErr } = await supabase
+                .from('teams')
+                .update({
+                    logo_url: storageUrl,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', teamUuid);
 
-    // Step 4: Persist to teams table (only logo_url — crest_url may not exist as a column)
-    try {
-        const { error: updateErr } = await supabase
-            .from('teams')
-            .update({
-                logo_url: urlToSave,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', teamUuid);
-
-        if (updateErr) {
-            console.warn('[uploadTeamCrest] DB update error:', updateErr.message);
+            if (updateErr) {
+                console.warn('[uploadTeamCrest] DB update error:', updateErr.message);
+            }
+        } catch (dbErr) {
+            console.warn('[uploadTeamCrest] Failed to update teams table:', dbErr);
         }
-    } catch (dbErr) {
-        console.warn('[uploadTeamCrest] Failed to update teams table:', dbErr);
+    } else {
+        console.warn('[uploadTeamCrest] Storage upload failed or unavailable; caching locally for session without saving raw base64 to DB.');
     }
 
     // Step 5: Cache locally so it survives navigation without a DB re-fetch
@@ -920,8 +921,8 @@ export async function updateCoachCredentialsAndLogo({
         let updatedLogoUrl = logoUrl;
         let updatedEmail = email;
 
-        // 1. Update team logo in teams table if provided
-        if (logoUrl !== undefined && logoUrl.trim() !== '') {
+        // 1. Update team logo in teams table if provided (and not a raw base64 data URL)
+        if (logoUrl !== undefined && logoUrl.trim() !== '' && !logoUrl.trim().startsWith('data:')) {
             const { error: teamErr } = await supabase
                 .from('teams')
                 .update({

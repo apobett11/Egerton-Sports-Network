@@ -119,7 +119,7 @@ export const ApiService = {
             competition:competitions(id, name),
             team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
             team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
-          `, { count: 'exact' });
+          `);
 
         if (competitionId) {
           query = query.eq('competition_id', competitionId);
