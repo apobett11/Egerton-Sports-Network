@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Flag,
   X,
+  Shirt,
   PieChart as PieChartIcon
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -46,6 +47,7 @@ interface HomepageProps {
   standings: StandingEntry[];
   teamInfo?: DBTeam | null;
   onOpenMatchEventsModal?: (matchId?: string) => void;
+  onOpenTeamModal?: () => void;
 }
 
 export const Homepage: React.FC<HomepageProps> = ({
@@ -65,6 +67,7 @@ export const Homepage: React.FC<HomepageProps> = ({
   standings,
   teamInfo,
   onOpenMatchEventsModal,
+  onOpenTeamModal,
 }) => {
   // State for linesman all-matches popup modal
   const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
@@ -241,7 +244,13 @@ export const Homepage: React.FC<HomepageProps> = ({
               <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 w-full lg:w-auto min-w-0 flex-1">
                 {/* HOME TEAM */}
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial">
-                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                  <div
+                    onClick={nextMatch.isHome !== false ? onOpenTeamModal : undefined}
+                    className={`w-9 h-9 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs relative group ${
+                      nextMatch.isHome !== false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-[#ff0046]/40 transition-all' : ''
+                    }`}
+                    title={nextMatch.isHome !== false ? 'Click to edit team logo and coach info' : undefined}
+                  >
                     {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
                       <img
                         src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
@@ -252,6 +261,11 @@ export const Homepage: React.FC<HomepageProps> = ({
                       <span className="font-bold text-[10px] text-slate-800 dark:text-white">
                         {nextMatch.isHome !== false ? ourTeamShort : nextMatch.opponentName.slice(0, 3).toUpperCase()}
                       </span>
+                    )}
+                    {nextMatch.isHome !== false && onOpenTeamModal && (
+                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[7px] font-bold text-white uppercase">Edit</span>
+                      </div>
                     )}
                   </div>
                   <div className="min-w-0">
@@ -282,7 +296,13 @@ export const Homepage: React.FC<HomepageProps> = ({
                       Away
                     </span>
                   </div>
-                  <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2">
+                  <div
+                    onClick={nextMatch.isHome === false ? onOpenTeamModal : undefined}
+                    className={`w-9 h-9 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2 relative group ${
+                      nextMatch.isHome === false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-[#ff0046]/40 transition-all' : ''
+                    }`}
+                    title={nextMatch.isHome === false ? 'Click to edit team logo and coach info' : undefined}
+                  >
                     {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
                       <img
                         src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
@@ -293,6 +313,11 @@ export const Homepage: React.FC<HomepageProps> = ({
                       <span className="font-bold text-[10px] text-slate-600 dark:text-slate-300">
                         {nextMatch.isHome !== false ? nextMatch.opponentName.slice(0, 3).toUpperCase() : ourTeamShort}
                       </span>
+                    )}
+                    {nextMatch.isHome === false && onOpenTeamModal && (
+                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[7px] font-bold text-white uppercase">Edit</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -434,63 +459,53 @@ export const Homepage: React.FC<HomepageProps> = ({
               </h2>
             </div>
           </div>
-          {onOpenMatchEventsModal && (
-            <button
-              type="button"
-              onClick={() => onOpenMatchEventsModal()}
-              className="px-3.5 py-1.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>Record Match Events</span>
-            </button>
-          )}
         </div>
 
         {/* CARD CONTENT */}
         <div className="p-4 sm:p-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Button 1: Team Squad */}
+            {/* Button 1: Upload Player Kits */}
             <button
               type="button"
-              onClick={() => onNavigateView('TACTICS')}
+              onClick={() => onNavigateView('ROSTER')}
               className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Shirt className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                  Upload Player Kits
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  Uniforms & Gear
+                </p>
+              </div>
+            </button>
+
+            {/* Button 2: Arrange Match Squad */}
+            <button
+              type="button"
+              onClick={() => onNavigateView('TACTICS')}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Users className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Team Squad
+                  Arrange Match Squad
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                  2D Tactical Pitch
+                  2D Pitch & Lineup
                 </p>
               </div>
             </button>
 
-            {/* Button 2: Players & Kits */}
+            {/* Button 3: Update Match Events */}
             <button
               type="button"
-              onClick={() => onNavigateView('ROSTER')}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
-                <Shield className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Players & Kits
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                  Roster & Uniforms
-                </p>
-              </div>
-            </button>
-
-            {/* Button 3: Standings */}
-            <button
-              type="button"
-              onClick={() => onNavigateView('STANDINGS')}
+              onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
               className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
@@ -498,29 +513,29 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Standings
+                  Update Match Events
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                  Table & Form Guide
+                  Goals & Timeline
                 </p>
               </div>
             </button>
 
-            {/* Button 4: Newsroom */}
+            {/* Button 4: Edit Team Details */}
             <button
               type="button"
-              onClick={() => onNavigateView('NEWS')}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-purple-500/50 dark:hover:border-purple-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              onClick={() => onOpenTeamModal && onOpenTeamModal()}
+              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-[#ff0046]/50 dark:hover:border-[#ff0046]/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
-                <Activity className="w-4 h-4" />
+              <div className="w-10 h-10 rounded-xl bg-[#ff0046]/10 text-[#ff0046] group-hover:bg-[#ff0046] group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
+                <Shield className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Newsroom
+                  Edit Team Details
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                  Club Press Releases
+                  Logo, Email & Password
                 </p>
               </div>
             </button>

@@ -18,6 +18,7 @@ import { ComposeJournalModal } from './components/ComposeJournalModal';
 import { InvitePlayerModal } from './components/Roster/InvitePlayerModal';
 import { ShareTeamLinkModal } from './components/Roster/ShareTeamLinkModal';
 import { CoachMatchEventsModal } from './components/Matches/CoachMatchEventsModal';
+import { CoachTeamInfoModal } from './components/CoachTeamInfoModal';
 import { NewsFeed } from '../../MainFeed/NewsFeed';
 import { Footer } from '../../Layout/Footer';
 
@@ -28,8 +29,12 @@ export const TeamDashboard: React.FC = () => {
     canPublish,
     teamId,
     teamInfo,
+    setTeamInfo,
     coachProfile,
+    setCoachProfile,
     captainProfile,
+    user,
+    refreshLiveDashboard,
     teamFixtures,
     linesmanMatches,
     announcements,
@@ -94,6 +99,7 @@ export const TeamDashboard: React.FC = () => {
 
   const [showMatchEventsModal, setShowMatchEventsModal] = useState<boolean>(false);
   const [selectedMatchForEvents, setSelectedMatchForEvents] = useState<string | undefined>(undefined);
+  const [isTeamInfoModalOpen, setIsTeamInfoModalOpen] = useState<boolean>(false);
 
   const handleOpenMatchEventsModal = (matchId?: string) => {
     setSelectedMatchForEvents(matchId);
@@ -151,6 +157,9 @@ export const TeamDashboard: React.FC = () => {
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           onLogout={handleLogout}
+          teamLogo={teamInfo?.logo_url}
+          teamName={teamInfo?.name}
+          onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
         />
 
         {/* MAIN VIEWS WORKSPACE CANVAS */}
@@ -174,6 +183,7 @@ export const TeamDashboard: React.FC = () => {
               standings={standings}
               teamInfo={teamInfo}
               onOpenMatchEventsModal={handleOpenMatchEventsModal}
+              onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
             />
           )}
 
@@ -301,6 +311,12 @@ export const TeamDashboard: React.FC = () => {
               teamId={teamId}
               roster={roster}
               teamInfo={teamInfo}
+              coachProfile={coachProfile}
+              coachUserId={user?.id || coachProfile?.id}
+              onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
+              onUpdateTeamInfo={(updated) => {
+                setTeamInfo((prev: any) => ({ ...(prev || {}), ...updated }));
+              }}
             />
           )}
 
@@ -367,6 +383,28 @@ export const TeamDashboard: React.FC = () => {
           onShowToast={showToast}
         />
       )}
+
+      {/* COACH TEAM & IDENTITY MODAL */}
+      <CoachTeamInfoModal
+        isOpen={isTeamInfoModalOpen}
+        onClose={() => setIsTeamInfoModalOpen(false)}
+        teamId={teamId}
+        teamName={teamInfo?.name || 'Egerton FC'}
+        teamLogo={teamInfo?.logo_url || ''}
+        coachEmail={coachProfile?.email || user?.email || 'coachteam1@gmail.com'}
+        coachUserId={user?.id || coachProfile?.id}
+        rosterCount={roster.length}
+        onSuccess={(updated) => {
+          if (updated.logoUrl) {
+            setTeamInfo((prev: any) => ({ ...(prev || {}), logo_url: updated.logoUrl }));
+          }
+          if (updated.email) {
+            setCoachProfile((prev: any) => ({ ...(prev || {}), email: updated.email }));
+          }
+          refreshLiveDashboard();
+        }}
+        onShowToast={showToast}
+      />
     </div>
   );
 };

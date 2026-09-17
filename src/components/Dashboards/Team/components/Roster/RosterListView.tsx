@@ -25,6 +25,7 @@ import {
   Activity,
   Hash,
   UserCheck,
+  ChevronDown,
 } from 'lucide-react';
 import type { Player, UserRole, PlayerPosition, KitConfig } from '../../types';
 import { initialKits } from '../../mockData';
@@ -97,6 +98,7 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   // Sorting state for players
   const [sortBy, setSortBy] = useState<SortCriterion>('rating');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedPlayerForDetails, setSelectedPlayerForDetails] = useState<Player | null>(null);
 
   // Link copy state
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
@@ -314,6 +316,31 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   };
 
   // Multi-criteria sorting logic
+  const sortOptions = [
+    { value: 'rating_desc', label: 'Rating (Highest First)' },
+    { value: 'rating_asc', label: 'Rating (Lowest First)' },
+    { value: 'number_asc', label: 'Jersey # (1 → 99)' },
+    { value: 'number_desc', label: 'Jersey # (99 → 1)' },
+    { value: 'name_asc', label: 'Name (A → Z)' },
+    { value: 'name_desc', label: 'Name (Z → A)' },
+    { value: 'position_asc', label: 'Position (GK → FW)' },
+    { value: 'status_asc', label: 'Status (Fit → Suspended)' },
+  ];
+
+  const positionOptions = [
+    { value: 'ALL', label: 'All Positions' },
+    { value: 'GK', label: 'Goalkeepers (GK)' },
+    { value: 'DF', label: 'Defenders (DF)' },
+    { value: 'MD', label: 'Midfielders (MD)' },
+    { value: 'FW', label: 'Forwards (FW)' },
+  ];
+
+  const handleSortChange = (val: string) => {
+    const [criterion, order] = val.split('_') as [SortCriterion, 'asc' | 'desc'];
+    setSortBy(criterion);
+    setSortOrder(order);
+  };
+
   const handleSortClick = (criterion: SortCriterion) => {
     if (sortBy === criterion) {
       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -462,40 +489,30 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
             </p>
           </div>
 
-          {/* 1. ATHLETES CONFIRMATION & INTAKE LINK (HOUSING IN A SINGLE CARD, MINIMAL & INTENTIONAL) */}
-          <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500" />
+          {/* 1. ATHLETE PROFILE CONFIRMATION & INTAKE (COMPACT & UNCLUTTERED) */}
+          <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl shadow-xs overflow-hidden transition-all">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-amber-500 to-orange-500" />
 
-            {/* VIVID CARD HEADER */}
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-xs">
-                  <UserCheck className="w-4 h-4" />
+            {/* COMPACT CARD HEADER */}
+            <div className="px-4 py-2.5 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-2 bg-slate-50/60 dark:bg-[#0b1623]/60">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                  <UserCheck className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Athlete Profile Confirmation & Intake
-                  </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Direct athlete onboarding link to register preferred jersey numbers, phone & avatars
-                  </p>
-                </div>
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                  Athlete Profile Confirmation & Intake
+                </h2>
               </div>
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0 shadow-2xs">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
                 Official Intake Link
               </span>
             </div>
 
-            {/* CARD CONTENT: MINIMAL & INTENTIONAL LINK, COPY, SHARE TO WHATSAPP */}
-            <div className="p-4 sm:p-5 space-y-4">
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-                Share this official update link with your team athletes. They can open it on their phones to confirm their personal squad profile, pick their available jersey number, and upload their player photo.
-              </p>
-
-              {/* Minimal & Intentional Link Action Strip */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+            {/* COMPACT CONTENT WITH CLEAR ICON DIRECTIONS */}
+            <div className="p-3 sm:p-3.5">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 {/* Link input/display */}
-                <div className="flex-1 flex items-center bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2 min-w-0">
+                <div className="flex-1 flex items-center bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-lg px-3 py-1.5 min-w-0">
                   <span className="text-[10px] font-bold uppercase text-slate-400 mr-2 shrink-0">Link:</span>
                   <code className="text-xs font-mono text-slate-700 dark:text-slate-200 truncate select-all flex-1">
                     {updateUrl}
@@ -506,10 +523,11 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyRegistrationLink}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                  title="Copy registration link"
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                  <span>{copiedLink ? 'Copied!' : 'Copy'}</span>
                 </button>
 
                 {/* WhatsApp Share Button */}
@@ -517,10 +535,11 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 shrink-0"
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/30 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 shrink-0"
+                  title="Share intake link directly to WhatsApp"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Share via WhatsApp</span>
+                  <span>WhatsApp</span>
                 </a>
 
                 {/* Open in new tab icon link */}
@@ -528,137 +547,41 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   href={`#/update/player?team=${teamSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-xl border border-slate-200 dark:border-[#1a2e45] text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#152a40] transition-colors flex items-center justify-center shrink-0"
-                  title="Open Update Dashboard in new tab"
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-[#1a2e45] text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#152a40] transition-colors flex items-center justify-center shrink-0"
+                  title="Open update form in new tab"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>
           </section>
 
-          {/* 2. SQUAD PLAYERS (HOUSING IN A SINGLE CARD) */}
+          {/* 2. SQUAD PLAYERS (LIST STYLE: THIN CARDS SIDE BY SIDE) */}
           <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
 
-            {/* VIVID CARD HEADER WITH ARRANGE CONTROLS */}
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 bg-slate-50/60 dark:bg-[#0b1623]/60">
+            {/* CARD HEADER */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 shadow-xs">
                   <Users className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                      Squad Players
-                    </h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                      {sortedRoster.length} Available
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Arrange players by rating, jersey number, name, position, or current fitness status
-                  </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Squad Players
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    {sortedRoster.length} Available
+                  </span>
                 </div>
-              </div>
-
-              {/* MULTI-CRITERIA ARRANGE CONTROLS */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
-                  <SlidersHorizontal className="w-3 h-3" />
-                  <span>Arrange by:</span>
-                </span>
-
-                {/* Sort by Rating */}
-                <button
-                  type="button"
-                  onClick={() => handleSortClick('rating')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    sortBy === 'rating'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-amber-500'
-                  }`}
-                >
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>Rating</span>
-                  {sortBy === 'rating' && (
-                    sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />
-                  )}
-                </button>
-
-                {/* Sort by Number */}
-                <button
-                  type="button"
-                  onClick={() => handleSortClick('number')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    sortBy === 'number'
-                      ? 'bg-blue-500 text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-blue-500'
-                  }`}
-                >
-                  <Hash className="w-3 h-3" />
-                  <span>Number</span>
-                  {sortBy === 'number' && (
-                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                </button>
-
-                {/* Sort by Name */}
-                <button
-                  type="button"
-                  onClick={() => handleSortClick('name')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    sortBy === 'name'
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-slate-500'
-                  }`}
-                >
-                  <span>Name</span>
-                  {sortBy === 'name' && (
-                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                </button>
-
-                {/* Sort by Position */}
-                <button
-                  type="button"
-                  onClick={() => handleSortClick('position')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    sortBy === 'position'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-emerald-500'
-                  }`}
-                >
-                  <Shield className="w-3 h-3" />
-                  <span>Position</span>
-                  {sortBy === 'position' && (
-                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                </button>
-
-                {/* Sort by Status */}
-                <button
-                  type="button"
-                  onClick={() => handleSortClick('status')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    sortBy === 'status'
-                      ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'bg-white dark:bg-[#112236] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1a2e45] hover:border-[#ff0046]'
-                  }`}
-                >
-                  <Activity className="w-3 h-3" />
-                  <span>Status</span>
-                  {sortBy === 'status' && (
-                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                  )}
-                </button>
               </div>
             </div>
 
             {/* CARD CONTENT */}
             <div className="p-4 sm:p-5 space-y-4">
-              {/* SEARCH & POSITION FILTER BAR */}
-              <div className="w-full bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] rounded-xl p-3 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* UNIFIED SEARCH, ARRANGE BY, AND POSITION DROPDOWNS */}
+              <div className="w-full bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] rounded-xl p-3 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                {/* Search Bar */}
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -670,102 +593,76 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {[
-                    { id: 'ALL', label: 'ALL' },
-                    { id: 'GK', label: 'GK' },
-                    { id: 'DF', label: 'DF' },
-                    { id: 'MD', label: 'MD' },
-                    { id: 'FW', label: 'FW' },
-                  ].map((item) => {
-                    const isActive = positionFilter === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setPositionFilter(item.id)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                          isActive
-                            ? 'bg-[#ff0046] text-white shadow-xs'
-                            : 'bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#152a40]'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
+                {/* Unified Arrange By and Position Dropdowns */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Arrange By Dropdown */}
+                  <div className="relative flex-1 sm:flex-initial">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      value={`${sortBy}_${sortOrder}`}
+                      onChange={(e) => handleSortChange(e.target.value)}
+                      className="w-full sm:w-auto bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl pl-8 pr-8 py-2 appearance-none cursor-pointer focus:outline-none focus:border-blue-500"
+                    >
+                      {sortOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          Arrange: {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+
+                  {/* Position Filter Dropdown */}
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Shield className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      value={positionFilter}
+                      onChange={(e) => setPositionFilter(e.target.value)}
+                      className="w-full sm:w-auto bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl pl-8 pr-8 py-2 appearance-none cursor-pointer focus:outline-none focus:border-blue-500"
+                    >
+                      {positionOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          Position: {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
-              {/* PLAYER CARDS GRID */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {/* LIST STYLE: THIN CARDS SIDE BY SIDE (2 COLUMNS) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {sortedRoster.map((player) => {
                   const isStarting = startingXI.includes(roster.findIndex((p) => p.id === player.id));
                   return (
                     <div
                       key={player.id}
-                      className="w-full bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all flex flex-col justify-between gap-3 relative group"
+                      onClick={() => setSelectedPlayerForDetails(player)}
+                      className="w-full bg-slate-50/80 dark:bg-[#112236]/70 hover:bg-slate-100 dark:hover:bg-[#162c46] border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/60 dark:hover:border-blue-500/60 rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center justify-between gap-3 group"
                     >
-                      {/* Top Row: Rating, Position, Number, and Delete */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          {/* Rating Badge */}
-                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold font-mono text-[10px] flex items-center gap-0.5 border border-amber-500/20">
-                            <Star className="w-2.5 h-2.5 fill-current" />
-                            <span>{player.rating}</span>
+                      {/* Left: Number, Position badge, Player name, XI badge */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="font-mono font-bold text-xs text-slate-400 dark:text-slate-500 shrink-0 w-7">
+                          #{player.number}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${getPositionBadgeStyle(player.position)}`}>
+                          {player.position}
+                        </span>
+                        <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                          {player.name}
+                        </h4>
+                        {isStarting && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                            XI
                           </span>
-
-                          {/* Position Pill */}
-                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${getPositionBadgeStyle(player.position)}`}>
-                            {player.position}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono font-bold text-[11px] text-slate-400">
-                            #{player.number}
-                          </span>
-                          {isCoach && onDeletePlayer && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPlayerToDelete(player);
-                              }}
-                              className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
-                              title={`Remove ${player.name}`}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
 
-                      {/* Player Image & Name */}
-                      <div className="flex flex-col items-center text-center space-y-1.5">
-                        <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200/80 dark:border-[#1a2e45] shrink-0 group-hover:border-slate-400 dark:group-hover:border-slate-600 transition-colors">
-                          <img
-                            src={player.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                            alt={player.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="w-full">
-                          <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                            {player.name}
-                          </h4>
-                          {isStarting && (
-                            <span className="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                              Starting XI
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Bottom: Status Badge & Quick Selector */}
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-[#1a2e45] flex items-center justify-between gap-1.5">
+                      {/* Right: Status badge & select */}
+                      <div className="flex items-center gap-2 shrink-0">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase truncate ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase truncate ${
                             player.status === 'Fit' || player.status === 'Active'
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                               : player.status === 'Recovering'
@@ -779,14 +676,34 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
                         <select
                           data-testid="player-status-select"
                           value={player.status}
-                          onChange={(e) => onUpdatePlayerStatus(player.id, e.target.value as any)}
-                          className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[10px] font-medium rounded-lg px-2 py-1 focus:outline-none focus:border-[#ff0046] cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onUpdatePlayerStatus(player.id, e.target.value as any);
+                          }}
+                          className="bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 text-[10px] font-medium rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 cursor-pointer"
+                          title="Quick Status"
                         >
                           <option value="Fit">Fit</option>
-                          <option value="Recovering">Rec</option>
-                          <option value="Injured">Inj</option>
-                          <option value="Suspended">Susp</option>
+                          <option value="Active">Active</option>
+                          <option value="Recovering">Recovering</option>
+                          <option value="Injured">Injured</option>
+                          <option value="Suspended">Suspended (Red Card)</option>
                         </select>
+
+                        {isCoach && onDeletePlayer && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPlayerToDelete(player);
+                            }}
+                            className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors"
+                            title={`Remove ${player.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -1247,6 +1164,144 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeleting ? 'Removing...' : 'Confirm Remove'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* POPUP MODAL: PLAYER DETAILS & STATUS UPDATE */}
+      {/* ========================================================================= */}
+      {selectedPlayerForDetails && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1a2e45] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                    Player Details & Status
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Review player profile and update match status
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPlayerForDetails(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Player Identity Card */}
+            <div className="p-3.5 bg-slate-50 dark:bg-[#112236] rounded-xl border border-slate-200/80 dark:border-[#1a2e45] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 border-2 border-slate-200 dark:border-[#1a2e45]">
+                  <img
+                    src={selectedPlayerForDetails.cardImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                    alt={selectedPlayerForDetails.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                    {selectedPlayerForDetails.name}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="font-mono text-xs font-bold text-slate-400">
+                      #{selectedPlayerForDetails.number}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${getPositionBadgeStyle(selectedPlayerForDetails.position)}`}>
+                      {selectedPlayerForDetails.position}
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-500 font-bold flex items-center gap-0.5">
+                      ★ {selectedPlayerForDetails.rating}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                  selectedPlayerForDetails.status === 'Fit' || selectedPlayerForDetails.status === 'Active'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                    : selectedPlayerForDetails.status === 'Recovering'
+                    ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                    : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                }`}
+              >
+                {selectedPlayerForDetails.status}
+              </span>
+            </div>
+
+            {/* Status Selector Options */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Update Status (Fitness & Cards):
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'Fit', label: 'Fit', icon: Check, color: 'hover:border-emerald-500 hover:text-emerald-500' },
+                  { id: 'Active', label: 'Active', icon: Activity, color: 'hover:border-emerald-500 hover:text-emerald-500' },
+                  { id: 'Recovering', label: 'Recovering', icon: Clock, color: 'hover:border-blue-500 hover:text-blue-500' },
+                  { id: 'Injured', label: 'Injured', icon: AlertTriangle, color: 'hover:border-amber-500 hover:text-amber-500' },
+                  { id: 'Suspended', label: 'Suspended (Red Card)', icon: Shield, color: 'hover:border-rose-500 hover:text-rose-500' },
+                ].map((st) => {
+                  const isCurrent = selectedPlayerForDetails.status === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => {
+                        onUpdatePlayerStatus(selectedPlayerForDetails.id, st.id as any);
+                        setSelectedPlayerForDetails({
+                          ...selectedPlayerForDetails,
+                          status: st.id as any,
+                        });
+                        if (onShowToast) onShowToast(`Status updated to ${st.id} for ${selectedPlayerForDetails.name}`);
+                      }}
+                      className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs'
+                          : `bg-slate-50 dark:bg-[#112236] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#1a2e45] ${st.color}`
+                      }`}
+                    >
+                      <st.icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-[#1a2e45]">
+              {isCoach && onDeletePlayer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = selectedPlayerForDetails;
+                    setSelectedPlayerForDetails(null);
+                    setPlayerToDelete(p);
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove player</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedPlayerForDetails(null)}
+                className="ml-auto px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#112236] text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-[#1c3857] text-xs font-bold cursor-pointer transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

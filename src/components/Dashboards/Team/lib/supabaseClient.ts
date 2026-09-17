@@ -853,6 +853,88 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
 }
 
 /**
+ * Updates coach credentials (email and password in auth + profiles) and team logo in teams table.
+ */
+export async function updateCoachCredentialsAndLogo({
+    teamId,
+    coachUserId,
+    logoUrl,
+    email,
+    password,
+}: {
+    teamId: string;
+    coachUserId?: string;
+    logoUrl?: string;
+    email?: string;
+    password?: string;
+}): Promise<{ success: boolean; error?: string; updatedEmail?: string; updatedLogoUrl?: string }> {
+    try {
+        const teamUuid = toUuid(teamId);
+        let updatedLogoUrl = logoUrl;
+        let updatedEmail = email;
+
+        // 1. Update team logo in teams table if provided
+        if (logoUrl !== undefined && logoUrl.trim() !== '') {
+            const { error: teamErr } = await supabase
+                .from('teams')
+                .update({
+                    logo_url: logoUrl.trim(),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', teamUuid);
+
+            if (teamErr) {
+                console.warn('[updateCoachCredentialsAndLogo] Failed to update logo in teams table:', teamErr);
+            }
+        }
+
+        // 2. Prepare auth user update payload
+        const authPayload: { email?: string; password?: string } = {};
+        if (email && email.trim()) {
+            authPayload.email = email.trim();
+        }
+        if (password && password.trim()) {
+            authPayload.password = password.trim();
+        }
+
+        // 3. Update auth user if payload is not empty
+        if (Object.keys(authPayload).length > 0) {
+            const { data: authData, error: authErr } = await supabase.auth.updateUser(authPayload);
+            if (authErr) {
+                return { success: false, error: authErr.message };
+            }
+            if (authData?.user?.email) {
+                updatedEmail = authData.user.email;
+            }
+        }
+
+        // 4. Update profile email if email was updated
+        const targetUserId = coachUserId || (await supabase.auth.getUser()).data.user?.id;
+        if (email && targetUserId && isValidUuid(targetUserId)) {
+            const { error: profErr } = await supabase
+                .from('profiles')
+                .update({
+                    email: email.trim(),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', targetUserId);
+
+            if (profErr) {
+                console.warn('[updateCoachCredentialsAndLogo] Failed to update profile email:', profErr);
+            }
+        }
+
+        return {
+            success: true,
+            updatedEmail,
+            updatedLogoUrl,
+        };
+    } catch (err: any) {
+        return { success: false, error: err?.message || 'Failed to update coach credentials and logo' };
+    }
+}
+
+/**
  * Fetches the Coach and Captain user profile details for the team.
  */
 export async function fetchCoachCaptainProfiles(teamId: string, coachUserId?: string): Promise<{

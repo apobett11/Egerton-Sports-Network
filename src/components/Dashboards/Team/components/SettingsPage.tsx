@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserRole } from '../types';
-import { updateTeamSettings, DEFAULT_TEAM_UUID } from '../lib/supabaseClient';
+import { updateTeamSettings, updateCoachCredentialsAndLogo, uploadTeamCrest, DEFAULT_TEAM_UUID } from '../lib/supabaseClient';
 import {
   Settings,
   Shield,
@@ -15,6 +15,11 @@ import {
   Phone,
   Palette,
   UserCheck,
+  Upload,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Loader2,
 } from 'lucide-react';
 
 interface SettingsPageProps {
@@ -26,6 +31,10 @@ interface SettingsPageProps {
   teamId?: string;
   roster?: any[];
   teamInfo?: any;
+  coachProfile?: any;
+  coachUserId?: string;
+  onOpenTeamModal?: () => void;
+  onUpdateTeamInfo?: (updated: any) => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -37,12 +46,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   teamId = DEFAULT_TEAM_UUID,
   roster = [],
   teamInfo,
+  coachProfile,
+  coachUserId,
+  onOpenTeamModal,
+  onUpdateTeamInfo,
 }) => {
   // Coach-managed Team Profile & Identity
   const [teamName, setTeamName] = useState(teamInfo?.name || 'Egerton FC');
   const [shortName, setShortName] = useState(teamInfo?.short_name || 'EFC');
   const [logoUrl, setLogoUrl] = useState(teamInfo?.crest_url || teamInfo?.logo_url || '');
-  const [contactEmail, setContactEmail] = useState('athletics@egerton.ac.ke');
+  const [coachEmail, setCoachEmail] = useState(coachProfile?.email || 'coachteam1@gmail.com');
+  const [coachPassword, setCoachPassword] = useState('');
+  const [coachConfirmPassword, setCoachConfirmPassword] = useState('');
+  const [showCoachPassword, setShowCoachPassword] = useState(false);
   const [contactPhone, setContactPhone] = useState('+254 700 123456');
   const [stadium, setStadium] = useState(teamInfo?.stadium || 'Egerton Main Pavilion Arena');
   const [teamDescription, setTeamDescription] = useState(
@@ -51,6 +67,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [primaryColor, setPrimaryColor] = useState(teamInfo?.primary_color || teamInfo?.color_code || '#ff0046');
   const [secondaryColor, setSecondaryColor] = useState(teamInfo?.secondary_color || '#0e1e2d');
   const [accentColor, setAccentColor] = useState(teamInfo?.accent_color || '#ffffff');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Tactical & In-Match Roles
   const [setPiecePenalty, setSetPiecePenalty] = useState(roster[0]?.name || 'Marcus Thorne');
@@ -75,6 +94,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   }, [teamInfo]);
 
+  useEffect(() => {
+    if (coachProfile?.email) {
+      setCoachEmail(coachProfile.email);
+    }
+  }, [coachProfile]);
+
   const handleToggleTheme = () => {
     const nextDark = !darkMode;
     setDarkMode(nextDark);
@@ -89,24 +114,94 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const publicUrl = await uploadTeamCrest(teamId, file);
+      setLogoUrl(publicUrl);
+      showToast('Team logo uploaded and updated.');
+      if (onUpdateTeamInfo) {
+        onUpdateTeamInfo({ logo_url: publicUrl });
+      }
+    } catch (err: any) {
+      showToast(`Logo upload note: ${err.message || 'Updated locally'}`);
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const handleSaveTeamSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await updateTeamSettings(teamId, {
-      name: teamName,
-      short_name: shortName,
-      logo_url: logoUrl,
-      color_code: primaryColor,
-      primary_color: primaryColor,
-      secondary_color: secondaryColor,
-      accent_color: accentColor,
-      stadium: stadium,
-      description: teamDescription,
-      captain_id: designatedCaptain,
-    });
-    if (success) {
-      showToast('Coach Authority: Team profile and colors updated in database.');
-    } else {
-      showToast('Coach Authority: Team profile settings updated locally.');
+
+    if (coachEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coachEmail)) {
+      showToast('Please enter a valid coach email address.');
+      return;
+    }
+
+    if (coachPassword) {
+      if (coachPassword.length < 6) {
+        showToast('Password must be at least 6 characters.');
+        return;
+      }
+      if (coachPassword !== coachConfirmPassword) {
+        showToast('Passwords do not match.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      // 1. Update team settings in database (stadium, colors, description, short_name, logo_url, captain_id)
+      // Note: Team name is strictly NOT updated to protect league governance immutability
+      const teamRes = await updateTeamSettings(teamId, {
+        short_name: shortName,
+        logo_url: logoUrl,
+        color_code: primaryColor,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
+        accent_color: accentColor,
+        stadium: stadium,
+        description: teamDescription,
+        captain_id: designatedCaptain,
+      });
+
+      // 2. Update coach credentials (email and password in auth + profiles)
+      const credsRes = await updateCoachCredentialsAndLogo({
+        teamId,
+        coachUserId: coachUserId || coachProfile?.id,
+        logoUrl: logoUrl,
+        email: coachEmail !== (coachProfile?.email || '') ? coachEmail : undefined,
+        password: coachPassword || undefined,
+      });
+
+      if (!teamRes.success && teamRes.error) {
+        showToast(`Team update: ${teamRes.error}`);
+      } else if (!credsRes.success && credsRes.error) {
+        showToast(`Credentials note: ${credsRes.error}`);
+      } else {
+        showToast('Coach Authority: Team profile, logo, and credentials updated in database.');
+        setCoachPassword('');
+        setCoachConfirmPassword('');
+        if (onUpdateTeamInfo) {
+          onUpdateTeamInfo({
+            short_name: shortName,
+            logo_url: logoUrl,
+            color_code: primaryColor,
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            accent_color: accentColor,
+            stadium: stadium,
+            description: teamDescription,
+            captain_id: designatedCaptain,
+          });
+        }
+      }
+    } catch (err: any) {
+      showToast(`Saved settings: ${err.message || 'Done'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -160,13 +255,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           {/* CLUB IDENTITY OVERVIEW CARD */}
           <div className="bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 shadow-xs flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-white font-black text-sm shrink-0 shadow-2xs">
+              <button
+                type="button"
+                onClick={onOpenTeamModal || (() => logoFileInputRef.current?.click())}
+                className="relative group w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-white font-black text-sm shrink-0 shadow-2xs cursor-pointer hover:ring-2 hover:ring-[#ff0046]/40 transition-all"
+                title="Click to edit team logo and coach info"
+              >
                 {logoUrl ? (
                   <img src={logoUrl} alt="Team Logo" className="w-full h-full object-contain" />
                 ) : (
                   <span>{shortName}</span>
                 )}
-              </div>
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[9px] font-bold text-white uppercase tracking-tighter">Edit</span>
+                </div>
+              </button>
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="font-extrabold text-base text-slate-900 dark:text-white">
@@ -210,15 +313,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <form onSubmit={handleSaveTeamSettings} className="p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-                    Team Name
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
+                    <span>Team Name</span>
+                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-slate-400" /> Locked by League
+                    </span>
                   </label>
                   <input
                     type="text"
-                    disabled={currentRole !== 'COACH'}
+                    disabled={true}
                     value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                    className="w-full bg-slate-100/90 dark:bg-[#152a40] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-500 dark:text-slate-400 font-bold text-xs cursor-not-allowed select-none"
+                    title="Team name cannot be changed per league governance rules"
                   />
                 </div>
 
@@ -237,34 +343,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
-                  Team Logo Image URL
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center justify-between">
+                  <span>Team Logo Image URL</span>
+                  <button
+                    type="button"
+                    onClick={() => logoFileInputRef.current?.click()}
+                    disabled={isUploadingLogo}
+                    className="text-[11px] font-bold text-[#ff0046] hover:text-[#e0003c] flex items-center gap-1 cursor-pointer"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>{isUploadingLogo ? 'Uploading...' : 'Upload Image File'}</span>
+                  </button>
                 </label>
+                <input
+                  type="file"
+                  ref={logoFileInputRef}
+                  onChange={handleLogoFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
                 <input
                   type="text"
                   disabled={currentRole !== 'COACH'}
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-                  placeholder="https://..."
+                  placeholder="https://... or click Upload Image File above"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Contact Email</span>
-                  </label>
-                  <input
-                    type="email"
-                    disabled={currentRole !== 'COACH'}
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-                  />
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
@@ -291,6 +399,73 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     onChange={(e) => setStadium(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
                   />
+                </div>
+              </div>
+
+              {/* COACH ACCOUNT CREDENTIALS SUB-SECTION */}
+              <div className="pt-3 pb-1 border-t border-slate-100 dark:border-[#16273b] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-[#ff0046]" />
+                    <span>Coach Account Credentials</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400">Written to Auth & Profiles</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Coach Email</span>
+                  </label>
+                  <input
+                    type="email"
+                    disabled={currentRole !== 'COACH'}
+                    value={coachEmail}
+                    onChange={(e) => setCoachEmail(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                    placeholder="coach@egerton.ac.ke"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                      <span>New Password</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCoachPassword ? 'text' : 'password'}
+                        disabled={currentRole !== 'COACH'}
+                        value={coachPassword}
+                        onChange={(e) => setCoachPassword(e.target.value)}
+                        placeholder="Leave blank to keep current"
+                        className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs pr-9 focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCoachPassword(!showCoachPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                      >
+                        {showCoachPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Confirm New Password</span>
+                    </label>
+                    <input
+                      type={showCoachPassword ? 'text' : 'password'}
+                      disabled={currentRole !== 'COACH'}
+                      value={coachConfirmPassword}
+                      onChange={(e) => setCoachConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -368,9 +543,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs hover:shadow-md"
+                    disabled={isSaving}
+                    className="px-6 py-2.5 bg-[#ff0046] hover:bg-[#e0003c] text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs hover:shadow-md disabled:opacity-50 flex items-center gap-2"
                   >
-                    Save Coach Team Settings
+                    {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Save Coach Team Settings</span>
                   </button>
                 </div>
               )}

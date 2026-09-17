@@ -10,6 +10,9 @@ interface TeamHeaderProps {
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   onLogout?: () => void;
+  teamLogo?: string;
+  teamName?: string;
+  onOpenTeamModal?: () => void;
 }
 
 export const TeamHeader: React.FC<TeamHeaderProps> = ({
@@ -19,6 +22,9 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
   darkMode,
   setDarkMode,
   onLogout,
+  teamLogo,
+  teamName,
+  onOpenTeamModal,
 }) => {
   const viewTitles: Record<DashboardView, string> = {
     DASHBOARD: 'Team Executive Overview',
@@ -36,9 +42,27 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0b1522]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-[#1a2e45]/80 px-4 md:px-6 py-3 flex items-center justify-between gap-3 select-none shadow-xs">
       {/* LEFT: Crest & Active View Title */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-xl bg-[#0e1c2b] dark:bg-[#152a40] border border-slate-200 dark:border-white/10 flex items-center justify-center font-black text-xs text-white shrink-0 shadow-xs">
-          <span className="text-[#ff0046] font-black mr-0.5">E</span>FC
-        </div>
+        <button
+          type="button"
+          onClick={onOpenTeamModal}
+          className="relative group w-9 h-9 rounded-xl bg-[#0e1c2b] dark:bg-[#152a40] border border-slate-200 dark:border-white/10 flex items-center justify-center font-black text-xs text-white shrink-0 shadow-xs cursor-pointer hover:border-[#ff0046]/50 hover:ring-2 hover:ring-[#ff0046]/20 transition-all overflow-hidden"
+          title="Click to edit team logo and coach info"
+          aria-label="Edit team identity and credentials"
+        >
+          {teamLogo ? (
+            <img src={teamLogo} alt={teamName || 'Team Logo'} className="w-full h-full object-contain p-1" />
+          ) : (
+            <>
+              <span className="text-[#ff0046] font-black mr-0.5">
+                {(teamName || 'Egerton FC').charAt(0)}
+              </span>
+              {(teamName || 'Egerton FC').slice(1, 3).toUpperCase()}
+            </>
+          )}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Edit</span>
+          </div>
+        </button>
 
         <div className="flex flex-col min-w-0 leading-tight">
           <div className="flex items-center gap-2">
