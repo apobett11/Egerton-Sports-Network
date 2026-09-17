@@ -31,7 +31,9 @@ let cachedLeagues: any[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 60000; // 1 minute TTL
 
-
+// Rapid-access in-memory caches for high-frequency queries
+const teamFormCache = new Map<string, { timestamp: number; data: Array<{ result: 'W' | 'D' | 'L'; label: string }> }>();
+const leagueTableCache = new Map<string, { timestamp: number; data: LeagueTableEntry[] }>();
 
 export const ApiService = {
   // Clear in-memory and guest cache when data changes
@@ -39,6 +41,8 @@ export const ApiService = {
     cachedTeams = null;
     cachedLeagues = null;
     cacheTimestamp = 0;
+    teamFormCache.clear();
+    leagueTableCache.clear();
     if (category) {
       guestCache.invalidate(category);
     } else {
@@ -1120,72 +1124,82 @@ export const ApiService = {
     }
   },
 
+  // --- BATCH TEAM FORMS (Reduces N+1 queries to a single batch call) ---
+  async getBatchTeamForms(
+    teamIds: string[]
+  ): Promise<Record<string, Array<{ result: 'W' | 'D' | 'L'; label: string }>>> {
+    const uniqueIds = Array.from(new Set(teamIds.filter(Boolean)));
+    if (uniqueIds.length === 0) return {};
+
+    const now = Date.now();
+    const result: Record<string, Array<{ result: 'W' | 'D' | 'L'; label: string }>> = {};
+    const idsToFetch: string[] = [];
+
+    // 1. Check in-memory cache first (60-second TTL)
+    for (const id of uniqueIds) {
+      const cached = teamFormCache.get(id);
+      if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+        result[id] = cached.data;
+      } else {
+        idsToFetch.push(id);
+      }
+    }
+
+    if (idsToFetch.length === 0) {
+      return result;
+    }
+
+    try {
+      // 2. Fetch all missing teams in ONE single query
+      const { data: formRows, error } = await supabase
+        .from('team_form')
+        .select('team_id, latest_results')
+        .in('team_id', idsToFetch);
+
+      if (!error && formRows) {
+        for (const row of formRows) {
+          const formEntries = (row.latest_results || []).map((res: string) => {
+            const letter = (res === 'W' || res === 'D' || res === 'L') ? res : 'D';
+            return {
+              result: letter as 'W' | 'D' | 'L',
+              label: letter === 'W' ? 'Win' : letter === 'D' ? 'Draw' : 'Loss'
+            };
+          });
+          result[row.team_id] = formEntries;
+          teamFormCache.set(row.team_id, { timestamp: now, data: formEntries });
+        }
+      }
+
+      // 3. Fallback for any team not yet in team_form: initialize empty and cache
+      for (const id of idsToFetch) {
+        if (!result[id]) {
+          result[id] = [];
+          teamFormCache.set(id, { timestamp: now, data: [] });
+        }
+      }
+
+      return result;
+    } catch (err) {
+      return result;
+    }
+  },
+
   // --- TEAM RECENT FORM (LAST 5 MATCHES - ALGORITHM 2 MATERIALIZED) ---
   async getTeamForm(teamId: string): Promise<ApiResponse<Array<{ result: 'W' | 'D' | 'L'; label: string }>>> {
     if (!teamId) {
       return { success: true, data: [] };
     }
 
+    const now = Date.now();
+    const cached = teamFormCache.get(teamId);
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+      return { success: true, data: cached.data };
+    }
+
     try {
-      // 1. Primary Feed: Algorithm 2 Materialized Team Form Table
-      const { data: formRow, error: formErr } = await supabase
-        .from('team_form')
-        .select('latest_results')
-        .eq('team_id', teamId)
-        .maybeSingle();
-
-      if (!formErr && formRow?.latest_results && formRow.latest_results.length > 0) {
-        const formEntries = formRow.latest_results.map((res: string) => {
-          const letter = (res === 'W' || res === 'D' || res === 'L') ? res : 'D';
-          return {
-            result: letter as 'W' | 'D' | 'L',
-            label: letter === 'W' ? 'Win' : letter === 'D' ? 'Draw' : 'Loss'
-          };
-        });
-        return { success: true, data: formEntries };
-      }
-
-      // 2. Safe Fallback: Completed Fixtures
-      const { data, error } = await supabase
-        .from('fixtures')
-        .select(`
-          id,
-          scheduled_time,
-          score_home,
-          score_away,
-          home_team_id,
-          away_team_id,
-          team_home:teams!home_team_id(name),
-          team_away:teams!away_team_id(name)
-        `)
-        .eq('status', 'FT')
-        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-        .order('scheduled_time', { ascending: false })
-        .limit(5);
-
-      if (error || !data) {
-        return { success: true, data: [] };
-      }
-
-      const form = data.map((f: any) => {
-        const home = unwrap(f.team_home);
-        const away = unwrap(f.team_away);
-        const isHome = f.home_team_id === teamId;
-        const goalsFor = isHome ? f.score_home : f.score_away;
-        const goalsAgainst = isHome ? f.score_away : f.score_home;
-        const opponentName = isHome ? away?.name : home?.name;
-
-        let result: 'W' | 'D' | 'L' = 'D';
-        if (goalsFor > goalsAgainst) result = 'W';
-        else if (goalsFor < goalsAgainst) result = 'L';
-
-        return {
-          result,
-          label: `${result === 'W' ? 'Win' : result === 'D' ? 'Draw' : 'Loss'} vs ${opponentName} (${goalsFor}-${goalsAgainst})`
-        };
-      });
-
-      return { success: true, data: form };
+      const batchRes = await this.getBatchTeamForms([teamId]);
+      const data = batchRes[teamId] || [];
+      return { success: true, data };
     } catch (err) {
       return { success: true, data: [] };
     }
@@ -1198,8 +1212,18 @@ export const ApiService = {
     previousStandings?: LeagueTableEntry[]
   ): Promise<ApiResponse<LeagueTableEntry[]>> {
     try {
-      // 1. Authoritative Feed: Algorithm 2 get_league_standings RPC (reads league_standings table)
       const targetCompId = competitionId && competitionId !== 'all' ? competitionId : null;
+      const cacheKey = targetCompId || 'all';
+
+      // 0. Use rapid-access in-memory cache for standard reads (30-second TTL)
+      if (!fixturesOverride && !previousStandings) {
+        const cached = leagueTableCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < 30_000) {
+          return { success: true, data: cached.data };
+        }
+      }
+
+      // 1. Authoritative Feed: Algorithm 2 get_league_standings RPC (reads league_standings table)
       const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
         p_competition_id: targetCompId
       });
@@ -1221,6 +1245,10 @@ export const ApiService = {
           points: Number(row.points),
           lastUpdated: timestamp
         }));
+
+        if (!fixturesOverride && !previousStandings) {
+          leagueTableCache.set(cacheKey, { timestamp: Date.now(), data: entries });
+        }
 
         return { success: true, data: entries };
       }

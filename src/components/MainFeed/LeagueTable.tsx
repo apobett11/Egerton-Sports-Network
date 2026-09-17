@@ -131,36 +131,42 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   useEffect(() => {
     refreshAllTableData();
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const triggerDebouncedRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refreshAllTableData();
+      }, 400);
+    };
+
     // Event-driven real-time auto-reload: When match end algorithm (Algorithm 2) updates tables
     const channel = supabase
       .channel('public_league_table_realtime_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-        refreshAllTableData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
-        refreshAllTableData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
-        refreshAllTableData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [refreshAllTableData]);
 
-  // Fetch Team Form Sequences
+  // Fetch Team Form Sequences (Batched in 1 network call)
   useEffect(() => {
     const allTeams = [...eplStandings, ...champStandings];
-    allTeams.forEach((row) => {
-      if (!row.teamId) return;
-      ApiService.getTeamForm(row.teamId).then((res) => {
-        if (res.data && res.data.length > 0) {
-          const sequence = res.data.map((item) => item.result);
-          setTeamFormsMap((prev) => ({ ...prev, [row.teamId]: sequence }));
+    const teamIds = Array.from(new Set(allTeams.map((row) => row.teamId).filter(Boolean)));
+    if (teamIds.length === 0) return;
+
+    ApiService.getBatchTeamForms(teamIds).then((batchMap) => {
+      const newFormsMap: Record<string, ('W' | 'D' | 'L')[]> = {};
+      Object.entries(batchMap).forEach(([teamId, entries]) => {
+        if (entries && entries.length > 0) {
+          newFormsMap[teamId] = entries.map((item) => item.result);
         }
       });
+      setTeamFormsMap((prev) => ({ ...prev, ...newFormsMap }));
     });
   }, [eplStandings, champStandings]);
 
