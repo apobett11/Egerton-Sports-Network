@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../../../lib/supabase';
+import { rateLimiter } from '../../../../lib/rateLimiter';
 import type {
   AdminTabType,
   PlatformHealthMetrics,
@@ -234,6 +235,32 @@ export const useAdminOperationsData = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   }, []);
+
+  // Monitor universal rate limit violations and log into failedCalls telemetry
+  useEffect(() => {
+    const unsubscribe = rateLimiter.onRateLimit((violation) => {
+      setFailedCalls((prev) => [
+        {
+          id: `rate-limit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          timestamp: new Date().toLocaleTimeString(),
+          endpoint: violation.url || `/api/${violation.scope}`,
+          method: 'GLOBAL',
+          statusCode: 429,
+          errorName: 'RateLimitExceeded',
+          plainExplanation: `Rate limit triggered on ${violation.scope} (Quota: ${violation.limit} calls per window).`,
+          rootCause: 'High volume request burst or automated polling.',
+          actionToFix: `Wait ${Math.ceil(violation.retryAfterMs / 1000)}s before sending further requests.`,
+          resolved: false,
+        },
+        ...prev.slice(0, 49),
+      ]);
+
+      if (violation.scope.startsWith('admin')) {
+        showToast(`Admin Rate Limit: Quota exceeded for ${violation.scope}. Cooldown: ${Math.ceil(violation.retryAfterMs / 1000)}s`);
+      }
+    });
+    return unsubscribe;
+  }, [showToast]);
 
   // 1. Fetch Real Supabase Data
   const fetchOperationsData = useCallback(async (isSilent = false) => {
@@ -763,6 +790,7 @@ export const useAdminOperationsData = () => {
   // 2. Action: Suspend User
   const handleSuspendUser = useCallback(async (userId: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const user = userDirectory.find((u) => u.id === userId);
       if (!user) return;
 
@@ -797,6 +825,7 @@ export const useAdminOperationsData = () => {
   // 3. Action: Activate User
   const handleActivateUser = useCallback(async (userId: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const user = userDirectory.find((u) => u.id === userId);
       if (!user) return;
 
@@ -829,6 +858,7 @@ export const useAdminOperationsData = () => {
   // 4. Action: Change User Role
   const handleChangeUserRole = useCallback(async (userId: string, newRole: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const user = userDirectory.find((u) => u.id === userId);
       if (!user) return;
       const oldRole = user.role;
@@ -863,6 +893,7 @@ export const useAdminOperationsData = () => {
   // 4. Action: Reset Password Trigger
   const handleResetPassword = useCallback(async (email: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
 
@@ -882,6 +913,7 @@ export const useAdminOperationsData = () => {
   // 5. Action: Post Announcement
   const handlePostAnnouncement = useCallback(async (title: string, content: string, targetRole: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const { data: authData } = await supabase.auth.getUser();
       const adminId = authData.user?.id;
 
@@ -913,6 +945,7 @@ export const useAdminOperationsData = () => {
   // 5b. Action: Approve Player
   const handleApprovePlayer = useCallback(async (playerId: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const pl = playersList.find((p) => p.id === playerId);
       await supabase.from('players').update({ is_approved: true, status: 'Fit' }).eq('id', playerId);
       if (pl?.profileId) {
@@ -930,6 +963,7 @@ export const useAdminOperationsData = () => {
   // 5c. Action: Reject / Remove Player
   const handleRejectPlayer = useCallback(async (playerId: string) => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const pl = playersList.find((p) => p.id === playerId);
       await supabase.from('players').delete().eq('id', playerId);
       setPlayersList((prev) => prev.filter((p) => p.id !== playerId));
@@ -1141,6 +1175,7 @@ export const useAdminOperationsData = () => {
 
   const verifyAdmin2Password = useCallback(async (passwordInput: string): Promise<boolean> => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const { data, error } = await supabase
         .from('system_settings')
         .select('value')
@@ -1160,6 +1195,7 @@ export const useAdminOperationsData = () => {
 
   const updateAdmin2Password = useCallback(async (newPassword: string): Promise<boolean> => {
     try {
+      await rateLimiter.acquire('admin-operations');
       const { error } = await supabase
         .from('system_settings')
         .upsert({

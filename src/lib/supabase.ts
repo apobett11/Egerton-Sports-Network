@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { config } from './config';
+import { rateLimitedFetch } from './rateLimiter';
 
 const env = (typeof import.meta !== 'undefined' && (import.meta as any).env)
   || (typeof globalThis !== 'undefined' && (globalThis as any).process?.env)
@@ -26,6 +27,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'esn_auth_token'
   },
   global: {
+    fetch: rateLimitedFetch,
     headers: {
       'x-application-name': 'egerton-sports-network'
     }

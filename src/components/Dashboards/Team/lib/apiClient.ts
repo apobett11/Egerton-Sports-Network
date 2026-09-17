@@ -2,6 +2,7 @@
 // Commandment C-01 (Strict JWT Auth), C-07 (Cache-Aside Strategy), and C-17 (Fail-safe Default Displays) apply here.
 
 import { Player, Match, StandingEntry, User } from '../types';
+import { rateLimitedFetch } from '../../../../lib/rateLimiter';
 
 export const API_BASE_URL = '/api';
 
@@ -49,7 +50,7 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
 
     while (retries > 0) {
         try {
-            const response = await fetch(url, config);
+            const response = await rateLimitedFetch(url, config);
 
             if (!response.ok) {
                 let errorInfo;

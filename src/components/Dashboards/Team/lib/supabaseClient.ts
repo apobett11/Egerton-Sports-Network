@@ -887,6 +887,8 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
         console.warn('[uploadTeamCrest] Storage upload failed or unavailable; caching locally for session without saving raw base64 to DB.');
     }
 
+    const urlToSave = storageUrl || dataUrl;
+
     // Step 5: Cache locally so it survives navigation without a DB re-fetch
     if (typeof window !== 'undefined') {
         try {

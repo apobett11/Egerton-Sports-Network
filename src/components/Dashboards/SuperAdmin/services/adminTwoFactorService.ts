@@ -1,4 +1,5 @@
 import { supabase } from '../../../../lib/supabaseClient';
+import { rateLimiter } from '../../../../lib/rateLimiter';
 
 export interface Admin2FARequestResult {
   success: boolean;
@@ -49,6 +50,20 @@ export async function requestAdmin2FACode(
   email: string = DEFAULT_ADMIN_EMAIL
 ): Promise<Admin2FARequestResult> {
   const cleanEmail = email.trim().toLowerCase();
+
+  try {
+    await rateLimiter.acquire('admin-2fa');
+  } catch (rateErr: any) {
+    return {
+      success: false,
+      message: rateErr.message || 'Rate limit exceeded for admin verification. Please wait a moment.',
+      expiresAtMs: 0,
+      requestsToday: MAX_REQUESTS_PER_DAY,
+      maxRequests: MAX_REQUESTS_PER_DAY,
+      remainingRequests: 0,
+      error: rateErr.message || 'Rate limit exceeded.',
+    };
+  }
 
   // 1. Trigger Supabase Auth OTP delivery to email
   try {
@@ -181,6 +196,15 @@ export async function verifyAdmin2FACode(
 
   if (!cleanCode) {
     return { success: false, error: 'Please enter the verification code or passkey.' };
+  }
+
+  try {
+    await rateLimiter.acquire('admin-2fa');
+  } catch (rateErr: any) {
+    return {
+      success: false,
+      error: rateErr.message || 'Rate limit exceeded for admin verification. Please wait a moment.',
+    };
   }
 
   // 1. Attempt verification via Supabase Edge Function
@@ -321,6 +345,12 @@ export async function updateAdminPasskey(newPasskey: string): Promise<{ success:
   const cleanPasskey = newPasskey.trim();
   if (cleanPasskey.length < 6) {
     return { success: false, error: 'Passkey must be at least 6 characters long.' };
+  }
+
+  try {
+    await rateLimiter.acquire('admin-operations');
+  } catch (rateErr: any) {
+    return { success: false, error: rateErr.message || 'Rate limit exceeded for passkey update. Please wait.' };
   }
 
   try {

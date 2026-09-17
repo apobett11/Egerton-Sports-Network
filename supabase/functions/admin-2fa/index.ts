@@ -22,12 +22,32 @@ async function sha256(str: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+const ipRateLimitMap = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 15;
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    const now = Date.now();
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'admin-client';
+    const recentHits = (ipRateLimitMap.get(clientIp) || []).filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
+
+    if (recentHits.length >= MAX_REQUESTS_PER_MINUTE) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Rate limit exceeded for admin security operations. Please wait a moment before trying again.',
+          statusCode: 429,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
+      );
+    }
+    recentHits.push(now);
+    ipRateLimitMap.set(clientIp, recentHits);
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://hizfgvgbsguhduxortrx.supabase.co';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
