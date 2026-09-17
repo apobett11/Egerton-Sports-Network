@@ -102,6 +102,7 @@ export interface CurrentMatchEvent {
   venue: string;
   countdown?: string;
   matchday?: number;
+  scheduledTime?: string;
 }
 
 export interface AnonymousTip {

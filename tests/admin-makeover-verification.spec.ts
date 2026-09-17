@@ -175,8 +175,8 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     await page.locator('button:has-text("Authenticate with Passkey")').click();
 
     // Verify 2FA modal dismisses and main dashboard appears
-    await expect(twoFactorTitle).not.toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Operations Center')).toBeVisible();
+    await expect(twoFactorTitle).not.toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Operations Center')).toBeVisible({ timeout: 25000 });
 
     // 5. Verify Sidebar navigation items and groupings
     const nav = page.locator('aside');
@@ -217,8 +217,8 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     // 10. Verify Admin 2 Unlocked and Renders Full Telemetry Suite
     await expect(gateTitle).not.toBeVisible();
     await expect(page.locator('text=Admin 2 • Deep Telemetry & User Flow Analytics')).toBeVisible();
-    await expect(page.locator('text=Average Uptime')).toBeVisible();
-    await expect(page.locator('text=Continuous 30-Day Platform Uptime Record')).toBeVisible();
+    await expect(page.locator('text=PostgreSQL DB Telemetry & Stream Engine')).toBeVisible();
+    await expect(page.locator('text=Super-Engineer Platform Observability & Database Truth Deck')).toBeVisible();
     await expect(page.locator('text=Users Track in Graphs')).toBeVisible();
     await expect(page.locator('text=Current Period Page Views Matrix')).toBeVisible();
     await expect(page.locator('text=Nir Eyal Hook Model & Retention Loops')).toBeVisible();

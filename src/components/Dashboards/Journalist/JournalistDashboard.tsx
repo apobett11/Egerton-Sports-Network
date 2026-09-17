@@ -21,6 +21,7 @@ import { ViewArticleModal } from './components/Modals/ViewArticleModal';
 import { ProfileModal } from './components/Modals/ProfileModal';
 import { SettingsModal } from './components/Modals/SettingsModal';
 import { NotificationsModal } from './components/Modals/NotificationsModal';
+import { MatchEventsModal } from './components/Modals/MatchEventsModal';
 
 export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const {
@@ -34,6 +35,10 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
     matches,
     currentEvent,
     selectCurrentEvent,
+    isMatchEventsModalOpen,
+    selectedMatchForEvents,
+    openMatchEventsModal,
+    closeMatchEventsModal,
     competitions,
     teams,
     articles,
@@ -219,7 +224,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
           {activeTab === 'home' && (
             <JournalistHomeView
               matches={matches}
-              onSelectMatchForEvents={selectCurrentEvent}
+              onSelectMatchForEvents={openMatchEventsModal}
               onOpenMatchSelector={() => setIsMatchSelectorOpen(true)}
               onOpenCompose={() => openComposeModal()}
               onNavigateTab={(tab) => setActiveTab(tab)}
@@ -312,7 +317,10 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         onClose={() => setIsMatchSelectorOpen(false)}
         matches={matches}
         currentEventId={currentEvent?.id || ''}
-        onSelectMatch={selectCurrentEvent}
+        onSelectMatch={(match) => {
+          selectCurrentEvent(match);
+          openMatchEventsModal(match);
+        }}
         cardBg={cardBg}
       />
 
@@ -365,6 +373,17 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
         onMarkRead={handleMarkNotificationRead}
         cardBg={cardBg}
       />
+
+      {isMatchEventsModalOpen && (selectedMatchForEvents || currentEvent) && (
+        <MatchEventsModal
+          isOpen={isMatchEventsModalOpen}
+          onClose={closeMatchEventsModal}
+          match={selectedMatchForEvents || currentEvent!}
+          cardBg={cardBg}
+          triggerToast={triggerToast}
+          onMatchUpdated={retryLoad}
+        />
+      )}
     </div>
   );
 };

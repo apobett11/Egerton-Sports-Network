@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Radio,
   PenSquare,
@@ -17,6 +17,8 @@ import {
   Share2,
   PlusCircle,
   Activity,
+  Trophy,
+  Lock,
 } from 'lucide-react';
 import {
   CurrentMatchEvent,
@@ -24,6 +26,12 @@ import {
   PerformanceMetrics,
   ARTICLE_CATEGORY_LABELS,
 } from '../../JournalistTypes';
+import {
+  resolveGuestMatchdayDate,
+  formatMatchTime,
+  formatMatchPitch,
+} from '../../../../../lib/matchdayHelper';
+import { isMatchScheduledToday } from '../Modals/MatchEventsModal';
 
 interface JournalistHomeViewProps {
   matches: CurrentMatchEvent[];
@@ -52,18 +60,59 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
   cardBg,
   hoverBg,
 }) => {
-  // Ongoing live matches filter (matches currently in progress today)
-  const ongoingMatches = matches.filter(
-    (m) =>
-      m.status === 'LIVE' ||
-      m.status === 'HT' ||
-      m.status === 'SECOND_HALF' ||
-      (m.status as string) === '1H' ||
-      (m.status as string) === '2H'
-  );
+  // 1. Resolve impending matchday date using canonical resolveGuestMatchdayDate
+  const targetMatchdayDate = useMemo(() => {
+    const matchItems = matches.map((m) => ({
+      id: m.id,
+      scheduledTime: m.scheduledTime || m.time,
+      status: m.status,
+      league: m.competition,
+      matchday: m.matchday,
+    })) as any;
+    return resolveGuestMatchdayDate(matchItems);
+  }, [matches]);
 
-  // Fallback today matches if no live ongoing ones (upcoming or recent today)
-  const displayMatches = ongoingMatches.length > 0 ? ongoingMatches : matches.slice(0, 3);
+  const targetDateKey = useMemo(() => {
+    const y = targetMatchdayDate.getFullYear();
+    const m = String(targetMatchdayDate.getMonth() + 1).padStart(2, '0');
+    const d = String(targetMatchdayDate.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [targetMatchdayDate]);
+
+  const isTodayMatchday = useMemo(() => {
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return targetDateKey === todayKey;
+  }, [targetDateKey]);
+
+  // Fixtures of the resolved matchday (or ongoing live matches)
+  const matchdayFixtures = useMemo(() => {
+    // Check matches scheduled on target date
+    const onDate = matches.filter((m) => {
+      const raw = m.scheduledTime;
+      if (!raw) return false;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return false;
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return k === targetDateKey;
+    });
+
+    if (onDate.length > 0) return onDate;
+
+    // Fallback to ongoing matches if any
+    const ongoing = matches.filter(
+      (m) =>
+        m.status === 'LIVE' ||
+        m.status === 'HT' ||
+        m.status === 'SECOND_HALF' ||
+        (m.status as string) === '1H' ||
+        (m.status as string) === '2H'
+    );
+    if (ongoing.length > 0) return ongoing;
+
+    // Fallback to first batch of matches
+    return matches.slice(0, 5);
+  }, [matches, targetDateKey]);
 
   // Today's articles (max 3, newest first)
   const todayArticles = articles
@@ -77,14 +126,27 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. HERO SECTION: THIN MATCH STRIPS FOR CURRENT ONGOING EVENTS */}
+      {/* 1. HERO SECTION: CANONICAL MATCHDAY FIXTURES FOCUS */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046] animate-pulse" />
-            <h2 className="font-black text-xs uppercase tracking-wider text-[#ff0046] flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${isTodayMatchday ? 'bg-[#ff0046] animate-pulse' : 'bg-sky-400'}`} />
+            <h2 className="font-black text-xs uppercase tracking-wider flex items-center gap-1.5 text-slate-900 dark:text-white">
               <Radio className="w-4 h-4 text-[#ff0046]" />
-              {ongoingMatches.length > 0 ? "Current Ongoing Matches (Click Strip to Log Events)" : "Today's Match Strips (Click to Manage Events)"}
+              {isTodayMatchday ? (
+                <span className="text-[#ff0046]">Today's Matchday Fixtures (Live Action Hub)</span>
+              ) : (
+                <span>
+                  Impending Matchday Focus •{' '}
+                  <span className="text-sky-400">
+                    {targetMatchdayDate.toLocaleDateString(undefined, {
+                      weekday: 'long',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </span>
+              )}
             </h2>
           </div>
           <button
@@ -96,10 +158,10 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
           </button>
         </div>
 
-        {displayMatches.length === 0 ? (
-          <div className="p-6 rounded-none sm:rounded-sm bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-center space-y-2 shadow-xs">
+        {matchdayFixtures.length === 0 ? (
+          <div className="p-8 rounded-xl bg-white dark:bg-[#090e17] border border-[#e6e8ec] dark:border-white/10 text-center space-y-2 shadow-xs">
             <Activity className="w-6 h-6 text-slate-400 mx-auto" />
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">No matches found in database for today.</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">No matches found for this matchday slot.</p>
             <button
               onClick={onOpenMatchSelector}
               className="px-3.5 py-1.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
@@ -108,85 +170,168 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {displayMatches.map((m) => {
-              const isLive = m.status === 'LIVE' || m.status === 'HT' || m.status === 'SECOND_HALF';
+          <div className="border border-[#e6e8ec] dark:border-white/10 rounded-xl sm:rounded-2xl overflow-hidden bg-white dark:bg-[#090e17] shadow-lg divide-y divide-[#e6e8ec] dark:divide-white/5">
+            {/* Header Strip */}
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-white/[0.03] border-b border-[#e6e8ec] dark:border-white/10 text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-2.5">
+                <Trophy className="w-4 h-4 text-[#ff0046]" />
+                <span className="text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                  {matchdayFixtures[0]?.competition || 'Egerton Premier League'}
+                </span>
+                <span className="text-[11px] font-mono font-bold text-slate-400">
+                  • Matchday {matchdayFixtures[0]?.matchday || 1}
+                </span>
+              </div>
+
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
+                  isTodayMatchday
+                    ? 'bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20'
+                    : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                }`}
+              >
+                {isTodayMatchday ? "Today's Matchday" : "Impending Matchday"}
+              </span>
+            </div>
+
+            {/* Match Rows */}
+            {matchdayFixtures.map((match) => {
+              const isMatchLive = match.status === 'LIVE' || match.status === 'SECOND_HALF';
+              const isHT = match.status === 'HT';
+              const isFT = match.status === 'FT';
+              const editableToday = isMatchScheduledToday(match);
+
               return (
                 <div
-                  key={m.id}
-                  onClick={() => onSelectMatchForEvents(m)}
-                  className="p-3.5 md:p-4 rounded-none sm:rounded-sm bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer shadow-xs group flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative overflow-hidden"
-                  title={`Click to open live events module for ${m.homeTeam} vs ${m.awayTeam}`}
+                  key={match.id}
+                  onClick={() => onSelectMatchForEvents(match)}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all cursor-pointer group select-none"
+                  title={
+                    editableToday
+                      ? `Click to log live events for ${match.homeTeam} vs ${match.awayTeam}`
+                      : `Scheduled for ${match.scheduledTime || match.time} (Read-only preview until matchday)`
+                  }
                 >
-                  {/* Subtle live indicator left accent border */}
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 ${
-                      isLive ? 'bg-[#ff0046]' : 'bg-[#1a2e45]'
-                    }`}
-                  />
-
-                  {/* LEFT: LEAGUE, STATUS & TEAMS */}
-                  <div className="flex items-center gap-3 md:gap-4 min-w-0 pl-1 sm:pl-1.5">
-                    {/* STATUS PILL */}
-                    <div className="shrink-0 flex flex-col items-center justify-center">
-                      <span
-                        className={`px-2 py-0.5 rounded-[2px] text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
-                          isLive
-                            ? 'bg-[#ff0046] text-white animate-pulse'
-                            : m.status === 'FT'
-                            ? 'bg-[#152a40] text-slate-300 border border-white/10'
-                            : 'bg-[#14263b] text-slate-300 border border-[#223b56]'
-                        }`}
-                      >
-                        {isLive && <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
-                        {m.status}
+                  {/* Left Column: Match Status / Time & Pitch */}
+                  <div className="w-20 text-center flex flex-col items-center justify-center shrink-0 pr-2 border-r border-[#e6e8ec] dark:border-white/5">
+                    {isMatchLive ? (
+                      <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
+                        <Radio className="w-3 h-3 animate-pulse" />
+                        {match.minute || "Live"}
                       </span>
-                      {m.minute && (
-                        <span className="text-[10px] font-mono font-extrabold text-[#ff0046] mt-0.5">
-                          {m.minute}
+                    ) : isHT ? (
+                      <span className="text-[11px] font-extrabold text-[#ff0046]">HT</span>
+                    ) : isFT ? (
+                      <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400">Finished</span>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">
+                        {formatMatchTime(match.scheduledTime || match.time || match.kickoff) || 'TBD'}
+                      </span>
+                    )}
+                    {match.venue && (
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider truncate max-w-[75px] mt-0.5">
+                        {formatMatchPitch(match.venue, true)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Middle Column: 2 Stacked Team Rows */}
+                  <div className="flex-1 px-4 flex flex-col justify-center gap-1.5 min-w-0">
+                    {/* Team A (Home) */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {match.homeLogo ? (
+                          <img
+                            src={match.homeLogo}
+                            alt={match.homeTeam}
+                            className="w-4 h-4 rounded-full object-contain shrink-0"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold text-slate-600 dark:text-slate-300">
+                            {match.homeTeam.slice(0, 1)}
+                          </div>
+                        )}
+                        <span
+                          className={`text-xs truncate ${
+                            isMatchLive
+                              ? 'font-black text-slate-900 dark:text-white'
+                              : 'font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#ff0046] dark:group-hover:text-white'
+                          }`}
+                        >
+                          {match.homeTeam}
+                        </span>
+                      </div>
+
+                      {match.status !== 'UPCOMING' && (
+                        <span
+                          className={`text-xs font-mono font-extrabold pl-2 ${
+                            isMatchLive ? 'text-[#ff0046]' : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {match.scoreHome}
                         </span>
                       )}
                     </div>
 
-                    {/* TEAMS & SCORE */}
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <Layers className="w-3 h-3 text-[#ff0046]" />
-                        <span className="truncate max-w-[200px]">{m.competition}</span>
-                        {m.venue && <span className="hidden md:inline">• {m.venue}</span>}
+                    {/* Team B (Away) */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {match.awayLogo ? (
+                          <img
+                            src={match.awayLogo}
+                            alt={match.awayTeam}
+                            className="w-4 h-4 rounded-full object-contain shrink-0"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 flex items-center justify-center text-[8px] font-bold text-slate-600 dark:text-slate-300">
+                            {match.awayTeam.slice(0, 1)}
+                          </div>
+                        )}
+                        <span
+                          className={`text-xs truncate ${
+                            isMatchLive
+                              ? 'font-black text-slate-900 dark:text-white'
+                              : 'font-bold text-slate-800 dark:text-slate-200 group-hover:text-[#ff0046] dark:group-hover:text-white'
+                          }`}
+                        >
+                          {match.awayTeam}
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <div className="font-extrabold text-sm md:text-base text-slate-900 dark:text-white group-hover:text-[#ff0046] transition-colors flex items-center gap-2 truncate">
-                          <span className="truncate font-black">{m.homeTeam}</span>
-                          <span className="text-slate-400 font-normal text-xs">vs</span>
-                          <span className="truncate font-black">{m.awayTeam}</span>
-                        </div>
-                      </div>
+                      {match.status !== 'UPCOMING' && (
+                        <span
+                          className={`text-xs font-mono font-extrabold pl-2 ${
+                            isMatchLive ? 'text-[#ff0046]' : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {match.scoreAway}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* RIGHT: SCORE DISPLAY & ACTION BUTTON */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#14263b]">
-                    {/* SCORE BOARD */}
-                    <div className="px-3 py-1 rounded-sm bg-[#112236] text-white font-mono font-black text-sm md:text-base border border-[#1a2e45] shadow-xs flex items-center gap-2">
-                      {m.status === 'UPCOMING' ? (
-                        <span className="text-xs uppercase text-slate-400 font-bold">VS</span>
-                      ) : (
-                        <>
-                          <span className="text-white font-black">{m.scoreHome}</span>
-                          <span className="text-slate-500 text-xs">-</span>
-                          <span className="text-white font-black">{m.scoreAway}</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* CLICK TO LOG EVENTS PROMPT */}
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white transition-colors text-xs font-black uppercase tracking-wider shadow-xs">
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      <span>Log Events</span>
-                      <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                  {/* Right Column: Action Buttons */}
+                  <div className="shrink-0 flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+                    {editableToday ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelectMatchForEvents(match)}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-[#ff0046] hover:bg-[#e0003e] text-white transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        <span>Log Events</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSelectMatchForEvents(match)}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all cursor-pointer flex items-center gap-1"
+                        title="Matchday restricted: View only until matchday"
+                      >
+                        <Lock className="w-3 h-3 text-amber-500" />
+                        <span>Preview</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

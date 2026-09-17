@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApiService } from '../../../../services/api';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
+import { guestCache } from '../../../../lib/guestCache';
+import type { Match } from '../../../../types';
 import {
   TabType,
   ArticleCategory,
@@ -40,6 +42,27 @@ const EMPTY_PERFORMANCE: PerformanceMetrics = {
   matchdayStats: [],
 };
 
+const mapMatchToCurrentMatchEvent = (f: Match): CurrentMatchEvent => ({
+  id: f.id,
+  competition: f.league || 'Egerton Premier League',
+  competitionId: f.league,
+  homeTeam: f.teamA?.name || 'Home Team',
+  homeTeamId: f.teamA?.id,
+  homeLogo: f.teamA?.logo,
+  awayTeam: f.teamB?.name || 'Away Team',
+  awayTeamId: f.teamB?.id,
+  awayLogo: f.teamB?.logo,
+  scoreHome: f.scoreA ?? 0,
+  scoreAway: f.scoreB ?? 0,
+  status: (f.status as any) || 'UPCOMING',
+  minute: f.minute,
+  kickoff: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
+  time: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
+  venue: formatMatchPitch(f.venue) || f.venue || '',
+  matchday: (f as any).matchday || 1,
+  scheduledTime: f.scheduledTime || (f as any).scheduled_time,
+});
+
 export const useJournalistDashboard = () => {
   // Navigation & Theme State
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -55,8 +78,14 @@ export const useJournalistDashboard = () => {
   // Authenticated Profile
   const [currentUserProfile, setCurrentUserProfile] = useState<ProfileUser | null>(null);
 
-  // Collections (100% Database Driven)
-  const [matches, setMatches] = useState<CurrentMatchEvent[]>([]);
+  // Collections (100% Database Driven with Instant Master Cache Prefill)
+  const [matches, setMatches] = useState<CurrentMatchEvent[]>(() => {
+    const cached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+    if (cached && cached.length > 0) {
+      return cached.map(mapMatchToCurrentMatchEvent);
+    }
+    return [];
+  });
   const [currentEvent, setCurrentEvent] = useState<CurrentMatchEvent | null>(null);
   const [competitions, setCompetitions] = useState<OptionItem[]>([]);
   const [teams, setTeams] = useState<OptionItem[]>([]);
@@ -134,25 +163,7 @@ export const useJournalistDashboard = () => {
       // 2. Fetch Fixtures from DB
       const fixRes = await ApiService.getFixtures();
       if (fixRes.success && fixRes.data) {
-        const dbMatches: CurrentMatchEvent[] = fixRes.data.map((f) => ({
-          id: f.id,
-          competition: f.league || 'Egerton Premier League',
-          competitionId: f.league,
-          homeTeam: f.teamA?.name || 'Home Team',
-          homeTeamId: f.teamA?.id,
-          homeLogo: f.teamA?.logo,
-          awayTeam: f.teamB?.name || 'Away Team',
-          awayTeamId: f.teamB?.id,
-          awayLogo: f.teamB?.logo,
-          scoreHome: f.scoreA ?? 0,
-          scoreAway: f.scoreB ?? 0,
-          status: (f.status as any) || 'UPCOMING',
-          minute: f.minute,
-          kickoff: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
-          time: formatMatchTime(f.scheduledTime || f.time) || f.time || '',
-          venue: formatMatchPitch(f.venue) || f.venue || '',
-          matchday: (f as any).matchday || 1,
-        }));
+        const dbMatches: CurrentMatchEvent[] = fixRes.data.map(mapMatchToCurrentMatchEvent);
         setMatches(dbMatches);
         if (dbMatches.length > 0 && !currentEvent) {
           setCurrentEvent(dbMatches[0]);

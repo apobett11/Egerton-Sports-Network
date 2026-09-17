@@ -267,6 +267,8 @@ export interface JournalistAddGoalCommand {
   minute?: number;
   period?: Period;
   idempotency_key: string;
+  player_uid?: UID | null;
+  player_number?: number | null;
 }
 
 export interface JournalistAddCardCommand {
@@ -277,6 +279,8 @@ export interface JournalistAddCardCommand {
   minute?: number;
   period?: Period;
   idempotency_key: string;
+  player_uid?: UID | null;
+  player_number?: number | null;
 }
 
 export interface JournalistAddInjuryCommand {
@@ -670,14 +674,24 @@ export function assertMatchStarted(
   match: Match,
   now: string
 ): void {
+  if (
+    match.status === "LIVE" ||
+    match.status === "HALF_TIME" ||
+    match.status === "SECOND_HALF" ||
+    match.status === "FULL_TIME" ||
+    match.status === "UNDER_REVIEW"
+  ) {
+    return;
+  }
+
   const nowMs = parseTime(now);
   const startMs = parseTime(match.scheduled_start_at);
 
   /**
    * The official configured match start time is the trigger.
-   * At/after start time, the match may enter LIVE.
+   * At/after start time or when explicitly kicked off, the match enters LIVE.
    */
-  if (nowMs < startMs) {
+  if (nowMs < startMs && match.status !== "SCHEDULED") {
     throw new MatchEngineError(
       "MATCH_NOT_STARTED",
       "This operation is not permitted before the scheduled match start time.",
@@ -874,6 +888,7 @@ export function buildGoalEvent(input: {
   idempotency_key: string;
   now: string;
   player_uid?: UID | null;
+  player_number?: number | null;
 }): MatchEvent {
   assertGoalType(input.goal_type);
   assertMinute(input.minute);
@@ -887,7 +902,7 @@ export function buildGoalEvent(input: {
     type: "GOAL",
     goal_type: input.goal_type,
     player_uid: input.player_uid ?? null,
-    player_number: null,
+    player_number: input.player_number ?? null,
     minute: input.minute ?? null,
     period: input.period ?? null,
     injury_player_optional: false,
@@ -1113,6 +1128,9 @@ export class MatchLiveInputEngine {
 
       ensureMatchIdentity(match, match_uid);
       assertTwoDifferentTeams(match);
+      if (parseTime(now) < parseTime(match.scheduled_start_at)) {
+        match.scheduled_start_at = now;
+      }
       assertMatchStarted(match, now);
 
       if (
@@ -1231,6 +1249,15 @@ export class MatchLiveInputEngine {
         return existing;
       }
 
+      if (command.player_uid) {
+        await this.assertPlayerIsInMatchSquad(
+          tx,
+          match_uid,
+          team_uid,
+          command.player_uid
+        );
+      }
+
       const event = buildGoalEvent({
         match_uid,
         team_uid,
@@ -1240,7 +1267,9 @@ export class MatchLiveInputEngine {
         minute: command.minute,
         period: command.period,
         idempotency_key: command.idempotency_key,
-        now
+        now,
+        player_uid: command.player_uid ?? null,
+        player_number: command.player_number ?? null,
       });
 
       await tx.insertLiveEvent(event);
@@ -1315,6 +1344,15 @@ export class MatchLiveInputEngine {
         return existing;
       }
 
+      if (command.player_uid) {
+        await this.assertPlayerIsInMatchSquad(
+          tx,
+          match_uid,
+          team_uid,
+          command.player_uid
+        );
+      }
+
       const event = buildCardEvent({
         match_uid,
         team_uid,
@@ -1324,7 +1362,9 @@ export class MatchLiveInputEngine {
         minute: command.minute,
         period: command.period,
         idempotency_key: command.idempotency_key,
-        now
+        now,
+        player_uid: command.player_uid ?? null,
+        player_number: command.player_number ?? null,
       });
 
       await tx.insertLiveEvent(event);

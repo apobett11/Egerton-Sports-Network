@@ -199,7 +199,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={refreshData}
+              onClick={() => refreshData()}
               disabled={isLoading}
               className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
               title="Re-query all Supabase database tables"
@@ -219,7 +219,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <span>{errorMsg}</span>
               </div>
               <button
-                onClick={refreshData}
+                onClick={() => refreshData()}
                 className="px-3 py-1 bg-rose-600 text-white rounded-lg font-bold text-[10px] uppercase cursor-pointer"
               >
                 Retry
