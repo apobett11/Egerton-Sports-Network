@@ -6,7 +6,9 @@ import type { MainTabType } from './components/Layout/Navigation';
 import { FixturesList } from './components/MainFeed/FixturesList';
 import { LeagueTable } from './components/MainFeed/LeagueTable';
 import { PotwVotingSection } from './components/POTW/PotwVotingSection';
-import { PublicNewsPage } from './pages/public/PublicPages';
+import { PublicNewsPage, PublicStaticPage } from './pages/public/PublicPages';
+import { EsnLogo } from './components/common/EsnLogo';
+import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { TeamDetailsContainer } from './components/TeamDetails/TeamDetailsContainer';
@@ -30,7 +32,7 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell, Star } from 'lucide-react';
+import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -876,6 +878,45 @@ export const AppContent: React.FC = () => {
     );
   }
 
+  if (route === 'privacy' || route === 'terms' || route === 'about' || route === 'contact') {
+    return (
+      <div className={`min-h-screen ${darkMode ? 'dark bg-[#081018]' : 'bg-[#f4f6f8]'} flex flex-col font-sans transition-colors duration-150`}>
+        <Header
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          activeSport={activeSport}
+          setActiveSport={setActiveSport}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          selectedCompetitionId={selectedCompetitionId}
+          setSelectedCompetitionId={setSelectedCompetitionId}
+          dbFixtures={liveMatches}
+          onMenuClick={() => setSidebarOpen(true)}
+          onNavigateNews={() => {
+            setActiveTab('news');
+            handleNavigateHash('/home');
+          }}
+          onNavigateLogin={() => handleNavigateHash('/login')}
+          activeMainTab={['scores', 'news', 'table', 'favorites', 'potw'].includes(activeTab) ? (activeTab as any) : 'scores'}
+          onSelectMainTab={(tab) => {
+            setActiveTab(tab);
+            handleNavigateHash('/home');
+          }}
+          favoritesCount={favorites.length}
+          isCalendarOpen={isCalendarOpen}
+          onCloseCalendar={() => setIsCalendarOpen(false)}
+          unreadAnnouncementsCount={deviceAnnouncements.filter((a) => a.status === 'unread').length}
+          onOpenNotifications={() => setIsNotificationsModalOpen(true)}
+        />
+        <main className="flex-1 w-full max-w-5xl mx-auto px-2 sm:px-4 py-6">
+          <PublicStaticPage type={route as 'privacy' | 'terms' | 'about' | 'contact'} onNavigate={handleNavigateHash} />
+        </main>
+        <Footer />
+        <CookieConsentBanner />
+      </div>
+    );
+  }
+
   return (
     <>
       <OfflineBanner />
@@ -904,12 +945,7 @@ export const AppContent: React.FC = () => {
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1a2e45] pb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
-                    <span className="font-extrabold text-lg tracking-tight uppercase">
-                      FLASHSCORE
-                    </span>
-                  </div>
+                  <EsnLogo size="sm" textColor="text-slate-900 dark:text-white" />
                   <button
                     type="button"
                     onClick={() => setSidebarOpen(false)}
@@ -981,6 +1017,29 @@ export const AppContent: React.FC = () => {
                   </ul>
                 </div>
 
+                {/* Institutional & Legal Pages Section in Sidebar */}
+                <div className="space-y-3">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Institutional & Legal</div>
+                  <ul className="space-y-1.5">
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/privacy'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      <span>Privacy Policy</span>
+                    </li>
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/terms'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <span>Terms of Service</span>
+                    </li>
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/about'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <Info className="w-4 h-4 text-amber-500" />
+                      <span>About ESN Ecosystem</span>
+                    </li>
+                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/contact'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                      <Mail className="w-4 h-4 text-[#ff0046]" />
+                      <span>Contact Administration</span>
+                    </li>
+                  </ul>
+                </div>
+
                 {/* Authentication Entry Point */}
                 <div className="space-y-3">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Platform Portal</div>
@@ -994,7 +1053,7 @@ export const AppContent: React.FC = () => {
               </div>
 
               <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center pt-4 border-t border-slate-100 dark:border-[#1a2e45]">
-                Flashscore Edition v2.0
+                ESN Varsity Edition v2.0
               </div>
             </div>
           </div>
@@ -1150,6 +1209,8 @@ export const AppContent: React.FC = () => {
           onMarkRead={handleMarkAnnouncementRead}
           isDark={darkMode}
         />
+
+        <CookieConsentBanner />
       </div>
     </>
   );

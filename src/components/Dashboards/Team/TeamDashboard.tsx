@@ -137,7 +137,7 @@ export const TeamDashboard: React.FC = () => {
           teamId={teamId}
           roster={roster}
           teamName={teamInfo?.name}
-          teamCrest={teamInfo?.logo_url}
+          teamCrest={teamInfo?.logo_url || teamInfo?.crest_url}
           coachProfile={coachProfile || undefined}
           captainProfile={captainProfile || undefined}
           activeFixtureId={teamFixtures && teamFixtures.length > 0 ? teamFixtures[0].id : undefined}
@@ -178,7 +178,7 @@ export const TeamDashboard: React.FC = () => {
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           onLogout={handleLogout}
-          teamLogo={teamInfo?.logo_url}
+          teamLogo={teamInfo?.logo_url || teamInfo?.crest_url}
           teamName={teamInfo?.name}
           onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
         />
@@ -236,7 +236,7 @@ export const TeamDashboard: React.FC = () => {
               fixtures={teamFixtures}
               teamForm={teamForm as any}
               currentTeamName={teamInfo?.name}
-              currentTeamLogo={teamInfo?.logo_url}
+              currentTeamLogo={teamInfo?.logo_url || teamInfo?.crest_url}
               onOpenMatchEventsModal={handleOpenMatchEventsModal}
             />
           )}
@@ -338,6 +338,9 @@ export const TeamDashboard: React.FC = () => {
               onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
               onUpdateTeamInfo={(updated) => {
                 setTeamInfo((prev: any) => ({ ...(prev || {}), ...updated }));
+                if (updated.logo_url) {
+                  refreshLiveDashboard();
+                }
               }}
             />
           )}
@@ -412,13 +415,13 @@ export const TeamDashboard: React.FC = () => {
         onClose={() => setIsTeamInfoModalOpen(false)}
         teamId={teamId}
         teamName={teamInfo?.name || 'Egerton FC'}
-        teamLogo={teamInfo?.logo_url || ''}
+        teamLogo={teamInfo?.logo_url || teamInfo?.crest_url || ''}
         coachEmail={coachProfile?.email || user?.email || 'coachteam1@gmail.com'}
         coachUserId={user?.id || coachProfile?.id}
         rosterCount={roster.length}
         onSuccess={(updated) => {
           if (updated.logoUrl) {
-            setTeamInfo((prev: any) => ({ ...(prev || {}), logo_url: updated.logoUrl }));
+            setTeamInfo((prev: any) => ({ ...(prev || {}), logo_url: updated.logoUrl, crest_url: updated.logoUrl }));
           }
           if (updated.email) {
             setCoachProfile((prev: any) => ({ ...(prev || {}), email: updated.email }));

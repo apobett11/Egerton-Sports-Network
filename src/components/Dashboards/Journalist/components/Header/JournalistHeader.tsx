@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Bell, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { EsnLogo } from '../../../../common/EsnLogo';
 
 interface JournalistHeaderProps {
   darkMode: boolean;
@@ -23,12 +24,9 @@ export const JournalistHeader: React.FC<JournalistHeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full select-none shadow-md bg-[#0e1e2d] text-white border-b border-[#1a2e45]">
       <div className="max-w-7xl mx-auto h-16 px-4 md:px-6 flex items-center justify-between gap-4">
-        {/* BRAND & TITLE WITH FLASHSCORE BRAND MARK */}
+        {/* BRAND & TITLE WITH ESN BRAND MARK */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-0.5" aria-hidden="true">
-            <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
-            <div className="w-1.5 h-6 bg-white transform -skew-x-12 rounded-[1.5px] opacity-90" />
-          </div>
+          <EsnLogo size="md" />
           <div className="flex flex-col leading-none">
             <h1 className="font-black tracking-wider text-sm sm:text-base uppercase text-white font-sans">
               Press Newsroom

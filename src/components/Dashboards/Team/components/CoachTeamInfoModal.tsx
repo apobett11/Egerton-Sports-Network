@@ -106,15 +106,16 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      let finalLogoUrl = logoUrl;
+      let finalLogoUrl = logoUrl || teamLogo;
 
       // Upload file to Supabase storage if selected
       if (selectedFile) {
         try {
           finalLogoUrl = await uploadTeamCrest(teamId, selectedFile);
+          setLogoUrl(finalLogoUrl);
+          setPreviewUrl(finalLogoUrl);
         } catch (uploadErr: any) {
           console.warn('[CoachTeamInfoModal] Crest file upload error:', uploadErr);
-          // If storage bucket fails, fallback to existing or URL
         }
       }
 

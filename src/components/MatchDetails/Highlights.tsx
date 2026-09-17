@@ -186,7 +186,7 @@ export const Highlights: React.FC<HighlightsProps> = ({ match }) => {
                 </div>
 
                 <a
-                    href="https://youtube.com"
+                    href="https://www.youtube.com/@EgertonUniversity"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 font-bold text-[10px] text-emerald-600 dark:text-emerald-500 hover:underline hover:scale-102 transition-transform"

@@ -245,9 +245,9 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {team.teamLogo ? (
+                          {((isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo) ? (
                             <img
-                              src={team.teamLogo}
+                              src={(isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo}
                               alt={team.teamName}
                               className="w-6 h-6 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-white/10"
                             />
@@ -387,9 +387,9 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {team.teamLogo ? (
+                          {((isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo) ? (
                             <img
-                              src={team.teamLogo}
+                              src={(isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo}
                               alt={team.teamName}
                               className="w-6 h-6 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-white/10"
                             />
@@ -527,11 +527,11 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
               const isLive = fixture.status === 'LIVE';
               const isHome = fixture.isHome !== false;
               const homeName = fixture.homeTeamName || (isHome ? currentTeamName || 'Egerton FC' : fixture.opponentName);
-              const homeLogo = fixture.homeTeamLogo || (isHome ? currentTeamLogo : fixture.opponentLogo);
               const awayName = fixture.awayTeamName || (!isHome ? currentTeamName || 'Egerton FC' : fixture.opponentName);
-              const awayLogo = fixture.awayTeamLogo || (!isHome ? currentTeamLogo : fixture.opponentLogo);
               const isOurHomeTeam = currentTeamName ? homeName.toLowerCase() === currentTeamName.toLowerCase() : isHome;
               const isOurAwayTeam = currentTeamName ? awayName.toLowerCase() === currentTeamName.toLowerCase() : !isHome;
+              const homeLogo = isOurHomeTeam && currentTeamLogo ? currentTeamLogo : (fixture.homeTeamLogo || (isHome ? currentTeamLogo : fixture.opponentLogo));
+              const awayLogo = isOurAwayTeam && currentTeamLogo ? currentTeamLogo : (fixture.awayTeamLogo || (!isHome ? currentTeamLogo : fixture.opponentLogo));
 
               return (
                 <div

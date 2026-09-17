@@ -27,7 +27,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   return (
     <aside className="relative z-20 flex flex-col justify-between items-end h-full py-2.5 sm:py-4 pr-2 sm:pr-4 pl-1 select-none pointer-events-auto flex-shrink-0">
-      {/* Collective Strength Section matching screenshot WA0046 with safe bounds */}
+      {/* Collective Strength Section */}
       <div className="flex flex-col items-start text-left mt-1">
         <span className="text-[12px] sm:text-[14px] font-normal text-[#8fa0b5] leading-tight font-sans">
           Collective

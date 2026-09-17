@@ -3,6 +3,7 @@ import {
   Sun, Moon, ShieldCheck, AlertTriangle, CheckCircle2, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../../../../contexts/AuthContext';
+import { EsnLogo } from '../../../../common/EsnLogo';
 
 interface RefereeHeaderProps {
   currentUserName: string;
@@ -25,7 +26,7 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
 }) => {
   const { logout } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return document.documentElement.classList.contains('dark') || true;
+    return document.documentElement.classList.contains('dark');
   });
 
   const toggleDarkMode = () => {
@@ -38,7 +39,7 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
     }
   };
 
-  const handleSignOut = () => {
+  const handleLogout = () => {
     if (onLogout) {
       onLogout();
     } else {
@@ -49,14 +50,11 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full select-none bg-white dark:bg-[#0e1e2d] text-slate-800 dark:text-slate-100 border-b border-[#e6e8ec] dark:border-[#1a2e45] shadow-md transition-colors duration-200">
-      {/* Row 1: Flashscore Style Brand & Header Controls */}
+      {/* Row 1: ESN Brand & Header Controls */}
       <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto gap-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
-            <div className="flex items-center gap-0.5">
-              <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
-              <div className={`w-1.5 h-6 ${isDarkMode ? 'bg-white' : 'bg-slate-800'} transform -skew-x-12 rounded-[1.5px] opacity-90`} />
-            </div>
+            <EsnLogo size="md" />
             <div className="flex flex-col leading-none">
               <span className="font-black text-base sm:text-lg tracking-tight uppercase text-slate-900 dark:text-white font-sans group-hover:text-[#ff0046] transition-colors">
                 ESN REFEREE
@@ -94,7 +92,7 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
           {/* Logout / Exit Portal Button */}
           <button
             type="button"
-            onClick={handleSignOut}
+            onClick={handleLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#152a40] hover:bg-[#ff0046] text-white border border-white/10 hover:border-[#ff0046] font-black text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
             title="Log Out"
           >

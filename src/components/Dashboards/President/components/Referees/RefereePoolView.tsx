@@ -30,7 +30,7 @@ export const RefereePoolView: React.FC<RefereePoolViewProps> = ({
   const refFormRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  const REFEREE_REGISTRATION_URL = 'https://livescore.egerton.ac.ke/register/referee';
+  const REFEREE_REGISTRATION_URL = 'https://sports.egerton.ac.ke/register/referee';
 
   const scrollToForm = () => {
     refFormRef.current?.scrollIntoView({ behavior: 'smooth' });

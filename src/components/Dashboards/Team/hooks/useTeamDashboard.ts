@@ -237,6 +237,37 @@ export const useTeamDashboard = () => {
     };
   }, [refreshLiveDashboard]);
 
+  // Immediately synchronize teamFixtures and standings across the dashboard whenever teamInfo logo changes
+  useEffect(() => {
+    const currentLogo = teamInfo?.logo_url || teamInfo?.crest_url;
+    if (!currentLogo) return;
+
+    setTeamFixtures((prev) =>
+      prev.map((f) => {
+        const isHome = f.isHome !== false;
+        return {
+          ...f,
+          homeTeamLogo: isHome ? currentLogo : f.homeTeamLogo,
+          awayTeamLogo: !isHome ? currentLogo : f.awayTeamLogo,
+          opponentLogo: isHome ? f.opponentLogo : currentLogo,
+        };
+      })
+    );
+
+    setStandings((prev) =>
+      prev.map((s) => {
+        const isOurClub =
+          s.isCurrent ||
+          (teamInfo?.name && s.teamName.toLowerCase() === teamInfo.name.toLowerCase()) ||
+          s.teamName.toLowerCase().includes('egerton');
+        if (isOurClub) {
+          return { ...s, teamLogo: currentLogo };
+        }
+        return s;
+      })
+    );
+  }, [teamInfo?.logo_url, teamInfo?.crest_url, teamInfo?.name]);
+
   // Compute Dynamic Pitch Coordinates from Tactical Physics Math
   const pitchNodes: PitchNodeCoordinate[] = useMemo(() => {
     return calculateDynamicPitchCoordinates(formation, playstyleSliders);

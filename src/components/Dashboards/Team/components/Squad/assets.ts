@@ -1,4 +1,4 @@
-// Pixel-perfect SVG assets matching Konami eFootball™ Game Plan UI
+// Custom SVG assets for Campus Athletics Team Roster & Game Plan UI
 
 export const FLAGS = {
   england: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 36"><rect width="60" height="36" fill="%23ffffff"/><rect x="25" width="10" height="36" fill="%23ce1124"/><rect y="13" width="60" height="10" fill="%23ce1124"/></svg>`,
@@ -11,102 +11,27 @@ export const FLAGS = {
 };
 
 export const CRESTS = {
-  manUnited: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="48" fill="%23ffe500" stroke="%23c70101" stroke-width="2"/>
-    <circle cx="50" cy="50" r="44" fill="%23c70101"/>
-    <path d="M 16,34 C 28,18 72,18 84,34 L 78,40 C 68,28 32,28 22,40 Z" fill="%23ffe500"/>
-    <text x="50" y="32" font-size="8.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23c70101">MANCHESTER</text>
-    <path d="M 16,66 C 28,82 72,82 84,66 L 78,60 C 68,72 32,72 22,60 Z" fill="%23ffe500"/>
-    <text x="50" y="75" font-size="9" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23c70101">UNITED</text>
-    <path d="M 32,38 L 68,38 L 68,54 C 68,66 50,74 50,74 C 50,74 32,66 32,54 Z" fill="%23ffe500" stroke="%23c70101" stroke-width="1.5"/>
-    <path d="M 50,42 C 45,42 43,46 43,49 C 43,55 47,56 47,63 L 53,63 C 53,56 57,55 57,49 C 57,46 55,42 50,42 Z" fill="%23c70101"/>
-    <polygon points="46,43 43,39 48,41" fill="%23c70101"/>
-    <polygon points="54,43 57,39 52,41" fill="%23c70101"/>
-    <line x1="44" y1="50" x2="38" y2="46" stroke="%23c70101" stroke-width="1.5" stroke-linecap="round"/>
-    <line x1="56" y1="50" x2="62" y2="46" stroke="%23c70101" stroke-width="1.5" stroke-linecap="round"/>
-    <circle cx="14" cy="50" r="4.5" fill="%23ffffff" stroke="%23c70101" stroke-width="1"/>
-    <circle cx="86" cy="50" r="4.5" fill="%23ffffff" stroke="%23c70101" stroke-width="1"/>
-  </svg>`,
+  manUnited: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,6 88,22 88,62 50,94 12,62 12,22" fill="%23b91c1c" stroke="%23f59e0b" stroke-width="4"/><polygon points="50,14 80,26 80,58 50,84 20,58 20,26" fill="%23991b1b"/><text x="50" y="32" font-size="7.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23f59e0b">EGERTON</text><path d="M36,46 L50,38 L64,46 L50,66 Z" fill="%23f59e0b"/><text x="50" y="78" font-size="8.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">HAWKS</text></svg>`,
 
-  inter: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="46" fill="%23001ea0" stroke="%23ffffff" stroke-width="3"/>
-    <circle cx="50" cy="50" r="38" fill="%23000000"/>
-    <text x="50" y="58" font-size="28" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">IM</text>
-  </svg>`,
+  inter: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="%230f172a" stroke="%230284c7" stroke-width="4"/><circle cx="50" cy="50" r="38" fill="%230369a1"/><text x="50" y="44" font-size="10" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">NJORO</text><text x="50" y="66" font-size="16" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%2338bdf8">WAVES</text></svg>`,
 
-  milan: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <ellipse cx="50" cy="50" rx="36" ry="46" fill="%23ffffff" stroke="%23d00000" stroke-width="3"/>
-    <path d="M30 16 h14 v68 h-14 z" fill="%23d00000"/>
-    <path d="M44 16 h12 v68 h-12 z" fill="%23000000"/>
-    <path d="M56 16 h14 v68 h-14 z" fill="%23d00000"/>
-    <rect x="50" y="20" width="20" height="30" fill="%23ffffff"/>
-    <rect x="58" y="20" width="4" height="30" fill="%23d00000"/>
-    <rect x="50" y="32" width="20" height="5" fill="%23d00000"/>
-  </svg>`,
+  milan: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="38" ry="46" fill="%23111827" stroke="%23ef4444" stroke-width="4"/><path d="M26 20 h12 v60 h-12 z" fill="%23ef4444"/><path d="M62 20 h12 v60 h-12 z" fill="%23ef4444"/><text x="50" y="56" font-size="13" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">RUIRU</text></svg>`,
 
-  roma: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <path d="M50 10 C30 10 20 20 20 40 C20 70 50 90 50 90 C50 90 80 70 80 40 C80 20 70 10 50 10 Z" fill="%238e1f2f" stroke="%23f0bc42" stroke-width="3"/>
-    <path d="M22 18 C35 15 65 15 78 18 L78 45 C65 42 35 42 22 45 Z" fill="%23f0bc42"/>
-    <text x="50" y="34" font-size="14" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%238e1f2f">ASR</text>
-    <text x="50" y="70" font-size="12" font-family="Arial,sans-serif" font-weight="bold" text-anchor="middle" fill="%23f0bc42">ROMA</text>
-  </svg>`,
+  roma: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 8 C28 8 16 20 16 42 C16 72 50 92 50 92 C50 92 84 72 84 42 C84 20 72 8 50 8 Z" fill="%23831843" stroke="%23fbbf24" stroke-width="4"/><text x="50" y="38" font-size="8.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23fbbf24">CHEMERON</text><text x="50" y="66" font-size="12" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">WOLVES</text></svg>`,
 
-  realMadrid: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="56" r="38" fill="%23ffffff" stroke="%23ffdb00" stroke-width="4"/>
-    <path d="M26 38 L74 74" stroke="%235b2c86" stroke-width="8"/>
-    <text x="50" y="66" font-size="28" font-family="Arial,sans-serif" font-weight="bold" text-anchor="middle" fill="%23ffdb00">MFC</text>
-    <path d="M30 24 L36 12 L50 20 L64 12 L70 24 Z" fill="%23ffdb00" stroke="%23b89000" stroke-width="2"/>
-    <circle cx="50" cy="8" r="3" fill="%23ffdb00"/>
-  </svg>`,
+  realMadrid: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="52" r="42" fill="%23ffffff" stroke="%23eab308" stroke-width="4"/><polygon points="50,14 62,26 38,26" fill="%23eab308"/><text x="50" y="50" font-size="9" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%231e293b">CAMPUS</text><text x="50" y="70" font-size="11" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23eab308">TITANS</text></svg>`,
 
-  brighton: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="46" fill="%230057b8" stroke="%23ffcd00" stroke-width="4"/>
-    <circle cx="50" cy="50" r="38" fill="%23ffffff"/>
-    <path d="M30 48 Q 45 32 68 40 Q 52 44 48 54 Q 40 48 30 48 Z" fill="%230057b8"/>
-    <path d="M48 54 Q 60 52 70 60 Q 56 60 48 54 Z" fill="%23ffcd00"/>
-  </svg>`,
+  brighton: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="%230284c7" stroke="%23facc15" stroke-width="4"/><circle cx="50" cy="50" r="38" fill="%230369a1"/><text x="50" y="44" font-size="9" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">COASTAL</text><text x="50" y="66" font-size="11" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23facc15">GULLS</text></svg>`,
 
-  psg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="46" fill="%23001c3d" stroke="%23da291c" stroke-width="3"/>
-    <circle cx="50" cy="50" r="38" fill="%23ffffff"/>
-    <path d="M50 24 L56 68 H44 Z" fill="%23da291c"/>
-    <rect x="42" y="52" width="16" height="4" fill="%23da291c"/>
-    <circle cx="50" cy="38" r="4" fill="%23da291c"/>
-  </svg>`,
+  psg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="%230f172a" stroke="%23e11d48" stroke-width="4"/><circle cx="50" cy="50" r="38" fill="%231e293b"/><text x="50" y="44" font-size="8.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">EGERTON</text><text x="50" y="66" font-size="14" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23e11d48">CITY</text></svg>`,
 
-  arsenal: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <path d="M 50,8 L 86,22 L 86,62 C 86,78 50,92 50,92 C 50,92 14,78 14,62 L 14,22 Z" fill="%23db0007" stroke="%239c824a" stroke-width="3"/>
-    <path d="M 30,52 L 70,52 L 70,44 L 62,44 L 56,38 L 44,38 L 38,44 L 30,44 Z" fill="%239c824a"/>
-    <circle cx="44" cy="56" r="8" fill="%23ffffff" stroke="%239c824a" stroke-width="2"/>
-    <circle cx="62" cy="56" r="8" fill="%23ffffff" stroke="%239c824a" stroke-width="2"/>
-    <text x="50" y="28" font-size="10" font-family="Arial Black" font-weight="900" text-anchor="middle" fill="%23ffffff">ARSENAL</text>
-  </svg>`,
+  arsenal: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 8 L86 22 L86 64 C86 80 50 94 50 94 C50 94 14 80 14 64 L14 22 Z" fill="%23dc2626" stroke="%23f59e0b" stroke-width="3.5"/><text x="50" y="40" font-size="7.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">FACULTY</text><text x="50" y="62" font-size="8.5" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23f59e0b">ENGINEERS</text></svg>`,
 
-  manCity: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="46" fill="%236cabdd" stroke="%231c2c5b" stroke-width="4"/>
-    <circle cx="50" cy="50" r="34" fill="%23ffffff"/>
-    <path d="M 36,40 L 64,40 L 58,62 L 42,62 Z" fill="%23e8b11c" stroke="%231c2c5b" stroke-width="1.5"/>
-    <text x="50" y="26" font-size="8" font-family="Arial Black" font-weight="900" text-anchor="middle" fill="%231c2c5b">MANCHESTER</text>
-    <text x="50" y="78" font-size="9" font-family="Arial Black" font-weight="900" text-anchor="middle" fill="%231c2c5b">CITY</text>
-  </svg>`,
+  manCity: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="%2338bdf8" stroke="%230369a1" stroke-width="4"/><circle cx="50" cy="50" r="36" fill="%23ffffff"/><text x="50" y="44" font-size="9" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%230369a1">NJORO</text><text x="50" y="64" font-size="10" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%230284c7">BLUES</text></svg>`,
 
-  barcelona: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <path d="M 50,10 C 65,10 82,14 85,25 C 85,55 70,78 50,92 C 30,78 15,55 15,25 C 18,14 35,10 50,10 Z" fill="%23edbb00" stroke="%23004d98" stroke-width="3"/>
-    <path d="M 22,25 H 78 V 45 H 22 Z" fill="%23edbb00"/>
-    <text x="50" y="38" font-size="9" font-family="Arial Black" font-weight="900" text-anchor="middle" fill="%23000000">FCB</text>
-    <path d="M 22,46 H 78 V 78 C 65,85 50,90 50,90 C 50,90 35,85 22,78 Z" fill="%23a50044"/>
-    <rect x="36" y="46" width="10" height="40" fill="%23004d98"/>
-    <rect x="54" y="46" width="10" height="40" fill="%23004d98"/>
-  </svg>`,
+  barcelona: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 50,10 C 65,10 82,14 85,25 C 85,55 70,78 50,92 C 30,78 15,55 15,25 C 18,14 35,10 50,10 Z" fill="%23d97706" stroke="%231e3a8a" stroke-width="3.5"/><rect x="25" y="24" width="50" height="22" fill="%231e3a8a"/><text x="50" y="40" font-size="10" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23fbbf24">AGRO</text><text x="50" y="74" font-size="11" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">TIGERS</text></svg>`,
 
-  argentinaCrest: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <path d="M 50,10 L 85,25 L 85,60 C 85,78 50,92 50,92 C 50,92 15,78 15,60 L 15,25 Z" fill="%2375aadb" stroke="%23f6b40e" stroke-width="3"/>
-    <rect x="36" y="25" width="28" height="45" fill="%23ffffff"/>
-    <text x="50" y="52" font-size="16" font-family="Arial Black" font-weight="900" text-anchor="middle" fill="%23f6b40e">AFA</text>
-    <polygon points="40,20 42,16 44,20" fill="%23f6b40e"/>
-    <polygon points="50,18 52,14 54,18" fill="%23f6b40e"/>
-    <polygon points="60,20 62,16 64,20" fill="%23f6b40e"/>
-  </svg>`,
+  argentinaCrest: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 50,10 L 85,25 L 85,60 C 85,78 50,92 50,92 C 50,92 15,78 15,60 L 15,25 Z" fill="%230284c7" stroke="%23f59e0b" stroke-width="3.5"/><text x="50" y="48" font-size="18" font-family="Arial Black,sans-serif" font-weight="900" text-anchor="middle" fill="%23ffffff">EAA</text><text x="50" y="70" font-size="8" font-family="Arial,sans-serif" font-weight="bold" text-anchor="middle" fill="%23f59e0b">VARSITY</text></svg>`,
 
   genericClub1: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <polygon points="50,10 85,25 85,65 50,90 15,65 15,25" fill="%234b0082" stroke="%23ffd700" stroke-width="4"/>

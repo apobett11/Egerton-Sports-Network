@@ -605,6 +605,7 @@ export async function updateTeamSettings(
         name?: string;
         short_name?: string;
         logo_url?: string;
+        crest_url?: string;
         contact_email?: string;
         contact_phone?: string;
         stadium?: string;
@@ -616,14 +617,17 @@ export async function updateTeamSettings(
         captain_id?: string;
     }
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-    const teamUuid = toUuid(teamId);
+    const teamUuid = await resolveRealTeamId(teamId);
     try {
         const updatePayload: any = {
             updated_at: new Date().toISOString(),
         };
         if (settings.name !== undefined) updatePayload.name = settings.name;
         if (settings.short_name !== undefined) updatePayload.short_name = settings.short_name;
-        if (settings.logo_url !== undefined) updatePayload.logo_url = settings.logo_url;
+        const resolvedLogo = settings.logo_url !== undefined ? settings.logo_url : settings.crest_url;
+        if (resolvedLogo !== undefined && resolvedLogo.trim() !== '') {
+            updatePayload.logo_url = resolvedLogo.trim();
+        }
         if (settings.description !== undefined) updatePayload.description = settings.description;
         if (settings.primary_color !== undefined) {
             updatePayload.primary_color = settings.primary_color;
@@ -821,33 +825,55 @@ export async function saveTeamTacticsAndSquad(
  * Uploads a team logo / crest image to Supabase Storage and updates teams table.
  */
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
-    const teamUuid = toUuid(teamId);
+    const teamUuid = await resolveRealTeamId(teamId);
     const fileExt = file.name.split('.').pop() || 'png';
     const fileName = `team_crests/${teamUuid}_${Date.now()}.${fileExt}`;
 
     let publicUrl = '';
-    const { data, error } = await supabase.storage
-        .from('media')
-        .upload(fileName, file, { cacheControl: '3600', upsert: true });
-
-    if (error) {
-        const { data: fbData, error: fbErr } = await supabase.storage
-            .from('news')
+    try {
+        const { data, error } = await supabase.storage
+            .from('media')
             .upload(fileName, file, { cacheControl: '3600', upsert: true });
-        if (fbErr) throw new Error(fbErr.message);
-        publicUrl = supabase.storage.from('news').getPublicUrl(fbData.path).data.publicUrl;
-    } else {
-        publicUrl = supabase.storage.from('media').getPublicUrl(data.path).data.publicUrl;
+
+        if (error) {
+            const { data: fbData, error: fbErr } = await supabase.storage
+                .from('news')
+                .upload(fileName, file, { cacheControl: '3600', upsert: true });
+            if (fbErr) {
+                const { data: avData, error: avErr } = await supabase.storage
+                    .from('avatars')
+                    .upload(fileName, file, { cacheControl: '3600', upsert: true });
+                if (avErr) {
+                    throw avErr;
+                }
+                publicUrl = supabase.storage.from('avatars').getPublicUrl(avData.path).data.publicUrl;
+            } else {
+                publicUrl = supabase.storage.from('news').getPublicUrl(fbData.path).data.publicUrl;
+            }
+        } else {
+            publicUrl = supabase.storage.from('media').getPublicUrl(data.path).data.publicUrl;
+        }
+    } catch {
+        // Fallback to base64 Data URL so the crest always displays and saves locally/in DB
+        publicUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+        });
     }
 
     // Persist new crest into teams table
-    await supabase
+    const { error: updateErr } = await supabase
         .from('teams')
         .update({
             logo_url: publicUrl,
             updated_at: new Date().toISOString()
         })
         .eq('id', teamUuid);
+
+    if (updateErr) {
+        console.warn('[uploadTeamCrest] Failed to update teams.logo_url:', updateErr);
+    }
 
     return publicUrl;
 }
@@ -869,7 +895,7 @@ export async function updateCoachCredentialsAndLogo({
     password?: string;
 }): Promise<{ success: boolean; error?: string; updatedEmail?: string; updatedLogoUrl?: string }> {
     try {
-        const teamUuid = toUuid(teamId);
+        const teamUuid = await resolveRealTeamId(teamId);
         let updatedLogoUrl = logoUrl;
         let updatedEmail = email;
 

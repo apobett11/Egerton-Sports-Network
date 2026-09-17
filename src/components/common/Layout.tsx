@@ -98,11 +98,11 @@ export const AppLayout: React.FC<LayoutProps> = ({
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#D4AF37] text-slate-950 font-black flex items-center justify-center text-base shadow-sm">
-                    LS
+                  <div className="w-9 h-9 rounded-xl bg-[#D4AF37] text-slate-950 font-black flex items-center justify-center text-xs shadow-sm">
+                    ESN
                   </div>
                   <div>
-                    <span className="font-extrabold text-sm tracking-tight block">LiveScore Platform</span>
+                    <span className="font-extrabold text-sm tracking-tight block">Egerton Sports Network</span>
                     <Badge variant="gold" className="text-[10px] uppercase">{role}</Badge>
                   </div>
                 </div>

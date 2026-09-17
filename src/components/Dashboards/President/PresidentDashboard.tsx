@@ -203,7 +203,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
               {['Coach Registration', 'Player Registration', 'Referee Registration'].map((title, i) => (
                 <div key={i} className={`p-5 rounded-none sm:rounded-sm border space-y-3 ${isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} shadow-xs`}>
                   <h3 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-white">{title}</h3>
-                  <p className="text-xs font-mono text-slate-400 truncate">https://livescore.egerton.ac.ke/register/{title.split(' ')[0].toLowerCase()}</p>
+                  <p className="text-xs font-mono text-slate-400 truncate">https://sports.egerton.ac.ke/register/{title.split(' ')[0].toLowerCase()}</p>
                   <button onClick={() => showToast(`Copied ${title} link`)} className="px-4 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors">
                     Copy Link
                   </button>

@@ -547,18 +547,18 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [deviceId]);
 
-  // Open the odds preview modal, permanently suppress popup for this device, and record odds telemetry
+  // Open the predictions preview modal, permanently suppress popup for this device, and record telemetry
   const handleOpenOdds = useCallback(() => {
     setShowOddsTooltip(false);
     if (deviceId) {
       try {
-        localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
-        localStorage.setItem('esn_odds_page_opened_v3', 'true');
+        localStorage.setItem(`esn_predictions_opened_${deviceId}`, 'true');
+        localStorage.setItem('esn_predictions_page_opened_v3', 'true');
       } catch {}
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
     setShowOddsModal(true);
-    setFilterStatus('ODDS');
+    setFilterStatus('PREDICTIONS');
   }, [deviceId]);
 
   // Dismiss popup on current view when user scrolls, taps/clicks anywhere, or closes
@@ -610,13 +610,13 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [showOddsTooltip]);
 
-  // Track when odds filter is active directly
+  // Track when predictions filter is active directly
   useEffect(() => {
-    if (filterStatus === 'ODDS' && deviceId) {
+    if (filterStatus === 'PREDICTIONS' && deviceId) {
       setShowOddsTooltip(false);
       try {
-        localStorage.setItem(`esn_odds_opened_${deviceId}`, 'true');
-        localStorage.setItem('esn_odds_page_opened_v3', 'true');
+        localStorage.setItem(`esn_predictions_opened_${deviceId}`, 'true');
+        localStorage.setItem('esn_predictions_page_opened_v3', 'true');
       } catch {}
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
@@ -628,7 +628,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       if (filterStatus === 'LIVE') return m.status === 'LIVE' || m.status === 'HT';
       if (filterStatus === 'FINISHED') return m.status === 'FT' || m.status === 'FINAL' || m.status === 'ARCHIVED';
       if (filterStatus === 'SCHEDULED') return m.status === 'UPCOMING';
-      if (filterStatus === 'ODDS') return false;
+      if (filterStatus === 'PREDICTIONS') return true; // Show matches in predictions view
       return true;
     });
 
@@ -670,9 +670,9 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 1. STATUS FILTERS ROW (OUTSIDE FIXTURES CARD, BELOW FAVOURITES/FIXTURES/STANDINGS ROW) */}
       <div className="flex items-center justify-between px-3 sm:px-4 py-1">
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
-          {['ALL', 'LIVE', 'ODDS', 'FINISHED', 'SCHEDULED'].map((st) => {
+          {['ALL', 'LIVE', 'PREDICTIONS', 'FINISHED', 'SCHEDULED'].map((st) => {
             const isActive = filterStatus === st;
-            if (st === 'ODDS') {
+            if (st === 'PREDICTIONS') {
               return (
                 <div key={st} className="relative inline-flex items-center shrink-0">
                   {showOddsTooltip && (
@@ -725,14 +725,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                           Match Predictions & Fan Poll: Guess outcomes & vote on upcoming fixtures.
                         </p>
 
-                        {/* Directional Prompt Pointing Downwards to ODDS */}
+                        {/* Directional Prompt Pointing Downwards to PREDICTIONS */}
                         <div className="pt-1 border-t border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-black text-emerald-300">
-                          <span>Tap here or ODDS below</span>
+                          <span>Tap here or PREDICTIONS below</span>
                           <span className="animate-bounce text-xs">👇</span>
                         </div>
                       </div>
 
-                      {/* Directional pointer caret pointing directly at ODDS button */}
+                      {/* Directional pointer caret pointing directly at PREDICTIONS button */}
                       <div className="w-3.5 h-3.5 bg-[#0d1e30] rotate-45 -mt-1.5 border-r border-b border-emerald-400/60 shadow-sm pointer-events-none"></div>
                     </div>
                   )}
@@ -839,23 +839,59 @@ export const HomePage: React.FC<HomePageProps> = ({
             <AlertCircle className="w-5 h-5 text-rose-500 mx-auto" />
             <p className="text-xs font-bold text-rose-500">{fixturesState.error}</p>
           </div>
-        ) : filterStatus === 'ODDS' ? (
-          <div className="py-12 px-6 text-center space-y-3">
-            <span className="text-3xl">📊</span>
-            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              Match Odds & Fan Probabilities
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-              Match predictions and fan odds will be open weekly from Thursday evening to kickoff. Strictly for casual fun and personal scores.
+        ) : filterStatus === 'PREDICTIONS' ? (
+          <div className="py-8 px-4 sm:px-6 text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 text-2xl mx-auto border border-emerald-500/20">
+              📊
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                Fan Match Predictions & Community Consensus
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                Cast your vote on upcoming campus fixtures! Fan predictions reflect community sentiment and campus team pride. Free, casual, non-monetary sports entertainment.
+              </p>
+            </div>
+
+            {/* Live Fan Probability Bars Preview */}
+            <div className="max-w-md mx-auto bg-slate-50 dark:bg-[#14263b]/70 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-left space-y-3">
+              <div className="flex items-center justify-between text-xs font-black text-slate-700 dark:text-slate-300">
+                <span>Featured Match Poll</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">Active</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-900 dark:text-white font-bold">
+                <span>Egerton FC</span>
+                <span className="text-slate-400 text-[11px]">vs</span>
+                <span>Njoro All-Stars</span>
+              </div>
+              {/* Distribution Bar */}
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-slate-200 dark:bg-slate-700">
+                  <div className="bg-emerald-500 h-full" style={{ width: '54%' }} title="Home Win: 54%"></div>
+                  <div className="bg-amber-400 h-full" style={{ width: '22%' }} title="Draw: 22%"></div>
+                  <div className="bg-sky-500 h-full" style={{ width: '24%' }} title="Away Win: 24%"></div>
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                  <span className="text-emerald-500 dark:text-emerald-400 font-bold">Home 54%</span>
+                  <span className="text-amber-500 dark:text-amber-400 font-bold">Draw 22%</span>
+                  <span className="text-sky-500 dark:text-sky-400 font-bold">Away 24%</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={handleOpenOdds}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-md"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>Cast Your Match Predictions</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              Strictly non-gambling. Governed under ESN Athletics Community Guidelines & <a href="#/privacy" className="text-emerald-400 underline hover:text-emerald-300">Privacy Policy</a>.
             </p>
-            <button
-              type="button"
-              onClick={handleOpenOdds}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-transform active:scale-95 cursor-pointer shadow-sm"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-              <span>View Predictor Details & Fan Poll</span>
-            </button>
           </div>
         ) : filteredMatches.length === 0 ? (
           <div className="py-12 px-6 text-center space-y-1">

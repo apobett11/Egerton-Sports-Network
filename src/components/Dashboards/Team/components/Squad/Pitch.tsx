@@ -397,7 +397,7 @@ export const Pitch: React.FC<PitchProps> = ({
         })}
       </div>
 
-      {/* Bottom Pitch Tactical Bar matching screenshot WA0046 */}
+      {/* Bottom Pitch Tactical Bar */}
       <div className="relative z-30 flex items-center justify-between px-8 pb-3 pt-0 pointer-events-none">
         {/* Left: Reposition / Free Move Toggle Button */}
         <button
@@ -420,7 +420,7 @@ export const Pitch: React.FC<PitchProps> = ({
         {/* Center: Unobstructed corridor for GK card */}
         <div className="flex-1 pointer-events-none" />
 
-        {/* Right Action Icons Group matching WA0046 */}
+        {/* Right Action Icons Group */}
         <div className="flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
           {/* View Mode Toggle Button */}
           <button

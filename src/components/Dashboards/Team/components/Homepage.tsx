@@ -108,7 +108,7 @@ export const Homepage: React.FC<HomepageProps> = ({
   // Resolve team identity from live database teamInfo
   const ourTeamName = teamInfo?.name || 'Egerton FC';
   const ourTeamShort = teamInfo?.short_name || teamInfo?.name?.slice(0, 3)?.toUpperCase() || 'EFC';
-  const ourTeamLogo = teamInfo?.logo_url || '';
+  const ourTeamLogo = teamInfo?.logo_url || teamInfo?.crest_url || '';
 
   // Next fixture data: Strictly prioritize the chronologically earliest upcoming match from the database
   const upcomingMatches = (matches || [])
@@ -282,9 +282,9 @@ export const Homepage: React.FC<HomepageProps> = ({
                       }`}
                       title={nextMatch.isHome !== false ? 'Click to edit team logo and coach info' : undefined}
                     >
-                      {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
+                      {(nextMatch.isHome !== false ? ourTeamLogo : (nextMatch.homeTeamLogo || nextMatch.opponentLogo)) ? (
                         <img
-                          src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
+                          src={nextMatch.isHome !== false ? ourTeamLogo : (nextMatch.homeTeamLogo || nextMatch.opponentLogo)}
                           alt="Home Team"
                           className="w-full h-full object-contain"
                         />
@@ -334,9 +334,9 @@ export const Homepage: React.FC<HomepageProps> = ({
                       }`}
                       title={nextMatch.isHome === false ? 'Click to edit team logo and coach info' : undefined}
                     >
-                      {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
+                      {(nextMatch.isHome !== false ? (nextMatch.awayTeamLogo || nextMatch.opponentLogo) : ourTeamLogo) ? (
                         <img
-                          src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
+                          src={nextMatch.isHome !== false ? (nextMatch.awayTeamLogo || nextMatch.opponentLogo) : ourTeamLogo}
                           alt="Away Team"
                           className="w-full h-full object-contain"
                         />

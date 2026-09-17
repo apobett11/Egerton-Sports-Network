@@ -91,6 +91,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       if (teamInfo.secondary_color) setSecondaryColor(teamInfo.secondary_color);
       if (teamInfo.accent_color) setAccentColor(teamInfo.accent_color);
       if (teamInfo.captain_id) setDesignatedCaptain(teamInfo.captain_id);
+      if (teamInfo.logo_url || teamInfo.crest_url) {
+        setLogoUrl(teamInfo.logo_url || teamInfo.crest_url || '');
+      }
     }
   }, [teamInfo]);
 
@@ -123,7 +126,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       setLogoUrl(publicUrl);
       showToast('Team logo uploaded and updated.');
       if (onUpdateTeamInfo) {
-        onUpdateTeamInfo({ logo_url: publicUrl });
+        onUpdateTeamInfo({ logo_url: publicUrl, crest_url: publicUrl });
       }
     } catch (err: any) {
       showToast(`Logo upload note: ${err.message || 'Updated locally'}`);
@@ -153,11 +156,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
     setIsSaving(true);
     try {
+      const effectiveLogo = logoUrl.trim() || teamInfo?.logo_url || teamInfo?.crest_url || '';
+
       // 1. Update team settings in database (stadium, colors, description, short_name, logo_url, captain_id)
       // Note: Team name is strictly NOT updated to protect league governance immutability
       const teamRes = await updateTeamSettings(teamId, {
         short_name: shortName,
-        logo_url: logoUrl,
+        logo_url: effectiveLogo,
+        crest_url: effectiveLogo,
         color_code: primaryColor,
         primary_color: primaryColor,
         secondary_color: secondaryColor,
@@ -171,7 +177,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       const credsRes = await updateCoachCredentialsAndLogo({
         teamId,
         coachUserId: coachUserId || coachProfile?.id,
-        logoUrl: logoUrl,
+        logoUrl: effectiveLogo,
         email: coachEmail !== (coachProfile?.email || '') ? coachEmail : undefined,
         password: coachPassword || undefined,
       });
@@ -187,7 +193,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         if (onUpdateTeamInfo) {
           onUpdateTeamInfo({
             short_name: shortName,
-            logo_url: logoUrl,
+            logo_url: effectiveLogo,
+            crest_url: effectiveLogo,
             color_code: primaryColor,
             primary_color: primaryColor,
             secondary_color: secondaryColor,

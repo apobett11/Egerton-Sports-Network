@@ -347,7 +347,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to LiveScore</span>
+            <span>Back to ESN Home</span>
           </button>
         </div>
 

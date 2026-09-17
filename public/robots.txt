@@ -4,6 +4,10 @@ Allow: /
 Allow: /fixtures
 Allow: /standings
 Allow: /news
+Allow: /privacy
+Allow: /terms
+Allow: /about
+Allow: /contact
 Allow: /teams/
 Allow: /matches/
 Allow: /favorites

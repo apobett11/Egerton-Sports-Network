@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sun, Moon, Shield, Calendar, PlusCircle, ArrowLeft } from 'lucide-react';
 import type { SeasonModeView } from '../../types/seasonMode';
+import { EsnLogo } from '../../../components/common/EsnLogo';
 
 interface HeaderProps {
   isDark: boolean;
@@ -24,12 +25,9 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full select-none shadow-md bg-[#0e1e2d] text-white border-b border-[#14263b] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
-        {/* Branding with Flashscore Wedges */}
+        {/* Branding with Official ESN Shield */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-0.5">
-            <div className="w-2.5 h-6 bg-[#ff0046] transform -skew-x-12 rounded-[1.5px]" />
-            <div className="w-1.5 h-6 bg-white transform -skew-x-12 rounded-[1.5px] opacity-90" />
-          </div>
+          <EsnLogo size="md" />
           <div className="flex flex-col leading-none">
             <div className="flex items-center gap-2">
               <span className="font-black text-base sm:text-lg tracking-tight uppercase text-white font-sans">

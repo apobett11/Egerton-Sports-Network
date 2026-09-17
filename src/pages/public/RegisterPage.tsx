@@ -47,14 +47,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onNavigate }) => {
   return (
     <div className="max-w-md mx-auto py-12 px-4 space-y-6">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-xl bg-[#D4AF37] text-slate-950 flex items-center justify-center font-extrabold text-xl mx-auto shadow-md">
-          LS
+        <div className="w-12 h-12 rounded-xl bg-[#D4AF37] text-slate-950 flex items-center justify-center font-extrabold text-lg mx-auto shadow-md">
+          ESN
         </div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
           Player Registration
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Create your player account to join the LiveScore platform
+          Create your player account to join the Egerton Sports Network
         </p>
       </div>
 

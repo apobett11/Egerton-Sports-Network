@@ -29,13 +29,13 @@ export interface QueuedMatchAction {
   retryCount?: number;
 }
 
-const OFFLINE_QUEUE_KEY = 'livescore_offline_match_queue';
-const SYNCED_KEYS = 'livescore_synced_action_ids';
+const OFFLINE_QUEUE_KEY = 'esn_offline_match_queue';
+const SYNCED_KEYS = 'esn_synced_action_ids';
 const MAX_QUEUE_SIZE = 50;
 
 export const getOfflineQueue = (): QueuedMatchAction[] => {
   try {
-    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY) || localStorage.getItem('livescore_offline_match_queue');
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     logger.warn('Failed to parse offline queue from localStorage', { error: e });
