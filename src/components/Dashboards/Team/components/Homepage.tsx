@@ -69,9 +69,41 @@ export const Homepage: React.FC<HomepageProps> = ({
   onOpenMatchEventsModal,
   onOpenTeamModal,
 }) => {
-  // State for linesman all-matches popup modal
-  const [showLinesmanModal, setShowLinesmanModal] = useState<boolean>(false);
-  const nextLinesmanMatch: LinesmanMatch | undefined = linesmanMatches && linesmanMatches.length > 0 ? linesmanMatches[0] : undefined;
+  // Step progression listener (Upload Player Kits -> Arrange Match Squad -> Update Match Events)
+  const [progressionVersion, setProgressionVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setProgressionVersion((v) => v + 1);
+    window.addEventListener('coach_progression_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('coach_progression_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  const isKitsDone = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('coach_kits_completed') === 'true';
+  }, [progressionVersion]);
+
+  const isSquadDone = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('coach_squad_completed') === 'true';
+  }, [progressionVersion]);
+
+  const isEventsDone = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('coach_events_completed') === 'true';
+  }, [progressionVersion]);
+
+  const activeCommandDot: 'kits' | 'squad' | 'events' | null = !isKitsDone
+    ? 'kits'
+    : !isSquadDone
+    ? 'squad'
+    : !isEventsDone
+    ? 'events'
+    : null;
 
   // Resolve team identity from live database teamInfo
   const ourTeamName = teamInfo?.name || 'Egerton FC';
@@ -212,22 +244,21 @@ export const Homepage: React.FC<HomepageProps> = ({
 
   return (
     <div className="space-y-8 md:space-y-10 max-w-7xl mx-auto pb-20 select-none">
-      {/* 1. SECTION: IMPENDING FIXTURES & OFFICIAL DUTIES (SINGLE HOUSING CARD) */}
-      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
-        {/* Top color bar enclosing the full card including heading */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-rose-500 to-cyan-500" />
+      {/* 1. SECTION: IMPENDING FIXTURE FOCUS (REFINED BORDERS, SHADOW, AND UNIFORM BUTTONS) */}
+      <section className="relative w-full bg-white dark:bg-[#0e1c2b] border-2 border-slate-300 dark:border-[#233a55] rounded-2xl shadow-md dark:shadow-xl overflow-hidden transition-all">
+        {/* Subtle accent bar */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500" />
 
-        {/* VIVID CARD HEADER */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-[#0b1623]/60">
+        {/* CARD HEADER */}
+        <div className="px-5 py-4 border-b border-slate-200 dark:border-[#1a2e45] flex items-center justify-between gap-3 bg-slate-50/80 dark:bg-[#0b1623]/80">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[#ff0046] flex items-center justify-center shrink-0 border border-rose-500/20 shadow-xs">
-              <Flame className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 shadow-xs">
+              <Trophy className="w-4 h-4" />
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                Impending Matchday Focus
+                Next Matchday Focus
               </h2>
-              <span className="w-2 h-2 rounded-full bg-[#ff0046] animate-pulse" />
             </div>
           </div>
           <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider bg-white dark:bg-[#112236] px-3 py-1 rounded-full border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
@@ -235,148 +266,147 @@ export const Homepage: React.FC<HomepageProps> = ({
           </span>
         </div>
 
-        {/* CARD BODY WITH MINI-STYLED CONTENT */}
-        <div className="p-4 sm:p-5 space-y-4">
-          {/* NEXT MATCH SUB-BLOCK */}
+        {/* CARD BODY */}
+        <div className="p-4 sm:p-5">
           {nextMatch ? (
-            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] flex flex-col lg:flex-row items-center justify-between gap-4">
-              {/* TEAMS INLINE STRIP */}
-              <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 w-full lg:w-auto min-w-0 flex-1">
-                {/* HOME TEAM */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial">
-                  <div
-                    onClick={nextMatch.isHome !== false ? onOpenTeamModal : undefined}
-                    className={`w-9 h-9 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200/80 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs relative group ${
-                      nextMatch.isHome !== false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-[#ff0046]/40 transition-all' : ''
-                    }`}
-                    title={nextMatch.isHome !== false ? 'Click to edit team logo and coach info' : undefined}
-                  >
-                    {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
-                      <img
-                        src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
-                        alt="Home Team"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <span className="font-bold text-[10px] text-slate-800 dark:text-white">
-                        {nextMatch.isHome !== false ? ourTeamShort : nextMatch.opponentName.slice(0, 3).toUpperCase()}
+            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 dark:bg-[#112236]/80 border-2 border-slate-200 dark:border-[#1d334d] flex flex-col gap-4 shadow-2xs">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                {/* TEAMS INLINE STRIP */}
+                <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 w-full lg:w-auto min-w-0 flex-1">
+                  {/* HOME TEAM */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial">
+                    <div
+                      onClick={nextMatch.isHome !== false ? onOpenTeamModal : undefined}
+                      className={`w-10 h-10 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs relative group ${
+                        nextMatch.isHome !== false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-blue-500/40 transition-all' : ''
+                      }`}
+                      title={nextMatch.isHome !== false ? 'Click to edit team logo and coach info' : undefined}
+                    >
+                      {(nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo) ? (
+                        <img
+                          src={nextMatch.isHome !== false ? ourTeamLogo : nextMatch.opponentLogo}
+                          alt="Home Team"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="font-bold text-[10px] text-slate-800 dark:text-white">
+                          {nextMatch.isHome !== false ? ourTeamShort : nextMatch.opponentName.slice(0, 3).toUpperCase()}
+                        </span>
+                      )}
+                      {nextMatch.isHome !== false && onOpenTeamModal && (
+                        <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[7px] font-bold text-white uppercase">Edit</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
+                        {nextMatch.isHome !== false ? ourTeamName : nextMatch.opponentName}
                       </span>
-                    )}
-                    {nextMatch.isHome !== false && onOpenTeamModal && (
-                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[7px] font-bold text-white uppercase">Edit</span>
-                      </div>
-                    )}
+                      <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
+                        Home
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
-                      {nextMatch.isHome !== false ? ourTeamName : nextMatch.opponentName}
+
+                  {/* VS / TIME PILL */}
+                  <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">VS</span>
+                    <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-100 mt-0.5 leading-none">
+                      {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
                     </span>
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
-                      Home
-                    </span>
+                  </div>
+
+                  {/* AWAY TEAM */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial text-right sm:text-left justify-end sm:justify-start">
+                    <div className="min-w-0 order-2 sm:order-1">
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
+                        {nextMatch.isHome !== false ? nextMatch.opponentName : ourTeamName}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
+                        Away
+                      </span>
+                    </div>
+                    <div
+                      onClick={nextMatch.isHome === false ? onOpenTeamModal : undefined}
+                      className={`w-10 h-10 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2 relative group ${
+                        nextMatch.isHome === false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-blue-500/40 transition-all' : ''
+                      }`}
+                      title={nextMatch.isHome === false ? 'Click to edit team logo and coach info' : undefined}
+                    >
+                      {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
+                        <img
+                          src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
+                          alt="Away Team"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="font-bold text-[10px] text-slate-600 dark:text-slate-300">
+                          {nextMatch.isHome !== false ? nextMatch.opponentName.slice(0, 3).toUpperCase() : ourTeamShort}
+                        </span>
+                      )}
+                      {nextMatch.isHome === false && onOpenTeamModal && (
+                        <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[7px] font-bold text-white uppercase">Edit</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* VS / TIME PILL */}
-                <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">VS</span>
-                  <span className="text-xs font-mono font-bold text-[#ff0046] mt-0.5 leading-none">
-                    {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
+                {/* METADATA (LOCATION & TIME COUNTDOWN) */}
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0 flex-wrap justify-center sm:justify-start">
+                  <span className="flex items-center gap-1 font-medium text-[11px]">
+                    <MapPin className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <span className="truncate max-w-[140px]">{formatMatchPitch(nextMatch.location || nextMatch.venue, true) || nextMatch.location || 'TBD'}</span>
                   </span>
-                </div>
-
-                {/* AWAY TEAM */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial text-right sm:text-left justify-end sm:justify-start">
-                  <div className="min-w-0 order-2 sm:order-1">
-                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
-                      {nextMatch.isHome !== false ? nextMatch.opponentName : ourTeamName}
-                    </span>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
-                      Away
-                    </span>
-                  </div>
-                  <div
-                    onClick={nextMatch.isHome === false ? onOpenTeamModal : undefined}
-                    className={`w-9 h-9 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2 relative group ${
-                      nextMatch.isHome === false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-[#ff0046]/40 transition-all' : ''
-                    }`}
-                    title={nextMatch.isHome === false ? 'Click to edit team logo and coach info' : undefined}
-                  >
-                    {(nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo) ? (
-                      <img
-                        src={nextMatch.isHome !== false ? nextMatch.opponentLogo : ourTeamLogo}
-                        alt="Away Team"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <span className="font-bold text-[10px] text-slate-600 dark:text-slate-300">
-                        {nextMatch.isHome !== false ? nextMatch.opponentName.slice(0, 3).toUpperCase() : ourTeamShort}
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-medium text-[11px]">
+                    <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>{nextMatch.date}</span>
+                  </span>
+                  {nextMatch.scheduled_time && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#152a40] px-2.5 py-0.5 rounded-full border border-slate-300 dark:border-[#223d5d]">
+                        <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                        <span>
+                          {fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m
+                        </span>
                       </span>
-                    )}
-                    {nextMatch.isHome === false && onOpenTeamModal && (
-                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[7px] font-bold text-white uppercase">Edit</span>
-                      </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* METADATA (LOCATION & TIME COUNTDOWN) */}
-              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0 flex-wrap justify-center sm:justify-start">
-                <span className="flex items-center gap-1 font-medium text-[11px]">
-                  <MapPin className="w-3.5 h-3.5 text-[#ff0046] shrink-0" />
-                  <span className="truncate max-w-[140px]">{formatMatchPitch(nextMatch.location || nextMatch.venue, true) || nextMatch.location || 'TBD'}</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1 font-medium text-[11px]">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span>{nextMatch.date}</span>
-                </span>
-                {nextMatch.scheduled_time && (
-                  <>
-                    <span>•</span>
-                    <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-[#ff0046] bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
-                      <Clock className="w-3 h-3 text-[#ff0046]" />
-                      <span>
-                        {fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m
-                      </span>
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex items-center gap-2.5 shrink-0 w-full justify-center lg:justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-200/60 dark:border-slate-800">
+              {/* ACTION BUTTONS: UNIFORM COLOR, VISIBLE TOP BORDER, EQUAL WIDTHS */}
+              <div className="pt-4 border-t-2 border-slate-200 dark:border-[#1d334d] grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
                 <button
                   type="button"
                   onClick={() => onNavigateView('TACTICS')}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[#ff0046] hover:bg-[#e0003c] text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-xs whitespace-nowrap active:scale-95"
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
                 >
-                  <Flame className="w-3.5 h-3.5" />
+                  <Users className="w-3.5 h-3.5" />
                   <span>Configure Match Squad</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onNavigateView('STANDINGS')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#152a40] bg-white dark:bg-[#0e1c2b] transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
                 >
-                  <Calendar className="w-3 h-3 text-blue-500" />
-                  <span>Fixtures</span>
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Fixtures & Standings</span>
                 </button>
 
-                {onOpenMatchEventsModal && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenMatchEventsModal()}
-                    className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 bg-emerald-500/5 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-2xs"
-                  >
-                    <Trophy className="w-3 h-3 text-emerald-500" />
-                    <span>Past Events</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Update Match Events</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -388,62 +418,10 @@ export const Homepage: React.FC<HomepageProps> = ({
               <span className="text-[11px] text-slate-400">Fixtures assigned by the league will appear here automatically.</span>
             </div>
           )}
-
-          {/* OFFICIAL LINESMAN DUTY SUB-BLOCK */}
-          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/70 dark:border-[#1a2e45] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-                <Flag className="w-4 h-4" />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-500/20">
-                    Official Linesman Duty
-                  </span>
-                  {nextLinesmanMatch && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
-                      {nextLinesmanMatch.role} • MD {nextLinesmanMatch.matchday || 1}
-                    </span>
-                  )}
-                </div>
-
-                {nextLinesmanMatch ? (
-                  <div className="flex items-center gap-2 mt-1 truncate">
-                    <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                      {nextLinesmanMatch.homeTeamName} <span className="text-slate-400 font-normal text-xs">vs</span> {nextLinesmanMatch.awayTeamName}
-                    </span>
-                    <span className="text-slate-400 font-normal text-[11px] shrink-0">
-                      • {nextLinesmanMatch.pitch} • {nextLinesmanMatch.time}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                    No linesman duties currently scheduled for your team.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Linesman Action Button */}
-            <button
-              type="button"
-              onClick={() => setShowLinesmanModal(true)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10 bg-white dark:bg-[#0e1c2b] transition-all cursor-pointer flex items-center gap-1.5 shrink-0 self-end sm:self-auto shadow-2xs"
-            >
-              <span>All Linesman Matches</span>
-              {linesmanMatches.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-cyan-500 text-white text-[9px] font-bold">
-                  {linesmanMatches.length}
-                </span>
-              )}
-              <ArrowRight className="w-3 h-3 ml-0.5" />
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* 2. SECTION: COACH COMMAND CENTER (SINGLE HOUSING CARD) */}
+      {/* 2. SECTION: COACH COMMAND CENTER (WITH SEQUENTIAL GUIDED RED DOT) */}
       <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
 
@@ -467,9 +445,15 @@ export const Homepage: React.FC<HomepageProps> = ({
             {/* Button 1: Upload Player Kits */}
             <button
               type="button"
-              onClick={() => onNavigateView('ROSTER')}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              onClick={() => onNavigateView('KITS')}
+              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
+              {activeCommandDot === 'kits' && (
+                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
+                </span>
+              )}
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Shirt className="w-4 h-4" />
               </div>
@@ -487,8 +471,14 @@ export const Homepage: React.FC<HomepageProps> = ({
             <button
               type="button"
               onClick={() => onNavigateView('TACTICS')}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
+              {activeCommandDot === 'squad' && (
+                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
+                </span>
+              )}
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Users className="w-4 h-4" />
               </div>
@@ -506,8 +496,14 @@ export const Homepage: React.FC<HomepageProps> = ({
             <button
               type="button"
               onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
             >
+              {activeCommandDot === 'events' && (
+                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
+                </span>
+              )}
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Trophy className="w-4 h-4" />
               </div>
@@ -1019,92 +1015,6 @@ export const Homepage: React.FC<HomepageProps> = ({
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* ALL LINESMAN GAMES POPUP MODAL (GOOGLE FORMS STYLE) */}
-      {showLinesmanModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowLinesmanModal(false)}
-        >
-          <div
-            className="w-full max-w-2xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1a2e45] pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                  <Flag className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-900 dark:text-white">
-                  Linesman Match Allocations ({linesmanMatches.length})
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowLinesmanModal(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#152a40] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {linesmanMatches.length === 0 ? (
-                <div className="text-center py-10 text-xs text-slate-400">
-                  No linesman duties allocated.
-                </div>
-              ) : (
-                linesmanMatches.map((lm, idx) => (
-                  <div
-                    key={lm.id || idx}
-                    className="p-4 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/60 dark:border-[#1a2e45] space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20">
-                          {lm.role}
-                        </span>
-                        <span className="font-medium text-slate-500 dark:text-slate-400 text-[10px]">
-                          MD {lm.matchday || 1} • {lm.league}
-                        </span>
-                      </div>
-                      <span className="font-mono text-slate-400 text-[10px]">{lm.dateFormatted}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between py-1">
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
-                        {lm.homeTeamName}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400 px-3">VS</span>
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate text-right">
-                        {lm.awayTeamName}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/60 dark:border-[#1a2e45] pt-2">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#ff0046]" />
-                        {lm.pitch}
-                      </span>
-                      <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{lm.time}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-[#1a2e45] flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowLinesmanModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#14263b] text-slate-700 dark:text-slate-300 font-semibold text-xs cursor-pointer hover:bg-slate-200 dark:hover:bg-[#1a334f] transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

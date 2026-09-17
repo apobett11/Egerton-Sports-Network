@@ -15,23 +15,23 @@ test.describe('Coach Settings & Team Logo Popup Verification', () => {
 
     // 2. Verify Coach Team Info Modal appears
     await expect(page.locator('text=Team & Coach Identity')).toBeVisible();
-    await expect(page.locator('text=Team name and squad roster are locked by league governance')).toBeVisible();
 
-    // 3. Verify Team Name is locked / protected
+    // 3. Verify Team Details Card exists and Team Name is locked / protected
+    await expect(page.getByRole('heading', { name: 'Team Details' })).toBeVisible();
     const teamNameLocked = page.locator('text=Team Name (Locked)');
     await expect(teamNameLocked).toBeVisible();
     await expect(page.locator('text=Protected')).toBeVisible();
 
-    // 4. Verify Squad Roster is locked
-    const rosterLocked = page.locator('text=Squad Roster (Locked)');
-    await expect(rosterLocked).toBeVisible();
+    // 4. Verify Squad Roster is removed from the popup (as requested)
+    await expect(page.locator('text=Squad Roster (Locked)')).not.toBeVisible();
 
-    // 5. Verify Team Crest / Logo inputs
+    // 5. Verify Team Crest / Logo upload button exists and direct URL input is removed
     await expect(page.locator('button:has-text("Upload Logo Image")')).toBeVisible();
     const logoUrlInput = page.locator('input[placeholder*="example.com/logo.png"]');
-    await expect(logoUrlInput).toBeVisible();
+    await expect(logoUrlInput).not.toBeVisible();
 
-    // 6. Verify Coach Email input
+    // 6. Verify Coach Details Card and inputs
+    await expect(page.getByRole('heading', { name: 'Coach Details' })).toBeVisible();
     const coachEmailInput = page.locator('input[placeholder="coach@egerton.ac.ke"]');
     await expect(coachEmailInput).toBeVisible();
 
@@ -88,8 +88,8 @@ test.describe('Coach Settings & Team Logo Popup Verification', () => {
     await page.locator('button[aria-label="Close"]').click();
     await expect(page.locator('text=Team & Coach Identity')).not.toBeVisible();
 
-    // 2. Navigate to Roster View
-    const rosterNavBtn = page.locator('button:has-text("Players Directory")').or(page.locator('button:has-text("Upload Player Kits")')).first();
+    // 2. Navigate to Roster View (Players)
+    const rosterNavBtn = page.locator('button:has-text("PLAYERS & KITS")').first();
     await rosterNavBtn.click();
 
     // Verify Athlete Profile Confirmation & Intake is compact with no subtitle explanation
@@ -117,5 +117,49 @@ test.describe('Coach Settings & Team Logo Popup Verification', () => {
     await expect(page.locator('text=Player Details & Status')).not.toBeVisible();
 
     console.log('✓ Verified: Command Center buttons and Roster list-style thin cards with unified dropdowns pass!');
+  });
+
+  test('Verifies Command Center sequential red dot progression, Kits 2-column layout, and Back Button safety', async ({ page }) => {
+    // Clear progression markers
+    await page.addInitScript(() => {
+      localStorage.removeItem('coach_kits_completed');
+      localStorage.removeItem('coach_squad_completed');
+      localStorage.removeItem('coach_events_completed');
+    });
+
+    await page.goto('/coach');
+    await expect(page.locator('text=HEAD COACH').first()).toBeVisible({ timeout: 15000 });
+
+    // 1. Verify Red Dot initially on "Upload Player Kits"
+    const uploadKitsBtn = page.locator('button:has-text("Upload Player Kits")');
+    await expect(uploadKitsBtn).toBeVisible();
+    await expect(uploadKitsBtn.locator('.bg-\\[\\#ff0046\\]').first()).toBeVisible();
+
+    // 2. Click "Upload Player Kits" - should navigate to Kits section
+    await uploadKitsBtn.click();
+    await expect(page.locator('text=Official Team Kits')).toBeVisible({ timeout: 10000 });
+
+    // 3. Verify Kits are 2 side by side and default empty with "Upload Next" on Home kit
+    await expect(page.locator('text=Home Kit')).toBeVisible();
+    await expect(page.locator('text=Upload Next')).toBeVisible();
+
+    // 4. Verify Next Match card has equal width buttons and no linesman card
+    const overviewNav = page.locator('button:has-text("Overview")').first();
+    await overviewNav.click();
+    await expect(page.locator('text=Next Matchday Focus')).toBeVisible();
+    await expect(page.locator('text=Official Linesman Duty')).not.toBeVisible();
+
+    // 5. Back Button Safety Test: Hitting back from a subview returns to DASHBOARD and never logs out
+    const standingsNav = page.locator('button:has-text("TABLE & FIXTURES")').first();
+    await standingsNav.click();
+    await expect(page.locator('text=Table & Fixtures Desk')).toBeVisible({ timeout: 10000 });
+
+    // Hit browser back button
+    await page.goBack();
+    // Verify we remain on coach dashboard (on Overview) and not logged out
+    await expect(page.locator('text=HEAD COACH').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Next Matchday Focus')).toBeVisible();
+
+    console.log('✓ Verified: Command Center progression, Kits layout, and Back Button safety pass!');
   });
 });

@@ -186,14 +186,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         if (existing.goals.length > 0) {
           setGoals(existing.goals);
         } else {
-          // Prefill default slots matching the official final score
+          // Prefill default slots matching the official final score (unselected initially)
           const initialSlots: CoachGoalEvent[] = [];
           for (let i = 0; i < matchGoalsCount; i++) {
             initialSlots.push({
               playerId: '',
               assistPlayerId: '',
               minute: Math.min(90, 15 + i * 25),
-              goalType: 'regular',
+              goalType: '' as any,
             });
           }
           setGoals(initialSlots);
@@ -319,6 +319,13 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         // Mark as recorded
         setIsAlreadyRecorded(true);
         setRecordedFixtureIds((prev) => Array.from(new Set([...prev, activeMatch.id])));
+
+        try {
+          localStorage.setItem('coach_events_completed', 'true');
+          window.dispatchEvent(new Event('coach_progression_updated'));
+        } catch {
+          // Ignore
+        }
 
         if (onShowToast) {
           onShowToast('Match scorers and events recorded successfully!');
@@ -511,10 +518,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 </button>
                 <div>
                   <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Select Played Match
+                    Select the match to update the details
                   </h2>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Choose from your team&apos;s played matches (List of {playedMatchesList.length})
+                    You will be updating the details of your team.
                   </p>
                 </div>
               </div>
@@ -726,29 +733,6 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     </span>
                   </div>
                 </div>
-
-                {/* Match Switcher Dropdown (Supports keyboard and test automation) */}
-                {pastMatches.length > 1 && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-[#1a2e45]/60">
-                    <select
-                      value={currentMatchId}
-                      onChange={(e) => setCurrentMatchId(e.target.value)}
-                      disabled={isLoadingExisting || isSaving}
-                      className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60"
-                    >
-                      {pastMatches.map((m) => {
-                        const homeTxt = m.homeTeamName || (m.isHome ? currentClubName : m.opponentName);
-                        const awayTxt = m.awayTeamName || (!m.isHome ? currentClubName : m.opponentName);
-                        const scoreTxt = m.score || `${m.scoreHome ?? 0} - ${m.scoreAway ?? 0}`;
-                        return (
-                          <option key={m.id} value={m.id}>
-                            {homeTxt} {scoreTxt} {awayTxt} • ({m.date})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
               </div>
 
               {/* Locked Warning Banner */}
@@ -799,12 +783,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     </div>
                   )}
 
-                  {/* GOAL CARDS WITH GENEROUS SPACING */}
+                  {/* GOAL CARDS WITH GENEROUS SPACING & STEP-BY-STEP HIGHLIGHT BORDERS */}
                   {goals.map((goal, idx) => {
                     const isSolo = goal.goalType === 'solo';
                     const isFreekick = goal.goalType === 'freekick';
                     const isPenalty = goal.goalType === 'penalty';
-                    const isRegular = !isSolo && !isFreekick && !isPenalty;
+                    const isRegular = goal.goalType === 'regular';
+                    const hasScorer = Boolean(goal.playerId);
+                    const hasGoalType = Boolean(goal.goalType);
 
                     return (
                       <div key={idx} className="relative">
@@ -814,7 +800,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         </div>
 
                         {/* Goal Item Card */}
-                        <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/90 dark:border-[#1a2e45] rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs">
+                        <div
+                          className={`bg-slate-50 dark:bg-[#112236] border rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xs transition-all ${
+                            !hasScorer
+                              ? 'border-emerald-500/70 dark:border-emerald-500/60 ring-1 ring-emerald-500/20'
+                              : !hasGoalType
+                              ? 'border-blue-500/70 dark:border-blue-500/60 ring-1 ring-blue-500/20'
+                              : 'border-slate-200/90 dark:border-[#1a2e45]'
+                          }`}
+                        >
                           <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-[#1a2e45] pb-2.5">
                             <div className="flex items-center gap-2">
                               <span className="text-base">⚽</span>
@@ -831,15 +825,20 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             </span>
                           </div>
 
-                          {/* Scorer Selection */}
+                          {/* 1. Scorer Selection (Step 1 with guide border) */}
                           <div className="space-y-1.5">
                             <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                              <span>
-                                Goal Scorer <span className="text-[#ff0046]">*</span>
+                              <span className="flex items-center gap-1.5">
+                                <span>Goal Scorer</span>
+                                <span className="text-[#ff0046]">*</span>
                               </span>
-                              {goal.playerId && (
+                              {hasScorer ? (
                                 <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" /> Selected
+                                  <CheckCircle2 className="w-3 h-3" /> Scorer Selected
+                                </span>
+                              ) : (
+                                <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 animate-pulse">
+                                  Step 1: Choose Scorer
                                 </span>
                               )}
                             </label>
@@ -847,10 +846,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               value={goal.playerId}
                               onChange={(e) => handleUpdateGoal(idx, 'playerId', e.target.value)}
                               disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                              className={`w-full bg-white dark:bg-[#0e1c2b] border text-xs font-bold rounded-xl px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                                !goal.playerId && validationError
-                                  ? 'border-rose-500 focus:border-rose-400'
-                                  : 'border-slate-200 dark:border-[#1a2e45] focus:border-[#ff0046]'
+                              className={`w-full bg-white dark:bg-[#0e1c2b] text-xs font-bold rounded-xl px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                                !hasScorer
+                                  ? 'border-2 border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20'
+                                  : 'border border-slate-200 dark:border-[#1a2e45]'
                               }`}
                             >
                               <option value="">-- Select Goal Scorer --</option>
@@ -862,22 +861,40 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             </select>
                           </div>
 
-                          {/* Assist & Goal Type (Inline Options) */}
-                          <div className="space-y-2 pt-1 border-t border-slate-200/50 dark:border-white/5">
-                            <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
-                              Assist / Goal Type
-                            </label>
+                          {/* 2. Assist & Goal Type (Step 2: unlocked & highlighted when scorer chosen) */}
+                          <div
+                            className={`space-y-2.5 pt-2 border-t border-slate-200/60 dark:border-white/5 rounded-xl transition-all ${
+                              hasScorer && !hasGoalType
+                                ? 'p-2.5 border-2 border-blue-500/60 ring-2 ring-blue-500/20 bg-blue-50/30 dark:bg-blue-950/20'
+                                : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+                                Goal Details &amp; Assist
+                              </label>
+                              {hasScorer && !hasGoalType && (
+                                <span className="text-blue-600 dark:text-blue-400 text-[10px] font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">
+                                  Step 2: Choose Goal Type
+                                </span>
+                              )}
+                              {hasGoalType && (
+                                <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" /> Type Selected
+                                </span>
+                              )}
+                            </div>
 
-                            {/* Inline Clickable Options: Solo, Free Kick, Penalty, Regular Assist */}
+                            {/* Inline Clickable Options: Solo, Free Kick, Penalty, Regular Assist (None active by default) */}
                             <div className="flex flex-wrap gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'regular')}
                                 disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isRegular
-                                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-300'
-                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                                 }`}
                               >
                                 🤝 Assisted Goal
@@ -887,10 +904,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'solo')}
                                 disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isSolo
-                                    ? 'bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300'
-                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300 ring-2 ring-blue-500/20'
+                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                                 }`}
                               >
                                 👟 Solo Goal
@@ -900,10 +917,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'freekick')}
                                 disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isFreekick
-                                    ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-300'
-                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-300 ring-2 ring-purple-500/20'
+                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                                 }`}
                               >
                                 🎯 Free Kick
@@ -913,18 +930,21 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'penalty')}
                                 disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isPenalty
-                                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-300'
-                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-300 ring-2 ring-rose-500/20'
+                                    : 'bg-white dark:bg-[#0e1c2b] border-slate-200 dark:border-[#1a2e45] text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                                 }`}
                               >
                                 ⚽ Penalty
                               </button>
                             </div>
 
-                            {/* Assist Dropdown */}
+                            {/* Assist Dropdown (Highlighted if Assisted Goal selected) */}
                             <div className="pt-1">
+                              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+                                {isRegular ? 'Select Assist Provider:' : 'Assist Provider (Optional / Solo):'}
+                              </label>
                               <select
                                 value={goal.assistPlayerId || ''}
                                 onChange={(e) => {
@@ -933,7 +953,11 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                   handleUpdateGoal(idx, 'goalType', val ? 'regular' : goal.goalType || 'regular');
                                 }}
                                 disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-xs font-medium rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-[#ff0046] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                className={`w-full bg-white dark:bg-[#0e1c2b] text-xs font-medium rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                                  isRegular && !goal.assistPlayerId
+                                    ? 'border-2 border-emerald-500/70 ring-2 ring-emerald-500/20'
+                                    : 'border border-slate-200 dark:border-[#1a2e45]'
+                                }`}
                               >
                                 <option value="">None (Solo Goal / Free Kick / Direct)</option>
                                 {sortedRoster

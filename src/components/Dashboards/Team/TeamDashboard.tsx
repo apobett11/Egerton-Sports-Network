@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Zap,
   Newspaper,
@@ -101,6 +101,27 @@ export const TeamDashboard: React.FC = () => {
   const [selectedMatchForEvents, setSelectedMatchForEvents] = useState<string | undefined>(undefined);
   const [isTeamInfoModalOpen, setIsTeamInfoModalOpen] = useState<boolean>(false);
 
+  // Back button protection: Ensure device/browser back button never logs out the coach.
+  useEffect(() => {
+    // Push an anchor state so hitting back always stays inside Coach Dashboard
+    window.history.pushState({ coachDashboard: true, view: activeView }, '', window.location.href);
+
+    const handlePopState = () => {
+      if (activeView !== 'DASHBOARD') {
+        setActiveView('DASHBOARD');
+        window.history.pushState({ coachDashboard: true, view: 'DASHBOARD' }, '', window.location.href);
+      } else {
+        // Retain on DASHBOARD
+        window.history.pushState({ coachDashboard: true, view: 'DASHBOARD' }, '', window.location.href);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [activeView, setActiveView]);
+
   const handleOpenMatchEventsModal = (matchId?: string) => {
     setSelectedMatchForEvents(matchId);
     setShowMatchEventsModal(true);
@@ -188,7 +209,7 @@ export const TeamDashboard: React.FC = () => {
           )}
 
           {/* PAGE 3: PLAYERS LIST & KITS (UNIFIED) */}
-          {activeView === 'ROSTER' && (
+          {(activeView === 'ROSTER' || activeView === 'KITS') && (
             <RosterListView
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -204,6 +225,7 @@ export const TeamDashboard: React.FC = () => {
               teamId={teamId}
               teamName={teamInfo?.name}
               onShowToast={showToast}
+              initialSubMenu={activeView === 'KITS' ? 'kits' : 'players'}
             />
           )}
 

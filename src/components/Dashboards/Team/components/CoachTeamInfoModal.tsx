@@ -213,119 +213,106 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: Immutable Team Identity (Read Only) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* CARD 1: TEAM DETAILS CARD (GOOGLE FORMS STYLE) */}
+          <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-[#1a2e45] pb-2.5">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Team Details
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Step 1 of 2</span>
+            </div>
+
+            {/* Team Name (Locked) */}
             <div>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
                 <Lock className="w-3 h-3 text-slate-400" />
                 <span>Team Name (Locked)</span>
               </label>
-              <div className="px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-between">
+              <div className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white font-bold text-xs flex items-center justify-between shadow-2xs">
                 <span className="truncate">{teamName}</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-[#1a2e45] text-slate-500 dark:text-slate-400 uppercase">
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#16273b] text-slate-500 dark:text-slate-400 uppercase border border-slate-200 dark:border-white/5">
                   Protected
                 </span>
               </div>
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                <Users className="w-3 h-3 text-slate-400" />
-                <span>Squad Roster (Locked)</span>
+            {/* Team Crest Upload */}
+            <div className="space-y-2 pt-1">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                Team Crest / Logo
               </label>
-              <div className="px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-between">
-                <span>{rosterCount} Registered Players</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">
-                  Active
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* Section 2: Team Logo */}
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-[#16273b]">
-            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider block">
-              Team Crest / Logo
-            </label>
-
-            <div className="flex items-center gap-4">
-              {/* Logo Preview */}
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-[#132438] border-2 border-slate-200 dark:border-white/10 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-xs relative group">
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt={teamName}
-                    className="w-full h-full object-contain rounded-xl"
-                  />
-                ) : (
-                  <span className="text-sm font-black text-slate-400 dark:text-slate-500">
-                    {getInitials(teamName)}
-                  </span>
-                )}
-              </div>
-
-              {/* Upload & Actions */}
-              <div className="flex-1 space-y-1.5">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept="image/*"
-                  className="hidden"
-                />
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#152a40] dark:hover:bg-[#1c3857] text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200/80 dark:border-white/10 shadow-2xs"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Logo Image</span>
-                  </button>
-
-                  {selectedFile && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[140px]">
-                      ✓ {selectedFile.name}
+              <div className="flex items-center gap-4 bg-white dark:bg-[#0e1c2b] p-3 rounded-xl border border-slate-200/80 dark:border-[#1a2e45]">
+                {/* Logo Preview */}
+                <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-[#152a40] border border-slate-200 dark:border-white/10 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-2xs">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt={teamName}
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                  ) : (
+                    <span className="text-xs font-black text-slate-400 dark:text-slate-500">
+                      {getInitials(teamName)}
                     </span>
                   )}
                 </div>
 
-                <p className="text-[10px] text-slate-400">
-                  PNG, JPG, SVG or WEBP. File upload will automatically save to cloud storage.
-                </p>
-              </div>
-            </div>
+                {/* Upload Action */}
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    className="hidden"
+                  />
 
-            {/* Direct Image URL input */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1 flex items-center gap-1">
-                <ImageIcon className="w-3 h-3 text-slate-400" />
-                <span>Or Image URL</span>
-              </label>
-              <input
-                type="url"
-                value={logoUrl}
-                onChange={(e) => {
-                  setLogoUrl(e.target.value);
-                  setPreviewUrl(e.target.value);
-                }}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-              />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Logo Image</span>
+                    </button>
+
+                    {selectedFile && (
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[160px] flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span>{selectedFile.name}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-slate-400">
+                    PNG, JPG, SVG or WEBP. Uploaded image will be stored directly in the database.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Section 3: Coach Account Credentials */}
-          <div className="space-y-3.5 pt-3 border-t border-slate-100 dark:border-[#16273b]">
-            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              Coach Login Credentials
-            </h3>
+          {/* CARD 2: COACH DETAILS CARD (GOOGLE FORMS STYLE) */}
+          <div className="bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-[#1a2e45] pb-2.5">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                  Coach Details
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Step 2 of 2</span>
+            </div>
 
             {/* Coach Email */}
             <div>
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-slate-400" />
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                <Mail className="w-3 h-3 text-slate-400" />
                 <span>Coach Account Email</span>
               </label>
               <input
@@ -334,15 +321,15 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="coach@egerton.ac.ke"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
               />
             </div>
 
-            {/* Coach Password */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Coach Password Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                  <KeyRound className="w-3 h-3 text-slate-400" />
                   <span>New Password</span>
                 </label>
                 <div className="relative">
@@ -351,7 +338,7 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Leave blank to keep current"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
                   />
                   <button
                     type="button"
@@ -364,23 +351,25 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                  <KeyRound className="w-3 h-3 text-slate-400" />
                   <span>Confirm Password</span>
                 </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#132438] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
+                  />
+                </div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400">
-              Only enter a password if you wish to change your coach login credentials.
-            </p>
           </div>
+          <p className="text-[10px] text-slate-400">
+            Only enter a password if you wish to change your coach login credentials.
+          </p>
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-[#16273b]">

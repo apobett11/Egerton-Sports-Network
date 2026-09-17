@@ -603,6 +603,10 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         });
       }
       setShowCommitModal(false);
+      try {
+        localStorage.setItem('coach_squad_completed', 'true');
+        window.dispatchEvent(new Event('coach_progression_updated'));
+      } catch {}
       notify('Matchday squad saved and sent to fans in fixtures page!');
     } catch {
       notify('Lineup saved to local session.');
@@ -670,8 +674,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       {/* ========================================================================= */}
       <main className={`relative z-10 flex-1 flex flex-col items-center ${activeStep === 5 ? 'overflow-y-auto justify-start p-2 sm:p-4' : 'overflow-hidden justify-center p-2 sm:p-4'}`}>
         {/* STEPS OUTSIDE THE CARD, ABOVE STEP HEADING WITH CLEAR FULL WORDINGS */}
-        {activeStep !== 5 && (
-          <div className="w-full max-w-4xl px-2 sm:px-0 mb-3 shrink-0">
+        <div className="w-full max-w-4xl px-2 sm:px-0 mb-3 shrink-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 w-full">
               {[
                 { step: 1, label: 'Choose Formation' },
@@ -702,7 +705,6 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
               })}
             </div>
           </div>
-        )}
 
         {/* STEPS 1 TO 4 CONTAINER: Structured Card with Internal Scroll & Uniform Blue Confirm Button */}
         {activeStep !== 5 && (
@@ -954,10 +956,26 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
         {/* ========================================================================= */}
         {activeStep === 5 && (
           <div className="w-full max-w-5xl mx-auto flex flex-col items-center px-3 sm:px-6 py-2 pb-28 animate-in fade-in zoom-in-95 duration-200">
-            {/* LATERAL MIDDLE HEADER: Team Name & Formation only */}
-            <div className="flex flex-col items-center justify-center text-center my-2 shrink-0">
-              <h2 className="text-base sm:text-xl font-black text-white tracking-wide">{teamName}</h2>
-              <span className="text-xs font-bold text-blue-400 uppercase tracking-widest mt-0.5">{formation}</span>
+            {/* LATERAL MIDDLE HEADER: Team Name, Formation & Previous Step Navigation */}
+            <div className="w-full max-w-2xl mx-auto flex items-center justify-between my-2 shrink-0 px-1">
+              <button
+                type="button"
+                onClick={() => setActiveStep(4)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-bold text-slate-300 hover:text-white border border-slate-700/80 transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Go back to Step 4: In-Match Roles"
+              >
+                <ChevronLeft className="w-4 h-4 text-blue-400" />
+                <span>Previous Step</span>
+              </button>
+
+              <div className="flex flex-col items-center justify-center text-center">
+                <h2 className="text-base sm:text-xl font-black text-white tracking-wide">{teamName}</h2>
+                <span className="text-xs font-bold text-blue-400 uppercase tracking-widest mt-0.5">{formation}</span>
+              </div>
+
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
+                Step 5 of 5
+              </span>
             </div>
 
             {/* DIRECT POSITION SELECTION DIRECTIVE BANNER ON TOP OF THE SIMULATION */}
@@ -1133,9 +1151,19 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
               </div>
             </div>
 
-            {/* SAVE AND COMMIT SQUAD BUTTON AT THE BOTTOM RIGHT OF THE SCREEN */}
-            <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
+            {/* BOTTOM ACTION BAR: PREVIOUS BUTTON + SAVE AND COMMIT SQUAD */}
+            <div className="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-6 z-40 flex items-center justify-between sm:justify-end gap-3 pointer-events-auto">
               <button
+                type="button"
+                onClick={() => setActiveStep(4)}
+                className="flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-slate-900/95 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs sm:text-sm shadow-2xl border border-slate-700/80 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-md"
+              >
+                <ChevronLeft className="w-4 h-4 text-blue-400" />
+                <span>Previous Step (Roles)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleCommitOfficialLineup}
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-sm shadow-2xl shadow-blue-900/80 border border-blue-400/40 transition-all duration-200 active:scale-95 hover:scale-105 cursor-pointer"
               >

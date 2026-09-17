@@ -47,6 +47,7 @@ interface RosterListViewProps {
   teamName?: string;
   onShowToast?: (msg: string) => void;
   onDeletePlayer?: (playerId: string) => void;
+  initialSubMenu?: 'players' | 'kits';
 }
 
 type SortCriterion = 'rating' | 'number' | 'name' | 'position' | 'status';
@@ -89,11 +90,18 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   teamName = 'Your Team',
   onShowToast,
   onDeletePlayer,
+  initialSubMenu = 'players',
 }) => {
   const isCoach = currentRole === 'COACH' || (currentRole as string).toLowerCase() === 'coach';
 
   // Sub-main menus: Players Directory vs Team Kits
-  const [activeSubMenu, setActiveSubMenu] = useState<'players' | 'kits'>('players');
+  const [activeSubMenu, setActiveSubMenu] = useState<'players' | 'kits'>(initialSubMenu);
+
+  useEffect(() => {
+    if (initialSubMenu) {
+      setActiveSubMenu(initialSubMenu);
+    }
+  }, [initialSubMenu]);
 
   // Sorting state for players
   const [sortBy, setSortBy] = useState<SortCriterion>('rating');
@@ -111,62 +119,78 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
   const playerFileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedPlayerForImage, setSelectedPlayerForImage] = useState<string | null>(null);
 
-  // Team Kits State (Exactly 4 cards: Home, Away, Third, GK)
+  // Team Kits State (Exactly 4 cards: Home, Away, Third, GK) - Default empty without coach upload
   const KITS_CACHE_KEY = `egerton_kits_${teamId}`;
   const [kits, setKits] = useState<KitItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem(KITS_CACHE_KEY);
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const parsed: KitItem[] = JSON.parse(cached);
+          return parsed.map((item) => ({
+            ...item,
+            // Clean out legacy unsplash mock photos if present
+            imageUrl: item.imageUrl && !item.imageUrl.includes('unsplash.com') ? item.imageUrl : undefined,
+          }));
+        }
       } catch (e) {
         console.warn('Could not read kits cache:', e);
       }
     }
-    // Fallback to initialKits mapped to exactly 4 cards
-    const initialMap: Record<string, KitConfig> = {};
-    (initialKits as KitConfig[]).forEach((k) => {
-      initialMap[k.id] = k;
-    });
-
+    // Default empty kits - without upload, they are default empty
     return [
       {
         id: 'home',
         typeLabel: 'Home Kit',
-        colorName: initialMap.home?.name || 'Egerton Royal Gold',
-        imageUrl: initialMap.home?.imageUrl || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&auto=format&fit=crop&q=80',
-        primaryColor: initialMap.home?.primaryBg || '#D4AF37',
-        stripeColor: initialMap.home?.stripeColor || '#0F172A',
-        accentColor: initialMap.home?.accentColor || '#FFFFFF',
+        colorName: 'Home Colors',
+        imageUrl: undefined,
+        primaryColor: '#00b04f',
+        stripeColor: '#0F172A',
+        accentColor: '#FFFFFF',
       },
       {
         id: 'away',
         typeLabel: 'Away Kit',
-        colorName: initialMap.away?.name || 'Arctic Obsidian',
-        imageUrl: initialMap.away?.imageUrl || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=400&auto=format&fit=crop&q=80',
-        primaryColor: initialMap.away?.primaryBg || '#FFFFFF',
-        stripeColor: initialMap.away?.stripeColor || '#0F172A',
-        accentColor: initialMap.away?.accentColor || '#D4AF37',
+        colorName: 'Away Colors',
+        imageUrl: undefined,
+        primaryColor: '#FFFFFF',
+        stripeColor: '#0F172A',
+        accentColor: '#D4AF37',
       },
       {
         id: 'third',
         typeLabel: 'Third Kit',
-        colorName: initialMap.third?.name || 'Midnight Neon',
-        imageUrl: initialMap.third?.imageUrl || 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=400&auto=format&fit=crop&q=80',
-        primaryColor: initialMap.third?.primaryBg || '#0F172A',
-        stripeColor: initialMap.third?.stripeColor || null,
-        accentColor: initialMap.third?.accentColor || '#10B981',
+        colorName: 'Third Colors',
+        imageUrl: undefined,
+        primaryColor: '#0F172A',
+        stripeColor: null,
+        accentColor: '#10B981',
       },
       {
         id: 'gk',
         typeLabel: 'Goalkeeper Kit',
-        colorName: initialMap.gk?.name || 'Electric Coral',
-        imageUrl: initialMap.gk?.imageUrl || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&auto=format&fit=crop&q=80',
-        primaryColor: initialMap.gk?.primaryBg || '#F43F5E',
-        stripeColor: initialMap.gk?.stripeColor || null,
-        accentColor: initialMap.gk?.accentColor || '#FFFFFF',
+        colorName: 'Goalkeeper Colors',
+        imageUrl: undefined,
+        primaryColor: '#F43F5E',
+        stripeColor: null,
+        accentColor: '#FFFFFF',
       },
     ];
   });
+
+  // Guided kit sequence: Home -> Away -> Third -> Keeper
+  const activeGuidedKitId = useMemo<'home' | 'away' | 'third' | 'gk'>(() => {
+    const home = kits.find((k) => k.id === 'home');
+    const away = kits.find((k) => k.id === 'away');
+    const third = kits.find((k) => k.id === 'third');
+    const gk = kits.find((k) => k.id === 'gk');
+
+    if (!home?.imageUrl) return 'home';
+    if (!away?.imageUrl) return 'away';
+    if (!third?.imageUrl) return 'third';
+    if (!gk?.imageUrl) return 'gk';
+    return 'home';
+  }, [kits]);
 
   // Popup Modal state for editing a Kit
   const [editingKit, setEditingKit] = useState<KitItem | null>(null);
@@ -293,6 +317,13 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
       await saveTeamKitsConfig(teamId, supabaseKitsPayload);
     } catch (err) {
       console.warn('Sync kits error:', err);
+    }
+
+    try {
+      localStorage.setItem('coach_kits_completed', 'true');
+      window.dispatchEvent(new Event('coach_progression_updated'));
+    } catch {
+      // Ignore
     }
 
     if (onShowToast) onShowToast(`${editingKit.typeLabel} configured successfully!`);
@@ -743,146 +774,128 @@ export const RosterListView: React.FC<RosterListViewProps> = ({
 
           {/* CARD CONTENT */}
           <div className="p-4 sm:p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
               {kits.map((kit) => {
                 const hasPhoto = Boolean(kit.imageUrl);
                 const hasColorName = Boolean(kit.colorName);
                 const hasStripColors = Boolean(kit.primaryColor);
+                const isCurrentTarget = kit.id === activeGuidedKitId;
 
                 return (
                   <div
                     key={kit.id}
-                    onClick={() => handleOpenEditKit(kit)}
-                    className="bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-[#00b04f] dark:hover:border-[#00b04f] rounded-2xl p-4 shadow-xs hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between gap-4 group"
+                    className={`bg-slate-50/80 dark:bg-[#112236]/70 border-2 rounded-2xl p-4 shadow-xs transition-all flex flex-col justify-between gap-3.5 ${
+                      isCurrentTarget
+                        ? 'border-emerald-500 dark:border-emerald-400 ring-2 ring-emerald-500/20 shadow-md'
+                        : 'border-slate-200/80 dark:border-[#1a2e45]'
+                    }`}
                   >
                     <div className="space-y-3">
-                      {/* Header Row: Kit Type & Edit Prompt */}
+                      {/* Header Row: Kit Type & Status */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#00b04f]" />
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              hasPhoto ? 'bg-[#00b04f]' : isCurrentTarget ? 'bg-amber-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                          />
                           <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                             {kit.typeLabel}
                           </h3>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">
-                          {kit.id.toUpperCase()}
-                        </span>
-                      </div>
-
-                      {/* Strip color bar: ONLY SHOW IF SET */}
-                      {hasStripColors && (
-                        <div className="h-2 w-full rounded-full overflow-hidden flex shadow-inner">
-                          <div
-                            style={{ backgroundColor: kit.primaryColor }}
-                            className="h-full flex-1"
-                            title={`Primary: ${kit.primaryColor}`}
-                          />
-                          {kit.stripeColor && (
-                            <div
-                              style={{ backgroundColor: kit.stripeColor }}
-                              className="h-full w-4"
-                              title={`Stripe: ${kit.stripeColor}`}
-                            />
-                          )}
-                          {kit.accentColor && (
-                            <div
-                              style={{ backgroundColor: kit.accentColor }}
-                              className="h-full w-2"
-                              title={`Accent: ${kit.accentColor}`}
-                            />
-                          )}
-                        </div>
-                      )}
-
-                      {/* Photo: ONLY SHOW IF SET */}
-                      <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] flex items-center justify-center">
                         {hasPhoto ? (
-                          <img
-                            src={kit.imageUrl}
-                            alt={kit.typeLabel}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1.5 text-slate-400 p-4 text-center">
-                            <Shirt className="w-8 h-8 stroke-1" />
-                            <span className="text-[11px] font-semibold">No photo uploaded</span>
-                          </div>
-                        )}
-
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="px-3 py-1.5 rounded-full bg-white/90 text-slate-900 text-xs font-bold shadow-md">
-                            Click to Configure
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            <span>Uploaded</span>
                           </span>
-                        </div>
+                        ) : isCurrentTarget ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-[#ff0046] border border-rose-500/20 flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046]" />
+                            <span>Upload Next</span>
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200/70 dark:bg-slate-800 text-slate-400">
+                            Empty
+                          </span>
+                        )}
                       </div>
 
-                      {/* Color Name: ONLY SHOW IF SET */}
-                      {hasColorName && (
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Color Identity
-                          </span>
-                          <div className="text-xs font-black text-slate-800 dark:text-slate-100">
-                            {kit.colorName}
-                          </div>
+                      {/* Small Photo & Color Details Row (Side by side) */}
+                      <div className="flex items-center gap-3.5">
+                        {/* Small Photo Thumbnail */}
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] flex items-center justify-center shrink-0 shadow-2xs">
+                          {hasPhoto ? (
+                            <img
+                              src={kit.imageUrl}
+                              alt={kit.typeLabel}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-1 text-slate-400 text-center p-2">
+                              <Shirt className="w-6 h-6 stroke-1 text-slate-300 dark:text-slate-600" />
+                              <span className="text-[9px] font-medium leading-none">No photo</span>
+                            </div>
+                          )}
                         </div>
-                      )}
 
-                      {/* Strip Colors Palette: ONLY SHOW WHAT HAS BEEN SET */}
-                      {hasStripColors && (
-                        <div className="space-y-1 pt-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Strip Palette
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {kit.primaryColor && (
-                              <div className="flex items-center gap-1">
-                                <span
-                                  style={{ backgroundColor: kit.primaryColor }}
-                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
-                                />
-                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                  {kit.primaryColor}
-                                </span>
-                              </div>
-                            )}
-                            {kit.stripeColor && (
-                              <div className="flex items-center gap-1">
-                                <span
-                                  style={{ backgroundColor: kit.stripeColor }}
-                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
-                                />
-                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                  {kit.stripeColor}
-                                </span>
-                              </div>
-                            )}
-                            {kit.accentColor && (
-                              <div className="flex items-center gap-1">
-                                <span
-                                  style={{ backgroundColor: kit.accentColor }}
-                                  className="w-3.5 h-3.5 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
-                                />
-                                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                                  {kit.accentColor}
-                                </span>
-                              </div>
-                            )}
+                        {/* Color Identity & Palette */}
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Color Identity
+                            </span>
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                              {hasColorName ? kit.colorName : `${kit.typeLabel} Uniform`}
+                            </div>
                           </div>
+
+                          {/* Strip palette preview bar */}
+                          {hasStripColors && (
+                            <div className="space-y-1 pt-0.5">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                                Strip Colors
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                {kit.primaryColor && (
+                                  <span
+                                    style={{ backgroundColor: kit.primaryColor }}
+                                    className="w-4 h-4 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                    title={`Primary: ${kit.primaryColor}`}
+                                  />
+                                )}
+                                {kit.stripeColor && (
+                                  <span
+                                    style={{ backgroundColor: kit.stripeColor }}
+                                    className="w-4 h-4 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                    title={`Stripe: ${kit.stripeColor}`}
+                                  />
+                                )}
+                                {kit.accentColor && (
+                                  <span
+                                    style={{ backgroundColor: kit.accentColor }}
+                                    className="w-4 h-4 rounded-full border border-black/10 dark:border-white/20 shadow-2xs"
+                                    title={`Accent: ${kit.accentColor}`}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
 
+                    {/* Upload / Edit Button */}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditKit(kit);
-                      }}
-                      className="w-full py-2 bg-white dark:bg-[#112236] hover:bg-[#00b04f] hover:text-white dark:hover:bg-[#00b04f] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-[#1a2e45] hover:border-[#00b04f] text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={() => handleOpenEditKit(kit)}
+                      className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs active:scale-95 ${
+                        isCurrentTarget
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-500/40'
+                          : 'bg-white hover:bg-slate-100 dark:bg-[#14263b] dark:hover:bg-[#1a334f] text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10'
+                      }`}
                     >
-                      <Palette className="w-3.5 h-3.5" />
-                      <span>Customize Kit</span>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{hasPhoto ? 'Replace Photo' : 'Upload Kit Photo'}</span>
                     </button>
                   </div>
                 );
