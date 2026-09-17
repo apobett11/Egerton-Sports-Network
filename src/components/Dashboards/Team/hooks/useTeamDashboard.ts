@@ -127,11 +127,22 @@ export const useTeamDashboard = () => {
     setIsLoadingData(true);
     try {
       const coachUserId = user?.id || '';
-      const team = await fetchAuthenticatedUserTeam(coachUserId);
+      let team = await fetchAuthenticatedUserTeam(coachUserId);
       const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
 
-      setTeamInfo(team);
       setTeamId(resolvedTeamId);
+
+      // Hydrate logo from localStorage cache if DB record is missing logo_url
+      // This ensures the saved photo shows immediately even before a DB re-fetch completes
+      if (team && !team.logo_url) {
+        const cachedLogo = localStorage.getItem(`team_logo_${resolvedTeamId}`)
+          || localStorage.getItem(`team_logo_${teamId}`);
+        if (cachedLogo) {
+          team = { ...team, logo_url: cachedLogo };
+        }
+      }
+
+      setTeamInfo(team);
 
       if (team?.tactics_config?.formation) {
         setFormation(team.tactics_config.formation as FormationName);

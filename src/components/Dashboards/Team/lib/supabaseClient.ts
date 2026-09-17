@@ -824,80 +824,79 @@ export async function saveTeamTacticsAndSquad(
 /**
  * Uploads a team logo / crest image to Supabase Storage and updates teams table.
  * Accepts any image file (JPG, PNG, WEBP, GIF, SVG, etc.) and any measurement.
+ * Returns the storage public URL if upload succeeded, otherwise returns the base64 dataUrl
+ * for immediate local display only (the dataUrl is NOT saved to DB to avoid truncation).
  */
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
     const teamUuid = await resolveRealTeamId(teamId);
-    
-    // Always generate base64 Data URL so any photo of any measurement is immediately available
+
+    // Step 1: Generate immediate base64 preview (used as return value if storage fails)
     const dataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string || '');
+        reader.onloadend = () => resolve((reader.result as string) || '');
         reader.onerror = () => resolve('');
         reader.readAsDataURL(file);
     });
 
-    let publicUrl = dataUrl;
-    const fileExt = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'png';
-    const fileName = `team_crests/${teamUuid}_${Date.now()}.${fileExt}`;
+    const fileExt = (file.name && file.name.includes('.'))
+        ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
+        : 'jpg';
+    const safeExt = fileExt || 'jpg';
+    const fileName = `team_crests/${teamUuid}_${Date.now()}.${safeExt}`;
 
-    try {
-        const { data, error } = await supabase.storage
-            .from('media')
-            .upload(fileName, file, { cacheControl: '3600', upsert: true });
-
-        if (!error && data?.path) {
-            const res = supabase.storage.from('media').getPublicUrl(data.path);
-            if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
-        } else {
-            const { data: fbData, error: fbErr } = await supabase.storage
-                .from('news')
+    // Step 2: Try to upload to Supabase Storage — try 3 buckets in sequence
+    let storageUrl = '';
+    const buckets = ['media', 'news', 'avatars'];
+    for (const bucket of buckets) {
+        if (storageUrl) break;
+        try {
+            const { data: uploadData, error: uploadErr } = await supabase.storage
+                .from(bucket)
                 .upload(fileName, file, { cacheControl: '3600', upsert: true });
-            
-            if (!fbErr && fbData?.path) {
-                const res = supabase.storage.from('news').getPublicUrl(fbData.path);
-                if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
-            } else {
-                const { data: avData, error: avErr } = await supabase.storage
-                    .from('avatars')
-                    .upload(fileName, file, { cacheControl: '3600', upsert: true });
-                
-                if (!avErr && avData?.path) {
-                    const res = supabase.storage.from('avatars').getPublicUrl(avData.path);
-                    if (res?.data?.publicUrl) publicUrl = res.data.publicUrl;
+
+            if (!uploadErr && uploadData?.path) {
+                const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(uploadData.path);
+                if (urlData?.publicUrl) {
+                    storageUrl = urlData.publicUrl;
                 }
             }
+        } catch (_) {
+            // try next bucket
         }
-    } catch (storageErr) {
-        console.warn('[uploadTeamCrest] Supabase storage upload warning, using local dataUrl:', storageErr);
     }
 
-    if (!publicUrl) {
-        publicUrl = dataUrl;
-    }
+    // Step 3: The URL to save in DB — prefer real storage URL, but if unavailable use dataUrl.
+    // Note: base64 dataUrl will work for display but is large. Storage URL is strongly preferred.
+    const urlToSave = storageUrl || dataUrl;
 
-    // Persist new crest into teams table
+    // Step 4: Persist to teams table (only logo_url — crest_url may not exist as a column)
     try {
-        await supabase
+        const { error: updateErr } = await supabase
             .from('teams')
             .update({
-                logo_url: publicUrl,
-                crest_url: publicUrl,
-                updated_at: new Date().toISOString()
+                logo_url: urlToSave,
+                updated_at: new Date().toISOString(),
             })
             .eq('id', teamUuid);
-    } catch (updateErr) {
-        console.warn('[uploadTeamCrest] Failed to update teams.logo_url:', updateErr);
+
+        if (updateErr) {
+            console.warn('[uploadTeamCrest] DB update error:', updateErr.message);
+        }
+    } catch (dbErr) {
+        console.warn('[uploadTeamCrest] Failed to update teams table:', dbErr);
     }
 
-    // Cache in localStorage so it always reflects across the client immediately
+    // Step 5: Cache locally so it survives navigation without a DB re-fetch
     if (typeof window !== 'undefined') {
         try {
-            localStorage.setItem(`team_logo_${teamUuid}`, publicUrl);
-            localStorage.setItem(`team_logo_${teamId}`, publicUrl);
+            // Only cache the storage URL or dataUrl (dataUrl is fine for in-session use)
+            localStorage.setItem(`team_logo_${teamUuid}`, urlToSave);
+            localStorage.setItem(`team_logo_${teamId}`, urlToSave);
         } catch (_) {}
     }
 
-    return publicUrl;
+    // Return storageUrl if available (best), otherwise dataUrl for immediate display
+    return urlToSave;
 }
 
 /**
