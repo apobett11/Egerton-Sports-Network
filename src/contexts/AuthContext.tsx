@@ -342,12 +342,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setRole(cachedRole);
               setIsLoading(false);
             }
-            // Verify token validity in background — non-blocking
-            supabase.auth.getSession().then(({ data: { session } }) => {
-              if (!session && isMounted) {
-                logout(false);
-              }
-            }).catch(() => {});
+            // Token validity is handled automatically by onAuthStateChange below.
+            // Do NOT call logout() here — a null session may just mean the token
+            // needs a refresh, and forcing signOut() would mass-log out all users
+            // and hammer the auth service into an unhealthy state.
             return;
           } catch {
             // Cache parse failed — fall through to full getSession
@@ -461,7 +459,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [syncSessionUptimeToDatabase, logout]);
+  }, [logout]);
 
   const login = async (email: string, pass: string): Promise<{ error: string | null; role: UserRole; profile: UserProfile | null }> => {
     setIsLoading(true);
@@ -488,12 +486,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const [fetchedProf] = await Promise.all([
           fetchProfile(data.user.id),
           // Fire-and-forget: don't block login on this DB write
-          Promise.resolve(
-            supabase
-              .from('profiles')
-              .update({ updated_at: new Date().toISOString() })
-              .eq('id', data.user.id)
-          ).then(() => {}).catch(() => {}),
+          (async () => {
+            try {
+              await supabase
+                .from('profiles')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', data.user.id);
+            } catch { /* non-blocking */ }
+          })(),
         ]);
 
         if (!fetchedProf) {
