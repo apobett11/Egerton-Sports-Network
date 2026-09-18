@@ -204,6 +204,9 @@ export const ApiService = {
         });
 
         guestCache.set('fixtures', cacheKey, formattedMatches);
+        if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
+          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
+        }
         const resp: any = { success: true, data: formattedMatches };
         if (count !== null && count !== undefined) resp.total = count;
         if (page) resp.page = page;

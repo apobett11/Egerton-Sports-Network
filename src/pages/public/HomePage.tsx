@@ -48,6 +48,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [masterPlaydayFixtures, setMasterPlaydayFixtures] = useState<any[]>([]);
 
   useEffect(() => {
+    // 1. Instant playday schedule mapping
     supabase
       .from('fixtures')
       .select('scheduled_time, matchday, competition_id')
@@ -57,6 +58,19 @@ export const HomePage: React.FC<HomePageProps> = ({
           setMasterPlaydayFixtures(data);
         }
       });
+
+    // 2. Proactive full season cache prefetch for 0ms instant matchday and date switching
+    if (!guestCache.get('fixtures', 'all_all_pall_sall')) {
+      ApiService.getFixtures().then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+          guestCache.set('fixtures', 'all_all_pall_sall', res.data);
+          const cachedNow = getCachedFixtures(formattedDateStr, selectedCompetitionId);
+          if (cachedNow && cachedNow.length > 0) {
+            setFixturesState({ data: cachedNow, loading: false, error: null });
+          }
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
