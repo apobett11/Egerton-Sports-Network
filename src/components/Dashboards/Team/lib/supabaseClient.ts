@@ -243,9 +243,9 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team:teams!home_team_id (id, name, short_name, logo_url),
-                away_team:teams!away_team_id (id, name, short_name, logo_url),
-                competition:competitions!competition_id (name)
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url),
+                competition:competitions!fixtures_competition_id_fkey (name)
             `)
             .or(`home_team_id.eq.${actualTeamId},away_team_id.eq.${actualTeamId}`)
             .order('scheduled_time', { ascending: true });
@@ -1377,9 +1377,9 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                 linesman_2_id,
                 linesman_team_a_id,
                 linesman_team_b_id,
-                home_team:teams!home_team_id (id, name, short_name, logo_url),
-                away_team:teams!away_team_id (id, name, short_name, logo_url),
-                competition:competitions!competition_id (name)
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url),
+                competition:competitions!fixtures_competition_id_fkey (name)
             `)
             .or(fixOrFilter)
             .order('scheduled_time', { ascending: true });

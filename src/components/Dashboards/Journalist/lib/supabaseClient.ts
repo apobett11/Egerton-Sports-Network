@@ -94,8 +94,8 @@ export async function fetchNewsArticlesFromDB(authorId?: string | null): Promise
           status,
           scheduled_time,
           venue,
-          team_home:teams!home_team_id(name),
-          team_away:teams!away_team_id(name)
+          team_home:teams!fixtures_home_team_id_fkey(name),
+          team_away:teams!fixtures_away_team_id_fkey(name)
         )
       `)
       .is('deleted_at', null)

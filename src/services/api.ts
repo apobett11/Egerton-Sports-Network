@@ -123,8 +123,8 @@ export const ApiService = {
             referee_id,
             verified_by_referee_id,
             competition:competitions(id, name),
-            team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
-            team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
+            team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
+            team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
           `);
 
         if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
@@ -251,8 +251,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, coach:profiles!coach_id(first_name, last_name)),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, coach:profiles!coach_id(first_name, last_name))
+          team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config),
+          team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config)
         `)
         .eq('id', fixtureId)
         .single();
@@ -1269,8 +1269,8 @@ export const ApiService = {
           score_away,
           venue,
           competition:competitions(name),
-          team_home:teams!home_team_id(id, name),
-          team_away:teams!away_team_id(id, name)
+          team_home:teams!fixtures_home_team_id_fkey(id, name),
+          team_away:teams!fixtures_away_team_id_fkey(id, name)
         `)
         .in('status', ['FT', 'FINAL', 'ARCHIVED'])
         .or(`and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`)
@@ -1340,8 +1340,8 @@ export const ApiService = {
           home_team_id,
           away_team_id,
           competition:competitions(name),
-          team_home:teams!home_team_id(name),
-          team_away:teams!away_team_id(name)
+          team_home:teams!fixtures_home_team_id_fkey(name),
+          team_away:teams!fixtures_away_team_id_fkey(name)
         `)
         .in('status', ['FT', 'FINAL', 'ARCHIVED'])
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
@@ -1474,7 +1474,7 @@ export const ApiService = {
     previousStandings?: LeagueTableEntry[]
   ): Promise<ApiResponse<LeagueTableEntry[]>> {
     try {
-      const targetCompId = competitionId && competitionId !== 'all' ? competitionId : null;
+      const targetCompId = competitionId && competitionId !== 'all' ? competitionId : undefined;
       const cacheKey = targetCompId || 'all';
 
       // 0. Use rapid-access in-memory cache for standard reads (30-second TTL)
@@ -1485,40 +1485,21 @@ export const ApiService = {
         }
       }
 
-      // 1. Authoritative Feed: Algorithm 2 get_league_standings RPC (reads league_standings table)
-      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_league_standings', {
-        p_competition_id: targetCompId
-      });
+      // 1. Unified Resilient Standings Fetcher (Direct table query with inner join)
+      const { getGuestLeagueTableEntries } = await import('./guestSportsService');
+      const entries = await getGuestLeagueTableEntries(targetCompId);
 
-      if (!rpcErr && rpcData && rpcData.length > 0) {
-        const timestamp = new Date().toISOString();
-        const entries: LeagueTableEntry[] = rpcData.map((row: any) => ({
-          position: Number(row.position),
-          teamId: row.team_id,
-          teamName: row.team_name,
-          teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-          played: Number(row.played),
-          won: Number(row.won),
-          drawn: Number(row.drawn),
-          lost: Number(row.lost),
-          goalsFor: Number(row.goals_for),
-          goalsAgainst: Number(row.goals_against),
-          goalDifference: Number(row.goal_difference),
-          points: Number(row.points),
-          lastUpdated: timestamp
-        }));
-
+      if (entries && entries.length > 0) {
         if (!fixturesOverride && !previousStandings) {
           leagueTableCache.set(cacheKey, { timestamp: Date.now(), data: entries });
         }
-
         return { success: true, data: entries };
       }
 
-      // 2. Direct Materialized Table Query
+      // 2. Direct Materialized Table Query Fallback
       let query = supabase.from('league_standings').select(`
         played, won, drawn, lost, goals_for, goals_against, goal_difference, points, last_updated,
-        team:teams!team_id(id, name, logo_url)
+        team:teams!league_standings_team_id_fkey(id, name, logo_url)
       `);
       if (targetCompId) {
         query = query.eq('competition_id', targetCompId);
@@ -1530,7 +1511,7 @@ export const ApiService = {
         .order('goals_for', { ascending: false });
 
       if (!rawErr && rawStandings && rawStandings.length > 0) {
-        const entries: LeagueTableEntry[] = rawStandings.map((row: any, idx: number) => {
+        const directEntries: LeagueTableEntry[] = rawStandings.map((row: any, idx: number) => {
           const tm = unwrap(row.team);
           return {
             position: idx + 1,
@@ -1548,7 +1529,7 @@ export const ApiService = {
             lastUpdated: row.last_updated || new Date().toISOString()
           };
         });
-        return { success: true, data: entries };
+        return { success: true, data: directEntries };
       }
 
       // 3. Fallback for offline/empty season
@@ -1581,122 +1562,22 @@ export const ApiService = {
     goals: number;
   }>>> {
     try {
-      const validCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) ? competitionId : null;
+      const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) ? competitionId : undefined;
+      const { getGuestTopScorers } = await import('./guestSportsService');
+      const scorers = await getGuestTopScorers(limit || 10, targetCompId);
 
-      // 1. Authoritative Feed: RPC Function get_top_scorers
-      const { data, error } = await supabase.rpc('get_top_scorers', {
-        p_competition_id: validCompId,
-        p_limit: limit || 10
-      });
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const scorers = data.map((row: any) => ({
-          playerId: row.player_id,
-          playerName: row.player_name || 'Player',
-          teamName: row.team_name || 'Campus Team',
-          teamLogo: row.team_logo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-          goals: Number(row.goals)
-        }));
-        return { success: true, data: scorers };
+      if (scorers && scorers.length > 0) {
+        return {
+          success: true,
+          data: scorers.map(s => ({
+            playerId: s.player_id,
+            playerName: s.player_name,
+            teamName: s.team_name,
+            teamLogo: s.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+            goals: s.goals
+          }))
+        };
       }
-
-      // 2. Direct Materialized Table Query Fallback: player_stats
-      let query = supabase
-        .from('player_stats')
-        .select(`
-          player_id,
-          goals,
-          player:players!player_id(
-            id,
-            first_name,
-            last_name,
-            profile:profiles!profile_id(first_name, last_name),
-            team:teams!team_id(id, name, logo_url)
-          )
-        `)
-        .gt('goals', 0);
-
-      if (validCompId) {
-        query = query.eq('competition_id', validCompId);
-      }
-
-      const { data: psData, error: psErr } = await query
-        .order('goals', { ascending: false })
-        .limit(limit || 10);
-
-      if (!psErr && psData && psData.length > 0) {
-        const scorers = psData.map((row: any) => {
-          const p = unwrap(row.player);
-          const prof = unwrap(p?.profile);
-          const tm = unwrap(p?.team);
-          const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
-          return {
-            playerId: row.player_id,
-            playerName: fullName,
-            teamName: tm?.name || 'Campus Team',
-            teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-            goals: Number(row.goals)
-          };
-        });
-        return { success: true, data: scorers };
-      }
-
-      // 3. Robust Fallback: Aggregate directly from match_events if player_stats has no entries yet
-      try {
-        let evQuery = supabase
-          .from('match_events')
-          .select(`
-            player_id,
-            fixture:fixtures!fixture_id(competition_id),
-            player:players!player_id(
-              id,
-              first_name,
-              last_name,
-              profile:profiles!profile_id(first_name, last_name),
-              team:teams!team_id(id, name, logo_url)
-            )
-          `)
-          .in('type', ['goal', 'penalty'])
-          .limit(100);
-
-        const { data: evData } = await evQuery;
-
-        if (evData && evData.length > 0) {
-          const countMap = new Map<string, { player: any; goals: number }>();
-          evData.forEach((row: any) => {
-            const fix = unwrap(row.fixture);
-            if (competitionId && fix?.competition_id !== competitionId) return;
-            if (!row.player_id) return;
-            const existing = countMap.get(row.player_id);
-            if (existing) {
-              existing.goals += 1;
-            } else {
-              countMap.set(row.player_id, { player: unwrap(row.player), goals: 1 });
-            }
-          });
-
-          const sorted = Array.from(countMap.entries())
-            .sort((a, b) => b[1].goals - a[1].goals)
-            .slice(0, limit || 10);
-
-          if (sorted.length > 0) {
-            const scorers = sorted.map(([pId, info]) => {
-              const p = info.player;
-              const prof = unwrap(p?.profile);
-              const tm = unwrap(p?.team);
-              const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
-              return {
-                playerId: pId,
-                playerName: fullName,
-                teamName: tm?.name || 'Campus Team',
-                teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-                goals: info.goals
-              };
-            });
-            return { success: true, data: scorers };
-          }
-        }
-      } catch {}
 
       return { success: true, data: [] };
     } catch (err) {
@@ -1712,7 +1593,6 @@ export const ApiService = {
     teamLogo: string;
     goals: number;
   }>>> {
-    // Queries all competitions aggregated directly from the database
     return this.getTopScorers(undefined, limit);
   },
 
@@ -1733,10 +1613,11 @@ export const ApiService = {
           id, matchday, competition_id,
           match_events(
             id, type, player_id, assist_player_id,
-            player:players!player_id(
+            player:players!match_events_player_id_fkey(
               id,
-              profile:profiles!profile_id(first_name, last_name),
-              team:teams!team_id(name)
+              first_name,
+              last_name,
+              team:teams!players_team_id_fkey(name)
             )
           )
         `)
@@ -2178,8 +2059,8 @@ export const ApiService = {
         .select(`
           id, scheduled_time, score_home, score_away,
           competition:competitions(name),
-          team_home:teams!home_team_id(name),
-          team_away:teams!away_team_id(name)
+          team_home:teams!fixtures_home_team_id_fkey(name),
+          team_away:teams!fixtures_away_team_id_fkey(name)
         `)
         .eq('status', 'FT');
 

@@ -398,8 +398,8 @@ export class SupabaseMatchRepository implements MatchRepository {
           score_away,
           home_team_id,
           away_team_id,
-          team_home:teams!home_team_id(id, name),
-          team_away:teams!away_team_id(id, name)
+          team_home:teams!fixtures_home_team_id_fkey(id, name),
+          team_away:teams!fixtures_away_team_id_fkey(id, name)
         `)
         .eq('id', match_uid)
         .maybeSingle();

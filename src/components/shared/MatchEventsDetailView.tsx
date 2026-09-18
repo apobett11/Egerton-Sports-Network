@@ -82,8 +82,8 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
           venue,
           matchday,
           competition:competitions(id, name),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
+          team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
+          team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
         `)
         .eq('id', matchId)
         .maybeSingle();

@@ -126,8 +126,8 @@ const resolveMatchSlug = async (slug: string): Promise<Match | null> => {
       .select(`
         id,
         matchday,
-        home_team:teams!home_team_id(id, name),
-        away_team:teams!away_team_id(id, name)
+        home_team:teams!fixtures_home_team_id_fkey(id, name),
+        away_team:teams!fixtures_away_team_id_fkey(id, name)
       `)
       .order('scheduled_time', { ascending: false })
       .limit(30);
