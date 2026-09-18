@@ -50,7 +50,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     supabase
       .from('fixtures')
-      .select('scheduled_time, matchday, competition_id, is_friendly')
+      .select('scheduled_time, matchday, competition_id')
       .order('scheduled_time', { ascending: true })
       .then(({ data }) => {
         if (data && data.length > 0) {

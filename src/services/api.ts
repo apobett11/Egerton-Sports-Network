@@ -127,7 +127,7 @@ export const ApiService = {
             team_away:teams!away_team_id(id, name, short_name, logo_url, color_code)
           `);
 
-        if (competitionId) {
+        if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
           query = query.eq('competition_id', competitionId);
         }
 
@@ -1578,9 +1578,11 @@ export const ApiService = {
     goals: number;
   }>>> {
     try {
+      const validCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) ? competitionId : null;
+
       // 1. Authoritative Feed: RPC Function get_top_scorers
       const { data, error } = await supabase.rpc('get_top_scorers', {
-        p_competition_id: competitionId || null,
+        p_competition_id: validCompId,
         p_limit: limit || 10
       });
 
@@ -1611,8 +1613,8 @@ export const ApiService = {
         `)
         .gt('goals', 0);
 
-      if (competitionId) {
-        query = query.eq('competition_id', competitionId);
+      if (validCompId) {
+        query = query.eq('competition_id', validCompId);
       }
 
       const { data: psData, error: psErr } = await query
@@ -1638,7 +1640,7 @@ export const ApiService = {
 
       // 3. Robust Fallback: Aggregate directly from match_events if player_stats has no entries yet
       try {
-        const { data: evData } = await supabase
+        let evQuery = supabase
           .from('match_events')
           .select(`
             player_id,
@@ -1651,7 +1653,10 @@ export const ApiService = {
               team:teams!team_id(id, name, logo_url)
             )
           `)
-          .in('type', ['goal', 'penalty']);
+          .in('type', ['goal', 'penalty'])
+          .limit(100);
+
+        const { data: evData } = await evQuery;
 
         if (evData && evData.length > 0) {
           const countMap = new Map<string, { player: any; goals: number }>();
