@@ -284,6 +284,7 @@ export const useAdminOperationsData = () => {
         { data: rawDevices },
         { data: admin2AnalyticsSetting },
         { data: matchEvents },
+        { data: matchLineups },
       ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(300),
         supabase.from('teams').select('*').limit(100),
@@ -298,6 +299,7 @@ export const useAdminOperationsData = () => {
         supabase.from('anonymous_devices').select('device_id, last_seen_at, favorite_team_id, created_at').limit(1000),
         supabase.from('system_settings').select('value').eq('key', 'admin_2_analytics').maybeSingle(),
         supabase.from('match_events').select('id, team_id, fixture_id').limit(1000),
+        supabase.from('match_lineups').select('id, team_id, fixture_id, starting_xi, substitutes').limit(200),
       ]);
 
 
@@ -317,6 +319,7 @@ export const useAdminOperationsData = () => {
       const allAuditLogs = Array.isArray(rawLogs) ? rawLogs : (rawLogs ? [rawLogs] : []);
       const allMatchReports = Array.isArray(matchReports) ? matchReports : (matchReports ? [matchReports] : []);
       const allMatchEvents = Array.isArray(matchEvents) ? matchEvents : (matchEvents ? [matchEvents] : []);
+      const allMatchLineups = Array.isArray(matchLineups) ? matchLineups : (matchLineups ? [matchLineups] : []);
 
       const endPing = performance.now();
       const pingMs = Math.round(endPing - startPing);
@@ -627,7 +630,10 @@ export const useAdminOperationsData = () => {
         const teamPlayers = allPlayers.filter((p) => p.team_id === t.id);
         const teamPlayerIds = new Set(teamPlayers.map((p) => p.id));
         const verifiedXI = rawXIIds.filter((id) => teamPlayerIds.has(id));
-        const hasArrangedSquad = verifiedXI.length >= 11;
+        const hasLineupSubmitted = allMatchLineups.some(
+          (ml: any) => ml.team_id === t.id && Array.isArray(ml.starting_xi) && ml.starting_xi.length >= 11
+        );
+        const hasArrangedSquad = verifiedXI.length >= 11 || hasLineupSubmitted;
         const coachHasSubmittedXI = hasArrangedSquad;
 
         // Double tick for substitutes: check if substitutes are actually submitted and present in team roster
@@ -637,8 +643,11 @@ export const useAdminOperationsData = () => {
         } else if (t.temporary_match_squad?.substitutes && Array.isArray(t.temporary_match_squad.substitutes)) {
           rawSubIds = t.temporary_match_squad.substitutes.map((p: any) => typeof p === 'string' ? p : p?.id).filter(Boolean);
         }
+        const hasSubsInLineup = allMatchLineups.some(
+          (ml: any) => ml.team_id === t.id && Array.isArray(ml.substitutes) && ml.substitutes.length > 0
+        );
         const verifiedSubs = rawSubIds.filter((id) => teamPlayerIds.has(id) && !verifiedXI.includes(id));
-        const hasSubstitutes = hasArrangedSquad && verifiedSubs.length > 0;
+        const hasSubstitutes = hasArrangedSquad && (verifiedSubs.length > 0 || hasSubsInLineup);
 
         // Action 3: Update Match Events (team has actual events recorded in match_events)
         const hasMatchEvents = allMatchEvents.some((ev: any) => ev.team_id === t.id);
@@ -651,6 +660,10 @@ export const useAdminOperationsData = () => {
           !t.logo_url.startsWith('data:') &&
           !t.logo_url.includes('placeholder')
         );
+
+        // Team Readiness out of 4 actions (Upload Kits, Arrange Squad, Update Match Events, Upload Team Logo)
+        const readinessScore = [hasUploadedKits, hasArrangedSquad, hasMatchEvents, hasUploadedLogo].filter(Boolean).length;
+        const readinessPercentage = Math.round((readinessScore / 4) * 100);
 
         let resolvedCoachName = coach ? `${coach.first_name} ${coach.last_name}`.trim() : 'Unassigned';
         if (t.name?.toLowerCase().includes('super eagle') && (!coach || coach.first_name === 'Head Coach')) {
@@ -687,6 +700,8 @@ export const useAdminOperationsData = () => {
           hasMatchEvents,
           hasUploadedLogo,
           coachHasSubmittedXI,
+          readinessScore,
+          readinessPercentage,
           status,
           lastSubmission: new Date(t.created_at).toLocaleDateString(),
         };
@@ -702,10 +717,15 @@ export const useAdminOperationsData = () => {
 
       const latestCoach = teamWithLatestSquad ? allProfiles.find((p) => p.id === teamWithLatestSquad.coach_id) : null;
 
+      const avgReadinessPercentage = mappedTeamsList.length > 0
+        ? Math.round(mappedTeamsList.reduce((acc, t) => acc + t.readinessPercentage, 0) / mappedTeamsList.length)
+        : 0;
+
       setTeamOverview({
         totalTeams: allTeams.length,
         avgPlayersPerTeam: avgP,
         avgSquadCompletion: squadCompPercent,
+        avgReadinessPercentage,
         practiceSchedulesCount: allTeams.length * 2,
         upcomingFixturesCount: scheduledFix.length,
         latestSquadSubmission: teamWithLatestSquad
@@ -872,8 +892,26 @@ export const useAdminOperationsData = () => {
       }
     });
 
+    let reloadTimer: NodeJS.Timeout | null = null;
+    const debouncedReload = () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        fetchOperationsData(true);
+      }, 500);
+    };
+
+    const channel = supabase
+      .channel('admin-operations-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, debouncedReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, debouncedReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups' }, debouncedReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, debouncedReload)
+      .subscribe();
+
     return () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
       authListener?.subscription?.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [fetchOperationsData]);
 

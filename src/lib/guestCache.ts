@@ -82,6 +82,10 @@ class GuestCacheManager {
           this.invalidate('performance');
           this.invalidate('milestones');
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
+          this.invalidate('standings');
+          this.invalidate('performance');
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, () => {
           this.invalidate('match_details');
           this.invalidate('fixtures');

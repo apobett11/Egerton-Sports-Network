@@ -1636,6 +1636,60 @@ export const ApiService = {
         return { success: true, data: scorers };
       }
 
+      // 3. Robust Fallback: Aggregate directly from match_events if player_stats has no entries yet
+      try {
+        const { data: evData } = await supabase
+          .from('match_events')
+          .select(`
+            player_id,
+            fixture:fixtures!fixture_id(competition_id),
+            player:players!player_id(
+              id,
+              first_name,
+              last_name,
+              profile:profiles!profile_id(first_name, last_name),
+              team:teams!team_id(id, name, logo_url)
+            )
+          `)
+          .in('type', ['goal', 'penalty']);
+
+        if (evData && evData.length > 0) {
+          const countMap = new Map<string, { player: any; goals: number }>();
+          evData.forEach((row: any) => {
+            const fix = unwrap(row.fixture);
+            if (competitionId && fix?.competition_id !== competitionId) return;
+            if (!row.player_id) return;
+            const existing = countMap.get(row.player_id);
+            if (existing) {
+              existing.goals += 1;
+            } else {
+              countMap.set(row.player_id, { player: unwrap(row.player), goals: 1 });
+            }
+          });
+
+          const sorted = Array.from(countMap.entries())
+            .sort((a, b) => b[1].goals - a[1].goals)
+            .slice(0, limit || 10);
+
+          if (sorted.length > 0) {
+            const scorers = sorted.map(([pId, info]) => {
+              const p = info.player;
+              const prof = unwrap(p?.profile);
+              const tm = unwrap(p?.team);
+              const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
+              return {
+                playerId: pId,
+                playerName: fullName,
+                teamName: tm?.name || 'Campus Team',
+                teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                goals: info.goals
+              };
+            });
+            return { success: true, data: scorers };
+          }
+        }
+      } catch {}
+
       return { success: true, data: [] };
     } catch (err) {
       return { success: true, data: [] };
@@ -1778,7 +1832,7 @@ export const ApiService = {
   }>>> {
     try {
       const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('player_stats')
         .select(`
           player_id,
@@ -1786,6 +1840,8 @@ export const ApiService = {
           assists,
           player:players!player_id(
             id,
+            first_name,
+            last_name,
             profile:profiles!profile_id(first_name, last_name),
             team:teams!team_id(id, name, competition_id)
           )
@@ -1794,7 +1850,59 @@ export const ApiService = {
         .order('assists', { ascending: false })
         .limit(limit || 10);
 
-      if (error || !data || data.length === 0) {
+      if ((error || !data || data.length === 0)) {
+        // Fallback: Check match_events for assist_player_id
+        try {
+          const { data: evAssists } = await supabase
+            .from('match_events')
+            .select(`
+              assist_player_id,
+              player:players!assist_player_id(
+                id,
+                first_name,
+                last_name,
+                profile:profiles!profile_id(first_name, last_name),
+                team:teams!team_id(id, name, competition_id)
+              )
+            `)
+            .not('assist_player_id', 'is', null);
+
+          if (evAssists && evAssists.length > 0) {
+            const assistCountMap = new Map<string, { player: any; count: number }>();
+            evAssists.forEach((ev: any) => {
+              if (!ev.assist_player_id) return;
+              const cur = assistCountMap.get(ev.assist_player_id);
+              if (cur) {
+                cur.count += 1;
+              } else {
+                assistCountMap.set(ev.assist_player_id, { player: unwrap(ev.player), count: 1 });
+              }
+            });
+
+            const sorted = Array.from(assistCountMap.entries())
+              .sort((a, b) => b[1].count - a[1].count)
+              .slice(0, limit || 5);
+
+            if (sorted.length > 0) {
+              const list = sorted.map(([pId, info], idx) => {
+                const p = info.player;
+                const prof = unwrap(p?.profile);
+                const tm = unwrap(p?.team);
+                const isChamp = tm?.competition_id === CHAMP_ID;
+                const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
+                return {
+                  rank: idx + 1,
+                  playerId: pId,
+                  playerName: fullName,
+                  teamName: tm?.name || 'Campus Team',
+                  league: isChamp ? 'Championships' : 'EPL',
+                  assists: info.count
+                };
+              });
+              return { success: true, data: list };
+            }
+          }
+        } catch {}
         return { success: true, data: [] };
       }
 
@@ -1803,7 +1911,7 @@ export const ApiService = {
         const prof = unwrap(p?.profile);
         const tm = unwrap(p?.team);
         const isChamp = (row.competition_id === CHAMP_ID) || (tm?.competition_id === CHAMP_ID);
-        const fullName = prof ? `${prof.first_name} ${prof.last_name}` : 'Player';
+        const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Player';
         return {
           rank: idx + 1,
           playerId: row.player_id,
@@ -1888,6 +1996,8 @@ export const ApiService = {
           clean_sheets,
           player:players!player_id(
             id,
+            first_name,
+            last_name,
             position,
             profile:profiles!profile_id(first_name, last_name),
             team:teams!team_id(id, name, competition_id)
@@ -1905,9 +2015,10 @@ export const ApiService = {
           if (compId && (row.competition_id !== compId && tm?.competition_id !== compId)) return;
           const cs = Number(row.clean_sheets) || 0;
           if (cs > 0 && (!best || cs > best.cleanSheets)) {
+            const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Goalkeeper';
             best = {
               playerId: row.player_id,
-              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Goalkeeper',
+              playerName: fullName,
               teamName: tm?.name || 'Campus Team',
               league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
               cleanSheets: cs,
@@ -1923,7 +2034,7 @@ export const ApiService = {
       const goatCleanSheets = getTopGK() || eplCleanSheets || champCleanSheets || null;
 
       // 3. Fetch Most Assists directly from materialized player_stats table (updated by fn_process_match_statistics)
-      const { data: assistStats } = await supabase
+      let { data: assistStats } = await supabase
         .from('player_stats')
         .select(`
           player_id,
@@ -1931,12 +2042,57 @@ export const ApiService = {
           assists,
           player:players!player_id(
             id,
+            first_name,
+            last_name,
             profile:profiles!profile_id(first_name, last_name),
             team:teams!team_id(id, name, competition_id)
           )
         `)
         .gt('assists', 0)
         .order('assists', { ascending: false });
+
+      // Fallback to match_events if player_stats assists is empty
+      if (!assistStats || assistStats.length === 0) {
+        try {
+          const { data: evAssists } = await supabase
+            .from('match_events')
+            .select(`
+              assist_player_id,
+              fixture:fixtures!fixture_id(competition_id),
+              player:players!assist_player_id(
+                id,
+                first_name,
+                last_name,
+                profile:profiles!profile_id(first_name, last_name),
+                team:teams!team_id(id, name, competition_id)
+              )
+            `)
+            .not('assist_player_id', 'is', null);
+
+          if (evAssists && evAssists.length > 0) {
+            const assistMap = new Map<string, { player: any; competition_id: string; assists: number }>();
+            evAssists.forEach((ev: any) => {
+              if (!ev.assist_player_id) return;
+              const fix = unwrap(ev.fixture);
+              const tm = unwrap(unwrap(ev.player)?.team);
+              const compId = fix?.competition_id || tm?.competition_id || EPL_ID;
+              const key = `${ev.assist_player_id}_${compId}`;
+              const cur = assistMap.get(key);
+              if (cur) {
+                cur.assists += 1;
+              } else {
+                assistMap.set(key, { player: unwrap(ev.player), competition_id: compId, assists: 1 });
+              }
+            });
+            assistStats = Array.from(assistMap.entries()).map(([k, v]) => ({
+              player_id: k.split('_')[0],
+              competition_id: v.competition_id,
+              assists: v.assists,
+              player: v.player
+            }));
+          }
+        } catch {}
+      }
 
       const getTopAssistPlayer = (compId?: string) => {
         let best: { playerId: string; playerName: string; teamName: string; league: string; assists: number; streak: number } | null = null;
@@ -1947,9 +2103,10 @@ export const ApiService = {
           if (compId && (row.competition_id !== compId && tm?.competition_id !== compId)) return;
           const ast = Number(row.assists) || 0;
           if (ast > 0 && (!best || ast > best.assists)) {
+            const fullName = [prof?.first_name || p?.first_name, prof?.last_name || p?.last_name].filter(Boolean).join(' ') || 'Playmaker';
             best = {
               playerId: row.player_id,
-              playerName: prof ? `${prof.first_name} ${prof.last_name}` : 'Playmaker',
+              playerName: fullName,
               teamName: tm?.name || 'Campus Team',
               league: compId === CHAMP_ID ? 'Egerton Championships' : 'Egerton Premier League',
               assists: ast,

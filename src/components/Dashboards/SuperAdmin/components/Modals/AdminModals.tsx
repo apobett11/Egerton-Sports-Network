@@ -261,6 +261,9 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
 
                   {/* Summary Badges */}
                   <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black">
+                      📊 Avg Readiness: {teamOverview.avgReadinessPercentage ?? 0}%
+                    </span>
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       ✓ First 11: {xiSubmittedCount}/{teamOverview.teamsList.length}
                     </span>
@@ -300,13 +303,14 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                           <th className="p-3 text-center">Arrange Squad</th>
                           <th className="p-3 text-center">Update Match Events</th>
                           <th className="p-3 text-center">Upload Team Logo</th>
+                          <th className="p-3 text-center">Completeness</th>
                           <th className="p-3 text-right">Action Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
                         {filteredTeams.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                            <td colSpan={8} className="p-8 text-center text-xs text-gray-400">
                               No football clubs found in this league category.
                             </td>
                           </tr>
@@ -344,19 +348,24 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
 
                                 {/* Head Coach & XI Submitted Indicator */}
                                 <td className="p-3">
-                                  <div className="space-y-0.5">
+                                  <div className="space-y-1">
                                     <span className="font-bold text-gray-200 block truncate">
                                       {displayCoach}
                                     </span>
-                                    {t.coachHasSubmittedXI ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                        {t.hasSubstitutes ? '✓✓ First 11 & Subs' : '✓ First 11 Submitted'}
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      {t.coachHasSubmittedXI ? (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                          {t.hasSubstitutes ? '✓✓ First 11 & Subs' : '✓ First 11 Submitted'}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-gray-500 bg-[#222222] px-1.5 py-0.5 rounded">
+                                          No XI submitted
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                        {t.readinessScore ?? 0}/4 updated
                                       </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-gray-500 bg-[#222222] px-1.5 py-0.5 rounded">
-                                        No XI submitted
-                                      </span>
-                                    )}
+                                    </div>
                                   </div>
                                 </td>
 
@@ -445,14 +454,56 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                                   )}
                                 </td>
 
+                                {/* Completeness: X/4 updated (%) */}
+                                <td className="p-3 text-center">
+                                  <div className="inline-flex flex-col items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className={`font-mono text-[11px] font-extrabold ${
+                                          t.readinessScore === 4
+                                            ? 'text-emerald-400'
+                                            : t.readinessScore >= 3
+                                            ? 'text-teal-400'
+                                            : t.readinessScore >= 2
+                                            ? 'text-amber-400'
+                                            : 'text-rose-400'
+                                        }`}
+                                      >
+                                        {t.readinessPercentage ?? 0}%
+                                      </span>
+                                      <span className="text-[10px] font-mono text-gray-400">
+                                        ({t.readinessScore ?? 0}/4)
+                                      </span>
+                                    </div>
+                                    <div className="w-16 bg-[#222222] h-1.5 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full ${
+                                          t.readinessScore === 4
+                                            ? 'bg-emerald-400'
+                                            : t.readinessScore >= 3
+                                            ? 'bg-teal-400'
+                                            : t.readinessScore >= 2
+                                            ? 'bg-amber-400'
+                                            : 'bg-rose-400'
+                                        }`}
+                                        style={{ width: `${t.readinessPercentage ?? 0}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+
                                 {/* Status */}
                                 <td className="p-3 text-right">
-                                  {t.hasArrangedSquad && t.hasUploadedLogo ? (
+                                  {t.readinessScore === 4 ? (
                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
                                       Ready
                                     </span>
-                                  ) : (
+                                  ) : t.readinessScore >= 2 ? (
                                     <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-600/20 text-amber-400 border border-amber-500/30">
+                                      In Progress
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-600/20 text-rose-400 border border-rose-500/30">
                                       Action Req
                                     </span>
                                   )}

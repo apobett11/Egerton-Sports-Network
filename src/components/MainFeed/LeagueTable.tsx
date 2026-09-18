@@ -78,10 +78,25 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
   }, [selectedCompetitionId]);
 
-  // On mount: smoothly scroll to potwRef if URL indicates section=potw, potw_winner=1, or hash has potw
+  // On mount or URL change: smoothly scroll to scorersRef or potwRef if URL indicates
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    const handleRouteScroll = () => {
       const params = new URLSearchParams(window.location.search);
+      const isScorersParam = params.get('section') === 'scorers' || params.get('tab') === 'scorers';
+      const isScorersHash = window.location.hash.toLowerCase().includes('scorers') || window.location.hash.toLowerCase().includes('golden-boot');
+
+      if (isScorersParam || isScorersHash) {
+        setActiveSection('scorers');
+        const timer = setTimeout(() => {
+          if (scorersRef.current) {
+            scorersRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+
       const isPotwParam = params.get('section') === 'potw' || params.get('potw_winner') === '1';
       const isPotwHash = window.location.hash.toLowerCase().includes('potw');
 
@@ -94,7 +109,11 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         }, 200);
         return () => clearTimeout(timer);
       }
-    }
+    };
+
+    handleRouteScroll();
+    window.addEventListener('hashchange', handleRouteScroll);
+    return () => window.removeEventListener('hashchange', handleRouteScroll);
   }, []);
 
   const refreshAllTableData = useCallback(() => {
@@ -701,6 +720,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           selectedCompetitionId={selectedCompetitionId}
           onNavigateToVoting={onNavigateToVoting}
           onScrollToStandings={() => scrollToTarget(standingsRef, 'standings')}
+          showVoteSection={false}
         />
 
         <div className="flex items-center justify-between px-1">

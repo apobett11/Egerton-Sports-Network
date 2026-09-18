@@ -163,6 +163,7 @@ export interface TeamOverviewSummary {
   totalTeams: number;
   avgPlayersPerTeam: number;
   avgSquadCompletion: number; // percentage
+  avgReadinessPercentage?: number; // average completeness percentage across all teams
   practiceSchedulesCount: number;
   upcomingFixturesCount: number;
   latestSquadSubmission: {
@@ -186,6 +187,8 @@ export interface TeamOverviewSummary {
     hasMatchEvents: boolean;
     hasUploadedLogo: boolean;
     coachHasSubmittedXI: boolean;
+    readinessScore: number; // 0 to 4
+    readinessPercentage: number; // 0 to 100
     status: 'complete' | 'incomplete' | 'attention_needed';
     lastSubmission: string;
   }>;

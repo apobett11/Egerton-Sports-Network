@@ -32,6 +32,7 @@ interface PlayerOfTheWeekSpotlightProps {
   onNavigateToScores?: () => void;
   onScrollToStandings?: () => void;
   highlight?: boolean;
+  showVoteSection?: boolean;
 }
 
 export const PlayerOfTheWeekSpotlight: React.FC<PlayerOfTheWeekSpotlightProps> = ({
@@ -40,6 +41,7 @@ export const PlayerOfTheWeekSpotlight: React.FC<PlayerOfTheWeekSpotlightProps> =
   onNavigateToScores,
   onScrollToStandings,
   highlight = false,
+  showVoteSection = false,
 }) => {
   // Normalize competition ID (EPL vs CHAMP)
   const [activeCompId, setActiveCompId] = useState<string>(() => {
@@ -413,7 +415,7 @@ export const PlayerOfTheWeekSpotlight: React.FC<PlayerOfTheWeekSpotlightProps> =
               </div>
             </div>
           </div>
-        ) : (
+        ) : showVoteSection ? (
           /* VOTING IS LIVE / NO WINNER CROWNED YET */
           <div className="relative z-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
@@ -447,6 +449,35 @@ export const PlayerOfTheWeekSpotlight: React.FC<PlayerOfTheWeekSpotlightProps> =
               >
                 <Share2 className="w-4 h-4 text-emerald-400" />
                 <span>Share Ballot</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* NO WINNER CROWNED YET (SPOTLIGHT INFORMATION STATE WITHOUT VOTING SECTION) */
+          <div className="relative z-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[10px] font-black uppercase tracking-wider">
+                <Crown className="w-3 h-3" />
+                <span>Weekly Laureate Spotlight</span>
+              </div>
+              <h4 className="text-base sm:text-lg font-black text-white">
+                Matchweek {matchweekNumber} Spotlight
+              </h4>
+              <p className="text-xs text-slate-300 max-w-lg">
+                Official player ratings and weekly star crowns are calculated following each matchday's completed fixtures.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onScrollToStandings) onScrollToStandings();
+                }}
+                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                <span>View Standings</span>
               </button>
             </div>
           </div>

@@ -135,9 +135,9 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
                 <div className="text-lg font-black text-white mt-0.5">{teamOverview.avgPlayersPerTeam}</div>
               </div>
               <div className="p-2.5 bg-[#111111] rounded-xl border border-[#2A2A2A]">
-                <div className="text-[10px] text-gray-400 font-semibold">Completion</div>
+                <div className="text-[10px] text-gray-400 font-semibold">Readiness</div>
                 <div className="text-lg font-black text-emerald-400 mt-0.5 font-mono">
-                  {teamOverview.avgSquadCompletion}%
+                  {teamOverview.avgReadinessPercentage ?? teamOverview.avgSquadCompletion}%
                 </div>
               </div>
               <div className="p-2.5 bg-[#111111] rounded-xl border border-[#2A2A2A]">

@@ -417,8 +417,16 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   useCacheSubscription('milestones', loadMilestones);
 
-  // Realtime subscription for live match updates
+  // Realtime subscription for live match updates and algorithm table feeds
   useEffect(() => {
+    let perfDebounce: ReturnType<typeof setTimeout> | null = null;
+    const triggerDebouncedPerfReload = () => {
+      if (perfDebounce) clearTimeout(perfDebounce);
+      perfDebounce = setTimeout(() => {
+        loadPerformance();
+      }, 500);
+    };
+
     const channel = supabase
       .channel('public-homepage-fixtures-v7')
       .on(
@@ -441,14 +449,19 @@ export const HomePage: React.FC<HomePageProps> = ({
               )
             }));
           }
+          triggerDebouncedPerfReload();
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedPerfReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
       .subscribe();
 
     return () => {
+      if (perfDebounce) clearTimeout(perfDebounce);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadPerformance]);
 
   const toggleFavourite = (fixtureId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -934,9 +947,23 @@ export const HomePage: React.FC<HomePageProps> = ({
                   EPL — PLAYER PERFORMANCE & STATS
                 </h2>
               </div>
-              <span className="text-[10px] font-extrabold text-[#ff0046] uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-                DIVISION 1
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = '/league#scorers';
+                    onNavigate('/league#scorers');
+                  }}
+                  className="text-[10px] font-black text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+                  title="View full EPL top scorers & golden boot race"
+                >
+                  <span>Full Table</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+                <span className="text-[10px] font-extrabold text-[#ff0046] uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                  DIVISION 1
+                </span>
+              </div>
             </div>
 
             {/* Unified List for EPL */}
@@ -1051,9 +1078,23 @@ export const HomePage: React.FC<HomePageProps> = ({
                   CHAMPIONSHIPS — PLAYER PERFORMANCE & STATS
                 </h2>
               </div>
-              <span className="text-[10px] font-extrabold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                DIVISION 2
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = '/league#scorers';
+                    onNavigate('/league#scorers');
+                  }}
+                  className="text-[10px] font-black text-amber-500 hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+                  title="View full Championships top scorers & golden boot race"
+                >
+                  <span>Full Table</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+                <span className="text-[10px] font-extrabold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  DIVISION 2
+                </span>
+              </div>
             </div>
 
             {/* Unified List for Championships */}
@@ -1155,6 +1196,25 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             )}
           </section>
+
+          {/* Action Bar to Standings: Golden Boot & Top Scorers Tables */}
+          <div className="p-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+              <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+              <span>Explore complete rankings, Golden Boot race, and dual-league leaderboards</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '/league#scorers';
+                onNavigate('/league#scorers');
+              }}
+              className="w-full sm:w-auto px-4 py-2 bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
+            >
+              <span>See Full Player Stats Tables</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
 

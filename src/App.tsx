@@ -1133,7 +1133,7 @@ export const AppContent: React.FC = () => {
                   selectedCompetitionId={selectedCompetitionId}
                   onNavigate={(path) => {
                     if (path.includes('news')) setActiveTab('news');
-                    else if (path.includes('league')) setActiveTab('table');
+                    else if (path.includes('league') || path.includes('standings') || path.includes('scorers') || path.includes('table')) setActiveTab('table');
                     else if (path.includes('fixtures')) setActiveTab('scores');
                     else handleNavigateHash(path);
                   }}
