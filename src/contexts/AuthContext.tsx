@@ -233,10 +233,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(null);
       setRole('guest');
       localStorage.setItem('auth_logout_event', String(Date.now()));
+      localStorage.removeItem('egerscore-session');
+      localStorage.removeItem('egerscore-role');
       localStorage.removeItem('esn-session');
       localStorage.removeItem('esn-role');
-      localStorage.removeItem('livescore-session');
-      localStorage.removeItem('livescore-role');
       localStorage.removeItem(STORAGE_KEY_CACHED_USER);
       localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
       localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);

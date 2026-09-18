@@ -478,7 +478,6 @@ export const RefereeReconciliationWorkflow: React.FC<RefereeReconciliationWorkfl
           </div>
         </div>
 
-        {/* 3 STEP WIZARD NAVIGATION WITH FLASHSCORE STEP INDICATORS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {[
             { num: 1, label: `1. Reconcile Events Timeline` },

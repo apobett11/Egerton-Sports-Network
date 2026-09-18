@@ -26,7 +26,7 @@ const results: TestCaseResult[] = [];
 function runPsql(sql: string): string {
   const res = spawnSync(
     'docker',
-    ['exec', '-i', 'supabase_db_livescore', 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-F', '|'],
+    ['exec', '-i', 'supabase_db_egerscore', 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-A', '-t', '-F', '|'],
     {
       input: sql,
       encoding: 'utf-8',

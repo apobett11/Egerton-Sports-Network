@@ -1,4 +1,4 @@
-﻿import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,7 +11,7 @@ const FRONTEND_URL = 'http://localhost:5173';
 
 function queryPostgres(sql: string): string {
   try {
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     return execSync(cmd, { input: sql, encoding: 'utf-8' }).trim();
   } catch (err: any) {
     return 'ERROR: ' + err.message;
@@ -22,7 +22,7 @@ function queryPostgresJson(sql: string): any {
   try {
     const cleanSql = sql.trim().replace(/;+$/, '');
     const jsonWrapped = `SELECT json_agg(t) FROM (${cleanSql}) t;`;
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     const res = execSync(cmd, { input: jsonWrapped, encoding: 'utf-8' }).trim();
     if (!res || res === '' || res === 'null') return [];
     return JSON.parse(res);
@@ -45,7 +45,7 @@ test.describe('DETERMINISTIC FULL-SEASON END-TO-END SIMULATION & PRODUCTION-GATE
     console.log('======================================================');
 
     // 1. Prove Supabase CLI & Docker containers are running locally
-    const containerStatus = execSync('docker ps --filter name=supabase_db_livescore --format "{{.Status}}"', { encoding: 'utf-8' });
+    const containerStatus = execSync('docker ps --filter name=supabase_db_egerscore --format "{{.Status}}"', { encoding: 'utf-8' });
     expect(containerStatus.toLowerCase()).toContain('up');
     console.log('✓ Local Supabase PostgreSQL container is running & healthy.');
 

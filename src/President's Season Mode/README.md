@@ -4,7 +4,7 @@
 ---
 
 ## 1. Overview
-The **President's Season Mode** is an isolated, production-grade operational module within the Egerton Sports Ecosystem (`livescore`). 
+The **President's Season Mode** is an isolated, production-grade operational module within the Egerton Sports Ecosystem (`egerscore`). 
 
 Phase 1 establishes the **Pre-Season Foundation**, **Registration Intake Pipeline**, **Team Name Normalization Engine**, **Referee Pool Foundation**, **Pitch Foundation**, and **UI Foundation**.
 

@@ -86,7 +86,7 @@ async function setupRefereeSession(page: import('@playwright/test').Page) {
 
   await page.addInitScript(({ session, refId: rid, refEmail: email }) => {
     localStorage.setItem('theme', 'dark');
-    localStorage.setItem('livescore_auth_token', JSON.stringify(session));
+    localStorage.setItem('egerscore_auth_token', JSON.stringify(session));
     localStorage.setItem('esn_last_activity_timestamp', String(Date.now()));
     localStorage.setItem('esn_cached_role', 'referee');
     localStorage.setItem('esn_cached_user', JSON.stringify(session.user));

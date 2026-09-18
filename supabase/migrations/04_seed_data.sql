@@ -1,4 +1,4 @@
--- Migration 04: Seed Data for LiveScore Platform
+-- Migration 04: Seed Data for Platform
 
 -- Insert Default Competitions
 INSERT INTO public.competitions (id, name, slug, country, season, is_active)
@@ -40,5 +40,5 @@ ON CONFLICT (id) DO NOTHING;
 -- Insert Sample System Settings
 INSERT INTO public.system_settings (key, value)
 VALUES 
-  ('platform_info', '{"name": "LiveScore Football Ecosystem", "version": "1.0.0", "maintenance_mode": false}'::jsonb)
+  ('platform_info', '{"name": "Egerscore Sports Ecosystem", "version": "1.0.0", "maintenance_mode": false}'::jsonb)
 ON CONFLICT (key) DO NOTHING;

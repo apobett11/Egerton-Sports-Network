@@ -87,7 +87,7 @@ function setupInterception(page: Page) {
 async function injectAuth(page: Page) {
   await page.addInitScript(({ session, rId, email }) => {
     localStorage.setItem('theme', 'dark');
-    localStorage.setItem('livescore_auth_token', JSON.stringify(session));
+    localStorage.setItem('egerscore_auth_token', JSON.stringify(session));
     localStorage.setItem('esn_last_activity_timestamp', String(Date.now()));
     localStorage.setItem('esn_cached_role', 'referee');
     localStorage.setItem('esn_cached_user', JSON.stringify(session.user));

@@ -223,7 +223,6 @@ export const Homepage: React.FC<HomepageProps> = ({
     ].filter(item => item.value > 0);
   }, [roster]);
 
-  // Flashscore Guest-style Form Badge
   const renderFormBadge = (outcome: 'W' | 'D' | 'L', idx: number) => {
     return (
       <span

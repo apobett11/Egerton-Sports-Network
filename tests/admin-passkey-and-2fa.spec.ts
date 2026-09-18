@@ -210,7 +210,7 @@ test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification S
         refresh_token: 'mock-refresh-token',
         user,
       };
-      localStorage.setItem('livescore_auth_token', JSON.stringify(sessionPayload));
+      localStorage.setItem('egerscore_auth_token', JSON.stringify(sessionPayload));
       localStorage.setItem('esn_cached_role', 'admin');
       localStorage.setItem('esn_cached_user', JSON.stringify(user));
       localStorage.setItem('esn_cached_profile', JSON.stringify({ id, email, role: 'admin', first_name: 'System', last_name: 'Admin' }));
@@ -274,7 +274,7 @@ test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification S
         refresh_token: 'mock-refresh-token',
         user,
       };
-      localStorage.setItem('livescore_auth_token', JSON.stringify(sessionPayload));
+      localStorage.setItem('egerscore_auth_token', JSON.stringify(sessionPayload));
       localStorage.setItem('esn_cached_role', 'admin');
       localStorage.setItem('esn_cached_user', JSON.stringify(user));
       localStorage.setItem('esn_cached_profile', JSON.stringify({ id, email, role: 'admin', first_name: 'System', last_name: 'Admin' }));
@@ -326,7 +326,7 @@ test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification S
         refresh_token: 'mock-refresh-token',
         user,
       };
-      localStorage.setItem('livescore_auth_token', JSON.stringify(sessionPayload));
+      localStorage.setItem('egerscore_auth_token', JSON.stringify(sessionPayload));
       localStorage.setItem('esn_cached_role', 'admin');
       localStorage.setItem('esn_cached_user', JSON.stringify(user));
       localStorage.setItem('esn_cached_profile', JSON.stringify({ id, email, role: 'admin', first_name: 'System', last_name: 'Admin' }));

@@ -352,9 +352,7 @@ export const JournalistHomeView: React.FC<JournalistHomeViewProps> = ({
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Quick Commands</span>
         </div>
 
-        {/* BUTTON BAR - FLASHSCORE ACTION BUTTONS */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* BUTTON 1: COMPOSE (FLASHSCORE PRIMARY #ff0046) */}
           <button
             onClick={onOpenCompose}
             className="p-3.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black uppercase text-xs tracking-wider shadow-xs flex items-center gap-3 transition-colors cursor-pointer group text-left"

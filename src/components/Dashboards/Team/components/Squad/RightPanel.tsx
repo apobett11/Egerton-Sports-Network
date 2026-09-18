@@ -35,7 +35,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         <span className="text-[12px] sm:text-[14px] font-normal text-[#8fa0b5] leading-tight font-sans">
           Strength
         </span>
-        <span className="font-efootball-num font-bold text-[34px] sm:text-[42px] tracking-tight text-[#e6ff00] drop-shadow-[0_2px_10px_rgba(230,255,0,0.4)] mt-0.5 leading-none">
+        <span className="font-player-num font-bold text-[34px] sm:text-[42px] tracking-tight text-[#e6ff00] drop-shadow-[0_2px_10px_rgba(230,255,0,0.4)] mt-0.5 leading-none">
           {collectiveStrength}
         </span>
       </div>

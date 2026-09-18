@@ -18,7 +18,7 @@ import { recomputeDisciplinaryConsequences } from '../src/algorithms/matchLiveIn
 // Helper to query PostgreSQL directly in the live container
 function queryPostgres(sql: string): string {
   try {
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     return execSync(cmd, { input: sql, encoding: 'utf-8' }).trim();
   } catch (err: any) {
     return 'ERROR: ' + (err.stderr || err.message);
@@ -29,7 +29,7 @@ function queryPostgresJson(sql: string): any[] {
   try {
     const cleanSql = sql.trim().replace(/;+$/, '');
     const jsonWrapped = `SELECT json_agg(t) FROM (${cleanSql}) t;`;
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     const res = execSync(cmd, { input: jsonWrapped, encoding: 'utf-8' }).trim();
     if (!res || res === '' || res === 'null') return [];
     return JSON.parse(res);
@@ -39,7 +39,7 @@ function queryPostgresJson(sql: string): any[] {
 }
 
 function execPostgres(sql: string): void {
-  const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -v ON_ERROR_STOP=1`;
+  const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -v ON_ERROR_STOP=1`;
   execSync(cmd, { input: sql, encoding: 'utf-8' });
 }
 
@@ -537,8 +537,8 @@ test.describe('ADVERSARIAL POST-MATCH ENGINES AUDIT', () => {
     let concurrencyDeadlocks = 0;
     try {
       // Execute in concurrent background processes via psql
-      const cmd1 = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -c "UPDATE public.fixtures SET status = 'FT' WHERE id = '${concMatch1}';"`;
-      const cmd2 = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -c "UPDATE public.fixtures SET status = 'FT' WHERE id = '${concMatch2}';"`;
+      const cmd1 = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -c "UPDATE public.fixtures SET status = 'FT' WHERE id = '${concMatch1}';"`;
+      const cmd2 = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -c "UPDATE public.fixtures SET status = 'FT' WHERE id = '${concMatch2}';"`;
       
       // Run in parallel
       execSync(`${cmd1} & ${cmd2}`, { encoding: 'utf-8' });

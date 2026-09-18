@@ -1009,7 +1009,7 @@ export function recomputeDisciplinaryConsequences(
 // 10. SCORE CALCULATION
 //////////////////////////////
 
-export function calculateLiveScore(
+export function calculateMatchScore(
   match: Match,
   events: MatchEvent[]
 ): { home_score: number; away_score: number } {
@@ -2812,7 +2812,7 @@ export class MatchLiveInputEngine {
     match: Match,
     events: MatchEvent[]
   ): { home_score: number; away_score: number } {
-    return calculateLiveScore(match, events);
+    return calculateMatchScore(match, events);
   }
 
   private async ensureAndGetLiveState(

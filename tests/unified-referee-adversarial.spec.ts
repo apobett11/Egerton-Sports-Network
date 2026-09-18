@@ -7,7 +7,7 @@ function queryPostgresJson(sql: string): any[] {
   try {
     const cleanSql = sql.trim().replace(/;+$/, '');
     const jsonWrapped = `SELECT json_agg(t) FROM (${cleanSql}) t;`;
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     const res = execSync(cmd, { input: jsonWrapped, encoding: 'utf-8' }).trim();
     if (!res || res === '' || res === 'null') return [];
     return JSON.parse(res);
@@ -18,7 +18,7 @@ function queryPostgresJson(sql: string): any[] {
 }
 
 function execPostgres(sql: string): void {
-  const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -v ON_ERROR_STOP=1`;
+  const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -v ON_ERROR_STOP=1`;
   execSync(cmd, { input: sql, encoding: 'utf-8' });
 }
 
@@ -198,7 +198,7 @@ test.describe('UNIFIED REFEREE DASHBOARD & MATCH END ADVERSARIAL AUDIT', () => {
 
     await page.addInitScript(({ session, refId, refEmail }) => {
       localStorage.setItem('theme', 'dark');
-      localStorage.setItem('livescore_auth_token', JSON.stringify(session));
+      localStorage.setItem('egerscore_auth_token', JSON.stringify(session));
       localStorage.setItem('esn_last_activity_timestamp', String(Date.now()));
       localStorage.setItem('esn_cached_role', 'referee');
       localStorage.setItem('esn_cached_user', JSON.stringify(session.user));

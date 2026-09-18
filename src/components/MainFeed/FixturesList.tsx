@@ -77,7 +77,6 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                         key={leagueName}
                         className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
                     >
-                        {/* FLASHSCORE LEAGUE HEADER BAND */}
                         <div 
                             onClick={(e) => toggleCollapse(leagueName, e)}
                             className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] cursor-pointer hover:bg-slate-100 dark:hover:bg-[#152940] transition-colors"

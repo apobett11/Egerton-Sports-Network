@@ -420,7 +420,6 @@ const MatchEventsModalContent: React.FC<{
             </div>
           )}
 
-          {/* FLASHSCORE SCORE HEADER */}
           <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 space-y-3">
             <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
               <span className="truncate">{currentMatch.competition}</span>

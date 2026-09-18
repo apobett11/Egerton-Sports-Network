@@ -24,7 +24,7 @@ import {
   type RefereeWalkoverCommand,
   type RefereeConfirmNormalResultCommand,
   MatchEngineError,
-  calculateLiveScore,
+  calculateMatchScore,
   recomputeDisciplinaryConsequences,
   nowIso,
 } from '../algorithms/matchLiveInputAlgorithm';
@@ -1157,7 +1157,7 @@ export async function syncMatchEventsAndScores(
   actor_uid: UID = 'user-1'
 ): Promise<{ home_score: number; away_score: number }> {
   const match = await matchRepository.getMatch(match_uid);
-  const score = calculateLiveScore(match, events);
+  const score = calculateMatchScore(match, events);
 
   // 1. Update In-Memory Cache
   match.home_score = score.home_score;

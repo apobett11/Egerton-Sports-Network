@@ -482,7 +482,7 @@ export class FrontendRefereePersona {
 export class FrontendUserAuditor {
   constructor(private db: SimulationDatabase) {}
 
-  async auditLiveScore(matchUid: string): Promise<{ status: MatchStatus; home: number; away: number; activeEvents: number }> {
+  async auditMatchScore(matchUid: string): Promise<{ status: MatchStatus; home: number; away: number; activeEvents: number }> {
     const live = await this.db.getLiveState(matchUid);
     return {
       status: live?.status || 'SCHEDULED',
@@ -684,7 +684,7 @@ export async function runFullSimulation() {
 
   await step(2, 'JOURNALIST', 'Journalist inputs live Goal (TAP_IN) for Sharks at min 14', async () => {
     const g = await journalist.clickAddGoal('md1-f1', TEAMS.sharks.id, 'TAP_IN', 14, 'FIRST_HALF');
-    const uLive = await user.auditLiveScore('md1-f1');
+    const uLive = await user.auditMatchScore('md1-f1');
     if (uLive.home !== 1) throw new Error('Live score not reflected to user');
     return { uiModal: 'Add Goal', goalType: g.goal_type, scoreTicker: `${uLive.home}-${uLive.away}` };
   });
@@ -764,7 +764,7 @@ export async function runFullSimulation() {
     await journalist.clickStartMatch('md2-f4');
     const badGoal = await journalist.clickAddGoal('md2-f4', TEAMS.strikers.id, 'TAP_IN', 5, 'FIRST_HALF');
     await journalist.clickCancelEvent('md2-f4', badGoal.event_uid, 'VAR Offside');
-    const live = await user.auditLiveScore('md2-f4');
+    const live = await user.auditMatchScore('md2-f4');
     if (live.away !== 0) throw new Error('Disallowed goal not cancelled in live state');
     return { uiButton: 'Cancel Event (VAR)', scoreAfterCancel: `${live.home}-${live.away}` };
   });
@@ -838,9 +838,9 @@ export async function runFullSimulation() {
     await journalist.clickStartMatch('sec-1');
     const g1 = await journalist.clickAddGoal('sec-1', TEAMS.sharks.id, 'TAP_IN', 25, 'FIRST_HALF', 'idem-key-99');
     const g2 = await journalist.clickAddGoal('sec-1', TEAMS.sharks.id, 'TAP_IN', 25, 'FIRST_HALF', 'idem-key-99');
-    const live = await user.auditLiveScore('sec-1');
+    const live = await user.auditMatchScore('sec-1');
     if (g1.event_uid !== g2.event_uid || live.home !== 1) throw new Error('Idempotency failed');
-    return { idempotencyKey: 'idem-key-99', event1: g1.event_uid, event2: g2.event_uid, liveScore: live.home };
+    return { idempotencyKey: 'idem-key-99', event1: g1.event_uid, event2: g2.event_uid, matchScore: live.home };
   });
 
   await step(19, 'JOURNALIST', 'Security check: Journalist cannot add goals after match reaches terminal LOCKED state', async () => {

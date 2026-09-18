@@ -77,7 +77,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     >
       {/* Outer Card Container with Position Border */}
       <div
-        className={`relative overflow-hidden rounded-[8px] border-[2px] flex flex-col justify-between efootball-card-shadow transition-all duration-100 ${getThemeBackgroundStyles()} ${getPositionBorderStyles()} ${
+        className={`relative overflow-hidden rounded-[8px] border-[2px] flex flex-col justify-between tactical-card-shadow transition-all duration-100 ${getThemeBackgroundStyles()} ${getPositionBorderStyles()} ${
           isSmall ? 'w-[48px] h-[58px] p-0.5' : 'w-[54px] h-[66px] sm:w-[58px] sm:h-[70px] p-1'
         } ${
           isSwapTarget
@@ -99,7 +99,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           </span>
 
           <span
-            className={`font-efootball-num font-black tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] ${
+            className={`font-player-num font-black tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] ${
               isSmall ? 'text-[14px] mt-0.5' : 'text-[17px] mt-0.5'
             }`}
           >

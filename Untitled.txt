@@ -146,7 +146,7 @@ However, we need to execute this carefully to respect the V1 MVP technical bound
 Remember our strict V1 rule: Players do not have login access or private dashboards yet.
 
 The beauty of this strategy is that they don't need to log in. The player's profile is simply a public web page (e.g., [egertonsports.com/player/kiprotich-bett](https://egertonsports.com/player/kiprotich-bett)).
-Because the Coach and Captain are already updating the rosters and match stats on the backend, this public profile automatically populates with the player's eFootball-style card, their goals, and their appearances.
+Because the Coach and Captain are already updating the rosters and match stats on the backend, this public profile automatically populates with the player's tactical player card, their goals, and their appearances.
 
 The player doesn't manage the page; they just share it.
 

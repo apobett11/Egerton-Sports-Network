@@ -35,7 +35,7 @@ test.describe('President Announcements & Matchdays E2E Test Suite', () => {
     await page.addInitScript(({ session, presId, presEmail }) => {
       localStorage.setItem('theme', 'dark');
       sessionStorage.setItem('esn_season_mode', 'true');
-      localStorage.setItem('livescore_auth_token', JSON.stringify(session));
+      localStorage.setItem('egerscore_auth_token', JSON.stringify(session));
       localStorage.setItem('esn_last_activity_timestamp', String(Date.now()));
       localStorage.setItem('esn_cached_role', 'president');
       localStorage.setItem('esn_cached_user', JSON.stringify(session.user));

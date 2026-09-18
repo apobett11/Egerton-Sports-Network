@@ -569,7 +569,7 @@ export async function executeBridgeTests() {
     if (state?.home_score !== 1 || state.away_score !== 0) throw new Error(`Live score not updated`);
     if (env.canonical_permanent_results.has('m-j-5')) throw new Error(`Journalist illegally wrote to canonical table!`);
 
-    return { buttonTrigger: 'Add Goal (TAP_IN)', eventUid: event.event_uid, transientLiveScore: `${state.home_score}-${state.away_score}` };
+    return { buttonTrigger: 'Add Goal (TAP_IN)', eventUid: event.event_uid, transientScore: `${state.home_score}-${state.away_score}` };
   });
 
   // 6. Add Goal Button Trigger: All 6 Goal Types
@@ -1006,7 +1006,7 @@ export async function executeBridgeTests() {
       throw new Error(`Transient data leaked into permanent fixture!`);
     }
 
-    return { permanentFixtureScore: fix.score_home, transientLiveScore: liveState.home_score, isolation: '100% Verified' };
+    return { permanentFixtureScore: fix.score_home, transientScore: liveState.home_score, isolation: '100% Verified' };
   });
 
   // 35. Multi-Matchday Round (5 fixtures) executed sequentially
@@ -1167,7 +1167,7 @@ export async function executeBridgeTests() {
 
     const state = await env.getLiveState(matchUid);
     if (state?.home_score !== 1 || state.active_events.length !== 1) throw new Error(`Idempotency violated in goal flood`);
-    return { floodRequests: 10, finalLiveScore: '1-0', eventsCount: state.active_events.length };
+    return { floodRequests: 10, finalScore: '1-0', eventsCount: state.active_events.length };
   });
 
   // 44. Mathematical Parity: played === won + drawn + lost holds across league

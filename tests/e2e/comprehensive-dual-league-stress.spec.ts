@@ -8,7 +8,7 @@ const FRONTEND_URL = 'http://localhost:5173';
 
 function queryPostgres(sql: string): string {
   try {
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     return execSync(cmd, { input: sql, encoding: 'utf-8' }).trim();
   } catch (err: any) {
     return 'ERROR: ' + err.message;
@@ -19,7 +19,7 @@ function queryPostgresJson(sql: string): any {
   try {
     const cleanSql = sql.trim().replace(/;+$/, '');
     const jsonWrapped = `SELECT json_agg(t) FROM (${cleanSql}) t;`;
-    const cmd = `docker exec -i supabase_db_livescore psql -U postgres -d postgres -t -A`;
+    const cmd = `docker exec -i supabase_db_egerscore psql -U postgres -d postgres -t -A`;
     const res = execSync(cmd, { input: jsonWrapped, encoding: 'utf-8' }).trim();
     if (!res || res === '' || res === 'null') return [];
     return JSON.parse(res);

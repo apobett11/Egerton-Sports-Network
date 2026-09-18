@@ -239,7 +239,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                     Collective Strength
                   </span>
-                  <span className="font-efootball-num font-black text-[28px] text-[#e6ff00] leading-none block mt-0.5">
+                  <span className="font-player-num font-black text-[28px] text-[#e6ff00] leading-none block mt-0.5">
                     {collectiveStrength}
                   </span>
                 </div>
