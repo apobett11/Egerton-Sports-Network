@@ -657,12 +657,27 @@ export const useAdminOperationsData = () => {
           resolvedCoachName = 'The Special One';
         }
 
+        let resolvedCaptainName = 'Unassigned';
+        const inMatchCapId = t.tactics_config?.roles?.captainId || t.temporary_match_squad?.roles?.captainId;
+        if (inMatchCapId) {
+          const inMatchCap = allPlayers.find((p) => p.id === inMatchCapId || p.profile_id === inMatchCapId);
+          if (inMatchCap) {
+            const capProf = allProfiles.find((p) => p.id === inMatchCap.profile_id);
+            resolvedCaptainName = (inMatchCap.first_name || inMatchCap.last_name)
+              ? `${inMatchCap.first_name || ''} ${inMatchCap.last_name || ''}`.trim()
+              : (capProf ? `${capProf.first_name} ${capProf.last_name}`.trim() : inMatchCap.name || 'Team Captain');
+          }
+        }
+        if (resolvedCaptainName === 'Unassigned' && captain) {
+          resolvedCaptainName = `${captain.first_name} ${captain.last_name}`.trim();
+        }
+
         return {
           id: t.id,
           name: t.name,
           logoUrl: t.logo_url,
           coachName: resolvedCoachName,
-          captainName: captain ? `${captain.first_name} ${captain.last_name}` : 'Unassigned',
+          captainName: resolvedCaptainName,
           playersCount: teamPlayerCount,
           league,
           hasUploadedKits,

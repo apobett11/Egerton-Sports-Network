@@ -466,8 +466,9 @@ export const useTeamDashboard = () => {
   };
 
   const handleAssignActivity = (sessionId: string, newActivity: string) => {
+    const coachLabel = coachProfile?.name ? (coachProfile.name.startsWith('Coach') ? coachProfile.name : `Coach ${coachProfile.name}`) : 'Head Coach';
     setPracticeSchedule((prev) => {
-      const updated = prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: 'Coach Marcus' } : s));
+      const updated = prev.map((s) => (s.id === sessionId ? { ...s, activity: newActivity, assignedBy: coachLabel } : s));
       savePracticeScheduleToDb(teamId, updated);
       return updated;
     });
@@ -481,13 +482,14 @@ export const useTeamDashboard = () => {
     intensity: 'High' | 'Medium' | 'Recovery' = 'High',
     activity: string = 'Tactical drills'
   ) => {
+    const coachLabel = coachProfile?.name ? (coachProfile.name.startsWith('Coach') ? coachProfile.name : `Coach ${coachProfile.name}`) : 'Head Coach';
     const newSession: PracticeSession = {
       id: `ps_${Date.now()}`,
       day,
       time,
       location,
       activity,
-      assignedBy: 'Coach Marcus',
+      assignedBy: coachLabel,
       coachApproved: true,
       intensity,
       focusArea: activity,
@@ -497,7 +499,7 @@ export const useTeamDashboard = () => {
       savePracticeScheduleToDb(teamId, updated);
       return updated;
     });
-    showToast(`Coach Marcus added ${day} (${activity}) session to schedule.`);
+    showToast(`${coachLabel} added ${day} (${activity}) session to schedule.`);
   };
 
   const handleApprovePracticeDay = (sessionId: string) => {

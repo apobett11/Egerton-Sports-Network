@@ -21,6 +21,7 @@ interface TeamKitDisplay {
 
 export const Stats: React.FC<StatsProps> = ({ match }) => {
     const { teamA, teamB } = match;
+    const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
     const [kitsA, setKitsA] = useState<{ outfield: TeamKitDisplay; gk: TeamKitDisplay }>({
         outfield: {
@@ -32,18 +33,18 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             stripeColor: null,
             accentColor: '#ffffff',
             collarColor: '#ffffff',
-            imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=600&auto=format&fit=crop&q=80',
+            imageUrl: undefined,
         },
         gk: {
             id: 'gk',
             type: 'gk',
             name: `${teamA.name} Goalkeeper Kit`,
-            description: 'High-visibility neon goalkeeper jersey engineered for reach and pitch clarity.',
+            description: 'High-visibility goalkeeper jersey engineered for reach and pitch clarity.',
             primaryBg: '#F43F5E',
             stripeColor: null,
             accentColor: '#ffffff',
             collarColor: '#111827',
-            imageUrl: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80',
+            imageUrl: undefined,
         },
     });
 
@@ -57,7 +58,7 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             stripeColor: '#0F172A',
             accentColor: '#ffffff',
             collarColor: '#ffffff',
-            imageUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=600&auto=format&fit=crop&q=80',
+            imageUrl: undefined,
         },
         gk: {
             id: 'gk',
@@ -68,13 +69,103 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             stripeColor: null,
             accentColor: '#ffffff',
             collarColor: '#111827',
-            imageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=600&auto=format&fit=crop&q=80',
+            imageUrl: undefined,
         },
     });
 
     useEffect(() => {
         let isMounted = true;
 
+        const getValidUploadedImageUrl = (url?: string | null): string | undefined => {
+            if (!url) return undefined;
+            const trimmed = url.trim();
+            if (!trimmed || trimmed.includes('images.unsplash.com')) return undefined;
+            return trimmed;
+        };
+
+        const applyKitsA = (kitsList: any[]) => {
+            if (!Array.isArray(kitsList) || kitsList.length === 0) return;
+            const homeKit = kitsList.find((k: any) => k.id === 'home') || kitsList[0];
+            const gkKit = kitsList.find((k: any) => k.id === 'gk') || kitsList.find((k: any) => k.id === 'third');
+
+            if (homeKit) {
+                setKitsA((prev) => ({
+                    ...prev,
+                    outfield: {
+                        ...prev.outfield,
+                        name: homeKit.name || prev.outfield.name,
+                        description: homeKit.description || prev.outfield.description,
+                        primaryBg: homeKit.primaryBg || prev.outfield.primaryBg,
+                        stripeColor: homeKit.stripeColor || null,
+                        accentColor: homeKit.accentColor || prev.outfield.accentColor,
+                        collarColor: homeKit.collarColor || prev.outfield.collarColor,
+                        imageUrl: getValidUploadedImageUrl(homeKit.imageUrl),
+                    },
+                }));
+            }
+            if (gkKit) {
+                setKitsA((prev) => ({
+                    ...prev,
+                    gk: {
+                        ...prev.gk,
+                        name: gkKit.name || prev.gk.name,
+                        description: gkKit.description || prev.gk.description,
+                        primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
+                        stripeColor: gkKit.stripeColor || null,
+                        accentColor: gkKit.accentColor || prev.gk.accentColor,
+                        collarColor: gkKit.collarColor || prev.gk.collarColor,
+                        imageUrl: getValidUploadedImageUrl(gkKit.imageUrl),
+                    },
+                }));
+            }
+        };
+
+        const applyKitsB = (kitsList: any[]) => {
+            if (!Array.isArray(kitsList) || kitsList.length === 0) return;
+            const awayKit = kitsList.find((k: any) => k.id === 'away') || kitsList.find((k: any) => k.id === 'third') || kitsList[0];
+            const gkKit = kitsList.find((k: any) => k.id === 'gk');
+
+            if (awayKit) {
+                setKitsB((prev) => ({
+                    ...prev,
+                    outfield: {
+                        ...prev.outfield,
+                        name: awayKit.name || prev.outfield.name,
+                        description: awayKit.description || prev.outfield.description,
+                        primaryBg: awayKit.primaryBg || prev.outfield.primaryBg,
+                        stripeColor: awayKit.stripeColor || null,
+                        accentColor: awayKit.accentColor || prev.outfield.accentColor,
+                        collarColor: awayKit.collarColor || prev.outfield.collarColor,
+                        imageUrl: getValidUploadedImageUrl(awayKit.imageUrl),
+                    },
+                }));
+            }
+            if (gkKit) {
+                setKitsB((prev) => ({
+                    ...prev,
+                    gk: {
+                        ...prev.gk,
+                        name: gkKit.name || prev.gk.name,
+                        description: gkKit.description || prev.gk.description,
+                        primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
+                        stripeColor: gkKit.stripeColor || null,
+                        accentColor: gkKit.accentColor || prev.gk.accentColor,
+                        collarColor: gkKit.collarColor || prev.gk.collarColor,
+                        imageUrl: getValidUploadedImageUrl(gkKit.imageUrl),
+                    },
+                }));
+            }
+        };
+
+        // 1. Immediately apply from match object if present
+        if (teamA.kits_config && teamA.kits_config.length > 0) {
+            applyKitsA(teamA.kits_config);
+        }
+        if (teamB.kits_config && teamB.kits_config.length > 0) {
+            applyKitsB(teamB.kits_config);
+        }
+
+        // 2. Query DB to ensure latest uploaded kit assets
         const fetchKits = async () => {
             try {
                 const { data, error } = await supabase
@@ -87,77 +178,8 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
                 const teamARec = data.find((t) => t.id === teamA.id);
                 const teamBRec = data.find((t) => t.id === teamB.id);
 
-                if (teamARec?.kits_config && Array.isArray(teamARec.kits_config) && teamARec.kits_config.length > 0) {
-                    const homeKit = teamARec.kits_config.find((k: any) => k.id === 'home') || teamARec.kits_config[0];
-                    const gkKit = teamARec.kits_config.find((k: any) => k.id === 'gk') || teamARec.kits_config.find((k: any) => k.id === 'third');
-
-                    if (homeKit) {
-                        setKitsA((prev) => ({
-                            ...prev,
-                            outfield: {
-                                ...prev.outfield,
-                                name: homeKit.name || prev.outfield.name,
-                                description: homeKit.description || prev.outfield.description,
-                                primaryBg: homeKit.primaryBg || prev.outfield.primaryBg,
-                                stripeColor: homeKit.stripeColor || null,
-                                accentColor: homeKit.accentColor || prev.outfield.accentColor,
-                                collarColor: homeKit.collarColor || prev.outfield.collarColor,
-                                imageUrl: homeKit.imageUrl || prev.outfield.imageUrl,
-                            },
-                        }));
-                    }
-                    if (gkKit) {
-                        setKitsA((prev) => ({
-                            ...prev,
-                            gk: {
-                                ...prev.gk,
-                                name: gkKit.name || prev.gk.name,
-                                description: gkKit.description || prev.gk.description,
-                                primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
-                                stripeColor: gkKit.stripeColor || null,
-                                accentColor: gkKit.accentColor || prev.gk.accentColor,
-                                collarColor: gkKit.collarColor || prev.gk.collarColor,
-                                imageUrl: gkKit.imageUrl || prev.gk.imageUrl,
-                            },
-                        }));
-                    }
-                }
-
-                if (teamBRec?.kits_config && Array.isArray(teamBRec.kits_config) && teamBRec.kits_config.length > 0) {
-                    const awayKit = teamBRec.kits_config.find((k: any) => k.id === 'away') || teamBRec.kits_config.find((k: any) => k.id === 'third') || teamBRec.kits_config[0];
-                    const gkKit = teamBRec.kits_config.find((k: any) => k.id === 'gk');
-
-                    if (awayKit) {
-                        setKitsB((prev) => ({
-                            ...prev,
-                            outfield: {
-                                ...prev.outfield,
-                                name: awayKit.name || prev.outfield.name,
-                                description: awayKit.description || prev.outfield.description,
-                                primaryBg: awayKit.primaryBg || prev.outfield.primaryBg,
-                                stripeColor: awayKit.stripeColor || null,
-                                accentColor: awayKit.accentColor || prev.outfield.accentColor,
-                                collarColor: awayKit.collarColor || prev.outfield.collarColor,
-                                imageUrl: awayKit.imageUrl || prev.outfield.imageUrl,
-                            },
-                        }));
-                    }
-                    if (gkKit) {
-                        setKitsB((prev) => ({
-                            ...prev,
-                            gk: {
-                                ...prev.gk,
-                                name: gkKit.name || prev.gk.name,
-                                description: gkKit.description || prev.gk.description,
-                                primaryBg: gkKit.primaryBg || prev.gk.primaryBg,
-                                stripeColor: gkKit.stripeColor || null,
-                                accentColor: gkKit.accentColor || prev.gk.accentColor,
-                                collarColor: gkKit.collarColor || prev.gk.collarColor,
-                                imageUrl: gkKit.imageUrl || prev.gk.imageUrl,
-                            },
-                        }));
-                    }
-                }
+                if (teamARec?.kits_config) applyKitsA(teamARec.kits_config);
+                if (teamBRec?.kits_config) applyKitsB(teamBRec.kits_config);
             } catch (err) {
                 console.error('Error loading team kits:', err);
             }
@@ -168,7 +190,7 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
         return () => {
             isMounted = false;
         };
-    }, [teamA.id, teamB.id]);
+    }, [teamA.id, teamB.id, teamA.kits_config, teamB.kits_config]);
 
     const renderKitCard = (kit: TeamKitDisplay, teamName: string, teamLogo: string, isGK: boolean) => {
         return (
@@ -194,11 +216,12 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
 
                 {/* Kit Image / Visual Showcase */}
                 <div className="relative w-full aspect-video bg-slate-950/80 overflow-hidden flex items-center justify-center p-4">
-                    {kit.imageUrl ? (
+                    {kit.imageUrl && !brokenImages[kit.id] ? (
                         <img
                             src={kit.imageUrl}
                             alt={kit.name}
                             className="w-full h-full object-cover object-center transition-transform hover:scale-105 duration-300"
+                            onError={() => setBrokenImages((prev) => ({ ...prev, [kit.id]: true }))}
                         />
                     ) : (
                         <div className="relative flex flex-col items-center justify-center">

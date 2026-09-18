@@ -12,7 +12,8 @@ import type {
   MatchEventType,
   MatchStatus,
   ApiResponse,
-  Player
+  Player,
+  PlayerPosition
 } from '../types';
 import { calculateLeagueStandings } from '../lib/leagueEngine';
 import { executeWithRetry } from '../lib/retryPolicy';
@@ -21,6 +22,7 @@ import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
 import { guestCache } from '../lib/guestCache';
 import { formatMatchTime } from '../lib/matchdayHelper';
+import { FORMATION_CONFIGS } from '../components/Dashboards/Team/components/Squad/TeamSquadView';
 
 // Helper for unwrapping Supabase joins (object vs 1-element array)
 const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
@@ -246,8 +248,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name)),
-          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, coach:profiles!coach_id(first_name, last_name))
+          team_home:teams!home_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, coach:profiles!coach_id(first_name, last_name)),
+          team_away:teams!away_team_id(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, coach:profiles!coach_id(first_name, last_name))
         `)
         .eq('id', fixtureId)
         .single();
@@ -361,6 +363,13 @@ export const ApiService = {
           : Promise.resolve({ data: [] })
       ]);
 
+      // Helper to cleanly extract formation slots honoring coach's tactical formation
+      const getFormationSlots = (formationName?: string) => {
+        if (!formationName) return FORMATION_CONFIGS['4-3-3'].slots;
+        const key = formationName.trim().split(' ')[0] as keyof typeof FORMATION_CONFIGS;
+        return FORMATION_CONFIGS[key]?.slots || FORMATION_CONFIGS['4-3-3'].slots;
+      };
+
       // Coach-selected in-match roles for each team
       const coachRolesA = home?.tactics_config?.roles || 
                           home?.tactics_config?.inMatchRoles || 
@@ -373,7 +382,38 @@ export const ApiService = {
                           away?.temporary_match_squad?.roles || 
                           {};
 
-      const formatPlayerRecord = (p: any, teamObj: any, idx: number, isSubDefault: boolean = false, teamCoachRoles?: any): Player => {
+      const rawSquadA = squadARes.data || [];
+      const rawSquadB = squadBRes.data || [];
+
+      // Captain must be strictly ONE player per team: coach in-match roles > team captain_id > profile role
+      const resolveDesignatedCaptainId = (coachRoles: any, teamObj: any, rawSquad: any[]): string | null => {
+        if (coachRoles?.captainId) {
+          const match = rawSquad.find((p: any) => p.id === coachRoles.captainId || p.profile_id === coachRoles.captainId);
+          if (match) return match.id;
+        }
+        if (teamObj?.captain_id) {
+          const match = rawSquad.find((p: any) => p.id === teamObj.captain_id || p.profile_id === teamObj.captain_id);
+          if (match) return match.id;
+        }
+        const profileCap = rawSquad.find((p: any) => {
+          const prof = unwrap(p.profile);
+          return prof?.role === 'captain';
+        });
+        if (profileCap) return profileCap.id;
+        return null;
+      };
+
+      const designatedCaptainIdA = resolveDesignatedCaptainId(coachRolesA, home, rawSquadA);
+      const designatedCaptainIdB = resolveDesignatedCaptainId(coachRolesB, away, rawSquadB);
+
+      const formatPlayerRecord = (
+        p: any,
+        teamObj: any,
+        idx: number,
+        isSubDefault: boolean = false,
+        designatedCapId: string | null = null,
+        formationSlot?: any
+      ): Player => {
         const prof = unwrap(p.profile);
         const pName = p.name 
           ? p.name 
@@ -382,26 +422,44 @@ export const ApiService = {
           : prof?.first_name 
           ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
           : `Player #${p.jersey_number || idx + 1}`;
-        const isCap = Boolean(
-          (teamObj?.captain_id && (p.id === teamObj.captain_id || p.profile_id === teamObj.captain_id)) ||
-          (teamCoachRoles?.captainId && (p.id === teamCoachRoles.captainId || p.profile_id === teamCoachRoles.captainId)) ||
-          prof?.role === 'captain' ||
-          p.isCaptain
-        );
+
+        // Exactly one captain per team: true if matching designated captain ID, or fallback to first starter if none designated
+        const isCap = designatedCapId
+          ? (p.id === designatedCapId || p.profile_id === designatedCapId)
+          : (!isSubDefault && idx === 0);
+
+        // Position & Role strictly follows coach formation slot placement
+        // Slot 0 is ALWAYS Goalkeeper (GK)
+        let resolvedCategory: PlayerPosition = 'MID';
+        let tacticalPosition: string | undefined = undefined;
+        let tacticalLabel: string | undefined = undefined;
+
+        if (formationSlot) {
+          resolvedCategory = formationSlot.category === 'GK' ? 'GK' : formationSlot.category === 'DEF' ? 'DEF' : formationSlot.category === 'MID' ? 'MID' : 'FWD';
+          tacticalPosition = formationSlot.position;
+          tacticalLabel = formationSlot.label;
+        } else if (!isSubDefault && idx === 0) {
+          resolvedCategory = 'GK';
+          tacticalPosition = 'GK';
+          tacticalLabel = 'Goalkeeper';
+        } else {
+          resolvedCategory = normalizePos(p.position, idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD');
+          tacticalPosition = resolvedCategory;
+        }
+
         return {
           id: p.id,
           name: pName,
           number: p.jersey_number || p.number || idx + 1,
-          position: normalizePos(p.position, idx === 0 ? 'GK' : idx <= 4 ? 'DEF' : idx <= 8 ? 'MID' : 'FWD'),
+          position: resolvedCategory,
+          tacticalPosition,
+          tacticalLabel,
           isCaptain: isCap,
           isSub: p.isSub !== undefined ? p.isSub : isSubDefault,
           profile_id: p.profile_id,
           team_id: teamObj?.id
         };
       };
-
-      const rawSquadA = squadARes.data || [];
-      const rawSquadB = squadBRes.data || [];
 
       // Resolve Squad for Team A (Home)
       let teamAPlayers: Player[] = [];
@@ -414,26 +472,27 @@ export const ApiService = {
         captainNotesA = lineupHome.captain_notes || '';
         const rawStarters = lineupHome.starting_xi || [];
         const rawSubs = lineupHome.substitutes || [];
+        const slotsA = getFormationSlots(formationA);
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, home, i, false, coachRolesA);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, home, i, false, designatedCaptainIdA, slotsA[i]);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, home, starters.length + i, true, coachRolesA);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, home, starters.length + i, true, designatedCaptainIdA);
         });
         const usedIds = new Set([...starters, ...subs].map(p => p.id));
         const rawReserves = rawSubs.slice(6);
         const reserves = rawReserves.map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, home, starters.length + 6 + i, true, coachRolesA);
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, home, starters.length + 6 + i, true, designatedCaptainIdA);
           rec.isReserve = true;
           return rec;
         });
         reserves.forEach((r: any) => usedIds.add(r.id));
         const extraReserves = rawSquadA.filter((p: any) => !usedIds.has(p.id)).map((p: any, i: number) => {
-          const rec = formatPlayerRecord(p, home, starters.length + subs.length + reserves.length + i, true, coachRolesA);
+          const rec = formatPlayerRecord(p, home, starters.length + subs.length + reserves.length + i, true, designatedCaptainIdA);
           rec.isReserve = true;
           return rec;
         });
@@ -465,6 +524,8 @@ export const ApiService = {
         if (subIds.length === 0 && subsStr && typeof subsStr === 'string') {
           subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
         }
+
+        const slotsA = getFormationSlots(formationA);
 
         if (starterIds.length > 0) {
           // Map coach-selected starting XI in exact coach selection order
@@ -524,10 +585,10 @@ export const ApiService = {
           // All remaining players become Reserves
           const matchedReserves = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
 
-          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, home, i, false, coachRolesA));
-          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true, coachRolesA));
+          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, home, i, false, designatedCaptainIdA, slotsA[i]));
+          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true, designatedCaptainIdA));
           const reserves = matchedReserves.map((p: any, i: number) => {
-            const rec = formatPlayerRecord(p, home, starters.length + subs.length + i, true, coachRolesA);
+            const rec = formatPlayerRecord(p, home, starters.length + subs.length + i, true, designatedCaptainIdA);
             rec.isReserve = true;
             return rec;
           });
@@ -535,13 +596,13 @@ export const ApiService = {
         } else {
           // Natural division: first 11 starters, next 6 substitutes, remainder reserves
           const starters = rawSquadA.slice(0, 11).map((p: any, idx: number) =>
-            formatPlayerRecord(p, home, idx, false, coachRolesA)
+            formatPlayerRecord(p, home, idx, false, designatedCaptainIdA, slotsA[idx])
           );
           const subs = rawSquadA.slice(11, 17).map((p: any, idx: number) =>
-            formatPlayerRecord(p, home, 11 + idx, true, coachRolesA)
+            formatPlayerRecord(p, home, 11 + idx, true, designatedCaptainIdA)
           );
           const reserves = rawSquadA.slice(17).map((p: any, idx: number) => {
-            const rec = formatPlayerRecord(p, home, 17 + idx, true, coachRolesA);
+            const rec = formatPlayerRecord(p, home, 17 + idx, true, designatedCaptainIdA);
             rec.isReserve = true;
             return rec;
           });
@@ -560,26 +621,27 @@ export const ApiService = {
         captainNotesB = lineupAway.captain_notes || '';
         const rawStarters = lineupAway.starting_xi || [];
         const rawSubs = lineupAway.substitutes || [];
+        const slotsB = getFormationSlots(formationB);
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, away, i, false, coachRolesB);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, away, i, false, designatedCaptainIdB, slotsB[i]);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, away, starters.length + i, true, coachRolesB);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, away, starters.length + i, true, designatedCaptainIdB);
         });
         const usedIdsB = new Set([...starters, ...subs].map(p => p.id));
         const rawReserves = rawSubs.slice(6);
         const reserves = rawReserves.map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, away, starters.length + 6 + i, true, coachRolesB);
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, away, starters.length + 6 + i, true, designatedCaptainIdB);
           rec.isReserve = true;
           return rec;
         });
         reserves.forEach((r: any) => usedIdsB.add(r.id));
         const extraReserves = rawSquadB.filter((p: any) => !usedIdsB.has(p.id)).map((p: any, i: number) => {
-          const rec = formatPlayerRecord(p, away, starters.length + subs.length + reserves.length + i, true, coachRolesB);
+          const rec = formatPlayerRecord(p, away, starters.length + subs.length + reserves.length + i, true, designatedCaptainIdB);
           rec.isReserve = true;
           return rec;
         });
@@ -611,6 +673,8 @@ export const ApiService = {
         if (subIds.length === 0 && subsStr && typeof subsStr === 'string') {
           subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
         }
+
+        const slotsB = getFormationSlots(formationB);
 
         if (starterIds.length > 0) {
           // Map coach-selected starting XI in exact coach selection order
@@ -670,10 +734,10 @@ export const ApiService = {
           // All remaining players become Reserves
           const matchedReserves = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
 
-          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, away, i, false, coachRolesB));
-          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true, coachRolesB));
+          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, away, i, false, designatedCaptainIdB, slotsB[i]));
+          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true, designatedCaptainIdB));
           const reserves = matchedReserves.map((p: any, i: number) => {
-            const rec = formatPlayerRecord(p, away, starters.length + subs.length + i, true, coachRolesB);
+            const rec = formatPlayerRecord(p, away, starters.length + subs.length + i, true, designatedCaptainIdB);
             rec.isReserve = true;
             return rec;
           });
@@ -681,13 +745,13 @@ export const ApiService = {
         } else {
           // Natural division: first 11 starters, next 6 substitutes, remainder reserves
           const starters = rawSquadB.slice(0, 11).map((p: any, idx: number) =>
-            formatPlayerRecord(p, away, idx, false, coachRolesB)
+            formatPlayerRecord(p, away, idx, false, designatedCaptainIdB, slotsB[idx])
           );
           const subs = rawSquadB.slice(11, 17).map((p: any, idx: number) =>
-            formatPlayerRecord(p, away, 11 + idx, true, coachRolesB)
+            formatPlayerRecord(p, away, 11 + idx, true, designatedCaptainIdB)
           );
           const reserves = rawSquadB.slice(17).map((p: any, idx: number) => {
-            const rec = formatPlayerRecord(p, away, 17 + idx, true, coachRolesB);
+            const rec = formatPlayerRecord(p, away, 17 + idx, true, designatedCaptainIdB);
             rec.isReserve = true;
             return rec;
           });
@@ -752,9 +816,11 @@ export const ApiService = {
           logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
           colorCode: home?.color_code || '#D4AF37',
           coach_id: home?.coach_id,
-          captain_id: home?.captain_id,
+          captain_id: designatedCaptainIdA || home?.captain_id,
           coachName: coachNameA,
-          captainName: captainNameA
+          captainName: captainNameA,
+          kits_config: home?.kits_config || [],
+          tactics_config: home?.tactics_config || null
         },
         teamB: {
           id: away?.id || '',
@@ -763,9 +829,11 @@ export const ApiService = {
           logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
           colorCode: away?.color_code || '#2563EB',
           coach_id: away?.coach_id,
-          captain_id: away?.captain_id,
+          captain_id: designatedCaptainIdB || away?.captain_id,
           coachName: coachNameB,
-          captainName: captainNameB
+          captainName: captainNameB,
+          kits_config: away?.kits_config || [],
+          tactics_config: away?.tactics_config || null
         },
         scoreA: f.score_home || 0,
         scoreB: f.score_away || 0,
@@ -778,6 +846,8 @@ export const ApiService = {
           formationB,
           rolesA: coachRolesA,
           rolesB: coachRolesB,
+          coordsMapA: home?.tactics_config?.coordsMap || home?.temporary_match_squad?.coordsMap || null,
+          coordsMapB: away?.tactics_config?.coordsMap || away?.temporary_match_squad?.coordsMap || null,
         },
         venue: f.venue || '',
         referee: refName,

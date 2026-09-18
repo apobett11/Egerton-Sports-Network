@@ -40,6 +40,8 @@ export interface Team {
   captain_id?: string;
   coachName?: string;
   captainName?: string;
+  kits_config?: any[];
+  tactics_config?: any;
 }
 
 export type PlayerPosition = 'GK' | 'DEF' | 'MID' | 'FWD';
@@ -49,6 +51,8 @@ export interface Player {
   name: string;
   number: number;
   position: PlayerPosition;
+  tacticalPosition?: string;
+  tacticalLabel?: string;
   isCaptain: boolean;
   isSub: boolean;
   isReserve?: boolean;
@@ -158,6 +162,8 @@ export interface Match {
       leftFreeKickTakerId?: string;
       viceCaptainId?: string;
     };
+    coordsMapA?: Record<string, { x: number; y: number }>;
+    coordsMapB?: Record<string, { x: number; y: number }>;
   };
   venue: string;
   referee: string;

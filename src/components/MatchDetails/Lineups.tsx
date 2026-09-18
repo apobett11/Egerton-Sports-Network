@@ -13,10 +13,17 @@ import {
     Users,
 } from 'lucide-react';
 import type { Match, Player } from '../../types';
+import { FORMATION_CONFIGS } from '../Dashboards/Team/components/Squad/TeamSquadView';
 
 interface LineupsProps {
     match: Match;
 }
+
+const cleanFormationKey = (formation?: string): keyof typeof FORMATION_CONFIGS => {
+    if (!formation) return '4-3-3';
+    const base = formation.trim().split(' ')[0] as keyof typeof FORMATION_CONFIGS;
+    return FORMATION_CONFIGS[base] ? base : '4-3-3';
+};
 
 // Derive standard 5 in-match set piece & leadership roles for a squad honoring coach selection
 const getTeamInMatchRoles = (
@@ -150,6 +157,20 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const rolesA = getTeamInMatchRoles(startersA, subsA, match.lineups?.rolesA, teamA.captain_id);
     const rolesB = getTeamInMatchRoles(startersB, subsB, match.lineups?.rolesB, teamB.captain_id);
 
+    // Strictly ONE designated captain per team, selected from in-match roles
+    const designatedCapIdA = rolesA[0]?.player?.id || startersA.find(p => p.isCaptain)?.id || startersA[0]?.id;
+    const designatedCapIdB = rolesB[0]?.player?.id || startersB.find(p => p.isCaptain)?.id || startersB[0]?.id;
+
+    // Tactical formation configurations from coach
+    const formationKeyA = cleanFormationKey(lineups?.formationA);
+    const formationConfigA = FORMATION_CONFIGS[formationKeyA] || FORMATION_CONFIGS['4-3-3'];
+
+    const formationKeyB = cleanFormationKey(lineups?.formationB);
+    const formationConfigB = FORMATION_CONFIGS[formationKeyB] || FORMATION_CONFIGS['4-3-3'];
+
+    const coordsMapA = (match.lineups as any)?.coordsMapA || (teamA as any)?.tactics_config?.coordsMap;
+    const coordsMapB = (match.lineups as any)?.coordsMapB || (teamB as any)?.tactics_config?.coordsMap;
+
     // Super Eagles coach reflection (Head Coach named The Special One)
     const coachNameA = teamA.name.toLowerCase().includes('super eagle')
         ? 'The Special One'
@@ -157,40 +178,6 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const coachNameB = teamB.name.toLowerCase().includes('super eagle')
         ? 'The Special One'
         : (teamB.coachName || `Coach ${teamB.name}`);
-
-    // Grouping for pitch formation with guaranteed distribution
-    const distributeStarters = (players: Player[]) => {
-        if (players.length === 0) {
-            return { GK: [], DEF: [], MID: [], FWD: [] };
-        }
-
-        let gk = players.filter(p => p.position === 'GK');
-        let def = players.filter(p => p.position === 'DEF');
-        let mid = players.filter(p => p.position === 'MID');
-        let fwd = players.filter(p => p.position === 'FWD');
-
-        // If no GK tagged, pick player #1 or the very first player
-        if (gk.length === 0) {
-            const firstGkCandidate = players.find(p => p.number === 1) || players[0];
-            gk = [firstGkCandidate];
-            const remaining = players.filter(p => p.id !== firstGkCandidate.id);
-            def = remaining.filter(p => p.position === 'DEF');
-            mid = remaining.filter(p => p.position === 'MID');
-            fwd = remaining.filter(p => p.position === 'FWD');
-
-            // If still missing lines, fallback distribute evenly
-            if (def.length === 0 && mid.length === 0 && fwd.length === 0) {
-                def = remaining.slice(0, 4);
-                mid = remaining.slice(4, 7);
-                fwd = remaining.slice(7, 10);
-            }
-        }
-
-        return { GK: gk, DEF: def, MID: mid, FWD: fwd };
-    };
-
-    const groupedA = distributeStarters(startersA);
-    const groupedB = distributeStarters(startersB);
 
     const getPositionBadgeClass = (pos: string) => {
         switch (pos) {
@@ -207,14 +194,25 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
         }
     };
 
-    const renderPitchPlayer = (player: Player, xPct: number, yPct: number, teamColor: string, teamObj: typeof teamA, isAway = false) => {
+    const renderPitchPlayer = (
+        player: Player,
+        xPct: number,
+        yPct: number,
+        teamColor: string,
+        teamObj: typeof teamA,
+        isAway = false,
+        tacticalPos?: string
+    ) => {
+        const isCap = isAway ? (designatedCapIdB === player.id) : (designatedCapIdA === player.id);
+        const posBadge = tacticalPos || player.tacticalPosition || player.position;
+
         return (
             <div
                 key={player.id}
                 onClick={() => setSelectedPlayer({ player, team: teamObj })}
                 className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-10 select-none cursor-pointer transition-transform hover:scale-115 active:scale-95"
                 style={{ left: `${xPct}%`, top: `${yPct}%` }}
-                title={`${player.name} (#${player.number}) - Click for details`}
+                title={`${player.name} (#${player.number}) • ${posBadge}${isCap ? ' (Captain)' : ''} - Click for details`}
             >
                 {/* Node with Jersey Number & Captain Tag */}
                 <div className="relative">
@@ -225,17 +223,22 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                         {player.number}
                     </div>
 
-                    {player.isCaptain && (
+                    {isCap && (
                         <span className="absolute -top-1.5 -right-1 px-1 py-0.2 rounded-xs font-mono font-black text-[8px] shadow-xs text-black bg-amber-400">
                             C
                         </span>
                     )}
                 </div>
 
-                {/* Surname */}
-                <span className="text-[9px] sm:text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.2 rounded-xs truncate max-w-[65px] text-center shadow-xs mt-0.5">
-                    {player.name.split(' ').pop()}
-                </span>
+                {/* Tactical Position + Surname */}
+                <div className="flex items-center gap-0.5 bg-black/85 px-1.5 py-0.5 rounded-xs shadow-xs mt-0.5 max-w-[85px]">
+                    <span className="text-[8px] font-mono font-black text-amber-400 shrink-0">
+                        {posBadge}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-white truncate">
+                        {player.name.split(' ').pop()}
+                    </span>
+                </div>
             </div>
         );
     };
@@ -245,24 +248,30 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const selectedPlayerYellows = selectedPlayer ? events.filter(e => e.playerId === selectedPlayer.player.id && e.type === 'yellow').length : 0;
     const selectedPlayerReds = selectedPlayer ? events.filter(e => e.playerId === selectedPlayer.player.id && e.type === 'red').length : 0;
 
-    const renderPlayerRow = (p: Player, teamObj: typeof teamA) => (
-        <div
-            key={p.id}
-            onClick={() => setSelectedPlayer({ player: p, team: teamObj })}
-            className="flex items-center justify-between px-3 py-2.5 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer"
-        >
-            <div className="flex items-center gap-2 min-w-0">
-                <span className="font-mono font-black text-slate-400 w-5">{p.number}</span>
-                <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
-                {p.isCaptain && (
-                    <span className="px-1 py-0.2 rounded-xs text-[9px] font-black bg-amber-400 text-black shadow-xs">C</span>
-                )}
+    const renderPlayerRow = (p: Player, teamObj: typeof teamA, tacticalPos?: string) => {
+        const isAway = teamObj.id === teamB.id;
+        const isCap = isAway ? (designatedCapIdB === p.id) : (designatedCapIdA === p.id);
+        const posToDisplay = tacticalPos || p.tacticalPosition || p.position;
+
+        return (
+            <div
+                key={p.id}
+                onClick={() => setSelectedPlayer({ player: p, team: teamObj })}
+                className="flex items-center justify-between px-3 py-2.5 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer"
+            >
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono font-black text-slate-400 w-5">{p.number}</span>
+                    <span className="font-bold text-slate-900 dark:text-white truncate">{p.name}</span>
+                    {isCap && (
+                        <span className="px-1 py-0.2 rounded-xs text-[9px] font-black bg-amber-400 text-black shadow-xs">C</span>
+                    )}
+                </div>
+                <span className={`font-mono font-black text-[9px] px-1.5 py-0.5 rounded-sm uppercase ${getPositionBadgeClass(p.position)}`}>
+                    {posToDisplay}
+                </span>
             </div>
-            <span className={`font-mono font-black text-[9px] px-1.5 py-0.5 rounded-sm uppercase ${getPositionBadgeClass(p.position)}`}>
-                {p.position}
-            </span>
-        </div>
-    );
+        );
+    };
 
     const showRolesForA = capsuleFilter === 'both' || capsuleFilter === 'home';
     const showRolesForB = capsuleFilter === 'both' || capsuleFilter === 'away';
@@ -381,52 +390,52 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 w-32 h-14 border border-white/30 pointer-events-none" />
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-32 h-14 border border-white/30 pointer-events-none" />
 
-                    {/* SCENARIO A: BOTH TEAMS ON PITCH */}
+                    {/* SCENARIO A: BOTH TEAMS ON PITCH (SIMULATING COACH PLACEMENT & FORMATION) */}
                     {capsuleFilter === 'both' && (
                         <>
-                            {/* Away Team Players (Top Half) */}
-                            {(['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
-                                const rowY: Record<string, number> = { GK: 9, DEF: 22, MID: 35, FWD: 44 };
-                                const players = groupedB[pos];
-                                return players.map((p, idx) => {
-                                    const xVal = ((idx + 1) / (players.length + 1)) * 100;
-                                    return renderPitchPlayer(p, xVal, rowY[pos], teamB.colorCode, teamB, true);
-                                });
+                            {/* Away Team Players (Top Half) - Attacking Downward */}
+                            {startersB.map((p, idx) => {
+                                const slot = formationConfigB.slots[idx] || { x: 50, y: 50, position: p.position };
+                                const customCoord = coordsMapB?.[p.id] || (p.name ? coordsMapB?.[p.name.toLowerCase()] : null);
+                                const xVal = customCoord?.x ?? (100 - slot.x);
+                                const baseUprightY = customCoord?.y ?? slot.y;
+                                // Invert and scale to top half (8% - 46%)
+                                const yVal = 48 - (baseUprightY / 100) * 40;
+                                return renderPitchPlayer(p, xVal, yVal, teamB.colorCode, teamB, true, slot.position);
                             })}
 
-                            {/* Home Team Players (Bottom Half) */}
-                            {(['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
-                                const rowY: Record<string, number> = { GK: 91, DEF: 78, MID: 65, FWD: 56 };
-                                const players = groupedA[pos];
-                                return players.map((p, idx) => {
-                                    const xVal = ((idx + 1) / (players.length + 1)) * 100;
-                                    return renderPitchPlayer(p, xVal, rowY[pos], teamA.colorCode, teamA, false);
-                                });
+                            {/* Home Team Players (Bottom Half) - Attacking Upward */}
+                            {startersA.map((p, idx) => {
+                                const slot = formationConfigA.slots[idx] || { x: 50, y: 50, position: p.position };
+                                const customCoord = coordsMapA?.[p.id] || (p.name ? coordsMapA?.[p.name.toLowerCase()] : null);
+                                const xVal = customCoord?.x ?? slot.x;
+                                const baseUprightY = customCoord?.y ?? slot.y;
+                                // Scale to bottom half (54% - 92%)
+                                const yVal = 52 + (baseUprightY / 100) * 40;
+                                return renderPitchPlayer(p, xVal, yVal, teamA.colorCode, teamA, false, slot.position);
                             })}
                         </>
                     )}
 
-                    {/* SCENARIO B: HOME TEAM ONLY (UPRIGHT FORMATION SIMULATION) */}
+                    {/* SCENARIO B: HOME TEAM ONLY (UPRIGHT FORMATION SIMULATION FROM COACH) */}
                     {capsuleFilter === 'home' && (
-                        (['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
-                            const rowY: Record<string, number> = { GK: 88, DEF: 68, MID: 45, FWD: 22 };
-                            const players = groupedA[pos];
-                            return players.map((p, idx) => {
-                                const xVal = ((idx + 1) / (players.length + 1)) * 100;
-                                return renderPitchPlayer(p, xVal, rowY[pos], teamA.colorCode, teamA, false);
-                            });
+                        startersA.map((p, idx) => {
+                            const slot = formationConfigA.slots[idx] || { x: 50, y: 50, position: p.position };
+                            const customCoord = coordsMapA?.[p.id] || (p.name ? coordsMapA?.[p.name.toLowerCase()] : null);
+                            const xVal = customCoord?.x ?? slot.x;
+                            const yVal = customCoord?.y ?? slot.y;
+                            return renderPitchPlayer(p, xVal, yVal, teamA.colorCode, teamA, false, slot.position);
                         })
                     )}
 
-                    {/* SCENARIO C: AWAY TEAM ONLY (UPRIGHT FORMATION SIMULATION) */}
+                    {/* SCENARIO C: AWAY TEAM ONLY (UPRIGHT FORMATION SIMULATION FROM COACH) */}
                     {capsuleFilter === 'away' && (
-                        (['GK', 'DEF', 'MID', 'FWD'] as const).map(pos => {
-                            const rowY: Record<string, number> = { GK: 88, DEF: 68, MID: 45, FWD: 22 };
-                            const players = groupedB[pos];
-                            return players.map((p, idx) => {
-                                const xVal = ((idx + 1) / (players.length + 1)) * 100;
-                                return renderPitchPlayer(p, xVal, rowY[pos], teamB.colorCode, teamB, true);
-                            });
+                        startersB.map((p, idx) => {
+                            const slot = formationConfigB.slots[idx] || { x: 50, y: 50, position: p.position };
+                            const customCoord = coordsMapB?.[p.id] || (p.name ? coordsMapB?.[p.name.toLowerCase()] : null);
+                            const xVal = customCoord?.x ?? slot.x;
+                            const yVal = customCoord?.y ?? slot.y;
+                            return renderPitchPlayer(p, xVal, yVal, teamB.colorCode, teamB, true, slot.position);
                         })
                     )}
                 </div>
@@ -454,7 +463,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                             {startersA.length === 0 ? (
                                 <div className="p-4 text-center text-xs text-slate-400">No starting XI recorded</div>
                             ) : (
-                                startersA.map(p => renderPlayerRow(p, teamA))
+                                startersA.map((p, idx) => renderPlayerRow(p, teamA, formationConfigA.slots[idx]?.position))
                             )}
                         </div>
                     )}
@@ -470,7 +479,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                             {startersB.length === 0 ? (
                                 <div className="p-4 text-center text-xs text-slate-400">No starting XI recorded</div>
                             ) : (
-                                startersB.map(p => renderPlayerRow(p, teamB))
+                                startersB.map((p, idx) => renderPlayerRow(p, teamB, formationConfigB.slots[idx]?.position))
                             )}
                         </div>
                     )}
