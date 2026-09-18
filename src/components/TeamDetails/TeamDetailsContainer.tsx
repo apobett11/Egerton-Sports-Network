@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
@@ -33,18 +33,21 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   const [fixtures, setFixtures] = useState<Match[]>([]);
   const [standings, setStandings] = useState<StandingEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isPlayersLoading, setIsPlayersLoading] = useState<boolean>(false);
+  const [isStandingsLoading, setIsStandingsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load live team data from database
-  const loadData = useCallback(async () => {
+  const playersLoadedRef = useRef<boolean>(false);
+  const standingsLoadedRef = useRef<boolean>(false);
+
+  // Phase 1 (Instant First Paint): Fetch team metadata and fixtures immediately (<300ms)
+  const loadPrimaryData = useCallback(async () => {
     if (!teamId) return;
     try {
       setError(null);
-      const [teamData, playersData, fixturesData, standingsData] = await Promise.all([
+      const [teamData, fixturesData] = await Promise.all([
         fetchTeamById(teamId),
-        fetchTeamPlayers(teamId),
         fetchTeamFixtures(teamId),
-        fetchTeamStandings(teamId),
       ]);
 
       if (!teamData) {
@@ -53,52 +56,103 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
         setTeam(teamData);
       }
 
-      setPlayers(playersData || []);
       setFixtures(fixturesData || []);
-      setStandings(standingsData || []);
     } catch (err: any) {
-      console.error('[TeamDetailsContainer] Error fetching team data:', err);
+      console.error('[TeamDetailsContainer] Error fetching primary team data:', err);
       setError('Unable to load team records from database. Please check connection.');
     } finally {
       setIsLoading(false);
     }
   }, [teamId]);
 
+  // Phase 2 (Progressive / On-demand): Fetch squad players
+  const loadPlayersData = useCallback(async () => {
+    if (!teamId || playersLoadedRef.current) return;
+    setIsPlayersLoading(true);
+    try {
+      const playersData = await fetchTeamPlayers(teamId);
+      setPlayers(playersData || []);
+      playersLoadedRef.current = true;
+    } catch (err: any) {
+      console.warn('[TeamDetailsContainer] Error fetching players:', err);
+    } finally {
+      setIsPlayersLoading(false);
+    }
+  }, [teamId]);
+
+  // Phase 2 (Progressive / On-demand): Fetch league standings
+  const loadStandingsData = useCallback(async () => {
+    if (!teamId || standingsLoadedRef.current) return;
+    setIsStandingsLoading(true);
+    try {
+      const standingsData = await fetchTeamStandings(teamId);
+      setStandings(standingsData || []);
+      standingsLoadedRef.current = true;
+    } catch (err: any) {
+      console.warn('[TeamDetailsContainer] Error fetching standings:', err);
+    } finally {
+      setIsStandingsLoading(false);
+    }
+  }, [teamId]);
+
+  // Initial mount: load primary data fast, then queue secondary data
   useEffect(() => {
     setIsLoading(true);
-    loadData();
+    playersLoadedRef.current = false;
+    standingsLoadedRef.current = false;
+    loadPrimaryData();
 
-    // Event-driven real-time updates:
-    // When the match end algorithm (Algorithm 2) or admin updates fixtures/standings/players,
-    // auto-reload live data instantly.
+    // Defer background fetch of squad and standings so primary paint is sub-second
+    const prefetchTimer = setTimeout(() => {
+      loadPlayersData();
+      loadStandingsData();
+    }, 200);
+
+    return () => clearTimeout(prefetchTimer);
+  }, [teamId, loadPrimaryData, loadPlayersData, loadStandingsData]);
+
+  // On-demand fetch when user switches tabs before background prefetch finishes
+  useEffect(() => {
+    if ((activeTab === 'squad' || activeTab === 'players') && !playersLoadedRef.current) {
+      loadPlayersData();
+    } else if (activeTab === 'standings' && !standingsLoadedRef.current) {
+      loadStandingsData();
+    }
+  }, [activeTab, loadPlayersData, loadStandingsData]);
+
+  // Realtime updates
+  useEffect(() => {
+    if (!teamId) return;
     const channel = supabase
       .channel(`team_details_${teamId}_sync`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fixtures' },
         () => {
-          loadData();
+          loadPrimaryData();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'league_standings' },
         () => {
-          loadData();
+          standingsLoadedRef.current = false;
+          loadStandingsData();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'players', filter: `team_id=eq.${teamId}` },
         () => {
-          loadData();
+          playersLoadedRef.current = false;
+          loadPlayersData();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'teams', filter: `id=eq.${teamId}` },
         () => {
-          loadData();
+          loadPrimaryData();
         }
       )
       .subscribe();
@@ -106,7 +160,7 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, loadData]);
+  }, [teamId, loadPrimaryData, loadStandingsData, loadPlayersData]);
 
   const currentStanding = useMemo(() => {
     return standings.find(
@@ -189,33 +243,54 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
         )}
 
         {activeTab === 'squad' && (
-          <TeamSquadTab
-            teamId={team.id}
-            roster={players}
-            teamName={team.name}
-            teamCrest={team.logo_url}
-            team={team}
-            startingXIIds={startingXIIds}
-            onNavigateBack={() => setActiveTab('fixtures')}
-          />
+          isPlayersLoading && players.length === 0 ? (
+            <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-slate-400 select-none">
+              <Loader2 className="w-7 h-7 animate-spin text-[#ff0046]" />
+              <span className="text-xs font-bold uppercase tracking-wider">Loading squad tactics & formation...</span>
+            </div>
+          ) : (
+            <TeamSquadTab
+              teamId={team.id}
+              roster={players}
+              teamName={team.name}
+              teamCrest={team.logo_url}
+              team={team}
+              startingXIIds={startingXIIds}
+              onNavigateBack={() => setActiveTab('fixtures')}
+            />
+          )
         )}
 
         {activeTab === 'players' && (
-          <TeamPlayersTab
-            roster={players}
-            teamName={team.name}
-            teamId={team.id}
-            startingXIIds={startingXIIds}
-          />
+          isPlayersLoading && players.length === 0 ? (
+            <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-slate-400 select-none">
+              <Loader2 className="w-7 h-7 animate-spin text-[#ff0046]" />
+              <span className="text-xs font-bold uppercase tracking-wider">Loading squad roster...</span>
+            </div>
+          ) : (
+            <TeamPlayersTab
+              roster={players}
+              teamName={team.name}
+              teamId={team.id}
+              startingXIIds={startingXIIds}
+            />
+          )
         )}
 
         {activeTab === 'standings' && (
-          <TeamStandingsTab
-            standings={standings}
-            fixtures={fixtures}
-            currentTeamName={team.name}
-            currentTeamLogo={team.logo_url}
-          />
+          isStandingsLoading && standings.length === 0 ? (
+            <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-slate-400 select-none">
+              <Loader2 className="w-7 h-7 animate-spin text-[#ff0046]" />
+              <span className="text-xs font-bold uppercase tracking-wider">Loading league standings...</span>
+            </div>
+          ) : (
+            <TeamStandingsTab
+              standings={standings}
+              fixtures={fixtures}
+              currentTeamName={team.name}
+              currentTeamLogo={team.logo_url}
+            />
+          )
         )}
       </main>
     </div>

@@ -28,7 +28,11 @@ export function fromUuid(uuid: string): string {
 
 const teamResolutionCache = new Map<string, string>();
 const squadUnitCache = new Map<string, { timestamp: number; data: Player[] }>();
-const SQUAD_CACHE_TTL_MS = 30000; // 30s cache TTL to deliver as a unit and eliminate database stress
+const teamFixturesUnitCache = new Map<string, { timestamp: number; data: Match[] }>();
+const teamStandingsUnitCache = new Map<string, { timestamp: number; data: StandingEntry[] }>();
+const teamRecordCache = new Map<string, { timestamp: number; data: any }>();
+const SQUAD_CACHE_TTL_MS = 30000; // 30s cache TTL
+const TEAM_CACHE_TTL_MS = 60000; // 60s cache TTL to deliver sub-second team profile loads
 
 export async function resolveRealTeamId(input: string): Promise<string> {
     if (!input) return DEFAULT_TEAM_UUID;
@@ -222,6 +226,13 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
     if (!teamId) return [];
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
+
+        // Fast-path: Check memory cache (sub-millisecond instant return)
+        const cached = teamFixturesUnitCache.get(actualTeamId);
+        if (cached && Date.now() - cached.timestamp < TEAM_CACHE_TTL_MS) {
+            return cached.data;
+        }
+
         const { data, error } = await supabase
             .from('fixtures')
             .select(`
@@ -241,8 +252,9 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
 
         if (error) throw error;
 
+        let resultList: Match[] = [];
         if (data && data.length > 0) {
-            return data.map((f: any) => {
+            resultList = data.map((f: any) => {
                 const isHome = f.home_team?.id === actualTeamId;
                 const opponent = isHome ? f.away_team : f.home_team;
                 const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
@@ -292,7 +304,8 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 };
             });
         }
-        return [];
+        teamFixturesUnitCache.set(actualTeamId, { timestamp: Date.now(), data: resultList });
+        return resultList;
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch fixtures from DB:', err);
         return [];
@@ -319,6 +332,12 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
             if (teamRec?.competition_id) {
                 targetCompId = teamRec.competition_id;
             }
+        }
+
+        const cacheKey = `${actualTeamId}_${targetCompId || 'all'}`;
+        const cached = teamStandingsUnitCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < TEAM_CACHE_TTL_MS) {
+            return cached.data;
         }
 
         // 1. Query standings table strictly for the specified league/competition
@@ -377,7 +396,7 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
         }
 
         if (!tblErr && tblData && tblData.length > 0) {
-            return tblData.map((row: any, idx: number) => {
+            const mapped = tblData.map((row: any, idx: number) => {
                 const tid = row.team_id || row.team?.id || '';
                 const rf = formMap.get(tid) || []; // Strictly actual match outcomes, NO mock fallback!
                 const isCur = tid === teamId;
@@ -397,6 +416,8 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
                     recentForm: rf,
                 };
             });
+            teamStandingsUnitCache.set(cacheKey, { timestamp: Date.now(), data: mapped });
+            return mapped;
         }
 
         return [];
@@ -1417,6 +1438,10 @@ export interface FullTeamRecord extends DBTeam {
 export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | null> {
     if (!teamId) return null;
     const teamUuid = await resolveRealTeamId(teamId);
+    const cached = teamRecordCache.get(teamUuid);
+    if (cached && Date.now() - cached.timestamp < TEAM_CACHE_TTL_MS) {
+        return cached.data;
+    }
     try {
         const { data, error } = await supabase
             .from('teams')
@@ -1455,12 +1480,14 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
                 }
             }
 
-            return {
+            const record: FullTeamRecord = {
                 ...simpleData,
                 coach_name: coachName,
                 coach_avatar: coachAvatar,
                 competition_name: 'Egerton League',
             };
+            teamRecordCache.set(teamUuid, { timestamp: Date.now(), data: record });
+            return record;
         }
 
         if (data) {
@@ -1470,12 +1497,14 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
                 ? `${coachProfile.first_name || ''} ${coachProfile.last_name || ''}`.trim()
                 : 'Head Coach';
 
-            return {
+            const record: FullTeamRecord = {
                 ...data,
                 coach_name: coachName,
                 coach_avatar: coachProfile?.avatar_url || '',
                 competition_name: comp?.name || 'Egerton League',
             };
+            teamRecordCache.set(teamUuid, { timestamp: Date.now(), data: record });
+            return record;
         }
         return null;
     } catch (err) {

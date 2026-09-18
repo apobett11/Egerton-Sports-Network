@@ -64,16 +64,26 @@ const getHashRoute = (): string => {
 const nameToSlug = (name: string): string =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-/** Resolve a team slug → UUID by fetching the team from Supabase by name */
+const teamSlugCache = new Map<string, string>();
+
+/** Resolve a team slug → UUID by fetching the team from Supabase by name with in-memory caching */
 const resolveTeamSlug = async (slug: string): Promise<string | null> => {
+  if (teamSlugCache.has(slug)) return teamSlugCache.get(slug)!;
   try {
     const { data } = await supabase
       .from('teams')
       .select('id, name')
       .is('deleted_at', null);
     if (!data) return null;
+    data.forEach((t: any) => {
+      if (t.name) teamSlugCache.set(nameToSlug(t.name), t.id);
+    });
     const match = data.find((t: any) => nameToSlug(t.name) === slug);
-    return match?.id ?? null;
+    if (match) {
+      teamSlugCache.set(slug, match.id);
+      return match.id;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -86,21 +96,54 @@ const buildMatchSlug = (homeTeam: string, awayTeam: string, matchday?: number): 
   return matchday ? `${h}-vs-${a}-md${matchday}` : `${h}-vs-${a}`;
 };
 
-/** Resolve match slug → Match object by matching fixtures */
+/** Resolve match slug → Match object by checking cache first, then targeted lookup */
 const resolveMatchSlug = async (slug: string): Promise<Match | null> => {
   try {
-    const res = await ApiService.getFixtures();
-    if (res.data && res.data.length > 0) {
-      const found = res.data.find((m: any) => {
-        const homeName = m.teamA?.name || m.homeTeamName || '';
-        const awayName = m.teamB?.name || m.awayTeamName || '';
-        return buildMatchSlug(homeName, awayName, m.matchday) === slug ||
+    // 1. If slug is already a UUID, fetch match details directly
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+      const detailed = await ApiService.getMatchDetails(slug);
+      return detailed.data || null;
+    }
+
+    // 2. Check in-memory guestCache fixtures
+    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall') || [];
+    const cachedMatch = allCached.find((m: any) => {
+      const homeName = m.teamA?.name || m.homeTeamName || '';
+      const awayName = m.teamB?.name || m.awayTeamName || '';
+      return buildMatchSlug(homeName, awayName, m.matchday) === slug ||
+             buildMatchSlug(homeName, awayName) === slug ||
+             m.id === slug;
+    });
+
+    if (cachedMatch) {
+      const detailed = await ApiService.getMatchDetails(cachedMatch.id);
+      return detailed.data || cachedMatch;
+    }
+
+    // 3. Targeted database query for fixture matching team slugs
+    const { data: fixtures } = await supabase
+      .from('fixtures')
+      .select(`
+        id,
+        matchday,
+        home_team:teams!home_team_id(id, name),
+        away_team:teams!away_team_id(id, name)
+      `)
+      .order('scheduled_time', { ascending: false })
+      .limit(30);
+
+    if (fixtures && fixtures.length > 0) {
+      const found = fixtures.find((f: any) => {
+        const homeName = (Array.isArray(f.home_team) ? f.home_team[0] : f.home_team)?.name || '';
+        const awayName = (Array.isArray(f.away_team) ? f.away_team[0] : f.away_team)?.name || '';
+        return buildMatchSlug(homeName, awayName, f.matchday) === slug ||
                buildMatchSlug(homeName, awayName) === slug ||
-               m.id === slug;
+               f.id === slug;
       });
+
       if (found) {
         const detailed = await ApiService.getMatchDetails(found.id);
-        return detailed.data || found;
+        return detailed.data || null;
       }
     }
   } catch {}
@@ -208,16 +251,18 @@ export const AppContent: React.FC = () => {
     }
 
     if (!isDeviceInitializing && deviceId) {
-      // 1. Always register/check-in device details alongside the fanpage
-      DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
-        if (profile && profile.has_completed_onboarding) {
-          saveLocalPreference(profile.favorite_team_id);
-          setShowOnboarding(false);
-        }
-      });
+      // 1. Defer device check-in slightly so matchday fixtures have 100% priority on startup
+      const checkInTimer = setTimeout(() => {
+        DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
+          if (profile && profile.has_completed_onboarding) {
+            saveLocalPreference(profile.favorite_team_id);
+            setShowOnboarding(false);
+          }
+        });
+      }, 1000);
 
       if (cachedCompleted) {
-        return;
+        return () => clearTimeout(checkInTimer);
       }
 
       // 2. Track count of times the device has opened/used the app
@@ -299,7 +344,10 @@ export const AppContent: React.FC = () => {
       }
     };
 
-    fetchAnnouncements();
+    // Defer announcements load so primary matchday fixtures render without latency
+    const annTimer = setTimeout(() => {
+      if (isMounted) fetchAnnouncements();
+    }, 1200);
 
     // Event-driven real-time updates using shared channel topic
     const channel = supabase
@@ -311,6 +359,7 @@ export const AppContent: React.FC = () => {
 
     return () => {
       isMounted = false;
+      clearTimeout(annTimer);
       supabase.removeChannel(channel);
     };
   }, [deviceId]);
@@ -685,7 +734,18 @@ export const AppContent: React.FC = () => {
     }
   };
 
-  const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime();
+  const selectedDateStr = useMemo(() => {
+    const y = selectedDate.getFullYear();
+    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const d = String(selectedDate.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [selectedDate]);
+
+  const { matches: liveMatches, toasts, dismissToast } = useLiveMatchRealtime(
+    [],
+    undefined,
+    { autoFetchAll: false, selectedDate: selectedDateStr, competitionId: selectedCompetitionId }
+  );
 
   // Auto-sync guest fixtures to next matchday if on a weekday, or today if on a playday
   useEffect(() => {
@@ -723,15 +783,16 @@ export const AppContent: React.FC = () => {
     });
   }, [deviceId, liveMatches, favorites.length, setFavorites]);
 
-  // Dynamically computed standings derived strictly from finalized matches in liveMatches
+  // Dynamically computed standings derived strictly when the user opens the table tab
   const currentStandings = useMemo(() => {
+    if (activeTab !== 'table') return [];
     const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
     liveMatches.forEach((m) => {
       if (m.teamA?.id) teamsMap.set(m.teamA.id, { id: m.teamA.id, name: m.teamA.name, logo: m.teamA.logo });
       if (m.teamB?.id) teamsMap.set(m.teamB.id, { id: m.teamB.id, name: m.teamB.name, logo: m.teamB.logo });
     });
     return calculateLeagueStandings(liveMatches, Array.from(teamsMap.values()));
-  }, [liveMatches]);
+  }, [liveMatches, activeTab]);
 
   const getFilteredMatches = () => {
     if (activeSport !== 'football') return [];

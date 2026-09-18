@@ -892,7 +892,7 @@ export const useAdminOperationsData = () => {
       }
     });
 
-    let reloadTimer: NodeJS.Timeout | null = null;
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedReload = () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(() => {

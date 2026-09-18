@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
 import { Card, Button, Badge, LoadingSpinner } from '../../components/common/UIComponents';
@@ -188,7 +188,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     return null;
   }, [dbFixtures]);
 
-  // Independent Section States
+  // Independent Section States - Only Fixtures is active immediately
   const [fixturesState, setFixturesState] = useState<{ data: Match[]; loading: boolean; error: string | null }>(() => {
     const initial = getCachedFixtures(formattedDateStr, selectedCompetitionId);
     if (initial && initial.length > 0) {
@@ -200,25 +200,25 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>({
     epl: [],
     champ: [],
-    loading: true,
+    loading: false,
     error: null
   });
 
   const [newsState, setNewsState] = useState<{ data: NewsItem[]; loading: boolean; error: string | null }>({
     data: [],
-    loading: true,
+    loading: false,
     error: null
   });
 
   const [perfState, setPerfState] = useState<{ data: any; loading: boolean; error: string | null }>({
     data: null,
-    loading: true,
+    loading: false,
     error: null
   });
 
   const [milestonesState, setMilestonesState] = useState<{ data: any; loading: boolean; error: string | null }>({
     data: null,
-    loading: true,
+    loading: false,
     error: null
   });
 
@@ -237,8 +237,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const EPL_ID = '11111111-1111-1111-1111-111111111111';
   const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
-  // Staggered Progressive Section Loads (Level 12 efficiency)
-  // Section 1: Fixtures loads immediately (0ms)
+  // Section 1: Fixtures loads immediately (Instant/Sub-second hero section)
   const loadFixtures = useCallback(() => {
     let isMounted = true;
     const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
@@ -246,7 +245,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     // Check if we already have cached data for this date & competition
     const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
     if (cached && cached.length > 0) {
-      // Instant display from cache — zero wait!
       setFixturesState({ data: cached, loading: false, error: null });
     } else {
       setFixturesState(prev => (prev.data.length > 0 ? prev : { ...prev, loading: true, error: null }));
@@ -289,7 +287,47 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   useCacheSubscription('fixtures', loadFixtures);
 
-  // Section 2: Standings loads staggered (150ms delay)
+  // Intelligent Matchday Prefetching (Sub-Second Lateral Scrolling / Swiping)
+  useEffect(() => {
+    if (!fixturesState.loading && fixturesState.data.length > 0) {
+      const current = new Date(activeDate);
+      const prefetchTimer = setTimeout(() => {
+        // Prefetch next playday into cache
+        const nextDate = new Date(current);
+        for (let i = 1; i <= 14; i++) {
+          nextDate.setDate(nextDate.getDate() + 1);
+          if (isPlayday(nextDate)) {
+            const nextKey = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+            const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+            const cacheKey = `${selectedCompetitionId}_${nextKey}_pall_sall`;
+            if (!guestCache.get('fixtures', cacheKey)) {
+              ApiService.getFixtures(compId, nextKey).catch(() => {});
+            }
+            break;
+          }
+        }
+
+        // Prefetch previous playday into cache
+        const prevDate = new Date(current);
+        for (let i = 1; i <= 14; i++) {
+          prevDate.setDate(prevDate.getDate() - 1);
+          if (isPlayday(prevDate)) {
+            const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
+            const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+            const cacheKey = `${selectedCompetitionId}_${prevKey}_pall_sall`;
+            if (!guestCache.get('fixtures', cacheKey)) {
+              ApiService.getFixtures(compId, prevKey).catch(() => {});
+            }
+            break;
+          }
+        }
+      }, 700);
+
+      return () => clearTimeout(prefetchTimer);
+    }
+  }, [activeDate, fixturesState.loading, fixturesState.data.length, isPlayday, selectedCompetitionId]);
+
+  // Section 2: Standings snapshot loads ON-DEMAND when scrolled into view
   const loadStandings = useCallback(() => {
     let isMounted = true;
     setStandingsState(prev => ({ ...prev, loading: true, error: null }));
@@ -318,16 +356,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [EPL_ID, CHAMP_ID]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadStandings();
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [loadStandings]);
-
-  useCacheSubscription('standings', loadStandings);
-
-  // Section 3: News loads staggered (300ms delay)
+  // Section 3: News loads ON-DEMAND when scrolled into view
   const loadNews = useCallback(() => {
     let isMounted = true;
     setNewsState(prev => ({ ...prev, loading: true, error: null }));
@@ -348,16 +377,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadNews();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [loadNews]);
-
-  useCacheSubscription('news', loadNews);
-
-  // Section 4: Performance loads staggered (450ms delay)
+  // Section 4: Performance loads ON-DEMAND when scrolled into view
   const loadPerformance = useCallback(() => {
     let isMounted = true;
     setPerfState(prev => ({ ...prev, loading: true, error: null }));
@@ -378,16 +398,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadPerformance();
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [loadPerformance]);
-
-  useCacheSubscription('performance', loadPerformance);
-
-  // Section 5: Milestones loads staggered (600ms delay)
+  // Section 5: Milestones loads ON-DEMAND when scrolled into view
   const loadMilestones = useCallback(() => {
     let isMounted = true;
     setMilestonesState(prev => ({ ...prev, loading: true, error: null }));
@@ -408,14 +419,70 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadMilestones();
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [loadMilestones]);
+  // Viewport/Scroll-Based Lazy Trigger Hooks for Secondary Sections
+  const [perfHasLoaded, setPerfHasLoaded] = useState(false);
+  const [milestonesHasLoaded, setMilestonesHasLoaded] = useState(false);
+  const [standingsHasLoaded, setStandingsHasLoaded] = useState(false);
+  const [newsHasLoaded, setNewsHasLoaded] = useState(false);
 
-  useCacheSubscription('milestones', loadMilestones);
+  const perfSectionRef = useRef<HTMLDivElement | null>(null);
+  const milestonesSectionRef = useRef<HTMLElement | null>(null);
+  const standingsSectionRef = useRef<HTMLElement | null>(null);
+  const newsSectionRef = useRef<HTMLElement | null>(null);
+
+  // Lazy observer effect: triggers API call only when user scrolls near each section
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      loadPerformance();
+      setPerfHasLoaded(true);
+      loadMilestones();
+      setMilestonesHasLoaded(true);
+      loadStandings();
+      setStandingsHasLoaded(true);
+      loadNews();
+      setNewsHasLoaded(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target === perfSectionRef.current && !perfHasLoaded) {
+              setPerfHasLoaded(true);
+              loadPerformance();
+              observer.unobserve(entry.target);
+            } else if (entry.target === milestonesSectionRef.current && !milestonesHasLoaded) {
+              setMilestonesHasLoaded(true);
+              loadMilestones();
+              observer.unobserve(entry.target);
+            } else if (entry.target === standingsSectionRef.current && !standingsHasLoaded) {
+              setStandingsHasLoaded(true);
+              loadStandings();
+              observer.unobserve(entry.target);
+            } else if (entry.target === newsSectionRef.current && !newsHasLoaded) {
+              setNewsHasLoaded(true);
+              loadNews();
+              observer.unobserve(entry.target);
+            }
+          }
+        });
+      },
+      { rootMargin: '300px' }
+    );
+
+    if (perfSectionRef.current && !perfHasLoaded) observer.observe(perfSectionRef.current);
+    if (milestonesSectionRef.current && !milestonesHasLoaded) observer.observe(milestonesSectionRef.current);
+    if (standingsSectionRef.current && !standingsHasLoaded) observer.observe(standingsSectionRef.current);
+    if (newsSectionRef.current && !newsHasLoaded) observer.observe(newsSectionRef.current);
+
+    return () => observer.disconnect();
+  }, [perfHasLoaded, milestonesHasLoaded, standingsHasLoaded, newsHasLoaded, loadPerformance, loadMilestones, loadStandings, loadNews]);
+
+  useCacheSubscription('standings', () => { if (standingsHasLoaded) loadStandings(); });
+  useCacheSubscription('news', () => { if (newsHasLoaded) loadNews(); });
+  useCacheSubscription('performance', () => { if (perfHasLoaded) loadPerformance(); });
+  useCacheSubscription('milestones', () => { if (milestonesHasLoaded) loadMilestones(); });
 
   // Realtime subscription for live match updates and algorithm table feeds
   useEffect(() => {
@@ -925,16 +992,22 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* 2. PLAYER PERFORMANCE & INDIVIDUAL STATS - SEPARATE CARDS FOR EPL & CHAMPIONSHIPS */}
-      {perfState.loading ? (
-        <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 animate-pulse shadow-xs">
-          Loading player leaderboards...
-        </div>
-      ) : perfState.error ? (
-        <div className="bg-white dark:bg-[#0e1c2b] border border-rose-500/30 rounded-none sm:rounded-sm p-4 text-xs font-bold text-rose-500 text-center shadow-xs">
-          {perfState.error}
-        </div>
-      ) : perfState.data && (
-        <div className="space-y-3">
+      <div ref={perfSectionRef}>
+        {!perfHasLoaded ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-4 text-center text-xs text-slate-400 shadow-xs flex items-center justify-center gap-2">
+            <Award className="w-4 h-4 text-slate-400" />
+            <span>Player performance leaderboards load as you scroll</span>
+          </div>
+        ) : perfState.loading ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 animate-pulse shadow-xs">
+            Loading player leaderboards...
+          </div>
+        ) : perfState.error ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-rose-500/30 rounded-none sm:rounded-sm p-4 text-xs font-bold text-rose-500 text-center shadow-xs">
+            {perfState.error}
+          </div>
+        ) : perfState.data && (
+          <div className="space-y-3">
           {/* CARD 1: EGERTON PREMIER LEAGUE PLAYER STATS */}
           <section 
             aria-label="EPL Player Performance Section"
@@ -1217,9 +1290,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </div>
       )}
+      </div>
 
       {/* 3. LEAGUE MILESTONES SECTION */}
       <section 
+        ref={milestonesSectionRef}
         aria-label="League Milestones Section"
         className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
       >
@@ -1233,65 +1308,81 @@ export const HomePage: React.FC<HomePageProps> = ({
           <span className="text-[10px] font-bold text-slate-400 uppercase">Season Overview</span>
         </div>
 
-        {milestonesState.data && (
-          milestonesState.data.completedMatchesCount === 0 || !milestonesState.data.highestScoringMatch ? (
-            <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
-              <div className="flex flex-col items-center justify-center gap-1.5">
-                <Zap className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                <span className="font-bold">No verified league matches completed yet.</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                  League records, highest scoring games, and clean sheets will calculate live upon match finalization.
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-center">
-              <div className="p-2 space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">HIGHEST SCORING</span>
-                <div className="text-base font-black text-slate-900 dark:text-white font-mono">
-                  {milestonesState.data.highestScoringMatch?.totalGoals || 0} Goals
+        {!milestonesHasLoaded ? (
+          <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>League records load as you scroll</span>
+          </div>
+        ) : milestonesState.loading ? (
+          <div className="p-6 text-center text-xs text-slate-400 animate-pulse">
+            Calculating season milestones...
+          </div>
+        ) : milestonesState.error ? (
+          <div className="p-4 text-center text-xs font-bold text-rose-500">
+            {milestonesState.error}
+          </div>
+        ) : (
+          milestonesState.data && (
+            milestonesState.data.completedMatchesCount === 0 || !milestonesState.data.highestScoringMatch ? (
+              <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <Zap className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                  <span className="font-bold">No verified league matches completed yet.</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    League records, highest scoring games, and clean sheets will calculate live upon match finalization.
+                  </span>
                 </div>
-                <div className="text-[10px] text-slate-500 truncate">
-                  {milestonesState.data.highestScoringMatch?.homeTeam} vs {milestonesState.data.highestScoringMatch?.awayTeam}
-                </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-[#f0f2f5] dark:divide-[#14263b] p-3 text-center">
+                <div className="p-2 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">HIGHEST SCORING</span>
+                  <div className="text-base font-black text-slate-900 dark:text-white font-mono">
+                    {milestonesState.data.highestScoringMatch?.totalGoals || 0} Goals
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {milestonesState.data.highestScoringMatch?.homeTeam} vs {milestonesState.data.highestScoringMatch?.awayTeam}
+                  </div>
+                </div>
 
-              <div className="p-2 space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">LARGEST MARGIN</span>
-                <div className="text-base font-black text-[#00b04f] font-mono">
-                  +{milestonesState.data.largestWinMargin?.margin || 0} Goals
+                <div className="p-2 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">LARGEST MARGIN</span>
+                  <div className="text-base font-black text-[#00b04f] font-mono">
+                    +{milestonesState.data.largestWinMargin?.margin || 0} Goals
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {milestonesState.data.largestWinMargin?.winner || 'Pending'}
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 truncate">
-                  {milestonesState.data.largestWinMargin?.winner || 'Pending'}
-                </div>
-              </div>
 
-              <div className="p-2 space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">TOTAL GOALS</span>
-                <div className="text-base font-black text-[#1565c0] font-mono">
-                  {milestonesState.data.totalGoalsScored || 0}
+                <div className="p-2 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">TOTAL GOALS</span>
+                  <div className="text-base font-black text-[#1565c0] font-mono">
+                    {milestonesState.data.totalGoalsScored || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    In {milestonesState.data.completedMatchesCount || 0} matches
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500">
-                  In {milestonesState.data.completedMatchesCount || 0} matches
-                </div>
-              </div>
 
-              <div className="p-2 space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">CLEAN SHEETS</span>
-                <div className="text-base font-black text-purple-500 font-mono">
-                  {milestonesState.data.cleanSheetsTotal || 0}
-                </div>
-                <div className="text-[10px] text-slate-500">
-                  Shutout games
+                <div className="p-2 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">CLEAN SHEETS</span>
+                  <div className="text-base font-black text-purple-500 font-mono">
+                    {milestonesState.data.cleanSheetsTotal || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Shutout games
+                  </div>
                 </div>
               </div>
-            </div>
+            )
           )
         )}
       </section>
 
       {/* 4. STANDINGS SNAPSHOT SECTION */}
       <section 
+        ref={standingsSectionRef}
         aria-label="Standings Snapshot Section" 
         className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
       >
@@ -1311,63 +1402,75 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
-          {/* EPL Snapshot */}
-          <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-            <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
-              EPL TOP 4
-            </div>
-            {standingsState.epl.length === 0 ? (
-              <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
-                No standings recorded yet
-              </div>
-            ) : (
-              standingsState.epl.slice(0, 4).map((row) => (
-                <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                    <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                    <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
-                  </div>
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="text-slate-500 text-[11px]">{row.played}p</span>
-                    <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
-                  </div>
-                </div>
-              ))
-            )}
+        {!standingsHasLoaded ? (
+          <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            <span>Standings snapshot loads as you scroll</span>
           </div>
+        ) : standingsState.loading ? (
+          <div className="p-6 text-center text-xs text-slate-400 animate-pulse">
+            Loading standings snapshot...
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
+            {/* EPL Snapshot */}
+            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
+                EPL TOP 4
+              </div>
+              {standingsState.epl.length === 0 ? (
+                <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  No standings recorded yet
+                </div>
+              ) : (
+                standingsState.epl.slice(0, 4).map((row) => (
+                  <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
+                      <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                      <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                    </div>
+                    <div className="flex items-center gap-3 font-mono">
+                      <span className="text-slate-500 text-[11px]">{row.played}p</span>
+                      <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
 
-          {/* Championships Snapshot */}
-          <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-            <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
-              CHAMPIONSHIPS TOP 4
-            </div>
-            {standingsState.champ.length === 0 ? (
-              <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
-                No standings recorded yet
+            {/* Championships Snapshot */}
+            <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+              <div className="px-3 py-1.5 bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">
+                CHAMPIONSHIPS TOP 4
               </div>
-            ) : (
-              standingsState.champ.slice(0, 4).map((row) => (
-                <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                    <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                    <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
-                  </div>
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="text-slate-500 text-[11px]">{row.played}p</span>
-                    <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
-                  </div>
+              {standingsState.champ.length === 0 ? (
+                <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  No standings recorded yet
                 </div>
-              ))
-            )}
+              ) : (
+                standingsState.champ.slice(0, 4).map((row) => (
+                  <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
+                      <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                      <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                    </div>
+                    <div className="flex items-center gap-3 font-mono">
+                      <span className="text-slate-500 text-[11px]">{row.played}p</span>
+                      <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* 5. FEATURED NEWS SECTION */}
       <section 
+        ref={newsSectionRef}
         aria-label="Featured Today Section" 
         className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
       >
@@ -1387,30 +1490,41 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
         </div>
 
-        <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-          {newsState.data.slice(0, 3).map((article) => (
-            <div 
-              key={article.id} 
-              onClick={() => setSelectedArticle(article)}
-              className="flex items-center justify-between p-3 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer gap-3"
-            >
-              <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-black text-[#ff0046] uppercase tracking-wider block mb-1">
-                  {article.category}
-                </span>
-                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug line-clamp-2">
-                  {article.title}
-                </h3>
-                <span className="text-[10px] text-slate-400 font-semibold mt-1 block">
-                  {article.publishedAt} • By {article.author}
-                </span>
+        {!newsHasLoaded ? (
+          <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+            <Newspaper className="w-3.5 h-3.5 text-[#ff0046]" />
+            <span>Featured news headlines load as you scroll</span>
+          </div>
+        ) : newsState.loading ? (
+          <div className="p-6 text-center text-xs text-slate-400 animate-pulse">
+            Loading latest headlines...
+          </div>
+        ) : (
+          <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+            {newsState.data.slice(0, 3).map((article) => (
+              <div 
+                key={article.id} 
+                onClick={() => setSelectedArticle(article)}
+                className="flex items-center justify-between p-3 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer gap-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-black text-[#ff0046] uppercase tracking-wider block mb-1">
+                    {article.category}
+                  </span>
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug line-clamp-2">
+                    {article.title}
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-semibold mt-1 block">
+                    {article.publishedAt} • By {article.author}
+                  </span>
+                </div>
+                <div className="w-20 h-16 sm:w-24 sm:h-16 rounded-xs overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+                  <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" loading="lazy" />
+                </div>
               </div>
-              <div className="w-20 h-16 sm:w-24 sm:h-16 rounded-xs overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
-                <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" loading="lazy" />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ARTICLE READER MODAL */}

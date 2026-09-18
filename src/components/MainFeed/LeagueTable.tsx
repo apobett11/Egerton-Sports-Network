@@ -116,49 +116,69 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     return () => window.removeEventListener('hashchange', handleRouteScroll);
   }, []);
 
-  const refreshAllTableData = useCallback(() => {
-    // 1. Fetch EPL & Champ Standings
-    ApiService.getLeagueTable(EPL_COMP_ID).then((res) => {
-      if (res.data && res.data.length > 0) setEplStandings(res.data);
-      else setEplStandings(tableData);
-    });
+  // Section Loading State Flags
+  const [scorersLoaded, setScorersLoaded] = useState(false);
+  const [potwLoaded, setPotwLoaded] = useState(false);
+  const [assistsLoaded, setAssistsLoaded] = useState(false);
 
-    ApiService.getLeagueTable(CHAMP_COMP_ID).then((res) => {
-      if (res.data && res.data.length > 0) setChampStandings(res.data);
-    });
-
-    // 2. Fetch Top Scorers (EPL, Champ, All-Time)
-    ApiService.getTopScorers(EPL_COMP_ID, 10).then((res) => {
-      if (res.data) setEplScorers(res.data);
-    });
-    ApiService.getTopScorers(CHAMP_COMP_ID, 10).then((res) => {
-      if (res.data) setChampScorers(res.data);
-    });
-    ApiService.getAllTimeTopScorers(10).then((res) => {
-      if (res.data) setAllTimeScorers(res.data);
-    });
-
-    // 3. Fetch Players of the Week & Assists
-    ApiService.getPlayersOfTheWeek().then((res) => {
-      if (res.data) setPlayersOfTheWeek(res.data);
-    });
-    ApiService.getAssistsLeaderboard(10).then((res) => {
-      if (res.data) setAssistsList(res.data);
-    });
+  // 1. Unified Standings Tables Fetcher ("Call the tables as a whole")
+  const loadStandingsTables = useCallback(() => {
+    Promise.all([
+      ApiService.getLeagueTable(EPL_COMP_ID),
+      ApiService.getLeagueTable(CHAMP_COMP_ID)
+    ]).then(([eplRes, champRes]) => {
+      if (eplRes.data && eplRes.data.length > 0) setEplStandings(eplRes.data);
+      else if (tableData && tableData.length > 0) setEplStandings(tableData);
+      if (champRes.data && champRes.data.length > 0) setChampStandings(champRes.data);
+    }).catch(() => {});
   }, [tableData]);
 
+  // 2. On-Demand / Lazy Scorers Fetcher
+  const loadScorers = useCallback(() => {
+    setScorersLoaded(true);
+    Promise.all([
+      ApiService.getTopScorers(EPL_COMP_ID, 10),
+      ApiService.getTopScorers(CHAMP_COMP_ID, 10),
+      ApiService.getAllTimeTopScorers(10)
+    ]).then(([eplRes, champRes, allTimeRes]) => {
+      if (eplRes.data) setEplScorers(eplRes.data);
+      if (champRes.data) setChampScorers(champRes.data);
+      if (allTimeRes.data) setAllTimeScorers(allTimeRes.data);
+    }).catch(() => {});
+  }, []);
+
+  // 3. On-Demand / Lazy POTW Fetcher
+  const loadPotw = useCallback(() => {
+    setPotwLoaded(true);
+    ApiService.getPlayersOfTheWeek().then((res) => {
+      if (res.data) setPlayersOfTheWeek(res.data);
+    }).catch(() => {});
+  }, []);
+
+  // 4. On-Demand / Lazy Assists Fetcher
+  const loadAssists = useCallback(() => {
+    setAssistsLoaded(true);
+    ApiService.getAssistsLeaderboard(10).then((res) => {
+      if (res.data) setAssistsList(res.data);
+    }).catch(() => {});
+  }, []);
+
+  // Initial mount: ONLY load the standings tables as a unified whole
   useEffect(() => {
-    refreshAllTableData();
+    loadStandingsTables();
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const triggerDebouncedRefresh = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        refreshAllTableData();
+        loadStandingsTables();
+        if (scorersLoaded) loadScorers();
+        if (potwLoaded) loadPotw();
+        if (assistsLoaded) loadAssists();
       }, 400);
     };
 
-    // Event-driven real-time auto-reload: When match end algorithm (Algorithm 2) updates tables
+    // Event-driven real-time auto-reload on database updates
     const channel = supabase
       .channel('public_league_table_realtime_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerDebouncedRefresh)
@@ -170,7 +190,56 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [refreshAllTableData]);
+  }, [loadStandingsTables, scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
+
+  // Viewport observer to trigger lazy loading of sub-sections when scrolled near
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      loadScorers();
+      loadPotw();
+      loadAssists();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target === scorersRef.current && !scorersLoaded) {
+              loadScorers();
+              observer.unobserve(entry.target);
+            } else if (entry.target === potwRef.current && !potwLoaded) {
+              loadPotw();
+              observer.unobserve(entry.target);
+            } else if (entry.target === assistsRef.current && !assistsLoaded) {
+              loadAssists();
+              observer.unobserve(entry.target);
+            }
+          }
+        });
+      },
+      { rootMargin: '250px' }
+    );
+
+    if (scorersRef.current && !scorersLoaded) observer.observe(scorersRef.current);
+    if (potwRef.current && !potwLoaded) observer.observe(potwRef.current);
+    if (assistsRef.current && !assistsLoaded) observer.observe(assistsRef.current);
+
+    return () => observer.disconnect();
+  }, [scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
+
+  // Also trigger if activeSection or modal specifically requests the section
+  useEffect(() => {
+    if (activeSection === 'scorers' || scorersModalCategory !== null) {
+      if (!scorersLoaded) loadScorers();
+    }
+    if (activeSection === 'potw') {
+      if (!potwLoaded) loadPotw();
+    }
+    if (activeSection === 'assists' || showAllAssistsModal) {
+      if (!assistsLoaded) loadAssists();
+    }
+  }, [activeSection, scorersModalCategory, showAllAssistsModal, scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
 
   // Fetch Team Form Sequences (Batched in 1 network call)
   useEffect(() => {
@@ -192,6 +261,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   // Smooth Scroll Trigger Function
   const scrollToTarget = (targetRef: React.RefObject<HTMLDivElement | null>, sectionName?: any) => {
     if (sectionName) setActiveSection(sectionName);
+    if (sectionName === 'scorers' && !scorersLoaded) loadScorers();
+    if (sectionName === 'potw' && !potwLoaded) loadPotw();
+    if (sectionName === 'assists' && !assistsLoaded) loadAssists();
     if (targetRef && targetRef.current) {
       targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -697,16 +769,23 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           <span className="text-[10px] font-bold text-slate-400 uppercase">Top 10 Rankings</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Table 1: EPL Top 10 */}
-          {renderTopScorersTable('EPL Top 10 Scorers', 'DIVISION 1', eplScorers, 'epl')}
+        {!scorersLoaded ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 shadow-xs flex items-center justify-center gap-2">
+            <Flame className="w-4 h-4 text-amber-500" />
+            <span>Top scorers load as you scroll</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            {/* Table 1: EPL Top 10 */}
+            {renderTopScorersTable('EPL Top 10 Scorers', 'DIVISION 1', eplScorers, 'epl')}
 
-          {/* Table 2: Championships Top 10 */}
-          {renderTopScorersTable('Champ Top 10 Scorers', 'DIVISION 2', champScorers, 'champ')}
+            {/* Table 2: Championships Top 10 */}
+            {renderTopScorersTable('Champ Top 10 Scorers', 'DIVISION 2', champScorers, 'champ')}
 
-          {/* Table 3: All-Time Top 10 */}
-          {renderTopScorersTable('All-Time Top 10 Scorers', 'ALL-TIME', allTimeScorers, 'alltime')}
-        </div>
+            {/* Table 3: All-Time Top 10 */}
+            {renderTopScorersTable('All-Time Top 10 Scorers', 'ALL-TIME', allTimeScorers, 'alltime')}
+          </div>
+        )}
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}
@@ -732,6 +811,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase">Dual-League Weekly Stars</span>
         </div>
+
+        {!potwLoaded ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 shadow-xs flex items-center justify-center gap-2">
+            <Star className="w-4 h-4 text-amber-500" />
+            <span>Player of the week archive loads as you scroll</span>
+          </div>
+        ) : (
 
         <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
           <div className="w-full overflow-x-auto no-scrollbar">
@@ -814,6 +900,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </table>
           </div>
         </div>
+        )}
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}
@@ -832,7 +919,10 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setShowAllAssistsModal(true)}
+            onClick={() => {
+              if (!assistsLoaded) loadAssists();
+              setShowAllAssistsModal(true);
+            }}
             className="text-[10px] font-black text-[#1565c0] dark:text-[#42a5f5] hover:underline flex items-center gap-1 cursor-pointer uppercase"
           >
             <span>See All Assists</span>
@@ -840,6 +930,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </button>
         </div>
 
+        {!assistsLoaded ? (
+          <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-6 text-center text-xs text-slate-400 shadow-xs flex items-center justify-center gap-2">
+            <Target className="w-4 h-4 text-[#1565c0]" />
+            <span>Playmakers & assists rankings load as you scroll</span>
+          </div>
+        ) : (
         <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
           <div className="w-full overflow-x-auto no-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
@@ -890,6 +986,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             </table>
           </div>
         </div>
+        )}
       </div>
 
       {/* ======================================================== */}

@@ -5,6 +5,7 @@ import type { ToastItem } from '../components/common/ToastContainer';
 import { logger } from '../lib/logger';
 
 import { ApiService } from '../services/api';
+import { guestCache } from '../lib/guestCache';
 
 // Global Event Emitter for Client Realtime Broadcast Fallback
 type EventCallback = (data: { event: MatchEvent; updatedMatch?: Partial<Match> }) => void;
@@ -14,9 +15,16 @@ export const broadcastLocalRealtimeEvent = (event: MatchEvent, updatedMatch?: Pa
   subscribers.forEach((cb) => cb({ event, updatedMatch }));
 };
 
+export interface UseLiveMatchRealtimeOptions {
+  autoFetchAll?: boolean;
+  selectedDate?: string;
+  competitionId?: string;
+}
+
 export const useLiveMatchRealtime = (
   initialMatches: Match[] = [],
-  onMatchUpdated?: (matches: Match[]) => void
+  onMatchUpdated?: (matches: Match[]) => void,
+  options?: UseLiveMatchRealtimeOptions
 ) => {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -28,16 +36,41 @@ export const useLiveMatchRealtime = (
     if (initialMatches && initialMatches.length > 0) {
       setMatches(initialMatches);
       matchesRef.current = initialMatches;
-    } else if (!hasFetchedInitialRef.current) {
-      hasFetchedInitialRef.current = true;
-      ApiService.getFixtures().then((res) => {
-        if (res.data) {
-          setMatches(res.data);
-          matchesRef.current = res.data;
-        }
-      }).catch(() => {});
+      return;
     }
-  }, [initialMatches]);
+
+    // If autoFetchAll is explicitly false, do NOT perform a full DB scan
+    if (options?.autoFetchAll === false) {
+      // Check if we have cached fixtures in guestCache
+      const cached = options.selectedDate 
+        ? guestCache.get<Match[]>('fixtures', `${options.competitionId || 'all'}_${options.selectedDate}_pall_sall`)
+        : guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+      if (cached && cached.length > 0) {
+        setMatches(cached);
+        matchesRef.current = cached;
+      }
+      return;
+    }
+
+    if (!hasFetchedInitialRef.current) {
+      hasFetchedInitialRef.current = true;
+      if (options?.selectedDate) {
+        ApiService.getFixtures(options.competitionId, options.selectedDate).then((res) => {
+          if (res.data) {
+            setMatches(res.data);
+            matchesRef.current = res.data;
+          }
+        }).catch(() => {});
+      } else {
+        ApiService.getFixtures().then((res) => {
+          if (res.data) {
+            setMatches(res.data);
+            matchesRef.current = res.data;
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [initialMatches, options?.autoFetchAll, options?.selectedDate, options?.competitionId]);
 
   const addToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
