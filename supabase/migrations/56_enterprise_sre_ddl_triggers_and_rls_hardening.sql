@@ -12,11 +12,11 @@
 
 -- 1. Create schema reload notifier function
 CREATE OR REPLACE FUNCTION public.pgrst_auto_reload_schema()
-RETURNS event_trigger AS 
+RETURNS event_trigger AS $$
 BEGIN
   NOTIFY pgrst, 'reload schema';
 END;
- LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2. Bind event trigger to DDL execution
 DROP EVENT TRIGGER IF EXISTS trg_pgrst_ddl_reload;
@@ -35,92 +35,97 @@ GRANT USAGE ON SCHEMA extensions TO postgres, anon, authenticated, service_role;
 
 -- Canonical wrappers with explicit immutable search path
 CREATE OR REPLACE FUNCTION public.digest(data text, type text)
-RETURNS bytea AS 
+RETURNS bytea AS $$
   SELECT extensions.digest(data::bytea, type);
- LANGUAGE sql IMMUTABLE STRICT SECURITY DEFINER 
+$$ LANGUAGE sql IMMUTABLE STRICT SECURITY DEFINER 
 SET search_path = extensions, public, pg_temp;
 
 CREATE OR REPLACE FUNCTION public.digest(data bytea, type text)
-RETURNS bytea AS 
+RETURNS bytea AS $$
   SELECT extensions.digest(data, type);
- LANGUAGE sql IMMUTABLE STRICT SECURITY DEFINER 
+$$ LANGUAGE sql IMMUTABLE STRICT SECURITY DEFINER 
 SET search_path = extensions, public, pg_temp;
 
 -- ============================================================================
 -- COMPONENT 3: ZERO-RECURSION AUTH & RLS POLICIES
 -- ============================================================================
 
--- 1. High-speed, non-recursive role getter
+-- 1. High-speed, non-recursive role getter keeping canonical user_role return type
 CREATE OR REPLACE FUNCTION public.get_auth_role()
-RETURNS text AS 
+RETURNS user_role AS $$
 DECLARE
-  v_role text;
+  v_role user_role;
+  v_jwt_role text;
 BEGIN
   -- A. Zero-DB path: read claims directly from authenticated JWT
-  v_role := (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role');
-  IF v_role IS NULL OR v_role = '' THEN
-    v_role := (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role');
+  v_jwt_role := (current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role');
+  IF v_jwt_role IS NULL OR v_jwt_role = '' THEN
+    v_jwt_role := (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role');
   END IF;
   
-  IF v_role IS NOT NULL AND v_role <> '' THEN
-    RETURN LOWER(v_role);
+  IF v_jwt_role IS NOT NULL AND v_jwt_role <> '' THEN
+    BEGIN
+      RETURN v_jwt_role::user_role;
+    EXCEPTION WHEN others THEN
+      NULL;
+    END;
   END IF;
 
   -- B. Fallback: Direct lookup executing with explicit search path
-  SELECT role::text INTO v_role 
+  SELECT role INTO v_role 
   FROM public.profiles 
   WHERE id = auth.uid()
   LIMIT 1;
 
-  RETURN COALESCE(LOWER(v_role), 'guest');
+  RETURN COALESCE(v_role, 'guest'::user_role);
 END;
- LANGUAGE plpgsql STABLE SECURITY DEFINER 
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER 
 SET search_path = public, auth, pg_temp;
 
 -- 2. Non-recursive profiles RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS  Public profiles are readable by everyone ON public.profiles;
-DROP POLICY IF EXISTS Users can update their own profile ON public.profiles;
-DROP POLICY IF EXISTS Admins full manage profiles ON public.profiles;
+DROP POLICY IF EXISTS "Public profiles are readable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins full manage profiles" ON public.profiles;
 
-CREATE POLICY Public profiles are readable by everyone
+CREATE POLICY "Public profiles are readable by everyone"
   ON public.profiles FOR SELECT
   USING (true);
 
-CREATE POLICY Users can update their own profile
+CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   USING ((SELECT auth.uid()) = id)
   WITH CHECK ((SELECT auth.uid()) = id);
 
-CREATE POLICY Admins full manage profiles
+CREATE POLICY "Admins full manage profiles"
   ON public.profiles FOR ALL
   USING (
     (SELECT auth.uid()) = id 
-    OR public.get_auth_role() IN ('admin', 'president', 'super_admin')
+    OR public.get_auth_role() IN ('admin', 'president')
   );
 
 -- 3. Non-recursive fixtures RLS
 ALTER TABLE public.fixtures ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS Fixtures readable by everyone ON public.fixtures;
-DROP POLICY IF EXISTS Officials manage fixtures ON public.fixtures;
-DROP POLICY IF EXISTS Allow manage fixtures ON public.fixtures;
-DROP POLICY IF EXISTS Unified officials update fixtures ON public.fixtures;
-DROP POLICY IF EXISTS Admins and Presidents manage fixtures ON public.fixtures;
-DROP POLICY IF EXISTS Referees update assigned fixtures ON public.fixtures;
-DROP POLICY IF EXISTS Journalists referees update assigned fixtures ON public.fixtures;
+DROP POLICY IF EXISTS "Fixtures readable by everyone" ON public.fixtures;
+DROP POLICY IF EXISTS "Officials manage fixtures" ON public.fixtures;
+DROP POLICY IF EXISTS "Allow manage fixtures" ON public.fixtures;
+DROP POLICY IF EXISTS "Unified officials update fixtures" ON public.fixtures;
+DROP POLICY IF EXISTS "Admins and Presidents manage fixtures" ON public.fixtures;
+DROP POLICY IF EXISTS "Referees update assigned fixtures" ON public.fixtures;
+DROP POLICY IF EXISTS "Journalists referees update assigned fixtures" ON public.fixtures;
 
-CREATE POLICY Fixtures readable by everyone
+CREATE POLICY "Fixtures readable by everyone"
   ON public.fixtures FOR SELECT
   USING (true);
 
-CREATE POLICY Officials manage fixtures
+CREATE POLICY "Officials manage fixtures"
   ON public.fixtures FOR ALL
   USING (
-    public.get_auth_role() IN ('admin', 'president', 'referee', 'official')
+    public.get_auth_role() IN ('admin', 'president', 'referee')
     OR auth.role() = 'authenticated'
   )
   WITH CHECK (
-    public.get_auth_role() IN ('admin', 'president', 'referee', 'official')
+    public.get_auth_role() IN ('admin', 'president', 'referee')
     OR auth.role() = 'authenticated'
   );
 
@@ -129,11 +134,12 @@ CREATE POLICY Officials manage fixtures
 -- ============================================================================
 
 -- Ensure optional faculty column on teams if not present
-DO  BEGIN
+DO $$
+BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teams' AND column_name = 'faculty') THEN
     ALTER TABLE public.teams ADD COLUMN faculty TEXT;
   END IF;
-END ;
+END $$;
 
 -- Ensure consistent foreign key relationships for resource embedding
 ALTER TABLE public.fixtures 
@@ -151,12 +157,10 @@ ALTER TABLE public.fixtures
 
 -- Performance indexes for nested joins and keyset pagination
 CREATE INDEX IF NOT EXISTS idx_fixtures_embed_perf
-  ON public.fixtures (competition_id, scheduled_time DESC, status)
-  INCLUDE (home_team_id, away_team_id);
+  ON public.fixtures (competition_id, scheduled_time DESC, status);
 
 CREATE INDEX IF NOT EXISTS idx_teams_lookup_id
-  ON public.teams (id) 
-  INCLUDE (name, faculty, logo_url);
+  ON public.teams (id);
 
--- Flush and reload PostgREST schema cache
-NOTIFY pgrst, 'reload schema';
+-- PostgREST explicit grant
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
