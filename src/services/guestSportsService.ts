@@ -1,8 +1,50 @@
-import { supabase } from '../lib/supabaseClient';
-import type { Match, LeagueTableEntry, Team } from '../types';
+﻿import { supabase } from '../lib/supabase';
+import type { Match, LeagueTableEntry } from '../types';
 
 // ============================================================================
-// 1. STRICT DATA TRANSFER INTERFACES (GUEST DATA CONTRACT)
+// GUEST SPORTS SERVICE v3 — Ultra-Fast Cached In-Memory Lookups & Clean Queries
+// ============================================================================
+
+const DEFAULT_LOGO = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
+
+// In-memory caches for static master data (60 second TTL)
+let cachedTeamsMap: Map<string, any> | null = null;
+let teamsCacheTimestamp = 0;
+let cachedCompetitionsMap: Map<string, string> | null = null;
+let competitionsCacheTimestamp = 0;
+
+const CACHE_TTL = 60000; // 60 seconds
+
+async function getTeamsMap(): Promise<Map<string, any>> {
+  const now = Date.now();
+  if (cachedTeamsMap && now - teamsCacheTimestamp < CACHE_TTL) {
+    return cachedTeamsMap;
+  }
+  const { data } = await supabase
+    .from('teams')
+    .select('id, name, short_name, logo_url, color_code');
+  
+  cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, t]));
+  teamsCacheTimestamp = now;
+  return cachedTeamsMap;
+}
+
+async function getCompetitionsMap(): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (cachedCompetitionsMap && now - competitionsCacheTimestamp < CACHE_TTL) {
+    return cachedCompetitionsMap;
+  }
+  const { data } = await supabase
+    .from('competitions')
+    .select('id, name');
+  
+  cachedCompetitionsMap = new Map<string, string>((data || []).map((c: any) => [c.id, c.name]));
+  competitionsCacheTimestamp = now;
+  return cachedCompetitionsMap;
+}
+
+// ============================================================================
+// TYPES
 // ============================================================================
 
 export interface GuestTeam {
@@ -16,6 +58,7 @@ export interface GuestTeam {
 export interface GuestFixture {
   id: string;
   competition_id: string;
+  competition_name: string;
   matchday: number;
   scheduled_time: string;
   venue: string;
@@ -58,10 +101,8 @@ export interface GuestAssistLeader {
   assists: number;
 }
 
-const DEFAULT_TEAM_LOGO = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
-
 // ============================================================================
-// 2. RESILIENT FIXTURE RETRIEVAL (Supports Date Filters & Matchdays)
+// SECTION 1: FIXTURES
 // ============================================================================
 
 export async function getGuestFixtures(params?: {
@@ -75,6 +116,8 @@ export async function getGuestFixtures(params?: {
       .select(`
         id,
         competition_id,
+        home_team_id,
+        away_team_id,
         matchday,
         scheduled_time,
         venue,
@@ -82,9 +125,7 @@ export async function getGuestFixtures(params?: {
         score_home,
         score_away,
         home_penalty_score,
-        away_penalty_score,
-        home_team:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
-        away_team:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
+        away_penalty_score
       `)
       .order('scheduled_time', { ascending: true });
 
@@ -103,109 +144,63 @@ export async function getGuestFixtures(params?: {
         .lte('scheduled_time', `${dateStr}T23:59:59.999Z`);
     }
 
-    const { data, error } = await query;
+    const [fixtureRes, teamMap, compMap] = await Promise.all([
+      query,
+      getTeamsMap(),
+      getCompetitionsMap()
+    ]);
 
-    if (error) {
-      console.warn('[guestSportsService.getGuestFixtures fallback]:', error.message);
-      // Fallback query if constraint name is unaliased
-      const fallbackQuery = supabase
-        .from('fixtures')
-        .select(`
-          id,
-          competition_id,
-          matchday,
-          scheduled_time,
-          venue,
-          status,
-          score_home,
-          score_away,
-          home_penalty_score,
-          away_penalty_score,
-          home_team_id,
-          away_team_id
-        `)
-        .order('scheduled_time', { ascending: true });
-
-      const { data: fbData, error: fbErr } = await fallbackQuery;
-      if (fbErr || !fbData) {
-        console.error('[guestSportsService.getGuestFixtures ERROR]:', fbErr?.message);
-        return [];
-      }
-
-      // Fetch teams separately to reconstruct fixtures
-      const { data: teamsData } = await supabase.from('teams').select('id, name, short_name, logo_url, color_code');
-      const teamMap = new Map((teamsData || []).map((t: any) => [t.id, t]));
-
-      return fbData.map((row: any) => {
-        const home = teamMap.get(row.home_team_id) || {};
-        const away = teamMap.get(row.away_team_id) || {};
-        return normalizeFixtureRow({
-          ...row,
-          home_team: home,
-          away_team: away
-        });
-      });
+    const fixtureRows = fixtureRes.data;
+    if (fixtureRes.error || !fixtureRows || fixtureRows.length === 0) {
+      return [];
     }
 
-    // Defensive Normalization: ensure no undefined team objects reach the view
-    return (data || []).map(normalizeFixtureRow);
+    return fixtureRows.map((f: any): GuestFixture => {
+      const home = teamMap.get(f.home_team_id) || {};
+      const away = teamMap.get(f.away_team_id) || {};
+      return {
+        id: f.id,
+        competition_id: f.competition_id || '',
+        competition_name: compMap.get(f.competition_id) || 'Campus Football',
+        matchday: f.matchday || 1,
+        scheduled_time: f.scheduled_time,
+        venue: f.venue || 'Egerton Main Grounds',
+        status: (f.status || 'UPCOMING') as any,
+        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
+        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
+        home_penalty_score: f.home_penalty_score ?? null,
+        away_penalty_score: f.away_penalty_score ?? null,
+        home_team: {
+          id: home.id || '',
+          name: home.name || 'Home Team',
+          short_name: home.short_name || null,
+          logo_url: home.logo_url || DEFAULT_LOGO,
+          color_code: home.color_code || '#059669',
+        },
+        away_team: {
+          id: away.id || '',
+          name: away.name || 'Away Team',
+          short_name: away.short_name || null,
+          logo_url: away.logo_url || DEFAULT_LOGO,
+          color_code: away.color_code || '#2563EB',
+        },
+      };
+    });
   } catch (err: any) {
-    console.error('[guestSportsService.getGuestFixtures EXCEPTION]:', err);
+    console.error('[guestSportsService] getGuestFixtures exception:', err);
     return [];
   }
 }
 
-function normalizeFixtureRow(row: any): GuestFixture {
-  const home = Array.isArray(row.home_team) ? row.home_team[0] : row.home_team;
-  const away = Array.isArray(row.away_team) ? row.away_team[0] : row.away_team;
-
-  return {
-    id: row.id,
-    competition_id: row.competition_id || '',
-    matchday: row.matchday || 1,
-    scheduled_time: row.scheduled_time,
-    venue: row.venue || 'Egerton Main Grounds',
-    status: (row.status || 'SCHEDULED') as any,
-    score_home: typeof row.score_home === 'number' ? row.score_home : 0,
-    score_away: typeof row.score_away === 'number' ? row.score_away : 0,
-    home_penalty_score: row.home_penalty_score ?? null,
-    away_penalty_score: row.away_penalty_score ?? null,
-    home_team: {
-      id: home?.id || '',
-      name: home?.name || 'Home Team',
-      short_name: home?.short_name || null,
-      logo_url: home?.logo_url || DEFAULT_TEAM_LOGO,
-      color_code: home?.color_code || '#059669'
-    },
-    away_team: {
-      id: away?.id || '',
-      name: away?.name || 'Away Team',
-      short_name: away?.short_name || null,
-      logo_url: away?.logo_url || DEFAULT_TEAM_LOGO,
-      color_code: away?.color_code || '#2563EB'
-    }
-  };
-}
-
 // ============================================================================
-// 3. RESILIENT STANDINGS FETCHER (Direct table query with inner join)
+// SECTION 2: STANDINGS
 // ============================================================================
 
 export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
   try {
     let query = supabase
       .from('league_standings')
-      .select(`
-        played,
-        won,
-        drawn,
-        lost,
-        goals_for,
-        goals_against,
-        goal_difference,
-        points,
-        team:teams!league_standings_team_id_fkey(id, name, logo_url)
-      `)
+      .select('team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
       .order('points', { ascending: false })
       .order('goal_difference', { ascending: false })
       .order('goals_for', { ascending: false });
@@ -214,55 +209,22 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
       query = query.eq('competition_id', competitionId);
     }
 
-    const { data, error } = await query;
+    const [standingsRes, teamMap] = await Promise.all([
+      query,
+      getTeamsMap()
+    ]);
 
-    if (error) {
-      console.warn('[guestSportsService.getGuestStandings fallback]:', error.message);
-      // Fallback: select without join and merge teams table
-      let fbQuery = supabase
-        .from('league_standings')
-        .select(`team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points`)
-        .order('points', { ascending: false })
-        .order('goal_difference', { ascending: false })
-        .order('goals_for', { ascending: false });
-
-      if (competitionId && competitionId !== 'all' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
-        fbQuery = fbQuery.eq('competition_id', competitionId);
-      }
-
-      const { data: fbData, error: fbErr } = await fbQuery;
-      if (fbErr || !fbData) {
-        console.error('[guestSportsService.getGuestStandings ERROR]:', fbErr?.message);
-        return [];
-      }
-
-      const { data: teamsData } = await supabase.from('teams').select('id, name, logo_url');
-      const teamMap = new Map((teamsData || []).map((t: any) => [t.id, t]));
-
-      return fbData.map((row: any) => {
-        const tm = teamMap.get(row.team_id) || {};
-        return {
-          team_id: row.team_id || '',
-          team_name: tm.name || 'Campus Team',
-          logo_url: tm.logo_url || DEFAULT_TEAM_LOGO,
-          played: Number(row.played) || 0,
-          won: Number(row.won) || 0,
-          drawn: Number(row.drawn) || 0,
-          lost: Number(row.lost) || 0,
-          goals_for: Number(row.goals_for) || 0,
-          goals_against: Number(row.goals_against) || 0,
-          goal_difference: Number(row.goal_difference) || 0,
-          points: Number(row.points) || 0
-        };
-      });
+    const rows = standingsRes.data;
+    if (standingsRes.error || !rows || rows.length === 0) {
+      return [];
     }
 
-    return (data || []).map((row: any) => {
-      const tm = Array.isArray(row.team) ? row.team[0] : row.team;
+    return rows.map((row: any): GuestStanding => {
+      const tm = teamMap.get(row.team_id) || {};
       return {
-        team_id: tm?.id || '',
-        team_name: tm?.name || 'Club',
-        logo_url: tm?.logo_url || DEFAULT_TEAM_LOGO,
+        team_id: row.team_id || '',
+        team_name: tm.name || 'Campus Team',
+        logo_url: tm.logo_url || DEFAULT_LOGO,
         played: Number(row.played) || 0,
         won: Number(row.won) || 0,
         drawn: Number(row.drawn) || 0,
@@ -270,206 +232,254 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
         goals_for: Number(row.goals_for) || 0,
         goals_against: Number(row.goals_against) || 0,
         goal_difference: Number(row.goal_difference) || 0,
-        points: Number(row.points) || 0
+        points: Number(row.points) || 0,
       };
     });
   } catch (err: any) {
-    console.error('[guestSportsService.getGuestStandings EXCEPTION]:', err);
+    console.error('[guestSportsService] getGuestStandings exception:', err);
     return [];
   }
 }
 
 // ============================================================================
-// 4. RESILIENT TOP SCORERS (Direct aggregation without RPC vulnerability)
+// SECTION 3: TOP SCORERS
 // ============================================================================
 
 export async function getGuestTopScorers(limitCount = 10, competitionId?: string): Promise<GuestTopScorer[]> {
   try {
-    // 1. Query match_events directly
-    let query = supabase
-      .from('match_events')
-      .select(`
-        player_id,
-        player:players!match_events_player_id_fkey(id, first_name, last_name),
-        team:teams!match_events_team_id_fkey(name, logo_url)
-      `)
-      .in('type', ['goal', 'penalty'])
-      .limit(500);
-
-    const { data, error } = await query;
-
-    if (!error && data && data.length > 0) {
-      // Tally goals in-memory to prevent database lockups & RPC schema mismatches
-      const goalMap: Record<string, { name: string; team: string; logo: string | null; count: number }> = {};
-
-      data.forEach((evt: any) => {
-        if (!evt.player_id) return;
-        const pid = evt.player_id;
-        const p = Array.isArray(evt.player) ? evt.player[0] : evt.player;
-        const tm = Array.isArray(evt.team) ? evt.team[0] : evt.team;
-        const fullName = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'Player';
-        const teamName = tm?.name || 'Club';
-        const logoUrl = tm?.logo_url || DEFAULT_TEAM_LOGO;
-
-        if (!goalMap[pid]) {
-          goalMap[pid] = { name: fullName || 'Player', team: teamName, logo: logoUrl, count: 0 };
-        }
-        goalMap[pid].count += 1;
-      });
-
-      const scorers = Object.entries(goalMap)
-        .map(([playerId, stats]) => ({
-          player_id: playerId,
-          player_name: stats.name,
-          team_name: stats.team,
-          logo_url: stats.logo,
-          goals: stats.count
-        }))
-        .sort((a, b) => b.goals - a.goals)
-        .slice(0, limitCount);
-
-      if (scorers.length > 0) return scorers;
-    }
-
-    // 2. Fallback: player_stats table
     let psQuery = supabase
       .from('player_stats')
-      .select(`
-        player_id,
-        goals,
-        player:players!player_stats_player_id_fkey(id, first_name, last_name, team:teams!players_team_id_fkey(name, logo_url))
-      `)
+      .select('player_id, competition_id, goals')
       .gt('goals', 0)
       .order('goals', { ascending: false })
-      .limit(limitCount);
+      .limit(limitCount * 3);
 
-    if (competitionId && competitionId !== 'all' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
+    if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
       psQuery = psQuery.eq('competition_id', competitionId);
     }
 
-    const { data: psData } = await psQuery;
-    if (psData && psData.length > 0) {
-      return psData.map((row: any) => {
-        const p = Array.isArray(row.player) ? row.player[0] : row.player;
-        const tm = Array.isArray(p?.team) ? p.team[0] : p?.team;
-        return {
-          player_id: row.player_id,
-          player_name: p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'Player',
-          team_name: tm?.name || 'Club',
-          logo_url: tm?.logo_url || DEFAULT_TEAM_LOGO,
-          goals: Number(row.goals) || 0
-        };
-      });
+    const { data: psRows, error: psErr } = await psQuery;
+
+    if (psErr || !psRows || psRows.length === 0) {
+      return await getTopScorersFromEvents(limitCount, competitionId);
     }
 
-    return [];
+    const playerIds = psRows.map((r: any) => r.player_id).filter(Boolean);
+    const [playersRes, teamMap] = await Promise.all([
+      supabase.from('players').select('id, first_name, last_name, team_id, profile_id').in('id', playerIds),
+      getTeamsMap()
+    ]);
+
+    const playerRows = playersRes.data || [];
+    const playerMap = new Map<string, any>(playerRows.map((p: any) => [p.id, p]));
+
+    const profileIds = [...new Set(playerRows.map((p: any) => p.profile_id).filter(Boolean))];
+    const { data: profileRows } = profileIds.length > 0
+      ? await supabase.from('profiles').select('id, first_name, last_name').in('id', profileIds)
+      : { data: [] };
+
+    const profileMap = new Map<string, any>((profileRows || []).map((pr: any) => [pr.id, pr]));
+
+    const aggregated = new Map<string, GuestTopScorer>();
+    psRows.forEach((row: any) => {
+      const pid = row.player_id;
+      if (!pid) return;
+      const player = playerMap.get(pid);
+      const team = player ? teamMap.get(player.team_id) : null;
+      const profile = player ? profileMap.get(player.profile_id) : null;
+
+      const name = profile
+        ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+        : player
+        ? `${player.first_name || ''} ${player.last_name || ''}`.trim()
+        : 'Player';
+
+      if (aggregated.has(pid)) {
+        aggregated.get(pid)!.goals += Number(row.goals) || 0;
+      } else {
+        aggregated.set(pid, {
+          player_id: pid,
+          player_name: name || 'Player',
+          team_name: team?.name || 'Campus Team',
+          logo_url: team?.logo_url || DEFAULT_LOGO,
+          goals: Number(row.goals) || 0,
+        });
+      }
+    });
+
+    return [...aggregated.values()]
+      .sort((a, b) => b.goals - a.goals)
+      .slice(0, limitCount);
   } catch (err: any) {
-    console.error('[guestSportsService.getGuestTopScorers ERROR]:', err);
+    console.error('[guestSportsService] getGuestTopScorers exception:', err);
+    return [];
+  }
+}
+
+async function getTopScorersFromEvents(limitCount: number, competitionId?: string): Promise<GuestTopScorer[]> {
+  try {
+    let evQuery = supabase
+      .from('match_events')
+      .select('player_id, fixture_id')
+      .in('type', ['goal', 'penalty'])
+      .limit(500);
+
+    const [evRes, teamMap] = await Promise.all([
+      evQuery,
+      getTeamsMap()
+    ]);
+
+    const evRows = evRes.data;
+    if (evRes.error || !evRows || evRows.length === 0) return [];
+
+    const goalCount = new Map<string, number>();
+    evRows.forEach((e: any) => {
+      if (!e.player_id) return;
+      goalCount.set(e.player_id, (goalCount.get(e.player_id) || 0) + 1);
+    });
+
+    if (goalCount.size === 0) return [];
+
+    const topPlayerIds = [...goalCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limitCount * 2)
+      .map(([pid]) => pid);
+
+    const { data: playerRows } = await supabase
+      .from('players')
+      .select('id, first_name, last_name, team_id, profile_id')
+      .in('id', topPlayerIds);
+
+    const playerMap = new Map<string, any>((playerRows || []).map((p: any) => [p.id, p]));
+
+    return [...goalCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limitCount)
+      .map(([pid, goals]) => {
+        const player = playerMap.get(pid);
+        const team = player ? teamMap.get(player.team_id) : null;
+        const name = player ? `${player.first_name || ''} ${player.last_name || ''}`.trim() : 'Player';
+        return {
+          player_id: pid,
+          player_name: name || 'Player',
+          team_name: team?.name || 'Campus Team',
+          logo_url: team?.logo_url || DEFAULT_LOGO,
+          goals,
+        };
+      });
+  } catch {
     return [];
   }
 }
 
 // ============================================================================
-// 5. RESILIENT ASSIST LEADERS (Direct aggregation)
+// SECTION 4: ASSIST LEADERS
 // ============================================================================
 
 export async function getGuestAssists(limitCount = 10, competitionId?: string): Promise<GuestAssistLeader[]> {
   try {
     let psQuery = supabase
       .from('player_stats')
-      .select(`
-        player_id,
-        assists,
-        player:players!player_stats_player_id_fkey(id, first_name, last_name, team:teams!players_team_id_fkey(name, logo_url))
-      `)
+      .select('player_id, assists')
       .gt('assists', 0)
       .order('assists', { ascending: false })
-      .limit(limitCount);
+      .limit(limitCount * 3);
 
-    if (competitionId && competitionId !== 'all' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
+    if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
       psQuery = psQuery.eq('competition_id', competitionId);
     }
 
-    const { data, error } = await psQuery;
-    if (!error && data && data.length > 0) {
-      return data.map((row: any) => {
-        const p = Array.isArray(row.player) ? row.player[0] : row.player;
-        const tm = Array.isArray(p?.team) ? p.team[0] : p?.team;
-        return {
-          player_id: row.player_id,
-          player_name: p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'Player',
-          team_name: tm?.name || 'Club',
-          logo_url: tm?.logo_url || DEFAULT_TEAM_LOGO,
-          assists: Number(row.assists) || 0
-        };
-      });
-    }
+    const [psRes, teamMap] = await Promise.all([
+      psQuery,
+      getTeamsMap()
+    ]);
 
-    return [];
+    const psRows = psRes.data;
+    if (psRes.error || !psRows || psRows.length === 0) return [];
+
+    const playerIds = psRows.map((r: any) => r.player_id).filter(Boolean);
+    const { data: playerRows } = await supabase
+      .from('players')
+      .select('id, first_name, last_name, team_id, profile_id')
+      .in('id', playerIds);
+
+    const playerMap = new Map<string, any>((playerRows || []).map((p: any) => [p.id, p]));
+
+    const aggregated = new Map<string, GuestAssistLeader>();
+    psRows.forEach((row: any) => {
+      const pid = row.player_id;
+      if (!pid) return;
+      const player = playerMap.get(pid);
+      const team = player ? teamMap.get(player.team_id) : null;
+      const name = player ? `${player.first_name || ''} ${player.last_name || ''}`.trim() : 'Player';
+
+      if (aggregated.has(pid)) {
+        aggregated.get(pid)!.assists += Number(row.assists) || 0;
+      } else {
+        aggregated.set(pid, {
+          player_id: pid,
+          player_name: name || 'Player',
+          team_name: team?.name || 'Campus Team',
+          logo_url: team?.logo_url || DEFAULT_LOGO,
+          assists: Number(row.assists) || 0,
+        });
+      }
+    });
+
+    return [...aggregated.values()]
+      .sort((a, b) => b.assists - a.assists)
+      .slice(0, limitCount);
   } catch (err: any) {
-    console.error('[guestSportsService.getGuestAssists ERROR]:', err);
+    console.error('[guestSportsService] getGuestAssists exception:', err);
     return [];
   }
 }
 
 // ============================================================================
-// 6. TYPE-SAFE NORMALIZATION ADAPTERS (For seamless component consumption)
+// TYPE ADAPTERS
 // ============================================================================
 
 export function guestFixtureToMatch(gf: GuestFixture): Match {
-  const isEpl = gf.competition_id === '11111111-1111-1111-1111-111111111111';
-  const isChamp = gf.competition_id === '22222222-2222-2222-2222-222222222222';
-  const leagueName = isEpl ? 'Egerton Premier League' : isChamp ? 'Egerton Championship' : 'Campus Football League';
-
   const d = new Date(gf.scheduled_time);
   const timeFormatted = isNaN(d.getTime())
     ? '15:00'
     : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-
-  const teamA: Team = {
-    id: gf.home_team.id,
-    name: gf.home_team.name,
-    shortName: gf.home_team.short_name || gf.home_team.name.substring(0, 3).toUpperCase(),
-    logo: gf.home_team.logo_url || DEFAULT_TEAM_LOGO,
-    colorCode: gf.home_team.color_code || '#059669',
-    club_id: '',
-    competition_id: gf.competition_id
-  };
-
-  const teamB: Team = {
-    id: gf.away_team.id,
-    name: gf.away_team.name,
-    shortName: gf.away_team.short_name || gf.away_team.name.substring(0, 3).toUpperCase(),
-    logo: gf.away_team.logo_url || DEFAULT_TEAM_LOGO,
-    colorCode: gf.away_team.color_code || '#2563EB',
-    club_id: '',
-    competition_id: gf.competition_id
-  };
 
   return {
     id: gf.id,
     status: gf.status as any,
     time: gf.status === 'FT' ? 'FT' : gf.status === 'HT' ? 'HT' : timeFormatted,
     minute: gf.status === 'LIVE' ? "85'" : gf.status === 'HT' ? 'HT' : gf.status === 'FT' ? 'FT' : '-',
-    league: leagueName,
-    teamA,
-    teamB,
+    league: gf.competition_name,
+    teamA: {
+      id: gf.home_team.id,
+      name: gf.home_team.name,
+      shortName: gf.home_team.short_name || gf.home_team.name.substring(0, 3).toUpperCase(),
+      logo: gf.home_team.logo_url || DEFAULT_LOGO,
+      colorCode: gf.home_team.color_code || '#059669',
+      club_id: '',
+      competition_id: gf.competition_id,
+    },
+    teamB: {
+      id: gf.away_team.id,
+      name: gf.away_team.name,
+      shortName: gf.away_team.short_name || gf.away_team.name.substring(0, 3).toUpperCase(),
+      logo: gf.away_team.logo_url || DEFAULT_LOGO,
+      colorCode: gf.away_team.color_code || '#2563EB',
+      club_id: '',
+      competition_id: gf.competition_id,
+    },
     scoreA: gf.score_home,
     scoreB: gf.score_away,
     events: [],
     stats: [],
-    lineups: {
-      teamA: [],
-      teamB: [],
-      formationA: '4-3-3',
-      formationB: '4-3-3'
-    },
+    lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
     venue: gf.venue,
     referee: 'Appointed Official',
     matchday: gf.matchday,
     homePenaltyScore: gf.home_penalty_score ?? undefined,
     awayPenaltyScore: gf.away_penalty_score ?? undefined,
-    scheduledTime: gf.scheduled_time
+    scheduledTime: gf.scheduled_time,
   };
 }
 
@@ -478,7 +488,7 @@ export function guestStandingToLeagueTableEntry(gs: GuestStanding, index: number
     position: index + 1,
     teamId: gs.team_id,
     teamName: gs.team_name,
-    teamLogo: gs.logo_url || DEFAULT_TEAM_LOGO,
+    teamLogo: gs.logo_url || DEFAULT_LOGO,
     played: gs.played,
     won: gs.won,
     drawn: gs.drawn,
@@ -487,7 +497,7 @@ export function guestStandingToLeagueTableEntry(gs: GuestStanding, index: number
     goalsAgainst: gs.goals_against,
     goalDifference: gs.goal_difference,
     points: gs.points,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   };
 }
 

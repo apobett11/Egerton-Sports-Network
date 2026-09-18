@@ -104,116 +104,15 @@ export const ApiService = {
     }
 
     try {
-      return await executeWithRetry(async () => {
-        let query = supabase
-          .from('fixtures')
-          .select(`
-            id,
-            status,
-            scheduled_time,
-            score_home,
-            score_away,
-            venue,
-            matchday,
-            attendance,
-            weather,
-            added_time,
-            home_penalty_score,
-            away_penalty_score,
-            referee_id,
-            verified_by_referee_id,
-            competition:competitions(id, name),
-            team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
-            team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
-          `);
-
-        if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
-          query = query.eq('competition_id', competitionId);
-        }
-
-        if (selectedDate) {
-          const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
-            ? selectedDate
-            : new Date(selectedDate).toISOString().split('T')[0];
-          const startIso = `${dateStr}T00:00:00.000Z`;
-          const endIso = `${dateStr}T23:59:59.999Z`;
-          query = query.gte('scheduled_time', startIso).lte('scheduled_time', endIso);
-        }
-
-        query = query.order('scheduled_time', { ascending: true });
-
-        if (page && pageSize) {
-          const from = (page - 1) * pageSize;
-          const to = from + pageSize - 1;
-          query = query.range(from, to);
-        }
-
-        const { data, count, error } = await query;
-
-        if (error || !data || data.length === 0) {
-          if (error) logger.warn('Error fetching fixtures from Supabase:', { error });
-          return { success: true, data: [] };
-        }
-
-        const formattedMatches: Match[] = data.map((f: any) => {
-          const comp = unwrap(f.competition);
-          const home = unwrap(f.team_home);
-          const away = unwrap(f.team_away);
-
-          return {
-            id: f.id,
-            status: f.status as MatchStatus,
-            time: formatMatchTime(f.scheduled_time),
-            minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
-            league: comp?.name || 'Egerton Premier League',
-            teamA: {
-              id: home?.id || '',
-              name: home?.name || 'Home Team',
-              shortName: home?.short_name || 'HOM',
-              logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-              colorCode: home?.color_code || '#D4AF37'
-            },
-            teamB: {
-              id: away?.id || '',
-              name: away?.name || 'Away Team',
-              shortName: away?.short_name || 'AWY',
-              logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
-              colorCode: away?.color_code || '#2563EB'
-            },
-            scoreA: f.score_home || 0,
-            scoreB: f.score_away || 0,
-            events: [],
-            stats: [],
-            lineups: {
-              teamA: [],
-              teamB: [],
-              formationA: '4-3-3',
-              formationB: '4-3-3'
-            },
-            venue: f.venue || '',
-            referee: 'Official Referee',
-            refereeId: f.referee_id,
-            attendance: f.attendance,
-            weather: f.weather,
-            matchday: f.matchday,
-            homePenaltyScore: f.home_penalty_score,
-            awayPenaltyScore: f.away_penalty_score,
-            verifiedByRefereeId: f.verified_by_referee_id,
-            scheduledTime: f.scheduled_time
-          };
-        });
-
-        guestCache.set('fixtures', cacheKey, formattedMatches);
-        if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
-          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
-        }
-        const resp: any = { success: true, data: formattedMatches };
-        if (count !== null && count !== undefined) resp.total = count;
-        if (page) resp.page = page;
-        if (pageSize) resp.pageSize = pageSize;
-        if (count && pageSize) resp.totalPages = Math.ceil(count / pageSize);
-        return resp;
-      });
+      // Delegate to guestSportsService for reliable batch queries without FK constraint hint issues
+      const { getGuestFixtures, guestFixtureToMatch } = await import('./guestSportsService');
+      const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
+      const formattedMatches: Match[] = guestFixtures.map(guestFixtureToMatch);
+      guestCache.set('fixtures', cacheKey, formattedMatches);
+      if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
+        guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
+      }
+      return { success: true, data: formattedMatches, total: formattedMatches.length };
     } catch (err) {
       logger.warn('Failed to fetch fixtures from Supabase.', { error: err });
       return { success: true, data: [] };
@@ -1496,26 +1395,27 @@ export const ApiService = {
         return { success: true, data: entries };
       }
 
-      // 2. Direct Materialized Table Query Fallback
-      let query = supabase.from('league_standings').select(`
-        played, won, drawn, lost, goals_for, goals_against, goal_difference, points, last_updated,
-        team:teams!league_standings_team_id_fkey(id, name, logo_url)
-      `);
-      if (targetCompId) {
-        query = query.eq('competition_id', targetCompId);
-      }
-
-      const { data: rawStandings, error: rawErr } = await query
+      // 2. Direct Materialized Table Query Fallback (flat query + batch team join)
+      let standingsQ = supabase.from('league_standings')
+        .select('team_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points, last_updated')
         .order('points', { ascending: false })
         .order('goal_difference', { ascending: false })
         .order('goals_for', { ascending: false });
+      if (targetCompId) {
+        standingsQ = standingsQ.eq('competition_id', targetCompId);
+      }
+
+      const { data: rawStandings, error: rawErr } = await standingsQ;
 
       if (!rawErr && rawStandings && rawStandings.length > 0) {
+        const teamIds2 = rawStandings.map((r: any) => r.team_id).filter(Boolean);
+        const { data: teamsData2 } = await supabase.from('teams').select('id, name, logo_url').in('id', teamIds2);
+        const teamMap2 = new Map<string, any>((teamsData2 || []).map((t: any) => [t.id, t]));
         const directEntries: LeagueTableEntry[] = rawStandings.map((row: any, idx: number) => {
-          const tm = unwrap(row.team);
+          const tm = teamMap2.get(row.team_id) || {};
           return {
             position: idx + 1,
-            teamId: tm?.id || '',
+            teamId: row.team_id || '',
             teamName: tm?.name || 'Campus Team',
             teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
             played: Number(row.played),

@@ -72,8 +72,7 @@ const resolveTeamSlug = async (slug: string): Promise<string | null> => {
   try {
     const { data } = await supabase
       .from('teams')
-      .select('id, name')
-      .is('deleted_at', null);
+      .select('id, name');
     if (!data) return null;
     data.forEach((t: any) => {
       if (t.name) teamSlugCache.set(nameToSlug(t.name), t.id);
@@ -180,7 +179,6 @@ export const AppContent: React.FC = () => {
         const { data, count, error } = await supabase
           .from('fixtures')
           .select('id', { count: 'exact' })
-          .is('deleted_at', null)
           .limit(1);
 
         if (!error && isMounted) {
