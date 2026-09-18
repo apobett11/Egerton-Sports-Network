@@ -44,6 +44,27 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [internalDate, setInternalDate] = useState<Date>(() => resolveGuestMatchdayDate(dbFixtures));
   const activeDate = propSelectedDate || internalDate;
 
+  // Master playday schedule cache to make matchday detection and switching 100% instant
+  const [masterPlaydayFixtures, setMasterPlaydayFixtures] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('fixtures')
+      .select('scheduled_time, matchday, competition_id, is_friendly')
+      .order('scheduled_time', { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setMasterPlaydayFixtures(data);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    if (propSelectedDate) {
+      setInternalDate(propSelectedDate);
+    }
+  }, [propSelectedDate]);
+
   const formattedDateStr = useMemo(() => {
     const d = activeDate instanceof Date ? activeDate : new Date(activeDate);
     const year = d.getFullYear();
@@ -52,13 +73,12 @@ export const HomePage: React.FC<HomePageProps> = ({
     return `${year}-${month}-${day}`;
   }, [activeDate]);
 
-  const handleDateChange = (newDate: Date) => {
+  const handleDateChange = useCallback((newDate: Date) => {
+    setInternalDate(newDate);
     if (propSetSelectedDate) {
       propSetSelectedDate(newDate);
-    } else {
-      setInternalDate(newDate);
     }
-  };
+  }, [propSetSelectedDate]);
 
   const handleDateStringChange = (dateStr: string) => {
     if (!dateStr) return;
@@ -69,17 +89,20 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  // Map all fixture playdays (both league and friendly)
+  // Map all fixture playdays across the entire season (both league and friendly)
   const fixturePlaydaysMap = useMemo(() => {
     const map = new Map<string, { isFriendly: boolean; isLeague: boolean; matchday?: number }>();
-    const list = dbFixtures && dbFixtures.length > 0 ? dbFixtures : [];
+    const list = masterPlaydayFixtures.length > 0 
+      ? masterPlaydayFixtures 
+      : (dbFixtures && dbFixtures.length > 0 ? dbFixtures : []);
+
     list.forEach(f => {
       const rawDate = f.scheduledTime || (f as any).scheduled_time || (f as any).playday || (f as any).play_date;
       if (!rawDate) return;
       const d = new Date(rawDate);
       if (isNaN(d.getTime())) return;
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const isFriendly = f.league?.toLowerCase().includes('friendly') || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
+      const isFriendly = (f.league && f.league.toLowerCase().includes('friendly')) || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
       const isLeague = !isFriendly;
       if (!map.has(dateKey)) {
         map.set(dateKey, { isFriendly, isLeague, matchday: f.matchday });
@@ -93,7 +116,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       }
     });
     return map;
-  }, [dbFixtures]);
+  }, [masterPlaydayFixtures, dbFixtures]);
 
   const isPlayday = useCallback((d: Date): boolean => {
     const year = d.getFullYear();
@@ -112,7 +135,12 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [fixturePlaydaysMap]);
 
   // Navigate laterally to next or previous playday (skipping empty weekdays)
+  const lastSwitchTimeRef = useRef<number>(0);
   const handleShiftPlayday = useCallback((direction: 1 | -1) => {
+    const now = Date.now();
+    if (now - lastSwitchTimeRef.current < 200) return;
+    lastSwitchTimeRef.current = now;
+
     const current = new Date(activeDate);
     const next = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 12, 0, 0);
 
@@ -127,28 +155,43 @@ export const HomePage: React.FC<HomePageProps> = ({
     const fallback = new Date(current);
     fallback.setDate(fallback.getDate() + direction);
     handleDateChange(fallback);
-  }, [activeDate, isPlayday]);
+  }, [activeDate, isPlayday, handleDateChange]);
 
   const handleShiftDate = handleShiftPlayday;
 
-  // Touch swipe support for lateral scrolling on mobile
+  // Touch swipe support for lateral scrolling on mobile and trackpad gestures
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null) return;
-    const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) {
-      if (diff > 0) {
+    if (touchStartX === null || touchStartY === null) return;
+    const diffX = touchStartX - e.changedTouches[0].clientX;
+    const diffY = touchStartY - e.changedTouches[0].clientY;
+
+    if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
+      if (diffX > 0) {
         handleShiftPlayday(1);
       } else {
         handleShiftPlayday(-1);
       }
     }
     setTouchStartX(null);
+    setTouchStartY(null);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (Math.abs(e.deltaX) > 40 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.5) {
+      if (e.deltaX > 0) {
+        handleShiftPlayday(1);
+      } else {
+        handleShiftPlayday(-1);
+      }
+    }
   };
 
   // Helper to extract cached fixtures for active date & competition instantly
@@ -247,7 +290,8 @@ export const HomePage: React.FC<HomePageProps> = ({
     if (cached && cached.length > 0) {
       setFixturesState({ data: cached, loading: false, error: null });
     } else {
-      setFixturesState(prev => (prev.data.length > 0 ? prev : { ...prev, loading: true, error: null }));
+      // Instant switch feedback: immediately show fast loader for new date without showing stale previous date
+      setFixturesState({ data: [], loading: true, error: null });
     }
 
     ApiService.getFixtures(compId, formattedDateStr)
@@ -257,12 +301,12 @@ export const HomePage: React.FC<HomePageProps> = ({
           const fetchedMatches = res.data;
           setFixturesState({ data: fetchedMatches, loading: false, error: null });
         } else {
-          setFixturesState(prev => prev.data.length > 0 ? prev : { data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
+          setFixturesState({ data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
         }
       })
       .catch(() => {
         if (isMounted) {
-          setFixturesState(prev => prev.data.length > 0 ? prev : { data: [], loading: false, error: 'Database network timeout.' });
+          setFixturesState({ data: [], loading: false, error: 'Database network timeout.' });
         }
       });
 
@@ -287,45 +331,43 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   useCacheSubscription('fixtures', loadFixtures);
 
-  // Intelligent Matchday Prefetching (Sub-Second Lateral Scrolling / Swiping)
+  // Proactive Matchday Prefetching: Rapidly cache adjacent playdays for 0ms lateral switches
   useEffect(() => {
-    if (!fixturesState.loading && fixturesState.data.length > 0) {
-      const current = new Date(activeDate);
-      const prefetchTimer = setTimeout(() => {
-        // Prefetch next playday into cache
-        const nextDate = new Date(current);
-        for (let i = 1; i <= 14; i++) {
-          nextDate.setDate(nextDate.getDate() + 1);
-          if (isPlayday(nextDate)) {
-            const nextKey = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-            const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
-            const cacheKey = `${selectedCompetitionId}_${nextKey}_pall_sall`;
-            if (!guestCache.get('fixtures', cacheKey)) {
-              ApiService.getFixtures(compId, nextKey).catch(() => {});
-            }
-            break;
+    const current = new Date(activeDate);
+    const prefetchTimer = setTimeout(() => {
+      // Prefetch next playday into cache
+      const nextDate = new Date(current);
+      for (let i = 1; i <= 30; i++) {
+        nextDate.setDate(nextDate.getDate() + 1);
+        if (isPlayday(nextDate)) {
+          const nextKey = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+          const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+          const cacheKey = `${selectedCompetitionId}_${nextKey}_pall_sall`;
+          if (!guestCache.get('fixtures', cacheKey)) {
+            ApiService.getFixtures(compId, nextKey).catch(() => {});
           }
+          break;
         }
+      }
 
-        // Prefetch previous playday into cache
-        const prevDate = new Date(current);
-        for (let i = 1; i <= 14; i++) {
-          prevDate.setDate(prevDate.getDate() - 1);
-          if (isPlayday(prevDate)) {
-            const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
-            const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
-            const cacheKey = `${selectedCompetitionId}_${prevKey}_pall_sall`;
-            if (!guestCache.get('fixtures', cacheKey)) {
-              ApiService.getFixtures(compId, prevKey).catch(() => {});
-            }
-            break;
+      // Prefetch previous playday into cache
+      const prevDate = new Date(current);
+      for (let i = 1; i <= 30; i++) {
+        prevDate.setDate(prevDate.getDate() - 1);
+        if (isPlayday(prevDate)) {
+          const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
+          const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+          const cacheKey = `${selectedCompetitionId}_${prevKey}_pall_sall`;
+          if (!guestCache.get('fixtures', cacheKey)) {
+            ApiService.getFixtures(compId, prevKey).catch(() => {});
           }
+          break;
         }
-      }, 700);
+      }
+    }, 150);
 
-      return () => clearTimeout(prefetchTimer);
-    }
-  }, [activeDate, fixturesState.loading, fixturesState.data.length, isPlayday, selectedCompetitionId]);
+    return () => clearTimeout(prefetchTimer);
+  }, [activeDate, isPlayday, selectedCompetitionId]);
 
   // Section 2: Standings snapshot loads ON-DEMAND when scrolled into view
   const loadStandings = useCallback(() => {
@@ -908,7 +950,12 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* 3. FIXTURES CARD: LEAGUE HEADERS -> FIXTURES CONTENT */}
-      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+        className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs touch-pan-y"
+      >
         {/* FIXTURES CONTENT FEED (LEAGUE TITLES & FIXTURES INSIDE THE CARD) */}
         {fixturesState.loading ? (
           <div className="py-12 flex flex-col items-center justify-center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { Navigation } from './components/Layout/Navigation';
@@ -747,9 +747,12 @@ export const AppContent: React.FC = () => {
     { autoFetchAll: false, selectedDate: selectedDateStr, competitionId: selectedCompetitionId }
   );
 
-  // Auto-sync guest fixtures to next matchday if on a weekday, or today if on a playday
+  // Auto-sync guest fixtures to next matchday strictly once on initial mount if on a weekday
+  const hasInitialDateSyncedRef = useRef(false);
   useEffect(() => {
+    if (hasInitialDateSyncedRef.current) return;
     if (liveMatches && liveMatches.length > 0) {
+      hasInitialDateSyncedRef.current = true;
       const curYear = selectedDate.getFullYear();
       const curMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const curDay = String(selectedDate.getDate()).padStart(2, '0');
@@ -770,7 +773,7 @@ export const AppContent: React.FC = () => {
         setSelectedDate(targetDate);
       }
     }
-  }, [liveMatches]);
+  }, [liveMatches, selectedDate]);
 
   // Auto-reset completed matchday favorites when a matchday finishes, keeping future matchdays intact
   useEffect(() => {
