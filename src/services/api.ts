@@ -403,15 +403,21 @@ export const ApiService = {
         const rawStarters = lineupHome.starting_xi || [];
         const rawSubs = lineupHome.substitutes || [];
 
-        const starters = rawStarters.map((p: any, i: number) => {
+        const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false }, home, i, false);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false, isReserve: false }, home, i, false);
         });
-        const subs = rawSubs.map((p: any, i: number) => {
+        const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, home, starters.length + i, true);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true, isReserve: false }, home, starters.length + i, true);
         });
-        teamAPlayers = [...starters, ...subs];
+        const reserves = rawSubs.slice(6).map((p: any, i: number) => {
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, home, starters.length + 6 + i, true);
+          rec.isReserve = true;
+          return rec;
+        });
+        teamAPlayers = [...starters, ...subs, ...reserves];
       }
 
       // If not from match_lineups, resolve from saved squad in teams table
@@ -444,14 +450,32 @@ export const ApiService = {
             startersList.push(remainingPlayers.shift()!);
           }
 
+          // Exact division: max 6 substitutes, remainder in reserves
+          const subsList = remainingPlayers.slice(0, 6);
+          const reservesList = remainingPlayers.slice(6);
+
           const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, home, i, false));
-          const subs = remainingPlayers.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
-          teamAPlayers = [...starters, ...subs];
+          const subs = subsList.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
+          const reserves = reservesList.map((p: any, i: number) => {
+            const rec = formatPlayerRecord(p, home, starters.length + subs.length + i, true);
+            rec.isReserve = true;
+            return rec;
+          });
+          teamAPlayers = [...starters, ...subs, ...reserves];
         } else {
-          // Natural division: first 11 starters, remainder substitutes
-          teamAPlayers = rawSquadA.map((p: any, idx: number) =>
-            formatPlayerRecord(p, home, idx, idx >= 11)
+          // Natural division: first 11 starters, next 6 substitutes, remainder reserves
+          const starters = rawSquadA.slice(0, 11).map((p: any, idx: number) =>
+            formatPlayerRecord(p, home, idx, false)
           );
+          const subs = rawSquadA.slice(11, 17).map((p: any, idx: number) =>
+            formatPlayerRecord(p, home, 11 + idx, true)
+          );
+          const reserves = rawSquadA.slice(17).map((p: any, idx: number) => {
+            const rec = formatPlayerRecord(p, home, 17 + idx, true);
+            rec.isReserve = true;
+            return rec;
+          });
+          teamAPlayers = [...starters, ...subs, ...reserves];
         }
       }
 
@@ -467,15 +491,21 @@ export const ApiService = {
         const rawStarters = lineupAway.starting_xi || [];
         const rawSubs = lineupAway.substitutes || [];
 
-        const starters = rawStarters.map((p: any, i: number) => {
+        const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false }, away, i, false);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false, isReserve: false }, away, i, false);
         });
-        const subs = rawSubs.map((p: any, i: number) => {
+        const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, away, starters.length + i, true);
+          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true, isReserve: false }, away, starters.length + i, true);
         });
-        teamBPlayers = [...starters, ...subs];
+        const reserves = rawSubs.slice(6).map((p: any, i: number) => {
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, away, starters.length + 6 + i, true);
+          rec.isReserve = true;
+          return rec;
+        });
+        teamBPlayers = [...starters, ...subs, ...reserves];
       }
 
       // If not from match_lineups, resolve from saved squad in teams table
@@ -508,14 +538,32 @@ export const ApiService = {
             startersList.push(remainingPlayers.shift()!);
           }
 
+          // Exact division: max 6 substitutes, remainder in reserves
+          const subsList = remainingPlayers.slice(0, 6);
+          const reservesList = remainingPlayers.slice(6);
+
           const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, away, i, false));
-          const subs = remainingPlayers.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
-          teamBPlayers = [...starters, ...subs];
+          const subs = subsList.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
+          const reserves = reservesList.map((p: any, i: number) => {
+            const rec = formatPlayerRecord(p, away, starters.length + subs.length + i, true);
+            rec.isReserve = true;
+            return rec;
+          });
+          teamBPlayers = [...starters, ...subs, ...reserves];
         } else {
-          // Natural division: first 11 starters, remainder substitutes
-          teamBPlayers = rawSquadB.map((p: any, idx: number) =>
-            formatPlayerRecord(p, away, idx, idx >= 11)
+          // Natural division: first 11 starters, next 6 substitutes, remainder reserves
+          const starters = rawSquadB.slice(0, 11).map((p: any, idx: number) =>
+            formatPlayerRecord(p, away, idx, false)
           );
+          const subs = rawSquadB.slice(11, 17).map((p: any, idx: number) =>
+            formatPlayerRecord(p, away, 11 + idx, true)
+          );
+          const reserves = rawSquadB.slice(17).map((p: any, idx: number) => {
+            const rec = formatPlayerRecord(p, away, 17 + idx, true);
+            rec.isReserve = true;
+            return rec;
+          });
+          teamBPlayers = [...starters, ...subs, ...reserves];
         }
       }
 
@@ -546,8 +594,19 @@ export const ApiService = {
       const homeCap = unwrap(home?.captain);
       const awayCap = unwrap(away?.captain);
 
-      const coachNameA = homeCoach ? `Coach ${homeCoach.first_name} ${homeCoach.last_name}`.trim() : `Coach ${home?.name || ''}`;
-      const coachNameB = awayCoach ? `Coach ${awayCoach.first_name} ${awayCoach.last_name}`.trim() : `Coach ${away?.name || ''}`;
+      const resolveCoachName = (teamObj: any, coachObj: any) => {
+        if (teamObj?.name?.toLowerCase().includes('super eagle')) {
+          return 'The Special One';
+        }
+        if (coachObj) {
+          if (coachObj.first_name === 'The' && coachObj.last_name === 'Special One') return 'The Special One';
+          return `Coach ${coachObj.first_name} ${coachObj.last_name}`.trim();
+        }
+        return `Coach ${teamObj?.name || ''}`;
+      };
+
+      const coachNameA = resolveCoachName(home, homeCoach);
+      const coachNameB = resolveCoachName(away, awayCoach);
       const captainNameA = homeCap ? `${homeCap.first_name} ${homeCap.last_name}`.trim() : teamAPlayers.find(p => p.isCaptain)?.name || 'Team Captain';
       const captainNameB = awayCap ? `${awayCap.first_name} ${awayCap.last_name}`.trim() : teamBPlayers.find(p => p.isCaptain)?.name || 'Team Captain';
 

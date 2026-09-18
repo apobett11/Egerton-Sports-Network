@@ -51,6 +51,7 @@ export interface Player {
   position: PlayerPosition;
   isCaptain: boolean;
   isSub: boolean;
+  isReserve?: boolean;
   profile_id?: string;
   team_id?: string;
   height?: number;

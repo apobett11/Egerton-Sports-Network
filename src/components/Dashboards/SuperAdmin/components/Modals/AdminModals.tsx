@@ -17,6 +17,10 @@ import {
   Calendar,
   Layers,
   Sparkles,
+  Check,
+  Shirt,
+  CalendarCheck,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type {
   JournalistOverviewSummary,
@@ -64,12 +68,13 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
 
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [teamLeagueFilter, setTeamLeagueFilter] = useState<'ALL' | 'EPL' | 'CHAMPIONSHIP'>('EPL');
 
   if (!activeModal) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in duration-200">
+      <div className={`bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl w-full ${activeModal === 'team' ? 'max-w-4xl' : 'max-w-3xl'} max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in duration-200`}>
         {/* Modal Header */}
         <div className="p-5 border-b border-[#2A2A2A] flex items-center justify-between bg-[#141414]">
           <div className="flex items-center gap-3">
@@ -199,82 +204,257 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
           )}
 
           {/* 2. TEAM DETAILS MODAL */}
-          {activeModal === 'team' && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A]">
-                  <div className="text-[11px] text-gray-400">Total Registered Teams</div>
-                  <div className="text-lg font-bold text-white mt-1">
-                    {teamOverview.totalTeams}
-                  </div>
-                </div>
-                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A]">
-                  <div className="text-[11px] text-gray-400">Avg Players / Team</div>
-                  <div className="text-lg font-bold text-emerald-400 mt-1 font-mono">
-                    {teamOverview.avgPlayersPerTeam}
-                  </div>
-                </div>
-                <div className="p-3 bg-[#111111] rounded-xl border border-[#2A2A2A]">
-                  <div className="text-[11px] text-gray-400">Attention Needed</div>
-                  <div className="text-lg font-bold text-amber-400 mt-1 font-mono">
-                    {teamOverview.teamsNeedingAttentionCount}
-                  </div>
-                </div>
-              </div>
+          {/* 2. TEAM DETAILS MODAL - CHECKLIST FOR EPL & CHAMPIONSHIP */}
+          {activeModal === 'team' && (() => {
+            const filteredTeams = teamOverview.teamsList.filter((t) => {
+              if (teamLeagueFilter === 'ALL') return true;
+              return t.league.toUpperCase() === teamLeagueFilter;
+            });
 
-              <div className="space-y-3">
-                <h3 className="font-bold text-white uppercase text-xs tracking-wider">
-                  Campus Football Clubs & Squad Completion
-                </h3>
-                <div className="overflow-x-auto rounded-xl border border-[#2A2A2A]">
-                  <table className="w-full text-left font-sans">
-                    <thead className="bg-[#111111] text-gray-400 uppercase text-[10px] font-bold">
-                      <tr>
-                        <th className="p-3">Team Name</th>
-                        <th className="p-3">Head Coach</th>
-                        <th className="p-3">Captain</th>
-                        <th className="p-3">Roster Count</th>
-                        <th className="p-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
-                      {teamOverview.teamsList.length === 0 ? (
+            const eplCount = teamOverview.teamsList.filter((t) => t.league === 'EPL').length;
+            const champCount = teamOverview.teamsList.filter((t) => t.league === 'Championship').length;
+            const xiSubmittedCount = teamOverview.teamsList.filter((t) => t.coachHasSubmittedXI).length;
+            const kitsCount = teamOverview.teamsList.filter((t) => t.hasUploadedKits).length;
+            const eventsCount = teamOverview.teamsList.filter((t) => t.hasMatchEvents).length;
+            const logoCount = teamOverview.teamsList.filter((t) => t.hasUploadedLogo).length;
+
+            return (
+              <div className="space-y-5">
+                {/* League Segmented Switcher & Summary Counters */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-4">
+                  <div className="flex items-center gap-1.5 p-1 bg-[#111111] rounded-xl border border-[#2A2A2A]">
+                    <button
+                      type="button"
+                      onClick={() => setTeamLeagueFilter('EPL')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
+                        teamLeagueFilter === 'EPL'
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                      }`}
+                    >
+                      EPL ({eplCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeamLeagueFilter('CHAMPIONSHIP')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
+                        teamLeagueFilter === 'CHAMPIONSHIP'
+                          ? 'bg-amber-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                      }`}
+                    >
+                      Championships ({champCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeamLeagueFilter('ALL')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
+                        teamLeagueFilter === 'ALL'
+                          ? 'bg-[#333333] text-white shadow-md'
+                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                      }`}
+                    >
+                      All ({teamOverview.teamsList.length})
+                    </button>
+                  </div>
+
+                  {/* Summary Badges */}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      ✓ First 11: {xiSubmittedCount}/{teamOverview.teamsList.length}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      👕 Kits: {kitsCount}/{teamOverview.teamsList.length}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      🛡️ Logos: {logoCount}/{teamOverview.teamsList.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Readiness Checklist Table */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-white uppercase text-xs tracking-wider flex items-center gap-2">
+                      <span>Team Readiness Checklist</span>
+                      <span className="text-gray-400 font-normal">
+                        ({filteredTeams.length} {teamLeagueFilter === 'ALL' ? 'Total' : teamLeagueFilter} clubs)
+                      </span>
+                    </h3>
+                    <span className="text-[10px] text-gray-400">
+                      Tick (✓) = Completed • Cross (✗) = Pending
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[#2A2A2A]">
+                    <table className="w-full text-left font-sans text-xs">
+                      <thead className="bg-[#111111] text-gray-400 uppercase text-[10px] font-extrabold tracking-wider">
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-xs text-gray-400">
-                            No football clubs registered in database.
-                          </td>
+                          <th className="p-3">Team</th>
+                          <th className="p-3">Head Coach</th>
+                          <th className="p-3 text-center">Upload Kits</th>
+                          <th className="p-3 text-center">Arrange Squad</th>
+                          <th className="p-3 text-center">Update Match Events</th>
+                          <th className="p-3 text-center">Upload Team Logo</th>
+                          <th className="p-3 text-right">Action Status</th>
                         </tr>
-                      ) : (
-                        teamOverview.teamsList.map((t) => (
-                          <tr key={t.id} className="hover:bg-[#1F1F1F]">
-                            <td className="p-3 font-extrabold text-white">{t.name}</td>
-                            <td className="p-3 text-gray-300">{t.coachName}</td>
-                            <td className="p-3 text-gray-300">{t.captainName}</td>
-                            <td className="p-3 font-mono font-bold text-emerald-400">
-                              {t.playersCount} players
-                            </td>
-                            <td className="p-3 text-right">
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                  t.status === 'complete'
-                                    ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                                    : t.status === 'incomplete'
-                                    ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30'
-                                    : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'
-                                }`}
-                              >
-                                {t.status.replace('_', ' ')}
-                              </span>
+                      </thead>
+                      <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
+                        {filteredTeams.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="p-8 text-center text-xs text-gray-400">
+                              No football clubs found in this league category.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          filteredTeams.map((t) => {
+                            const isSuperEagles = t.name.toLowerCase().includes('super eagle');
+                            const displayCoach = isSuperEagles ? 'The Special One' : t.coachName;
+
+                            return (
+                              <tr key={t.id} className="hover:bg-[#1F1F1F] transition-colors">
+                                {/* Team */}
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2.5">
+                                    {t.logoUrl ? (
+                                      <img
+                                        src={t.logoUrl}
+                                        alt={t.name}
+                                        className="w-6 h-6 rounded-full object-cover bg-slate-800 shrink-0 border border-[#333333]"
+                                      />
+                                    ) : (
+                                      <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                                        {t.name.slice(0, 2).toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <span className="font-extrabold text-white block truncate">
+                                        {t.name}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-gray-400">
+                                        {t.league} • {t.playersCount} players
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Head Coach & XI Submitted Indicator */}
+                                <td className="p-3">
+                                  <div className="space-y-0.5">
+                                    <span className="font-bold text-gray-200 block truncate">
+                                      {displayCoach}
+                                    </span>
+                                    {t.coachHasSubmittedXI ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                        ✓ First 11 Submitted
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-gray-500 bg-[#222222] px-1.5 py-0.5 rounded">
+                                        No XI submitted
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Action 1: Upload Kits */}
+                                <td className="p-3 text-center">
+                                  {t.hasUploadedKits ? (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
+                                      title="Kits Uploaded"
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold"
+                                      title="Kits Pending"
+                                    >
+                                      ✗
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Action 2: Arrange Squad (First 11 Submitted) */}
+                                <td className="p-3 text-center">
+                                  {t.hasArrangedSquad ? (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
+                                      title="Squad Arranged & First 11 Set"
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold"
+                                      title="First 11 Not Arranged"
+                                    >
+                                      ✗
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Action 3: Update Match Events */}
+                                <td className="p-3 text-center">
+                                  {t.hasMatchEvents ? (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
+                                      title="Match Events Updated"
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold"
+                                      title="No Match Events"
+                                    >
+                                      ✗
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Action 4: Upload Team Logo */}
+                                <td className="p-3 text-center">
+                                  {t.hasUploadedLogo ? (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
+                                      title="Logo Uploaded"
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold"
+                                      title="Logo Pending"
+                                    >
+                                      ✗
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Status */}
+                                <td className="p-3 text-right">
+                                  {t.hasArrangedSquad && t.hasUploadedLogo ? (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
+                                      Ready
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-600/20 text-amber-400 border border-amber-500/30">
+                                      Action Req
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 3. REFEREE DETAILS MODAL */}
           {activeModal === 'referee' && (

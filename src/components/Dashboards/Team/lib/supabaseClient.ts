@@ -910,12 +910,14 @@ export async function updateCoachCredentialsAndLogo({
     coachUserId,
     logoUrl,
     email,
+    currentPassword,
     password,
 }: {
     teamId: string;
     coachUserId?: string;
     logoUrl?: string;
     email?: string;
+    currentPassword?: string;
     password?: string;
 }): Promise<{ success: boolean; error?: string; updatedEmail?: string; updatedLogoUrl?: string }> {
     try {
@@ -944,6 +946,20 @@ export async function updateCoachCredentialsAndLogo({
             authPayload.email = email.trim();
         }
         if (password && password.trim()) {
+            // Verify current password first if provided
+            if (currentPassword && currentPassword.trim()) {
+                const currentUserRes = await supabase.auth.getUser();
+                const authEmail = currentUserRes.data.user?.email || email;
+                if (authEmail) {
+                    const { error: verifyErr } = await supabase.auth.signInWithPassword({
+                        email: authEmail,
+                        password: currentPassword.trim(),
+                    });
+                    if (verifyErr) {
+                        return { success: false, error: 'Current password is incorrect. Please check and try again.' };
+                    }
+                }
+            }
             authPayload.password = password.trim();
         }
 

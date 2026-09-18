@@ -612,12 +612,48 @@ export const useAdminOperationsData = () => {
           const teamPlayerCount = allPlayers.filter((p) => p.team_id === t.id).length;
           const status = !coach || !captain ? 'attention_needed' : teamPlayerCount < 11 ? 'incomplete' : 'complete';
 
+          // Determine League
+          const isChamp =
+            t.competition_id === '22222222-2222-2222-2222-222222222222' ||
+            t.competition_id?.includes('2222') ||
+            t.name?.toLowerCase().includes('championship');
+          const league: 'EPL' | 'Championship' = isChamp ? 'Championship' : 'EPL';
+
+          // Action 1: Upload Kits (custom color or kit assets assigned)
+          const hasUploadedKits = Boolean(t.color_code || t.primary_kit || t.secondary_kit || t.kits);
+
+          // Action 2: Arrange Squad / First 11 submitted by Coach
+          const hasArrangedSquad = Boolean(t.starting_xi_str && t.starting_xi_str.trim().length > 10);
+          const coachHasSubmittedXI = hasArrangedSquad;
+
+          // Action 3: Update Match Events (team has fixtures with events/score records)
+          const hasMatchEvents = allFixtures.some(
+            (f) =>
+              (f.home_team_id === t.id || f.away_team_id === t.id) &&
+              (f.status === 'FT' || f.status === 'LIVE' || f.score_home !== null || f.score_away !== null)
+          );
+
+          // Action 4: Upload Team Logo (has valid uploaded logo_url)
+          const hasUploadedLogo = Boolean(t.logo_url && t.logo_url.trim().length > 0);
+
+          let resolvedCoachName = coach ? `${coach.first_name} ${coach.last_name}`.trim() : 'Unassigned';
+          if (t.name?.toLowerCase().includes('super eagle') && (!coach || coach.first_name === 'Head Coach')) {
+            resolvedCoachName = 'The Special One';
+          }
+
           return {
             id: t.id,
             name: t.name,
-            coachName: coach ? `${coach.first_name} ${coach.last_name}` : 'Unassigned',
+            logoUrl: t.logo_url,
+            coachName: resolvedCoachName,
             captainName: captain ? `${captain.first_name} ${captain.last_name}` : 'Unassigned',
             playersCount: teamPlayerCount,
+            league,
+            hasUploadedKits,
+            hasArrangedSquad,
+            hasMatchEvents,
+            hasUploadedLogo,
+            coachHasSubmittedXI,
             status,
             lastSubmission: new Date(t.created_at).toLocaleDateString(),
           };

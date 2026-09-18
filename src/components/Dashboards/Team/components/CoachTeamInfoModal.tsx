@@ -43,9 +43,13 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
 }) => {
   const [logoUrl, setLogoUrl] = useState(teamLogo);
   const [email, setEmail] = useState(coachEmail);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(teamLogo);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,8 +63,13 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
       setLogoUrl(teamLogo);
       setPreviewUrl(teamLogo);
       setEmail(coachEmail);
+      setIsChangingPassword(false);
+      setCurrentPassword('');
       setPassword('');
       setConfirmPassword('');
+      setShowCurrentPassword(false);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       setSelectedFile(null);
       setErrorMessage(null);
     }
@@ -92,13 +101,17 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
       return;
     }
 
-    if (password) {
-      if (password.length < 6) {
-        setErrorMessage('Password must be at least 6 characters.');
+    if (isChangingPassword) {
+      if (!currentPassword) {
+        setErrorMessage('Please enter your current password.');
+        return;
+      }
+      if (!password || password.length < 6) {
+        setErrorMessage('New password must be at least 6 characters.');
         return;
       }
       if (password !== confirmPassword) {
-        setErrorMessage('Passwords do not match.');
+        setErrorMessage('New passwords do not match.');
         return;
       }
     }
@@ -124,7 +137,8 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
         coachUserId,
         logoUrl: finalLogoUrl,
         email: email !== coachEmail ? email : undefined,
-        password: password ? password : undefined,
+        currentPassword: isChangingPassword ? currentPassword : undefined,
+        password: isChangingPassword ? password : undefined,
       });
 
       if (!res.success && res.error) {
@@ -319,6 +333,7 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
               <input
                 type="email"
                 required
+                autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="coach@egerton.ac.ke"
@@ -326,50 +341,139 @@ export const CoachTeamInfoModal: React.FC<CoachTeamInfoModalProps> = ({
               />
             </div>
 
-            {/* Coach Password Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                  <KeyRound className="w-3 h-3 text-slate-400" />
-                  <span>New Password</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Leave blank to keep current"
-                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
-                  />
+            {/* Coach Password Section - Initialized by Coach Only */}
+            <div className="pt-2 border-t border-slate-100 dark:border-[#16273b]">
+              {!isChangingPassword ? (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45]">
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Coach Password</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Change login credentials. Initialized manually by the coach.
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                    onClick={() => {
+                      setIsChangingPassword(true);
+                      setErrorMessage(null);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                   >
-                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <KeyRound className="w-3 h-3" />
+                    Change Password
                   </button>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#112236]/80 border border-blue-500/20">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Change Coach Password</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsChangingPassword(false);
+                        setCurrentPassword('');
+                        setPassword('');
+                        setConfirmPassword('');
+                        setErrorMessage(null);
+                      }}
+                      className="text-[11px] font-semibold text-slate-400 hover:text-rose-500 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                  <KeyRound className="w-3 h-3 text-slate-400" />
-                  <span>Confirm Password</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
-                  />
+                  {/* 1. Current Password */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                      Current Password <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter your current password"
+                        autoComplete="new-password"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                      >
+                        {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. New Password & Confirm Password */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                        New Password <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          autoComplete="new-password"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                        Confirm New Password <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          autoComplete="new-password"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] text-slate-900 dark:text-white text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
           <p className="text-[10px] text-slate-400">
-            Only enter a password if you wish to change your coach login credentials.
+            {isChangingPassword
+              ? 'Enter your current password to authorize, then set and confirm your new password.'
+              : 'Only initialize password change if you wish to update your login credentials.'}
           </p>
 
           {/* Form Actions */}

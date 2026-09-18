@@ -56,9 +56,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [shortName, setShortName] = useState(teamInfo?.short_name || 'EFC');
   const [logoUrl, setLogoUrl] = useState(teamInfo?.crest_url || teamInfo?.logo_url || '');
   const [coachEmail, setCoachEmail] = useState(coachProfile?.email || 'coachteam1@gmail.com');
+  const [isChangingCoachPassword, setIsChangingCoachPassword] = useState(false);
+  const [coachCurrentPassword, setCoachCurrentPassword] = useState('');
   const [coachPassword, setCoachPassword] = useState('');
   const [coachConfirmPassword, setCoachConfirmPassword] = useState('');
+  const [showCoachCurrentPassword, setShowCoachCurrentPassword] = useState(false);
   const [showCoachPassword, setShowCoachPassword] = useState(false);
+  const [showCoachConfirmPassword, setShowCoachConfirmPassword] = useState(false);
   const [contactPhone, setContactPhone] = useState('+254 700 123456');
   const [stadium, setStadium] = useState(teamInfo?.stadium || 'Egerton Main Pavilion Arena');
   const [teamDescription, setTeamDescription] = useState(
@@ -155,13 +159,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       return;
     }
 
-    if (coachPassword) {
-      if (coachPassword.length < 6) {
-        showToast('Password must be at least 6 characters.');
+    if (isChangingCoachPassword) {
+      if (!coachCurrentPassword) {
+        showToast('Please enter your current password.');
+        return;
+      }
+      if (!coachPassword || coachPassword.length < 6) {
+        showToast('New password must be at least 6 characters.');
         return;
       }
       if (coachPassword !== coachConfirmPassword) {
-        showToast('Passwords do not match.');
+        showToast('New passwords do not match.');
         return;
       }
     }
@@ -191,7 +199,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         coachUserId: coachUserId || coachProfile?.id,
         logoUrl: effectiveLogo,
         email: coachEmail !== (coachProfile?.email || '') ? coachEmail : undefined,
-        password: coachPassword || undefined,
+        currentPassword: isChangingCoachPassword ? coachCurrentPassword : undefined,
+        password: isChangingCoachPassword ? coachPassword : undefined,
       });
 
       if (!teamRes.success && teamRes.error) {
@@ -200,8 +209,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         showToast(`Credentials note: ${credsRes.error}`);
       } else {
         showToast('Coach Authority: Team profile, logo, and credentials updated in database.');
+        setIsChangingCoachPassword(false);
+        setCoachCurrentPassword('');
         setCoachPassword('');
         setCoachConfirmPassword('');
+        setShowCoachCurrentPassword(false);
+        setShowCoachPassword(false);
+        setShowCoachConfirmPassword(false);
         if (onUpdateTeamInfo) {
           onUpdateTeamInfo({
             short_name: shortName,
@@ -438,6 +452,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </label>
                   <input
                     type="email"
+                    autoComplete="off"
                     disabled={currentRole !== 'COACH'}
                     value={coachEmail}
                     onChange={(e) => setCoachEmail(e.target.value)}
@@ -446,45 +461,133 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                      <span>New Password</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCoachPassword ? 'text' : 'password'}
-                        disabled={currentRole !== 'COACH'}
-                        value={coachPassword}
-                        onChange={(e) => setCoachPassword(e.target.value)}
-                        placeholder="Leave blank to keep current"
-                        className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs pr-9 focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-                      />
+                {/* Coach Password Section - Initialized by Coach Only */}
+                <div className="pt-2 border-t border-slate-100 dark:border-[#16273b]">
+                  {!isChangingCoachPassword ? (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45]">
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Coach Password</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Change coach login credentials. Initialized manually by the coach.
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setShowCoachPassword(!showCoachPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                        disabled={currentRole !== 'COACH'}
+                        onClick={() => setIsChangingCoachPassword(true)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
                       >
-                        {showCoachPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <KeyRound className="w-3 h-3" />
+                        Change Password
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#112236]/80 border border-blue-500/20">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                          <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Change Coach Password</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsChangingCoachPassword(false);
+                            setCoachCurrentPassword('');
+                            setCoachPassword('');
+                            setCoachConfirmPassword('');
+                          }}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-rose-500 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1 flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Confirm New Password</span>
-                    </label>
-                    <input
-                      type={showCoachPassword ? 'text' : 'password'}
-                      disabled={currentRole !== 'COACH'}
-                      value={coachConfirmPassword}
-                      onChange={(e) => setCoachConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      className="w-full bg-slate-50 dark:bg-[#112236] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-medium text-xs focus:outline-none focus:border-[#ff0046] focus:ring-1 focus:ring-[#ff0046] transition-all"
-                    />
-                  </div>
+                      {/* 1. Current Password */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                          Current Password <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showCoachCurrentPassword ? 'text' : 'password'}
+                            disabled={currentRole !== 'COACH'}
+                            value={coachCurrentPassword}
+                            onChange={(e) => setCoachCurrentPassword(e.target.value)}
+                            placeholder="Enter current password"
+                            autoComplete="new-password"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2 text-slate-900 dark:text-white font-medium text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCoachCurrentPassword(!showCoachCurrentPassword)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                          >
+                            {showCoachCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2. New Password & Confirm Password */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                            New Password <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showCoachPassword ? 'text' : 'password'}
+                              disabled={currentRole !== 'COACH'}
+                              value={coachPassword}
+                              onChange={(e) => setCoachPassword(e.target.value)}
+                              placeholder="Min 6 characters"
+                              autoComplete="new-password"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2 text-slate-900 dark:text-white font-medium text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCoachPassword(!showCoachPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                            >
+                              {showCoachPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                            Confirm New Password <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showCoachConfirmPassword ? 'text' : 'password'}
+                              disabled={currentRole !== 'COACH'}
+                              value={coachConfirmPassword}
+                              onChange={(e) => setCoachConfirmPassword(e.target.value)}
+                              placeholder="Confirm new password"
+                              autoComplete="new-password"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-xl px-3.5 py-2 text-slate-900 dark:text-white font-medium text-xs pr-9 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCoachConfirmPassword(!showCoachConfirmPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                            >
+                              {showCoachConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

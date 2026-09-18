@@ -174,9 +174,16 @@ export interface TeamOverviewSummary {
   teamsList: Array<{
     id: string;
     name: string;
+    logoUrl?: string;
     coachName: string;
     captainName: string;
     playersCount: number;
+    league: 'EPL' | 'Championship';
+    hasUploadedKits: boolean;
+    hasArrangedSquad: boolean;
+    hasMatchEvents: boolean;
+    hasUploadedLogo: boolean;
+    coachHasSubmittedXI: boolean;
     status: 'complete' | 'incomplete' | 'attention_needed';
     lastSubmission: string;
   }>;

@@ -19,7 +19,7 @@ import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApproval
 import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
-import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock, Activity } from 'lucide-react';
+import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock, Activity, Shield } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
@@ -198,6 +198,14 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenModal('team')}
+              className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
+              title="View Teams Readiness & Squad Checklist"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Teams</span>
+            </button>
             <button
               onClick={() => refreshData()}
               disabled={isLoading}
