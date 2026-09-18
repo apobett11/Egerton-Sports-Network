@@ -49,8 +49,8 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
     const homeName = f.homeTeamName || (f.isHome ? currentTeamName : f.opponentName) || 'Home Team';
     const awayName = f.awayTeamName || (!f.isHome ? currentTeamName : f.opponentName) || 'Away Team';
-    const homeLogo = f.homeTeamLogo || (f.isHome ? currentTeamLogo : f.opponentLogo) || '';
-    const awayLogo = f.awayTeamLogo || (!f.isHome ? currentTeamLogo : f.opponentLogo) || '';
+    const homeLogo = (f.isHome && currentTeamLogo) ? currentTeamLogo : (f.homeTeamLogo || f.opponentLogo || '');
+    const awayLogo = (!f.isHome && currentTeamLogo) ? currentTeamLogo : (f.awayTeamLogo || f.opponentLogo || '');
 
     let scoreA = f.scoreHome ?? 0;
     let scoreB = f.scoreAway ?? 0;
@@ -231,8 +231,8 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
                     const homeName = match.homeTeamName || (match.isHome ? currentTeamName : match.opponentName) || 'Home Team';
                     const awayName = match.awayTeamName || (!match.isHome ? currentTeamName : match.opponentName) || 'Away Team';
-                    const homeLogo = match.homeTeamLogo || (match.isHome ? currentTeamLogo : match.opponentLogo) || '';
-                    const awayLogo = match.awayTeamLogo || (!match.isHome ? currentTeamLogo : match.opponentLogo) || '';
+                    const homeLogo = (match.isHome && currentTeamLogo) ? currentTeamLogo : (match.homeTeamLogo || match.opponentLogo || '');
+                    const awayLogo = (!match.isHome && currentTeamLogo) ? currentTeamLogo : (match.awayTeamLogo || match.opponentLogo || '');
 
                     let scoreHomeDisplay: number | string = match.scoreHome ?? 0;
                     let scoreAwayDisplay: number | string = match.scoreAway ?? 0;

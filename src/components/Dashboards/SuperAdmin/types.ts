@@ -181,6 +181,8 @@ export interface TeamOverviewSummary {
     league: 'EPL' | 'Championship';
     hasUploadedKits: boolean;
     hasArrangedSquad: boolean;
+    hasSubstitutes?: boolean;
+    substitutesCount?: number;
     hasMatchEvents: boolean;
     hasUploadedLogo: boolean;
     coachHasSubmittedXI: boolean;

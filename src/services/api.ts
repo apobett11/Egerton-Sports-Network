@@ -361,7 +361,19 @@ export const ApiService = {
           : Promise.resolve({ data: [] })
       ]);
 
-      const formatPlayerRecord = (p: any, teamObj: any, idx: number, isSubDefault: boolean = false): Player => {
+      // Coach-selected in-match roles for each team
+      const coachRolesA = home?.tactics_config?.roles || 
+                          home?.tactics_config?.inMatchRoles || 
+                          home?.temporary_match_squad?.tacticsConfig?.roles || 
+                          home?.temporary_match_squad?.roles || 
+                          {};
+      const coachRolesB = away?.tactics_config?.roles || 
+                          away?.tactics_config?.inMatchRoles || 
+                          away?.temporary_match_squad?.tacticsConfig?.roles || 
+                          away?.temporary_match_squad?.roles || 
+                          {};
+
+      const formatPlayerRecord = (p: any, teamObj: any, idx: number, isSubDefault: boolean = false, teamCoachRoles?: any): Player => {
         const prof = unwrap(p.profile);
         const pName = p.name 
           ? p.name 
@@ -372,8 +384,8 @@ export const ApiService = {
           : `Player #${p.jersey_number || idx + 1}`;
         const isCap = Boolean(
           (teamObj?.captain_id && (p.id === teamObj.captain_id || p.profile_id === teamObj.captain_id)) ||
+          (teamCoachRoles?.captainId && (p.id === teamCoachRoles.captainId || p.profile_id === teamCoachRoles.captainId)) ||
           prof?.role === 'captain' ||
-          p.jersey_number === 10 ||
           p.isCaptain
         );
         return {
@@ -397,27 +409,35 @@ export const ApiService = {
       let captainNotesA = '';
 
       const lineupHome = (lineupsData || []).find((l: any) => l.team_id === home?.id);
-      if (lineupHome) {
+      if (lineupHome && Array.isArray(lineupHome.starting_xi) && lineupHome.starting_xi.length > 0) {
         formationA = lineupHome.formation || formationA;
         captainNotesA = lineupHome.captain_notes || '';
         const rawStarters = lineupHome.starting_xi || [];
         const rawSubs = lineupHome.substitutes || [];
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
-          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false, isReserve: false }, home, i, false);
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, home, i, false, coachRolesA);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
-          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true, isReserve: false }, home, starters.length + i, true);
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, home, starters.length + i, true, coachRolesA);
         });
-        const reserves = rawSubs.slice(6).map((p: any, i: number) => {
-          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, home, starters.length + 6 + i, true);
+        const usedIds = new Set([...starters, ...subs].map(p => p.id));
+        const rawReserves = rawSubs.slice(6);
+        const reserves = rawReserves.map((p: any, i: number) => {
+          const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, home, starters.length + 6 + i, true, coachRolesA);
           rec.isReserve = true;
           return rec;
         });
-        teamAPlayers = [...starters, ...subs, ...reserves];
+        reserves.forEach((r: any) => usedIds.add(r.id));
+        const extraReserves = rawSquadA.filter((p: any) => !usedIds.has(p.id)).map((p: any, i: number) => {
+          const rec = formatPlayerRecord(p, home, starters.length + subs.length + reserves.length + i, true, coachRolesA);
+          rec.isReserve = true;
+          return rec;
+        });
+        teamAPlayers = [...starters, ...subs, ...reserves, ...extraReserves];
       }
 
       // If not from match_lineups, resolve from saved squad in teams table
@@ -429,35 +449,85 @@ export const ApiService = {
         let starterIds: string[] = [];
         let subIds: string[] = [];
 
+        // 1. Extract Coach's Selected First 11
         if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
-          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p.id)).filter(Boolean);
+          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
           formationA = tempSquad.formation || formationA;
-        } else if (startingXiStr && typeof startingXiStr === 'string') {
+        }
+        if (starterIds.length === 0 && startingXiStr && typeof startingXiStr === 'string') {
           starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
-          if (subsStr && typeof subsStr === 'string') {
-            subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
-          }
+        }
+
+        // 2. Extract Coach's Selected 6 Substitutes
+        if (tempSquad && Array.isArray(tempSquad.substitutes) && tempSquad.substitutes.length > 0) {
+          subIds = tempSquad.substitutes.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
+        }
+        if (subIds.length === 0 && subsStr && typeof subsStr === 'string') {
+          subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
         }
 
         if (starterIds.length > 0) {
-          const matchedStarters = rawSquadA.filter((p: any) => starterIds.includes(p.id));
-          const matchedIds = new Set(matchedStarters.map((p: any) => p.id));
-          const remainingPlayers = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
+          // Map coach-selected starting XI in exact coach selection order
+          const matchedStarters: any[] = [];
+          const matchedIds = new Set<string>();
 
-          // Ensure exactly 11 starters if roster permits
-          const startersList = [...matchedStarters];
-          while (startersList.length < 11 && remainingPlayers.length > 0) {
-            startersList.push(remainingPlayers.shift()!);
+          for (const sId of starterIds) {
+            const player = rawSquadA.find((p: any) => p.id === sId);
+            if (player && !matchedIds.has(player.id)) {
+              matchedStarters.push(player);
+              matchedIds.add(player.id);
+            }
+            if (matchedStarters.length === 11) break;
           }
 
-          // Exact division: max 6 substitutes, remainder in reserves
-          const subsList = remainingPlayers.slice(0, 6);
-          const reservesList = remainingPlayers.slice(6);
+          // Remaining pool of players not in First 11
+          let remainingPlayers = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
 
-          const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, home, i, false));
-          const subs = subsList.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true));
-          const reserves = reservesList.map((p: any, i: number) => {
-            const rec = formatPlayerRecord(p, home, starters.length + subs.length + i, true);
+          // If fewer than 11 selected or found, fill up to 11 if available (excluding selected subs)
+          if (matchedStarters.length < 11) {
+            const subIdSet = new Set(subIds);
+            const nonSubRemaining = remainingPlayers.filter((p: any) => !subIdSet.has(p.id));
+            while (matchedStarters.length < 11 && nonSubRemaining.length > 0) {
+              const filler = nonSubRemaining.shift()!;
+              matchedStarters.push(filler);
+              matchedIds.add(filler.id);
+            }
+            while (matchedStarters.length < 11 && remainingPlayers.length > 0) {
+              const nextP = remainingPlayers.find((p: any) => !matchedIds.has(p.id));
+              if (!nextP) break;
+              matchedStarters.push(nextP);
+              matchedIds.add(nextP.id);
+            }
+            remainingPlayers = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
+          }
+
+          // Map coach-selected 6 substitutes in exact coach selection order
+          const matchedSubs: any[] = [];
+          for (const sId of subIds) {
+            if (matchedIds.has(sId)) continue;
+            const player = remainingPlayers.find((p: any) => p.id === sId);
+            if (player) {
+              matchedSubs.push(player);
+              matchedIds.add(player.id);
+            }
+            if (matchedSubs.length === 6) break;
+          }
+
+          // If fewer than 6 substitutes were explicitly selected, fill up to 6 from remaining players
+          const remainingForSubs = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
+          while (matchedSubs.length < 6 && remainingForSubs.length > 0) {
+            const filler = remainingForSubs.shift()!;
+            matchedSubs.push(filler);
+            matchedIds.add(filler.id);
+          }
+
+          // All remaining players become Reserves
+          const matchedReserves = rawSquadA.filter((p: any) => !matchedIds.has(p.id));
+
+          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, home, i, false, coachRolesA));
+          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, home, starters.length + i, true, coachRolesA));
+          const reserves = matchedReserves.map((p: any, i: number) => {
+            const rec = formatPlayerRecord(p, home, starters.length + subs.length + i, true, coachRolesA);
             rec.isReserve = true;
             return rec;
           });
@@ -465,13 +535,13 @@ export const ApiService = {
         } else {
           // Natural division: first 11 starters, next 6 substitutes, remainder reserves
           const starters = rawSquadA.slice(0, 11).map((p: any, idx: number) =>
-            formatPlayerRecord(p, home, idx, false)
+            formatPlayerRecord(p, home, idx, false, coachRolesA)
           );
           const subs = rawSquadA.slice(11, 17).map((p: any, idx: number) =>
-            formatPlayerRecord(p, home, 11 + idx, true)
+            formatPlayerRecord(p, home, 11 + idx, true, coachRolesA)
           );
           const reserves = rawSquadA.slice(17).map((p: any, idx: number) => {
-            const rec = formatPlayerRecord(p, home, 17 + idx, true);
+            const rec = formatPlayerRecord(p, home, 17 + idx, true, coachRolesA);
             rec.isReserve = true;
             return rec;
           });
@@ -485,27 +555,35 @@ export const ApiService = {
       let captainNotesB = '';
 
       const lineupAway = (lineupsData || []).find((l: any) => l.team_id === away?.id);
-      if (lineupAway) {
+      if (lineupAway && Array.isArray(lineupAway.starting_xi) && lineupAway.starting_xi.length > 0) {
         formationB = lineupAway.formation || formationB;
         captainNotesB = lineupAway.captain_notes || '';
         const rawStarters = lineupAway.starting_xi || [];
         const rawSubs = lineupAway.substitutes || [];
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
-          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: false, isReserve: false }, away, i, false);
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, away, i, false, coachRolesB);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
-          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true, isReserve: false }, away, starters.length + i, true);
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, away, starters.length + i, true, coachRolesB);
         });
-        const reserves = rawSubs.slice(6).map((p: any, i: number) => {
-          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...p, isSub: true }, away, starters.length + 6 + i, true);
+        const usedIdsB = new Set([...starters, ...subs].map(p => p.id));
+        const rawReserves = rawSubs.slice(6);
+        const reserves = rawReserves.map((p: any, i: number) => {
+          const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
+          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, away, starters.length + 6 + i, true, coachRolesB);
           rec.isReserve = true;
           return rec;
         });
-        teamBPlayers = [...starters, ...subs, ...reserves];
+        reserves.forEach((r: any) => usedIdsB.add(r.id));
+        const extraReserves = rawSquadB.filter((p: any) => !usedIdsB.has(p.id)).map((p: any, i: number) => {
+          const rec = formatPlayerRecord(p, away, starters.length + subs.length + reserves.length + i, true, coachRolesB);
+          rec.isReserve = true;
+          return rec;
+        });
+        teamBPlayers = [...starters, ...subs, ...reserves, ...extraReserves];
       }
 
       // If not from match_lineups, resolve from saved squad in teams table
@@ -517,35 +595,85 @@ export const ApiService = {
         let starterIds: string[] = [];
         let subIds: string[] = [];
 
+        // 1. Extract Coach's Selected First 11
         if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
-          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p.id)).filter(Boolean);
+          starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
           formationB = tempSquad.formation || formationB;
-        } else if (startingXiStr && typeof startingXiStr === 'string') {
+        }
+        if (starterIds.length === 0 && startingXiStr && typeof startingXiStr === 'string') {
           starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
-          if (subsStr && typeof subsStr === 'string') {
-            subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
-          }
+        }
+
+        // 2. Extract Coach's Selected 6 Substitutes
+        if (tempSquad && Array.isArray(tempSquad.substitutes) && tempSquad.substitutes.length > 0) {
+          subIds = tempSquad.substitutes.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
+        }
+        if (subIds.length === 0 && subsStr && typeof subsStr === 'string') {
+          subIds = subsStr.split(',').map((id: string) => id.trim()).filter(Boolean);
         }
 
         if (starterIds.length > 0) {
-          const matchedStarters = rawSquadB.filter((p: any) => starterIds.includes(p.id));
-          const matchedIds = new Set(matchedStarters.map((p: any) => p.id));
-          const remainingPlayers = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
+          // Map coach-selected starting XI in exact coach selection order
+          const matchedStarters: any[] = [];
+          const matchedIds = new Set<string>();
 
-          // Ensure exactly 11 starters if roster permits
-          const startersList = [...matchedStarters];
-          while (startersList.length < 11 && remainingPlayers.length > 0) {
-            startersList.push(remainingPlayers.shift()!);
+          for (const sId of starterIds) {
+            const player = rawSquadB.find((p: any) => p.id === sId);
+            if (player && !matchedIds.has(player.id)) {
+              matchedStarters.push(player);
+              matchedIds.add(player.id);
+            }
+            if (matchedStarters.length === 11) break;
           }
 
-          // Exact division: max 6 substitutes, remainder in reserves
-          const subsList = remainingPlayers.slice(0, 6);
-          const reservesList = remainingPlayers.slice(6);
+          // Remaining pool of players not in First 11
+          let remainingPlayers = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
 
-          const starters = startersList.map((p: any, i: number) => formatPlayerRecord(p, away, i, false));
-          const subs = subsList.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true));
-          const reserves = reservesList.map((p: any, i: number) => {
-            const rec = formatPlayerRecord(p, away, starters.length + subs.length + i, true);
+          // If fewer than 11 selected or found, fill up to 11 if available (excluding selected subs)
+          if (matchedStarters.length < 11) {
+            const subIdSet = new Set(subIds);
+            const nonSubRemaining = remainingPlayers.filter((p: any) => !subIdSet.has(p.id));
+            while (matchedStarters.length < 11 && nonSubRemaining.length > 0) {
+              const filler = nonSubRemaining.shift()!;
+              matchedStarters.push(filler);
+              matchedIds.add(filler.id);
+            }
+            while (matchedStarters.length < 11 && remainingPlayers.length > 0) {
+              const nextP = remainingPlayers.find((p: any) => !matchedIds.has(p.id));
+              if (!nextP) break;
+              matchedStarters.push(nextP);
+              matchedIds.add(nextP.id);
+            }
+            remainingPlayers = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
+          }
+
+          // Map coach-selected 6 substitutes in exact coach selection order
+          const matchedSubs: any[] = [];
+          for (const sId of subIds) {
+            if (matchedIds.has(sId)) continue;
+            const player = remainingPlayers.find((p: any) => p.id === sId);
+            if (player) {
+              matchedSubs.push(player);
+              matchedIds.add(player.id);
+            }
+            if (matchedSubs.length === 6) break;
+          }
+
+          // If fewer than 6 substitutes were explicitly selected, fill up to 6 from remaining players
+          const remainingForSubs = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
+          while (matchedSubs.length < 6 && remainingForSubs.length > 0) {
+            const filler = remainingForSubs.shift()!;
+            matchedSubs.push(filler);
+            matchedIds.add(filler.id);
+          }
+
+          // All remaining players become Reserves
+          const matchedReserves = rawSquadB.filter((p: any) => !matchedIds.has(p.id));
+
+          const starters = matchedStarters.map((p: any, i: number) => formatPlayerRecord(p, away, i, false, coachRolesB));
+          const subs = matchedSubs.map((p: any, i: number) => formatPlayerRecord(p, away, starters.length + i, true, coachRolesB));
+          const reserves = matchedReserves.map((p: any, i: number) => {
+            const rec = formatPlayerRecord(p, away, starters.length + subs.length + i, true, coachRolesB);
             rec.isReserve = true;
             return rec;
           });
@@ -553,13 +681,13 @@ export const ApiService = {
         } else {
           // Natural division: first 11 starters, next 6 substitutes, remainder reserves
           const starters = rawSquadB.slice(0, 11).map((p: any, idx: number) =>
-            formatPlayerRecord(p, away, idx, false)
+            formatPlayerRecord(p, away, idx, false, coachRolesB)
           );
           const subs = rawSquadB.slice(11, 17).map((p: any, idx: number) =>
-            formatPlayerRecord(p, away, 11 + idx, true)
+            formatPlayerRecord(p, away, 11 + idx, true, coachRolesB)
           );
           const reserves = rawSquadB.slice(17).map((p: any, idx: number) => {
-            const rec = formatPlayerRecord(p, away, 17 + idx, true);
+            const rec = formatPlayerRecord(p, away, 17 + idx, true, coachRolesB);
             rec.isReserve = true;
             return rec;
           });
@@ -647,7 +775,9 @@ export const ApiService = {
           teamA: teamAPlayers,
           teamB: teamBPlayers,
           formationA,
-          formationB
+          formationB,
+          rolesA: coachRolesA,
+          rolesB: coachRolesB,
         },
         venue: f.venue || '',
         referee: refName,

@@ -283,6 +283,7 @@ export const useAdminOperationsData = () => {
         { data: admin2Setting },
         { data: rawDevices },
         { data: admin2AnalyticsSetting },
+        { data: matchEvents },
       ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(300),
         supabase.from('teams').select('*').limit(100),
@@ -296,6 +297,7 @@ export const useAdminOperationsData = () => {
         supabase.from('system_settings').select('*').eq('key', 'admin_2_security').maybeSingle(),
         supabase.from('anonymous_devices').select('device_id, last_seen_at, favorite_team_id, created_at').limit(1000),
         supabase.from('system_settings').select('value').eq('key', 'admin_2_analytics').maybeSingle(),
+        supabase.from('match_events').select('id, team_id, fixture_id').limit(1000),
       ]);
 
 
@@ -314,6 +316,7 @@ export const useAdminOperationsData = () => {
       const allAnnouncements = Array.isArray(announcements) ? announcements : (announcements ? [announcements] : []);
       const allAuditLogs = Array.isArray(rawLogs) ? rawLogs : (rawLogs ? [rawLogs] : []);
       const allMatchReports = Array.isArray(matchReports) ? matchReports : (matchReports ? [matchReports] : []);
+      const allMatchEvents = Array.isArray(matchEvents) ? matchEvents : (matchEvents ? [matchEvents] : []);
 
       const endPing = performance.now();
       const pingMs = Math.round(endPing - startPing);
@@ -590,74 +593,117 @@ export const useAdminOperationsData = () => {
       const avgP = allTeams.length > 0 ? Math.round(allPlayers.length / allTeams.length) : 0;
       const squadCompPercent = allTeams.length > 0 ? Math.min(100, Math.round((allPlayers.length / (allTeams.length * 11)) * 100)) : 0;
 
+      // Build truthful teamsList first to derive truthful overview metrics
+      const mappedTeamsList = allTeams.map((t) => {
+        const coach = allProfiles.find((p) => p.id === t.coach_id);
+        const captain = allProfiles.find((p) => p.id === t.captain_id);
+        const teamPlayerCount = allPlayers.filter((p) => p.team_id === t.id).length;
+        const status: 'complete' | 'incomplete' | 'attention_needed' = !coach || !captain ? 'attention_needed' : teamPlayerCount < 11 ? 'incomplete' : 'complete';
+
+        // Determine League
+        const isChamp =
+          t.competition_id === '22222222-2222-2222-2222-222222222222' ||
+          t.competition_id?.includes('2222') ||
+          t.name?.toLowerCase().includes('championship');
+        const league: 'EPL' | 'Championship' = isChamp ? 'Championship' : 'EPL';
+
+        // Action 1: Upload Kits (must actually have custom kit configuration uploaded/assigned, not just default color code)
+        const hasUploadedKits = Boolean(
+          (Array.isArray(t.kits_config) && t.kits_config.length > 0) ||
+          (t.kits && typeof t.kits === 'object' && Object.keys(t.kits).length > 0) ||
+          t.primary_kit ||
+          t.secondary_kit
+        );
+
+        // Action 2: Arrange Squad / First 11 submitted by Coach
+        // Strict truth: Must have at least 11 player IDs and ALL 11 must actually be present in registered team roster
+        let rawXIIds: string[] = [];
+        if (t.starting_xi_str && typeof t.starting_xi_str === 'string') {
+          rawXIIds = t.starting_xi_str.split(',').map((id: string) => id.trim()).filter(Boolean);
+        } else if (t.temporary_match_squad?.startingXI && Array.isArray(t.temporary_match_squad.startingXI)) {
+          rawXIIds = t.temporary_match_squad.startingXI.map((p: any) => typeof p === 'string' ? p : p?.id).filter(Boolean);
+        }
+
+        const teamPlayers = allPlayers.filter((p) => p.team_id === t.id);
+        const teamPlayerIds = new Set(teamPlayers.map((p) => p.id));
+        const verifiedXI = rawXIIds.filter((id) => teamPlayerIds.has(id));
+        const hasArrangedSquad = verifiedXI.length >= 11;
+        const coachHasSubmittedXI = hasArrangedSquad;
+
+        // Double tick for substitutes: check if substitutes are actually submitted and present in team roster
+        let rawSubIds: string[] = [];
+        if (t.substitutes_str && typeof t.substitutes_str === 'string') {
+          rawSubIds = t.substitutes_str.split(',').map((id: string) => id.trim()).filter(Boolean);
+        } else if (t.temporary_match_squad?.substitutes && Array.isArray(t.temporary_match_squad.substitutes)) {
+          rawSubIds = t.temporary_match_squad.substitutes.map((p: any) => typeof p === 'string' ? p : p?.id).filter(Boolean);
+        }
+        const verifiedSubs = rawSubIds.filter((id) => teamPlayerIds.has(id) && !verifiedXI.includes(id));
+        const hasSubstitutes = hasArrangedSquad && verifiedSubs.length > 0;
+
+        // Action 3: Update Match Events (team has actual events recorded in match_events)
+        const hasMatchEvents = allMatchEvents.some((ev: any) => ev.team_id === t.id);
+
+        // Action 4: Upload Team Logo (must have valid logo_url update that actually went through to DB)
+        const hasUploadedLogo = Boolean(
+          t.logo_url &&
+          typeof t.logo_url === 'string' &&
+          t.logo_url.trim().length > 10 &&
+          !t.logo_url.startsWith('data:') &&
+          !t.logo_url.includes('placeholder')
+        );
+
+        let resolvedCoachName = coach ? `${coach.first_name} ${coach.last_name}`.trim() : 'Unassigned';
+        if (t.name?.toLowerCase().includes('super eagle') && (!coach || coach.first_name === 'Head Coach')) {
+          resolvedCoachName = 'The Special One';
+        }
+
+        return {
+          id: t.id,
+          name: t.name,
+          logoUrl: t.logo_url,
+          coachName: resolvedCoachName,
+          captainName: captain ? `${captain.first_name} ${captain.last_name}` : 'Unassigned',
+          playersCount: teamPlayerCount,
+          league,
+          hasUploadedKits,
+          hasArrangedSquad,
+          hasSubstitutes,
+          substitutesCount: verifiedSubs.length,
+          hasMatchEvents,
+          hasUploadedLogo,
+          coachHasSubmittedXI,
+          status,
+          lastSubmission: new Date(t.created_at).toLocaleDateString(),
+        };
+      });
+
+      // Truthful latest squad submission
+      const teamWithLatestSquad = allTeams
+        .filter((t) => {
+          const m = mappedTeamsList.find((mt) => mt.id === t.id);
+          return m?.hasArrangedSquad;
+        })
+        .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())[0];
+
+      const latestCoach = teamWithLatestSquad ? allProfiles.find((p) => p.id === teamWithLatestSquad.coach_id) : null;
+
       setTeamOverview({
         totalTeams: allTeams.length,
         avgPlayersPerTeam: avgP,
         avgSquadCompletion: squadCompPercent,
         practiceSchedulesCount: allTeams.length * 2,
         upcomingFixturesCount: scheduledFix.length,
-        latestSquadSubmission: allTeams[0]
+        latestSquadSubmission: teamWithLatestSquad
           ? {
-              teamName: allTeams[0].name,
-              submittedAt: new Date(allTeams[0].created_at).toLocaleDateString(),
-              coachName: allProfiles.find((p) => p.id === allTeams[0].coach_id)
-                ? `${allProfiles.find((p) => p.id === allTeams[0].coach_id)!.first_name} ${allProfiles.find((p) => p.id === allTeams[0].coach_id)!.last_name}`
-                : 'Unassigned Coach',
+              teamName: teamWithLatestSquad.name,
+              submittedAt: new Date(teamWithLatestSquad.updated_at || teamWithLatestSquad.created_at).toLocaleDateString(),
+              coachName: latestCoach
+                ? `${latestCoach.first_name} ${latestCoach.last_name}`
+                : 'Head Coach',
             }
           : null,
         teamsNeedingAttentionCount: allTeams.filter((t) => !t.coach_id || !t.captain_id).length,
-        teamsList: allTeams.map((t) => {
-          const coach = allProfiles.find((p) => p.id === t.coach_id);
-          const captain = allProfiles.find((p) => p.id === t.captain_id);
-          const teamPlayerCount = allPlayers.filter((p) => p.team_id === t.id).length;
-          const status = !coach || !captain ? 'attention_needed' : teamPlayerCount < 11 ? 'incomplete' : 'complete';
-
-          // Determine League
-          const isChamp =
-            t.competition_id === '22222222-2222-2222-2222-222222222222' ||
-            t.competition_id?.includes('2222') ||
-            t.name?.toLowerCase().includes('championship');
-          const league: 'EPL' | 'Championship' = isChamp ? 'Championship' : 'EPL';
-
-          // Action 1: Upload Kits (custom color or kit assets assigned)
-          const hasUploadedKits = Boolean(t.color_code || t.primary_kit || t.secondary_kit || t.kits);
-
-          // Action 2: Arrange Squad / First 11 submitted by Coach
-          const hasArrangedSquad = Boolean(t.starting_xi_str && t.starting_xi_str.trim().length > 10);
-          const coachHasSubmittedXI = hasArrangedSquad;
-
-          // Action 3: Update Match Events (team has fixtures with events/score records)
-          const hasMatchEvents = allFixtures.some(
-            (f) =>
-              (f.home_team_id === t.id || f.away_team_id === t.id) &&
-              (f.status === 'FT' || f.status === 'LIVE' || f.score_home !== null || f.score_away !== null)
-          );
-
-          // Action 4: Upload Team Logo (has valid uploaded logo_url)
-          const hasUploadedLogo = Boolean(t.logo_url && t.logo_url.trim().length > 0);
-
-          let resolvedCoachName = coach ? `${coach.first_name} ${coach.last_name}`.trim() : 'Unassigned';
-          if (t.name?.toLowerCase().includes('super eagle') && (!coach || coach.first_name === 'Head Coach')) {
-            resolvedCoachName = 'The Special One';
-          }
-
-          return {
-            id: t.id,
-            name: t.name,
-            logoUrl: t.logo_url,
-            coachName: resolvedCoachName,
-            captainName: captain ? `${captain.first_name} ${captain.last_name}` : 'Unassigned',
-            playersCount: teamPlayerCount,
-            league,
-            hasUploadedKits,
-            hasArrangedSquad,
-            hasMatchEvents,
-            hasUploadedLogo,
-            coachHasSubmittedXI,
-            status,
-            lastSubmission: new Date(t.created_at).toLocaleDateString(),
-          };
-        }),
+        teamsList: mappedTeamsList,
       });
 
       // Referee Overview Summary

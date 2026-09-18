@@ -135,9 +135,9 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                         <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={
-                              row.teamLogo ||
-                              (isHighlighted ? currentTeamLogo : '') ||
-                              'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80'
+                              (isHighlighted && currentTeamLogo)
+                                ? currentTeamLogo
+                                : (row.teamLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80')
                             }
                             alt={row.teamName}
                             className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
@@ -247,9 +247,9 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                         <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={
-                              row.teamLogo ||
-                              (isHighlighted ? currentTeamLogo : '') ||
-                              'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80'
+                              (isHighlighted && currentTeamLogo)
+                                ? currentTeamLogo
+                                : (row.teamLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80')
                             }
                             alt={row.teamName}
                             className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"

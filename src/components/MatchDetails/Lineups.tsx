@@ -18,13 +18,61 @@ interface LineupsProps {
     match: Match;
 }
 
-// Derive standard 5 in-match set piece & leadership roles for a squad
-const getTeamInMatchRoles = (starters: Player[], subs: Player[]) => {
-    const captain = starters.find(p => p.isCaptain) || starters[0] || subs[0] || null;
-    const penalty = starters.find(p => p.position === 'FWD') || captain || starters[0];
-    const freeKick = starters.find(p => p.position === 'MID' && p.id !== captain?.id) || starters[1] || captain;
-    const rightCorner = starters.find(p => (p.position === 'MID' || p.position === 'FWD') && p.id !== captain?.id && p.id !== freeKick?.id) || starters[2] || captain;
-    const leftCorner = starters.find(p => p.position === 'MID' && p.id !== captain?.id && p.id !== rightCorner?.id) || starters[3] || captain;
+// Derive standard 5 in-match set piece & leadership roles for a squad honoring coach selection
+const getTeamInMatchRoles = (
+    starters: Player[],
+    subs: Player[],
+    coachRoles?: {
+        captainId?: string;
+        penaltyTakerId?: string;
+        freeKickTakerId?: string;
+        rightCornerTakerId?: string;
+        leftCornerTakerId?: string;
+        cornerTakerId?: string;
+        rightFreeKickTakerId?: string;
+        leftFreeKickTakerId?: string;
+        viceCaptainId?: string;
+    },
+    designatedCaptainId?: string
+) => {
+    const allPlayers = [...starters, ...subs];
+    const findPlayer = (id?: string) => id ? allPlayers.find(p => p.id === id || p.profile_id === id) || null : null;
+
+    // 1. Captain (Coach designated, or profile captain, or starter with isCaptain)
+    const captain = findPlayer(coachRoles?.captainId) ||
+                    findPlayer(designatedCaptainId) ||
+                    starters.find(p => p.isCaptain) ||
+                    starters[0] ||
+                    subs[0] ||
+                    null;
+
+    // 2. Penalty Taker (Coach selected, or top forward/captain)
+    const penalty = findPlayer(coachRoles?.penaltyTakerId) ||
+                    starters.find(p => p.position === 'FWD') ||
+                    captain ||
+                    starters[0] ||
+                    null;
+
+    // 3. Free Kick Specialist (Coach selected, or midfielder/captain)
+    const freeKick = findPlayer(coachRoles?.freeKickTakerId || coachRoles?.rightFreeKickTakerId || coachRoles?.leftFreeKickTakerId) ||
+                     starters.find(p => p.position === 'MID' && p.id !== captain?.id) ||
+                     starters[1] ||
+                     captain ||
+                     null;
+
+    // 4. Right Corner Specialist (Coach selected, or winger/midfielder)
+    const rightCorner = findPlayer(coachRoles?.rightCornerTakerId || coachRoles?.cornerTakerId) ||
+                        starters.find(p => (p.position === 'MID' || p.position === 'FWD') && p.id !== captain?.id && p.id !== freeKick?.id) ||
+                        starters[2] ||
+                        captain ||
+                        null;
+
+    // 5. Left Corner Specialist (Coach selected, or winger/midfielder)
+    const leftCorner = findPlayer(coachRoles?.leftCornerTakerId || coachRoles?.cornerTakerId) ||
+                       starters.find(p => p.position === 'MID' && p.id !== captain?.id && p.id !== rightCorner?.id) ||
+                       starters[3] ||
+                       captain ||
+                       null;
 
     return [
         {
@@ -87,20 +135,20 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const rawA = lineups?.teamA || [];
     const startersA = rawA.filter(p => !p.isSub && !p.isReserve).slice(0, 11);
     const startersIdSetA = new Set(startersA.map(p => p.id));
-    const remainingA = rawA.filter(p => !startersIdSetA.has(p.id));
-    const subsA = remainingA.slice(0, 6);
-    const reservesA = remainingA.slice(6);
+    const subsA = rawA.filter(p => !startersIdSetA.has(p.id) && p.isSub && !p.isReserve).slice(0, 6);
+    const subsIdSetA = new Set(subsA.map(p => p.id));
+    const reservesA = rawA.filter(p => !startersIdSetA.has(p.id) && !subsIdSetA.has(p.id));
 
     const rawB = lineups?.teamB || [];
     const startersB = rawB.filter(p => !p.isSub && !p.isReserve).slice(0, 11);
     const startersIdSetB = new Set(startersB.map(p => p.id));
-    const remainingB = rawB.filter(p => !startersIdSetB.has(p.id));
-    const subsB = remainingB.slice(0, 6);
-    const reservesB = remainingB.slice(6);
+    const subsB = rawB.filter(p => !startersIdSetB.has(p.id) && p.isSub && !p.isReserve).slice(0, 6);
+    const subsIdSetB = new Set(subsB.map(p => p.id));
+    const reservesB = rawB.filter(p => !startersIdSetB.has(p.id) && !subsIdSetB.has(p.id));
 
-    // In-Match Roles for each team
-    const rolesA = getTeamInMatchRoles(startersA, subsA);
-    const rolesB = getTeamInMatchRoles(startersB, subsB);
+    // In-Match Roles for each team selected by the coach
+    const rolesA = getTeamInMatchRoles(startersA, subsA, match.lineups?.rolesA, teamA.captain_id);
+    const rolesB = getTeamInMatchRoles(startersB, subsB, match.lineups?.rolesB, teamB.captain_id);
 
     // Super Eagles coach reflection (Head Coach named The Special One)
     const coachNameA = teamA.name.toLowerCase().includes('super eagle')

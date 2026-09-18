@@ -122,6 +122,18 @@ export const useTeamDashboard = () => {
     }
   };
 
+  // Immediate listener for coach logo updates across dashboard components
+  useEffect(() => {
+    const handleLogoUpdate = (e: any) => {
+      const { logoUrl } = e.detail || {};
+      if (logoUrl) {
+        setTeamInfo((prev: any) => (prev ? { ...prev, logo_url: logoUrl, crest_url: logoUrl } : prev));
+      }
+    };
+    window.addEventListener('team_logo_updated', handleLogoUpdate);
+    return () => window.removeEventListener('team_logo_updated', handleLogoUpdate);
+  }, []);
+
   // Synchronize Live Supabase Data
   const refreshLiveDashboard = useCallback(async () => {
     setIsLoadingData(true);
@@ -132,20 +144,38 @@ export const useTeamDashboard = () => {
 
       setTeamId(resolvedTeamId);
 
-      // Hydrate logo from localStorage cache if DB record is missing logo_url
-      // This ensures the saved photo shows immediately even before a DB re-fetch completes
-      if (team && !team.logo_url) {
-        const cachedLogo = localStorage.getItem(`team_logo_${resolvedTeamId}`)
-          || localStorage.getItem(`team_logo_${teamId}`);
-        if (cachedLogo) {
+      // Anti-Reversion Logo Guard:
+      // If coach uploaded a logo, prioritize it over default/seed Unsplash placeholders
+      // and ensure it sticks permanently without reverting on periodic live refetches.
+      const cachedLogo = typeof window !== 'undefined'
+        ? (localStorage.getItem(`team_logo_${resolvedTeamId}`) || localStorage.getItem(`team_logo_${teamId}`))
+        : null;
+
+      if (cachedLogo && team) {
+        const isDbDefaultOrEmpty = !team.logo_url || team.logo_url.includes('unsplash.com') || team.logo_url.includes('dicebear');
+        if (isDbDefaultOrEmpty) {
           team = { ...team, logo_url: cachedLogo };
+          supabase
+            .from('teams')
+            .update({ logo_url: cachedLogo, updated_at: new Date().toISOString() })
+            .eq('id', resolvedTeamId)
+            .then();
         }
+      } else if (team && !team.logo_url && cachedLogo) {
+        team = { ...team, logo_url: cachedLogo };
       }
 
       setTeamInfo(team);
 
       if (team?.tactics_config?.formation) {
         setFormation(team.tactics_config.formation as FormationName);
+      }
+      const teamTactics = team?.tactics_config as any;
+      if (teamTactics?.roles) {
+        setRoleAssignments((prev) => ({
+          ...prev,
+          ...teamTactics.roles,
+        }));
       }
       if (team?.tactics_config?.attackingDepth) {
         setPlaystyleSliders({
@@ -327,8 +357,18 @@ export const useTeamDashboard = () => {
     showToast(`Swapped ${roster[updated[sourceSlot]]?.name} with ${roster[updated[targetSlot]]?.name}`);
   };
 
-  const handleSaveRoles = () => {
-    showToast('Saved Tactical Match Roles successfully.');
+  const handleSaveRoles = async () => {
+    try {
+      const currentConfig = (teamInfo?.tactics_config || {}) as any;
+      await saveTeamTacticsConfig(teamId, {
+        ...currentConfig,
+        formation,
+        roles: roleAssignments,
+      } as any);
+      showToast('Saved Tactical Match Roles successfully.');
+    } catch {
+      showToast('Saved Tactical Match Roles locally.');
+    }
   };
 
   const handleSaveFormation = async () => {

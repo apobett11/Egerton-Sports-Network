@@ -214,6 +214,7 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
             const eplCount = teamOverview.teamsList.filter((t) => t.league === 'EPL').length;
             const champCount = teamOverview.teamsList.filter((t) => t.league === 'Championship').length;
             const xiSubmittedCount = teamOverview.teamsList.filter((t) => t.coachHasSubmittedXI).length;
+            const subsSubmittedCount = teamOverview.teamsList.filter((t) => t.hasSubstitutes).length;
             const kitsCount = teamOverview.teamsList.filter((t) => t.hasUploadedKits).length;
             const eventsCount = teamOverview.teamsList.filter((t) => t.hasMatchEvents).length;
             const logoCount = teamOverview.teamsList.filter((t) => t.hasUploadedLogo).length;
@@ -228,8 +229,8 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       onClick={() => setTeamLeagueFilter('EPL')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
                         teamLeagueFilter === 'EPL'
-                          ? 'bg-emerald-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-400 hover:text-white'
                       }`}
                     >
                       EPL ({eplCount})
@@ -239,19 +240,19 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                       onClick={() => setTeamLeagueFilter('CHAMPIONSHIP')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
                         teamLeagueFilter === 'CHAMPIONSHIP'
-                          ? 'bg-amber-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-400 hover:text-white'
                       }`}
                     >
-                      Championships ({champCount})
+                      Championship ({champCount})
                     </button>
                     <button
                       type="button"
                       onClick={() => setTeamLeagueFilter('ALL')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
                         teamLeagueFilter === 'ALL'
-                          ? 'bg-[#333333] text-white shadow-md'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1f1f1f]'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-400 hover:text-white'
                       }`}
                     >
                       All ({teamOverview.teamsList.length})
@@ -262,6 +263,9 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                   <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       ✓ First 11: {xiSubmittedCount}/{teamOverview.teamsList.length}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                      ✓✓ Subs: {subsSubmittedCount}/{teamOverview.teamsList.length}
                     </span>
                     <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       👕 Kits: {kitsCount}/{teamOverview.teamsList.length}
@@ -281,8 +285,8 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                         ({filteredTeams.length} {teamLeagueFilter === 'ALL' ? 'Total' : teamLeagueFilter} clubs)
                       </span>
                     </h3>
-                    <span className="text-[10px] text-gray-400">
-                      Tick (✓) = Completed • Cross (✗) = Pending
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      ✓ = First 11 • ✓✓ = First 11 + Substitutes • ✗ = Pending
                     </span>
                   </div>
 
@@ -346,7 +350,7 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                                     </span>
                                     {t.coachHasSubmittedXI ? (
                                       <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                        ✓ First 11 Submitted
+                                        {t.hasSubstitutes ? '✓✓ First 11 & Subs' : '✓ First 11 Submitted'}
                                       </span>
                                     ) : (
                                       <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-gray-500 bg-[#222222] px-1.5 py-0.5 rounded">
@@ -375,15 +379,24 @@ export const AdminModals: React.FC<AdminModalsProps> = ({
                                   )}
                                 </td>
 
-                                {/* Action 2: Arrange Squad (First 11 Submitted) */}
+                                {/* Action 2: Arrange Squad (First 11 & Substitutes Double Tick) */}
                                 <td className="p-3 text-center">
                                   {t.hasArrangedSquad ? (
-                                    <span
-                                      className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
-                                      title="Squad Arranged & First 11 Set"
-                                    >
-                                      ✓
-                                    </span>
+                                    t.hasSubstitutes ? (
+                                      <span
+                                        className="inline-flex items-center justify-center px-1.5 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black text-xs tracking-tighter"
+                                        title={`First 11 & ${t.substitutesCount || 6} Substitutes Arranged`}
+                                      >
+                                        ✓✓
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold"
+                                        title="First 11 Set (Substitutes Pending)"
+                                      >
+                                        ✓
+                                      </span>
+                                    )
                                   ) : (
                                     <span
                                       className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold"

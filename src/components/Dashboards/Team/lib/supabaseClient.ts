@@ -822,15 +822,114 @@ export async function saveTeamTacticsAndSquad(
 }
 
 /**
- * Uploads a team logo / crest image to Supabase Storage and updates teams table.
- * Accepts any image file (JPG, PNG, WEBP, GIF, SVG, etc.) and any measurement.
- * Returns the storage public URL if upload succeeded, otherwise returns the base64 dataUrl
- * for immediate local display only (the dataUrl is NOT saved to DB to avoid truncation).
+ * Optimizes image for team logo before upload.
+ * Accepts any image file (PNG, JPG, WEBP, GIF, SVG, AVIF, BMP, etc.).
+ * Constrains dimensions to 512x512 max while preserving aspect ratio,
+ * minimizing storage footprint, memory consumption, and database stress.
+ * Vector SVGs are preserved without rasterization.
+ */
+export async function optimizeImageForLogo(file: File): Promise<{
+    fileOrBlob: Blob | File;
+    extension: string;
+    mimeType: string;
+}> {
+    const rawExt = (file.name && file.name.includes('.'))
+        ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
+        : 'jpg';
+    const isSvg = file.type === 'image/svg+xml' || rawExt === 'svg';
+
+    // 1. SVGs are vector graphics; keep original to retain crisp scalable rendering and tiny size
+    if (isSvg) {
+        return {
+            fileOrBlob: file,
+            extension: 'svg',
+            mimeType: 'image/svg+xml',
+        };
+    }
+
+    // 2. Browser canvas optimization for raster formats
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        try {
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string) || '');
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            if (dataUrl) {
+                const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+                    const el = new Image();
+                    el.onload = () => resolve(el);
+                    el.onerror = reject;
+                    el.src = dataUrl;
+                });
+
+                const maxDimension = 512;
+                let targetWidth = img.naturalWidth || img.width || 256;
+                let targetHeight = img.naturalHeight || img.height || 256;
+
+                if (targetWidth > maxDimension || targetHeight > maxDimension) {
+                    if (targetWidth >= targetHeight) {
+                        targetHeight = Math.round((targetHeight * maxDimension) / targetWidth);
+                        targetWidth = maxDimension;
+                    } else {
+                        targetWidth = Math.round((targetWidth * maxDimension) / targetHeight);
+                        targetHeight = maxDimension;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                const ctx = canvas.getContext('2d');
+
+                if (ctx) {
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+                    // Prefer original format or WebP
+                    const targetMime = file.type === 'image/png' ? 'image/png' : 'image/webp';
+                    const targetExt = file.type === 'image/png' ? 'png' : 'webp';
+
+                    const blob = await new Promise<Blob | null>((resolve) => {
+                        canvas.toBlob(resolve, targetMime, 0.88);
+                    });
+
+                    if (blob && blob.size > 0) {
+                        return {
+                            fileOrBlob: blob,
+                            extension: targetExt,
+                            mimeType: targetMime,
+                        };
+                    }
+                }
+            }
+        } catch (optimizeErr) {
+            console.warn('[optimizeImageForLogo] Canvas optimization fallback to original:', optimizeErr);
+        }
+    }
+
+    // Fallback: return original file
+    const safeExt = rawExt || (file.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/g, '');
+    return {
+        fileOrBlob: file,
+        extension: safeExt,
+        mimeType: file.type || 'image/jpeg',
+    };
+}
+
+/**
+ * Uploads a team logo / crest image to Supabase Storage 'team-logos' bucket and updates teams table.
+ * Accepts any image file (PNG, JPG, WEBP, GIF, SVG, AVIF, BMP, etc.).
+ * Optimizes encoding to minimize memory, CPU, and database stress.
+ * Persists directly to the database so it sticks permanently and never reverts.
  */
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
     const teamUuid = await resolveRealTeamId(teamId);
 
-    // Step 1: Generate immediate base64 preview (used as return value if storage fails)
+    // Step 1: Immediate local preview
     const dataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve((reader.result as string) || '');
@@ -838,41 +937,58 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
         reader.readAsDataURL(file);
     });
 
-    const fileExt = (file.name && file.name.includes('.'))
-        ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
-        : 'jpg';
-    const safeExt = fileExt || 'jpg';
-    const fileName = `team_crests/${teamUuid}_${Date.now()}.${safeExt}`;
+    // Step 2: Optimize image to save space, memory and CPU
+    const { fileOrBlob, extension, mimeType } = await optimizeImageForLogo(file);
+    const fileName = `logos/${teamUuid}_${Date.now()}.${extension}`;
 
-    // Step 2: Try to upload to Supabase Storage — try 3 buckets in sequence
+    // Step 3: Upload to Supabase Storage — prioritize dedicated 'team-logos' bucket
     let storageUrl = '';
-    const buckets = ['media', 'news', 'avatars'];
+    const buckets = ['team-logos', 'media', 'news', 'avatars'];
+
     for (const bucket of buckets) {
         if (storageUrl) break;
         try {
             const { data: uploadData, error: uploadErr } = await supabase.storage
                 .from(bucket)
-                .upload(fileName, file, { cacheControl: '3600', upsert: true });
+                .upload(fileName, fileOrBlob, {
+                    cacheControl: '31536000, immutable',
+                    contentType: mimeType,
+                    upsert: true,
+                });
 
             if (!uploadErr && uploadData?.path) {
                 const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(uploadData.path);
                 if (urlData?.publicUrl) {
                     storageUrl = urlData.publicUrl;
                 }
+            } else if (uploadErr && bucket === 'team-logos' && uploadErr.message?.includes('not found')) {
+                // Try creating bucket on-the-fly if missing
+                try {
+                    await supabase.storage.createBucket('team-logos', { public: true });
+                    const retry = await supabase.storage.from('team-logos').upload(fileName, fileOrBlob, {
+                        cacheControl: '31536000, immutable',
+                        contentType: mimeType,
+                        upsert: true,
+                    });
+                    if (!retry.error && retry.data?.path) {
+                        storageUrl = supabase.storage.from('team-logos').getPublicUrl(retry.data.path).data.publicUrl;
+                    }
+                } catch (_) {}
             }
         } catch (_) {
             // try next bucket
         }
     }
 
-    // Step 3 & 4: Only persist to teams table if we got a real Storage URL.
-    // NEVER save large base64 dataUrls to Postgres rows — it balloons JSON responses and causes database timeouts.
-    if (storageUrl && !storageUrl.startsWith('data:')) {
+    const finalUrl = storageUrl || dataUrl;
+
+    // Step 4: Persist immediately to teams table so the logo sticks and NEVER reverts
+    if (finalUrl) {
         try {
             const { error: updateErr } = await supabase
                 .from('teams')
                 .update({
-                    logo_url: storageUrl,
+                    logo_url: finalUrl,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', teamUuid);
@@ -883,23 +999,21 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
         } catch (dbErr) {
             console.warn('[uploadTeamCrest] Failed to update teams table:', dbErr);
         }
-    } else {
-        console.warn('[uploadTeamCrest] Storage upload failed or unavailable; caching locally for session without saving raw base64 to DB.');
     }
 
-    const urlToSave = storageUrl || dataUrl;
-
-    // Step 5: Cache locally so it survives navigation without a DB re-fetch
+    // Step 5: Cache locally in localStorage so it is available across all views & tabs
     if (typeof window !== 'undefined') {
         try {
-            // Only cache the storage URL or dataUrl (dataUrl is fine for in-session use)
-            localStorage.setItem(`team_logo_${teamUuid}`, urlToSave);
-            localStorage.setItem(`team_logo_${teamId}`, urlToSave);
+            localStorage.setItem(`team_logo_${teamUuid}`, finalUrl);
+            localStorage.setItem(`team_logo_${teamId}`, finalUrl);
+            localStorage.setItem(`team_logo_timestamp_${teamUuid}`, Date.now().toString());
+            window.dispatchEvent(new CustomEvent('team_logo_updated', {
+                detail: { teamId: teamUuid, logoUrl: finalUrl }
+            }));
         } catch (_) {}
     }
 
-    // Return storageUrl if available (best), otherwise dataUrl for immediate display
-    return urlToSave;
+    return finalUrl;
 }
 
 /**
@@ -925,8 +1039,8 @@ export async function updateCoachCredentialsAndLogo({
         let updatedLogoUrl = logoUrl;
         let updatedEmail = email;
 
-        // 1. Update team logo in teams table if provided (and not a raw base64 data URL)
-        if (logoUrl !== undefined && logoUrl.trim() !== '' && !logoUrl.trim().startsWith('data:')) {
+        // 1. Update team logo in teams table if provided
+        if (logoUrl !== undefined && logoUrl.trim() !== '') {
             const { error: teamErr } = await supabase
                 .from('teams')
                 .update({
@@ -937,6 +1051,17 @@ export async function updateCoachCredentialsAndLogo({
 
             if (teamErr) {
                 console.warn('[updateCoachCredentialsAndLogo] Failed to update logo in teams table:', teamErr);
+            }
+
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.setItem(`team_logo_${teamUuid}`, logoUrl.trim());
+                    localStorage.setItem(`team_logo_${teamId}`, logoUrl.trim());
+                    localStorage.setItem(`team_logo_timestamp_${teamUuid}`, Date.now().toString());
+                    window.dispatchEvent(new CustomEvent('team_logo_updated', {
+                        detail: { teamId: teamUuid, logoUrl: logoUrl.trim() }
+                    }));
+                } catch (_) {}
             }
         }
 

@@ -136,6 +136,28 @@ export interface Match {
     teamB: Player[];
     formationA: string;   // E.g., "4-3-3"
     formationB: string;   // E.g., "3-5-2"
+    rolesA?: {
+      captainId?: string;
+      penaltyTakerId?: string;
+      freeKickTakerId?: string;
+      rightCornerTakerId?: string;
+      leftCornerTakerId?: string;
+      cornerTakerId?: string;
+      rightFreeKickTakerId?: string;
+      leftFreeKickTakerId?: string;
+      viceCaptainId?: string;
+    };
+    rolesB?: {
+      captainId?: string;
+      penaltyTakerId?: string;
+      freeKickTakerId?: string;
+      rightCornerTakerId?: string;
+      leftCornerTakerId?: string;
+      cornerTakerId?: string;
+      rightFreeKickTakerId?: string;
+      leftFreeKickTakerId?: string;
+      viceCaptainId?: string;
+    };
   };
   venue: string;
   referee: string;

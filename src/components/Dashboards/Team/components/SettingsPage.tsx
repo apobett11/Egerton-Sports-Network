@@ -137,7 +137,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       reader.readAsDataURL(file);
 
       const publicUrl = await uploadTeamCrest(teamId, file);
-      if (publicUrl && !publicUrl.startsWith('data:')) {
+      if (publicUrl) {
         setLogoUrl(publicUrl);
         if (onUpdateTeamInfo) {
           onUpdateTeamInfo({ logo_url: publicUrl, crest_url: publicUrl });
