@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -44,7 +42,7 @@ const STORAGE_PREFIX = 'esn_guest_cache_v3_';
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
   private subscribers: Set<CacheSubscriber> = new Set();
-  private isRealtimeSubscribed = false;
+  private pollTimer: number | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -63,61 +61,34 @@ class GuestCacheManager {
         this.clearStaleMemory();
       });
 
-      this.initRealtimeSubscription();
+      this.setupGuestPollingDeferred();
     }
   }
 
   /**
-   * Listen to database changes and auto-renew / invalidate affected cache entries in real-time
+   * Guests do not open a Realtime WebSocket on the critical path.
+   * Poll HTTP-backed cache invalidation after first paint (idle / 3–4s).
    */
-  private initRealtimeSubscription(): void {
-    if (this.isRealtimeSubscribed || typeof window === 'undefined') return;
+  private setupGuestPollingDeferred(): void {
+    if (typeof window === 'undefined') return;
 
-    try {
-      const channel = supabase
-        .channel('esn_cache_realtime_renewal')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-          this.invalidate('fixtures');
-          this.invalidate('standings');
-          this.invalidate('performance');
-          this.invalidate('milestones');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
-          this.invalidate('standings');
-          this.invalidate('performance');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, () => {
-          this.invalidate('match_details');
-          this.invalidate('fixtures');
-          this.invalidate('performance');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'news_articles' }, () => {
-          this.invalidate('news');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
-          this.invalidate('announcements');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
-          this.invalidate('teams');
-          this.invalidate('standings');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-          this.invalidate('players');
-          this.invalidate('performance');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
-          this.invalidate('performance');
-          this.invalidate('milestones');
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-          this.invalidate('audit_logs');
-        })
-        .subscribe();
+    const start = () => this.startGuestPolling();
 
-      this.isRealtimeSubscribed = true;
-    } catch (err) {
-      console.warn('Realtime cache synchronization subscription deferred:', err);
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(start, { timeout: 4000 });
+    } else {
+      window.setTimeout(start, 3000);
     }
+  }
+
+  private startGuestPolling(): void {
+    if (this.pollTimer !== null || typeof window === 'undefined') return;
+
+    this.pollTimer = window.setInterval(() => {
+      this.invalidate('fixtures');
+      this.invalidate('standings');
+      this.invalidate('match_details');
+    }, 45_000);
   }
 
   /**
@@ -138,6 +109,31 @@ class GuestCacheManager {
         console.error('Error in cache subscriber notification:', err);
       }
     });
+  }
+
+  /**
+   * Return cached data even if TTL expired (SWR stale paint).
+   */
+  getStale<T>(category: string, key: string): T | null {
+    const fullKey = `${category}:${key}`;
+
+    const mem = this.memoryCache.get(fullKey);
+    if (mem) {
+      return mem.data as T;
+    }
+
+    try {
+      const raw = localStorage.getItem(`${STORAGE_PREFIX}${fullKey}`);
+      if (raw) {
+        const parsed: CacheEntry<T> = JSON.parse(raw);
+        this.memoryCache.set(fullKey, parsed);
+        return parsed.data;
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+
+    return null;
   }
 
   /**
@@ -177,7 +173,7 @@ class GuestCacheManager {
   /**
    * Set cached entry with TTL.
    */
-  set<T>(category: string, key: string, data: T, customTtl?: number): void {
+  set<T>(category: string, key: string, data: T, customTtl?: number, notify = false): void {
     const fullKey = `${category}:${key}`;
     const ttl = customTtl || DEFAULT_TTLS[category] || 60 * 1000;
     const entry: CacheEntry<T> = {
@@ -193,6 +189,10 @@ class GuestCacheManager {
     } catch {
       // Clean old keys if storage full
       this.evictOldestLocalStorage();
+    }
+
+    if (notify) {
+      this.notifySubscribers(category, key);
     }
   }
 

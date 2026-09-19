@@ -300,6 +300,22 @@ export function classifyRequestScope(input: RequestInfo | URL, init?: RequestIni
   return 'global';
 }
 
+function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
+  const lowerUrl = urlString.toLowerCase();
+  const method = (init?.method || 'GET').toUpperCase();
+
+  if (lowerUrl.includes('get_guest_fixtures')) return true;
+
+  if (method !== 'GET') return false;
+
+  return (
+    lowerUrl.includes('league_standings') ||
+    lowerUrl.includes('/rest/v1/fixtures') ||
+    lowerUrl.includes('/rest/v1/teams') ||
+    lowerUrl.includes('/rest/v1/competitions')
+  );
+}
+
 export async function rateLimitedFetch(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -312,6 +328,10 @@ export async function rateLimitedFetch(
     : input instanceof URL
     ? input.toString()
     : (input as Request)?.url || '';
+
+  if (isPublicGuestRead(urlString, init)) {
+    return nativeFetch(input, init);
+  }
 
   try {
     const quota = await rateLimiter.acquire(scope, urlString);

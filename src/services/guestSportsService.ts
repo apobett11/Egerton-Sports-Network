@@ -129,63 +129,115 @@ export interface GuestAssistLeader {
 // SECTION 1: FIXTURES & PAST FIXTURES PRELOAD CACHE
 // ============================================================================
 
+async function fetchGuestFixturesNetwork(params?: {
+  competitionId?: string;
+  date?: string;
+  matchday?: number;
+}): Promise<GuestFixture[]> {
+  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
+
+  try {
+    // Use the server-side RPC that JOINs teams + competitions inline.
+    // This eliminates the race condition where teamMap.get() returned {} because
+    // the teams query hadn't resolved yet, causing "Home Team"/"Away Team" fallbacks.
+    const compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
+      ? params.competitionId
+      : null;
+    const dateVal = (params?.date && params.date !== 'all')
+      ? (/^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0])
+      : null;
+    const matchdayVal = params?.matchday || null;
+
+    const { data: rows, error } = await supabase.rpc('get_guest_fixtures', {
+      p_competition_id: compId,
+      p_date: dateVal,
+      p_matchday: matchdayVal,
+    });
+
+    if (error || !rows || rows.length === 0) {
+      return await _getGuestFixturesFallback(params);
+    }
+
+    const results = (rows as any[]).map((r: any): GuestFixture => ({
+      id: r.id,
+      competition_id: r.competition_id || '',
+      competition_name: r.competition_name || 'Campus Football',
+      matchday: r.matchday || 1,
+      scheduled_time: r.scheduled_time,
+      venue: r.venue || 'Egerton Main Grounds',
+      status: (r.status || 'UPCOMING') as any,
+      score_home: typeof r.score_home === 'number' ? r.score_home : 0,
+      score_away: typeof r.score_away === 'number' ? r.score_away : 0,
+      home_penalty_score: r.home_penalty_score ?? null,
+      away_penalty_score: r.away_penalty_score ?? null,
+      home_team: {
+        id: r.home_team_id || '',
+        name: r.home_team_name || '',
+        short_name: r.home_short_name || null,
+        logo_url: r.home_logo_url || DEFAULT_LOGO,
+        color_code: r.home_color_code || '#059669',
+      },
+      away_team: {
+        id: r.away_team_id || '',
+        name: r.away_team_name || '',
+        short_name: r.away_short_name || null,
+        logo_url: r.away_logo_url || DEFAULT_LOGO,
+        color_code: r.away_color_code || '#2563EB',
+      },
+    }));
+
+    guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
+    return results;
+  } catch (err: any) {
+    console.error('[guestSportsService] getGuestFixtures exception:', err);
+    return _getGuestFixturesFallback(params);
+  }
+}
+
 export async function getGuestFixtures(params?: {
   competitionId?: string;
   date?: string; // YYYY-MM-DD
   matchday?: number;
 }): Promise<GuestFixture[]> {
   const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
-  const cached = guestCache.get<GuestFixture[]>('fixtures', cacheKey);
-  if (cached && cached.length > 0) {
-    return cached;
+  const cachedData = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
+
+  const networkPromise = fetchGuestFixturesNetwork(params);
+
+  if (cachedData && cachedData.length > 0) {
+    void networkPromise;
+    return cachedData;
   }
 
+  return networkPromise;
+}
+
+// Internal fallback: original 3-query approach used only if RPC is unavailable
+async function _getGuestFixturesFallback(params?: {
+  competitionId?: string;
+  date?: string;
+  matchday?: number;
+}): Promise<GuestFixture[]> {
   try {
     let query = supabase
       .from('fixtures')
-      .select(`
-        id,
-        competition_id,
-        home_team_id,
-        away_team_id,
-        matchday,
-        scheduled_time,
-        venue,
-        status,
-        score_home,
-        score_away,
-        home_penalty_score,
-        away_penalty_score
-      `)
+      .select('id,competition_id,home_team_id,away_team_id,matchday,scheduled_time,venue,status,score_home,score_away,home_penalty_score,away_penalty_score')
       .order('scheduled_time', { ascending: true });
 
     if (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL') {
       query = query.eq('competition_id', params.competitionId);
     }
-    if (params?.matchday) {
-      query = query.eq('matchday', params.matchday);
-    }
+    if (params?.matchday) query = query.eq('matchday', params.matchday);
     if (params?.date && params.date !== 'all') {
-      const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(params.date)
-        ? params.date
-        : new Date(params.date).toISOString().split('T')[0];
-      query = query
-        .gte('scheduled_time', `${dateStr}T00:00:00.000Z`)
-        .lte('scheduled_time', `${dateStr}T23:59:59.999Z`);
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0];
+      query = query.gte('scheduled_time', `${d}T00:00:00.000Z`).lte('scheduled_time', `${d}T23:59:59.999Z`);
     }
 
-    const [fixtureRes, teamMap, compMap] = await Promise.all([
-      query,
-      getTeamsMap(),
-      getCompetitionsMap()
-    ]);
-
+    const [fixtureRes, teamMap, compMap] = await Promise.all([query, getTeamsMap(), getCompetitionsMap()]);
     const fixtureRows = fixtureRes.data;
-    if (fixtureRes.error || !fixtureRows || fixtureRows.length === 0) {
-      return [];
-    }
+    if (fixtureRes.error || !fixtureRows || fixtureRows.length === 0) return [];
 
-    const results = fixtureRows.map((f: any): GuestFixture => {
+    return fixtureRows.map((f: any): GuestFixture => {
       const home = teamMap.get(f.home_team_id) || {};
       const away = teamMap.get(f.away_team_id) || {};
       return {
@@ -200,27 +252,11 @@ export async function getGuestFixtures(params?: {
         score_away: typeof f.score_away === 'number' ? f.score_away : 0,
         home_penalty_score: f.home_penalty_score ?? null,
         away_penalty_score: f.away_penalty_score ?? null,
-        home_team: {
-          id: home.id || '',
-          name: home.name || 'Home Team',
-          short_name: home.short_name || null,
-          logo_url: home.logo_url || DEFAULT_LOGO,
-          color_code: home.color_code || '#059669',
-        },
-        away_team: {
-          id: away.id || '',
-          name: away.name || 'Away Team',
-          short_name: away.short_name || null,
-          logo_url: away.logo_url || DEFAULT_LOGO,
-          color_code: away.color_code || '#2563EB',
-        },
+        home_team: { id: home.id || '', name: home.name || '', short_name: home.short_name || null, logo_url: home.logo_url || DEFAULT_LOGO, color_code: home.color_code || '#059669' },
+        away_team: { id: away.id || '', name: away.name || '', short_name: away.short_name || null, logo_url: away.logo_url || DEFAULT_LOGO, color_code: away.color_code || '#2563EB' },
       };
     });
-
-    guestCache.set('fixtures', cacheKey, results, 60 * 1000);
-    return results;
-  } catch (err: any) {
-    console.error('[guestSportsService] getGuestFixtures exception:', err);
+  } catch {
     return [];
   }
 }
@@ -361,15 +397,11 @@ export async function preloadPastFixtures(currentDateStr?: string, competitionId
 // SECTION 2: STANDINGS
 // ============================================================================
 
-export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
+async function fetchGuestStandingsNetwork(competitionId?: string): Promise<GuestStanding[]> {
   const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId))
     ? competitionId
     : '11111111-1111-1111-1111-111111111111'; // Default strictly to EPL to prevent mixing all 22 teams
   const cacheKey = `standings_${targetCompId}`;
-  const cached = guestCache.get<GuestStanding[]>('standings', cacheKey);
-  if (cached && cached.length > 0) {
-    return cached;
-  }
 
   try {
     const query = supabase
@@ -407,12 +439,29 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
       };
     });
 
-    guestCache.set('standings', cacheKey, results, 2 * 60 * 1000);
+    guestCache.set('standings', cacheKey, results, 2 * 60 * 1000, true);
     return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestStandings exception:', err);
     return [];
   }
+}
+
+export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
+  const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId))
+    ? competitionId
+    : '11111111-1111-1111-1111-111111111111';
+  const cacheKey = `standings_${targetCompId}`;
+  const cachedData = guestCache.getStale<GuestStanding[]>('standings', cacheKey);
+
+  const networkPromise = fetchGuestStandingsNetwork(competitionId);
+
+  if (cachedData && cachedData.length > 0) {
+    void networkPromise;
+    return cachedData;
+  }
+
+  return networkPromise;
 }
 
 // ============================================================================
