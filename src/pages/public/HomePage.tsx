@@ -14,6 +14,7 @@ import { resolveGuestMatchdayDate } from '../../lib/matchdayHelper';
 import { useDeviceIdentity } from '../../hooks/useDeviceIdentity';
 import { MatchPredictionNoticeModal } from '../../components/Polls/MatchPredictionNoticeModal';
 import { FeaturePollService } from '../../services/featurePollService';
+import { preloadPastFixtures } from '../../services/guestSportsService';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -48,29 +49,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [masterPlaydayFixtures, setMasterPlaydayFixtures] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Instant playday schedule mapping
-    supabase
-      .from('fixtures')
-      .select('scheduled_time, matchday, competition_id')
-      .order('scheduled_time', { ascending: true })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setMasterPlaydayFixtures(data);
-        }
-      });
-
-    // 2. Proactive full season cache prefetch for 0ms instant matchday and date switching
-    if (!guestCache.get('fixtures', 'all_all_pall_sall')) {
-      ApiService.getFixtures().then(res => {
-        if (res.success && res.data && res.data.length > 0) {
-          guestCache.set('fixtures', 'all_all_pall_sall', res.data);
-          const cachedNow = getCachedFixtures(formattedDateStr, selectedCompetitionId);
-          if (cachedNow && cachedNow.length > 0) {
-            setFixturesState({ data: cachedNow, loading: false, error: null });
+    // 1. Deferred playday schedule mapping after initial matchday render
+    const timer = setTimeout(() => {
+      supabase
+        .from('fixtures')
+        .select('scheduled_time, matchday, competition_id')
+        .order('scheduled_time', { ascending: true })
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setMasterPlaydayFixtures(data);
           }
-        }
-      }).catch(() => {});
-    }
+        });
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -314,6 +306,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         if (res.success && res.data) {
           const fetchedMatches = res.data;
           setFixturesState({ data: fetchedMatches, loading: false, error: null });
+          // Preload and cache past fixtures in background once matchday fixtures are ready
+          preloadPastFixtures(formattedDateStr, compId).catch(() => {});
         } else {
           setFixturesState({ data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
         }

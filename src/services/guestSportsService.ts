@@ -1,5 +1,6 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { Match, LeagueTableEntry } from '../types';
+import { guestCache } from '../lib/guestCache';
 
 // ============================================================================
 // GUEST SPORTS SERVICE v3 — Ultra-Fast Cached In-Memory Lookups & Clean Queries
@@ -10,8 +11,11 @@ const DEFAULT_LOGO = 'https://images.unsplash.com/photo-1508098682722-e99c43a406
 // In-memory caches for static master data (60 second TTL)
 let cachedTeamsMap: Map<string, any> | null = null;
 let teamsCacheTimestamp = 0;
+let inFlightTeamsPromise: Promise<Map<string, any>> | null = null;
+
 let cachedCompetitionsMap: Map<string, string> | null = null;
 let competitionsCacheTimestamp = 0;
+let inFlightCompetitionsPromise: Promise<Map<string, string>> | null = null;
 
 const CACHE_TTL = 60000; // 60 seconds
 
@@ -20,13 +24,23 @@ async function getTeamsMap(): Promise<Map<string, any>> {
   if (cachedTeamsMap && now - teamsCacheTimestamp < CACHE_TTL) {
     return cachedTeamsMap;
   }
-  const { data } = await supabase
-    .from('teams')
-    .select('id, name, short_name, logo_url, color_code');
-  
-  cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, t]));
-  teamsCacheTimestamp = now;
-  return cachedTeamsMap;
+  if (inFlightTeamsPromise) {
+    return inFlightTeamsPromise;
+  }
+  inFlightTeamsPromise = (async () => {
+    try {
+      const { data } = await supabase
+        .from('teams')
+        .select('id, name, short_name, logo_url, color_code');
+      
+      cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, t]));
+      teamsCacheTimestamp = Date.now();
+      return cachedTeamsMap;
+    } finally {
+      inFlightTeamsPromise = null;
+    }
+  })();
+  return inFlightTeamsPromise;
 }
 
 async function getCompetitionsMap(): Promise<Map<string, string>> {
@@ -34,13 +48,23 @@ async function getCompetitionsMap(): Promise<Map<string, string>> {
   if (cachedCompetitionsMap && now - competitionsCacheTimestamp < CACHE_TTL) {
     return cachedCompetitionsMap;
   }
-  const { data } = await supabase
-    .from('competitions')
-    .select('id, name');
-  
-  cachedCompetitionsMap = new Map<string, string>((data || []).map((c: any) => [c.id, c.name]));
-  competitionsCacheTimestamp = now;
-  return cachedCompetitionsMap;
+  if (inFlightCompetitionsPromise) {
+    return inFlightCompetitionsPromise;
+  }
+  inFlightCompetitionsPromise = (async () => {
+    try {
+      const { data } = await supabase
+        .from('competitions')
+        .select('id, name');
+      
+      cachedCompetitionsMap = new Map<string, string>((data || []).map((c: any) => [c.id, c.name]));
+      competitionsCacheTimestamp = Date.now();
+      return cachedCompetitionsMap;
+    } finally {
+      inFlightCompetitionsPromise = null;
+    }
+  })();
+  return inFlightCompetitionsPromise;
 }
 
 // ============================================================================
@@ -102,7 +126,7 @@ export interface GuestAssistLeader {
 }
 
 // ============================================================================
-// SECTION 1: FIXTURES
+// SECTION 1: FIXTURES & PAST FIXTURES PRELOAD CACHE
 // ============================================================================
 
 export async function getGuestFixtures(params?: {
@@ -110,6 +134,12 @@ export async function getGuestFixtures(params?: {
   date?: string; // YYYY-MM-DD
   matchday?: number;
 }): Promise<GuestFixture[]> {
+  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
+  const cached = guestCache.get<GuestFixture[]>('fixtures', cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+
   try {
     let query = supabase
       .from('fixtures')
@@ -155,7 +185,7 @@ export async function getGuestFixtures(params?: {
       return [];
     }
 
-    return fixtureRows.map((f: any): GuestFixture => {
+    const results = fixtureRows.map((f: any): GuestFixture => {
       const home = teamMap.get(f.home_team_id) || {};
       const away = teamMap.get(f.away_team_id) || {};
       return {
@@ -186,9 +216,132 @@ export async function getGuestFixtures(params?: {
         },
       };
     });
+
+    guestCache.set('fixtures', cacheKey, results, 60 * 1000);
+    return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestFixtures exception:', err);
     return [];
+  }
+}
+
+/**
+ * Preload past fixtures into guestCache in the background once matchday fixtures load.
+ * Organizes them by date key so that navigating to past dates/matchdays is 0ms.
+ */
+export async function preloadPastFixtures(currentDateStr?: string, competitionId?: string): Promise<void> {
+  try {
+    const compKey = competitionId && competitionId !== 'all' ? competitionId : undefined;
+    let query = supabase
+      .from('fixtures')
+      .select(`
+        id,
+        competition_id,
+        home_team_id,
+        away_team_id,
+        matchday,
+        scheduled_time,
+        venue,
+        status,
+        score_home,
+        score_away,
+        home_penalty_score,
+        away_penalty_score
+      `)
+      .order('scheduled_time', { ascending: false });
+
+    if (compKey) {
+      query = query.eq('competition_id', compKey);
+    }
+
+    const [fixtureRes, teamMap, compMap] = await Promise.all([
+      query,
+      getTeamsMap(),
+      getCompetitionsMap()
+    ]);
+
+    const fixtureRows = fixtureRes.data;
+    if (!fixtureRows || fixtureRows.length === 0) return;
+
+    const byDate = new Map<string, Match[]>();
+    const allPastMatches: Match[] = [];
+    const curTime = currentDateStr ? new Date(`${currentDateStr}T00:00:00.000Z`).getTime() : Date.now();
+
+    fixtureRows.forEach((f: any) => {
+      const home = teamMap.get(f.home_team_id) || {};
+      const away = teamMap.get(f.away_team_id) || {};
+      const gf: GuestFixture = {
+        id: f.id,
+        competition_id: f.competition_id || '',
+        competition_name: compMap.get(f.competition_id) || 'Campus Football',
+        matchday: f.matchday || 1,
+        scheduled_time: f.scheduled_time,
+        venue: f.venue || 'Egerton Main Grounds',
+        status: (f.status || 'FT') as any,
+        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
+        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
+        home_penalty_score: f.home_penalty_score ?? null,
+        away_penalty_score: f.away_penalty_score ?? null,
+        home_team: {
+          id: home.id || '',
+          name: home.name || 'Home Team',
+          short_name: home.short_name || null,
+          logo_url: home.logo_url || DEFAULT_LOGO,
+          color_code: home.color_code || '#059669',
+        },
+        away_team: {
+          id: away.id || '',
+          name: away.name || 'Away Team',
+          short_name: away.short_name || null,
+          logo_url: away.logo_url || DEFAULT_LOGO,
+          color_code: away.color_code || '#2563EB',
+        },
+      };
+
+      const match = guestFixtureToMatch(gf);
+      const fixtureTime = f.scheduled_time ? new Date(f.scheduled_time).getTime() : 0;
+      if (fixtureTime < curTime || f.status === 'FT') {
+        allPastMatches.push(match);
+      }
+
+      if (f.scheduled_time) {
+        const d = new Date(f.scheduled_time);
+        if (!isNaN(d.getTime())) {
+          const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          if (!byDate.has(dKey)) byDate.set(dKey, []);
+          byDate.get(dKey)!.push(match);
+        }
+      }
+    });
+
+    const cId = competitionId || 'all';
+    byDate.forEach((matches, dKey) => {
+      guestCache.set('fixtures', `${cId}_${dKey}_pall_sall`, matches, 5 * 60 * 1000);
+      guestCache.set('fixtures', `${cId}_${dKey}_mall`, matches, 5 * 60 * 1000);
+    });
+
+    guestCache.set('fixtures', `past_fixtures_${cId}`, allPastMatches, 5 * 60 * 1000);
+    guestCache.set('fixtures', 'all_all_pall_sall', fixtureRows.map((f: any) => {
+      const home = teamMap.get(f.home_team_id) || {};
+      const away = teamMap.get(f.away_team_id) || {};
+      return guestFixtureToMatch({
+        id: f.id,
+        competition_id: f.competition_id || '',
+        competition_name: compMap.get(f.competition_id) || 'Campus Football',
+        matchday: f.matchday || 1,
+        scheduled_time: f.scheduled_time,
+        venue: f.venue || 'Egerton Main Grounds',
+        status: (f.status || 'FT') as any,
+        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
+        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
+        home_penalty_score: f.home_penalty_score ?? null,
+        away_penalty_score: f.away_penalty_score ?? null,
+        home_team: { id: home.id || '', name: home.name || 'Home Team', short_name: home.short_name || null, logo_url: home.logo_url || DEFAULT_LOGO, color_code: home.color_code || '#059669' },
+        away_team: { id: away.id || '', name: away.name || 'Away Team', short_name: away.short_name || null, logo_url: away.logo_url || DEFAULT_LOGO, color_code: away.color_code || '#2563EB' }
+      });
+    }), 5 * 60 * 1000);
+  } catch (err) {
+    console.warn('[guestSportsService] preloadPastFixtures error:', err);
   }
 }
 
@@ -197,6 +350,12 @@ export async function getGuestFixtures(params?: {
 // ============================================================================
 
 export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
+  const cacheKey = `standings_${competitionId || 'all'}`;
+  const cached = guestCache.get<GuestStanding[]>('standings', cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+
   try {
     let query = supabase
       .from('league_standings')
@@ -219,7 +378,7 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
       return [];
     }
 
-    return rows.map((row: any): GuestStanding => {
+    const results = rows.map((row: any): GuestStanding => {
       const tm = teamMap.get(row.team_id) || {};
       return {
         team_id: row.team_id || '',
@@ -235,6 +394,9 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
         points: Number(row.points) || 0,
       };
     });
+
+    guestCache.set('standings', cacheKey, results, 2 * 60 * 1000);
+    return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestStandings exception:', err);
     return [];
@@ -246,6 +408,12 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
 // ============================================================================
 
 export async function getGuestTopScorers(limitCount = 10, competitionId?: string): Promise<GuestTopScorer[]> {
+  const cacheKey = `scorers_${competitionId || 'all'}_${limitCount}`;
+  const cached = guestCache.get<GuestTopScorer[]>('players', cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+
   try {
     let psQuery = supabase
       .from('player_stats')
@@ -261,7 +429,11 @@ export async function getGuestTopScorers(limitCount = 10, competitionId?: string
     const { data: psRows, error: psErr } = await psQuery;
 
     if (psErr || !psRows || psRows.length === 0) {
-      return await getTopScorersFromEvents(limitCount, competitionId);
+      const fallbackResults = await getTopScorersFromEvents(limitCount, competitionId);
+      if (fallbackResults && fallbackResults.length > 0) {
+        guestCache.set('players', cacheKey, fallbackResults, 2 * 60 * 1000);
+      }
+      return fallbackResults;
     }
 
     const playerIds = psRows.map((r: any) => r.player_id).filter(Boolean);
@@ -307,9 +479,14 @@ export async function getGuestTopScorers(limitCount = 10, competitionId?: string
       }
     });
 
-    return [...aggregated.values()]
+    const results = [...aggregated.values()]
       .sort((a, b) => b.goals - a.goals)
       .slice(0, limitCount);
+
+    if (results.length > 0) {
+      guestCache.set('players', cacheKey, results, 2 * 60 * 1000);
+    }
+    return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestTopScorers exception:', err);
     return [];
@@ -377,6 +554,12 @@ async function getTopScorersFromEvents(limitCount: number, competitionId?: strin
 // ============================================================================
 
 export async function getGuestAssists(limitCount = 10, competitionId?: string): Promise<GuestAssistLeader[]> {
+  const cacheKey = `assists_${competitionId || 'all'}_${limitCount}`;
+  const cached = guestCache.get<GuestAssistLeader[]>('players', cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+
   try {
     let psQuery = supabase
       .from('player_stats')
@@ -426,9 +609,14 @@ export async function getGuestAssists(limitCount = 10, competitionId?: string): 
       }
     });
 
-    return [...aggregated.values()]
+    const results = [...aggregated.values()]
       .sort((a, b) => b.assists - a.assists)
       .slice(0, limitCount);
+
+    if (results.length > 0) {
+      guestCache.set('players', cacheKey, results, 2 * 60 * 1000);
+    }
+    return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestAssists exception:', err);
     return [];
