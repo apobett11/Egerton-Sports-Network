@@ -17,7 +17,7 @@ let cachedCompetitionsMap: Map<string, string> | null = null;
 let competitionsCacheTimestamp = 0;
 let inFlightCompetitionsPromise: Promise<Map<string, string>> | null = null;
 
-const CACHE_TTL = 60000; // 60 seconds
+const CACHE_TTL = 300000; // 5 minutes static master cache TTL
 
 async function getTeamsMap(): Promise<Map<string, any>> {
   const now = Date.now();
@@ -227,11 +227,22 @@ export async function getGuestFixtures(params?: {
 
 /**
  * Preload past fixtures into guestCache in the background once matchday fixtures load.
- * Organizes them by date key so that navigating to past dates/matchdays is 0ms.
+ * Bounded to 90 days back so the query never becomes an unbounded full-table scan.
  */
 export async function preloadPastFixtures(currentDateStr?: string, competitionId?: string): Promise<void> {
   try {
+    // Skip if the master cache is already populated (teams and comps already warm)
+    if (guestCache.get<any[]>('fixtures', 'all_all_pall_sall')) {
+      return;
+    }
+
     const compKey = competitionId && competitionId !== 'all' ? competitionId : undefined;
+
+    // Bound to 90 days back to avoid full-table scan growing every season
+    const boundDate = new Date();
+    boundDate.setDate(boundDate.getDate() - 90);
+    const boundStr = boundDate.toISOString();
+
     let query = supabase
       .from('fixtures')
       .select(`
@@ -248,6 +259,7 @@ export async function preloadPastFixtures(currentDateStr?: string, competitionId
         home_penalty_score,
         away_penalty_score
       `)
+      .gte('scheduled_time', boundStr)
       .order('scheduled_time', { ascending: false });
 
     if (compKey) {
@@ -350,23 +362,23 @@ export async function preloadPastFixtures(currentDateStr?: string, competitionId
 // ============================================================================
 
 export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
-  const cacheKey = `standings_${competitionId || 'all'}`;
+  const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId))
+    ? competitionId
+    : '11111111-1111-1111-1111-111111111111'; // Default strictly to EPL to prevent mixing all 22 teams
+  const cacheKey = `standings_${targetCompId}`;
   const cached = guestCache.get<GuestStanding[]>('standings', cacheKey);
   if (cached && cached.length > 0) {
     return cached;
   }
 
   try {
-    let query = supabase
+    const query = supabase
       .from('league_standings')
       .select('team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
+      .eq('competition_id', targetCompId)
       .order('points', { ascending: false })
       .order('goal_difference', { ascending: false })
       .order('goals_for', { ascending: false });
-
-    if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
-      query = query.eq('competition_id', competitionId);
-    }
 
     const [standingsRes, teamMap] = await Promise.all([
       query,

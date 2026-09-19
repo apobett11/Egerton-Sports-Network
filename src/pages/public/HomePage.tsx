@@ -45,11 +45,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [internalDate, setInternalDate] = useState<Date>(() => resolveGuestMatchdayDate(dbFixtures));
   const activeDate = propSelectedDate || internalDate;
 
-  // Master playday schedule cache to make matchday detection and switching 100% instant
+  // Master playday schedule cache to make matchday detection and switching 100% instant.
+  // Deferred 2s after mount — primary fixture fetch must complete first.
   const [masterPlaydayFixtures, setMasterPlaydayFixtures] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Deferred playday schedule mapping after initial matchday render
     const timer = setTimeout(() => {
       supabase
         .from('fixtures')
@@ -60,7 +60,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             setMasterPlaydayFixtures(data);
           }
         });
-    }, 400);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -296,7 +296,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     if (cached && cached.length > 0) {
       setFixturesState({ data: cached, loading: false, error: null });
     } else {
-      // Instant switch feedback: immediately show fast loader for new date without showing stale previous date
       setFixturesState({ data: [], loading: true, error: null });
     }
 
@@ -304,10 +303,11 @@ export const HomePage: React.FC<HomePageProps> = ({
       .then(res => {
         if (!isMounted) return;
         if (res.success && res.data) {
-          const fetchedMatches = res.data;
-          setFixturesState({ data: fetchedMatches, loading: false, error: null });
-          // Preload and cache past fixtures in background once matchday fixtures are ready
-          preloadPastFixtures(formattedDateStr, compId).catch(() => {});
+          setFixturesState({ data: res.data, loading: false, error: null });
+          // Defer background cache preload 3s — never competes with fixture render
+          setTimeout(() => {
+            preloadPastFixtures(formattedDateStr, compId).catch(() => {});
+          }, 3000);
         } else {
           setFixturesState({ data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
         }
@@ -339,7 +339,8 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   useCacheSubscription('fixtures', loadFixtures);
 
-  // Proactive Matchday Prefetching: Rapidly cache adjacent playdays for 0ms lateral switches
+  // Proactive Matchday Prefetching: Cache adjacent playdays after primary content is fully rendered.
+  // Deferred 3.5s to guarantee fixtures always win the first DB connection slot.
   useEffect(() => {
     const current = new Date(activeDate);
     const prefetchTimer = setTimeout(() => {
@@ -372,7 +373,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           break;
         }
       }
-    }, 150);
+    }, 3500);
 
     return () => clearTimeout(prefetchTimer);
   }, [activeDate, isPlayday, selectedCompetitionId]);

@@ -97,8 +97,18 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
     onSelectMatch(appMatch);
   };
 
-  // Grouping by league
-  const leagues = Array.from(new Set(filteredList.map((m) => m.league || 'Egerton Premier League')));
+  const getLeaguePriority = (leagueName: string): number => {
+    const l = (leagueName || '').toLowerCase();
+    if (l.includes('premier') || l.includes('epl') || l.includes('division 1')) return 1;
+    if (l.includes('champ') || l.includes('division 2')) return 2;
+    if (l.includes('friendly') || l.includes('friendlies') || l.includes('cup')) return 3;
+    return 10;
+  };
+
+  // Grouping by league with deterministic priority
+  const leagues = Array.from(new Set(filteredList.map((m) => m.league || 'Egerton Premier League'))).sort(
+    (a, b) => getLeaguePriority(a) - getLeaguePriority(b)
+  );
 
   const matchesByLeague = leagues.reduce<Record<string, Match[]>>((acc, league) => {
     const list = filteredList

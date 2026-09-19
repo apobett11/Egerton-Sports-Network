@@ -249,7 +249,7 @@ export const AppContent: React.FC = () => {
     }
 
     if (!isDeviceInitializing && deviceId) {
-      // 1. Defer device check-in slightly so matchday fixtures have 100% priority on startup
+      // Defer device check-in to 3s — fixtures are the priority on startup
       const checkInTimer = setTimeout(() => {
         DeviceService.registerOrCheckInDevice(deviceId).then((profile) => {
           if (profile && profile.has_completed_onboarding) {
@@ -257,7 +257,7 @@ export const AppContent: React.FC = () => {
             setShowOnboarding(false);
           }
         });
-      }, 1000);
+      }, 3000);
 
       if (cachedCompleted) {
         return () => clearTimeout(checkInTimer);
@@ -331,7 +331,6 @@ export const AppContent: React.FC = () => {
         const list = await DeviceService.getDeviceAnnouncements(deviceId);
         if (isMounted) {
           setDeviceAnnouncements(list);
-          // Check for unread announcements to show as popup
           const unread = list.find((a) => a.status === 'unread');
           if (unread && !activePopupAnnouncement) {
             setActivePopupAnnouncement(unread);
@@ -342,14 +341,14 @@ export const AppContent: React.FC = () => {
       }
     };
 
-    // Defer announcements load so primary matchday fixtures render without latency
+    // Defer 4s — fixtures and their DB round-trip have absolute priority on startup
     const annTimer = setTimeout(() => {
       if (isMounted) fetchAnnouncements();
-    }, 1200);
+    }, 4000);
 
-    // Event-driven real-time updates using shared channel topic
+    // Merge onto a single shared guest channel — avoids opening a separate WS topic
     const channel = supabase
-      .channel('public_announcements_channel')
+      .channel('esn_guest_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
         if (isMounted) fetchAnnouncements();
       })
@@ -787,13 +786,18 @@ export const AppContent: React.FC = () => {
   // Dynamically computed standings derived strictly when the user opens the table tab
   const currentStandings = useMemo(() => {
     if (activeTab !== 'table') return [];
+    const isChamp = selectedCompetitionId === '22222222-2222-2222-2222-222222222222';
+    const compMatches = liveMatches.filter((m) => {
+      const isMChamp = m.league?.toLowerCase().includes('championship');
+      return isChamp ? isMChamp : !isMChamp;
+    });
     const teamsMap = new Map<string, { id: string; name: string; logo: string }>();
-    liveMatches.forEach((m) => {
+    compMatches.forEach((m) => {
       if (m.teamA?.id) teamsMap.set(m.teamA.id, { id: m.teamA.id, name: m.teamA.name, logo: m.teamA.logo });
       if (m.teamB?.id) teamsMap.set(m.teamB.id, { id: m.teamB.id, name: m.teamB.name, logo: m.teamB.logo });
     });
-    return calculateLeagueStandings(liveMatches, Array.from(teamsMap.values()));
-  }, [liveMatches, activeTab]);
+    return calculateLeagueStandings(compMatches, Array.from(teamsMap.values()));
+  }, [liveMatches, activeTab, selectedCompetitionId]);
 
   const getFilteredMatches = () => {
     if (activeSport !== 'football') return [];

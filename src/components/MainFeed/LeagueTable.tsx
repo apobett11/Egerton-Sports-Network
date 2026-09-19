@@ -127,11 +127,14 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       ApiService.getLeagueTable(EPL_COMP_ID),
       ApiService.getLeagueTable(CHAMP_COMP_ID)
     ]).then(([eplRes, champRes]) => {
-      if (eplRes.data && eplRes.data.length > 0) setEplStandings(eplRes.data);
-      else if (tableData && tableData.length > 0) setEplStandings(tableData);
-      if (champRes.data && champRes.data.length > 0) setChampStandings(champRes.data);
+      if (eplRes.data && eplRes.data.length > 0) {
+        setEplStandings(eplRes.data);
+      }
+      if (champRes.data && champRes.data.length > 0) {
+        setChampStandings(champRes.data);
+      }
     }).catch(() => {});
-  }, [tableData]);
+  }, []);
 
   // 2. On-Demand / Lazy Scorers Fetcher
   const loadScorers = useCallback(() => {
@@ -341,7 +344,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     refTarget: React.RefObject<HTMLDivElement | null>,
     isChamp: boolean = false
   ) => {
-    const list = data.length > 0 ? data : tableData;
+    const list = data || [];
     return (
       <div ref={refTarget} className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         {/* Table Header Banner */}
@@ -450,7 +453,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     data: LeagueTableEntry[],
     refTarget: React.RefObject<HTMLDivElement | null>
   ) => {
-    const list = data.length > 0 ? data : tableData;
+    const list = data || [];
     return (
       <div ref={refTarget} className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">

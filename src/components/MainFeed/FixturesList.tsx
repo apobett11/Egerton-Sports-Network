@@ -37,8 +37,22 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
     const isFavorite = (matchId: string) => favorites.includes(matchId);
 
-    // Grouping by league
-    const leagues = Array.from(new Set(matches.map((m) => m.league)));
+    const getLeaguePriority = (leagueName: string): number => {
+        const l = (leagueName || '').toLowerCase();
+        if (l.includes('premier') || l.includes('epl') || l.includes('division 1')) return 1;
+        if (l.includes('champ') || l.includes('division 2')) return 2;
+        if (l.includes('friendly') || l.includes('friendlies') || l.includes('cup')) return 3;
+        return 10;
+    };
+
+    // Grouping by league with deterministic priority (EPL -> Championship -> Friendlies)
+    const leagues = Array.from(new Set(matches.map((m) => m.league))).sort((a, b) => {
+        const isPinnedA = !!pinnedLeagues[a];
+        const isPinnedB = !!pinnedLeagues[b];
+        if (isPinnedA && !isPinnedB) return -1;
+        if (!isPinnedA && isPinnedB) return 1;
+        return getLeaguePriority(a) - getLeaguePriority(b);
+    });
 
     const matchesByLeague = leagues.reduce<Record<string, Match[]>>((acc, league) => {
         const list = matches
