@@ -168,6 +168,14 @@ export interface Match {
   venue: string;
   referee: string;
   refereeId?: string;
+  centerReferee?: string;
+  centerRefereeId?: string;
+  linesmanTeamA?: { id: string; name: string };
+  linesmanTeamB?: { id: string; name: string };
+  linesmanTeamAName?: string;
+  linesmanTeamBName?: string;
+  linesmanTeamAId?: string;
+  linesmanTeamBId?: string;
   assistantReferee1?: string;
   assistantReferee1Id?: string;
   assistantReferee2?: string;

@@ -129,12 +129,12 @@ export const LOCAL_SEED_CHAMP_TEAMS: any[] = [
 ];
 
 export const LOCAL_SEED_REFEREES: any[] = [
-  { id: '30000000-0000-4000-9000-000000000001', name: 'Ref Official Alpha', phone: '0711000001', status: 'Active', badge_level: 'FIFA Accredited', tier: 'EPL_Exclusive' },
-  { id: '30000000-0000-4000-9000-000000000002', name: 'Ref Official Beta', phone: '0711000002', status: 'Active', badge_level: 'FKF National Level 2', tier: 'Mixed' },
-  { id: '30000000-0000-4000-9000-000000000003', name: 'Ref Official Gamma', phone: '0711000003', status: 'Active', badge_level: 'FKF National Level 2', tier: 'Mixed' },
-  { id: '30000000-0000-4000-9000-000000000004', name: 'Ref Official Delta', phone: '0711000004', status: 'Active', badge_level: 'FKF Regional Level 1', tier: 'Championship' },
-  { id: '30000000-0000-4000-9000-000000000005', name: 'Ref Official Epsilon', phone: '0711000005', status: 'Active', badge_level: 'FKF Regional Level 1', tier: 'Mixed' },
-  { id: '30000000-0000-4000-9000-000000000006', name: 'Ref Official Zeta', phone: '0711000006', status: 'Active', badge_level: 'FKF Campus Level 3', tier: 'Championship' },
+  { id: '30000000-0000-4000-9000-000000000001', name: 'Jark', phone: '0711000001', status: 'Active', badge_level: 'FIFA Accredited', tier: 'EPL_Exclusive' },
+  { id: '30000000-0000-4000-9000-000000000002', name: 'Lamoh', phone: '0711000002', status: 'Active', badge_level: 'FKF National Level 2', tier: 'Mixed' },
+  { id: '30000000-0000-4000-9000-000000000003', name: 'Chalo', phone: '0711000003', status: 'Active', badge_level: 'FKF National Level 2', tier: 'Mixed' },
+  { id: '30000000-0000-4000-9000-000000000004', name: 'Daudi', phone: '0711000004', status: 'Active', badge_level: 'FKF Regional Level 1', tier: 'Championship' },
+  { id: '30000000-0000-4000-9000-000000000005', name: 'Ericko', phone: '0711000005', status: 'Active', badge_level: 'FKF Regional Level 1', tier: 'Mixed' },
+  { id: '30000000-0000-4000-9000-000000000006', name: 'Jatugo', phone: '0711000006', status: 'Active', badge_level: 'FKF Campus Level 3', tier: 'Championship' },
   { id: '30000000-0000-4000-9000-000000000007', name: 'Ref Official Eta', phone: '0711000007', status: 'Active', badge_level: 'FIFA Accredited', tier: 'EPL_Exclusive' },
   { id: '30000000-0000-4000-9000-000000000008', name: 'Ref Official Theta', phone: '0711000008', status: 'Active', badge_level: 'FKF National Level 2', tier: 'Mixed' },
 ];

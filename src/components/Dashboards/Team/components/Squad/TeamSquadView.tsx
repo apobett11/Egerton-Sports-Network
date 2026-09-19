@@ -215,7 +215,15 @@ interface TeamSquadViewProps {
   activeFixtureId?: string;
   onNavigateBack?: () => void;
   onShowToast?: (msg: string) => void;
-  onSaveMatchLineup?: (fixtureId?: string, startingXI?: any[], subs?: any[], formation?: string, capId?: string) => Promise<any>;
+  onSaveMatchLineup?: (
+    fixtureId?: string,
+    startingXI?: any[],
+    subs?: any[],
+    formation?: string,
+    capId?: string,
+    inMatchRoles?: any,
+    pitchSlots?: (string | null)[]
+  ) => Promise<any>;
 }
 
 type WizardStep = 1 | 2 | 3 | 4 | 5;
@@ -592,15 +600,25 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
     const subPlayers = substituteIds.map((id) => playerIndex.get(id)).filter(Boolean);
 
     try {
+      // 1. Always save team tactics, in-match roles, pitch slots, and temporary match squad
+      await saveTeamTacticsAndSquad(teamId, {
+        startingXI: filledStarters,
+        substitutes: subPlayers,
+        formation,
+        tacticsConfig: { roles, pitchSlots },
+      });
+
+      // 2. If an active match / match lineup callback is available, commit match lineup with in-match roles
       if (onSaveMatchLineup) {
-        await onSaveMatchLineup(activeFixtureId, filledStarters, subPlayers, formation, roles.captainId);
-      } else {
-        await saveTeamTacticsAndSquad(teamId, {
-          startingXI: filledStarters,
-          substitutes: subPlayers,
+        await onSaveMatchLineup(
+          activeFixtureId,
+          filledStarters,
+          subPlayers,
           formation,
-          tacticsConfig: { roles, pitchSlots },
-        });
+          roles.captainId,
+          roles,
+          pitchSlots
+        );
       }
       setShowCommitModal(false);
       try {

@@ -149,6 +149,33 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                         </h2>
                     </div>
                 </div>
+
+                {/* 3. APPOINTED MATCH OFFICIALS STRIP (CR & LINES) */}
+                {(match.referee || match.centerReferee || match.linesmanTeamAName || match.linesmanTeamBName) && (
+                    <div className="mt-5 pt-3.5 border-t border-[#16283d] w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs">
+                        {(match.referee || match.centerReferee) && (
+                            <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-black tracking-wider uppercase border border-amber-500/30">
+                                    CR
+                                </span>
+                                <span className="text-slate-100 font-bold text-[11px] sm:text-xs">
+                                    {match.referee || match.centerReferee}
+                                </span>
+                            </div>
+                        )}
+
+                        {(match.linesmanTeamAName || match.linesmanTeamBName) && (
+                            <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
+                                <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[10px] font-black tracking-wider uppercase border border-sky-500/30">
+                                    LINES
+                                </span>
+                                <span className="text-slate-200 font-semibold text-[11px] sm:text-xs">
+                                    {[match.linesmanTeamAName, match.linesmanTeamBName].filter(Boolean).join(', ')}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

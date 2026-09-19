@@ -164,27 +164,57 @@ export const ApiService = {
       const home = unwrap(f.team_home);
       const away = unwrap(f.team_away);
 
-      // Cleanly resolve official profiles in batch without brittle schema relations
+      // Query matchday_schedules for officiating & linesman allocations
+      const { data: mSchedule } = await supabase
+        .from('matchday_schedules')
+        .select('center_referee_id, linesman_team_a_id, linesman_team_b_id')
+        .or(`fixture_id.eq.${fixtureId},id.eq.${fixtureId}`)
+        .maybeSingle();
+
+      const activeRefId = (f as any).referee_id || mSchedule?.center_referee_id;
+      const linesmanTeamAId = (f as any).linesman_team_a_id || mSchedule?.linesman_team_a_id;
+      const linesmanTeamBId = (f as any).linesman_team_b_id || mSchedule?.linesman_team_b_id;
+
+      // Cleanly resolve official profiles & referees in batch
       const officialIds = [
-        f.referee_id,
+        activeRefId,
         f.assistant_referee_1_id,
         f.assistant_referee_2_id,
         f.fourth_official_id
       ].filter((id): id is string => Boolean(id && typeof id === 'string'));
 
       const officialProfilesMap = new Map<string, { first_name: string; last_name: string }>();
+      const refereesTableMap = new Map<string, { name: string }>();
+
       if (officialIds.length > 0) {
-        const { data: profs } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .in('id', officialIds);
-        (profs || []).forEach((p: any) => officialProfilesMap.set(p.id, p));
+        const [profsRes, refsRes] = await Promise.all([
+          supabase.from('profiles').select('id, first_name, last_name').in('id', officialIds),
+          supabase.from('referees').select('id, name').in('id', officialIds)
+        ]);
+        (profsRes.data || []).forEach((p: any) => officialProfilesMap.set(p.id, p));
+        (refsRes.data || []).forEach((r: any) => refereesTableMap.set(r.id, r));
       }
 
-      const refProf = f.referee_id ? officialProfilesMap.get(f.referee_id) : null;
+      const refProf = activeRefId ? officialProfilesMap.get(activeRefId) : null;
+      const refDb = activeRefId ? refereesTableMap.get(activeRefId) : null;
       const ar1Prof = f.assistant_referee_1_id ? officialProfilesMap.get(f.assistant_referee_1_id) : null;
       const ar2Prof = f.assistant_referee_2_id ? officialProfilesMap.get(f.assistant_referee_2_id) : null;
       const foProf = f.fourth_official_id ? officialProfilesMap.get(f.fourth_official_id) : null;
+
+      // Resolve linesmanning teams names
+      let linesmanTeamAName = '';
+      let linesmanTeamBName = '';
+      const linesTeamIds = [linesmanTeamAId, linesmanTeamBId].filter(Boolean);
+      if (linesTeamIds.length > 0) {
+        const { data: lineTeams } = await supabase
+          .from('teams')
+          .select('id, name')
+          .in('id', linesTeamIds);
+        (lineTeams || []).forEach((t: any) => {
+          if (t.id === linesmanTeamAId) linesmanTeamAName = t.name;
+          if (t.id === linesmanTeamBId) linesmanTeamBName = t.name;
+        });
+      }
 
       // Helper to normalize player positions
       const normalizePos = (pos?: string, defaultPos: 'GK' | 'DEF' | 'MID' | 'FWD' = 'MID'): 'GK' | 'DEF' | 'MID' | 'FWD' => {
@@ -244,7 +274,7 @@ export const ApiService = {
       // Fetch Stored Match Lineups
       const { data: lineupsData } = await supabase
         .from('match_lineups')
-        .select('id, fixture_id, team_id, formation, starting_xi, substitutes, captain_notes')
+        .select('id, fixture_id, team_id, formation, starting_xi, substitutes, captain_notes, captain_id, vice_captain_id')
         .eq('fixture_id', fixtureId);
 
       // Fetch all registered players for both teams from the database
@@ -272,23 +302,36 @@ export const ApiService = {
         return FORMATION_CONFIGS[key]?.slots || FORMATION_CONFIGS['4-3-3'].slots;
       };
 
-      // Coach-selected in-match roles for each team
-      const coachRolesA = home?.tactics_config?.roles || 
-                          home?.tactics_config?.inMatchRoles || 
-                          home?.temporary_match_squad?.tacticsConfig?.roles || 
-                          home?.temporary_match_squad?.roles || 
-                          {};
-      const coachRolesB = away?.tactics_config?.roles || 
-                          away?.tactics_config?.inMatchRoles || 
-                          away?.temporary_match_squad?.tacticsConfig?.roles || 
-                          away?.temporary_match_squad?.roles || 
-                          {};
+      const lineupHome = (lineupsData || []).find((l: any) => l.team_id === home?.id);
+      const lineupAway = (lineupsData || []).find((l: any) => l.team_id === away?.id);
+
+      // Coach-selected in-match roles for each team (merging submitted match lineup captain)
+      const coachRolesA = {
+        ...(home?.tactics_config?.roles || 
+            home?.tactics_config?.inMatchRoles || 
+            home?.temporary_match_squad?.tacticsConfig?.roles || 
+            home?.temporary_match_squad?.roles || 
+            {}),
+        ...(lineupHome?.captain_id ? { captainId: lineupHome.captain_id } : {})
+      };
+      const coachRolesB = {
+        ...(away?.tactics_config?.roles || 
+            away?.tactics_config?.inMatchRoles || 
+            away?.temporary_match_squad?.tacticsConfig?.roles || 
+            away?.temporary_match_squad?.roles || 
+            {}),
+        ...(lineupAway?.captain_id ? { captainId: lineupAway.captain_id } : {})
+      };
 
       const rawSquadA = squadARes.data || [];
       const rawSquadB = squadBRes.data || [];
 
-      // Captain must be strictly ONE player per team: coach in-match roles > team captain_id > profile role
-      const resolveDesignatedCaptainId = (coachRoles: any, teamObj: any, rawSquad: any[]): string | null => {
+      // Captain must be strictly ONE player per team: coach in-match roles > match_lineups captain > team captain_id > profile role
+      const resolveDesignatedCaptainId = (coachRoles: any, teamObj: any, rawSquad: any[], lineupObj?: any): string | null => {
+        if (lineupObj?.captain_id) {
+          const match = rawSquad.find((p: any) => p.id === lineupObj.captain_id || p.profile_id === lineupObj.captain_id);
+          if (match) return match.id;
+        }
         if (coachRoles?.captainId) {
           const match = rawSquad.find((p: any) => p.id === coachRoles.captainId || p.profile_id === coachRoles.captainId);
           if (match) return match.id;
@@ -305,8 +348,8 @@ export const ApiService = {
         return null;
       };
 
-      const designatedCaptainIdA = resolveDesignatedCaptainId(coachRolesA, home, rawSquadA);
-      const designatedCaptainIdB = resolveDesignatedCaptainId(coachRolesB, away, rawSquadB);
+      const designatedCaptainIdA = resolveDesignatedCaptainId(coachRolesA, home, rawSquadA, lineupHome);
+      const designatedCaptainIdB = resolveDesignatedCaptainId(coachRolesB, away, rawSquadB, lineupAway);
 
       const formatPlayerRecord = (
         p: any,
@@ -368,7 +411,6 @@ export const ApiService = {
       let formationA = home?.tactics_config?.formation || '4-3-3';
       let captainNotesA = '';
 
-      const lineupHome = (lineupsData || []).find((l: any) => l.team_id === home?.id);
       if (lineupHome && Array.isArray(lineupHome.starting_xi) && lineupHome.starting_xi.length > 0) {
         formationA = lineupHome.formation || formationA;
         captainNotesA = lineupHome.captain_notes || '';
@@ -413,7 +455,10 @@ export const ApiService = {
         // 1. Extract Coach's Selected First 11
         if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
           starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
-          formationA = tempSquad.formation || formationA;
+          formationA = tempSquad.formation || home?.tactics_config?.formation || formationA;
+        } else if (home?.tactics_config?.pitchSlots && Array.isArray(home.tactics_config.pitchSlots) && home.tactics_config.pitchSlots.filter(Boolean).length === 11) {
+          starterIds = home.tactics_config.pitchSlots.filter(Boolean);
+          formationA = home.tactics_config.formation || formationA;
         }
         if (starterIds.length === 0 && startingXiStr && typeof startingXiStr === 'string') {
           starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
@@ -517,7 +562,6 @@ export const ApiService = {
       let formationB = away?.tactics_config?.formation || '4-3-3';
       let captainNotesB = '';
 
-      const lineupAway = (lineupsData || []).find((l: any) => l.team_id === away?.id);
       if (lineupAway && Array.isArray(lineupAway.starting_xi) && lineupAway.starting_xi.length > 0) {
         formationB = lineupAway.formation || formationB;
         captainNotesB = lineupAway.captain_notes || '';
@@ -562,7 +606,10 @@ export const ApiService = {
         // 1. Extract Coach's Selected First 11
         if (tempSquad && Array.isArray(tempSquad.startingXI) && tempSquad.startingXI.length > 0) {
           starterIds = tempSquad.startingXI.map((p: any) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
-          formationB = tempSquad.formation || formationB;
+          formationB = tempSquad.formation || away?.tactics_config?.formation || formationB;
+        } else if (away?.tactics_config?.pitchSlots && Array.isArray(away.tactics_config.pitchSlots) && away.tactics_config.pitchSlots.filter(Boolean).length === 11) {
+          starterIds = away.tactics_config.pitchSlots.filter(Boolean);
+          formationB = away.tactics_config.formation || formationB;
         }
         if (starterIds.length === 0 && startingXiStr && typeof startingXiStr === 'string') {
           starterIds = startingXiStr.split(',').map((id: string) => id.trim()).filter(Boolean);
@@ -678,7 +725,7 @@ export const ApiService = {
         { label: 'Substitutions', teamAValue: subsA, teamBValue: subsB }
       ];
 
-      const refName = refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Official Referee';
+      const refName = refDb?.name || (refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Official Referee');
       const ar1Name = ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}`.trim() : undefined;
       const ar2Name = ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}`.trim() : undefined;
       const foName = foProf ? `${foProf.first_name} ${foProf.last_name}`.trim() : undefined;
@@ -753,7 +800,15 @@ export const ApiService = {
         },
         venue: f.venue || '',
         referee: refName,
-        refereeId: f.referee_id,
+        refereeId: activeRefId || f.referee_id,
+        centerReferee: refName,
+        centerRefereeId: activeRefId || f.referee_id,
+        linesmanTeamA: linesmanTeamAId ? { id: linesmanTeamAId, name: linesmanTeamAName } : undefined,
+        linesmanTeamB: linesmanTeamBId ? { id: linesmanTeamBId, name: linesmanTeamBName } : undefined,
+        linesmanTeamAName: linesmanTeamAName || undefined,
+        linesmanTeamBName: linesmanTeamBName || undefined,
+        linesmanTeamAId: linesmanTeamAId || undefined,
+        linesmanTeamBId: linesmanTeamBId || undefined,
         assistantReferee1: ar1Name,
         assistantReferee1Id: f.assistant_referee_1_id,
         assistantReferee2: ar2Name,

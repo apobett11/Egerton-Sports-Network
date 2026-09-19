@@ -22,6 +22,7 @@ import {
   updatePlayerStatusInDb,
   savePracticeScheduleToDb,
   saveMatchLineup,
+  saveTeamTacticsAndSquad,
   deletePlayerFromTeam,
   fetchCoachCaptainProfiles
 } from '../lib/supabaseClient';
@@ -516,11 +517,14 @@ export const useTeamDashboard = () => {
     startingXIPlayers?: Player[],
     subPlayers?: Player[],
     formationStr?: string,
-    capId?: string
+    capId?: string,
+    inMatchRoles?: any,
+    pitchSlotsList?: (string | null)[]
   ) => {
     const activeStarting = startingXIPlayers || startingXI.map((idx) => roster[idx]).filter(Boolean);
     const activeSubs = subPlayers || roster.filter((_, idx) => !startingXI.includes(idx));
     const targetFormation = formationStr || formation;
+    const finalCapId = capId || inMatchRoles?.captainId || roleAssignments.captainId;
 
     const res = await saveMatchLineup({
       fixtureId,
@@ -528,11 +532,21 @@ export const useTeamDashboard = () => {
       startingXi: activeStarting,
       substitutes: activeSubs,
       formation: targetFormation,
-      captainId: capId || roleAssignments.captainId,
+      captainId: finalCapId,
+    });
+
+    await saveTeamTacticsAndSquad(teamId, {
+      startingXI: activeStarting,
+      substitutes: activeSubs,
+      formation: targetFormation,
+      tacticsConfig: {
+        roles: inMatchRoles || roleAssignments,
+        pitchSlots: pitchSlotsList || [],
+      },
     });
 
     if (res) {
-      showToast('Official Matchday Lineup committed to database for Referee!');
+      showToast('Official Matchday Lineup committed to database for Referee & Match Details!');
     } else {
       showToast('Lineup saved to club roster strings.');
     }

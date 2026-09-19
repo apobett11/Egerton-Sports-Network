@@ -53,21 +53,40 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                                 APPOINTED MATCH OFFICIALS CREW
                             </span>
                             <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">
-                                Lead Referee: {match.referee || 'Accredited League Referee'}
+                                Centre Referee (CR): {match.referee || match.centerReferee || 'Accredited League Referee'}
                             </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                                <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
-                                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Assistant Referee 1</span>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
-                                        {match.assistantReferee1 || 'Official Assistant 1'}
-                                    </span>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
-                                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Assistant Referee 2</span>
-                                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
-                                        {match.assistantReferee2 || 'Official Assistant 2'}
-                                    </span>
-                                </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                                {(match.linesmanTeamAName || match.linesmanTeamBName) ? (
+                                    <>
+                                        <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
+                                            <span className="text-[10px] uppercase font-bold text-sky-500 dark:text-sky-400 block">Linesman Team 1</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
+                                                {match.linesmanTeamAName || 'Assigned Club'}
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
+                                            <span className="text-[10px] uppercase font-bold text-sky-500 dark:text-sky-400 block">Linesman Team 2</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
+                                                {match.linesmanTeamBName || 'Assigned Club'}
+                                            </span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Assistant Referee 1</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
+                                                {match.assistantReferee1 || 'Official Assistant 1'}
+                                            </span>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Assistant Referee 2</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
+                                                {match.assistantReferee2 || 'Official Assistant 2'}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
                                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Fourth Official</span>
                                     <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">

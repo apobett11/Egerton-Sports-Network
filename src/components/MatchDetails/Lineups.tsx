@@ -40,9 +40,10 @@ const getTeamInMatchRoles = (
         leftFreeKickTakerId?: string;
         viceCaptainId?: string;
     },
-    designatedCaptainId?: string
+    designatedCaptainId?: string,
+    reserves?: Player[]
 ) => {
-    const allPlayers = [...starters, ...subs];
+    const allPlayers = [...starters, ...subs, ...(reserves || [])];
     const findPlayer = (id?: string) => id ? allPlayers.find(p => p.id === id || p.profile_id === id) || null : null;
 
     // 1. Captain (Coach designated, or profile captain, or starter with isCaptain)
@@ -154,12 +155,12 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
     const reservesB = rawB.filter(p => !startersIdSetB.has(p.id) && !subsIdSetB.has(p.id));
 
     // In-Match Roles for each team selected by the coach
-    const rolesA = getTeamInMatchRoles(startersA, subsA, match.lineups?.rolesA, teamA.captain_id);
-    const rolesB = getTeamInMatchRoles(startersB, subsB, match.lineups?.rolesB, teamB.captain_id);
+    const rolesA = getTeamInMatchRoles(startersA, subsA, match.lineups?.rolesA, teamA.captain_id, reservesA);
+    const rolesB = getTeamInMatchRoles(startersB, subsB, match.lineups?.rolesB, teamB.captain_id, reservesB);
 
     // Strictly ONE designated captain per team, selected from in-match roles
-    const designatedCapIdA = rolesA[0]?.player?.id || startersA.find(p => p.isCaptain)?.id || startersA[0]?.id;
-    const designatedCapIdB = rolesB[0]?.player?.id || startersB.find(p => p.isCaptain)?.id || startersB[0]?.id;
+    const designatedCapIdA = rolesA.find(r => r.id === 'captain')?.player?.id || match.lineups?.rolesA?.captainId || startersA.find(p => p.isCaptain)?.id || startersA[0]?.id;
+    const designatedCapIdB = rolesB.find(r => r.id === 'captain')?.player?.id || match.lineups?.rolesB?.captainId || startersB.find(p => p.isCaptain)?.id || startersB[0]?.id;
 
     // Tactical formation configurations from coach
     const formationKeyA = cleanFormationKey(lineups?.formationA);

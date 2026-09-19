@@ -679,7 +679,13 @@
     "home_team_name": "Blue Blazers",
     "home_team_id": "10000000-0000-4000-8000-000000000005",
     "away_team_name": "Giants FC",
-    "away_team_id": "10000000-0000-4000-8000-000000000008"
+    "away_team_id": "10000000-0000-4000-8000-000000000008",
+    "center_referee_name": "Jark",
+    "center_referee_id": "30000000-0000-4000-9000-000000000001",
+    "linesman_team_a_name": "Legends Fc",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000007",
+    "linesman_team_b_name": "Wazito Fc",
+    "linesman_team_b_id": "10000000-0000-4000-8000-00000000000a"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-000000000024",
@@ -701,7 +707,13 @@
     "home_team_name": "Five Stars fc",
     "home_team_id": "10000000-0000-4000-8000-000000000002",
     "away_team_name": "BCOM FC",
-    "away_team_id": "10000000-0000-4000-8000-000000000004"
+    "away_team_id": "10000000-0000-4000-8000-000000000004",
+    "center_referee_name": "Lamoh",
+    "center_referee_id": "30000000-0000-4000-9000-000000000002",
+    "linesman_team_a_name": "Super eagles",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000001",
+    "linesman_team_b_name": "Celtics FC",
+    "linesman_team_b_id": "10000000-0000-4000-8000-00000000000b"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-000000000020",
@@ -723,7 +735,13 @@
     "home_team_name": "Med fc",
     "home_team_id": "10000000-0000-4000-8000-000000000009",
     "away_team_name": "Rising stars",
-    "away_team_id": "10000000-0000-4000-8000-00000000000c"
+    "away_team_id": "10000000-0000-4000-8000-00000000000c",
+    "center_referee_name": "Chalo",
+    "center_referee_id": "30000000-0000-4000-9000-000000000003",
+    "linesman_team_a_name": "Santos fc",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000003",
+    "linesman_team_b_name": "Mighty Blacks",
+    "linesman_team_b_id": "10000000-0000-4000-8000-000000000006"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-000000000021",
@@ -745,7 +763,13 @@
     "home_team_name": "Legends Fc",
     "home_team_id": "10000000-0000-4000-8000-000000000007",
     "away_team_name": "Wazito Fc",
-    "away_team_id": "10000000-0000-4000-8000-00000000000a"
+    "away_team_id": "10000000-0000-4000-8000-00000000000a",
+    "center_referee_name": "Daudi",
+    "center_referee_id": "30000000-0000-4000-9000-000000000004",
+    "linesman_team_a_name": "Blue Blazers",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000005",
+    "linesman_team_b_name": "Giants FC",
+    "linesman_team_b_id": "10000000-0000-4000-8000-000000000008"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-00000000001f",
@@ -767,7 +791,13 @@
     "home_team_name": "Super eagles",
     "home_team_id": "10000000-0000-4000-8000-000000000001",
     "away_team_name": "Celtics FC",
-    "away_team_id": "10000000-0000-4000-8000-00000000000b"
+    "away_team_id": "10000000-0000-4000-8000-00000000000b",
+    "center_referee_name": "Ericko",
+    "center_referee_id": "30000000-0000-4000-9000-000000000005",
+    "linesman_team_a_name": "Five Stars fc",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000002",
+    "linesman_team_b_name": "BCOM FC",
+    "linesman_team_b_id": "10000000-0000-4000-8000-000000000004"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-000000000023",
@@ -789,7 +819,13 @@
     "home_team_name": "Santos fc",
     "home_team_id": "10000000-0000-4000-8000-000000000003",
     "away_team_name": "Mighty Blacks",
-    "away_team_id": "10000000-0000-4000-8000-000000000006"
+    "away_team_id": "10000000-0000-4000-8000-000000000006",
+    "center_referee_name": "Jatugo",
+    "center_referee_id": "30000000-0000-4000-9000-000000000006",
+    "linesman_team_a_name": "Med fc",
+    "linesman_team_a_id": "10000000-0000-4000-8000-000000000009",
+    "linesman_team_b_name": "Rising stars",
+    "linesman_team_b_id": "10000000-0000-4000-8000-00000000000c"
   },
   {
     "fixture_id": "f0000000-0000-4000-8000-000000000028",
