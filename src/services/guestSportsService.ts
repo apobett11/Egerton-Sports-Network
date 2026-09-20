@@ -17,6 +17,12 @@ let cachedCompetitionsMap: Map<string, string> | null = null;
 let competitionsCacheTimestamp = 0;
 let inFlightCompetitionsPromise: Promise<Map<string, string>> | null = null;
 
+// In-flight query deduplication maps (prevents duplicate parallel DB hits)
+const inFlightFixturesPromises = new Map<string, Promise<GuestFixture[]>>();
+const inFlightStandingsPromises = new Map<string, Promise<GuestStanding[]>>();
+const inFlightScorersPromises = new Map<string, Promise<GuestTopScorer[]>>();
+const inFlightAssistsPromises = new Map<string, Promise<GuestAssistLeader[]>>();
+
 const CACHE_TTL = 300000; // 5 minutes static master cache TTL
 
 async function getTeamsMap(): Promise<Map<string, any>> {
@@ -136,62 +142,71 @@ async function fetchGuestFixturesNetwork(params?: {
 }): Promise<GuestFixture[]> {
   const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
 
-  try {
-    // Use the server-side RPC that JOINs teams + competitions inline.
-    // This eliminates the race condition where teamMap.get() returned {} because
-    // the teams query hadn't resolved yet, causing "Home Team"/"Away Team" fallbacks.
-    const compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
-      ? params.competitionId
-      : null;
-    const dateVal = (params?.date && params.date !== 'all')
-      ? (/^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0])
-      : null;
-    const matchdayVal = params?.matchday || null;
-
-    const { data: rows, error } = await supabase.rpc('get_guest_fixtures', {
-      p_competition_id: compId,
-      p_date: dateVal,
-      p_matchday: matchdayVal,
-    });
-
-    if (error || !rows || rows.length === 0) {
-      return await _getGuestFixturesFallback(params);
-    }
-
-    const results = (rows as any[]).map((r: any): GuestFixture => ({
-      id: r.id,
-      competition_id: r.competition_id || '',
-      competition_name: r.competition_name || 'Campus Football',
-      matchday: r.matchday || 1,
-      scheduled_time: r.scheduled_time,
-      venue: r.venue || 'Egerton Main Grounds',
-      status: (r.status || 'UPCOMING') as any,
-      score_home: typeof r.score_home === 'number' ? r.score_home : 0,
-      score_away: typeof r.score_away === 'number' ? r.score_away : 0,
-      home_penalty_score: r.home_penalty_score ?? null,
-      away_penalty_score: r.away_penalty_score ?? null,
-      home_team: {
-        id: r.home_team_id || '',
-        name: r.home_team_name || '',
-        short_name: r.home_short_name || null,
-        logo_url: r.home_logo_url || DEFAULT_LOGO,
-        color_code: r.home_color_code || '#059669',
-      },
-      away_team: {
-        id: r.away_team_id || '',
-        name: r.away_team_name || '',
-        short_name: r.away_short_name || null,
-        logo_url: r.away_logo_url || DEFAULT_LOGO,
-        color_code: r.away_color_code || '#2563EB',
-      },
-    }));
-
-    guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
-    return results;
-  } catch (err: any) {
-    console.error('[guestSportsService] getGuestFixtures exception:', err);
-    return _getGuestFixturesFallback(params);
+  if (inFlightFixturesPromises.has(cacheKey)) {
+    return inFlightFixturesPromises.get(cacheKey)!;
   }
+
+  const promise = (async () => {
+    try {
+      // Use the server-side RPC that JOINs teams + competitions inline.
+      const compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
+        ? params.competitionId
+        : null;
+      const dateVal = (params?.date && params.date !== 'all')
+        ? (/^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0])
+        : null;
+      const matchdayVal = params?.matchday || null;
+
+      const { data: rows, error } = await supabase.rpc('get_guest_fixtures', {
+        p_competition_id: compId,
+        p_date: dateVal,
+        p_matchday: matchdayVal,
+      });
+
+      if (error || !rows || rows.length === 0) {
+        return await _getGuestFixturesFallback(params);
+      }
+
+      const results = (rows as any[]).map((r: any): GuestFixture => ({
+        id: r.id,
+        competition_id: r.competition_id || '',
+        competition_name: r.competition_name || 'Campus Football',
+        matchday: r.matchday || 1,
+        scheduled_time: r.scheduled_time,
+        venue: r.venue || 'Egerton Main Grounds',
+        status: (r.status || 'UPCOMING') as any,
+        score_home: typeof r.score_home === 'number' ? r.score_home : 0,
+        score_away: typeof r.score_away === 'number' ? r.score_away : 0,
+        home_penalty_score: r.home_penalty_score ?? null,
+        away_penalty_score: r.away_penalty_score ?? null,
+        home_team: {
+          id: r.home_team_id || '',
+          name: r.home_team_name || '',
+          short_name: r.home_short_name || null,
+          logo_url: r.home_logo_url || DEFAULT_LOGO,
+          color_code: r.home_color_code || '#059669',
+        },
+        away_team: {
+          id: r.away_team_id || '',
+          name: r.away_team_name || '',
+          short_name: r.away_short_name || null,
+          logo_url: r.away_logo_url || DEFAULT_LOGO,
+          color_code: r.away_color_code || '#2563EB',
+        },
+      }));
+
+      guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
+      return results;
+    } catch (err: any) {
+      console.error('[guestSportsService] getGuestFixtures exception:', err);
+      return _getGuestFixturesFallback(params);
+    } finally {
+      inFlightFixturesPromises.delete(cacheKey);
+    }
+  })();
+
+  inFlightFixturesPromises.set(cacheKey, promise);
+  return promise;
 }
 
 const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v1';
@@ -429,53 +444,64 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
     : '11111111-1111-1111-1111-111111111111'; // Default strictly to EPL to prevent mixing all 22 teams
   const cacheKey = `standings_${targetCompId}`;
 
-  try {
-    const query = supabase
-      .from('league_standings')
-      .select('team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
-      .eq('competition_id', targetCompId)
-      .order('points', { ascending: false })
-      .order('goal_difference', { ascending: false })
-      .order('goals_for', { ascending: false });
-
-    const [standingsRes, teamMap] = await Promise.all([
-      query,
-      getTeamsMap()
-    ]);
-
-    const rows = standingsRes.data;
-    if (standingsRes.error || !rows || rows.length === 0) {
-      return [];
-    }
-
-    const results = rows.map((row: any): GuestStanding => {
-      const tm = teamMap.get(row.team_id) || {};
-      const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
-        ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
-      const rawPoints = Number(row.points) || 0;
-      const points = isLegends ? Math.max(0, rawPoints - 2) : rawPoints;
-
-      return {
-        team_id: row.team_id || '',
-        team_name: tm.name || 'Campus Team',
-        logo_url: tm.logo_url || DEFAULT_LOGO,
-        played: Number(row.played) || 0,
-        won: Number(row.won) || 0,
-        drawn: Number(row.drawn) || 0,
-        lost: Number(row.lost) || 0,
-        goals_for: Number(row.goals_for) || 0,
-        goals_against: Number(row.goals_against) || 0,
-        goal_difference: Number(row.goal_difference) || 0,
-        points,
-      };
-    });
-
-    guestCache.set('standings', cacheKey, results, 2 * 60 * 1000, true);
-    return results;
-  } catch (err: any) {
-    console.error('[guestSportsService] getGuestStandings exception:', err);
-    return [];
+  if (inFlightStandingsPromises.has(cacheKey)) {
+    return inFlightStandingsPromises.get(cacheKey)!;
   }
+
+  const promise = (async () => {
+    try {
+      const query = supabase
+        .from('league_standings')
+        .select('team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
+        .eq('competition_id', targetCompId)
+        .order('points', { ascending: false })
+        .order('goal_difference', { ascending: false })
+        .order('goals_for', { ascending: false });
+
+      const [standingsRes, teamMap] = await Promise.all([
+        query,
+        getTeamsMap()
+      ]);
+
+      const rows = standingsRes.data;
+      if (standingsRes.error || !rows || rows.length === 0) {
+        return [];
+      }
+
+      const results = rows.map((row: any): GuestStanding => {
+        const tm = teamMap.get(row.team_id) || {};
+        const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
+          ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
+        const rawPoints = Number(row.points) || 0;
+        const points = isLegends ? Math.max(0, rawPoints - 2) : rawPoints;
+
+        return {
+          team_id: row.team_id || '',
+          team_name: tm.name || 'Campus Team',
+          logo_url: tm.logo_url || DEFAULT_LOGO,
+          played: Number(row.played) || 0,
+          won: Number(row.won) || 0,
+          drawn: Number(row.drawn) || 0,
+          lost: Number(row.lost) || 0,
+          goals_for: Number(row.goals_for) || 0,
+          goals_against: Number(row.goals_against) || 0,
+          goal_difference: Number(row.goal_difference) || 0,
+          points,
+        };
+      });
+
+      guestCache.set('standings', cacheKey, results, 2 * 60 * 1000, true);
+      return results;
+    } catch (err: any) {
+      console.error('[guestSportsService] getGuestStandings exception:', err);
+      return [];
+    } finally {
+      inFlightStandingsPromises.delete(cacheKey);
+    }
+  })();
+
+  inFlightStandingsPromises.set(cacheKey, promise);
+  return promise;
 }
 
 export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {

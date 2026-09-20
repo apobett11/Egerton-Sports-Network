@@ -1848,7 +1848,8 @@ export const ApiService = {
           )
         `)
         .gt('clean_sheets', 0)
-        .order('clean_sheets', { ascending: false });
+        .order('clean_sheets', { ascending: false })
+        .limit(10);
 
       const getTopGK = (compId?: string) => {
         let best: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null = null;
@@ -1893,7 +1894,8 @@ export const ApiService = {
           )
         `)
         .gt('assists', 0)
-        .order('assists', { ascending: false });
+        .order('assists', { ascending: false })
+        .limit(10);
 
       // Fallback to match_events if player_stats assists is empty
       if (!assistStats || assistStats.length === 0) {
@@ -1911,7 +1913,8 @@ export const ApiService = {
                 team:teams!team_id(id, name, competition_id)
               )
             `)
-            .not('assist_player_id', 'is', null);
+            .not('assist_player_id', 'is', null)
+            .limit(50);
 
           if (evAssists && evAssists.length > 0) {
             const assistMap = new Map<string, { player: any; competition_id: string; assists: number }>();
