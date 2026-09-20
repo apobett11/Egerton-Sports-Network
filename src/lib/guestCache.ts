@@ -22,19 +22,19 @@ export type CacheCategory =
 type CacheSubscriber = (category: string, key?: string) => void;
 
 const DEFAULT_TTLS: Record<string, number> = {
-  fixtures: 60 * 1000,      // 1 minute
-  standings: 2 * 60 * 1000,  // 2 minutes
-  match_details: 30 * 1000,  // 30 seconds
-  teams: 10 * 60 * 1000,     // 10 minutes
-  players: 10 * 60 * 1000,   // 10 minutes
-  news: 5 * 60 * 1000,       // 5 minutes
-  announcements: 5 * 60 * 1000,
-  milestones: 5 * 60 * 1000, // 5 minutes
-  performance: 3 * 60 * 1000, // 3 minutes
-  audit_logs: 30 * 1000,
-  seasons: 10 * 60 * 1000,
-  leagues: 10 * 60 * 1000,
-  referees: 10 * 60 * 1000
+  fixtures: 60 * 60 * 1000,      // 1 hour
+  standings: 60 * 60 * 1000,     // 1 hour
+  match_details: 10 * 60 * 1000, // 10 minutes
+  teams: 24 * 60 * 60 * 1000,    // 24 hours (static master)
+  players: 24 * 60 * 60 * 1000,  // 24 hours (static master)
+  news: 60 * 60 * 1000,          // 1 hour
+  announcements: 60 * 60 * 1000, // 1 hour
+  milestones: 60 * 60 * 1000,    // 1 hour
+  performance: 60 * 60 * 1000,   // 1 hour
+  audit_logs: 10 * 60 * 1000,
+  seasons: 24 * 60 * 60 * 1000,
+  leagues: 24 * 60 * 60 * 1000,
+  referees: 24 * 60 * 60 * 1000
 };
 
 const STORAGE_PREFIX = 'esn_guest_cache_v3_';
@@ -66,8 +66,7 @@ class GuestCacheManager {
   }
 
   /**
-   * Guests do not open a Realtime WebSocket on the critical path.
-   * Poll HTTP-backed cache invalidation after first paint (idle / 3–4s).
+   * Ultra-low footprint 1-hour polling, active only when user is viewing the page.
    */
   private setupGuestPollingDeferred(): void {
     if (typeof window === 'undefined') return;
@@ -75,20 +74,23 @@ class GuestCacheManager {
     const start = () => this.startGuestPolling();
 
     if (typeof (window as any).requestIdleCallback === 'function') {
-      (window as any).requestIdleCallback(start, { timeout: 4000 });
+      (window as any).requestIdleCallback(start, { timeout: 10000 });
     } else {
-      setTimeout(start, 3000);
+      setTimeout(start, 8000);
     }
   }
 
   private startGuestPolling(): void {
     if (this.pollTimer !== null || typeof window === 'undefined') return;
 
+    // 1-hour polling interval (3,600,000 ms) with visibility check
     this.pollTimer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return; // Don't poll when tab is in background / minimized
+      }
       this.invalidate('fixtures');
       this.invalidate('standings');
-      this.invalidate('match_details');
-    }, 45_000);
+    }, 60 * 60 * 1000);
   }
 
   /**

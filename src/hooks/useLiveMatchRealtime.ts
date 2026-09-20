@@ -219,75 +219,15 @@ export const useLiveMatchRealtime = (
     [addToast, onMatchUpdated]
   );
 
-  // Subscribe to Supabase Realtime postgres_changes (deferred) + Local fallback subscriber
+  // Local Event Broadcast Subscriber (no idle backend WebSockets)
   useEffect(() => {
     const localCallback: EventCallback = ({ event, updatedMatch }) => {
       processMatchEvent(event, updatedMatch);
     };
     subscribers.add(localCallback);
 
-    // Defer Realtime WebSocket until 3-4s after initial render (idle)
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('public_live_matches_channel')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'fixtures' },
-          (payload) => {
-            if (payload.new) {
-              const updated = payload.new as any;
-              setMatches((prev) =>
-                prev.map((m) => {
-                  if (m.id === updated.id) {
-                    return {
-                      ...m,
-                      scoreA: updated.score_home ?? m.scoreA,
-                      scoreB: updated.score_away ?? m.scoreB,
-                      status: updated.status ?? m.status
-                    };
-                  }
-                  return m;
-                })
-              );
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'match_events' },
-          (payload) => {
-            if (payload.new) {
-              const raw = payload.new as any;
-              const evt: MatchEvent = {
-                id: raw.id,
-                fixtureId: raw.fixture_id,
-                minute: raw.minute,
-                type: raw.type,
-                eventTarget: raw.event_target,
-                teamId: raw.team_id,
-                detailText: raw.detail_text,
-                createdAt: raw.created_at
-              };
-              processMatchEvent(evt);
-            }
-          }
-        )
-        .subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            logger.warn(`Supabase Realtime channel status: ${status}`, { error: err?.message });
-          }
-        });
-
-      return () => {
-        supabase.removeChannel(channel).catch((err) => {
-          logger.warn('Error removing Supabase channel on unmount', { error: err });
-        });
-      };
-    });
-
     return () => {
       subscribers.delete(localCallback);
-      cleanupRealtime();
     };
   }, [processMatchEvent]);
 

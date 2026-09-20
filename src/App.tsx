@@ -198,38 +198,8 @@ export const AppContent: React.FC = () => {
 
     checkSeasonModeFromDB();
 
-    // Listen to real-time additions or removals in the fixtures table (deferred)
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('app_fixtures_season_sync')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fixtures' }, () => {
-          if (isMounted) {
-            setIsSeasonMode(true);
-            try {
-              sessionStorage.setItem('esn_season_mode', 'true');
-            } catch {}
-          }
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'fixtures' }, async () => {
-          const { count } = await supabase.from('fixtures').select('id', { count: 'exact', head: true });
-          if (isMounted) {
-            const active = Boolean(count && count > 0);
-            setIsSeasonMode(active);
-            try {
-              sessionStorage.setItem('esn_season_mode', active ? 'true' : 'false');
-            } catch {}
-          }
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
-
     return () => {
       isMounted = false;
-      cleanupRealtime();
     };
   }, [user, role]);
 
@@ -346,29 +316,14 @@ export const AppContent: React.FC = () => {
       }
     };
 
-    // Defer 4s — fixtures and their DB round-trip have absolute priority on startup
+    // Load announcements once on startup
     const annTimer = setTimeout(() => {
       if (isMounted) fetchAnnouncements();
     }, 4000);
 
-    // Merge onto a single shared guest channel (deferred) — avoids opening a separate WS topic
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('esn_guest_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
-          if (isMounted) fetchAnnouncements();
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
-
     return () => {
       isMounted = false;
       clearTimeout(annTimer);
-      cleanupRealtime();
     };
   }, [deviceId]);
 
