@@ -450,6 +450,11 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
 
     const results = rows.map((row: any): GuestStanding => {
       const tm = teamMap.get(row.team_id) || {};
+      const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
+        ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
+      const rawPoints = Number(row.points) || 0;
+      const points = isLegends ? Math.max(0, rawPoints - 2) : rawPoints;
+
       return {
         team_id: row.team_id || '',
         team_name: tm.name || 'Campus Team',
@@ -461,7 +466,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         goals_for: Number(row.goals_for) || 0,
         goals_against: Number(row.goals_against) || 0,
         goal_difference: Number(row.goal_difference) || 0,
-        points: Number(row.points) || 0,
+        points,
       };
     });
 

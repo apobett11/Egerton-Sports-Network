@@ -115,11 +115,24 @@ export function calculateLeagueStandings(
     }
   });
 
-  // Map to array and compute goal difference
-  const standingsList = Array.from(statsMap.values()).map((s) => ({
-    ...s,
-    goalDifference: s.goalsFor - s.goalsAgainst
-  }));
+  // Official League Points Deductions (Disciplinary/Sanctions)
+  const OFFICIAL_POINTS_DEDUCTIONS: Record<string, number> = {
+    '10000000-0000-4000-8000-000000000007': 2, // Legends FC 2-point deduction
+  };
+
+  // Map to array and compute goal difference & point deductions
+  const standingsList = Array.from(statsMap.values()).map((s) => {
+    const isLegends = s.teamId === '10000000-0000-4000-8000-000000000007' || 
+      (s.teamName.toLowerCase().includes('legends') && !s.teamName.toLowerCase().includes('young'));
+    const deduction = OFFICIAL_POINTS_DEDUCTIONS[s.teamId] || (isLegends ? 2 : 0) || 0;
+    const points = Math.max(0, s.points - deduction);
+
+    return {
+      ...s,
+      points,
+      goalDifference: s.goalsFor - s.goalsAgainst
+    };
+  });
 
   // Standard FIFA Sorting Engine
   standingsList.sort((a, b) => {

@@ -44,73 +44,73 @@ export class RateLimitError extends Error {
 
 const DEFAULT_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   'global': {
-    maxRequests: 120,
+    maxRequests: 300,
     windowMs: 10_000,
-    maxBurstDelayMs: 400,
+    maxBurstDelayMs: 0,
     description: 'Global Application Rate Limit',
   },
   'dashboard': {
-    maxRequests: 60,
+    maxRequests: 150,
     windowMs: 10_000,
-    maxBurstDelayMs: 300,
+    maxBurstDelayMs: 0,
     description: 'Dashboard General Calls',
   },
   'dashboard-superadmin': {
-    maxRequests: 45,
+    maxRequests: 100,
     windowMs: 10_000,
-    maxBurstDelayMs: 200,
+    maxBurstDelayMs: 0,
     description: 'SuperAdmin Dashboard Calls',
   },
   'dashboard-president': {
-    maxRequests: 50,
+    maxRequests: 100,
     windowMs: 10_000,
-    maxBurstDelayMs: 250,
+    maxBurstDelayMs: 0,
     description: 'President Dashboard Calls',
   },
   'dashboard-referee': {
-    maxRequests: 50,
+    maxRequests: 100,
     windowMs: 10_000,
-    maxBurstDelayMs: 250,
+    maxBurstDelayMs: 0,
     description: 'Referee Dashboard Calls',
   },
   'dashboard-team': {
-    maxRequests: 50,
+    maxRequests: 100,
     windowMs: 10_000,
-    maxBurstDelayMs: 250,
+    maxBurstDelayMs: 0,
     description: 'Team Dashboard Calls',
   },
   'dashboard-journalist': {
-    maxRequests: 50,
+    maxRequests: 100,
     windowMs: 10_000,
-    maxBurstDelayMs: 250,
+    maxBurstDelayMs: 0,
     description: 'Journalist Dashboard Calls',
   },
   'dashboard-doctor': {
-    maxRequests: 40,
+    maxRequests: 80,
     windowMs: 10_000,
-    maxBurstDelayMs: 200,
+    maxBurstDelayMs: 0,
     description: 'Doctor Dashboard Calls',
   },
   'admin': {
-    maxRequests: 20,
+    maxRequests: 60,
     windowMs: 10_000,
-    maxBurstDelayMs: 150,
+    maxBurstDelayMs: 0,
     description: 'Admin Master Calls',
   },
   'admin-operations': {
-    maxRequests: 15,
+    maxRequests: 30,
     windowMs: 10_000,
-    maxBurstDelayMs: 100,
+    maxBurstDelayMs: 0,
     description: 'Admin Sensitive Operations',
   },
   'admin-2fa': {
-    maxRequests: 10,
+    maxRequests: 15,
     windowMs: 30_000,
     maxBurstDelayMs: 0,
     description: 'Admin 2FA Verification Calls',
   },
   'auth': {
-    maxRequests: 20,
+    maxRequests: 30,
     windowMs: 30_000,
     maxBurstDelayMs: 0,
     description: 'Authentication Calls',
@@ -314,14 +314,27 @@ function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
     return true;
   }
 
-  if (method !== 'GET') return false;
+  // All GET queries to public tables / endpoints pass through immediately without throttling
+  if (method === 'GET') {
+    if (
+      lowerUrl.includes('league_standings') ||
+      lowerUrl.includes('/rest/v1/fixtures') ||
+      lowerUrl.includes('/rest/v1/teams') ||
+      lowerUrl.includes('/rest/v1/competitions') ||
+      lowerUrl.includes('/rest/v1/news_articles') ||
+      lowerUrl.includes('/rest/v1/players') ||
+      lowerUrl.includes('/rest/v1/announcements') ||
+      lowerUrl.includes('/rest/v1/potw') ||
+      lowerUrl.includes('/rest/v1/pitches') ||
+      lowerUrl.includes('/rest/v1/player_stats') ||
+      lowerUrl.includes('/rest/v1/match_events') ||
+      lowerUrl.includes('/rest/v1/team_form')
+    ) {
+      return true;
+    }
+  }
 
-  return (
-    lowerUrl.includes('league_standings') ||
-    lowerUrl.includes('/rest/v1/fixtures') ||
-    lowerUrl.includes('/rest/v1/teams') ||
-    lowerUrl.includes('/rest/v1/competitions')
-  );
+  return false;
 }
 
 export async function rateLimitedFetch(
