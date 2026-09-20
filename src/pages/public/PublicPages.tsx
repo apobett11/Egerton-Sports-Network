@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
-import { Card, Badge, LoadingSpinner, Input, Button } from '../../components/common/UIComponents';
+import { Card, Badge, LoadingSpinner, SkeletonLoader, Input, Button } from '../../components/common/UIComponents';
 import { LeagueTable } from '../../components/MainFeed/LeagueTable';
 import { 
   Calendar, Trophy, Newspaper, Search, ExternalLink, Shield, Users, 
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
+import { guestCache } from '../../lib/guestCache';
 
 // --- FIXTURES LIST & RESULTS PAGE ---
 export const PublicFixturesPage: React.FC<{ 
@@ -17,55 +18,74 @@ export const PublicFixturesPage: React.FC<{
   selectedDate?: Date;
   onOpenCalendar?: () => void;
 }> = ({ onSelectMatch, selectedDate }) => {
-  const [fixtures, setFixtures] = useState<Match[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [selectedCompetition, setSelectedCompetition] = useState<string>('ALL');
-  const [selectedSeason, setSelectedSeason] = useState<string>('2026');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-
   const formattedDateStr = selectedDate ? (
     selectedDate instanceof Date ? selectedDate.toISOString().split('T')[0] : String(selectedDate)
   ) : undefined;
 
+  const [fixtures, setFixtures] = useState<Match[]>(() => {
+    const cached = formattedDateStr 
+      ? guestCache.getStale<Match[]>('fixtures', `all_${formattedDateStr}_pall_sall`)
+      : guestCache.getStale<Match[]>('fixtures', 'all_all_pall_sall');
+    return cached && cached.length > 0 ? cached : [];
+  });
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [selectedCompetition, setSelectedCompetition] = useState<string>('ALL');
+  const [selectedSeason, setSelectedSeason] = useState<string>('2026');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(fixtures.length === 0);
+
   useEffect(() => {
-    setIsLoading(true);
+    if (fixtures.length === 0) setIsLoading(true);
     ApiService.getFixtures(undefined, formattedDateStr).then((res) => {
-      setFixtures(res.data || []);
+      if (res.data && res.data.length > 0) {
+        setFixtures(res.data);
+      }
       setIsLoading(false);
     });
 
-    const channel = supabase
-      .channel('public-fixtures-page')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'fixtures' },
-        (payload) => {
-          if (payload.new) {
-            const updated = payload.new as any;
-            setFixtures((prev) =>
-              prev.map((f) =>
-                f.id === updated.id
-                  ? {
-                      ...f,
-                      scoreA: updated.score_home ?? f.scoreA,
-                      scoreB: updated.score_away ?? f.scoreB,
-                      status: updated.status ?? f.status
-                    }
-                  : f
-              )
-            );
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('public-fixtures-page')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'fixtures' },
+          (payload) => {
+            if (payload.new) {
+              const updated = payload.new as any;
+              setFixtures((prev) =>
+                prev.map((f) =>
+                  f.id === updated.id
+                    ? {
+                        ...f,
+                        scoreA: updated.score_home ?? f.scoreA,
+                        scoreB: updated.score_away ?? f.scoreB,
+                        status: updated.status ?? f.status
+                      }
+                    : f
+                )
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [formattedDateStr]);
 
-  if (isLoading) return <LoadingSpinner label="Fetching official fixture schedule..." />;
+  if (isLoading && fixtures.length === 0) {
+    return (
+      <div className="space-y-6 pb-12">
+        <SkeletonLoader count={4} variant="list" />
+      </div>
+    );
+  }
 
   const competitions = Array.from(new Set(fixtures.map(f => f.league)));
 
@@ -355,41 +375,58 @@ export const PublicFixturesPage: React.FC<{
 
 // --- PUBLIC STANDINGS / LEAGUE TABLE PAGE ---
 export const PublicLeaguePage: React.FC = () => {
-  const [table, setTable] = useState<LeagueTableEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [table, setTable] = useState<LeagueTableEntry[]>(() => {
+    const cached = guestCache.getStale<LeagueTableEntry[]>('standings', 'standings_11111111-1111-1111-1111-111111111111');
+    return cached && cached.length > 0 ? cached : [];
+  });
+  const [isLoading, setIsLoading] = useState(table.length === 0);
 
   useEffect(() => {
     async function loadStandings() {
-      setIsLoading(true);
+      if (table.length === 0) setIsLoading(true);
       const res = await ApiService.getLeagueTable();
-      setTable(res.data || []);
+      if (res.data && res.data.length > 0) {
+        setTable(res.data);
+      }
       setIsLoading(false);
     }
 
     loadStandings();
 
-    const channel = supabase
-      .channel('public-league-standings-channel')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'fixtures' },
-        async () => {
-          setTable((prevTable) => {
-            ApiService.getLeagueTable(undefined, undefined, prevTable).then((res) => {
-              if (res.data) setTable(res.data);
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('public-league-standings-channel')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'fixtures' },
+          async () => {
+            setTable((prevTable) => {
+              ApiService.getLeagueTable(undefined, undefined, prevTable).then((res) => {
+                if (res.data) setTable(res.data);
+              });
+              return prevTable;
             });
-            return prevTable;
-          });
-        }
-      )
-      .subscribe();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, []);
 
-  if (isLoading) return <LoadingSpinner label="Calculating official league standings..." />;
+  if (isLoading && table.length === 0) {
+    return (
+      <div className="space-y-6 pb-12">
+        <SkeletonLoader count={6} variant="table" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">

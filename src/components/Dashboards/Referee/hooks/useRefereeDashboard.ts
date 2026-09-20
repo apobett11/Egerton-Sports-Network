@@ -9,6 +9,7 @@ import type { Match, MatchEventType, MatchStatus, Announcement } from '../../../
 import { mockMatches } from '../../../../mockData';
 import * as potwService from '../../../../services/potwService';
 import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../../services/potwService';
+import { guestCache } from '../../../../lib/guestCache';
 import type {
   RefereeTab,
   PlayerLookupItem,
@@ -27,21 +28,15 @@ export const FALLBACK_REFEREES = [
 
 export const canRefereeActOnMatch = (
   match: Match,
-  activeMatchday?: number | string
+  _activeMatchday?: number | string
 ): { canAct: boolean; reason?: string } => {
   if (match.status === 'FT') return { canAct: false, reason: 'Match concluded (Full Time)' };
   if ((match.status as any) === 'WALKOVER') return { canAct: false, reason: 'Match concluded (Walkover 3-0)' };
   if (match.status === 'CANCELLED') return { canAct: false, reason: 'Match has been cancelled' };
   if ((match as any).stats_processed) return { canAct: false, reason: 'Match statistics already processed' };
 
-  // Matchday Integrity: Fixtures must be written within the active matchday
-  if (typeof activeMatchday === 'number' && match.matchday !== undefined && match.matchday !== activeMatchday) {
-    return {
-      canAct: false,
-      reason: `Fixture belongs to Matchday ${match.matchday}. Only current Matchday (${activeMatchday}) fixtures can be officiated today.`,
-    };
-  }
-
+  // Matchday write policy: If a match is not finalized and the matchday has arrived or is scheduled,
+  // the referee dashboard will not prevent write of the next matchday's games even if an earlier match was unrecorded.
   return { canAct: true };
 };
 
@@ -85,10 +80,16 @@ export const useRefereeDashboard = () => {
 
   const [activeTab, setActiveTab] = useState<RefereeTab>('overview');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const [fixtures, setFixtures] = useState<Match[]>([]);
+  const [fixtures, setFixtures] = useState<Match[]>(() => {
+    const cached = guestCache.getStale<Match[]>('fixtures', 'all_all_pall_sall');
+    return cached && cached.length > 0 ? cached : [];
+  });
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [rawEvents, setRawEvents] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const cached = guestCache.getStale<Match[]>('fixtures', 'all_all_pall_sall');
+    return !cached || cached.length === 0;
+  });
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | null>(null);
 
   const [homeLineup, setHomeLineup] = useState<PlayerLookupItem[]>([]);
@@ -280,7 +281,7 @@ export const useRefereeDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Real-time Database Subscription with Debounce Protection
+  // Real-time Database Subscription with Debounce Protection (deferred to idle)
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const triggerReload = () => {
@@ -290,15 +291,21 @@ export const useRefereeDashboard = () => {
       }, 350);
     };
 
-    const channel = supabase
-      .channel('referee-dashboard-live-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
-      .subscribe();
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('referee-dashboard-live-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [loadDashboardData]);
 
@@ -311,7 +318,17 @@ export const useRefereeDashboard = () => {
     return fixtures[0] || null;
   }, [fixtures, selectedFixtureId]);
 
-  // 1. Determine active matchday: the lowest matchday that has at least one UPCOMING or LIVE fixture.
+  // 1. Available Matchdays list
+  const availableMatchdays = useMemo<number[]>(() => {
+    const set = new Set<number>();
+    fixtures.forEach((f) => {
+      if (typeof f.matchday === 'number') set.add(f.matchday);
+    });
+    if (set.size === 0) return [1];
+    return Array.from(set).sort((a, b) => a - b);
+  }, [fixtures]);
+
+  // 2. Determine active matchday: the lowest matchday that has at least one UPCOMING or LIVE fixture.
   const activeMatchday = useMemo(() => {
     const activeOne = fixtures.find(
       (f) => f.status !== 'FT' && f.status !== 'CANCELLED' && (f.status as any) !== 'WALKOVER' && !(f as any).stats_processed
@@ -319,29 +336,63 @@ export const useRefereeDashboard = () => {
     if (activeOne && activeOne.matchday) {
       return activeOne.matchday;
     }
-    return fixtures.length > 0 ? Math.max(...fixtures.map((f) => f.matchday || 1)) : 1;
-  }, [fixtures]);
+    return availableMatchdays[0] || 1;
+  }, [fixtures, availableMatchdays]);
 
-  // 2. Scoped Matchday Matches: Only the matches for the current round
+  // 3. Selected Matchday state with switcher support (Previous / Next / Direct selection)
+  const [selectedMatchday, setSelectedMatchdayState] = useState<number>(1);
+  const [hasUserSelectedMatchday, setHasUserSelectedMatchday] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!hasUserSelectedMatchday && activeMatchday) {
+      setSelectedMatchdayState(activeMatchday);
+    }
+  }, [activeMatchday, hasUserSelectedMatchday]);
+
+  const setSelectedMatchday = useCallback((md: number) => {
+    setHasUserSelectedMatchday(true);
+    setSelectedMatchdayState(md);
+  }, []);
+
+  const goToPreviousMatchday = useCallback(() => {
+    setHasUserSelectedMatchday(true);
+    setSelectedMatchdayState((prev) => {
+      const idx = availableMatchdays.indexOf(prev);
+      if (idx > 0) return availableMatchdays[idx - 1];
+      return availableMatchdays[0] || 1;
+    });
+  }, [availableMatchdays]);
+
+  const goToNextMatchday = useCallback(() => {
+    setHasUserSelectedMatchday(true);
+    setSelectedMatchdayState((prev) => {
+      const idx = availableMatchdays.indexOf(prev);
+      if (idx >= 0 && idx < availableMatchdays.length - 1) return availableMatchdays[idx + 1];
+      return availableMatchdays[availableMatchdays.length - 1] || prev;
+    });
+  }, [availableMatchdays]);
+
+  // 4. Scoped Matchday Matches: Matches for the selected matchday
   const matchdayMatches = useMemo(() => {
-    return fixtures.filter((f) => (f.matchday || 1) === activeMatchday);
-  }, [fixtures, activeMatchday]);
-
-  // 3. Unified Homepage: Top 3 active events for the current matchday. When one is filled/submitted, another automatically slides in.
-  const activeThreeMatches = useMemo<Match[]>(() => {
-    return matchdayMatches
-      .filter(
-        (m) => m.status !== 'FT' && m.status !== 'CANCELLED' && (m.status as any) !== 'WALKOVER' && !(m as any).stats_processed
-      )
+    return fixtures
+      .filter((f) => (f.matchday || 1) === selectedMatchday)
       .sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
         const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
         return timeA - timeB;
-      })
-      .slice(0, 3);
+      });
+  }, [fixtures, selectedMatchday]);
+
+  // 5. Active matches for the selected matchday: Unfinalized first, or full list if all finalized
+  const activeThreeMatches = useMemo<Match[]>(() => {
+    const unfinalized = matchdayMatches.filter(
+      (m) => m.status !== 'FT' && m.status !== 'CANCELLED' && (m.status as any) !== 'WALKOVER' && !(m as any).stats_processed
+    );
+    return unfinalized.length > 0 ? unfinalized : matchdayMatches;
   }, [matchdayMatches]);
 
-  // 4. Alterability guard: matches must be non-finalized and within the active matchday
+  // 6. Alterability guard: matches must be non-finalized.
+  // Crucial: If an earlier match was not recorded, it will NOT prevent write of the next matchday's games once arrived.
   const isMatchAlterable = useCallback((match: Match | null | undefined): boolean => {
     if (!match) return false;
     if (
@@ -350,12 +401,10 @@ export const useRefereeDashboard = () => {
       (match.status as any) === 'WALKOVER' ||
       Boolean((match as any).stats_processed)
     ) return false;
-    // Matches must be within the active matchday
-    if (match.matchday && match.matchday !== activeMatchday) return false;
     return true;
-  }, [activeMatchday]);
+  }, []);
 
-  // Unified Officiating Guard: All authenticated referees share authority over active matchday fixtures without UID verification
+  // Unified Officiating Guard: All authenticated referees share authority over fixtures
   const isAssignedToMe = useCallback(
     (match: Match | null | undefined, _refId?: string): boolean => {
       if (!match) return false;
@@ -404,29 +453,13 @@ export const useRefereeDashboard = () => {
     });
   }, [fixtures, matchdayMatches]);
 
-  // Today's matches: Scoped strictly to that active or next matchday, rendered by matchday ID (never by referee ID)
+  // Today's matches: Scoped strictly to the selected matchday
   const todayMatches = useMemo(() => {
-    // 1. Current active matchday matches
+    if (matchdayMatches.length > 0) return matchdayMatches;
     const activeMdMatches = fixtures.filter((f) => (f.matchday || 1) === activeMatchday);
-    if (activeMdMatches.length > 0) {
-      return [...activeMdMatches].sort((a, b) => {
-        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
-        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
-        return timeA - timeB;
-      });
-    }
-    // 2. Fallback to next matchday matches
-    const nextMdMatches = fixtures.filter((f) => (f.matchday || 1) === activeMatchday + 1);
-    if (nextMdMatches.length > 0) {
-      return [...nextMdMatches].sort((a, b) => {
-        const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
-        const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
-        return timeA - timeB;
-      });
-    }
-    const firstMd = fixtures[0]?.matchday || 1;
-    return fixtures.filter((f) => (f.matchday || 1) === firstMd);
-  }, [fixtures, activeMatchday]);
+    if (activeMdMatches.length > 0) return activeMdMatches;
+    return fixtures;
+  }, [matchdayMatches, fixtures, activeMatchday]);
 
   // Matchdays groups for the "My Matches" page
   const matchdayGroups = useMemo<MatchdayScheduleGroup[]>(() => {
@@ -1290,6 +1323,11 @@ export const useRefereeDashboard = () => {
     setSelectedDate,
     fixtures,
     activeMatchday,
+    selectedMatchday,
+    setSelectedMatchday,
+    goToPreviousMatchday,
+    goToNextMatchday,
+    availableMatchdays,
     matchdayMatches,
     isMatchAlterable,
     nextMatch,

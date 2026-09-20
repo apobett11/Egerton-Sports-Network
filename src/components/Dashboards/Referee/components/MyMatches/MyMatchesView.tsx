@@ -14,6 +14,11 @@ interface MyMatchesViewProps {
   todayMatches: Match[];
   myNextMatches?: Match[];
   matchdayGroups: MatchdayScheduleGroup[];
+  selectedMatchday?: number;
+  onSelectMatchday?: (md: number) => void;
+  onPreviousMatchday?: () => void;
+  onNextMatchday?: () => void;
+  availableMatchdays?: number[];
   onSelectMatch: (match: Match) => void;
   onEndMatch: (match: Match) => void;
   onCancelMatch: (fixtureId: string) => Promise<void>;
@@ -26,6 +31,11 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
   todayMatches,
   myNextMatches,
   matchdayGroups,
+  selectedMatchday = 1,
+  onSelectMatchday,
+  onPreviousMatchday,
+  onNextMatchday,
+  availableMatchdays = [1],
   onSelectMatch,
   onEndMatch,
   onCancelMatch,
@@ -36,6 +46,11 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
   const { showWarning } = useToast();
   const [activeMatchdayModal, setActiveMatchdayModal] = useState<MatchdayScheduleGroup | null>(null);
   const displayMatches = todayMatches && todayMatches.length > 0 ? todayMatches : (myNextMatches && myNextMatches.length > 0 ? myNextMatches : []);
+
+  const minMatchday = availableMatchdays[0] || 1;
+  const maxMatchday = availableMatchdays[availableMatchdays.length - 1] || 1;
+  const canGoPrevious = selectedMatchday > minMatchday;
+  const canGoNext = selectedMatchday < maxMatchday;
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -104,8 +119,58 @@ export const MyMatchesView: React.FC<MyMatchesViewProps> = ({
             </h3>
           </div>
           <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Matchday {displayMatches[0]?.matchday || 1} Schedule
+            Matchday {selectedMatchday} Schedule
           </span>
+        </div>
+
+        {/* MATCHDAY SWITCHER CONTROLS */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-[#102237] border border-slate-200 dark:border-[#1a2e45] rounded-lg p-2.5 sm:p-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPreviousMatchday}
+              disabled={!canGoPrevious || isSubmitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-200 dark:bg-[#152a40] hover:bg-slate-300 dark:hover:bg-[#1c3857] disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+              title="Previous Matchday"
+            >
+              <span>← Prev MD</span>
+            </button>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[280px] sm:max-w-none scrollbar-none">
+              {availableMatchdays.map((md) => {
+                const isSelected = md === selectedMatchday;
+                return (
+                  <button
+                    key={md}
+                    type="button"
+                    onClick={() => onSelectMatchday && onSelectMatchday(md)}
+                    disabled={isSubmitting}
+                    className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'bg-[#ff0046] text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-[#152e4d] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1b3b64]'
+                    }`}
+                  >
+                    MD {md}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={onNextMatchday}
+              disabled={!canGoNext || isSubmitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-200 dark:bg-[#152a40] hover:bg-slate-300 dark:hover:bg-[#1c3857] disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+              title="Next Matchday"
+            >
+              <span>Next MD →</span>
+            </button>
+          </div>
+
+          <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            <span>Matchday {selectedMatchday} ({displayMatches.length} Matches)</span>
+          </div>
         </div>
 
         {displayMatches.length === 0 ? (

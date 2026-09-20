@@ -32,6 +32,12 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     selectedDate,
     setSelectedDate,
     fixtures,
+    activeMatchday,
+    selectedMatchday,
+    setSelectedMatchday,
+    goToPreviousMatchday,
+    goToNextMatchday,
+    availableMatchdays,
     nextMatch,
     activeThreeMatches,
     leagueProgress,
@@ -71,8 +77,35 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
     showWarning('The President can only cancel the matches.');
   };
 
-  if (isLoading) {
-    return <LoadingSpinner label="Loading official referee match center..." />;
+  if (isLoading && fixtures.length === 0) {
+    return (
+      <div className="min-h-screen bg-black text-slate-100 flex flex-col font-sans">
+        <RefereeHeader
+          currentUserName={currentUserName}
+          activeRefereeId={activeRefereeId}
+          refereesList={refereesList}
+          onSelectRefereeId={setActiveRefereeId}
+          isUnavailable={isUnavailable}
+          onToggleAvailability={toggleAvailability}
+          authError={authError}
+          successMsg={successMsg}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onLogout={onLogout}
+        />
+        <div className="max-w-7xl mx-auto px-4 py-8 w-full space-y-6" role="status" aria-label="Loading referee match center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 bg-[#121824] animate-pulse rounded-2xl p-4 space-y-3 border border-white/5">
+                <div className="h-4 w-1/3 bg-slate-800 rounded" />
+                <div className="h-8 w-2/3 bg-slate-800 rounded" />
+                <div className="h-3 w-1/2 bg-slate-800 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleLaunchEndMatch = (match: Match) => {
@@ -107,7 +140,7 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
 
       {/* 3. MAIN DASHBOARD CONTENT AREA */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-6 relative z-10">
-        {/* TAB 1: OVERVIEW (3-EVENT ROLLING HOMEPAGE + ANALYTICS) */}
+        {/* TAB 1: OVERVIEW (3-EVENT ROLLING HOMEPAGE + ANALYTICS + MATCHDAY SWITCHER) */}
         {activeTab === 'overview' && (
           <RefereeHomeOverview
             activeMatches={activeThreeMatches}
@@ -119,6 +152,11 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
             announcements={announcements}
             profileData={profileData}
             activeRefereeId={activeRefereeId}
+            selectedMatchday={selectedMatchday}
+            onSelectMatchday={setSelectedMatchday}
+            onPreviousMatchday={goToPreviousMatchday}
+            onNextMatchday={goToNextMatchday}
+            availableMatchdays={availableMatchdays}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
             onCancelMatch={handlePresidentOnlyCancel}
@@ -131,12 +169,17 @@ export const RefereeDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout
           />
         )}
 
-        {/* TAB 2: MY MATCHES (WEEKEND MATCHES + SCHEDULES & POPUP) */}
+        {/* TAB 2: MY MATCHES (WEEKEND MATCHES + SCHEDULES & POPUP + MATCHDAY SWITCHER) */}
         {activeTab === 'matches' && (
           <MyMatchesView
             todayMatches={todayMatches}
             myNextMatches={myNextMatches}
             matchdayGroups={matchdayGroups}
+            selectedMatchday={selectedMatchday}
+            onSelectMatchday={setSelectedMatchday}
+            onPreviousMatchday={goToPreviousMatchday}
+            onNextMatchday={goToNextMatchday}
+            availableMatchdays={availableMatchdays}
             onSelectMatch={(match) => setInspectedMatch(match)}
             onEndMatch={handleLaunchEndMatch}
             onCancelMatch={handlePresidentOnlyCancel}

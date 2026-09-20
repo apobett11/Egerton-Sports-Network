@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { 
   Trophy, Clock, MapPin, Eye, Award, Calendar, 
-  CheckCircle2, Radio, ArrowRight
+  CheckCircle2, Radio, ArrowRight, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { formatMatchTime, formatMatchPitch } from '../../../../../lib/matchdayHelper';
 import type { Match, Announcement } from '../../../../../types';
@@ -22,6 +22,11 @@ interface RefereeHomeOverviewProps {
   announcements: Announcement[];
   profileData: RefereeProfileData;
   activeRefereeId?: string;
+  selectedMatchday?: number;
+  onSelectMatchday?: (md: number) => void;
+  onPreviousMatchday?: () => void;
+  onNextMatchday?: () => void;
+  availableMatchdays?: number[];
   onSelectMatch: (match: Match) => void;
   onEndMatch: (match: Match) => void;
   onCancelMatch: (fixtureId: string) => Promise<void>;
@@ -37,6 +42,11 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
   nextMatch,
   leagueProgress,
   profileData,
+  selectedMatchday = 1,
+  onSelectMatchday,
+  onPreviousMatchday,
+  onNextMatchday,
+  availableMatchdays = [1],
   onSelectMatch,
   onEndMatch,
   onOpenWalkover,
@@ -45,11 +55,16 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
 }) => {
   const stats = profileData.statistics;
 
-  // Render top 3 active unfilled matches or fallback to nextMatch
+  // Render active matches of the selected matchday or fallback to nextMatch
   const displayMatches: Match[] = 
     activeMatches && activeMatches.length > 0 
       ? activeMatches 
       : (nextMatch ? [nextMatch] : []);
+
+  const minMatchday = availableMatchdays[0] || 1;
+  const maxMatchday = availableMatchdays[availableMatchdays.length - 1] || 1;
+  const canGoPrevious = selectedMatchday > minMatchday;
+  const canGoNext = selectedMatchday < maxMatchday;
 
   // Today's League Analytics
   const todayAnalytics = useMemo(() => {
@@ -165,6 +180,67 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
           </div>
         </div>
 
+        {/* MATCHDAY SWITCHER CONTROLS */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.03] border border-white/10 rounded-xl p-3 sm:p-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPreviousMatchday}
+              disabled={!canGoPrevious || isSubmitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-black uppercase tracking-wider text-slate-200 border border-white/10 transition-all cursor-pointer active:scale-95 shadow-sm"
+              title="Switch to Previous Matchday"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Previous Matchday</span>
+              <span className="sm:hidden">Prev MD</span>
+            </button>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[280px] sm:max-w-none scrollbar-none">
+              {availableMatchdays.map((md) => {
+                const isSelected = md === selectedMatchday;
+                const mdMatches = (allMatches || []).filter((m) => (m.matchday || 1) === md);
+                const isAllDone = mdMatches.length > 0 && mdMatches.every((m) => m.status === 'FT' || m.status === 'CANCELLED');
+
+                return (
+                  <button
+                    key={md}
+                    type="button"
+                    onClick={() => onSelectMatchday && onSelectMatchday(md)}
+                    disabled={isSubmitting}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'bg-[#ff0046] text-white shadow-md scale-105 border border-[#ff0046]'
+                        : isAllDone
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
+                        : 'bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    MD {md}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={onNextMatchday}
+              disabled={!canGoNext || isSubmitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-black uppercase tracking-wider text-slate-200 border border-white/10 transition-all cursor-pointer active:scale-95 shadow-sm"
+              title="Switch to Next Matchday"
+            >
+              <span className="hidden sm:inline">Next Matchday</span>
+              <span className="sm:hidden">Next MD</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+            <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 font-mono font-bold text-slate-200">
+              Matchday {selectedMatchday} ({displayMatches.length} Fixtures)
+            </span>
+          </div>
+        </div>
+
         {displayMatches.length === 0 ? (
           leagueProgress?.isAllCompleted ? (
             <div className="py-12 text-center space-y-3 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-6">
@@ -187,10 +263,10 @@ export const RefereeHomeOverview: React.FC<RefereeHomeOverviewProps> = ({
             <div className="py-10 text-center space-y-2">
               <Trophy className="w-8 h-8 text-slate-500 mx-auto" />
               <h3 className="font-extrabold text-sm uppercase tracking-tight text-slate-300">
-                No Active Matches Queued
+                No Active Matches Queued for Matchday {selectedMatchday}
               </h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                All queued fixtures for this slot have been submitted.
+                All fixtures for Matchday {selectedMatchday} are either concluded or pending scheduling.
               </p>
               <button
                 type="button"

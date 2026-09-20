@@ -194,22 +194,48 @@ async function fetchGuestFixturesNetwork(params?: {
   }
 }
 
+const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v1';
+
+export async function getGuestFixturesFast(params?: {
+  competitionId?: string;
+  date?: string;
+  matchday?: number;
+}): Promise<GuestFixture[]> {
+  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
+  
+  // 1. INSTANT PAINT: Read from local cache synchronously (0ms)
+  let cachedData = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
+  if (!cachedData) {
+    try {
+      const raw = localStorage.getItem(`${FIXTURES_CACHE_KEY}_${cacheKey}`) || localStorage.getItem(FIXTURES_CACHE_KEY);
+      if (raw) cachedData = JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // 2. BACKGROUND REVALIDATE: Call the RPC without blocking initial paint
+  const networkPromise = fetchGuestFixturesNetwork(params).then((data) => {
+    if (data && data.length > 0) {
+      try {
+        localStorage.setItem(`${FIXTURES_CACHE_KEY}_${cacheKey}`, JSON.stringify(data));
+        localStorage.setItem(FIXTURES_CACHE_KEY, JSON.stringify(data));
+      } catch {}
+      return data;
+    }
+    return cachedData || [];
+  });
+
+  // If we have cached data, return it immediately; otherwise wait for network
+  return cachedData && cachedData.length > 0 ? cachedData : await networkPromise;
+}
+
 export async function getGuestFixtures(params?: {
   competitionId?: string;
   date?: string; // YYYY-MM-DD
   matchday?: number;
 }): Promise<GuestFixture[]> {
-  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
-  const cachedData = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
-
-  const networkPromise = fetchGuestFixturesNetwork(params);
-
-  if (cachedData && cachedData.length > 0) {
-    void networkPromise;
-    return cachedData;
-  }
-
-  return networkPromise;
+  return getGuestFixturesFast(params);
 }
 
 // Internal fallback: original 3-query approach used only if RPC is unavailable

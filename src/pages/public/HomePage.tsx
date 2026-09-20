@@ -535,7 +535,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   useCacheSubscription('performance', () => { if (perfHasLoaded) loadPerformance(); });
   useCacheSubscription('milestones', () => { if (milestonesHasLoaded) loadMilestones(); });
 
-  // Realtime subscription for live match updates and algorithm table feeds
+  // Realtime subscription for live match updates and algorithm table feeds (deferred to idle)
   useEffect(() => {
     let perfDebounce: ReturnType<typeof setTimeout> | null = null;
     const triggerDebouncedPerfReload = () => {
@@ -545,39 +545,45 @@ export const HomePage: React.FC<HomePageProps> = ({
       }, 500);
     };
 
-    const channel = supabase
-      .channel('public-homepage-fixtures-v7')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'fixtures' },
-        (payload) => {
-          if (payload.new) {
-            const updated = payload.new as any;
-            setFixturesState(prev => ({
-              ...prev,
-              data: prev.data.map(f =>
-                f.id === updated.id
-                  ? {
-                      ...f,
-                      scoreA: updated.score_home ?? f.scoreA,
-                      scoreB: updated.score_away ?? f.scoreB,
-                      status: updated.status ?? f.status
-                    }
-                  : f
-              )
-            }));
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('public-homepage-fixtures-v7')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'fixtures' },
+          (payload) => {
+            if (payload.new) {
+              const updated = payload.new as any;
+              setFixturesState(prev => ({
+                ...prev,
+                data: prev.data.map(f =>
+                  f.id === updated.id
+                    ? {
+                        ...f,
+                        scoreA: updated.score_home ?? f.scoreA,
+                        scoreB: updated.score_away ?? f.scoreB,
+                        status: updated.status ?? f.status
+                      }
+                    : f
+                )
+              }));
+            }
+            triggerDebouncedPerfReload();
           }
-          triggerDebouncedPerfReload();
-        }
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedPerfReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
-      .subscribe();
+        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedPerfReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
       if (perfDebounce) clearTimeout(perfDebounce);
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [loadPerformance]);
 
@@ -967,8 +973,20 @@ export const HomePage: React.FC<HomePageProps> = ({
       >
         {/* FIXTURES CONTENT FEED (LEAGUE TITLES & FIXTURES INSIDE THE CARD) */}
         {fixturesState.loading ? (
-          <div className="py-12 flex flex-col items-center justify-center">
-            <LoadingSpinner label="Loading live scores..." />
+          <div className="p-4 space-y-3" role="status" aria-label="Loading fixtures">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="animate-pulse bg-slate-100 dark:bg-[#112236] rounded-md p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3 w-5/12">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded w-24" />
+                </div>
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 shrink-0" />
+                <div className="flex items-center justify-end gap-3 w-5/12">
+                  <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded w-24" />
+                  <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : fixturesState.error ? (
           <div className="p-6 text-center space-y-2">
@@ -1464,8 +1482,16 @@ export const HomePage: React.FC<HomePageProps> = ({
             <span>Standings snapshot loads as you scroll</span>
           </div>
         ) : standingsState.loading ? (
-          <div className="p-6 text-center text-xs text-slate-400 animate-pulse">
-            Loading standings snapshot...
+          <div className="p-4 space-y-2" role="status" aria-label="Loading standings snapshot">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse flex items-center justify-between p-2 rounded bg-slate-100/60 dark:bg-[#112236]/60">
+                <div className="flex items-center gap-2 w-1/2">
+                  <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24" />
+                </div>
+                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#f0f2f5] dark:divide-[#14263b]">

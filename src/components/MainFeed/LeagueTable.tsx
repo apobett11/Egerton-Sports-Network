@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { LeagueTableEntry } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
+import { guestCache } from '../../lib/guestCache';
 import { 
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
   ArrowUpRight, ChevronRight, Activity, Sparkles, Filter
@@ -30,9 +31,16 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   const [selectedCompFilter, setSelectedCompFilter] = useState<'all' | 'epl' | 'champ'>('all');
   const [activeSection, setActiveSection] = useState<'standings' | 'form' | 'scorers' | 'potw' | 'assists'>('standings');
 
-  // Data States
-  const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>([]);
-  const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>([]);
+  // Data States (SWR Instant Initial Paint)
+  const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>(() => {
+    const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${EPL_COMP_ID}`);
+    if (cached && cached.length > 0) return cached;
+    return tableData && tableData.length > 0 ? tableData : [];
+  });
+  const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>(() => {
+    const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${CHAMP_COMP_ID}`);
+    return cached && cached.length > 0 ? cached : [];
+  });
   const [teamFormsMap, setTeamFormsMap] = useState<Record<string, string[]>>({});
   
   // Top Scorers States (EPL, Champ, All-Time)
@@ -181,17 +189,23 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       }, 400);
     };
 
-    // Event-driven real-time auto-reload on database updates
-    const channel = supabase
-      .channel('public_league_table_realtime_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
-      .subscribe();
+    // Event-driven real-time auto-reload on database updates (deferred to idle)
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('public_league_table_realtime_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [loadStandingsTables, scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
 

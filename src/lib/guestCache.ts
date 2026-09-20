@@ -74,10 +74,10 @@ class GuestCacheManager {
 
     const start = () => this.startGuestPolling();
 
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(start, { timeout: 4000 });
+    if (typeof (window as any).requestIdleCallback === 'function') {
+      (window as any).requestIdleCallback(start, { timeout: 4000 });
     } else {
-      window.setTimeout(start, 3000);
+      setTimeout(start, 3000);
     }
   }
 
@@ -89,6 +89,13 @@ class GuestCacheManager {
       this.invalidate('standings');
       this.invalidate('match_details');
     }, 45_000);
+  }
+
+  /**
+   * Defer non-critical realtime subscriptions until after initial paint (3-4s / idle)
+   */
+  public setupRealtimeDeferred(initFn: () => void | (() => void)): () => void {
+    return setupRealtimeDeferred(initFn);
   }
 
   /**
@@ -257,3 +264,39 @@ class GuestCacheManager {
 }
 
 export const guestCache = new GuestCacheManager();
+
+/**
+ * Helper to defer non-critical realtime subscriptions until after initial paint (3-4s / idle)
+ */
+export function setupRealtimeDeferred(initFn: () => void | (() => void)): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  let cleanup: void | (() => void);
+  let timerId: any = null;
+  let idleId: any = null;
+  let isCancelled = false;
+
+  const init = () => {
+    if (isCancelled) return;
+    cleanup = initFn();
+  };
+
+  if (typeof (window as any).requestIdleCallback === 'function') {
+    idleId = (window as any).requestIdleCallback(init, { timeout: 4000 });
+  } else {
+    timerId = setTimeout(init, 3500);
+  }
+
+  return () => {
+    isCancelled = true;
+    if (idleId !== null && 'cancelIdleCallback' in window) {
+      (window as any).cancelIdleCallback(idleId);
+    }
+    if (timerId !== null) {
+      clearTimeout(timerId);
+    }
+    if (typeof cleanup === 'function') {
+      cleanup();
+    }
+  };
+}

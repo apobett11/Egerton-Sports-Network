@@ -304,7 +304,15 @@ function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
   const lowerUrl = urlString.toLowerCase();
   const method = (init?.method || 'GET').toUpperCase();
 
-  if (lowerUrl.includes('get_guest_fixtures')) return true;
+  if (
+    lowerUrl.includes('get_guest_fixtures') ||
+    lowerUrl.includes('get_guest_standings') ||
+    lowerUrl.includes('getgueststandings') ||
+    lowerUrl.includes('get_guest_matches') ||
+    lowerUrl.includes('/rpc/get_')
+  ) {
+    return true;
+  }
 
   if (method !== 'GET') return false;
 

@@ -12,7 +12,7 @@ import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { TeamDetailsContainer } from './components/TeamDetails/TeamDetailsContainer';
-import { type AllowedRole } from './components/Auth/LoginPage';
+import { LoginPage, type AllowedRole } from './components/Auth/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { guestCache } from './lib/guestCache';
@@ -41,7 +41,6 @@ const PresidentDashboard = lazy(() => import('./components/Dashboards/President/
 const RefereeDashboard = lazy(() => import('./components/Dashboards/Referee/RefereeDashboard'));
 const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/DoctorDashboard'));
 const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
-const LoginPage = lazy(() => import('./components/Auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const PasswordResetOnboarding = lazy(() => import('./components/Auth/PasswordResetOnboarding').then(m => ({ default: m.PasswordResetOnboarding })));
 const PlayerRegistrationPage = lazy(() => import('./pages/public/PlayerRegistrationPage'));
 
@@ -199,32 +198,38 @@ export const AppContent: React.FC = () => {
 
     checkSeasonModeFromDB();
 
-    // Listen to real-time additions or removals in the fixtures table
-    const channel = supabase
-      .channel('app_fixtures_season_sync')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fixtures' }, () => {
-        if (isMounted) {
-          setIsSeasonMode(true);
-          try {
-            sessionStorage.setItem('esn_season_mode', 'true');
-          } catch {}
-        }
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'fixtures' }, async () => {
-        const { count } = await supabase.from('fixtures').select('id', { count: 'exact', head: true });
-        if (isMounted) {
-          const active = Boolean(count && count > 0);
-          setIsSeasonMode(active);
-          try {
-            sessionStorage.setItem('esn_season_mode', active ? 'true' : 'false');
-          } catch {}
-        }
-      })
-      .subscribe();
+    // Listen to real-time additions or removals in the fixtures table (deferred)
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('app_fixtures_season_sync')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fixtures' }, () => {
+          if (isMounted) {
+            setIsSeasonMode(true);
+            try {
+              sessionStorage.setItem('esn_season_mode', 'true');
+            } catch {}
+          }
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'fixtures' }, async () => {
+          const { count } = await supabase.from('fixtures').select('id', { count: 'exact', head: true });
+          if (isMounted) {
+            const active = Boolean(count && count > 0);
+            setIsSeasonMode(active);
+            try {
+              sessionStorage.setItem('esn_season_mode', active ? 'true' : 'false');
+            } catch {}
+          }
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [user, role]);
 
@@ -346,18 +351,24 @@ export const AppContent: React.FC = () => {
       if (isMounted) fetchAnnouncements();
     }, 4000);
 
-    // Merge onto a single shared guest channel — avoids opening a separate WS topic
-    const channel = supabase
-      .channel('esn_guest_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
-        if (isMounted) fetchAnnouncements();
-      })
-      .subscribe();
+    // Merge onto a single shared guest channel (deferred) — avoids opening a separate WS topic
+    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
+      const channel = supabase
+        .channel('esn_guest_sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, () => {
+          if (isMounted) fetchAnnouncements();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
 
     return () => {
       isMounted = false;
       clearTimeout(annTimer);
-      supabase.removeChannel(channel);
+      cleanupRealtime();
     };
   }, [deviceId]);
 
@@ -935,12 +946,10 @@ export const AppContent: React.FC = () => {
 
   if (route === 'login') {
     return (
-      <Suspense fallback={<DashboardLoader />}>
-        <LoginPage
-          onLoginSuccess={(role: AllowedRole) => handleNavigateHash(`/${role.toLowerCase()}`)}
-          onCancel={() => handleNavigateHash('/home')}
-        />
-      </Suspense>
+      <LoginPage
+        onLoginSuccess={(role: AllowedRole) => handleNavigateHash(`/${role.toLowerCase()}`)}
+        onCancel={() => handleNavigateHash('/home')}
+      />
     );
   }
 

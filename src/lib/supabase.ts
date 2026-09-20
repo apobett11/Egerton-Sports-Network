@@ -29,3 +29,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Pre-warm PostgreSQL and Supabase Auth connection pool in background to eliminate cold starts
+if (typeof window !== 'undefined') {
+  try {
+    setTimeout(async () => {
+      try {
+        await supabase.from('competitions').select('id').limit(1);
+      } catch {}
+    }, 0);
+  } catch {}
+}
+
+
