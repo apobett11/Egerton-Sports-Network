@@ -614,9 +614,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                           </span>
 
                           {isRecorded ? (
-                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              <span>Recorded</span>
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black tracking-wider flex items-center gap-1 uppercase">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>UPDATED</span>
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 rounded-lg bg-[#ff0046]/10 border border-[#ff0046]/30 text-[#ff0046] text-xs font-bold flex items-center gap-1">
@@ -677,9 +677,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                       Record Past Match Events
                     </h2>
                     {isAlreadyRecorded && (
-                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 flex items-center gap-1">
-                        <Lock className="w-2.5 h-2.5" />
-                        <span>Locked</span>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        <span>UPDATED</span>
                       </span>
                     )}
                   </div>
@@ -737,12 +737,12 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
               {/* Locked Warning Banner */}
               {isAlreadyRecorded && (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 rounded-xl text-xs flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 shrink-0 text-amber-500" />
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
                   <span>
-                    <strong>Events Finalized (One-Time Update):</strong> Match events for this
-                    fixture have already been submitted. To preserve official league integrity,
-                    submitted entries cannot be rewritten.
+                    <strong>Match Events Logged (UPDATED):</strong> Scorers, assists, and cards for this
+                    fixture have been officially submitted. Each match can only be updated once to
+                    protect league integrity.
                   </span>
                 </div>
               )}
@@ -1165,10 +1165,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                   disabled={isAlreadyRecorded || isSaving || isLoadingExisting || !activeMatch}
                   className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isAlreadyRecorded ? (
+                {isAlreadyRecorded ? (
                     <>
-                      <Lock className="w-4 h-4 text-amber-300" />
-                      <span>Events Recorded (Locked)</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>UPDATED — Events Locked</span>
                     </>
                   ) : isSaving ? (
                     <>

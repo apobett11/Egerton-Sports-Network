@@ -47,16 +47,44 @@ export const useTeamDashboard = () => {
   const canPublish = true; // Coach has exclusive authority to publish team press releases and announcements
 
   const [teamId, setTeamId] = useState<string>(DEFAULT_TEAM_UUID);
-  const [teamInfo, setTeamInfo] = useState<DBTeam | null>(null);
-  const [teamFixtures, setTeamFixtures] = useState<Match[]>([]);
+  const [teamInfo, setTeamInfo] = useState<DBTeam | null>(() => {
+    try {
+      const cached = sessionStorage.getItem('coach_dashboard_team_info');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [teamFixtures, setTeamFixtures] = useState<Match[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('coach_dashboard_fixtures');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [linesmanMatches, setLinesmanMatches] = useState<LinesmanMatch[]>([]);
-  const [standings, setStandings] = useState<StandingEntry[]>([]);
+  const [standings, setStandings] = useState<StandingEntry[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('coach_dashboard_standings');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [teamForm, setTeamForm] = useState<('W' | 'D' | 'L')[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [publishedNews, setPublishedNews] = useState<any[]>([]);
   const [isComposeModalOpen, setIsComposeModalOpen] = useState<boolean>(false);
   const [isSubmittingJournal, setIsSubmittingJournal] = useState<boolean>(false);
-  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(() => {
+    // If cached data is present, render immediately without blocking spinner
+    try {
+      return !sessionStorage.getItem('coach_dashboard_team_info');
+    } catch {
+      return true;
+    }
+  });
   const [coachProfile, setCoachProfile] = useState<{ id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string } | null>(null);
   const [captainProfile, setCaptainProfile] = useState<{ id: string; name: string; email?: string; phone?: string; avatarUrl?: string; role?: string } | null>(null);
 
@@ -67,7 +95,14 @@ export const useTeamDashboard = () => {
     return saved ? saved === 'dark' : true;
   });
 
-  const [roster, setRoster] = useState<Player[]>([]);
+  const [roster, setRoster] = useState<Player[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('coach_dashboard_roster');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [practiceSchedule, setPracticeSchedule] = useState<PracticeSession[]>([]);
 
   // Formations & Tactical Physics State
@@ -135,19 +170,17 @@ export const useTeamDashboard = () => {
     return () => window.removeEventListener('team_logo_updated', handleLogoUpdate);
   }, []);
 
-  // Synchronize Live Supabase Data
+  // Synchronize Live Supabase Data with Priority Splitting & Caching
   const refreshLiveDashboard = useCallback(async () => {
-    setIsLoadingData(true);
     try {
       const coachUserId = user?.id || '';
+
+      // PRIORITY 1: Resolve Team Identity & Core Homepage Data (Sub-Second)
       let team = await fetchAuthenticatedUserTeam(coachUserId);
       const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
-
       setTeamId(resolvedTeamId);
 
-      // Anti-Reversion Logo Guard:
-      // If coach uploaded a logo, prioritize it over default/seed Unsplash placeholders
-      // and ensure it sticks permanently without reverting on periodic live refetches.
+      // Anti-Reversion Logo Guard
       const cachedLogo = typeof window !== 'undefined'
         ? (localStorage.getItem(`team_logo_${resolvedTeamId}`) || localStorage.getItem(`team_logo_${teamId}`))
         : null;
@@ -167,6 +200,9 @@ export const useTeamDashboard = () => {
       }
 
       setTeamInfo(team);
+      try {
+        sessionStorage.setItem('coach_dashboard_team_info', JSON.stringify(team));
+      } catch {}
 
       if (team?.tactics_config?.formation) {
         setFormation(team.tactics_config.formation as FormationName);
@@ -191,34 +227,18 @@ export const useTeamDashboard = () => {
         setPracticeSchedule(team.practice_schedule);
       }
 
-      // Parallel fetch from database using UID
-      const [coachCapProfiles, dbPlayers, dbFixtures, dbStandings, dbLinesman, dbAnnouncements, dbNews] = await Promise.all([
-        fetchCoachCaptainProfiles(resolvedTeamId, coachUserId),
+      // PRIORITY 1 FETCH: Fast Parallel Fetch of Team Roster & Fixtures
+      const [dbPlayers, dbFixtures] = await Promise.all([
         fetchTeamPlayers(resolvedTeamId),
         fetchTeamFixtures(resolvedTeamId),
-        fetchTeamStandings(resolvedTeamId, team?.competition_id),
-        fetchTeamLinesmanMatches(resolvedTeamId, user?.id),
-        fetchTeamAnnouncements(),
-        fetchTeamNews(),
       ]);
 
-      if (coachCapProfiles?.coach) {
-        setCoachProfile(coachCapProfiles.coach);
-      } else {
-        setCoachProfile({
-          id: DEFAULT_COACH_UUID,
-          name: 'Head Coach',
-          email: 'coach@egerton.ac.ke',
-          phone: '',
-          avatarUrl: '',
-          role: 'coach',
-        });
-      }
-      if (coachCapProfiles?.captain) {
-        setCaptainProfile(coachCapProfiles.captain);
-      }
-
       setRoster(dbPlayers);
+      setTeamFixtures(dbFixtures);
+      try {
+        sessionStorage.setItem('coach_dashboard_roster', JSON.stringify(dbPlayers));
+        sessionStorage.setItem('coach_dashboard_fixtures', JSON.stringify(dbFixtures));
+      } catch {}
 
       if (team?.starting_xi_str && dbPlayers.length > 0) {
         const savedIds = team.starting_xi_str.split(',').map((id: string) => id.trim());
@@ -230,26 +250,69 @@ export const useTeamDashboard = () => {
         }
       }
 
-      setTeamFixtures(dbFixtures);
-      setStandings(dbStandings);
-      setLinesmanMatches(dbLinesman);
-      setAnnouncements(dbAnnouncements || []);
-      setPublishedNews(dbNews || []);
-
-      // Derive authentic team form strictly from database
-      const myStanding = dbStandings.find((s) => s.isCurrent) || dbStandings.find((s) => s.teamName === team?.name);
-      if (myStanding && myStanding.recentForm && myStanding.recentForm.length > 0) {
-        setTeamForm(myStanding.recentForm);
-      } else {
-        const finishedOutcomes = dbFixtures
-          .filter((f) => f.status === 'FINISHED' && f.result)
-          .map((f) => f.result as 'W' | 'D' | 'L')
-          .slice(-6);
+      // Compute immediate interim team form from fixtures
+      const finishedOutcomes = dbFixtures
+        .filter((f) => f.status === 'FINISHED' && f.result)
+        .map((f) => f.result as 'W' | 'D' | 'L')
+        .slice(-6);
+      if (finishedOutcomes.length > 0) {
         setTeamForm(finishedOutcomes);
       }
+
+      // INSTANT RENDER: Unblock loading immediately so homepage & next match render with zero delay!
+      setIsLoadingData(false);
+
+      // PRIORITY 2 ASYNC BACKGROUND: Load secondary data without blocking Homepage
+      Promise.allSettled([
+        fetchCoachCaptainProfiles(resolvedTeamId, coachUserId),
+        fetchTeamStandings(resolvedTeamId, team?.competition_id),
+        fetchTeamLinesmanMatches(resolvedTeamId, user?.id),
+        fetchTeamAnnouncements(),
+        fetchTeamNews(),
+      ]).then(([capRes, standingsRes, linesmanRes, annRes, newsRes]) => {
+        if (capRes.status === 'fulfilled' && capRes.value) {
+          if (capRes.value.coach) {
+            setCoachProfile(capRes.value.coach);
+          } else {
+            setCoachProfile({
+              id: DEFAULT_COACH_UUID,
+              name: 'Head Coach',
+              email: 'coach@egerton.ac.ke',
+              phone: '',
+              avatarUrl: '',
+              role: 'coach',
+            });
+          }
+          if (capRes.value.captain) {
+            setCaptainProfile(capRes.value.captain);
+          }
+        }
+
+        if (standingsRes.status === 'fulfilled' && standingsRes.value) {
+          setStandings(standingsRes.value);
+          try {
+            sessionStorage.setItem('coach_dashboard_standings', JSON.stringify(standingsRes.value));
+          } catch {}
+          const myStanding = standingsRes.value.find((s) => s.isCurrent) || standingsRes.value.find((s) => s.teamName === team?.name);
+          if (myStanding && myStanding.recentForm && myStanding.recentForm.length > 0) {
+            setTeamForm(myStanding.recentForm);
+          }
+        }
+
+        if (linesmanRes.status === 'fulfilled' && linesmanRes.value) {
+          setLinesmanMatches(linesmanRes.value);
+        }
+
+        if (annRes.status === 'fulfilled' && annRes.value) {
+          setAnnouncements(annRes.value || []);
+        }
+
+        if (newsRes.status === 'fulfilled' && newsRes.value) {
+          setPublishedNews(newsRes.value || []);
+        }
+      });
     } catch (err) {
       console.warn('[useTeamDashboard] Error loading fresh database records:', err);
-    } finally {
       setIsLoadingData(false);
     }
   }, [user]);
