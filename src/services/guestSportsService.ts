@@ -490,6 +490,14 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         };
       });
 
+      // Strict FIFA Standings Ordering: Points (Desc) -> Goal Difference (Desc) -> Goals For (Desc) -> Name (Asc)
+      results.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference;
+        if (b.goals_for !== a.goals_for) return b.goals_for - a.goals_for;
+        return a.team_name.localeCompare(b.team_name);
+      });
+
       guestCache.set('standings', cacheKey, results, 2 * 60 * 1000, true);
       return results;
     } catch (err: any) {

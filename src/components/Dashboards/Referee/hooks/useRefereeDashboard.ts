@@ -107,60 +107,56 @@ export const useRefereeDashboard = () => {
   const [selectedMatchdayGroup, setSelectedMatchdayGroup] = useState<MatchdayScheduleGroup | null>(null);
 
   // Load Assigned Fixtures Scoped by Referee UID from Database
+  // Load Assigned Fixtures Scoped by Referee UID from Database
   const loadDashboardData = useCallback(async () => {
-    setIsLoading(true);
     try {
-      // 0. Fetch all registered referees for assignment verification and pool management
-      try {
-        const { data: dbRefs } = await supabase
-          .from('referees')
-          .select('*')
-          .is('deleted_at', null)
-          .order('name');
-        if (dbRefs && dbRefs.length > 0) {
-          setRefereesList(dbRefs);
-        }
-      } catch (err) {
-        console.warn('Referees query skipped/offline:', err);
-      }
-
-      // 1. Direct Supabase query with all linesmen and profile relations
+      // 1. Instant / Priority Fetch: Real fixtures, teams, and competitions mapped cleanly
       let formattedMatches: Match[] = [];
       try {
-        const query = supabase
-          .from('fixtures')
-          .select(`
-            id,
-            status,
-            scheduled_time,
-            score_home,
-            score_away,
-            venue,
-            matchday,
-            attendance,
-            weather,
-            referee_id,
-            assistant_referee_1_id,
-            assistant_referee_2_id,
-            fourth_official_id,
-            verified_by_referee_id,
-            competition:competitions(id, name),
-            team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
-            team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
-          `)
-          .order('scheduled_time', { ascending: true });
+        const [fixturesRes, teamsRes, compsRes] = await Promise.all([
+          supabase
+            .from('fixtures')
+            .select(`
+              id,
+              status,
+              scheduled_time,
+              score_home,
+              score_away,
+              venue,
+              matchday,
+              attendance,
+              weather,
+              referee_id,
+              assistant_referee_1_id,
+              assistant_referee_2_id,
+              fourth_official_id,
+              verified_by_referee_id,
+              competition_id,
+              home_team_id,
+              away_team_id
+            `)
+            .order('scheduled_time', { ascending: true }),
+          supabase
+            .from('teams')
+            .select('id, name, short_name, logo_url, color_code'),
+          supabase
+            .from('competitions')
+            .select('id, name')
+        ]);
 
-        const { data: dbData, error: fixErr } = await query;
+        const dbFixtures = fixturesRes.data || [];
+        const teamsList = teamsRes.data || [];
+        const compsList = compsRes.data || [];
 
-        if (!fixErr && dbData && dbData.length > 0) {
-          formattedMatches = dbData.map((f: any) => {
-            const comp = Array.isArray(f.competition) ? f.competition[0] : f.competition;
-            const home = Array.isArray(f.team_home) ? f.team_home[0] : f.team_home;
-            const away = Array.isArray(f.team_away) ? f.team_away[0] : f.team_away;
-            const refProf = Array.isArray(f.referee_prof) ? f.referee_prof[0] : f.referee_prof;
-            const ar1Prof = null;
-            const ar2Prof = null;
-            const foProf = null;
+        const teamsMap = new Map<string, any>(teamsList.map((t: any) => [t.id, t]));
+        const compsMap = new Map<string, string>(compsList.map((c: any) => [c.id, c.name]));
+
+        if (dbFixtures.length > 0) {
+          formattedMatches = dbFixtures.map((f: any) => {
+            const home = teamsMap.get(f.home_team_id) || {};
+            const away = teamsMap.get(f.away_team_id) || {};
+            const compName = compsMap.get(f.competition_id) || 
+              (f.competition_id === '22222222-2222-2222-2222-222222222222' ? 'Egerton Championship' : 'Egerton Premier League');
 
             const timeStr = formatMatchTime(f.scheduled_time);
 
@@ -169,28 +165,28 @@ export const useRefereeDashboard = () => {
               status: f.status as MatchStatus,
               time: timeStr,
               minute: f.status === 'LIVE' ? "65'" : f.status === 'FT' ? "FT" : "-",
-              league: comp?.name || 'Egerton Premier League',
+              league: compName,
               teamA: {
-                id: home?.id || '',
-                name: home?.name || 'Home Team',
-                shortName: home?.short_name || 'HOM',
-                logo: home?.logo_url || '',
-                colorCode: home?.color_code || '#D4AF37',
+                id: home.id || f.home_team_id || '',
+                name: home.name || home.short_name || 'Faculty of Arts',
+                shortName: home.short_name || (home.name ? home.name.slice(0, 3).toUpperCase() : 'FOA'),
+                logo: home.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                colorCode: home.color_code || '#059669',
               },
               teamB: {
-                id: away?.id || '',
-                name: away?.name || 'Away Team',
-                shortName: away?.short_name || 'AWY',
-                logo: away?.logo_url || '',
-                colorCode: away?.color_code || '#2563EB',
+                id: away.id || f.away_team_id || '',
+                name: away.name || away.short_name || 'Njoro FC',
+                shortName: away.short_name || (away.name ? away.name.slice(0, 3).toUpperCase() : 'NJR'),
+                logo: away.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                colorCode: away.color_code || '#2563EB',
               },
               scoreA: f.score_home || 0,
               scoreB: f.score_away || 0,
               events: [],
               stats: [],
               lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
-              venue: f.venue || '',
-              referee: refProf ? `${refProf.first_name || ''} ${refProf.last_name || ''}`.trim() : currentUserName,
+              venue: f.venue || 'Egerton Main Grounds',
+              referee: currentUserName,
               refereeId: f.referee_id,
               referee_id: f.referee_id,
               assistantReferee1: 'Official Linesman 1',
@@ -204,13 +200,13 @@ export const useRefereeDashboard = () => {
               matchday: f.matchday || 1,
               verifiedByRefereeId: f.verified_by_referee_id,
               scheduledTime: f.scheduled_time,
-              competitionId: comp?.id || f.competition_id || (comp?.name?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID),
-              competition_id: comp?.id || f.competition_id || (comp?.name?.toLowerCase().includes('champ') ? CHAMP_COMP_ID : EPL_COMP_ID),
+              competitionId: f.competition_id || EPL_COMP_ID,
+              competition_id: f.competition_id || EPL_COMP_ID,
             } as any;
           });
         }
       } catch (err) {
-        console.warn('Fixtures supabase fetch skipped/offline:', err);
+        console.warn('Direct referee fixture fetch fallback:', err);
       }
 
       if (formattedMatches.length === 0) {
@@ -222,20 +218,7 @@ export const useRefereeDashboard = () => {
         } catch {}
       }
 
-      if (formattedMatches.length === 0) {
-        const refId = effectiveRefereeId || 'ref_1';
-        formattedMatches = mockMatches.map((m, idx) => ({
-          ...m,
-          matchday: m.matchday || (idx % 3 + 1),
-          scheduledTime: m.scheduledTime || new Date(Date.now() + (idx === 0 ? 3600000 : idx * 86400000)).toISOString(),
-          refereeId: refId,
-          verifiedByRefereeId: refId,
-          competitionId: (m as any).competitionId || EPL_COMP_ID,
-          competition_id: (m as any).competition_id || EPL_COMP_ID,
-        }));
-      }
-
-      // Unified Referee Dashboard: Load all matches across competitions
+      // Sort immediately by scheduled time
       const sortedMatches = [...formattedMatches].sort((a, b) => {
         const timeA = a.scheduledTime ? new Date(a.scheduledTime).getTime() : 0;
         const timeB = b.scheduledTime ? new Date(b.scheduledTime).getTime() : 0;
@@ -243,39 +226,54 @@ export const useRefereeDashboard = () => {
       });
 
       setFixtures(sortedMatches);
-
-      // 2. Fetch live match events for referee statistics calculation
-      const fixtureIds = sortedMatches.map((m) => m.id);
-      if (fixtureIds.length > 0) {
-        try {
-          const { data: evts } = await supabase
-            .from('match_events')
-            .select('id, fixture_id, type, minute, player_id, team_id, is_official')
-            .in('fixture_id', fixtureIds);
-          if (evts) {
-            setRawEvents(evts);
-          }
-        } catch {}
-      }
+      setIsLoading(false);
 
       if (sortedMatches.length > 0 && !selectedFixtureId) {
         const activeOne = sortedMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || sortedMatches[0];
         setSelectedFixtureId(activeOne.id);
       }
 
-      // 3. Fetch Announcements
-      try {
-        const ancRes = await ApiService.getAnnouncements();
-        if (ancRes.success && ancRes.data) {
-          setAnnouncements(ancRes.data);
+      // 2. Secondary calls dispatched asynchronously (never block fixture rendering)
+      setTimeout(async () => {
+        // Fetch referees pool
+        try {
+          const { data: dbRefs } = await supabase
+            .from('referees')
+            .select('*')
+            .is('deleted_at', null)
+            .order('name');
+          if (dbRefs && dbRefs.length > 0) {
+            setRefereesList(dbRefs);
+          }
+        } catch {}
+
+        // Fetch match events for analytics
+        const fixtureIds = sortedMatches.map((m) => m.id);
+        if (fixtureIds.length > 0) {
+          try {
+            const { data: evts } = await supabase
+              .from('match_events')
+              .select('id, fixture_id, type, minute, player_id, team_id, is_official')
+              .in('fixture_id', fixtureIds);
+            if (evts) {
+              setRawEvents(evts);
+            }
+          } catch {}
         }
-      } catch {}
+
+        // Fetch announcements
+        try {
+          const ancRes = await ApiService.getAnnouncements();
+          if (ancRes.success && ancRes.data) {
+            setAnnouncements(ancRes.data);
+          }
+        } catch {}
+      }, 50);
     } catch (err: any) {
       console.warn('Referee data load notice:', err);
-    } finally {
       setIsLoading(false);
     }
-  }, [effectiveRefereeId, effectiveRefereeName, selectedFixtureId]);
+  }, [currentUserName, selectedFixtureId]);
 
   useEffect(() => {
     loadDashboardData();

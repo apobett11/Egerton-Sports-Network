@@ -39,12 +39,14 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {}
     if (onLogout) {
       onLogout();
     } else {
-      logout();
-      window.location.hash = '/home';
+      window.location.hash = '/login';
     }
   };
 
@@ -53,10 +55,10 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
       {/* Row 1: ESN Brand & Header Controls */}
       <div className="flex items-center justify-between px-4 py-2.5 max-w-7xl mx-auto gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 group cursor-pointer" onClick={() => { window.location.hash = '/home'; }}>
+          <div className="flex items-center gap-2.5">
             <EsnLogo size="md" />
             <div className="flex flex-col leading-none">
-              <span className="font-black text-base sm:text-lg tracking-tight uppercase text-slate-900 dark:text-white font-sans group-hover:text-[#ff0046] transition-colors">
+              <span className="font-black text-base sm:text-lg tracking-tight uppercase text-slate-900 dark:text-white font-sans">
                 ESN REFEREE
               </span>
               <span className="text-[8.5px] font-black tracking-widest uppercase text-slate-400 mt-0.5">

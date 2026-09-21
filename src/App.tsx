@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Header } from './components/Layout/Header';
 import { Footer } from './components/Layout/Footer';
 import { Navigation } from './components/Layout/Navigation';
@@ -864,7 +866,7 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <RefereeDashboard onLogout={() => handleNavigateHash('/home')} />
+          <RefereeDashboard onLogout={() => handleNavigateHash('/login')} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -1251,6 +1253,8 @@ export const App: React.FC = () => (
     <ToastProvider>
       <ConfirmationProvider>
         <AppContent />
+        <Analytics />
+        <SpeedInsights />
       </ConfirmationProvider>
     </ToastProvider>
   </AuthProvider>

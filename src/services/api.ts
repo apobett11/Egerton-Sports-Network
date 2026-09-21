@@ -1466,24 +1466,42 @@ export const ApiService = {
         const teamIds2 = rawStandings.map((r: any) => r.team_id).filter(Boolean);
         const { data: teamsData2 } = await supabase.from('teams').select('id, name, logo_url').in('id', teamIds2);
         const teamMap2 = new Map<string, any>((teamsData2 || []).map((t: any) => [t.id, t]));
-        const directEntries: LeagueTableEntry[] = rawStandings.map((row: any, idx: number) => {
+        const rawEntries = rawStandings.map((row: any) => {
           const tm = teamMap2.get(row.team_id) || {};
+          const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
+            ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
+          const rawPts = Number(row.points) || 0;
+          const points = isLegends ? Math.max(0, rawPts - 2) : rawPts;
+
           return {
-            position: idx + 1,
             teamId: row.team_id || '',
             teamName: tm?.name || 'Campus Team',
             teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
-            played: Number(row.played),
-            won: Number(row.won),
-            drawn: Number(row.drawn),
-            lost: Number(row.lost),
-            goalsFor: Number(row.goals_for),
-            goalsAgainst: Number(row.goals_against),
-            goalDifference: Number(row.goal_difference),
-            points: Number(row.points),
+            played: Number(row.played) || 0,
+            won: Number(row.won) || 0,
+            drawn: Number(row.drawn) || 0,
+            lost: Number(row.lost) || 0,
+            goalsFor: Number(row.goals_for) || 0,
+            goalsAgainst: Number(row.goals_against) || 0,
+            goalDifference: Number(row.goal_difference) || 0,
+            points,
             lastUpdated: row.last_updated || new Date().toISOString()
           };
         });
+
+        // Strict FIFA Standings Ordering
+        rawEntries.sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points;
+          if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+          if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+          return a.teamName.localeCompare(b.teamName);
+        });
+
+        const directEntries: LeagueTableEntry[] = rawEntries.map((entry: any, idx: number) => ({
+          ...entry,
+          position: idx + 1
+        }));
+
         return { success: true, data: directEntries };
       }
 
