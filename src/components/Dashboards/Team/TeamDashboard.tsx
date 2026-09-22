@@ -237,6 +237,7 @@ export const TeamDashboard: React.FC = () => {
               teamForm={teamForm as any}
               currentTeamName={teamInfo?.name}
               currentTeamLogo={teamInfo?.logo_url || teamInfo?.crest_url}
+              teamId={teamId}
               onOpenMatchEventsModal={handleOpenMatchEventsModal}
             />
           )}

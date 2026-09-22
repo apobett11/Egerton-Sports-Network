@@ -66,15 +66,22 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     }
   }, [isOpen]);
 
-  // 1. Filter past/completed matches (up to 4 played matches list)
+  // 1. Filter all completed matches (including the latest game, ordered latest first)
   const pastMatches = useMemo(() => {
-    return (fixtures || []).filter(
-      (f) => f.status === 'FINISHED' || f.score !== undefined
-    );
+    return (fixtures || [])
+      .filter((f) => f.status === 'FINISHED' || f.score !== undefined)
+      .sort((a, b) => {
+        const mdA = a.matchday || 0;
+        const mdB = b.matchday || 0;
+        if (mdA !== mdB) return mdB - mdA;
+        const timeA = new Date(a.scheduled_time || a.date || 0).getTime();
+        const timeB = new Date(b.scheduled_time || b.date || 0).getTime();
+        return timeB - timeA;
+      });
   }, [fixtures]);
 
   const playedMatchesList = useMemo(() => {
-    return pastMatches.slice(0, 4);
+    return pastMatches;
   }, [pastMatches]);
 
   // Modal Step State

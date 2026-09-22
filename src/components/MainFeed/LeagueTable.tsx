@@ -303,28 +303,29 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   const render6FormBadges = (teamId: string, _pos: number) => {
     const rawForm = teamFormsMap[teamId] || [];
     if (rawForm.length === 0) {
-      return <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">—</span>;
+      return <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">—</span>;
     }
-    const form6 = rawForm.slice(0, 6);
 
     return (
-      <div className="flex items-center gap-1 justify-center">
-        {form6.map((res, i) => (
-          <span
-            key={i}
-            className={`w-4 h-4 rounded-[2px] flex items-center justify-center font-bold text-[9px] text-white select-none ${
-              res === 'W'
-                ? 'bg-[#00b04f]'
-                : res === 'D'
-                ? 'bg-[#ff9800]'
-                : res === 'L'
-                ? 'bg-[#d63031]'
-                : 'bg-[#8fa1b4]'
-            }`}
-          >
-            {res}
-          </span>
-        ))}
+      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
+        <div className="flex items-center gap-1 justify-start w-max">
+          {rawForm.map((res, i) => (
+            <span
+              key={i}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white select-none ${
+                res === 'W'
+                  ? 'bg-[#00b04f]'
+                  : res === 'D'
+                  ? 'bg-[#ff9800]'
+                  : res === 'L'
+                  ? 'bg-[#d63031]'
+                  : 'bg-[#8fa1b4]'
+              }`}
+            >
+              {res}
+            </span>
+          ))}
+        </div>
       </div>
     );
   };
@@ -481,14 +482,14 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
 
         <div className="w-full overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[520px] sm:min-w-full">
+          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[480px] sm:min-w-full">
             <thead>
-              <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black text-slate-400 uppercase">
-                <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2.5 px-3 text-center w-9 sm:w-10 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
-                <th className="sticky left-9 sm:left-10 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2.5 px-3 min-w-[140px] sm:min-w-[190px] border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
-                <th className="py-2.5 px-3 text-center w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
-                <th className="py-2.5 px-3 text-center min-w-[140px] border-b border-[#e6e8ec] dark:border-[#1a2e45]">LAST 6 MATCHES</th>
-                <th className="py-2.5 px-4 text-center w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
+              <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[9px] sm:text-[10px] font-black text-slate-400 uppercase">
+                <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 text-center w-8 sm:w-9 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
+                <th className="sticky left-8 sm:left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 min-w-[130px] sm:min-w-[170px] border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
+                <th className="py-2 px-2 text-center w-11 sm:w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
+                <th className="py-2 px-2 text-center min-w-[124px] sm:min-w-[136px] border-b border-[#e6e8ec] dark:border-[#1a2e45]">RECENT FORM</th>
+                <th className="py-2 px-3 text-center w-12 sm:w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
@@ -507,9 +508,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               ) : (
                 list.map((row) => (
                   <tr key={row.teamId || row.position} className="group hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                    <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-3 text-center font-bold text-slate-400 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.position}.</td>
+                    <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 text-center font-bold text-[10px] sm:text-[11px] text-slate-400 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.position}.</td>
                     <td
-                      className={`sticky left-9 sm:left-10 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-3 min-w-[140px] sm:min-w-[190px] border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
+                      className={`sticky left-8 sm:left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 min-w-[130px] sm:min-w-[170px] border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
                       onClick={() => {
                         if (row.teamId && onSelectTeam) {
                           onSelectTeam(row.teamId, row.teamName);
@@ -521,16 +522,16 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                         <img
                           src={row.teamLogo}
                           alt={row.teamName}
-                          className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
+                          className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
                         />
-                        <span className="font-extrabold text-slate-900 dark:text-white truncate group-hover:text-[#ff0046] transition-colors">
+                        <span className="font-bold text-[11px] sm:text-xs text-slate-900 dark:text-white truncate group-hover:text-[#ff0046] transition-colors">
                           {row.teamName}
                         </span>
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.played}</td>
-                    <td className="py-2.5 px-3 text-center border-b border-[#f0f2f5] dark:border-[#14263b]">{render6FormBadges(row.teamId, row.position)}</td>
-                    <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">{row.points}</td>
+                    <td className="py-2 px-2 text-center font-bold font-mono text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.played}</td>
+                    <td className="py-2 px-2 text-center border-b border-[#f0f2f5] dark:border-[#14263b]">{render6FormBadges(row.teamId, row.position)}</td>
+                    <td className="py-2 px-3 text-center font-black font-mono text-xs sm:text-sm text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">{row.points}</td>
                   </tr>
                 ))
               )}

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { StandingEntry, Match, TeamFormEntry } from '../types';
+import { fetchRecordedFixtureIds } from '../lib/supabaseClient';
 import {
   Trophy,
   Calendar,
@@ -11,6 +12,7 @@ import {
   Activity,
   Radio,
   PenTool,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface StandingsPageProps {
@@ -19,6 +21,7 @@ interface StandingsPageProps {
   teamForm?: TeamFormEntry[];
   currentTeamName?: string;
   currentTeamLogo?: string;
+  teamId?: string;
   onOpenMatchEventsModal?: (matchId?: string) => void;
 }
 
@@ -27,11 +30,31 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
   fixtures,
   currentTeamName,
   currentTeamLogo,
+  teamId,
   onOpenMatchEventsModal,
 }) => {
   const [showFullStandings, setShowFullStandings] = useState<boolean>(false);
   const [showFullFormTable, setShowFullFormTable] = useState<boolean>(false);
   const [activeFixtureFilter, setActiveFixtureFilter] = useState<'ALL' | 'UPCOMING' | 'FINISHED'>('ALL');
+  const [recordedFixtureIds, setRecordedFixtureIds] = useState<string[]>([]);
+
+  // Load recorded fixture IDs to accurately badge matches with UPDATED
+  const refreshRecordedFixtures = useCallback(() => {
+    const targetTeamId = teamId || fixtures[0]?.homeTeamId || fixtures[0]?.awayTeamId;
+    if (!targetTeamId || !fixtures || fixtures.length === 0) return;
+    const pastIds = fixtures
+      .filter((f) => f.status === 'FINISHED' || f.score !== undefined)
+      .map((f) => f.id);
+    if (pastIds.length === 0) return;
+
+    fetchRecordedFixtureIds(pastIds, targetTeamId).then((ids) => {
+      setRecordedFixtureIds(ids);
+    });
+  }, [teamId, fixtures]);
+
+  useEffect(() => {
+    refreshRecordedFixtures();
+  }, [refreshRecordedFixtures]);
 
   // Find index of current team in standings
   const currentTeamIndex = useMemo(() => {
@@ -78,32 +101,33 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
     return fixtures;
   }, [fixtures, activeFixtureFilter]);
 
-  // Minimalist 6-Form Badges
+  // Form Badges: render all form results, max 6 shown with horizontal scroll past 6
   const render6FormBadges = (formList: ('W' | 'D' | 'L')[]) => {
     if (!formList || formList.length === 0) {
-      return <span className="text-xs text-slate-400 font-medium">—</span>;
+      return <span className="text-[10px] text-slate-400 font-medium">—</span>;
     }
-    const form6 = formList.slice(-6);
 
     return (
-      <div className="flex items-center gap-1 justify-center">
-        {form6.map((res, i) => (
-          <span
-            key={i}
-            className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px] text-white shadow-xs transition-transform hover:scale-105 select-none ${
-              res === 'W'
-                ? 'bg-[#00b04f]'
-                : res === 'D'
-                ? 'bg-amber-500'
-                : res === 'L'
-                ? 'bg-[#ff0046]'
-                : 'bg-slate-400'
-            }`}
-            title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
-          >
-            {res}
-          </span>
-        ))}
+      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
+        <div className="flex items-center gap-1 justify-start w-max">
+          {formList.map((res, i) => (
+            <span
+              key={i}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white shadow-xs transition-transform hover:scale-105 select-none ${
+                res === 'W'
+                  ? 'bg-[#00b04f]'
+                  : res === 'D'
+                  ? 'bg-amber-500'
+                  : res === 'L'
+                  ? 'bg-[#ff0046]'
+                  : 'bg-slate-400'
+              }`}
+              title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
+            >
+              {res}
+            </span>
+          ))}
+        </div>
       </div>
     );
   };
@@ -343,12 +367,12 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
         <div className="w-full overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-[#14263b] text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-50/30 dark:bg-[#0b1623]/30">
-                <th className="py-3 px-3 text-center w-10">#</th>
-                <th className="py-3 px-4 min-w-[160px] sm:min-w-[220px]">Club</th>
-                <th className="py-3 px-3 text-center w-12">Played</th>
-                <th className="py-3 px-4 text-center min-w-[160px]">Last 6 Matches</th>
-                <th className="py-3 px-4 text-center w-16 font-black text-slate-900 dark:text-white">PTS (L6)</th>
+              <tr className="border-b border-slate-100 dark:border-[#14263b] text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider bg-slate-50/30 dark:bg-[#0b1623]/30">
+                <th className="py-2.5 px-2.5 text-center w-8 sm:w-10">#</th>
+                <th className="py-2.5 px-3 min-w-[140px] sm:min-w-[200px]">Club</th>
+                <th className="py-2.5 px-2 text-center w-11 sm:w-12">Played</th>
+                <th className="py-2.5 px-2 text-center min-w-[130px]">Recent Form</th>
+                <th className="py-2.5 px-3 text-center w-14 sm:w-16 font-black text-slate-900 dark:text-white">PTS (L6)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#14263b]">
@@ -379,27 +403,27 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                         isOurTeam ? 'bg-[#ff0046]/5 dark:bg-[#ff0046]/10 font-bold' : ''
                       }`}
                     >
-                      <td className="py-3 px-3 text-center">
-                        <span className="text-slate-400 font-mono text-[11px] font-bold">
+                      <td className="py-2.5 px-2.5 text-center">
+                        <span className="text-slate-400 font-mono text-[10px] sm:text-[11px] font-bold">
                           {team.position}.
                         </span>
                       </td>
 
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2 min-w-0">
                           {((isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo) ? (
                             <img
                               src={(isOurTeam && currentTeamLogo) ? currentTeamLogo : team.teamLogo}
                               alt={team.teamName}
-                              className="w-6 h-6 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-white/10"
+                              className="w-5 h-5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200/60 dark:border-white/10"
                             />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 flex items-center justify-center text-[9px] font-black border border-slate-200/60 dark:border-white/10">
+                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 flex items-center justify-center text-[8px] font-black border border-slate-200/60 dark:border-white/10">
                               {team.teamName.slice(0, 2).toUpperCase()}
                             </div>
                           )}
                           <span
-                            className={`truncate ${
+                            className={`truncate text-[11px] sm:text-xs ${
                               isOurTeam
                                 ? 'font-black text-slate-900 dark:text-white'
                                 : 'font-semibold text-slate-800 dark:text-slate-200'
@@ -408,22 +432,22 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                             {team.teamName}
                           </span>
                           {isOurTeam && (
-                            <span className="text-[9px] bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
+                            <span className="text-[8px] sm:text-[9px] bg-[#ff0046]/10 text-[#ff0046] border border-[#ff0046]/20 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
                               Our Club
                             </span>
                           )}
                         </div>
                       </td>
 
-                      <td className="py-3 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300">
+                      <td className="py-2.5 px-2 text-center font-bold font-mono text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
                         {team.played}
                       </td>
 
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-2 text-center">
                         {render6FormBadges(formList)}
                       </td>
 
-                      <td className="py-3 px-4 text-center font-black font-mono text-sm text-[#00b04f]">
+                      <td className="py-2.5 px-3 text-center font-black font-mono text-xs sm:text-sm text-[#00b04f]">
                         {ptsL6}
                       </td>
                     </tr>
@@ -638,10 +662,21 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenMatchEventsModal(fixture.id)}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 text-[10px] font-bold transition-all cursor-pointer"
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          recordedFixtureIds.includes(fixture.id)
+                            ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black'
+                            : 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400'
+                        }`}
                         title="Record scorers, assists and cards for this match"
                       >
-                        Input Events
+                        {recordedFixtureIds.includes(fixture.id) ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span>UPDATED</span>
+                          </>
+                        ) : (
+                          <span>Input Events</span>
+                        )}
                       </button>
                     )}
                   </div>

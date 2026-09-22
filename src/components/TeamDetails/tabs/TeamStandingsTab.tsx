@@ -44,29 +44,30 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
 
   const render6FormBadges = (formList: ('W' | 'D' | 'L')[]) => {
     if (!formList || formList.length === 0) {
-      return <span className="text-[11px] text-slate-400 font-medium">—</span>;
+      return <span className="text-[10px] text-slate-400 font-medium">—</span>;
     }
-    const form6 = formList.slice(-6);
 
     return (
-      <div className="flex items-center gap-1 justify-center">
-        {form6.map((res, i) => (
-          <span
-            key={i}
-            className={`w-4 h-4 rounded-[2px] flex items-center justify-center font-bold text-[9px] text-white select-none ${
-              res === 'W'
-                ? 'bg-[#00b04f]'
-                : res === 'D'
-                ? 'bg-[#ff9800]'
-                : res === 'L'
-                ? 'bg-[#d63031]'
-                : 'bg-[#8fa1b4]'
-            }`}
-            title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
-          >
-            {res}
-          </span>
-        ))}
+      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
+        <div className="flex items-center gap-1 justify-start w-max">
+          {formList.map((res, i) => (
+            <span
+              key={i}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white select-none ${
+                res === 'W'
+                  ? 'bg-[#00b04f]'
+                  : res === 'D'
+                  ? 'bg-[#ff9800]'
+                  : res === 'L'
+                  ? 'bg-[#d63031]'
+                  : 'bg-[#8fa1b4]'
+              }`}
+              title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
+            >
+              {res}
+            </span>
+          ))}
+        </div>
       </div>
     );
   };
@@ -208,14 +209,14 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
         </div>
 
         <div className="w-full overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[520px] sm:min-w-full">
+          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[480px] sm:min-w-full">
             <thead>
-              <tr className="bg-slate-50/50 dark:bg-[#112236]/60 text-[10px] font-black text-slate-400 uppercase">
-                <th className="sticky left-0 z-20 bg-slate-50 dark:bg-[#112236] py-2.5 px-3 text-center w-9 sm:w-10 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
-                <th className="sticky left-9 sm:left-10 z-20 bg-slate-50 dark:bg-[#112236] py-2.5 px-3 min-w-[140px] sm:min-w-[190px] border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
-                <th className="py-2.5 px-3 text-center w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
-                <th className="py-2.5 px-3 text-center min-w-[140px] border-b border-[#e6e8ec] dark:border-[#1a2e45]">LAST 6 MATCHES</th>
-                <th className="py-2.5 px-4 text-center w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
+              <tr className="bg-slate-50/50 dark:bg-[#112236]/60 text-[9px] sm:text-[10px] font-black text-slate-400 uppercase">
+                <th className="sticky left-0 z-20 bg-slate-50 dark:bg-[#112236] py-2 px-2.5 text-center w-8 sm:w-9 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
+                <th className="sticky left-8 sm:left-9 z-20 bg-slate-50 dark:bg-[#112236] py-2 px-2.5 min-w-[130px] sm:min-w-[170px] border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
+                <th className="py-2 px-2 text-center w-11 sm:w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
+                <th className="py-2 px-2 text-center min-w-[124px] sm:min-w-[136px] border-b border-[#e6e8ec] dark:border-[#1a2e45]">RECENT FORM</th>
+                <th className="py-2 px-3 text-center w-12 sm:w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
@@ -240,10 +241,10 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                           : 'hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]'
                       }`}
                     >
-                      <td className={`sticky left-0 z-10 ${isHighlighted ? 'bg-[#ff0046]/10 dark:bg-[#14263b]' : 'bg-white dark:bg-[#0e1c2b]'} group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-3 text-center font-bold text-slate-400 w-9 sm:w-10 border-b border-[#f0f2f5] dark:border-[#14263b]`}>
+                      <td className={`sticky left-0 z-10 ${isHighlighted ? 'bg-[#ff0046]/10 dark:bg-[#14263b]' : 'bg-white dark:bg-[#0e1c2b]'} group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 text-center font-bold text-[10px] sm:text-[11px] text-slate-400 w-8 sm:w-9 border-b border-[#f0f2f5] dark:border-[#14263b]`}>
                         {row.position}.
                       </td>
-                      <td className={`sticky left-9 sm:left-10 z-10 ${isHighlighted ? 'bg-[#ff0046]/10 dark:bg-[#14263b]' : 'bg-white dark:bg-[#0e1c2b]'} group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-3 min-w-[140px] sm:min-w-[190px] border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]`}>
+                      <td className={`sticky left-8 sm:left-9 z-10 ${isHighlighted ? 'bg-[#ff0046]/10 dark:bg-[#14263b]' : 'bg-white dark:bg-[#0e1c2b]'} group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 min-w-[130px] sm:min-w-[170px] border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]`}>
                         <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={
@@ -252,29 +253,29 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
                                 : (row.teamLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80')
                             }
                             alt={row.teamName}
-                            className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                            className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                             onError={(e) => {
                               (e.currentTarget as HTMLElement).style.display = 'none';
                             }}
                           />
                           <span
-                            className={`truncate ${
+                            className={`truncate text-[11px] sm:text-xs ${
                               isHighlighted
                                 ? 'font-black text-[#ff0046]'
-                                : 'font-extrabold text-slate-900 dark:text-white'
+                                : 'font-bold text-slate-900 dark:text-white'
                             }`}
                           >
                             {row.teamName}
                           </span>
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-center font-bold font-mono text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <td className="py-2 px-2 text-center font-bold font-mono text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">
                         {row.played}
                       </td>
-                      <td className="py-2.5 px-3 text-center border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <td className="py-2 px-2 text-center border-b border-[#f0f2f5] dark:border-[#14263b]">
                         {render6FormBadges(row.recentForm || [])}
                       </td>
-                      <td className="py-2.5 px-4 text-center font-black font-mono text-sm text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <td className="py-2 px-3 text-center font-black font-mono text-xs sm:text-sm text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">
                         {row.points}
                       </td>
                     </tr>
