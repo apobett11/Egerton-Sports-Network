@@ -1910,6 +1910,13 @@ export async function saveCoachMatchEvents(
                 console.error('[Supabase Client] Failed to insert match events:', insError.message);
                 return { success: false, error: insError.message };
             }
+
+            // Immediately trigger algorithm to recalculate clean sheets, goals, and assists
+            try {
+                await supabase.rpc('recalculate_all_player_stats');
+            } catch (recalcErr) {
+                console.warn('[Supabase Client] Real-time recalculate notice:', recalcErr);
+            }
         }
 
         return { success: true };

@@ -131,6 +131,14 @@ export interface GuestAssistLeader {
   assists: number;
 }
 
+export interface GuestCleanSheetLeader {
+  player_id: string;
+  player_name: string;
+  team_name: string;
+  logo_url: string | null;
+  clean_sheets: number;
+}
+
 // ============================================================================
 // SECTION 1: FIXTURES & PAST FIXTURES PRELOAD CACHE
 // ============================================================================
@@ -745,6 +753,76 @@ export async function getGuestAssists(limitCount = 10, competitionId?: string): 
     return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestAssists exception:', err);
+    return [];
+  }
+}
+
+export async function getGuestCleanSheets(limitCount = 10, competitionId?: string): Promise<GuestCleanSheetLeader[]> {
+  const cacheKey = `cleansheets_${competitionId || 'all'}_${limitCount}`;
+  const cached = guestCache.get<GuestCleanSheetLeader[]>('players', cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+
+  try {
+    let psQuery = supabase
+      .from('player_stats')
+      .select('player_id, clean_sheets')
+      .gt('clean_sheets', 0)
+      .order('clean_sheets', { ascending: false })
+      .limit(limitCount * 3);
+
+    if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
+      psQuery = psQuery.eq('competition_id', competitionId);
+    }
+
+    const [psRes, teamMap] = await Promise.all([
+      psQuery,
+      getTeamsMap()
+    ]);
+
+    const psRows = psRes.data;
+    if (psRes.error || !psRows || psRows.length === 0) return [];
+
+    const playerIds = psRows.map((r: any) => r.player_id).filter(Boolean);
+    const { data: playerRows } = await supabase
+      .from('players')
+      .select('id, first_name, last_name, team_id, profile_id')
+      .in('id', playerIds);
+
+    const playerMap = new Map<string, any>((playerRows || []).map((p: any) => [p.id, p]));
+
+    const aggregated = new Map<string, GuestCleanSheetLeader>();
+    psRows.forEach((row: any) => {
+      const pid = row.player_id;
+      if (!pid) return;
+      const player = playerMap.get(pid);
+      const team = player ? teamMap.get(player.team_id) : null;
+      const name = player ? `${player.first_name || ''} ${player.last_name || ''}`.trim() : 'Goalkeeper';
+
+      if (aggregated.has(pid)) {
+        aggregated.get(pid)!.clean_sheets += Number(row.clean_sheets) || 0;
+      } else {
+        aggregated.set(pid, {
+          player_id: pid,
+          player_name: name || 'Goalkeeper',
+          team_name: team?.name || 'Campus Team',
+          logo_url: team?.logo_url || DEFAULT_LOGO,
+          clean_sheets: Number(row.clean_sheets) || 0,
+        });
+      }
+    });
+
+    const results = [...aggregated.values()]
+      .sort((a, b) => b.clean_sheets - a.clean_sheets)
+      .slice(0, limitCount);
+
+    if (results.length > 0) {
+      guestCache.set('players', cacheKey, results, 2 * 60 * 1000);
+    }
+    return results;
+  } catch (err: any) {
+    console.error('[guestSportsService] getGuestCleanSheets exception:', err);
     return [];
   }
 }
