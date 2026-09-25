@@ -23,8 +23,12 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
     const htScoreA = (match.events || []).filter(e => e.teamId === match.teamA.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
     const htScoreB = (match.events || []).filter(e => e.teamId === match.teamB.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
 
+    const isFriendly = (match.league || '').toLowerCase().includes('friendly') || 
+                       (match as any).is_friendly || 
+                       (match as any).competition_id === '33333333-3333-3333-3333-333333333333';
+
     return (
-        <div className="w-full select-none bg-[#0e1e2d] text-white">
+        <div className={`w-full select-none ${isFriendly ? 'bg-gradient-to-b from-[#1a0e30] to-[#0e1e2d] border-t-2 border-purple-500' : 'bg-[#0e1e2d]'} text-white`}>
             {/* 1. TOP BREADCRUMB / NAV BAR */}
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#16283d] text-xs">
                 <button
@@ -42,7 +46,9 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                     <span>&gt;</span>
                     <span>🇰🇪 KENYA</span>
                     <span>&gt;</span>
-                    <span className="text-white font-extrabold uppercase truncate">{match.league || 'EGERTON LEAGUE'}</span>
+                    <span className={`${isFriendly ? 'text-purple-300' : 'text-white'} font-extrabold uppercase truncate`}>
+                        {isFriendly ? 'Friendlies' : (match.league || 'EGERTON LEAGUE')}
+                    </span>
                 </div>
 
                 {/* Right Action Icons: Star & Share */}
@@ -99,6 +105,13 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                     ) : (
                         <div className="text-xs font-bold tracking-widest text-slate-300">
                             {formatMatchTime(match.scheduledTime || match.time)}{match.venue ? ` • ${formatMatchPitch(match.venue)}` : ''}
+                        </div>
+                    )}
+                    {isFriendly && (
+                        <div className="mt-1.5 flex items-center justify-center">
+                            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs">
+                                Exhibition Friendly
+                            </span>
                         </div>
                     )}
                 </div>

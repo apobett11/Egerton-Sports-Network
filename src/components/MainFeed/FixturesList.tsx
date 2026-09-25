@@ -93,15 +93,15 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                         key={leagueName}
                         className={`w-full bg-white dark:bg-[#0e1c2b] border ${
                             isFriendly
-                                ? 'border-purple-300/80 dark:border-purple-900/60 shadow-xs'
-                                : 'border-[#e6e8ec] dark:border-[#1a2e45] shadow-xs'
-                        } rounded-none sm:rounded-sm overflow-hidden`}
+                                ? 'border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-500/20'
+                                : 'border-[#e6e8ec] dark:border-[#1a2e45]'
+                        } rounded-none sm:rounded-sm overflow-hidden shadow-xs`}
                     >
                         <div 
                             onClick={(e) => toggleCollapse(leagueName, e)}
                             className={`flex items-center justify-between px-3 py-2 ${
                                 isFriendly
-                                    ? 'bg-purple-50/70 dark:bg-purple-950/30 border-b border-purple-200/60 dark:border-purple-900/40 hover:bg-purple-100/60 dark:hover:bg-purple-950/50'
+                                    ? 'bg-purple-50 dark:bg-purple-950/40 border-b border-purple-200 dark:border-purple-800/60 hover:bg-purple-100/70 dark:hover:bg-purple-950/60'
                                     : 'bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] hover:bg-slate-100 dark:hover:bg-[#152940]'
                             } cursor-pointer transition-colors`}
                         >
@@ -118,7 +118,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
                                 {/* Flag / Crest */}
                                 {isFriendly ? (
-                                    <div className="w-4 h-3 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-xs flex items-center justify-center text-[9px] font-bold overflow-hidden shrink-0">
+                                    <div className="w-4 h-3 bg-purple-600 text-white rounded-xs flex items-center justify-center text-[8px] font-black overflow-hidden shrink-0 shadow-2xs">
                                         ⚡
                                     </div>
                                 ) : (
@@ -130,16 +130,16 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                 {/* League Info */}
                                 <div className="flex flex-col leading-tight min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className={`font-extrabold text-xs ${isFriendly ? 'text-purple-900 dark:text-purple-200' : 'text-slate-900 dark:text-white'} uppercase tracking-tight truncate`}>
+                                        <span className={`font-extrabold text-xs ${isFriendly ? 'text-purple-950 dark:text-purple-200' : 'text-slate-900 dark:text-white'} uppercase tracking-tight truncate`}>
                                             {isFriendly ? 'Friendlies' : leagueName}
                                         </span>
                                         {isFriendly && (
-                                            <span className="text-[9px] px-1.5 py-0.2 rounded-xs bg-purple-500/10 text-purple-700 dark:text-purple-300 font-black tracking-wider uppercase border border-purple-500/20">
+                                            <span className="text-[9px] px-1.5 py-0.2 rounded-xs bg-purple-500/15 text-purple-700 dark:text-purple-300 font-black tracking-wider uppercase border border-purple-500/30">
                                                 Exhibition
                                             </span>
                                         )}
                                     </div>
-                                    <span className={`text-[10px] ${isFriendly ? 'text-purple-600/80 dark:text-purple-400/80 font-bold' : 'text-slate-500 dark:text-slate-400 font-semibold'} uppercase`}>
+                                    <span className={`text-[10px] ${isFriendly ? 'text-purple-600/90 dark:text-purple-400 font-bold' : 'text-slate-500 dark:text-slate-400 font-semibold'} uppercase`}>
                                         {isFriendly ? 'CAMPUS FOOTBALL' : 'KENYA'}
                                     </span>
                                 </div>
@@ -178,14 +178,18 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                     const isHT = match.status === 'HT';
                                     const isFT = match.status === 'FT';
                                     const isFav = isFavorite(match.id);
+                                    const isFriendlyMatch = isFriendly || 
+                                        (match.league || '').toLowerCase().includes('friendly') || 
+                                        (match as any).is_friendly || 
+                                        (match as any).competition_id === '33333333-3333-3333-3333-333333333333';
 
                                     return (
                                         <div
                                             key={match.id}
                                             onClick={() => onMatchClick(match)}
-                                            className={`flex items-center justify-between px-3 py-2 ${
-                                                isFriendly
-                                                    ? 'hover:bg-purple-50/50 dark:hover:bg-purple-950/20'
+                                            className={`flex items-center justify-between px-3 py-2.5 ${
+                                                isFriendlyMatch
+                                                    ? 'bg-purple-50/40 dark:bg-purple-950/25 border-l-4 border-l-purple-600 dark:border-l-purple-500 hover:bg-purple-100/50 dark:hover:bg-purple-900/35'
                                                     : 'hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]'
                                             } transition-colors cursor-pointer group`}
                                         >
@@ -201,6 +205,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                     className={`w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200 cursor-pointer ${
                                                         isFav
                                                             ? 'bg-amber-500 text-white shadow-xs'
+                                                            : isFriendlyMatch
+                                                            ? 'text-purple-300 dark:text-purple-800/80 hover:text-amber-500 hover:bg-purple-500/10'
                                                             : 'text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:bg-amber-500/10'
                                                     }`}
                                                     aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
@@ -232,11 +238,19 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                         </span>
                                                     ) : (
                                                         <div className="flex flex-col items-center leading-tight">
-                                                            <span className={`text-[11px] font-extrabold ${isFriendly ? 'text-purple-900 dark:text-purple-200' : 'text-slate-800 dark:text-slate-200'} tracking-tight whitespace-nowrap`}>
+                                                            <span className={`text-[11px] font-black ${
+                                                                isFriendlyMatch
+                                                                    ? 'text-purple-800 dark:text-purple-200 bg-purple-500/15 dark:bg-purple-500/25 border border-purple-500/30 rounded px-1.5 py-0.5'
+                                                                    : 'text-slate-800 dark:text-slate-200'
+                                                            } tracking-tight whitespace-nowrap`}>
                                                                 {formatMatchTime(match.scheduledTime || match.time)}
                                                             </span>
                                                             {match.venue && (
-                                                                <span className={`text-[9px] font-bold ${isFriendly ? 'text-purple-600 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-wider whitespace-nowrap mt-0.5`}>
+                                                                <span className={`text-[9px] font-bold ${
+                                                                    isFriendlyMatch
+                                                                        ? 'text-purple-700 dark:text-purple-300'
+                                                                        : 'text-slate-500 dark:text-slate-400'
+                                                                } uppercase tracking-wider whitespace-nowrap mt-1`}>
                                                                     {formatMatchPitch(match.venue, true)}
                                                                 </span>
                                                             )}
@@ -305,9 +319,15 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                         LIVE
                                                     </span>
                                                 ) : match.status === 'UPCOMING' ? (
-                                                    <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs">
-                                                        PREVIEW
-                                                    </span>
+                                                    isFriendlyMatch ? (
+                                                        <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-600 text-white dark:bg-purple-600 dark:text-white border border-purple-400 shadow-2xs">
+                                                            FRIENDLY
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs">
+                                                            PREVIEW
+                                                        </span>
+                                                    )
                                                 ) : null}
                                             </div>
                                         </div>
