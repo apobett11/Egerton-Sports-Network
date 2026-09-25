@@ -776,8 +776,8 @@ export const AppContent: React.FC = () => {
     if (selectedCompetitionId === '22222222-2222-2222-2222-222222222222') {
       return liveMatches.filter((m) => m.league?.toLowerCase().includes('championship'));
     }
-    if (selectedCompetitionId === 'friendlies') {
-      return liveMatches.filter((m) => m.league?.toLowerCase().includes('friendly'));
+    if (selectedCompetitionId === 'friendlies' || selectedCompetitionId === '33333333-3333-3333-3333-333333333333') {
+      return liveMatches.filter((m) => m.league?.toLowerCase().includes('friend'));
     }
     return liveMatches;
   };

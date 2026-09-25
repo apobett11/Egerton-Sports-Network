@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
             }
             if (!fDateStr) return;
 
-            const isFriendly = f.league?.toLowerCase().includes('friendly') || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
+            const isFriendly = f.league?.toLowerCase().includes('friend') || (f as any).is_friendly || (f as any).competition_id === 'friendlies' || (f as any).competition_id === '33333333-3333-3333-3333-333333333333';
             const isLeague = !isFriendly;
             if (!map.has(fDateStr)) {
                 map.set(fDateStr, { isLeague, isFriendly, matchday: f.matchday });

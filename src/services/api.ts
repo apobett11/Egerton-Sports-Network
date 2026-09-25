@@ -92,7 +92,7 @@ export const ApiService = {
           } else if (competitionId === '22222222-2222-2222-2222-222222222222') {
             filtered = filtered.filter(m => m.league?.toLowerCase().includes('championship'));
           } else if (competitionId === 'friendlies' || competitionId === '33333333-3333-3333-3333-333333333333') {
-            filtered = filtered.filter(m => m.league?.toLowerCase().includes('friendly'));
+            filtered = filtered.filter(m => m.league?.toLowerCase().includes('friend'));
           }
         }
         if (selectedDate && selectedDate !== 'all') {

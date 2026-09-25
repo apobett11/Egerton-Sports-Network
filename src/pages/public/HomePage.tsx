@@ -108,7 +108,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       const d = new Date(rawDate);
       if (isNaN(d.getTime())) return;
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const isFriendly = (f.league && f.league.toLowerCase().includes('friendly')) || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
+      const isFriendly = (f.league && f.league.toLowerCase().includes('friend')) || (f as any).is_friendly || (f as any).competition_id === 'friendlies' || (f as any).competition_id === '33333333-3333-3333-3333-333333333333';
       const isLeague = !isFriendly;
       const compId = f.competition_id || (f as any).competitionId;
       const isEpl = compId === '11111111-1111-1111-1111-111111111111' || (f.league && f.league.toLowerCase().includes('premier'));
@@ -231,8 +231,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           } else if (compId === '22222222-2222-2222-2222-222222222222') {
             const isChamp = m.league?.toLowerCase().includes('championship');
             if (!isChamp) return false;
-          } else if (compId === 'friendlies') {
-            const isFriendly = m.league?.toLowerCase().includes('friendly');
+          } else if (compId === 'friendlies' || compId === '33333333-3333-3333-3333-333333333333') {
+            const isFriendly = m.league?.toLowerCase().includes('friend');
             if (!isFriendly) return false;
           }
         }

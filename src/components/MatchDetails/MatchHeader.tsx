@@ -23,7 +23,7 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
     const htScoreA = (match.events || []).filter(e => e.teamId === match.teamA.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
     const htScoreB = (match.events || []).filter(e => e.teamId === match.teamB.id && e.minute <= 45 && (e.type === 'goal' || e.type === 'penalty')).length;
 
-    const isFriendly = (match.league || '').toLowerCase().includes('friendly') || 
+    const isFriendly = (match.league || '').toLowerCase().includes('friend') || 
                        (match as any).is_friendly || 
                        (match as any).competition_id === '33333333-3333-3333-3333-333333333333';
 

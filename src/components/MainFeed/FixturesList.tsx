@@ -86,7 +86,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
             {Object.entries(matchesByLeague).map(([leagueName, leagueMatches]) => {
                 const isCollapsed = !!collapsedLeagues[leagueName];
                 const isPinned = !!pinnedLeagues[leagueName];
-                const isFriendly = (leagueName || '').toLowerCase().includes('friendly');
+                const isFriendly = (leagueName || '').toLowerCase().includes('friend');
 
                 return (
                     <div
@@ -179,7 +179,7 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                     const isFT = match.status === 'FT';
                                     const isFav = isFavorite(match.id);
                                     const isFriendlyMatch = isFriendly || 
-                                        (match.league || '').toLowerCase().includes('friendly') || 
+                                        (match.league || '').toLowerCase().includes('friend') || 
                                         (match as any).is_friendly || 
                                         (match as any).competition_id === '33333333-3333-3333-3333-333333333333';
 
