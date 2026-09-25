@@ -3,6 +3,7 @@ import { HelpCircle } from 'lucide-react';
 import type { Match, Player } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
+import { resolveAllocatedOfficials } from '../../lib/matchdayHelper';
 import { MatchHeader } from './MatchHeader';
 import { TabBar } from './TabBar';
 import type { MatchDetailTabType } from './TabBar';
@@ -33,24 +34,54 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
         return ['LIVE', 'HT', 'HALF_TIME', 'SECOND_HALF', '1H', '2H', 'FT', 'FULL_TIME', 'FINALIZED', 'COMPLETED'].includes(upper);
     };
 
-    const [currentMatch, setCurrentMatch] = useState<Match>(match);
+    const [currentMatch, setCurrentMatch] = useState<Match>(() => {
+        const off = resolveAllocatedOfficials(match);
+        return {
+            ...match,
+            referee: off.centerReferee || match.referee,
+            centerReferee: off.centerReferee || match.centerReferee,
+            refereeId: off.centerRefereeId || match.refereeId,
+            centerRefereeId: off.centerRefereeId || match.centerRefereeId,
+            linesmanTeamAName: match.linesmanTeamAName || off.linesmanTeamA,
+            linesmanTeamBName: match.linesmanTeamBName || off.linesmanTeamB,
+        };
+    });
     const [activeTab, setActiveTab] = useState<MatchDetailTabType>(() => {
-        return isBegunOrPlayed(match.status) ? 'timeline' : 'squad';
+        return isBegunOrPlayed(match.status) ? 'timeline' : 'details';
     });
 
     useEffect(() => {
-        setCurrentMatch(match);
+        const offInit = resolveAllocatedOfficials(match);
+        const resolvedInitMatch: Match = {
+            ...match,
+            referee: offInit.centerReferee || match.referee,
+            centerReferee: offInit.centerReferee || match.centerReferee,
+            refereeId: offInit.centerRefereeId || match.refereeId,
+            centerRefereeId: offInit.centerRefereeId || match.centerRefereeId,
+            linesmanTeamAName: match.linesmanTeamAName || offInit.linesmanTeamA,
+            linesmanTeamBName: match.linesmanTeamBName || offInit.linesmanTeamB,
+        };
+        setCurrentMatch(resolvedInitMatch);
         if (isBegunOrPlayed(match.status)) {
             setActiveTab('timeline');
+        } else {
+            setActiveTab('details');
         }
 
         // Fetch deep match details from database
         ApiService.getMatchDetails(match.id).then(async (res) => {
+            const offDeep = resolveAllocatedOfficials(res.data || match);
             if (res.data && isBegunOrPlayed(res.data.status)) {
                 setActiveTab('timeline');
             }
             if (res.data && res.data.lineups?.teamA && res.data.lineups.teamA.length > 0) {
-                setCurrentMatch(res.data);
+                setCurrentMatch({
+                    ...res.data,
+                    referee: offDeep.centerReferee || res.data.referee,
+                    centerReferee: offDeep.centerReferee || res.data.centerReferee,
+                    linesmanTeamAName: res.data.linesmanTeamAName || offDeep.linesmanTeamA,
+                    linesmanTeamBName: res.data.linesmanTeamBName || offDeep.linesmanTeamB,
+                });
             } else {
                 // Direct database query fallback for team players:
                 // SELECT * FROM players WHERE team_id = team.id
@@ -83,6 +114,10 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                 const base = res.data || match;
                 setCurrentMatch({
                     ...base,
+                    referee: offDeep.centerReferee || base.referee,
+                    centerReferee: offDeep.centerReferee || base.centerReferee,
+                    linesmanTeamAName: base.linesmanTeamAName || offDeep.linesmanTeamA,
+                    linesmanTeamBName: base.linesmanTeamBName || offDeep.linesmanTeamB,
                     lineups: {
                         teamA: [...startersA, ...subsA],
                         teamB: [...startersB, ...subsB],

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Star, Share2 } from 'lucide-react';
-import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
+import { formatMatchTime, formatMatchPitch, resolveAllocatedOfficials } from '../../lib/matchdayHelper';
 import type { Match } from '../../types';
 
 interface MatchHeaderProps {
@@ -164,34 +164,44 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                 </div>
 
                 {/* 3. APPOINTED MATCH OFFICIALS STRIP (CR & LINES) */}
-                {(match.referee || match.centerReferee || match.linesmanTeamAName || match.linesmanTeamBName) && (
-                    <div className="mt-5 pt-3.5 border-t border-[#16283d] w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs">
-                        {(match.referee || match.centerReferee) && (
-                            <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
-                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-black tracking-wider uppercase border border-amber-500/30">
-                                    CR
-                                </span>
-                                <span className="text-slate-100 font-bold text-[11px] sm:text-xs">
-                                    {match.referee || match.centerReferee}
-                                </span>
-                            </div>
-                        )}
+                {(() => {
+                    const officials = resolveAllocatedOfficials(match);
+                    const crName = officials.centerReferee || match.referee || match.centerReferee;
+                    const linesA = match.linesmanTeamAName || officials.linesmanTeamA;
+                    const linesB = match.linesmanTeamBName || officials.linesmanTeamB;
 
-                        {(match.linesmanTeamAName || match.linesmanTeamBName) && (
-                            <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
-                                <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[10px] font-black tracking-wider uppercase border border-sky-500/30">
-                                    LINES
-                                </span>
-                                <span className="text-slate-200 font-semibold text-[11px] sm:text-xs">
-                                    {[match.linesmanTeamAName, match.linesmanTeamBName].filter(Boolean).join(', ')}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
+                    if (!crName && !linesA && !linesB) return null;
+
+                    return (
+                        <div className="mt-5 pt-3.5 border-t border-[#16283d] w-full flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs">
+                            {crName && (
+                                <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-black tracking-wider uppercase border border-amber-500/30">
+                                        CR
+                                    </span>
+                                    <span className="text-slate-100 font-bold text-[11px] sm:text-xs">
+                                        {crName}
+                                    </span>
+                                </div>
+                            )}
+
+                            {(linesA || linesB) && (
+                                <div className="inline-flex items-center gap-1.5 bg-[#122438] px-3 py-1 rounded-full border border-[#1e3857] shadow-xs">
+                                    <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[10px] font-black tracking-wider uppercase border border-sky-500/30">
+                                        LINES
+                                    </span>
+                                    <span className="text-slate-200 font-semibold text-[11px] sm:text-xs">
+                                        {[linesA, linesB].filter(Boolean).join(', ')}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );
 };
+
 
 

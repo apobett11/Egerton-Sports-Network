@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import type { Match, LeagueTableEntry } from '../types';
 import { guestCache } from '../lib/guestCache';
+import { resolveAllocatedOfficials } from '../lib/matchdayHelper';
 
 // ============================================================================
 // GUEST SPORTS SERVICE v3 — Ultra-Fast Cached In-Memory Lookups & Clean Queries
@@ -99,6 +100,10 @@ export interface GuestFixture {
   score_away: number;
   home_penalty_score?: number | null;
   away_penalty_score?: number | null;
+  referee?: string | null;
+  referee_id?: string | null;
+  linesman_team_a_name?: string | null;
+  linesman_team_b_name?: string | null;
 }
 
 export interface GuestStanding {
@@ -912,6 +917,12 @@ export function guestFixtureToMatch(gf: GuestFixture): Match {
     ? '15:00'
     : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
+  const officials = resolveAllocatedOfficials(gf.id);
+  const cr = gf.referee || officials.centerReferee || undefined;
+  const crId = gf.referee_id || officials.centerRefereeId || undefined;
+  const lA = gf.linesman_team_a_name || officials.linesmanTeamA || undefined;
+  const lB = gf.linesman_team_b_name || officials.linesmanTeamB || undefined;
+
   return {
     id: gf.id,
     status: gf.status as any,
@@ -942,13 +953,19 @@ export function guestFixtureToMatch(gf: GuestFixture): Match {
     stats: [],
     lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
     venue: gf.venue,
-    referee: 'Appointed Official',
+    referee: cr || 'Accredited League Referee',
+    centerReferee: cr,
+    refereeId: crId,
+    centerRefereeId: crId,
+    linesmanTeamAName: lA,
+    linesmanTeamBName: lB,
     matchday: gf.matchday,
     homePenaltyScore: gf.home_penalty_score ?? undefined,
     awayPenaltyScore: gf.away_penalty_score ?? undefined,
     scheduledTime: gf.scheduled_time,
   };
 }
+
 
 export function guestStandingToLeagueTableEntry(gs: GuestStanding, index: number): LeagueTableEntry {
   return {

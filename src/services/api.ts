@@ -18,6 +18,7 @@ import type {
 import { calculateLeagueStandings } from '../lib/leagueEngine';
 import { executeWithRetry } from '../lib/retryPolicy';
 import { logger } from '../lib/logger';
+import { resolveAllocatedOfficials } from '../lib/matchdayHelper';
 import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
 import { guestCache } from '../lib/guestCache';
@@ -739,7 +740,10 @@ export const ApiService = {
         { label: 'Substitutions', teamAValue: subsA, teamBValue: subsB }
       ];
 
-      const refName = refDb?.name || (refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : 'Official Referee');
+      const allocatedOff = resolveAllocatedOfficials(fixtureId);
+      const refName = refDb?.name || (refProf ? `${refProf.first_name} ${refProf.last_name}`.trim() : allocatedOff.centerReferee || 'Official Referee');
+      const finalLinesmanAName = linesmanTeamAName || allocatedOff.linesmanTeamA || '';
+      const finalLinesmanBName = linesmanTeamBName || allocatedOff.linesmanTeamB || '';
       const ar1Name = ar1Prof ? `${ar1Prof.first_name} ${ar1Prof.last_name}`.trim() : undefined;
       const ar2Name = ar2Prof ? `${ar2Prof.first_name} ${ar2Prof.last_name}`.trim() : undefined;
       const foName = foProf ? `${foProf.first_name} ${foProf.last_name}`.trim() : undefined;
@@ -817,10 +821,10 @@ export const ApiService = {
         refereeId: activeRefId || f.referee_id,
         centerReferee: refName,
         centerRefereeId: activeRefId || f.referee_id,
-        linesmanTeamA: linesmanTeamAId ? { id: linesmanTeamAId, name: linesmanTeamAName } : undefined,
-        linesmanTeamB: linesmanTeamBId ? { id: linesmanTeamBId, name: linesmanTeamBName } : undefined,
-        linesmanTeamAName: linesmanTeamAName || undefined,
-        linesmanTeamBName: linesmanTeamBName || undefined,
+        linesmanTeamA: (linesmanTeamAId || finalLinesmanAName) ? { id: linesmanTeamAId || '', name: finalLinesmanAName } : undefined,
+        linesmanTeamB: (linesmanTeamBId || finalLinesmanBName) ? { id: linesmanTeamBId || '', name: finalLinesmanBName } : undefined,
+        linesmanTeamAName: finalLinesmanAName || undefined,
+        linesmanTeamBName: finalLinesmanBName || undefined,
         linesmanTeamAId: linesmanTeamAId || undefined,
         linesmanTeamBId: linesmanTeamBId || undefined,
         assistantReferee1: ar1Name,

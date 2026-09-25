@@ -122,3 +122,114 @@ export function formatMatchPitch(venueOrPitch?: string | null, short = false): s
   return str;
 }
 
+export interface MatchOfficialsInfo {
+  centerReferee?: string;
+  centerRefereeId?: string;
+  linesmanTeamA?: string;
+  linesmanTeamB?: string;
+}
+
+export const KNOWN_REFEREE_NAMES: Record<string, string> = {
+  '30000000-0000-4000-9000-000000000001': 'Jark',
+  '30000000-0000-4000-9000-000000000002': 'Lamoh',
+  '30000000-0000-4000-9000-000000000003': 'Chalo',
+  '30000000-0000-4000-9000-000000000004': 'Daudi',
+  '30000000-0000-4000-9000-000000000005': 'Ericko',
+  '30000000-0000-4000-9000-000000000006': 'Jatugo',
+  '30000000-0000-4000-9000-000000000007': 'Edu',
+  '30000000-0000-4000-9000-000000000008': 'Brilliant',
+};
+
+export const FIXTURE_ALLOCATED_OFFICIALS: Record<string, MatchOfficialsInfo> = {
+  // Matchday 6 EPL
+  'f0000000-0000-4000-8000-000000000022': { centerReferee: 'Jark', centerRefereeId: '30000000-0000-4000-9000-000000000001', linesmanTeamA: 'Legends Fc', linesmanTeamB: 'Wazito Fc' },
+  'f0000000-0000-4000-8000-000000000024': { centerReferee: 'Lamoh', centerRefereeId: '30000000-0000-4000-9000-000000000002', linesmanTeamA: 'Super eagles', linesmanTeamB: 'Celtics FC' },
+  'f0000000-0000-4000-8000-000000000020': { centerReferee: 'Chalo', centerRefereeId: '30000000-0000-4000-9000-000000000003', linesmanTeamA: 'Santos fc', linesmanTeamB: 'Mighty Blacks' },
+  'f0000000-0000-4000-8000-000000000021': { centerReferee: 'Daudi', centerRefereeId: '30000000-0000-4000-9000-000000000004', linesmanTeamA: 'Blue Blazers', linesmanTeamB: 'Giants FC' },
+  'f0000000-0000-4000-8000-00000000001f': { centerReferee: 'Ericko', centerRefereeId: '30000000-0000-4000-9000-000000000005', linesmanTeamA: 'Five Stars fc', linesmanTeamB: 'BCOM FC' },
+  'f0000000-0000-4000-8000-000000000023': { centerReferee: 'Jatugo', centerRefereeId: '30000000-0000-4000-9000-000000000006', linesmanTeamA: 'Med fc', linesmanTeamB: 'Rising stars' },
+  // Matchday 7 EPL
+  'f0000000-0000-4000-8000-000000000028': { centerReferee: 'Edu', centerRefereeId: '30000000-0000-4000-9000-000000000007', linesmanTeamA: 'Wazito Fc', linesmanTeamB: 'Celtics FC' },
+  'f0000000-0000-4000-8000-000000000027': { centerReferee: 'Lamoh', centerRefereeId: '30000000-0000-4000-9000-000000000002', linesmanTeamA: 'Super eagles', linesmanTeamB: 'Rising stars' },
+  'f0000000-0000-4000-8000-000000000029': { centerReferee: 'Chalo', centerRefereeId: '30000000-0000-4000-9000-000000000003', linesmanTeamA: 'Five Stars fc', linesmanTeamB: 'Santos fc' },
+  'f0000000-0000-4000-8000-000000000026': { centerReferee: 'Ericko', centerRefereeId: '30000000-0000-4000-9000-000000000005', linesmanTeamA: 'Mighty Blacks', linesmanTeamB: 'Legends Fc' },
+  'f0000000-0000-4000-8000-000000000025': { centerReferee: 'Daudi', centerRefereeId: '30000000-0000-4000-9000-000000000004', linesmanTeamA: 'Giants FC', linesmanTeamB: 'Med fc' },
+  'f0000000-0000-4000-8000-00000000002a': { centerReferee: 'Jatugo', centerRefereeId: '30000000-0000-4000-9000-000000000006', linesmanTeamA: 'BCOM FC', linesmanTeamB: 'Blue Blazers' },
+  // Matchday 7 Championship
+  'c0000000-0000-4000-8000-00000000001e': { centerReferee: 'Jatugo', centerRefereeId: '30000000-0000-4000-9000-000000000006', linesmanTeamA: 'Young legends', linesmanTeamB: 'Aged FC' },
+  'c0000000-0000-4000-8000-00000000001d': { centerReferee: 'Brilliant', centerRefereeId: '30000000-0000-4000-9000-000000000008', linesmanTeamA: 'Talanta fc', linesmanTeamB: 'law fc' },
+  // Matchday 7 Friendlies
+  'e0000000-0000-4000-8000-000000000001': { centerReferee: 'Jark', centerRefereeId: '30000000-0000-4000-9000-000000000001' },
+};
+
+const GENERIC_PLACEHOLDER_REFEREES = new Set([
+  'appointed official',
+  'accredited league referee',
+  'official referee',
+  'accredited official referee',
+  'accredited referee',
+  'official',
+  'referee',
+  'tba'
+]);
+
+export function isGenericRefereePlaceholder(name?: string | null): boolean {
+  if (!name) return true;
+  return GENERIC_PLACEHOLDER_REFEREES.has(name.trim().toLowerCase());
+}
+
+export function resolveAllocatedOfficials(target?: string | Match | any): MatchOfficialsInfo {
+  if (!target) return {};
+
+  const id = typeof target === 'string' ? target : target.id;
+  const fromSchedule = id ? FIXTURE_ALLOCATED_OFFICIALS[id] : undefined;
+
+  let refName: string | undefined = undefined;
+  let refId: string | undefined = undefined;
+  let linesA: string | undefined = undefined;
+  let linesB: string | undefined = undefined;
+
+  if (typeof target === 'object' && target !== null) {
+    // 1. Direct referee name if non-generic
+    const rawRef = target.referee || target.centerReferee || (target as any).refereeName;
+    if (rawRef && !isGenericRefereePlaceholder(rawRef)) {
+      refName = rawRef.trim();
+    }
+
+    // 2. Map from referee ID
+    const rawId = target.refereeId || target.centerRefereeId || (target as any).referee_id || (target as any).center_referee_id;
+    if (rawId && typeof rawId === 'string') {
+      refId = rawId;
+      if (!refName && KNOWN_REFEREE_NAMES[rawId]) {
+        refName = KNOWN_REFEREE_NAMES[rawId];
+      }
+    }
+
+    // 3. Linesmen teams
+    linesA = target.linesmanTeamAName || target.linesmanTeamA?.name || (target as any).linesman_team_a_name;
+    linesB = target.linesmanTeamBName || target.linesmanTeamB?.name || (target as any).linesman_team_b_name;
+  }
+
+  // Fallback to schedule allocation if not yet resolved
+  if (!refName && fromSchedule?.centerReferee) {
+    refName = fromSchedule.centerReferee;
+  }
+  if (!refId && fromSchedule?.centerRefereeId) {
+    refId = fromSchedule.centerRefereeId;
+  }
+  if (!linesA && fromSchedule?.linesmanTeamA) {
+    linesA = fromSchedule.linesmanTeamA;
+  }
+  if (!linesB && fromSchedule?.linesmanTeamB) {
+    linesB = fromSchedule.linesmanTeamB;
+  }
+
+  return {
+    centerReferee: refName,
+    centerRefereeId: refId,
+    linesmanTeamA: linesA,
+    linesmanTeamB: linesB,
+  };
+}
+
+

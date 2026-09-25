@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, UserCheck, SunMedium, Trophy, Clock, Users, ShieldCheck, Flag, CheckCircle2, Info } from 'lucide-react';
-import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
+import { formatMatchTime, formatMatchPitch, resolveAllocatedOfficials } from '../../lib/matchdayHelper';
 import type { Match } from '../../types';
 
 interface MatchDetailsCardProps {
@@ -9,6 +9,10 @@ interface MatchDetailsCardProps {
 
 export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => {
     const isPostKickoff = match.status !== 'UPCOMING';
+    const officials = resolveAllocatedOfficials(match);
+    const crName = officials.centerReferee || match.referee || match.centerReferee || 'Accredited League Referee';
+    const linesmanA = match.linesmanTeamAName || officials.linesmanTeamA;
+    const linesmanB = match.linesmanTeamBName || officials.linesmanTeamB;
 
     return (
         <div className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 select-none space-y-4">
@@ -53,21 +57,21 @@ export const MatchDetailsCard: React.FC<MatchDetailsCardProps> = ({ match }) => 
                                 APPOINTED MATCH OFFICIALS CREW
                             </span>
                             <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">
-                                Centre Referee (CR): {match.referee || match.centerReferee || 'Accredited League Referee'}
+                                Centre Referee (CR): {crName}
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400 font-semibold">
-                                {(match.linesmanTeamAName || match.linesmanTeamBName) ? (
+                                {(linesmanA || linesmanB) ? (
                                     <>
                                         <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
                                             <span className="text-[10px] uppercase font-bold text-sky-500 dark:text-sky-400 block">Linesman Team 1</span>
                                             <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
-                                                {match.linesmanTeamAName || 'Assigned Club'}
+                                                {linesmanA || 'Assigned Club'}
                                             </span>
                                         </div>
                                         <div className="bg-slate-50 dark:bg-slate-800/40 p-2 rounded-xs border border-slate-100 dark:border-slate-800">
                                             <span className="text-[10px] uppercase font-bold text-sky-500 dark:text-sky-400 block">Linesman Team 2</span>
                                             <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
-                                                {match.linesmanTeamBName || 'Assigned Club'}
+                                                {linesmanB || 'Assigned Club'}
                                             </span>
                                         </div>
                                     </>
