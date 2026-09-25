@@ -39,13 +39,14 @@ export const FixturesList: React.FC<FixturesListProps> = ({
 
     const getLeaguePriority = (leagueName: string): number => {
         const l = (leagueName || '').toLowerCase();
+        if (l.includes('friendly') || l.includes('friendlies')) return 0; // Friendlies strictly on top
         if (l.includes('premier') || l.includes('epl') || l.includes('division 1')) return 1;
         if (l.includes('champ') || l.includes('division 2')) return 2;
-        if (l.includes('friendly') || l.includes('friendlies') || l.includes('cup')) return 3;
+        if (l.includes('cup')) return 3;
         return 10;
     };
 
-    // Grouping by league with deterministic priority (EPL -> Championship -> Friendlies)
+    // Grouping by league with deterministic priority (Friendlies -> EPL -> Championship)
     const leagues = Array.from(new Set(matches.map((m) => m.league))).sort((a, b) => {
         const isPinnedA = !!pinnedLeagues[a];
         const isPinnedB = !!pinnedLeagues[b];
@@ -85,15 +86,24 @@ export const FixturesList: React.FC<FixturesListProps> = ({
             {Object.entries(matchesByLeague).map(([leagueName, leagueMatches]) => {
                 const isCollapsed = !!collapsedLeagues[leagueName];
                 const isPinned = !!pinnedLeagues[leagueName];
+                const isFriendly = (leagueName || '').toLowerCase().includes('friendly');
 
                 return (
                     <div
                         key={leagueName}
-                        className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+                        className={`w-full bg-white dark:bg-[#0e1c2b] border ${
+                            isFriendly
+                                ? 'border-purple-300/80 dark:border-purple-900/60 shadow-xs'
+                                : 'border-[#e6e8ec] dark:border-[#1a2e45] shadow-xs'
+                        } rounded-none sm:rounded-sm overflow-hidden`}
                     >
                         <div 
                             onClick={(e) => toggleCollapse(leagueName, e)}
-                            className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] cursor-pointer hover:bg-slate-100 dark:hover:bg-[#152940] transition-colors"
+                            className={`flex items-center justify-between px-3 py-2 ${
+                                isFriendly
+                                    ? 'bg-purple-50/70 dark:bg-purple-950/30 border-b border-purple-200/60 dark:border-purple-900/40 hover:bg-purple-100/60 dark:hover:bg-purple-950/50'
+                                    : 'bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] hover:bg-slate-100 dark:hover:bg-[#152940]'
+                            } cursor-pointer transition-colors`}
                         >
                             <div className="flex items-center gap-2.5 min-w-0">
                                 {/* League pin/star button */}
@@ -107,26 +117,37 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                 </button>
 
                                 {/* Flag / Crest */}
-                                <div className="w-4 h-3 bg-slate-300 dark:bg-slate-700 rounded-xs flex items-center justify-center text-[8px] font-bold overflow-hidden shrink-0">
-                                    🇰🇪
-                                </div>
+                                {isFriendly ? (
+                                    <div className="w-4 h-3 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-xs flex items-center justify-center text-[9px] font-bold overflow-hidden shrink-0">
+                                        ⚡
+                                    </div>
+                                ) : (
+                                    <div className="w-4 h-3 bg-slate-300 dark:bg-slate-700 rounded-xs flex items-center justify-center text-[8px] font-bold overflow-hidden shrink-0">
+                                        🇰🇪
+                                    </div>
+                                )}
 
                                 {/* League Info */}
                                 <div className="flex flex-col leading-tight min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                                            {leagueName}
+                                        <span className={`font-extrabold text-xs ${isFriendly ? 'text-purple-900 dark:text-purple-200' : 'text-slate-900 dark:text-white'} uppercase tracking-tight truncate`}>
+                                            {isFriendly ? 'Friendlies' : leagueName}
                                         </span>
+                                        {isFriendly && (
+                                            <span className="text-[9px] px-1.5 py-0.2 rounded-xs bg-purple-500/10 text-purple-700 dark:text-purple-300 font-black tracking-wider uppercase border border-purple-500/20">
+                                                Exhibition
+                                            </span>
+                                        )}
                                     </div>
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold">
-                                        KENYA
+                                    <span className={`text-[10px] ${isFriendly ? 'text-purple-600/80 dark:text-purple-400/80 font-bold' : 'text-slate-500 dark:text-slate-400 font-semibold'} uppercase`}>
+                                        {isFriendly ? 'CAMPUS FOOTBALL' : 'KENYA'}
                                     </span>
                                 </div>
                             </div>
 
                             {/* League Actions: Table Icon & Collapse Toggle */}
                             <div className="flex items-center gap-2 text-slate-400">
-                                {onOpenTable && (
+                                {!isFriendly && onOpenTable && (
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -162,7 +183,11 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                         <div
                                             key={match.id}
                                             onClick={() => onMatchClick(match)}
-                                            className="flex items-center justify-between px-3 py-2 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
+                                            className={`flex items-center justify-between px-3 py-2 ${
+                                                isFriendly
+                                                    ? 'hover:bg-purple-50/50 dark:hover:bg-purple-950/20'
+                                                    : 'hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]'
+                                            } transition-colors cursor-pointer group`}
                                         >
                                             {/* Left Column: Star & Match Status / Time */}
                                             <div className="flex items-center gap-2 shrink-0">
@@ -207,11 +232,11 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                         </span>
                                                     ) : (
                                                         <div className="flex flex-col items-center leading-tight">
-                                                            <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 tracking-tight whitespace-nowrap">
+                                                            <span className={`text-[11px] font-extrabold ${isFriendly ? 'text-purple-900 dark:text-purple-200' : 'text-slate-800 dark:text-slate-200'} tracking-tight whitespace-nowrap`}>
                                                                 {formatMatchTime(match.scheduledTime || match.time)}
                                                             </span>
                                                             {match.venue && (
-                                                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap mt-0.5">
+                                                                <span className={`text-[9px] font-bold ${isFriendly ? 'text-purple-600 dark:text-purple-400' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-wider whitespace-nowrap mt-0.5`}>
                                                                     {formatMatchPitch(match.venue, true)}
                                                                 </span>
                                                             )}

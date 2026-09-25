@@ -177,9 +177,12 @@ async function fetchGuestFixturesNetwork(params?: {
   const promise = (async () => {
     try {
       // Use the server-side RPC that JOINs teams + competitions inline.
-      const compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
+      let compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
         ? params.competitionId
         : null;
+      if (compId === 'friendlies' || compId === 'friendly') {
+        compId = '33333333-3333-3333-3333-333333333333';
+      }
       const dateVal = (params?.date && params.date !== 'all')
         ? (/^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0])
         : null;
@@ -334,7 +337,10 @@ async function _getGuestFixturesFallback(params?: {
       .order('scheduled_time', { ascending: true });
 
     if (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL') {
-      query = query.eq('competition_id', params.competitionId);
+      const compId = (params.competitionId === 'friendlies' || params.competitionId === 'friendly')
+        ? '33333333-3333-3333-3333-333333333333'
+        : params.competitionId;
+      query = query.eq('competition_id', compId);
     }
     if (params?.matchday) query = query.eq('matchday', params.matchday);
     if (params?.date && params.date !== 'all') {
