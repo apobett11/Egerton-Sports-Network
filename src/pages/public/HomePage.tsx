@@ -110,14 +110,18 @@ export const HomePage: React.FC<HomePageProps> = ({
       const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const isFriendly = (f.league && f.league.toLowerCase().includes('friendly')) || (f as any).is_friendly || (f as any).competition_id === 'friendlies';
       const isLeague = !isFriendly;
+      const compId = f.competition_id || (f as any).competitionId;
+      const isEpl = compId === '11111111-1111-1111-1111-111111111111' || (f.league && f.league.toLowerCase().includes('premier'));
+
       if (!map.has(dateKey)) {
         map.set(dateKey, { isFriendly, isLeague, matchday: f.matchday });
       } else {
         const cur = map.get(dateKey)!;
+        const preferMatchday = isEpl && f.matchday ? f.matchday : (cur.matchday || f.matchday);
         map.set(dateKey, {
           isFriendly: cur.isFriendly || isFriendly,
           isLeague: cur.isLeague || isLeague,
-          matchday: cur.matchday || f.matchday
+          matchday: preferMatchday
         });
       }
     });
@@ -202,16 +206,23 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   // Helper to extract cached fixtures for active date & competition instantly
   const getCachedFixtures = useCallback((dateStr: string, compId: string) => {
+    const isInvalid = (list?: Match[] | null) =>
+      !list || list.length === 0 || list.some((m: any) => {
+        const h = (m.teamA?.name || m.homeTeamName || '').trim().toLowerCase();
+        const a = (m.teamB?.name || m.awayTeamName || '').trim().toLowerCase();
+        return !h || !a || h === 'home team' || a === 'away team' || h === 'home' || a === 'away';
+      });
+
     // 1. Check exact key in guestCache
     const cacheKey = `${compId}_${dateStr}_pall_sall`;
     const cachedExact = guestCache.get<Match[]>('fixtures', cacheKey);
-    if (cachedExact && cachedExact.length > 0) return cachedExact;
+    if (cachedExact && cachedExact.length > 0 && !isInvalid(cachedExact)) return cachedExact;
 
     // 2. Check master 'all_all_pall_sall' in guestCache or dbFixtures prop
     const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
-    const sourceList = (allCached && allCached.length > 0) ? allCached : dbFixtures;
+    const sourceList = (allCached && allCached.length > 0 && !isInvalid(allCached)) ? allCached : dbFixtures;
 
-    if (sourceList && sourceList.length > 0) {
+    if (sourceList && sourceList.length > 0 && !isInvalid(sourceList)) {
       const filtered = sourceList.filter(m => {
         if (compId !== 'all') {
           if (compId === '11111111-1111-1111-1111-111111111111') {
@@ -232,7 +243,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         const mDateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         return mDateKey === dateStr;
       });
-      return filtered;
+      if (!isInvalid(filtered)) {
+        return filtered;
+      }
     }
     return null;
   }, [dbFixtures]);
@@ -791,7 +804,14 @@ export const HomePage: React.FC<HomePageProps> = ({
 
     const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const info = fixturePlaydaysMap.get(dateKey);
-    const md = info?.matchday || fixturesState.data.find(m => m.matchday)?.matchday;
+    // Find active matchday from loaded fixtures: prioritize active competition/EPL matchday
+    const activeFixtureMd = fixturesState.data.find(m => {
+      if (selectedCompetitionId === '22222222-2222-2222-2222-222222222222') {
+        return m.league?.toLowerCase().includes('championship');
+      }
+      return m.league?.toLowerCase().includes('premier') || m.matchday === 7;
+    })?.matchday || fixturesState.data.find(m => m.matchday)?.matchday;
+    const md = activeFixtureMd || info?.matchday;
 
     if (info?.isFriendly && !info?.isLeague) {
       return `FRIENDLY • ${weekday} ${day}/${month}/${year}`;
@@ -800,7 +820,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       return `MATCHDAY ${md} • ${weekday} ${day}/${month}/${year}`;
     }
     return `${weekday} ${day}/${month}/${year}`;
-  }, [activeDate, fixturePlaydaysMap, fixturesState.data]);
+  }, [activeDate, fixturePlaydaysMap, fixturesState.data, selectedCompetitionId]);
 
   return (
     <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">

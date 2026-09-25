@@ -67,14 +67,24 @@ export const ApiService = {
   async getFixtures(competitionId?: string, selectedDate?: string, page?: number, pageSize?: number): Promise<ApiResponse<Match[]> & { total?: number; page?: number; totalPages?: number }> {
     const cacheKey = `${competitionId || 'all'}_${selectedDate || 'all'}_p${page || 'all'}_s${pageSize || 'all'}`;
     const cached = guestCache.get<Match[]>('fixtures', cacheKey);
-    if (cached) {
+    const isInvalid = (list?: Match[] | null) =>
+      !list || list.length === 0 || list.some((m: any) => {
+        const h = (m.teamA?.name || m.homeTeamName || '').trim().toLowerCase();
+        const a = (m.teamB?.name || m.awayTeamName || '').trim().toLowerCase();
+        return !h || !a || h === 'home team' || a === 'away team' || h === 'home' || a === 'away';
+      });
+
+    if (cached && !isInvalid(cached)) {
       return { success: true, data: cached };
+    }
+    if (cached && isInvalid(cached)) {
+      guestCache.delete('fixtures', cacheKey);
     }
 
     // Instant extraction from master cache if available (zero-latency guest experience)
     if (!page && !pageSize) {
       const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
-      if (allCached && allCached.length > 0) {
+      if (allCached && allCached.length > 0 && !isInvalid(allCached)) {
         let filtered = allCached;
         if (competitionId && competitionId !== 'all') {
           if (competitionId === '11111111-1111-1111-1111-111111111111') {
@@ -98,19 +108,23 @@ export const ApiService = {
             return key === targetDateStr;
           });
         }
-        guestCache.set('fixtures', cacheKey, filtered);
-        return { success: true, data: filtered, total: filtered.length };
+        if (!isInvalid(filtered)) {
+          guestCache.set('fixtures', cacheKey, filtered);
+          return { success: true, data: filtered, total: filtered.length };
+        }
       }
     }
 
     try {
       // Delegate to guestSportsService for reliable batch queries without FK constraint hint issues
-      const { getGuestFixtures, guestFixtureToMatch } = await import('./guestSportsService');
+      const { getGuestFixtures, guestFixtureToMatch, hasPlaceholderTeamData } = await import('./guestSportsService');
       const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
       const formattedMatches: Match[] = guestFixtures.map(guestFixtureToMatch);
-      guestCache.set('fixtures', cacheKey, formattedMatches);
-      if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
-        guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
+      if (!hasPlaceholderTeamData(formattedMatches)) {
+        guestCache.set('fixtures', cacheKey, formattedMatches);
+        if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
+          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
+        }
       }
       return { success: true, data: formattedMatches, total: formattedMatches.length };
     } catch (err) {

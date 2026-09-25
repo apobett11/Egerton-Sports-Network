@@ -206,6 +206,13 @@ class GuestCacheManager {
   }
 
   /**
+   * Delete / invalidate specific category or key.
+   */
+  delete(category: string, key?: string): void {
+    this.invalidate(category, key);
+  }
+
+  /**
    * Invalidate specific category or key and notify subscribers.
    */
   invalidate(category: string, key?: string): void {

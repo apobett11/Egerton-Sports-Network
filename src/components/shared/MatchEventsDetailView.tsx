@@ -508,7 +508,7 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
               {chronologicalEvents.map((evt, idx) => {
                 const isHome = evt.team_uid === homeTeamUid;
                 const playerName = getPlayerLabel(evt.team_uid, evt.player_uid, evt.player_number);
-                const isJournalistEvent = evt.created_by_role === 'JOURNALIST' || (!evt.is_official && evt.created_by_role !== 'REFEREE');
+                const isJournalistEvent = evt.created_by_role === 'JOURNALIST' || (!(evt as any).is_official && evt.created_by_role !== 'REFEREE');
 
                 // Event Badge renderer
                 const renderEventBadge = () => {
