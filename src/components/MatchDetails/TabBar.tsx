@@ -16,19 +16,33 @@ interface TabBarProps {
     status: MatchStatus | string;
 }
 
-export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab }) => {
+export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab, status }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-    const mainTabs: { id: MatchDetailTabType; label: string }[] = [
-        { id: 'details', label: 'MATCH DETAILS' },
-        { id: 'reports', label: 'REPORTS' },
-        { id: 'motm', label: 'MAN OF THE MATCH' },
-        { id: 'timeline', label: 'MATCH EVENTS' },
-        { id: 'squad', label: 'TEAM SQUADS' },
-        { id: 'jerseys', label: 'JERSEYS' },
-        { id: 'h2h_form', label: 'H2H & FORM' },
-    ];
+    const statusUpper = String(status || '').toUpperCase();
+    const isLive = ['LIVE', 'HT', 'HALF_TIME', 'SECOND_HALF', '1H', '2H'].includes(statusUpper);
+    const isBegunOrPlayed = ['LIVE', 'HT', 'HALF_TIME', 'SECOND_HALF', '1H', '2H', 'FT', 'FULL_TIME', 'FINALIZED', 'COMPLETED'].includes(statusUpper);
+
+    const mainTabs: { id: MatchDetailTabType; label: string; isLive?: boolean }[] = isBegunOrPlayed
+        ? [
+            { id: 'timeline', label: isLive ? 'TIMELINE (LIVE)' : 'TIMELINE', isLive },
+            { id: 'details', label: 'MATCH DETAILS' },
+            { id: 'reports', label: 'REPORTS' },
+            { id: 'motm', label: 'MAN OF THE MATCH' },
+            { id: 'squad', label: 'TEAM SQUADS' },
+            { id: 'jerseys', label: 'JERSEYS' },
+            { id: 'h2h_form', label: 'H2H & FORM' },
+          ]
+        : [
+            { id: 'details', label: 'MATCH DETAILS' },
+            { id: 'reports', label: 'REPORTS' },
+            { id: 'motm', label: 'MAN OF THE MATCH' },
+            { id: 'timeline', label: 'MATCH EVENTS' },
+            { id: 'squad', label: 'TEAM SQUADS' },
+            { id: 'jerseys', label: 'JERSEYS' },
+            { id: 'h2h_form', label: 'H2H & FORM' },
+          ];
 
     // Keep the selected sub-menu item centered in the natural middle
     useEffect(() => {
@@ -78,13 +92,16 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, setActiveTab }) => {
                                 }}
                                 type="button"
                                 onClick={() => setActiveTab(tb.id)}
-                                className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-black uppercase transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
+                                className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-black uppercase transition-colors whitespace-nowrap cursor-pointer shrink-0 flex items-center gap-1.5 ${
                                     isActive
                                         ? 'bg-[#ff0046] text-white shadow-xs'
                                         : 'text-slate-400 hover:text-white hover:bg-[#14263b]'
                                 }`}
                             >
-                                {tb.label}
+                                {tb.isLive && (
+                                    <span className="w-2 h-2 rounded-full bg-white animate-pulse inline-block" />
+                                )}
+                                <span>{tb.label}</span>
                             </button>
                         );
                     })}

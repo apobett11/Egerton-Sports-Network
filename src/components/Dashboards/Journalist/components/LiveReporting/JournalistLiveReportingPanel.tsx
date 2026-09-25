@@ -19,6 +19,7 @@ import type {
   MatchSquad,
   SquadPlayer,
 } from '../../../../../services/matchLiveEngineAdapter';
+import { updateMatchMinute } from '../../../../../services/matchLiveEngineAdapter';
 import { MatchEventsDetailView } from '../../../../shared/MatchEventsDetailView';
 
 interface JournalistLiveReportingPanelProps {
@@ -42,8 +43,6 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
     isSubmitting,
     engineError,
     setEngineError,
-    startMatch,
-    setPeriod,
     addGoal,
     addCard,
     addInjury,
@@ -66,6 +65,9 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
   const [selectedPlayerUid, setSelectedPlayerUid] = useState<string>('');
   const [minuteStr, setMinuteStr] = useState<string>('1');
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('FIRST_HALF');
+  const [matchMinuteVal, setMatchMinuteVal] = useState<string>(
+    currentEvent.minute ? currentEvent.minute.replace(/[^0-9]/g, '') : '1'
+  );
 
   // Goal specific
   const [goalType, setGoalType] = useState<GoalType>('TAP_IN');
@@ -88,28 +90,26 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
   const isMatchLive = matchStatus === 'LIVE' || matchStatus === 'HALF_TIME' || matchStatus === 'SECOND_HALF';
   const isMatchFinished = matchStatus === 'FULL_TIME' || matchStatus === 'FINALIZED' || matchStatus === 'LOCKED' || matchStatus === 'WALKOVER' || matchStatus === 'CANCELLED';
 
-  const handleStartMatch = async () => {
-    try {
-      await startMatch();
-      triggerToast('Match successfully started and live input activated!');
-    } catch (err: any) {
-      triggerToast(`Start failed: ${err.message || 'Error'}`);
+  const handleUpdateMinute = async (targetMin?: number) => {
+    const val = targetMin !== undefined ? targetMin : parseInt(matchMinuteVal, 10);
+    if (isNaN(val) || val < 0 || val > 150) {
+      triggerToast('Please enter a valid match minute (0 - 150).');
+      return;
     }
-  };
-
-  const handleSetPeriod = async (period: Period) => {
+    setMatchMinuteVal(String(val));
     try {
-      await setPeriod(period);
-      triggerToast(`Period progressed to: ${period.replace('_', ' ')}`);
+      await updateMatchMinute(matchUid, val);
+      triggerToast(`Live match minute updated to ${val}'`);
+      refreshState();
     } catch (err: any) {
-      triggerToast(`Period change failed: ${err.message || 'Error'}`);
+      triggerToast(`Failed to update minute: ${err.message || 'Error'}`);
     }
   };
 
   const handleOpenGoalModal = () => {
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
-    setMinuteStr('1');
+    setMinuteStr(matchMinuteVal || '1');
     setSelectedPeriod(activePeriod);
     setGoalType('TAP_IN');
     setIsGoalModalOpen(true);
@@ -118,7 +118,7 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
   const handleOpenCardModal = () => {
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
-    setMinuteStr('1');
+    setMinuteStr(matchMinuteVal || '1');
     setSelectedPeriod(activePeriod);
     setCardType('YELLOW');
     setIsCardModalOpen(true);
@@ -127,7 +127,7 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
   const handleOpenInjuryModal = () => {
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
-    setMinuteStr('1');
+    setMinuteStr(matchMinuteVal || '1');
     setSelectedPeriod(activePeriod);
     setIsInjuryModalOpen(true);
   };
@@ -141,6 +141,7 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
     try {
       await addGoal({
         team_uid: selectedTeamUid,
+        player_uid: selectedPlayerUid || undefined,
         goal_type: goalType,
         minute: min,
         period: selectedPeriod,
@@ -161,6 +162,7 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
     try {
       await addCard({
         team_uid: selectedTeamUid,
+        player_uid: selectedPlayerUid || undefined,
         card_type: cardType,
         minute: min,
         period: selectedPeriod,
@@ -309,48 +311,54 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
         </div>
       )}
 
-      {/* MATCH CONTROL BAR: START MATCH & PERIOD STEPPER */}
+      {/* MATCH MINUTE CONTROLS: JOURNALIST UPDATES MINUTE AS IT GOES */}
       <div className="p-3.5 rounded-sm bg-slate-50 dark:bg-[#112236] border border-slate-200 dark:border-[#1a2e45] space-y-3">
         <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-          <span className="flex items-center gap-1.5 uppercase text-[10px] font-bold tracking-wider">
-            <Activity className="w-4 h-4 text-[#ff0046]" /> Match Execution Controls
+          <span className="flex items-center gap-1.5 uppercase text-[10px] font-bold tracking-wider text-white">
+            <Clock className="w-4 h-4 text-[#ff0046]" /> Match Minute (Update As It Goes)
           </span>
           <span className="text-[10px] uppercase font-bold tracking-wider">
-            Derived Live Score: <strong className="text-[#ff0046] font-mono text-xs">{currentScoreHome} - {currentScoreAway}</strong>
+            Live Score: <strong className="text-[#ff0046] font-mono text-xs">{currentScoreHome} - {currentScoreAway}</strong>
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Start Match Button */}
-          {matchStatus === 'SCHEDULED' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              max="150"
+              value={matchMinuteVal}
+              onChange={(e) => setMatchMinuteVal(e.target.value)}
+              className="w-20 px-3 py-1.5 text-center rounded-sm bg-[#15273b] border border-[#223b56] text-white font-mono font-black text-sm focus:border-[#ff0046] focus:outline-none"
+              placeholder="Min"
+              disabled={isSubmitting || isMatchFinished}
+            />
             <button
-              onClick={handleStartMatch}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
+              type="button"
+              onClick={() => handleUpdateMinute()}
+              disabled={isSubmitting || isMatchFinished}
+              className="px-3.5 py-1.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-50"
             >
-              <Play className="w-4 h-4" /> Start Match Activation
+              Set Minute
             </button>
-          )}
+          </div>
 
-          {/* Period Progression State Machine Buttons */}
-          <div className="flex items-center gap-1 p-0.5 rounded-sm bg-[#0a1520] border border-[#1a2e45]">
-            {(['FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'FULL_TIME'] as Period[]).map((p: Period) => {
-              const isActive = activePeriod === p;
-              return (
-                <button
-                  key={p}
-                  onClick={() => handleSetPeriod(p)}
-                  disabled={isSubmitting || isMatchFinished}
-                  className={`px-3 py-1.5 rounded-[2px] text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#ff0046] text-white shadow-xs'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {p === 'FIRST_HALF' ? '1st Half' : p === 'HALF_TIME' ? 'HT' : p === 'SECOND_HALF' ? '2nd Half' : 'Full Time'}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-1">
+            {[1, 5, 10].map((inc) => (
+              <button
+                key={inc}
+                type="button"
+                onClick={() => {
+                  const next = (parseInt(matchMinuteVal, 10) || 0) + inc;
+                  handleUpdateMinute(next);
+                }}
+                disabled={isSubmitting || isMatchFinished}
+                className="px-2.5 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-200 border border-white/10 text-xs font-bold font-mono cursor-pointer transition-colors active:scale-95 disabled:opacity-50"
+              >
+                +{inc}'
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -463,6 +471,23 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                 </div>
               </div>
 
+              {/* Scoring Player Selector */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Scoring Player (Squad)</label>
+                <select
+                  value={selectedPlayerUid}
+                  onChange={(e) => setSelectedPlayerUid(e.target.value)}
+                  className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white font-bold transition-colors cursor-pointer"
+                >
+                  <option value="" className="bg-[#0e1e2d] text-white">-- Select Player --</option>
+                  {currentTeamSquad.map((p: SquadPlayer) => (
+                    <option key={p.player_uid} value={p.player_uid} className="bg-[#0e1e2d] text-white">
+                      #{p.jersey_number} {p.display_name} {p.is_starting_xi ? '(Starting XI)' : '(Substitute)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Goal Type */}
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Goal Type (Exact Enum)</label>
@@ -571,6 +596,23 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                     {currentEvent.awayTeam}
                   </button>
                 </div>
+              </div>
+
+              {/* Booked Player Selector */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Booked Player (Squad)</label>
+                <select
+                  value={selectedPlayerUid}
+                  onChange={(e) => setSelectedPlayerUid(e.target.value)}
+                  className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white font-bold transition-colors cursor-pointer"
+                >
+                  <option value="" className="bg-[#0e1e2d] text-white">-- Select Player --</option>
+                  {currentTeamSquad.map((p: SquadPlayer) => (
+                    <option key={p.player_uid} value={p.player_uid} className="bg-[#0e1e2d] text-white">
+                      #{p.jersey_number} {p.display_name} {p.is_starting_xi ? '(Starting XI)' : '(Substitute)'}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -685,6 +727,23 @@ export const JournalistLiveReportingPanel: React.FC<JournalistLiveReportingPanel
                     {currentEvent.awayTeam}
                   </button>
                 </div>
+              </div>
+
+              {/* Injured Player Selector */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Injured Player (Squad)</label>
+                <select
+                  value={selectedPlayerUid}
+                  onChange={(e) => setSelectedPlayerUid(e.target.value)}
+                  className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] focus:border-[#ff0046] focus:outline-none text-white font-bold transition-colors cursor-pointer"
+                >
+                  <option value="" className="bg-[#0e1e2d] text-white">-- Select Player --</option>
+                  {currentTeamSquad.map((p: SquadPlayer) => (
+                    <option key={p.player_uid} value={p.player_uid} className="bg-[#0e1e2d] text-white">
+                      #{p.jersey_number} {p.display_name} {p.is_starting_xi ? '(Starting XI)' : '(Substitute)'}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

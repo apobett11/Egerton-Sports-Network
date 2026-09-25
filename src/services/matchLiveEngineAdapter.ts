@@ -1288,3 +1288,35 @@ export async function syncMatchEventsAndScores(
 
   return score;
 }
+
+/**
+ * Update Match Minute as the match goes (Journalist live reporting)
+ */
+export async function updateMatchMinute(match_uid: UID, minute: number): Promise<void> {
+  const match = localStore.matches.get(match_uid);
+  if (match && match.status === 'SCHEDULED') {
+    match.status = 'LIVE';
+  }
+  const minuteStr = `${minute}'`;
+  try {
+    await supabase
+      .from('fixtures')
+      .update({
+        minute: minuteStr,
+        status: 'LIVE',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', match_uid);
+
+    await matchPublisher.publishRealtime({
+      type: 'LIVE_EVENT_UPDATED',
+      match_uid,
+      version: 1,
+      occurred_at: new Date().toISOString(),
+      payload: { minute: minuteStr, status: 'LIVE' },
+    });
+  } catch (err) {
+    console.warn('Error updating match minute in database:', err);
+  }
+}
+

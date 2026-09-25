@@ -227,6 +227,10 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                             const isHome = ev.teamId === teamA.id || ev.eventTarget === 'home';
                             const eventTeam = isHome ? teamA : teamB;
                             const badge = getActionBadge(ev.type);
+                            const isJournalistEvent =
+                                (ev as any).created_by_role === 'JOURNALIST' ||
+                                (ev as any).createdBy === 'JOURNALIST' ||
+                                (!ev.isOfficial && !(ev as any).is_official && (ev as any).created_by_role !== 'REFEREE');
 
                             return (
                                 <div
@@ -234,8 +238,14 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                     className="p-3.5 sm:p-4 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors flex items-start gap-3 text-xs"
                                 >
                                     {/* Minute Marker Badge */}
-                                    <div className="font-mono font-black text-xs px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-[#ff0046] rounded-xs shrink-0 flex items-center gap-1">
-                                        <span>{ev.minute}'</span>
+                                    <div className={`font-mono font-black text-xs px-2.5 py-1 ${
+                                        isJournalistEvent
+                                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-[#ff0046]'
+                                    } rounded-xs shrink-0 flex items-center gap-1`}
+                                    title={isJournalistEvent ? 'Edited (Awaiting Referee Approval)' : `Minute ${ev.minute}'`}
+                                    >
+                                        <span>{isJournalistEvent ? '—' : `${ev.minute}'`}</span>
                                     </div>
 
                                     {/* Event Body */}
@@ -249,6 +259,11 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                             <span className="font-black text-slate-900 dark:text-white truncate">
                                                 {eventTeam.name}
                                             </span>
+                                            {isJournalistEvent && (
+                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-xs bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                                    Edited
+                                                </span>
+                                            )}
                                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-xs flex items-center gap-1 ${badge.bg}`}>
                                                 <span>{badge.icon}</span>
                                                 <span>{badge.label}</span>

@@ -12,13 +12,14 @@ import {
 } from 'lucide-react';
 import { useJournalistLiveAlgorithm } from '../../../../../hooks/useJournalistLiveAlgorithm';
 import type { CurrentMatchEvent } from '../../JournalistTypes';
-import type {
-  GoalType,
-  CardType,
-  Period,
-  MatchEvent,
-  MatchSquad,
-  SquadPlayer,
+import {
+  updateMatchMinute,
+  type GoalType,
+  type CardType,
+  type Period,
+  type MatchEvent,
+  type MatchSquad,
+  type SquadPlayer,
 } from '../../../../../services/matchLiveEngineAdapter';
 
 /**
@@ -188,51 +189,42 @@ const MatchEventsModalContent: React.FC<{
 
   const isEditableToday = isMatchScheduledToday(currentMatch);
 
-  const handleStartMatch = () => {
+  // Match minute state for direct updating
+  const [minuteInputVal, setMinuteInputVal] = useState<string>(() => {
+    if (currentMatch.minute) {
+      const parsed = parseInt(currentMatch.minute.replace("'", ''), 10);
+      if (!isNaN(parsed) && parsed > 0) return String(parsed);
+    }
+    return '1';
+  });
+
+  const [eventMinuteInput, setEventMinuteInput] = useState<string>('1');
+
+  const handleUpdateMinuteDirectly = async (targetMin?: number) => {
     if (!isEditableToday) {
-      triggerToast('Date restricted: Match events can only be started on the scheduled match day.');
+      triggerToast('Date restricted: Match minute can only be updated on the scheduled match day.');
       return;
     }
-    // Instant UI activation (0ms)
-    setClockSeconds(60);
-    triggerToast('Match successfully started and live input activated!');
-
-    startMatch()
-      .then(() => {
-        if (onMatchUpdated) onMatchUpdated();
-      })
-      .catch((err: any) => {
-        triggerToast(`Start failed: ${err.message || 'Error'}`);
-      });
+    const min = targetMin !== undefined ? targetMin : parseInt(minuteInputVal, 10);
+    if (isNaN(min) || min < 0 || min > 150) {
+      triggerToast('Please enter a valid minute between 0 and 150.');
+      return;
+    }
+    setClockSeconds(min * 60);
+    setMinuteInputVal(String(min));
+    try {
+      await updateMatchMinute(matchUid, min);
+      triggerToast(`Match minute updated to ${min}'! (Temporary live update)`);
+      if (onMatchUpdated) onMatchUpdated();
+    } catch (err: any) {
+      triggerToast(`Error updating minute: ${err.message || 'Error'}`);
+    }
   };
 
-  const handleSetPeriod = (period: Period) => {
-    if (!isEditableToday) {
-      triggerToast('Date restricted: Match status can only be updated on the scheduled match day.');
-      return;
-    }
-    // Instant UI feedback (0ms)
-    if (period === 'HALF_TIME') {
-      setClockSeconds(45 * 60);
-    } else if (period === 'SECOND_HALF') {
-      setClockSeconds(46 * 60);
-    } else if (period === 'FULL_TIME') {
-      setClockSeconds(90 * 60);
-    }
-
-    triggerToast(
-      period === 'FULL_TIME'
-        ? '🏁 Match ended! Final result registered.'
-        : `Period progressed to: ${period.replace('_', ' ')}`
-    );
-
-    setPeriod(period)
-      .then(() => {
-        if (onMatchUpdated) onMatchUpdated();
-      })
-      .catch((err: any) => {
-        triggerToast(`Period change failed: ${err.message || 'Error'}`);
-      });
+  const handleIncrementMinute = (delta: number) => {
+    const current = parseInt(minuteInputVal, 10) || currentAutomatedMinute || 1;
+    const next = Math.min(150, current + delta);
+    handleUpdateMinuteDirectly(next);
   };
 
   const handleOpenGoalModal = () => {
@@ -243,6 +235,7 @@ const MatchEventsModalContent: React.FC<{
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
     setGoalType('TAP_IN');
+    setEventMinuteInput(String(currentAutomatedMinute || 1));
     setIsGoalModalOpen(true);
   };
 
@@ -254,6 +247,7 @@ const MatchEventsModalContent: React.FC<{
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
     setCardType('YELLOW');
+    setEventMinuteInput(String(currentAutomatedMinute || 1));
     setIsCardModalOpen(true);
   };
 
@@ -264,6 +258,7 @@ const MatchEventsModalContent: React.FC<{
     }
     setSelectedTeamUid(homeTeamUid);
     setSelectedPlayerUid('');
+    setEventMinuteInput(String(currentAutomatedMinute || 1));
     setIsInjuryModalOpen(true);
   };
 
@@ -272,14 +267,14 @@ const MatchEventsModalContent: React.FC<{
       triggerToast('Editing restricted: Events can only be logged on the scheduled match day.');
       return;
     }
-    const minuteToLog = currentAutomatedMinute;
+    const minuteToLog = parseInt(eventMinuteInput, 10) || currentAutomatedMinute || 1;
     const teamToLog = selectedTeamUid;
     const playerToLog = selectedPlayerUid;
     const typeToLog = goalType;
 
     // Instant close submodal & instant toast (0ms latency)
     setIsGoalModalOpen(false);
-    triggerToast(`⚽ Goal logged at ${minuteToLog}'! Live score updated.`);
+    triggerToast(`⚽ Goal logged (temporary)! Awaiting referee verification.`);
 
     // Asynchronous background write to database
     addGoal({
@@ -302,14 +297,14 @@ const MatchEventsModalContent: React.FC<{
       triggerToast('Editing restricted: Events can only be logged on the scheduled match day.');
       return;
     }
-    const minuteToLog = currentAutomatedMinute;
+    const minuteToLog = parseInt(eventMinuteInput, 10) || currentAutomatedMinute || 1;
     const teamToLog = selectedTeamUid;
     const playerToLog = selectedPlayerUid;
     const cardToLog = cardType;
 
     // Instant close submodal & instant toast (0ms latency)
     setIsCardModalOpen(false);
-    triggerToast(`${cardToLog} card saved in match database at ${minuteToLog}'.`);
+    triggerToast(`${cardToLog} card logged (temporary)! Awaiting referee verification.`);
 
     addCard({
       team_uid: teamToLog,
@@ -331,13 +326,13 @@ const MatchEventsModalContent: React.FC<{
       triggerToast('Editing restricted: Events can only be logged on the scheduled match day.');
       return;
     }
-    const minuteToLog = currentAutomatedMinute;
+    const minuteToLog = parseInt(eventMinuteInput, 10) || currentAutomatedMinute || 1;
     const teamToLog = selectedTeamUid;
     const playerToLog = selectedPlayerUid;
 
     // Instant close submodal & instant toast (0ms latency)
     setIsInjuryModalOpen(false);
-    triggerToast(`Injury timeout event registered at ${minuteToLog}'.`);
+    triggerToast(`Injury timeout logged (temporary)! Awaiting referee verification.`);
 
     addInjury({
       team_uid: teamToLog,
@@ -477,60 +472,56 @@ const MatchEventsModalContent: React.FC<{
             </div>
           )}
 
-          {/* MATCH PERIOD STEPPER */}
+          {/* MATCH MINUTE CONTROLS: JOURNALIST UPDATES MINUTE AS IT GOES */}
           <div className="bg-[#0e1c2b] border border-[#1a2e45] rounded-sm p-4 space-y-3">
             <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400">
               <span className="flex items-center gap-1.5 text-white font-black">
-                <Activity className="w-3.5 h-3.5 text-[#ff0046]" /> Match Status & Period
+                <Clock className="w-3.5 h-3.5 text-[#ff0046]" /> Match Minute (Update As It Goes)
               </span>
               <span className="px-2 py-0.5 rounded-sm bg-[#152a40] text-slate-300 border border-white/10 text-[10px] font-black uppercase tracking-wider">
-                {matchStatus}
+                Live: {minuteInputVal}'
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {matchStatus === 'SCHEDULED' && (
-                <button
-                  onClick={handleStartMatch}
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="150"
+                  value={minuteInputVal}
+                  onChange={(e) => setMinuteInputVal(e.target.value)}
+                  className="w-20 px-3 py-1.5 text-center rounded-sm bg-[#102237] border border-[#1a2e45] text-white font-mono font-black text-sm focus:border-[#ff0046] focus:outline-none"
+                  placeholder="Min"
                   disabled={!isEditableToday || isSubmitting}
-                  className="px-3.5 py-2 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleUpdateMinuteDirectly()}
+                  disabled={!isEditableToday || isSubmitting}
+                  className="px-3.5 py-1.5 rounded-sm bg-[#ff0046] hover:bg-[#e0003e] text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors active:scale-95 disabled:opacity-40"
                 >
-                  <Play className="w-3.5 h-3.5 fill-white" /> Start Match
+                  Set Minute
                 </button>
-              )}
-
-              <div className="flex flex-wrap items-center gap-1 p-1 rounded-sm bg-[#102237] border border-[#1a2e45]">
-                {(['FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'FULL_TIME'] as Period[]).map((p: Period) => {
-                  const isActive = activePeriod === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => handleSetPeriod(p)}
-                      disabled={!isEditableToday || isSubmitting || isMatchFinished}
-                      className={`px-3 py-1.5 rounded-sm text-xs font-black uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                        isActive
-                          ? 'bg-[#ff0046] text-white shadow-xs'
-                          : 'text-slate-400 hover:text-white hover:bg-[#152a40]'
-                      }`}
-                    >
-                      {p === 'FIRST_HALF' ? '1st Half' : p === 'HALF_TIME' ? 'HT' : p === 'SECOND_HALF' ? '2nd Half' : 'Full Time'}
-                    </button>
-                  );
-                })}
               </div>
 
-              {/* DEDICATED INSTANT END MATCH BUTTON */}
-              {!isMatchFinished && matchStatus !== 'SCHEDULED' && (
-                <button
-                  onClick={() => handleSetPeriod('FULL_TIME')}
-                  disabled={!isEditableToday || isSubmitting}
-                  className="px-3 py-1.5 rounded-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors active:scale-95 ml-auto"
-                  title="End match instantly and record final score in database"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                  <span>End Match (FT)</span>
-                </button>
-              )}
+              <div className="flex items-center gap-1">
+                {[1, 5, 10].map((inc) => (
+                  <button
+                    key={inc}
+                    type="button"
+                    onClick={() => handleIncrementMinute(inc)}
+                    disabled={!isEditableToday || isSubmitting}
+                    className="px-2.5 py-1.5 rounded-sm bg-[#152a40] hover:bg-[#1c3857] text-slate-200 border border-white/10 text-xs font-bold font-mono cursor-pointer transition-colors active:scale-95 disabled:opacity-40"
+                  >
+                    +{inc}'
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider ml-auto">
+                Temporary update • Referee verifies permanently
+              </span>
             </div>
           </div>
 
@@ -582,7 +573,7 @@ const MatchEventsModalContent: React.FC<{
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-400 border-t border-[#1a2e45] pt-3">
               <span>Logged Events ({activeEvents.length})</span>
-              <span className="text-[10px] text-[#ff0046] font-bold uppercase tracking-wider">Synced with database</span>
+              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Temporary updates • Edited (No official minutes)</span>
             </div>
 
             {activeEvents.length === 0 ? (
@@ -604,9 +595,15 @@ const MatchEventsModalContent: React.FC<{
                       className="p-3 rounded-sm bg-[#0e1c2b] hover:bg-[#13263b] border border-[#1a2e45] flex items-center justify-between gap-3 text-xs transition-colors"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-8 h-8 rounded-sm bg-[#152a40] border border-white/10 flex items-center justify-center font-mono font-black text-[#ff0046] text-xs shrink-0">
-                          {evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : "—'"}
-                        </span>
+                        {/* Shown as edited, with no minutes */}
+                        <div className="flex flex-col items-center justify-center shrink-0 w-12 text-center">
+                          <span className="px-1.5 py-0.5 rounded-sm bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-black uppercase tracking-wider">
+                            Edited
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 font-bold mt-0.5">
+                            —
+                          </span>
+                        </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -737,16 +734,32 @@ const MatchEventsModalContent: React.FC<{
                   </select>
                 </div>
 
+                {/* MATCH MINUTE INPUT */}
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Match Minute
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="150"
+                    value={eventMinuteInput}
+                    onChange={(e) => setEventMinuteInput(e.target.value)}
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-mono font-bold text-xs focus:border-[#ff0046] focus:outline-none"
+                    placeholder="Minute"
+                  />
+                </div>
+
                 {/* AUTOMATED MATCH TIME DISPLAY */}
                 <div className="p-3 rounded-sm bg-[#112236] border border-[#1a2e45] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#ff0046]" />
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                        Automated Match Time
+                        Match Clock Context
                       </div>
                       <div className="text-[11px] text-slate-300 font-bold">
-                        {activePeriod === 'HALF_TIME' ? 'Half Time (Clock Stopped)' : 'Live Match Clock (Auto-fetched)'}
+                        Live Match Minute
                       </div>
                     </div>
                   </div>
@@ -754,14 +767,8 @@ const MatchEventsModalContent: React.FC<{
                     className="px-3 py-1 rounded-sm bg-[#152a40] border border-white/10 font-mono font-black text-sm text-[#ff0046] flex items-center gap-1.5"
                     data-testid="automated-event-minute"
                   >
-                    {activePeriod === 'HALF_TIME' ? (
-                      <span>45' HT</span>
-                    ) : (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046] animate-pulse" />
-                        <span>{currentAutomatedMinute}'</span>
-                      </>
-                    )}
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046] animate-pulse" />
+                    <span>{eventMinuteInput || currentAutomatedMinute}'</span>
                   </div>
                 </div>
               </div>
@@ -875,16 +882,31 @@ const MatchEventsModalContent: React.FC<{
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Match Minute
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="150"
+                    value={eventMinuteInput}
+                    onChange={(e) => setEventMinuteInput(e.target.value)}
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-mono font-bold text-xs focus:border-amber-400 focus:outline-none"
+                    placeholder="Minute"
+                  />
+                </div>
+
                 {/* AUTOMATED MATCH TIME DISPLAY */}
                 <div className="p-3 rounded-sm bg-[#112236] border border-[#1a2e45] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#ff0046]" />
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                        Automated Match Time
+                        Match Clock Context
                       </div>
                       <div className="text-[11px] text-slate-300 font-bold">
-                        {activePeriod === 'HALF_TIME' ? 'Half Time (Clock Stopped)' : 'Live Match Clock (Auto-fetched)'}
+                        Live Match Minute
                       </div>
                     </div>
                   </div>
@@ -892,14 +914,8 @@ const MatchEventsModalContent: React.FC<{
                     className="px-3 py-1 rounded-sm bg-[#152a40] border border-white/10 font-mono font-black text-sm text-amber-400 flex items-center gap-1.5"
                     data-testid="automated-event-minute"
                   >
-                    {activePeriod === 'HALF_TIME' ? (
-                      <span>45' HT</span>
-                    ) : (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        <span>{currentAutomatedMinute}'</span>
-                      </>
-                    )}
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span>{eventMinuteInput || currentAutomatedMinute}'</span>
                   </div>
                 </div>
               </div>
@@ -989,16 +1005,31 @@ const MatchEventsModalContent: React.FC<{
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Match Minute
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="150"
+                    value={eventMinuteInput}
+                    onChange={(e) => setEventMinuteInput(e.target.value)}
+                    className="w-full p-2.5 rounded-sm bg-[#15273b] border border-[#223b56] text-white font-mono font-bold text-xs focus:border-[#ff0046] focus:outline-none"
+                    placeholder="Minute"
+                  />
+                </div>
+
                 {/* AUTOMATED MATCH TIME DISPLAY */}
                 <div className="p-3 rounded-sm bg-[#112236] border border-[#1a2e45] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#ff0046]" />
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                        Automated Match Time
+                        Match Clock Context
                       </div>
                       <div className="text-[11px] text-slate-300 font-bold">
-                        {activePeriod === 'HALF_TIME' ? 'Half Time (Clock Stopped)' : 'Live Match Clock (Auto-fetched)'}
+                        Live Match Minute
                       </div>
                     </div>
                   </div>
@@ -1006,14 +1037,8 @@ const MatchEventsModalContent: React.FC<{
                     className="px-3 py-1 rounded-sm bg-[#152a40] border border-white/10 font-mono font-black text-sm text-[#ff0046] flex items-center gap-1.5"
                     data-testid="automated-injury-minute"
                   >
-                    {activePeriod === 'HALF_TIME' ? (
-                      <span>45' HT</span>
-                    ) : (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046] animate-pulse" />
-                        <span>{currentAutomatedMinute}'</span>
-                      </>
-                    )}
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff0046] animate-pulse" />
+                    <span>{eventMinuteInput || currentAutomatedMinute}'</span>
                   </div>
                 </div>
               </div>

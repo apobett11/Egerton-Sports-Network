@@ -710,6 +710,7 @@ export function assertLiveJournalistWindow(
   assertMatchStarted(match, now);
 
   const allowed: MatchStatus[] = [
+    "SCHEDULED",
     "LIVE",
     "HALF_TIME",
     "SECOND_HALF",

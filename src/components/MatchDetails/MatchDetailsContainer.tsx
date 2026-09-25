@@ -27,14 +27,28 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     favorites,
     toggleFavorite
 }) => {
+    const isBegunOrPlayed = (status?: string) => {
+        if (!status) return false;
+        const upper = status.toUpperCase();
+        return ['LIVE', 'HT', 'HALF_TIME', 'SECOND_HALF', '1H', '2H', 'FT', 'FULL_TIME', 'FINALIZED', 'COMPLETED'].includes(upper);
+    };
+
     const [currentMatch, setCurrentMatch] = useState<Match>(match);
-    const [activeTab, setActiveTab] = useState<MatchDetailTabType>('squad');
+    const [activeTab, setActiveTab] = useState<MatchDetailTabType>(() => {
+        return isBegunOrPlayed(match.status) ? 'timeline' : 'squad';
+    });
 
     useEffect(() => {
         setCurrentMatch(match);
+        if (isBegunOrPlayed(match.status)) {
+            setActiveTab('timeline');
+        }
 
         // Fetch deep match details from database
         ApiService.getMatchDetails(match.id).then(async (res) => {
+            if (res.data && isBegunOrPlayed(res.data.status)) {
+                setActiveTab('timeline');
+            }
             if (res.data && res.data.lineups?.teamA && res.data.lineups.teamA.length > 0) {
                 setCurrentMatch(res.data);
             } else {

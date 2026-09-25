@@ -508,6 +508,7 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
               {chronologicalEvents.map((evt, idx) => {
                 const isHome = evt.team_uid === homeTeamUid;
                 const playerName = getPlayerLabel(evt.team_uid, evt.player_uid, evt.player_number);
+                const isJournalistEvent = evt.created_by_role === 'JOURNALIST' || (!evt.is_official && evt.created_by_role !== 'REFEREE');
 
                 // Event Badge renderer
                 const renderEventBadge = () => {
@@ -516,7 +517,14 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
                       <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white">
                         <span className="text-base leading-none">⚽</span>
                         <div className="flex flex-col">
-                          <span className="font-extrabold">{playerName}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold">{playerName}</span>
+                            {isJournalistEvent && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                Edited
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
                             Goal ({evt.goal_type || 'Open Play'})
                           </span>
@@ -534,9 +542,16 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
                           }`}
                         />
                         <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-900 dark:text-white">
-                            {playerName}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-slate-900 dark:text-white">
+                              {playerName}
+                            </span>
+                            {isJournalistEvent && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                Edited
+                              </span>
+                            )}
+                          </div>
                           <span
                             className={`text-[10px] font-bold ${
                               isRed ? 'text-rose-600' : 'text-amber-600 dark:text-amber-400'
@@ -553,9 +568,16 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
                       <div className="flex items-center gap-1.5 text-xs">
                         <span className="text-base leading-none">🩹</span>
                         <div className="flex flex-col">
-                          <span className="font-extrabold text-slate-900 dark:text-white">
-                            {playerName}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-slate-900 dark:text-white">
+                              {playerName}
+                            </span>
+                            {isJournalistEvent && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                Edited
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-sky-500 font-bold">Injury Treated</span>
                         </div>
                       </div>
@@ -565,7 +587,14 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
                     <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
                       <span className="text-base leading-none">🔄</span>
                       <div className="flex flex-col">
-                        <span className="font-extrabold">{playerName}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold">{playerName}</span>
+                          {isJournalistEvent && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                              Edited
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-slate-400 font-bold">{evt.type}</span>
                       </div>
                     </div>
@@ -599,8 +628,15 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
 
                     {/* MIDDLE COLUMN: MINUTE BADGE */}
                     <div className="flex justify-center">
-                      <div className="w-10 h-10 rounded-full bg-white dark:bg-[#0e1c2b] border-2 border-[#ff0046] text-[#ff0046] flex items-center justify-center font-mono font-black text-xs shadow-xs z-20">
-                        {evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : "—'"}
+                      <div
+                        className={`w-10 h-10 rounded-full bg-white dark:bg-[#0e1c2b] border-2 ${
+                          isJournalistEvent
+                            ? 'border-amber-500 text-amber-500'
+                            : 'border-[#ff0046] text-[#ff0046]'
+                        } flex items-center justify-center font-mono font-black text-xs shadow-xs z-20`}
+                        title={isJournalistEvent ? 'Edited (Awaiting Referee Approval)' : (evt.minute !== null && evt.minute !== undefined ? `Minute ${evt.minute}'` : '—')}
+                      >
+                        {isJournalistEvent ? '—' : (evt.minute !== null && evt.minute !== undefined ? `${evt.minute}'` : '—')}
                       </div>
                     </div>
 
