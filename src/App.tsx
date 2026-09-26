@@ -23,7 +23,7 @@ import { OfflineBanner } from './components/common/OfflineBanner';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
-import { resolveGuestMatchdayDate } from './lib/matchdayHelper';
+import { resolveGuestMatchdayDate, readPlaydayIndex, localDateKey, fixtureDateKey } from './lib/matchdayHelper';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useDeviceIdentity } from './hooks/useDeviceIdentity';
@@ -379,8 +379,14 @@ export const AppContent: React.FC = () => {
       if (saved) {
         const d = new Date(saved);
         if (!isNaN(d.getTime())) {
-          const dayOfWeek = d.getDay();
-          if (dayOfWeek === 0 || dayOfWeek === 6) return d;
+          const key = localDateKey(d);
+          const index = readPlaydayIndex();
+          if (index.length === 0) {
+            const dayOfWeek = d.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) return d;
+          } else if (index.some((mark) => mark.date === key)) {
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+          }
         }
       }
     } catch {}
@@ -716,26 +722,20 @@ export const AppContent: React.FC = () => {
   const hasInitialDateSyncedRef = useRef(false);
   useEffect(() => {
     if (hasInitialDateSyncedRef.current) return;
+    const curKey = localDateKey(selectedDate);
+    const index = readPlaydayIndex();
+    if (index.some((mark) => mark.date === curKey)) {
+      hasInitialDateSyncedRef.current = true;
+      return;
+    }
     if (liveMatches && liveMatches.length > 0) {
       hasInitialDateSyncedRef.current = true;
-      const curYear = selectedDate.getFullYear();
-      const curMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
-      const curDay = String(selectedDate.getDate()).padStart(2, '0');
-      const curKey = `${curYear}-${curMonth}-${curDay}`;
-      const dayOfWeek = selectedDate.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      const hasFixturesOnDate = liveMatches.some(f => {
-        const raw = f.scheduledTime || (f as any).scheduled_time;
-        if (!raw) return false;
-        const d = new Date(raw);
-        if (isNaN(d.getTime())) return false;
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return key === curKey;
+      const hasFixturesOnDate = liveMatches.some((f) => {
+        return fixtureDateKey(f.scheduledTime || (f as any).scheduled_time) === curKey;
       });
-
-      if (!isWeekend && !hasFixturesOnDate) {
+      if (!hasFixturesOnDate) {
         const targetDate = resolveGuestMatchdayDate(liveMatches);
-        setSelectedDate(targetDate);
+        if (localDateKey(targetDate) !== curKey) setSelectedDate(targetDate);
       }
     }
   }, [liveMatches, selectedDate]);

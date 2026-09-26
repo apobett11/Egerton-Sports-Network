@@ -197,7 +197,7 @@ async function fetchGuestFixturesNetwork(params?: {
       // Range query on scheduled_time. The guest RPC's DATE() comparison
       // cannot use the fixtures index and was taking several seconds.
       const results = await _getGuestFixturesFallback(params);
-      if (!hasPlaceholderTeamData(results)) {
+      if (results.length > 0 && !hasPlaceholderTeamData(results)) {
         guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
       }
       return results;

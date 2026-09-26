@@ -41,9 +41,17 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${CHAMP_COMP_ID}`);
     return cached && cached.length > 0 && cached[0]?.teamName ? cached : [];
   });
+  const [tablesPending, setTablesPending] = useState(() => {
+    const ready = (key: string) => {
+      const rows = guestCache.getStale<LeagueTableEntry[]>('standings', key);
+      return Boolean(rows && rows.length > 0 && rows[0]?.teamName);
+    };
+    return {
+      epl: !ready(`standings_${EPL_COMP_ID}`),
+      champ: !ready(`standings_${CHAMP_COMP_ID}`),
+    };
+  });
   const [teamFormsMap, setTeamFormsMap] = useState<Record<string, Array<{ result: 'W' | 'D' | 'L'; matchday: number }>>>({});
-  
-  // Top Scorers States (EPL, Champ, All-Time)
   const [eplScorers, setEplScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
   const [champScorers, setChampScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
   const [allTimeScorers, setAllTimeScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
@@ -141,7 +149,10 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       if (champRes.data && champRes.data.length > 0) {
         setChampStandings(champRes.data);
       }
-    }).catch(() => {});
+      setTablesPending({ epl: false, champ: false });
+    }).catch(() => {
+      setTablesPending({ epl: false, champ: false });
+    });
   }, []);
 
   // 2. On-Demand / Lazy Scorers Fetcher
@@ -359,7 +370,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     data: LeagueTableEntry[],
     accentColor: string,
     refTarget: React.RefObject<HTMLDivElement | null>,
-    isChamp: boolean = false
+    isChamp: boolean = false,
+    pending: boolean = false
   ) => {
     const list = data || [];
     return (
@@ -397,7 +409,26 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {list.length === 0 ? (
+              {list.length === 0 && pending ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={`standings-sk-${i}`} className="animate-pulse">
+                    <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="mx-auto h-3 w-4 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                    <td className="sticky left-9 sm:left-10 z-10 bg-white dark:bg-[#0e1c2b] py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45]">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                        <div className="h-3 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                      </div>
+                    </td>
+                    {Array.from({ length: 6 }).map((__, cell) => (
+                      <td key={cell} className="py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                        <div className="mx-auto h-3 w-5 rounded bg-slate-200 dark:bg-slate-700" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : list.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
                     <div className="flex flex-col items-center justify-center gap-1.5">
@@ -468,7 +499,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     title: string,
     divisionLabel: string,
     data: LeagueTableEntry[],
-    refTarget: React.RefObject<HTMLDivElement | null>
+    refTarget: React.RefObject<HTMLDivElement | null>,
+    pending: boolean = false
   ) => {
     const list = data || [];
     return (
@@ -495,7 +527,27 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-              {list.length === 0 ? (
+              {list.length === 0 && pending ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`form-sk-${i}`} className="animate-pulse">
+                    <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] py-2 px-2.5 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="mx-auto h-3 w-4 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                    <td className="sticky left-8 sm:left-9 z-10 bg-white dark:bg-[#0e1c2b] py-2 px-2.5 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45]">
+                      <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                    <td className="py-2 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="mx-auto h-3 w-5 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                    <td className="py-2 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="mx-auto h-6 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                    <td className="py-2 px-3 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                      <div className="mx-auto h-3 w-6 rounded bg-slate-200 dark:bg-slate-700" />
+                    </td>
+                  </tr>
+                ))
+              ) : list.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
                     <div className="flex flex-col items-center justify-center gap-1.5">
@@ -707,7 +759,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           eplStandings,
           'text-[#ff0046]',
           eplStandingsRef,
-          false
+          false,
+          tablesPending.epl
         )}
 
         {/* Championships Standings Table (Below EPL) */}
@@ -717,7 +770,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           champStandings,
           'text-amber-500',
           champStandingsRef,
-          true
+          true,
+          tablesPending.champ
         )}
 
         {/* Specific Qualification & Promotion / Relegation Legend Bar */}
@@ -759,7 +813,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           'Egerton Premier League',
           'DIVISION 1',
           eplStandings,
-          eplFormRef
+          eplFormRef,
+          tablesPending.epl
         )}
 
         {/* Championships Form Table (Below EPL Form) */}
@@ -767,7 +822,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           'Egerton Championships',
           'DIVISION 2',
           champStandings,
-          champFormRef
+          champFormRef,
+          tablesPending.champ
         )}
       </div>
 

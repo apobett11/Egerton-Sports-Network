@@ -10,7 +10,16 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
-import { resolveGuestMatchdayDate } from '../../lib/matchdayHelper';
+import {
+  resolveGuestMatchdayDate,
+  readPlaydayIndex,
+  refreshPlaydayIndex,
+  shiftPlayday,
+  dateFromKey,
+  fixtureDateKey,
+  localDateKey,
+  type PlaydayMark,
+} from '../../lib/matchdayHelper';
 import { useDeviceIdentity } from '../../hooks/useDeviceIdentity';
 import { MatchPredictionNoticeModal } from '../../components/Polls/MatchPredictionNoticeModal';
 import { FeaturePollService } from '../../services/featurePollService';
@@ -45,24 +54,18 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [internalDate, setInternalDate] = useState<Date>(() => resolveGuestMatchdayDate(dbFixtures));
   const activeDate = propSelectedDate || internalDate;
 
-  // Master playday schedule cache to make matchday detection and switching 100% instant.
-  // Deferred 2s after mount — primary fixture fetch must complete first.
-  const [masterPlaydayFixtures, setMasterPlaydayFixtures] = useState<any[]>([]);
+  // Real fixture dates. Cached index paints immediately; the network refresh follows.
+  const [playdays, setPlaydays] = useState<PlaydayMark[]>(() => readPlaydayIndex());
+  const dateAlignedRef = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      supabase
-        .from('fixtures')
-        .select('scheduled_time, matchday, competition_id')
-        .order('scheduled_time', { ascending: true })
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setMasterPlaydayFixtures(data);
-          }
-        });
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    refreshPlaydayIndex().then((index) => {
+      if (!cancelled && index.length > 0) setPlaydays(index);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -73,13 +76,11 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const formattedDateStr = useMemo(() => {
     const d = activeDate instanceof Date ? activeDate : new Date(activeDate);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return localDateKey(d);
   }, [activeDate]);
 
-  const handleDateChange = useCallback((newDate: Date) => {
+  const handleDateChange = useCallback((newDate: Date, fromUser = true) => {
+    if (fromUser) dateAlignedRef.current = true;
     setInternalDate(newDate);
     if (propSetSelectedDate) {
       propSetSelectedDate(newDate);
@@ -95,79 +96,40 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  // Map all fixture playdays across the entire season (both league and friendly)
   const fixturePlaydaysMap = useMemo(() => {
-    const map = new Map<string, { isFriendly: boolean; isLeague: boolean; matchday?: number }>();
-    const list = masterPlaydayFixtures.length > 0 
-      ? masterPlaydayFixtures 
-      : (dbFixtures && dbFixtures.length > 0 ? dbFixtures : []);
-
-    list.forEach(f => {
-      const rawDate = f.scheduledTime || (f as any).scheduled_time || (f as any).playday || (f as any).play_date;
-      if (!rawDate) return;
-      const d = new Date(rawDate);
-      if (isNaN(d.getTime())) return;
-      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const isFriendly = (f.league && f.league.toLowerCase().includes('friend')) || (f as any).is_friendly || (f as any).competition_id === 'friendlies' || (f as any).competition_id === '33333333-3333-3333-3333-333333333333';
-      const isLeague = !isFriendly;
-      const compId = f.competition_id || (f as any).competitionId;
-      const isEpl = compId === '11111111-1111-1111-1111-111111111111' || (f.league && f.league.toLowerCase().includes('premier'));
-
-      if (!map.has(dateKey)) {
-        map.set(dateKey, { isFriendly, isLeague, matchday: f.matchday });
-      } else {
-        const cur = map.get(dateKey)!;
-        const preferMatchday = isEpl && f.matchday ? f.matchday : (cur.matchday || f.matchday);
-        map.set(dateKey, {
-          isFriendly: cur.isFriendly || isFriendly,
-          isLeague: cur.isLeague || isLeague,
-          matchday: preferMatchday
-        });
-      }
-    });
+    const map = new Map<string, PlaydayMark>();
+    playdays.forEach((mark) => map.set(mark.date, mark));
     return map;
-  }, [masterPlaydayFixtures, dbFixtures]);
+  }, [playdays]);
 
-  const isPlayday = useCallback((d: Date): boolean => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
+  const activePlayday = fixturePlaydaysMap.get(formattedDateStr);
+  const canGoPrev = Boolean(shiftPlayday(formattedDateStr, -1, playdays));
+  const canGoNext = Boolean(shiftPlayday(formattedDateStr, 1, playdays));
 
-    // If fixtures exist on this date in DB, it is a playday (league or friendly)
-    if (fixturePlaydaysMap.has(dateKey)) {
-      return true;
+  // Once the real calendar arrives, leave an empty day for the nearest matchday.
+  useEffect(() => {
+    if (dateAlignedRef.current || playdays.length === 0) return;
+    if (playdays.some((mark) => mark.date === formattedDateStr)) {
+      dateAlignedRef.current = true;
+      return;
     }
+    const targetKey = playdays.find((mark) => mark.date >= formattedDateStr)?.date
+      || playdays[playdays.length - 1].date;
+    dateAlignedRef.current = true;
+    if (targetKey !== formattedDateStr) {
+      handleDateChange(dateFromKey(targetKey), false);
+    }
+  }, [playdays, formattedDateStr, handleDateChange]);
 
-    // Weekend days (Saturday = 6, Sunday = 0) are standard league playdays
-    const dayOfWeek = d.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6;
-  }, [fixturePlaydaysMap]);
-
-  // Navigate laterally to next or previous playday (skipping empty weekdays)
   const lastSwitchTimeRef = useRef<number>(0);
   const handleShiftPlayday = useCallback((direction: 1 | -1) => {
     const now = Date.now();
-    if (now - lastSwitchTimeRef.current < 200) return;
+    if (now - lastSwitchTimeRef.current < 220) return;
+    const nextKey = shiftPlayday(formattedDateStr, direction, playdays);
+    if (!nextKey) return;
     lastSwitchTimeRef.current = now;
-
-    const current = new Date(activeDate);
-    const next = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 12, 0, 0);
-
-    for (let i = 1; i <= 90; i++) {
-      next.setDate(next.getDate() + direction);
-      if (isPlayday(next)) {
-        handleDateChange(new Date(next.getFullYear(), next.getMonth(), next.getDate()));
-        return;
-      }
-    }
-
-    const fallback = new Date(current);
-    fallback.setDate(fallback.getDate() + direction);
-    handleDateChange(fallback);
-  }, [activeDate, isPlayday, handleDateChange]);
-
-  const handleShiftDate = handleShiftPlayday;
+    handleDateChange(dateFromKey(nextKey));
+  }, [formattedDateStr, playdays, handleDateChange]);
 
   // Touch swipe support for lateral scrolling on mobile and trackpad gestures
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -183,25 +145,13 @@ export const HomePage: React.FC<HomePageProps> = ({
     const diffX = touchStartX - e.changedTouches[0].clientX;
     const diffY = touchStartY - e.changedTouches[0].clientY;
 
-    if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
-      if (diffX > 0) {
-        handleShiftPlayday(1);
-      } else {
-        handleShiftPlayday(-1);
-      }
+    // Horizontal swipe on the date bar only. Vertical scrolling must not change matchday.
+    if (Math.abs(diffX) > 48 && Math.abs(diffX) > Math.abs(diffY) * 1.8) {
+      if (diffX > 0) handleShiftPlayday(1);
+      else handleShiftPlayday(-1);
     }
     setTouchStartX(null);
     setTouchStartY(null);
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaX) > 40 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.5) {
-      if (e.deltaX > 0) {
-        handleShiftPlayday(1);
-      } else {
-        handleShiftPlayday(-1);
-      }
-    }
   };
 
   // Helper to extract cached fixtures for active date & competition instantly
@@ -239,11 +189,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           }
         }
         const rawDate = m.scheduledTime || (m as any).scheduled_time;
-        if (!rawDate) return false;
-        const d = new Date(rawDate);
-        if (isNaN(d.getTime())) return false;
-        const mDateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return mDateKey === dateStr;
+        return fixtureDateKey(rawDate) === dateStr;
       });
       if (!isInvalid(filtered)) {
         return filtered;
@@ -252,24 +198,37 @@ export const HomePage: React.FC<HomePageProps> = ({
     return null;
   }, [dbFixtures]);
 
-  // Independent Section States - Only Fixtures is active immediately
-  const [fixturesState, setFixturesState] = useState<{ data: Match[]; loading: boolean; error: string | null }>(() => {
-    const initial = getCachedFixtures(formattedDateStr, selectedCompetitionId);
-    if (initial && initial.length > 0) {
-      return { data: initial, loading: false, error: null };
-    }
-    return { data: [], loading: true, error: null };
-  });
+  const requestKey = `${selectedCompetitionId}|${formattedDateStr}`;
+  const cachedFixtures = useMemo(
+    () => getCachedFixtures(formattedDateStr, selectedCompetitionId) || [],
+    [formattedDateStr, selectedCompetitionId, getCachedFixtures]
+  );
+  const [fixtureBundle, setFixtureBundle] = useState<{ key: string; data: Match[]; error: string | null } | null>(null);
+  const [fixturesLoading, setFixturesLoading] = useState(() => cachedFixtures.length === 0);
+
+  const visibleFixtures = useMemo(() => {
+    const source = fixtureBundle?.key === requestKey ? fixtureBundle.data : cachedFixtures;
+    return source.filter((match) => fixtureDateKey(match.scheduledTime || (match as any).scheduled_time) === formattedDateStr);
+  }, [fixtureBundle, requestKey, cachedFixtures, formattedDateStr]);
+
+  const bundleForDate = fixtureBundle?.key === requestKey ? fixtureBundle : null;
+  const fixturesState = {
+    data: visibleFixtures,
+    loading: visibleFixtures.length === 0 && !bundleForDate?.error && (fixturesLoading || !bundleForDate),
+    error: bundleForDate?.error ?? null,
+  };
 
   const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>(() => {
     const readTable = (key: string) => {
       const rows = guestCache.getStale<LeagueTableEntry[]>('standings', key);
       return rows && rows.length > 0 && rows[0]?.teamName ? rows : [];
     };
+    const epl = readTable('standings_11111111-1111-1111-1111-111111111111');
+    const champ = readTable('standings_22222222-2222-2222-2222-222222222222');
     return {
-      epl: readTable('standings_11111111-1111-1111-1111-111111111111'),
-      champ: readTable('standings_22222222-2222-2222-2222-222222222222'),
-      loading: false,
+      epl,
+      champ,
+      loading: epl.length === 0 && champ.length === 0,
       error: null
     };
   });
@@ -307,35 +266,35 @@ export const HomePage: React.FC<HomePageProps> = ({
   const EPL_ID = '11111111-1111-1111-1111-111111111111';
   const CHAMP_ID = '22222222-2222-2222-2222-222222222222';
 
-  // Section 1: Fixtures loads immediately (Instant/Sub-second hero section)
   const loadFixtures = useCallback(() => {
     let isMounted = true;
+    const key = `${selectedCompetitionId}|${formattedDateStr}`;
     const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
-
-    // Check if we already have cached data for this date & competition
     const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
-    if (cached && cached.length > 0) {
-      setFixturesState({ data: cached, loading: false, error: null });
-    } else {
-      setFixturesState({ data: [], loading: true, error: null });
-    }
+    setFixturesLoading(!(cached && cached.length > 0));
 
     ApiService.getFixtures(compId, formattedDateStr)
       .then(res => {
         if (!isMounted) return;
-        if (res.success && res.data) {
-          setFixturesState({ data: res.data, loading: false, error: null });
-          // Defer background cache preload 3s — never competes with fixture render
-          setTimeout(() => {
-            preloadPastFixtures(formattedDateStr, compId).catch(() => {});
-          }, 3000);
+        if (res.success && Array.isArray(res.data) && (res.data.length > 0 || !cached || cached.length === 0)) {
+          setFixtureBundle({ key, data: res.data, error: null });
+        } else if (cached && cached.length > 0) {
+          setFixtureBundle({ key, data: cached, error: null });
         } else {
-          setFixturesState({ data: [], loading: false, error: res.message || 'Failed to load fixtures.' });
+          setFixtureBundle({ key, data: [], error: res.message || 'Failed to load fixtures.' });
         }
+        setFixturesLoading(false);
+        window.setTimeout(() => {
+          preloadPastFixtures(formattedDateStr, compId).catch(() => {});
+        }, 1200);
       })
       .catch(() => {
-        if (isMounted) {
-          setFixturesState({ data: [], loading: false, error: 'Database network timeout.' });
+        if (!isMounted) return;
+        setFixturesLoading(false);
+        if (cached && cached.length > 0) {
+          setFixtureBundle({ key, data: cached, error: null });
+        } else {
+          setFixtureBundle({ key, data: [], error: 'Database network timeout.' });
         }
       });
 
@@ -348,56 +307,23 @@ export const HomePage: React.FC<HomePageProps> = ({
     return loadFixtures();
   }, [loadFixtures]);
 
-  // When dbFixtures populates or updates, sync fixturesState immediately if currently empty
-  useEffect(() => {
-    if (dbFixtures && dbFixtures.length > 0 && fixturesState.data.length === 0) {
-      const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
-      if (cached && cached.length > 0) {
-        setFixturesState({ data: cached, loading: false, error: null });
-      }
-    }
-  }, [dbFixtures, formattedDateStr, selectedCompetitionId, getCachedFixtures, fixturesState.data.length]);
-
   useCacheSubscription('fixtures', loadFixtures);
 
-  // Proactive Matchday Prefetching: Cache adjacent playdays after primary content is fully rendered.
-  // Deferred 3.5s to guarantee fixtures always win the first DB connection slot.
   useEffect(() => {
-    const current = new Date(activeDate);
-    const prefetchTimer = setTimeout(() => {
-      // Prefetch next playday into cache
-      const nextDate = new Date(current);
-      for (let i = 1; i <= 30; i++) {
-        nextDate.setDate(nextDate.getDate() + 1);
-        if (isPlayday(nextDate)) {
-          const nextKey = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-          const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
-          const cacheKey = `${selectedCompetitionId}_${nextKey}_pall_sall`;
-          if (!guestCache.get('fixtures', cacheKey)) {
-            ApiService.getFixtures(compId, nextKey).catch(() => {});
-          }
-          break;
+    const nextKey = shiftPlayday(formattedDateStr, 1, playdays);
+    const prevKey = shiftPlayday(formattedDateStr, -1, playdays);
+    const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+    const timer = window.setTimeout(() => {
+      [nextKey, prevKey].forEach((dateKey) => {
+        if (!dateKey) return;
+        const cacheKey = `${selectedCompetitionId}_${dateKey}_pall_sall`;
+        if (!guestCache.get('fixtures', cacheKey) && !guestCache.getStale('fixtures', cacheKey)) {
+          ApiService.getFixtures(compId, dateKey).catch(() => {});
         }
-      }
-
-      // Prefetch previous playday into cache
-      const prevDate = new Date(current);
-      for (let i = 1; i <= 30; i++) {
-        prevDate.setDate(prevDate.getDate() - 1);
-        if (isPlayday(prevDate)) {
-          const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
-          const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
-          const cacheKey = `${selectedCompetitionId}_${prevKey}_pall_sall`;
-          if (!guestCache.get('fixtures', cacheKey)) {
-            ApiService.getFixtures(compId, prevKey).catch(() => {});
-          }
-          break;
-        }
-      }
-    }, 3500);
-
-    return () => clearTimeout(prefetchTimer);
-  }, [activeDate, isPlayday, selectedCompetitionId]);
+      });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [formattedDateStr, playdays, selectedCompetitionId]);
 
   // Section 2: Standings snapshot loads ON-DEMAND when scrolled into view
   const loadStandings = useCallback(() => {
@@ -414,17 +340,20 @@ export const HomePage: React.FC<HomePageProps> = ({
     ])
       .then(([eplRes, champRes]) => {
         if (!isMounted) return;
-        setStandingsState({
-          epl: eplRes.data || [],
-          champ: champRes.data || [],
+        setStandingsState(prev => ({
+          epl: eplRes.data && eplRes.data.length > 0 ? eplRes.data : prev.epl,
+          champ: champRes.data && champRes.data.length > 0 ? champRes.data : prev.champ,
           loading: false,
           error: null
-        });
+        }));
       })
       .catch(() => {
-        if (isMounted) {
-          setStandingsState({ epl: [], champ: [], loading: false, error: 'Unable to fetch league standings.' });
-        }
+        if (!isMounted) return;
+        setStandingsState(prev => ({
+          ...prev,
+          loading: false,
+          error: prev.epl.length || prev.champ.length ? null : 'Unable to fetch league standings.'
+        }));
       });
 
     return () => {
@@ -592,19 +521,22 @@ export const HomePage: React.FC<HomePageProps> = ({
         (payload) => {
           if (payload.new) {
             const updated = payload.new as any;
-            setFixturesState(prev => ({
-              ...prev,
-              data: prev.data.map(f =>
-                f.id === updated.id
-                  ? {
-                      ...f,
-                      scoreA: updated.score_home ?? f.scoreA,
-                      scoreB: updated.score_away ?? f.scoreB,
-                      status: updated.status ?? f.status
-                    }
-                  : f
-              )
-            }));
+            setFixtureBundle((prev) => {
+              if (!prev || prev.key !== requestKey) return prev;
+              return {
+                ...prev,
+                data: prev.data.map((f) =>
+                  f.id === updated.id
+                    ? {
+                        ...f,
+                        scoreA: updated.score_home ?? f.scoreA,
+                        scoreB: updated.score_away ?? f.scoreB,
+                        status: updated.status ?? f.status
+                      }
+                    : f
+                )
+              };
+            });
           }
           triggerDebouncedPerfReload();
         }
@@ -618,7 +550,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       if (perfDebounce) clearTimeout(perfDebounce);
       supabase.removeChannel(channel);
     };
-  }, [loadPerformance, loadStandings, perfHasLoaded]);
+  }, [loadPerformance, loadStandings, perfHasLoaded, requestKey]);
 
   const toggleFavourite = (fixtureId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -826,16 +758,10 @@ export const HomePage: React.FC<HomePageProps> = ({
     const month = d.getMonth() + 1;
     const year = String(d.getFullYear()).slice(-2);
 
-    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const info = fixturePlaydaysMap.get(dateKey);
-    // Find active matchday from loaded fixtures: prioritize active competition/EPL matchday
-    const activeFixtureMd = fixturesState.data.find(m => {
-      if (selectedCompetitionId === '22222222-2222-2222-2222-222222222222') {
-        return m.league?.toLowerCase().includes('championship');
-      }
-      return m.league?.toLowerCase().includes('premier') || m.matchday === 7;
-    })?.matchday || fixturesState.data.find(m => m.matchday)?.matchday;
-    const md = activeFixtureMd || info?.matchday;
+    const info = fixturePlaydaysMap.get(formattedDateStr);
+    const leagueMatches = fixturesState.data.filter((m) => !(m.league || '').toLowerCase().includes('friend'));
+    const eplMatchday = leagueMatches.find((m) => (m.league || '').toLowerCase().includes('premier'))?.matchday;
+    const md = eplMatchday || leagueMatches.find((m) => m.matchday)?.matchday || info?.matchday;
 
     if (info?.isFriendly && !info?.isLeague) {
       return `FRIENDLY • ${weekday} ${day}/${month}/${year}`;
@@ -844,13 +770,13 @@ export const HomePage: React.FC<HomePageProps> = ({
       return `MATCHDAY ${md} • ${weekday} ${day}/${month}/${year}`;
     }
     return `${weekday} ${day}/${month}/${year}`;
-  }, [activeDate, fixturePlaydaysMap, fixturesState.data, selectedCompetitionId]);
+  }, [activeDate, fixturePlaydaysMap, fixturesState.data, formattedDateStr]);
 
   return (
     <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
       {/* 1. STATUS FILTERS ROW (OUTSIDE FIXTURES CARD, BELOW FAVOURITES/FIXTURES/STANDINGS ROW) */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-1">
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1">
           {['ALL', 'LIVE', 'PREDICTIONS', 'FINISHED', 'SCHEDULED'].map((st) => {
             const isActive = filterStatus === st;
             if (st === 'PREDICTIONS') {
@@ -974,7 +900,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={() => handleShiftPlayday(-1)}
-            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
+            disabled={!canGoPrev}
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
             aria-label="Previous matchday"
             title="Previous matchday"
           >
@@ -985,11 +912,11 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={onOpenCalendar}
-            className="flex items-center gap-2 px-3 sm:px-4 py-1 rounded-full bg-[#152a40] hover:bg-[#1c3857] text-white text-xs font-black tracking-wider uppercase cursor-pointer border border-white/10 shadow-xs transition-colors group"
+            className="flex items-center gap-2 min-w-0 px-3 sm:px-4 py-1 rounded-full bg-[#152a40] hover:bg-[#1c3857] text-white text-[11px] sm:text-xs font-black tracking-wider uppercase cursor-pointer border border-white/10 shadow-xs transition-colors group"
             title="Open Calendar to select matchday"
             aria-label="Open Calendar to select matchday"
           >
-            <span className="text-white font-black group-hover:text-amber-400 transition-colors">
+            <span className="text-white font-black group-hover:text-amber-400 transition-colors truncate">
               {formattedDateTitle}
             </span>
             <Calendar className="w-3.5 h-3.5 text-white group-hover:text-amber-400 transition-colors" />
@@ -999,7 +926,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={() => handleShiftPlayday(1)}
-            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer"
+            disabled={!canGoNext}
+            className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-[#1b3552] transition-colors cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
             aria-label="Next matchday"
             title="Next matchday"
           >
@@ -1009,12 +937,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* 3. FIXTURES CARD: LEAGUE HEADERS -> FIXTURES CONTENT */}
-      <div 
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
-        className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs touch-pan-y"
-      >
+      <div className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         {/* FIXTURES CONTENT FEED (LEAGUE TITLES & FIXTURES INSIDE THE CARD) */}
         {fixturesState.loading ? (
           <div className="p-4 space-y-3" role="status" aria-label="Loading fixtures">
@@ -1131,14 +1054,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             aria-label="EPL Player Performance Section"
             className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
           >
-            <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#ff0046]" />
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="px-3 sm:px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Award className="w-4 h-4 text-[#ff0046] shrink-0" />
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">
                   EPL — PLAYER PERFORMANCE & STATS
                 </h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1262,14 +1185,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             aria-label="Championships Player Performance Section"
             className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
           >
-            <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            <div className="px-3 sm:px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">
                   CHAMPIONSHIPS — PLAYER PERFORMANCE & STATS
                 </h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1520,12 +1443,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
         </div>
 
-        {!standingsHasLoaded ? (
-          <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>Standings snapshot loads as you scroll</span>
-          </div>
-        ) : standingsState.loading ? (
+        {(standingsState.epl.length === 0 && standingsState.champ.length === 0) ? (
+          standingsState.loading ? (
           <div className="p-4 space-y-2" role="status" aria-label="Loading standings snapshot">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="animate-pulse flex items-center justify-between p-2 rounded bg-slate-100/60 dark:bg-[#112236]/60">
@@ -1537,6 +1456,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             ))}
           </div>
+          ) : (
+            <div className="py-6 px-3 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+              No standings recorded yet
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#f0f2f5] dark:divide-[#14263b]">
             {/* EPL Snapshot */}

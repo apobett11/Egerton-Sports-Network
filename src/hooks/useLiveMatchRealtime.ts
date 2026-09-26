@@ -42,9 +42,11 @@ export const useLiveMatchRealtime = (
     // If autoFetchAll is explicitly false, do NOT perform a full DB scan
     if (options?.autoFetchAll === false) {
       // Check if we have cached fixtures in guestCache
-      const cached = options.selectedDate 
-        ? guestCache.get<Match[]>('fixtures', `${options.competitionId || 'all'}_${options.selectedDate}_pall_sall`)
-        : guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+      const exactKey = options.selectedDate
+        ? `${options.competitionId || 'all'}_${options.selectedDate}_pall_sall`
+        : 'all_all_pall_sall';
+      const cached = guestCache.get<Match[]>('fixtures', exactKey)
+        || guestCache.getStale<Match[]>('fixtures', exactKey);
       if (cached && cached.length > 0) {
         setMatches(cached);
         matchesRef.current = cached;

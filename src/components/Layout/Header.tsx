@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell } from 'lucide-react';
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
+import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
 
 interface HeaderProps {
     darkMode: boolean;
@@ -64,6 +65,17 @@ export const Header: React.FC<HeaderProps> = ({
     const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [showPotwComingSoonModal, setShowPotwComingSoonModal] = useState(false);
     const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
+    const [playdayIndex, setPlaydayIndex] = useState<PlaydayMark[]>(() => readPlaydayIndex());
+
+    React.useEffect(() => {
+        let cancelled = false;
+        refreshPlaydayIndex().then((index) => {
+            if (!cancelled && index.length > 0) setPlaydayIndex(index);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     React.useEffect(() => {
         if (isCalendarOpen) {
@@ -97,32 +109,29 @@ export const Header: React.FC<HeaderProps> = ({
 
     const dateMatchMap = useMemo(() => {
         const map = new Map<string, { isLeague: boolean; isFriendly: boolean; matchday?: number }>();
+        playdayIndex.forEach((mark) => {
+            map.set(dateFromKey(mark.date).toDateString(), {
+                isLeague: mark.isLeague,
+                isFriendly: mark.isFriendly,
+                matchday: mark.matchday,
+            });
+        });
         dbFixtures.forEach((f) => {
-            const rawDate = f.scheduledTime || (f as any).scheduled_time || (f as any).playday || (f as any).play_date;
-            let fDateStr = '';
-            if (rawDate) {
-                const parsed = new Date(rawDate);
-                if (!isNaN(parsed.getTime())) {
-                    fDateStr = parsed.toDateString();
-                }
+            const dateKey = fixtureDateKey(f.scheduledTime || (f as any).scheduled_time);
+            if (!dateKey) return;
+            const label = dateFromKey(dateKey).toDateString();
+            const isFriendly = (f.league || '').toLowerCase().includes('friend');
+            const prev = map.get(label);
+            if (!prev) {
+                map.set(label, { isLeague: !isFriendly, isFriendly, matchday: f.matchday });
+                return;
             }
-            if (!fDateStr) return;
-
-            const isFriendly = f.league?.toLowerCase().includes('friend') || (f as any).is_friendly || (f as any).competition_id === 'friendlies' || (f as any).competition_id === '33333333-3333-3333-3333-333333333333';
-            const isLeague = !isFriendly;
-            if (!map.has(fDateStr)) {
-                map.set(fDateStr, { isLeague, isFriendly, matchday: f.matchday });
-            } else {
-                const cur = map.get(fDateStr)!;
-                map.set(fDateStr, {
-                    isLeague: cur.isLeague || isLeague,
-                    isFriendly: cur.isFriendly || isFriendly,
-                    matchday: cur.matchday || f.matchday
-                });
-            }
+            if (!prev.matchday && f.matchday) prev.matchday = f.matchday;
+            if (isFriendly) prev.isFriendly = true;
+            if (!isFriendly) prev.isLeague = true;
         });
         return map;
-    }, [dbFixtures]);
+    }, [dbFixtures, playdayIndex]);
 
     const isNewsActive = activeMainTab === 'news';
     const isScoresActive = activeMainTab === 'scores' || activeMainTab === 'table' || activeMainTab === 'favorites';
@@ -257,7 +266,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* ROW 3: SCORES SUB-MENU (LEFT ALIGNED: FAVOURITES ICON | FIXTURES | STANDINGS) */}
             {isScoresActive && (
                 <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
-                    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-0 flex items-center justify-start space-x-3 sm:space-x-6 h-10">
+                    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-0 flex items-center justify-start gap-1 sm:gap-4 h-10 overflow-x-auto no-scrollbar">
                         {/* 1. FAVOURITES (Orange Icon Button) */}
                         <button
                             type="button"
@@ -403,10 +412,8 @@ export const Header: React.FC<HeaderProps> = ({
                                 const isSelected = dateKey === selectedDate.toDateString();
                                 const isToday = dateKey === new Date().toDateString();
                                 const matchInfo = dateMatchMap.get(dateKey);
-
-                                const isWeekend = targetDate.getDay() === 0 || targetDate.getDay() === 6;
-                                const isFriendly = Boolean(matchInfo?.isFriendly);
-                                const isPlayday = Boolean(matchInfo?.isLeague) || (!isFriendly && isWeekend);
+                                const isFriendly = Boolean(matchInfo?.isFriendly && !matchInfo?.isLeague);
+                                const isPlayday = Boolean(matchInfo?.isLeague);
 
                                 const tooltip = isFriendly
                                     ? `Friendly Match • ${targetDate.toLocaleDateString()}`

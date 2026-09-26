@@ -78,16 +78,21 @@ export const ApiService = {
       const { getGuestFixtures, guestFixtureToMatch, hasPlaceholderTeamData } = await import('./guestSportsService');
       const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
       const formattedMatches: Match[] = guestFixtures.map(guestFixtureToMatch);
-      if (!hasPlaceholderTeamData(formattedMatches)) {
+      if (formattedMatches.length > 0 && !hasPlaceholderTeamData(formattedMatches)) {
         guestCache.set('fixtures', cacheKey, formattedMatches);
         if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
           guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
         }
+        return { success: true, data: formattedMatches, total: formattedMatches.length };
       }
       return { success: true, data: formattedMatches, total: formattedMatches.length };
     } catch (err) {
       logger.warn('Failed to fetch fixtures from Supabase.', { error: err });
-      return { success: true, data: [] };
+      const stale = guestCache.getStale<Match[]>('fixtures', cacheKey);
+      if (stale && stale.length > 0) {
+        return { success: true, data: stale, total: stale.length };
+      }
+      return { success: false, data: [], message: 'Failed to load fixtures.' };
     }
   },
 

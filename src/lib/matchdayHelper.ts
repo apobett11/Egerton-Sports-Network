@@ -1,68 +1,172 @@
 import type { Match } from '../types';
 import { guestCache } from './guestCache';
+import { supabase } from './supabase';
+
+export const PLAYDAY_INDEX_KEY = 'playday_index_v1';
+const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
+const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
+
+export interface PlaydayMark {
+  date: string;
+  matchday: number;
+  isFriendly: boolean;
+  isLeague: boolean;
+}
+
+/** Calendar date the fixture was scheduled on, taken from the timestamp itself. */
+export function fixtureDateKey(raw?: string | null): string | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+export function localDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function dateFromKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
+}
+
+function isFriendlyRow(row: { competition_id?: string; league?: string; is_friendly?: boolean }): boolean {
+  const league = (row.league || '').toLowerCase();
+  return Boolean(
+    row.is_friendly ||
+    row.competition_id === 'friendlies' ||
+    row.competition_id === FRIENDLY_COMP_ID ||
+    league.includes('friend')
+  );
+}
+
+export function buildPlaydayIndex(rows: Array<{
+  scheduled_time?: string | null;
+  scheduledTime?: string | null;
+  matchday?: number | null;
+  competition_id?: string | null;
+  league?: string | null;
+  is_friendly?: boolean;
+}>): PlaydayMark[] {
+  const map = new Map<string, PlaydayMark & { hasEpl: boolean }>();
+  rows.forEach((row) => {
+    const date = fixtureDateKey(row.scheduledTime || row.scheduled_time);
+    if (!date) return;
+    const friendly = isFriendlyRow(row);
+    const isEpl = row.competition_id === EPL_COMP_ID || (row.league || '').toLowerCase().includes('premier');
+    const md = Number(row.matchday) || 0;
+    const prev = map.get(date);
+    if (!prev) {
+      map.set(date, {
+        date,
+        matchday: md || 1,
+        isFriendly: friendly,
+        isLeague: !friendly,
+        hasEpl: isEpl && md > 0,
+      });
+      return;
+    }
+    prev.isFriendly = prev.isFriendly || friendly;
+    prev.isLeague = prev.isLeague || !friendly;
+    if (isEpl && md > 0) {
+      prev.matchday = md;
+      prev.hasEpl = true;
+    } else if (!prev.hasEpl && md > 0) {
+      prev.matchday = md;
+    }
+  });
+  return [...map.values()]
+    .map(({ hasEpl: _hasEpl, ...mark }) => mark)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function readPlaydayIndex(): PlaydayMark[] {
+  return guestCache.getStale<PlaydayMark[]>('fixtures', PLAYDAY_INDEX_KEY) || [];
+}
+
+let playdayInflight: Promise<PlaydayMark[]> | null = null;
+
+/** Paint from cache, then refresh the season date index in the background. */
+export function refreshPlaydayIndex(): Promise<PlaydayMark[]> {
+  if (playdayInflight) return playdayInflight;
+  playdayInflight = (async () => {
+    try {
+      const { data } = await supabase
+        .from('fixtures')
+        .select('scheduled_time, matchday, competition_id')
+        .order('scheduled_time', { ascending: true });
+      const index = buildPlaydayIndex(data || []);
+      if (index.length > 0) {
+        guestCache.set('fixtures', PLAYDAY_INDEX_KEY, index, 6 * 60 * 60 * 1000);
+        return index;
+      }
+      return readPlaydayIndex();
+    } catch {
+      return readPlaydayIndex();
+    } finally {
+      playdayInflight = null;
+    }
+  })();
+  return playdayInflight;
+}
+
+/** Move to the previous or next date that actually has fixtures. */
+export function shiftPlayday(currentKey: string, direction: 1 | -1, index: PlaydayMark[]): string | null {
+  if (!index.length) return null;
+  const exact = index.findIndex((mark) => mark.date === currentKey);
+  if (exact === -1) {
+    if (direction === 1) return index.find((mark) => mark.date > currentKey)?.date || null;
+    for (let i = index.length - 1; i >= 0; i--) {
+      if (index[i].date < currentKey) return index[i].date;
+    }
+    return null;
+  }
+  const next = index[exact + direction];
+  return next ? next.date : null;
+}
 
 /**
- * Resolves the matchday date for the guest page:
- * - If today is a playday (weekend or has scheduled fixtures), returns today.
- * - If today is a weekday (and no fixtures today), returns the next matchday date.
- * 
- * Operates synchronously using guestCache / calendar arithmetic to ensure 0ms latency.
+ * Resolves the matchday date for the guest page from the real fixture calendar.
+ * Today wins when it has matches. Otherwise the next scheduled playday opens.
  */
 export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const todayStr = `${year}-${month}-${day}`;
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const todayStr = localDateKey(now);
+  const index = readPlaydayIndex();
 
-  // Fixtures source: explicit param or synchronous master cache
+  if (index.some((mark) => mark.date === todayStr)) {
+    return now;
+  }
+  const upcoming = index.find((mark) => mark.date > todayStr);
+  if (upcoming) return dateFromKey(upcoming.date);
+  if (index.length > 0) return dateFromKey(index[index.length - 1].date);
+
   const fixturesList =
     fixtures && fixtures.length > 0
       ? fixtures
-      : guestCache.get<Match[]>('fixtures', 'all_all_pall_sall') || [];
+      : guestCache.getStale<Match[]>('fixtures', 'all_all_pall_sall') || [];
 
-  // Check if today has any fixtures scheduled
-  const hasFixturesToday = fixturesList.some((f) => {
-    const raw = f.scheduledTime || (f as any).scheduled_time;
-    if (!raw) return false;
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return false;
-    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return dateKey === todayStr;
-  });
+  const dateKeys = Array.from(new Set(
+    fixturesList
+      .map((f) => fixtureDateKey(f.scheduledTime || (f as any).scheduled_time))
+      .filter((key): key is string => Boolean(key))
+  )).sort();
 
-  const isTodayPlayday = dayOfWeek === 0 || dayOfWeek === 6 || hasFixturesToday;
+  if (dateKeys.includes(todayStr)) return now;
+  const nextKey = dateKeys.find((key) => key > todayStr);
+  if (nextKey) return dateFromKey(nextKey);
+  if (dateKeys.length > 0) return dateFromKey(dateKeys[dateKeys.length - 1]);
 
-  // 1. If on a playday, the matchday is actually loaded
-  if (isTodayPlayday) {
-    return now;
-  }
-
-  // 2. If on a weekday, the next matchday is opened
-  if (fixturesList.length > 0) {
-    const upcomingDateKeys: string[] = [];
-    fixturesList.forEach((f) => {
-      const raw = f.scheduledTime || (f as any).scheduled_time;
-      if (!raw) return;
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return;
-      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (dateKey > todayStr && !upcomingDateKeys.includes(dateKey)) {
-        upcomingDateKeys.push(dateKey);
-      }
-    });
-
-    upcomingDateKeys.sort();
-    if (upcomingDateKeys.length > 0) {
-      const [y, m, d] = upcomingDateKeys[0].split('-').map(Number);
-      return new Date(y, m - 1, d, 12, 0, 0);
-    }
-  }
-
-  // 3. Fallback: coming Saturday (standard weekend matchday kick-off)
+  const dayOfWeek = now.getDay();
   const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilSaturday, 12, 0, 0);
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + (dayOfWeek === 6 || dayOfWeek === 0 ? 0 : daysUntilSaturday), 12, 0, 0);
 }
 
 /**
