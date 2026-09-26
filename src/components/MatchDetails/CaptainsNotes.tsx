@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import type { Match } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 import { supabase } from '../../lib/supabase';
 
 interface CaptainsNotesProps {
@@ -148,7 +149,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                     {/* Home Team Coach Report */}
                     <div className="bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xs p-4 space-y-3">
                         <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
-                            <img src={teamA.logo} alt={teamA.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                             <div className="min-w-0">
                                 <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
                                     {coachNameA}
@@ -178,7 +179,7 @@ export const CaptainsNotes: React.FC<CaptainsNotesProps> = ({ match }) => {
                     {/* Away Team Coach Report */}
                     <div className="bg-[#f8f9fa] dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xs p-4 space-y-3">
                         <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
-                            <img src={teamB.logo} alt={teamB.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                             <div className="min-w-0">
                                 <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
                                     {coachNameB}

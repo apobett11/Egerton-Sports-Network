@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, Star, Share2 } from 'lucide-react';
 import { formatMatchTime, formatMatchPitch, resolveAllocatedOfficials } from '../../lib/matchdayHelper';
 import type { Match } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 
 interface MatchHeaderProps {
     match: Match;
@@ -120,7 +121,8 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 sm:gap-6">
                     {/* Team A (Home) */}
                     <div className="flex flex-col items-center justify-center text-center">
-                        <img
+                        <TeamLogo
+                            teamId={match.teamA.id}
                             src={match.teamA.logo}
                             alt={match.teamA.name}
                             className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover bg-slate-800 p-0.5 shadow-md mb-2"
@@ -152,7 +154,8 @@ export const MatchHeader: React.FC<MatchHeaderProps> = ({
 
                     {/* Team B (Away) */}
                     <div className="flex flex-col items-center justify-center text-center">
-                        <img
+                        <TeamLogo
+                            teamId={match.teamB.id}
                             src={match.teamB.logo}
                             alt={match.teamB.name}
                             className="w-14 h-14 sm:w-20 sm:h-20 rounded-full object-cover bg-slate-800 p-0.5 shadow-md mb-2"

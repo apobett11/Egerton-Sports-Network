@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, Pin, ChevronUp, ChevronDown, Table, Volume2, VolumeX, Radio } from 'lucide-react';
 import type { Match } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
 
 interface FixturesListProps {
@@ -264,7 +265,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                 {/* Team A (Home) */}
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <img
+                                                        <TeamLogo
+                                                            teamId={match.teamA.id}
                                                             src={match.teamA.logo}
                                                             alt={match.teamA.name}
                                                             className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
@@ -289,7 +291,8 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                                                 {/* Team B (Away) */}
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <img
+                                                        <TeamLogo
+                                                            teamId={match.teamB.id}
                                                             src={match.teamB.logo}
                                                             alt={match.teamB.name}
                                                             className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"

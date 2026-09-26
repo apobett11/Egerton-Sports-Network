@@ -4,6 +4,8 @@ import type { Match, Player } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 import { resolveAllocatedOfficials } from '../../lib/matchdayHelper';
+import { guestCache } from '../../lib/guestCache';
+import { prioritizeTeamLogo } from '../../lib/teamLogoCache';
 import { MatchHeader } from './MatchHeader';
 import { TabBar } from './TabBar';
 import type { MatchDetailTabType } from './TabBar';
@@ -34,42 +36,49 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
         return ['LIVE', 'HT', 'HALF_TIME', 'SECOND_HALF', '1H', '2H', 'FT', 'FULL_TIME', 'FINALIZED', 'COMPLETED'].includes(upper);
     };
 
-    const [currentMatch, setCurrentMatch] = useState<Match>(() => {
-        const off = resolveAllocatedOfficials(match);
+    const paintMatch = (base: Match): Match => {
+        const off = resolveAllocatedOfficials(base);
         return {
-            ...match,
-            referee: off.centerReferee || match.referee,
-            centerReferee: off.centerReferee || match.centerReferee,
-            refereeId: off.centerRefereeId || match.refereeId,
-            centerRefereeId: off.centerRefereeId || match.centerRefereeId,
-            linesmanTeamAName: match.linesmanTeamAName || off.linesmanTeamA,
-            linesmanTeamBName: match.linesmanTeamBName || off.linesmanTeamB,
+            ...base,
+            referee: off.centerReferee || base.referee,
+            centerReferee: off.centerReferee || base.centerReferee,
+            refereeId: off.centerRefereeId || base.refereeId,
+            centerRefereeId: off.centerRefereeId || base.centerRefereeId,
+            linesmanTeamAName: base.linesmanTeamAName || off.linesmanTeamA,
+            linesmanTeamBName: base.linesmanTeamBName || off.linesmanTeamB,
         };
+    };
+
+    const [currentMatch, setCurrentMatch] = useState<Match>(() => {
+        const cached = guestCache.getStale<Match>('match_details', match.id);
+        return paintMatch(cached ? { ...match, ...cached, teamA: { ...match.teamA, ...cached.teamA }, teamB: { ...match.teamB, ...cached.teamB } } : match);
     });
+    const [sectionLoading, setSectionLoading] = useState(() => !guestCache.getStale<Match>('match_details', match.id));
     const [activeTab, setActiveTab] = useState<MatchDetailTabType>(() => {
         return isBegunOrPlayed(match.status) ? 'timeline' : 'details';
     });
 
     useEffect(() => {
-        const offInit = resolveAllocatedOfficials(match);
-        const resolvedInitMatch: Match = {
-            ...match,
-            referee: offInit.centerReferee || match.referee,
-            centerReferee: offInit.centerReferee || match.centerReferee,
-            refereeId: offInit.centerRefereeId || match.refereeId,
-            centerRefereeId: offInit.centerRefereeId || match.centerRefereeId,
-            linesmanTeamAName: match.linesmanTeamAName || offInit.linesmanTeamA,
-            linesmanTeamBName: match.linesmanTeamBName || offInit.linesmanTeamB,
-        };
+        const cached = guestCache.getStale<Match>('match_details', match.id);
+        const resolvedInitMatch = paintMatch(
+            cached
+                ? { ...match, ...cached, teamA: { ...match.teamA, ...cached.teamA }, teamB: { ...match.teamB, ...cached.teamB } }
+                : match
+        );
         setCurrentMatch(resolvedInitMatch);
+        setSectionLoading(!cached);
+        prioritizeTeamLogo(match.teamA?.id);
+        prioritizeTeamLogo(match.teamB?.id);
         if (isBegunOrPlayed(match.status)) {
             setActiveTab('timeline');
         } else {
             setActiveTab('details');
         }
 
-        // Fetch deep match details from database
+        let cancelled = false;
+        // Header is already painted. Sections fill in when this returns.
         ApiService.getMatchDetails(match.id).then(async (res) => {
+            if (cancelled) return;
             const offDeep = resolveAllocatedOfficials(res.data || match);
             if (res.data && isBegunOrPlayed(res.data.status)) {
                 setActiveTab('timeline');
@@ -126,7 +135,14 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                     }
                 });
             }
+            if (!cancelled) setSectionLoading(false);
+        }).catch(() => {
+            if (!cancelled) setSectionLoading(false);
         });
+
+        return () => {
+            cancelled = true;
+        };
     }, [match.id, match.teamA?.id, match.teamB?.id]);
 
     useEffect(() => {
@@ -230,7 +246,15 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
             />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 relative z-10">
-                {renderTabContent()}
+                {sectionLoading ? (
+                    <div className="space-y-3" role="status" aria-label="Loading match section">
+                        <div className="h-8 w-44 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                        <div className="h-28 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                        <div className="h-28 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                    </div>
+                ) : (
+                    renderTabContent()
+                )}
             </main>
         </div>
     );

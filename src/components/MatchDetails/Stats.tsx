@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shirt, Shield, CheckCircle2, Sparkles, Layers } from 'lucide-react';
 import type { Match } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 import { supabase } from '../../lib/supabase';
 
 interface StatsProps {
@@ -312,7 +313,7 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             {/* 1. HOME TEAM KITS: OUTFIELD & GOALKEEPER */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-800 dark:text-white">
-                    <img src={teamA.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    <TeamLogo teamId={teamA.id} src={teamA.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
                     <span>{teamA.name} • Selected Matchday Kits</span>
                 </div>
 
@@ -325,7 +326,7 @@ export const Stats: React.FC<StatsProps> = ({ match }) => {
             {/* 2. AWAY TEAM KITS: OUTFIELD & GOALKEEPER */}
             <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-800 dark:text-white">
-                    <img src={teamB.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    <TeamLogo teamId={teamB.id} src={teamB.logo} alt="" className="w-4 h-4 rounded-full object-cover" />
                     <span>{teamB.name} • Selected Matchday Kits</span>
                 </div>
 

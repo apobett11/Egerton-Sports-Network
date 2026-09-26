@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Match } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
+import { TeamLogo } from '../../common/TeamLogo';
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
@@ -315,13 +316,11 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                           {/* Home Team */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <img
-                                src={homeLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80'}
+                              <TeamLogo
+                                teamId={match.homeTeamId || (match.isHome ? teamId : undefined)}
+                                src={homeLogo}
                                 alt={homeName}
                                 className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
-                                }}
                               />
                               <span
                                 className={`text-xs truncate ${
@@ -349,13 +348,11 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                           {/* Away Team */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <img
-                                src={awayLogo || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80'}
+                              <TeamLogo
+                                teamId={match.awayTeamId || (!match.isHome ? teamId : undefined)}
+                                src={awayLogo}
                                 alt={awayName}
                                 className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
-                                }}
                               />
                               <span
                                 className={`text-xs truncate ${

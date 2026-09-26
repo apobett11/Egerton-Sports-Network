@@ -1,4 +1,5 @@
 import { supabase } from '../../../../lib/supabase';
+import { publicTeamLogo, prioritizeTeamLogo, reconcileLogoStamps } from '../../../../lib/teamLogoCache';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry, LinesmanMatch } from '../types';
 
@@ -242,14 +243,19 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url),
-                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url),
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, updated_at),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, updated_at),
                 competition:competitions!fixtures_competition_id_fkey (name)
             `)
             .or(`home_team_id.eq.${actualTeamId},away_team_id.eq.${actualTeamId}`)
             .order('scheduled_time', { ascending: true });
 
         if (error) throw error;
+
+        reconcileLogoStamps((data || []).flatMap((f: any) => [
+          { id: f.home_team?.id, updated_at: f.home_team?.updated_at },
+          { id: f.away_team?.id, updated_at: f.away_team?.updated_at },
+        ]));
 
         let resultList: Match[] = [];
         if (data && data.length > 0) {
@@ -280,13 +286,13 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 return {
                     id: f.id,
                     opponentName: opponent?.name || 'Opponent Team',
-                    opponentLogo: opponent?.logo_url || '',
+                    opponentLogo: publicTeamLogo(opponent?.id, opponent?.logo_url),
                     homeTeamId: f.home_team?.id,
                     homeTeamName: f.home_team?.name || 'Home Team',
-                    homeTeamLogo: f.home_team?.logo_url || '',
+                    homeTeamLogo: publicTeamLogo(f.home_team?.id, f.home_team?.logo_url),
                     awayTeamId: f.away_team?.id,
                     awayTeamName: f.away_team?.name || 'Away Team',
-                    awayTeamLogo: f.away_team?.logo_url || '',
+                    awayTeamLogo: publicTeamLogo(f.away_team?.id, f.away_team?.logo_url),
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
                     time: formatMatchTime(f.scheduled_time),
                     location: f.venue || '',
@@ -1457,10 +1463,16 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
         return cached.data;
     }
     try {
+        const teamColumns = `
+                id, name, short_name, color_code, competition_id, coach_id, captain_id,
+                description, contact_email, contact_phone, stadium, primary_color, secondary_color, accent_color,
+                season, starting_xi_str, substitutes_str, practice_schedule, temporary_match_squad,
+                tactics_config, kits_config, created_at, updated_at
+            `;
         const { data, error } = await supabase
             .from('teams')
             .select(`
-                *,
+                ${teamColumns},
                 coach:profiles!coach_id (
                     id, first_name, last_name, avatar_url
                 ),
@@ -1474,7 +1486,7 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
         if (error) {
             const { data: simpleData, error: simpleErr } = await supabase
                 .from('teams')
-                .select('*')
+                .select('id, name, short_name, color_code, competition_id, coach_id, captain_id, created_at, updated_at')
                 .eq('id', teamUuid)
                 .maybeSingle();
 
@@ -1494,8 +1506,10 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
                 }
             }
 
+            prioritizeTeamLogo(simpleData.id);
             const record: FullTeamRecord = {
                 ...simpleData,
+                logo_url: publicTeamLogo(simpleData.id),
                 coach_name: coachName,
                 coach_avatar: coachAvatar,
                 competition_name: 'Egerton League',
@@ -1511,8 +1525,11 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
                 ? `${coachProfile.first_name || ''} ${coachProfile.last_name || ''}`.trim()
                 : 'Head Coach';
 
+            prioritizeTeamLogo(data.id);
+            reconcileLogoStamps([{ id: data.id, updated_at: data.updated_at }]);
             const record: FullTeamRecord = {
                 ...data,
+                logo_url: publicTeamLogo(data.id),
                 coach_name: coachName,
                 coach_avatar: coachProfile?.avatar_url || '',
                 competition_name: comp?.name || 'Egerton League',

@@ -11,6 +11,7 @@ import {
 
 import { supabase } from '../../lib/supabase';
 import { guestCache } from '../../lib/guestCache';
+import { TeamLogo } from '../../components/common/TeamLogo';
 
 // --- FIXTURES LIST & RESULTS PAGE ---
 export const PublicFixturesPage: React.FC<{ 
@@ -193,7 +194,7 @@ export const PublicFixturesPage: React.FC<{
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full gap-2 md:gap-4">
                     {/* Team A (Home - Left) */}
                     <div className="flex items-center gap-3 justify-start min-w-0">
-                      <img src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                      <TeamLogo teamId={match.teamA.id} src={match.teamA.logo} alt={match.teamA.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
                       <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white">{match.teamA.name}</span>
                     </div>
 
@@ -224,7 +225,7 @@ export const PublicFixturesPage: React.FC<{
 
                     {/* Team B (Away - Right) */}
                     <div className="flex items-center gap-3 justify-end flex-row-reverse min-w-0">
-                      <img src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
+                      <TeamLogo teamId={match.teamB.id} src={match.teamB.logo} alt={match.teamB.name} className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover bg-slate-100 dark:bg-slate-800 p-1 shrink-0" />
                       <span className="font-bold text-sm md:text-base truncate max-w-[100px] md:max-w-[140px] text-slate-900 dark:text-white text-right">{match.teamB.name}</span>
                     </div>
                   </div>
@@ -444,23 +445,23 @@ export const PublicLeaguePage: React.FC = () => {
 
 // --- NEWS LIST & ARTICLE DETAIL MODAL PAGE ---
 export const PublicNewsPage: React.FC<{ onNavigate?: (path: string) => void }> = () => {
-  const [articles, setArticles] = useState<NewsItem[]>([]);
+  const [articles, setArticles] = useState<NewsItem[]>(() => guestCache.getStale<NewsItem[]>('news', 'all_p1_s6') || []);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(articles.length === 0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
   const pageSize = 6;
 
   useEffect(() => {
-    setIsLoading(true);
+    setIsLoading(articles.length === 0);
     ApiService.getNews({
       page: currentPage,
       pageSize,
       category: selectedCategory === 'ALL' ? undefined : selectedCategory
     }).then((res: any) => {
-      setArticles(res.data || []);
+      if (res.data && res.data.length > 0) setArticles(res.data);
       if (res.totalPages) {
         setTotalPages(res.totalPages);
       } else {

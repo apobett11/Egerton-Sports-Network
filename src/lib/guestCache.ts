@@ -1,3 +1,5 @@
+import { detachEmbeddedLogos } from './teamLogoCache';
+
 export interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -55,6 +57,8 @@ class GuestCacheManager {
           }
         }
       } catch {}
+
+      this.compactEmbeddedLogos();
 
       window.addEventListener('online', () => {
         // Revalidate stale cache on network recovery
@@ -131,15 +135,10 @@ class GuestCacheManager {
       return mem.data as T;
     }
 
-    try {
-      const raw = localStorage.getItem(`${STORAGE_PREFIX}${fullKey}`);
-      if (raw) {
-        const parsed: CacheEntry<T> = JSON.parse(raw);
-        this.memoryCache.set(fullKey, parsed);
-        return parsed.data;
-      }
-    } catch {
-      // Ignore localStorage errors
+    const stored = this.readStored<T>(fullKey);
+    if (stored) {
+      this.memoryCache.set(fullKey, stored);
+      return stored.data;
     }
 
     return null;
@@ -160,20 +159,10 @@ class GuestCacheManager {
       this.memoryCache.delete(fullKey);
     }
 
-    // 2. Check localStorage fallback
-    try {
-      const raw = localStorage.getItem(`${STORAGE_PREFIX}${fullKey}`);
-      if (raw) {
-        const parsed: CacheEntry<T> = JSON.parse(raw);
-        if (Date.now() - parsed.timestamp < parsed.ttl) {
-          // Repopulate memory cache
-          this.memoryCache.set(fullKey, parsed);
-          return parsed.data;
-        }
-        localStorage.removeItem(`${STORAGE_PREFIX}${fullKey}`);
-      }
-    } catch {
-      // Ignore localStorage errors
+    const stored = this.readStored<T>(fullKey);
+    if (stored && Date.now() - stored.timestamp < stored.ttl) {
+      this.memoryCache.set(fullKey, stored);
+      return stored.data;
     }
 
     return null;
@@ -186,7 +175,7 @@ class GuestCacheManager {
     const fullKey = `${category}:${key}`;
     const ttl = customTtl || DEFAULT_TTLS[category] || 60 * 1000;
     const entry: CacheEntry<T> = {
-      data,
+      data: detachEmbeddedLogos(data) as T,
       timestamp: Date.now(),
       ttl
     };
@@ -210,6 +199,13 @@ class GuestCacheManager {
    */
   delete(category: string, key?: string): void {
     this.invalidate(category, key);
+  }
+
+  /**
+   * Ask subscribers to refresh without dropping the painted cache.
+   */
+  revalidate(category: string, key?: string): void {
+    this.notifySubscribers(category, key);
   }
 
   /**
@@ -240,6 +236,45 @@ class GuestCacheManager {
     }
 
     this.notifySubscribers(category, key);
+  }
+
+  private readStored<T>(fullKey: string): CacheEntry<T> | null {
+    try {
+      const storageKey = `${STORAGE_PREFIX}${fullKey}`;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return null;
+      const parsed: CacheEntry<T> = JSON.parse(raw);
+      if (raw.includes('data:image')) {
+        parsed.data = detachEmbeddedLogos(parsed.data) as T;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+        } catch {
+          // The in-memory copy is already slim.
+        }
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Move embedded crests out of fixture and standings cache so those payloads stay small.
+   */
+  private compactEmbeddedLogos(): void {
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const storageKey = localStorage.key(i);
+        if (!storageKey || !storageKey.startsWith(STORAGE_PREFIX)) continue;
+        const raw = localStorage.getItem(storageKey);
+        if (!raw || !raw.includes('data:image')) continue;
+        const parsed = JSON.parse(raw);
+        parsed.data = detachEmbeddedLogos(parsed.data);
+        localStorage.setItem(storageKey, JSON.stringify(parsed));
+      }
+    } catch {
+      // Ignore quota and private-mode failures.
+    }
   }
 
   /**

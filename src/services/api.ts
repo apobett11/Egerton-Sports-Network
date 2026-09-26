@@ -22,6 +22,7 @@ import { resolveAllocatedOfficials } from '../lib/matchdayHelper';
 import { classifyError } from '../lib/apiErrorHandler';
 import { sanitizeHtmlText } from '../lib/storageUtils';
 import { guestCache } from '../lib/guestCache';
+import { publicTeamLogo, reconcileLogoStamps } from '../lib/teamLogoCache';
 import { formatMatchTime } from '../lib/matchdayHelper';
 import { FORMATION_CONFIGS } from '../components/Dashboards/Team/components/Squad/TeamSquadView';
 
@@ -42,7 +43,7 @@ export const ApiService = {
   // Clear in-memory and guest cache when data changes
   invalidateStandingsCache(): void {
     leagueTableCache.clear();
-    guestCache.invalidate('standings');
+    guestCache.revalidate('standings');
   },
 
   invalidateCache(category?: string): void {
@@ -127,8 +128,8 @@ export const ApiService = {
           fourth_official_id,
           verified_by_referee_id,
           competition:competitions(id, name, season),
-          team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config),
-          team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config)
+          team_home:teams!fixtures_home_team_id_fkey(id, name, short_name, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, updated_at),
+          team_away:teams!fixtures_away_team_id_fkey(id, name, short_name, color_code, coach_id, captain_id, starting_xi_str, substitutes_str, tactics_config, temporary_match_squad, kits_config, updated_at)
         `)
         .eq('id', fixtureId)
         .single();
@@ -140,6 +141,10 @@ export const ApiService = {
       const comp = unwrap(f.competition);
       const home = unwrap(f.team_home);
       const away = unwrap(f.team_away);
+      reconcileLogoStamps([
+        { id: home?.id, updated_at: home?.updated_at },
+        { id: away?.id, updated_at: away?.updated_at },
+      ]);
 
       // Query matchday_schedules for officiating & linesman allocations
       const { data: mSchedule } = await supabase
@@ -742,7 +747,7 @@ export const ApiService = {
           id: home?.id || '',
           name: home?.name || 'Home Team',
           shortName: home?.short_name || 'HOM',
-          logo: home?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          logo: publicTeamLogo(home?.id),
           colorCode: home?.color_code || '#D4AF37',
           coach_id: home?.coach_id,
           captain_id: designatedCaptainIdA || home?.captain_id,
@@ -755,7 +760,7 @@ export const ApiService = {
           id: away?.id || '',
           name: away?.name || 'Away Team',
           shortName: away?.short_name || 'AWY',
-          logo: away?.logo_url || 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+          logo: publicTeamLogo(away?.id),
           colorCode: away?.color_code || '#2563EB',
           coach_id: away?.coach_id,
           captain_id: designatedCaptainIdB || away?.captain_id,
@@ -808,6 +813,8 @@ export const ApiService = {
       guestCache.set('match_details', fixtureId, matchDetail);
       return { success: true, data: matchDetail };
     } catch (err: any) {
+      const stale = guestCache.getStale<Match>('match_details', fixtureId);
+      if (stale) return { success: true, data: stale };
       const appErr = classifyError(err);
       return { success: false, data: null, message: appErr.userMessage };
     }
@@ -1438,7 +1445,8 @@ export const ApiService = {
 
       if (!rawErr && rawStandings && rawStandings.length > 0) {
         const teamIds2 = rawStandings.map((r: any) => r.team_id).filter(Boolean);
-        const { data: teamsData2 } = await supabase.from('teams').select('id, name, logo_url').in('id', teamIds2);
+        const { data: teamsData2 } = await supabase.from('teams').select('id, name, updated_at').in('id', teamIds2);
+        reconcileLogoStamps((teamsData2 || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
         const teamMap2 = new Map<string, any>((teamsData2 || []).map((t: any) => [t.id, t]));
         const rawEntries = rawStandings.map((row: any) => {
           const tm = teamMap2.get(row.team_id) || {};
@@ -1447,7 +1455,7 @@ export const ApiService = {
           return {
             teamId: row.team_id || '',
             teamName: tm?.name || 'Campus Team',
-            teamLogo: tm?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+            teamLogo: publicTeamLogo(row.team_id, tm?.logo_url),
             played: Number(row.played) || 0,
             won: Number(row.won) || 0,
             drawn: Number(row.drawn) || 0,
@@ -1483,11 +1491,12 @@ export const ApiService = {
         fixtures = fixRes.data || [];
       }
 
-      const { data: teamsData } = await supabase.from('teams').select('id, name, logo_url');
+      const { data: teamsData } = await supabase.from('teams').select('id, name, updated_at');
+      reconcileLogoStamps((teamsData || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
       const teamsList = (teamsData || []).map((t: any) => ({
         id: t.id,
         name: t.name,
-        logo: t.logo_url
+        logo: publicTeamLogo(t.id)
       }));
 
       const computedStandings = calculateLeagueStandings(fixtures, teamsList, previousStandings);

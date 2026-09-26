@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { LeagueTableEntry } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
-import { guestCache } from '../../lib/guestCache';
+import { readCachedLeagueTable } from '../../services/guestSportsService';
+import { TeamLogo } from '../common/TeamLogo';
 import { 
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
   ArrowUpRight, ChevronRight, Activity, Sparkles, Filter
@@ -33,24 +34,15 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
   // Data States (SWR Instant Initial Paint)
   const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>(() => {
-    const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${EPL_COMP_ID}`);
-    if (cached && cached.length > 0 && cached[0]?.teamName) return cached;
+    const cached = readCachedLeagueTable(EPL_COMP_ID);
+    if (cached.length > 0) return cached;
     return tableData && tableData.length > 0 ? tableData : [];
   });
-  const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>(() => {
-    const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${CHAMP_COMP_ID}`);
-    return cached && cached.length > 0 && cached[0]?.teamName ? cached : [];
-  });
-  const [tablesPending, setTablesPending] = useState(() => {
-    const ready = (key: string) => {
-      const rows = guestCache.getStale<LeagueTableEntry[]>('standings', key);
-      return Boolean(rows && rows.length > 0 && rows[0]?.teamName);
-    };
-    return {
-      epl: !ready(`standings_${EPL_COMP_ID}`),
-      champ: !ready(`standings_${CHAMP_COMP_ID}`),
-    };
-  });
+  const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>(() => readCachedLeagueTable(CHAMP_COMP_ID));
+  const [tablesPending, setTablesPending] = useState(() => ({
+    epl: readCachedLeagueTable(EPL_COMP_ID).length === 0 && !(tableData && tableData.length > 0),
+    champ: readCachedLeagueTable(CHAMP_COMP_ID).length === 0,
+  }));
   const [teamFormsMap, setTeamFormsMap] = useState<Record<string, Array<{ result: 'W' | 'D' | 'L'; matchday: number }>>>({});
   const [eplScorers, setEplScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
   const [champScorers, setChampScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
@@ -463,7 +455,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                         title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <img
+                          <TeamLogo
+                            teamId={row.teamId}
                             src={row.teamLogo}
                             alt={row.teamName}
                             className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
@@ -573,7 +566,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <img
+                        <TeamLogo
+                          teamId={row.teamId}
                           src={row.teamLogo}
                           alt={row.teamName}
                           className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"

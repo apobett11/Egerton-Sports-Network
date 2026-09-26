@@ -13,6 +13,7 @@ import {
     Users,
 } from 'lucide-react';
 import type { Match, Player } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 import { FORMATION_CONFIGS } from '../Dashboards/Team/components/Squad/TeamSquadView';
 
 interface LineupsProps {
@@ -303,7 +304,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
-                        <img src={teamA.logo} alt={teamA.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                        <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
                         <span className="truncate max-w-[110px]">{teamA.name}</span>
                     </button>
                     <button
@@ -315,7 +316,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
-                        <img src={teamB.logo} alt={teamB.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                        <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
                         <span className="truncate max-w-[110px]">{teamB.name}</span>
                     </button>
                 </div>
@@ -341,7 +342,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
             <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm text-xs font-extrabold shadow-xs">
                 {(capsuleFilter === 'both' || capsuleFilter === 'home') && (
                     <div className="flex items-center gap-2">
-                        <img src={teamA.logo} alt={teamA.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
+                        <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
                         <span className="text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px]">{teamA.name}</span>
                         <span className="font-mono text-slate-500 dark:text-slate-400 font-bold">({lineups?.formationA || '4-3-3'})</span>
                     </div>
@@ -373,7 +374,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                     <div className="flex items-center gap-2">
                         <span className="font-mono text-slate-500 dark:text-slate-400 font-bold">({lineups?.formationB || '4-3-3'})</span>
                         <span className="text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[180px] text-right">{teamB.name}</span>
-                        <img src={teamB.logo} alt={teamB.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
+                        <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
                     </div>
                 )}
             </div>
@@ -704,7 +705,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                             {showRolesForA && (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-[#1a2e45]">
-                                        <img src={teamA.logo} alt={teamA.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
+                                        <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
                                         <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                             {teamA.name} Roles
                                         </span>
@@ -753,7 +754,7 @@ export const Lineups: React.FC<LineupsProps> = ({ match }) => {
                             {showRolesForB && (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 pb-1 border-b border-slate-100 dark:border-[#1a2e45]">
-                                        <img src={teamB.logo} alt={teamB.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
+                                        <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-5 h-5 rounded-full object-cover bg-slate-800" />
                                         <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                             {teamB.name} Roles
                                         </span>

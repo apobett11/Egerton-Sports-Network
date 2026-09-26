@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Match } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 import { ApiService } from '../../services/api';
 
 interface FormTabProps {
@@ -71,7 +72,7 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
             <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
                 <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-900 dark:text-white">
                     <div className="flex items-center gap-2">
-                        <img src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
+                        <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamA.name}</span>
                     </div>
                     {historyA.length > 0 ? (
@@ -126,7 +127,7 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
             <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
                 <div className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-xs font-black uppercase text-slate-900 dark:text-white">
                     <div className="flex items-center gap-2">
-                        <img src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
+                        <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-4 h-4 rounded-full" />
                         <span>LAST MATCHES: {teamB.name}</span>
                     </div>
                     {historyB.length > 0 ? (

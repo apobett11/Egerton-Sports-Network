@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Match, MatchEvent } from '../../types';
+import { TeamLogo } from '../common/TeamLogo';
 
 interface SummaryProps {
     match: Match;
@@ -98,7 +99,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                     {/* Team A Action Pill Card */}
                     <div className="space-y-3 sm:pr-2">
                         <div className="flex items-center gap-2.5">
-                            <img src={teamA.logo} alt={teamA.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <TeamLogo teamId={teamA.id} src={teamA.logo} alt={teamA.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                             <span className="font-black text-xs text-slate-900 dark:text-white truncate">{teamA.name}</span>
                         </div>
                         <div className="grid grid-cols-5 gap-1.5 text-center">
@@ -128,7 +129,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                     {/* Team B Action Pill Card */}
                     <div className="space-y-3 sm:pl-4 pt-3 sm:pt-0">
                         <div className="flex items-center gap-2.5">
-                            <img src={teamB.logo} alt={teamB.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <TeamLogo teamId={teamB.id} src={teamB.logo} alt={teamB.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
                             <span className="font-black text-xs text-slate-900 dark:text-white truncate">{teamB.name}</span>
                         </div>
                         <div className="grid grid-cols-5 gap-1.5 text-center">
@@ -183,7 +184,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
-                        <img src={teamA.logo} alt="" className="w-3.5 h-3.5 rounded-full" />
+                        <TeamLogo teamId={teamA.id} src={teamA.logo} alt="" className="w-3.5 h-3.5 rounded-full" />
                         <span>{teamA.shortName} ({teamAEvents.length})</span>
                     </button>
                     <button
@@ -195,7 +196,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                         }`}
                     >
-                        <img src={teamB.logo} alt="" className="w-3.5 h-3.5 rounded-full" />
+                        <TeamLogo teamId={teamB.id} src={teamB.logo} alt="" className="w-3.5 h-3.5 rounded-full" />
                         <span>{teamB.shortName} ({teamBEvents.length})</span>
                     </button>
                 </div>

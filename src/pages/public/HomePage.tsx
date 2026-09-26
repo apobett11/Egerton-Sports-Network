@@ -10,6 +10,8 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
+import { readCachedLeagueTable } from '../../services/guestSportsService';
+import { TeamLogo } from '../../components/common/TeamLogo';
 import {
   resolveGuestMatchdayDate,
   readPlaydayIndex,
@@ -219,12 +221,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>(() => {
-    const readTable = (key: string) => {
-      const rows = guestCache.getStale<LeagueTableEntry[]>('standings', key);
-      return rows && rows.length > 0 && rows[0]?.teamName ? rows : [];
-    };
-    const epl = readTable('standings_11111111-1111-1111-1111-111111111111');
-    const champ = readTable('standings_22222222-2222-2222-2222-222222222222');
+    const epl = readCachedLeagueTable('11111111-1111-1111-1111-111111111111');
+    const champ = readCachedLeagueTable('22222222-2222-2222-2222-222222222222');
     return {
       epl,
       champ,
@@ -233,22 +231,19 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   });
 
-  const [newsState, setNewsState] = useState<{ data: NewsItem[]; loading: boolean; error: string | null }>({
-    data: [],
-    loading: false,
-    error: null
+  const [newsState, setNewsState] = useState<{ data: NewsItem[]; loading: boolean; error: string | null }>(() => {
+    const cached = guestCache.getStale<NewsItem[]>('news', 'all_p1_s6') || [];
+    return { data: cached, loading: cached.length === 0, error: null };
   });
 
-  const [perfState, setPerfState] = useState<{ data: any; loading: boolean; error: string | null }>({
-    data: null,
-    loading: false,
-    error: null
+  const [perfState, setPerfState] = useState<{ data: any; loading: boolean; error: string | null }>(() => {
+    const cached = guestCache.getStale<any>('performance', 'dual_perf');
+    return { data: cached, loading: !cached, error: null };
   });
 
-  const [milestonesState, setMilestonesState] = useState<{ data: any; loading: boolean; error: string | null }>({
-    data: null,
-    loading: false,
-    error: null
+  const [milestonesState, setMilestonesState] = useState<{ data: any; loading: boolean; error: string | null }>(() => {
+    const cached = guestCache.getStale<any>('milestones', 'all_milestones');
+    return { data: cached, loading: !cached, error: null };
   });
 
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
@@ -364,16 +359,24 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Section 3: News loads ON-DEMAND when scrolled into view
   const loadNews = useCallback(() => {
     let isMounted = true;
-    setNewsState(prev => ({ ...prev, loading: true, error: null }));
+    setNewsState(prev => ({ ...prev, loading: prev.data.length === 0, error: null }));
 
     ApiService.getNews({ page: 1, pageSize: 6 })
       .then(res => {
         if (!isMounted) return;
-        setNewsState({ data: res.data || [], loading: false, error: null });
+        setNewsState(prev => ({
+          data: res.data && res.data.length > 0 ? res.data : prev.data,
+          loading: false,
+          error: null
+        }));
       })
       .catch(() => {
         if (isMounted) {
-          setNewsState({ data: [], loading: false, error: 'Failed to load news articles.' });
+          setNewsState(prev => ({
+            ...prev,
+            loading: false,
+            error: prev.data.length ? null : 'Failed to load news articles.'
+          }));
         }
       });
 
@@ -385,16 +388,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Section 4: Performance loads ON-DEMAND when scrolled into view
   const loadPerformance = useCallback(() => {
     let isMounted = true;
-    setPerfState(prev => ({ ...prev, loading: true, error: null }));
+    setPerfState(prev => ({ ...prev, loading: !prev.data, error: null }));
 
     ApiService.getDualPlayerPerformance()
       .then(res => {
         if (!isMounted) return;
-        setPerfState({ data: res.data, loading: false, error: null });
+        setPerfState(prev => ({ data: res.data || prev.data, loading: false, error: null }));
       })
       .catch(() => {
         if (isMounted) {
-          setPerfState({ data: null, loading: false, error: 'Failed to compute player stats.' });
+          setPerfState(prev => ({
+            ...prev,
+            loading: false,
+            error: prev.data ? null : 'Failed to compute player stats.'
+          }));
         }
       });
 
@@ -406,16 +413,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Section 5: Milestones loads ON-DEMAND when scrolled into view
   const loadMilestones = useCallback(() => {
     let isMounted = true;
-    setMilestonesState(prev => ({ ...prev, loading: true, error: null }));
+    setMilestonesState(prev => ({ ...prev, loading: !prev.data, error: null }));
 
     ApiService.getLeagueMilestones()
       .then(res => {
         if (!isMounted) return;
-        setMilestonesState({ data: res.data, loading: false, error: null });
+        setMilestonesState(prev => ({ data: res.data || prev.data, loading: false, error: null }));
       })
       .catch(() => {
         if (isMounted) {
-          setMilestonesState({ data: null, loading: false, error: 'Failed to load milestones.' });
+          setMilestonesState(prev => ({
+            ...prev,
+            loading: false,
+            error: prev.data ? null : 'Failed to load milestones.'
+          }));
         }
       });
 
@@ -1477,7 +1488,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                      <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
                       <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
                     <div className="flex items-center gap-3 font-mono">
@@ -1503,7 +1514,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                      <img src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
+                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
                       <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
                     <div className="flex items-center gap-3 font-mono">

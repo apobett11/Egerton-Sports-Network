@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowLeft, Share2, Briefcase, Trophy, Shield, User } from 'lucide-react';
+import { ArrowLeft, Share2, Briefcase, Trophy, User } from 'lucide-react';
 import type { FullTeamRecord } from '../Dashboards/Team/lib/supabaseClient';
+import { TeamLogo } from '../common/TeamLogo';
 import type { StandingEntry } from '../Dashboards/Team/types';
 
 interface TeamDetailsHeaderProps {
@@ -71,18 +72,12 @@ export const TeamDetailsHeader: React.FC<TeamDetailsHeaderProps> = ({
         {/* Crest & Team Badge */}
         <div className="relative mb-3.5">
           <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#14263b] border-2 border-white/10 p-2 flex items-center justify-center shadow-xl overflow-hidden">
-            {team.logo_url ? (
-              <img
-                src={team.logo_url}
-                alt={team.name}
-                className="w-full h-full object-contain drop-shadow-md"
-                onError={(e) => {
-                  (e.currentTarget as HTMLElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <Shield className="w-10 h-10 text-[#ff0046]" />
-            )}
+            <TeamLogo
+              teamId={team.id}
+              src={team.logo_url}
+              alt={team.name}
+              className="w-full h-full object-contain drop-shadow-md"
+            />
           </div>
           {standing?.position && (
             <span className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-md text-[11px] font-mono font-black bg-[#ff0046] text-white shadow-md border border-white/20">

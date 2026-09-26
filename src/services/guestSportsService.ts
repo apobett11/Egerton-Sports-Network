@@ -2,12 +2,13 @@ import { supabase } from '../lib/supabase';
 import type { Match, LeagueTableEntry } from '../types';
 import { guestCache } from '../lib/guestCache';
 import { resolveAllocatedOfficials } from '../lib/matchdayHelper';
+import { DEFAULT_TEAM_LOGO, publicTeamLogo, reconcileLogoStamps } from '../lib/teamLogoCache';
 
 // ============================================================================
 // GUEST SPORTS SERVICE v3 — Ultra-Fast Cached In-Memory Lookups & Clean Queries
 // ============================================================================
 
-const DEFAULT_LOGO = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80';
+const DEFAULT_LOGO = DEFAULT_TEAM_LOGO;
 
 // In-memory caches for static master data (60 second TTL)
 let cachedTeamsMap: Map<string, any> | null = null;
@@ -36,11 +37,21 @@ async function getTeamsMap(): Promise<Map<string, any>> {
   }
   inFlightTeamsPromise = (async () => {
     try {
-      const { data } = await supabase
+      let { data, error } = await supabase
         .from('teams')
-        .select('id, name, short_name, logo_url, color_code');
-      
-      cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, t]));
+        .select('id, name, short_name, color_code, updated_at');
+      if (error) {
+        const retry = await supabase
+          .from('teams')
+          .select('id, name, short_name, color_code');
+        data = retry.data;
+      }
+
+      reconcileLogoStamps((data || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
+      cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, {
+        ...t,
+        logo_url: publicTeamLogo(t.id),
+      }]));
       teamsCacheTimestamp = Date.now();
       return cachedTeamsMap;
     } finally {
@@ -198,7 +209,7 @@ async function fetchGuestFixturesNetwork(params?: {
       // cannot use the fixtures index and was taking several seconds.
       const results = await _getGuestFixturesFallback(params);
       if (results.length > 0 && !hasPlaceholderTeamData(results)) {
-        guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
+        guestCache.set('fixtures', cacheKey, results, 60 * 1000);
       }
       return results;
     } catch (err: any) {
@@ -454,7 +465,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
   const promise = (async () => {
     try {
       const [teamsRes, fixturesRes] = await Promise.all([
-        supabase.from('teams').select('id, name, logo_url').eq('competition_id', targetCompId),
+        supabase.from('teams').select('id, name, updated_at').eq('competition_id', targetCompId),
         supabase
           .from('fixtures')
           .select('home_team_id, away_team_id, score_home, score_away, matchday, scheduled_time, status')
@@ -465,8 +476,23 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
       ]);
 
       if (teamsRes.error || fixturesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
-        return [];
+        const stale = readCachedLeagueTable(targetCompId);
+        return stale.map((row) => ({
+          team_id: row.teamId,
+          team_name: row.teamName,
+          logo_url: publicTeamLogo(row.teamId, row.teamLogo),
+          played: row.played,
+          won: row.won,
+          drawn: row.drawn,
+          lost: row.lost,
+          goals_for: row.goalsFor,
+          goals_against: row.goalsAgainst,
+          goal_difference: row.goalDifference,
+          points: row.points,
+        }));
       }
+
+      reconcileLogoStamps((teamsRes.data || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
 
       type Acc = {
         played: number; won: number; drawn: number; lost: number;
@@ -525,7 +551,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         return {
           team_id: teamId,
           team_name: team.name || 'Campus Team',
-          logo_url: team.logo_url || DEFAULT_LOGO,
+          logo_url: publicTeamLogo(teamId, team.logo_url),
           played: row.played,
           won: row.won,
           drawn: row.drawn,
@@ -545,7 +571,11 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         return a.team_name.localeCompare(b.team_name);
       });
 
-      guestCache.set('standings', cacheKey, results, 2 * 60 * 1000, true);
+      const forms: Record<string, MatchFormMark[]> = {};
+      acc.forEach((row, teamId) => {
+        forms[teamId] = row.form;
+      });
+      guestCache.set('standings', `forms_${targetCompId}`, forms, 6 * 60 * 60 * 1000);
       return results;
     } catch (err: any) {
       console.error('[guestSportsService] getGuestStandings exception:', err);
@@ -563,7 +593,17 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
   return fetchGuestStandingsNetwork(competitionId);
 }
 
+function restoreCachedForms(compId: string): void {
+  const cached = guestCache.getStale<Record<string, MatchFormMark[]>>('standings', `forms_${compId}`);
+  if (!cached) return;
+  Object.entries(cached).forEach(([teamId, marks]) => {
+    if (!matchFormByTeam.has(teamId)) matchFormByTeam.set(teamId, marks);
+  });
+}
+
 export async function getMatchFormsForTeams(teamIds: string[]): Promise<Record<string, MatchFormMark[]>> {
+  restoreCachedForms('11111111-1111-1111-1111-111111111111');
+  restoreCachedForms('22222222-2222-2222-2222-222222222222');
   const missing = teamIds.filter((id) => !matchFormByTeam.has(id));
   if (missing.length > 0) {
     await Promise.all([
@@ -892,7 +932,7 @@ export function guestFixtureToMatch(gf: GuestFixture): Match {
       id: gf.home_team.id,
       name: gf.home_team.name,
       shortName: gf.home_team.short_name || gf.home_team.name.substring(0, 3).toUpperCase(),
-      logo: gf.home_team.logo_url || DEFAULT_LOGO,
+      logo: publicTeamLogo(gf.home_team.id, gf.home_team.logo_url),
       colorCode: gf.home_team.color_code || '#059669',
       club_id: '',
       competition_id: gf.competition_id,
@@ -901,7 +941,7 @@ export function guestFixtureToMatch(gf: GuestFixture): Match {
       id: gf.away_team.id,
       name: gf.away_team.name,
       shortName: gf.away_team.short_name || gf.away_team.name.substring(0, 3).toUpperCase(),
-      logo: gf.away_team.logo_url || DEFAULT_LOGO,
+      logo: publicTeamLogo(gf.away_team.id, gf.away_team.logo_url),
       colorCode: gf.away_team.color_code || '#2563EB',
       club_id: '',
       competition_id: gf.competition_id,
@@ -931,7 +971,7 @@ export function guestStandingToLeagueTableEntry(gs: GuestStanding, index: number
     position: index + 1,
     teamId: gs.team_id,
     teamName: gs.team_name,
-    teamLogo: gs.logo_url || DEFAULT_LOGO,
+    teamLogo: publicTeamLogo(gs.team_id, gs.logo_url),
     played: gs.played,
     won: gs.won,
     drawn: gs.drawn,
@@ -960,7 +1000,18 @@ export async function getGuestLeagueTableEntries(competitionId?: string): Promis
     ? competitionId
     : '11111111-1111-1111-1111-111111111111';
   if (entries.length > 0) {
-    guestCache.set('standings', `standings_${targetCompId}`, entries, 2 * 60 * 1000);
+    guestCache.set('standings', `standings_${targetCompId}`, entries, 6 * 60 * 60 * 1000);
+    return entries;
   }
-  return entries;
+  return readCachedLeagueTable(targetCompId);
+}
+
+export function readCachedLeagueTable(compId: string): LeagueTableEntry[] {
+  const rows = guestCache.getStale<any[]>('standings', `standings_${compId}`) || [];
+  if (rows.length === 0) return [];
+  if (rows[0]?.teamName) return rows as LeagueTableEntry[];
+  if (rows[0]?.team_name || rows[0]?.team_id) {
+    return rows.map((row, index) => guestStandingToLeagueTableEntry(row, index));
+  }
+  return [];
 }
