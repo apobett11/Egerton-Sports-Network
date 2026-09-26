@@ -503,7 +503,11 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         row.form.push({ result, matchday });
       };
 
+      const now = Date.now();
       for (const fixture of fixtures) {
+        const kickoff = fixture.scheduled_time ? new Date(fixture.scheduled_time).getTime() : 0;
+        // A future matchday can be flagged FT before it is played. Count only kickoffs that have passed.
+        if (kickoff && kickoff > now) continue;
         const scoreHome = Number(fixture.score_home) || 0;
         const scoreAway = Number(fixture.score_away) || 0;
         const matchday = Number(fixture.matchday) || 0;
