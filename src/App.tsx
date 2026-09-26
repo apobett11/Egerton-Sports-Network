@@ -810,9 +810,11 @@ export const AppContent: React.FC = () => {
 
   if (route === 'coach' || route === 'dashboard/coach') {
     return (
-      <Suspense fallback={<DashboardLoader />}>
-        <TeamDashboard />
-      </Suspense>
+      <ProtectedRoute allowedRoles={['coach', 'captain', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
+        <Suspense fallback={<DashboardLoader />}>
+          <TeamDashboard />
+        </Suspense>
+      </ProtectedRoute>
     );
   }
 
@@ -972,7 +974,7 @@ export const AppContent: React.FC = () => {
             aria-label="Mobile navigation drawer"
           >
             <div
-              className="w-72 max-w-[80vw] h-full bg-[#ffffff] dark:bg-[#0e1c2b] text-slate-900 dark:text-white shadow-2xl p-6 flex flex-col justify-between border-l border-slate-200 dark:border-[#1a2e45]"
+              className="w-72 max-w-[85vw] h-full max-h-[100dvh] bg-[#ffffff] dark:bg-[#0e1c2b] text-slate-900 dark:text-white shadow-2xl p-6 flex flex-col border-l border-slate-200 dark:border-[#1a2e45] overflow-y-auto overscroll-contain"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-6">

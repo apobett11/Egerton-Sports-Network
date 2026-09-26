@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [playerImgError, setPlayerImgError] = useState(false);
 
   return (
-    <aside className="relative z-30 flex flex-col items-start justify-between h-full py-3.5 pl-3 sm:pl-4 pr-1 select-none pointer-events-auto flex-shrink-0">
+    <aside className="relative z-30 flex flex-col items-start h-full max-h-full min-h-0 overflow-y-auto overscroll-contain py-3.5 pl-3 sm:pl-4 pr-1 select-none pointer-events-auto flex-shrink-0 touch-auto">
       {/* Top Stack of 4 Action Icons in curved dark dock */}
       <div className="flex flex-col items-center gap-2.5 bg-[#03091e]/90 p-1.5 rounded-[22px] border border-[#142352]/70 shadow-2xl backdrop-blur-md">
         {/* 1. Coach Profile Avatar: Shows Coach details, avatar fallback in absence */}

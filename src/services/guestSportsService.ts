@@ -181,81 +181,9 @@ async function fetchGuestFixturesNetwork(params?: {
 
   const promise = (async () => {
     try {
-      // Use the server-side RPC that JOINs teams + competitions inline.
-      let compId = (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL')
-        ? params.competitionId
-        : null;
-      if (compId === 'friendlies' || compId === 'friendly') {
-        compId = '33333333-3333-3333-3333-333333333333';
-      }
-      const dateVal = (params?.date && params.date !== 'all')
-        ? (/^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0])
-        : null;
-      const matchdayVal = params?.matchday || null;
-
-      // Limited retries: up to 2 retries (3 total attempts) with exponential backoff
-      const MAX_RETRIES = 2;
-      let rows: any[] | null = null;
-      let lastError: any = null;
-
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        const { data, error } = await supabase.rpc('get_guest_fixtures', {
-          p_competition_id: compId,
-          p_date: dateVal,
-          p_matchday: matchdayVal,
-        });
-
-        if (!error && data && data.length > 0) {
-          rows = data as any[];
-          break;
-        }
-
-        if (error) {
-          lastError = error;
-        }
-
-        if (attempt < MAX_RETRIES) {
-          const delay = (attempt + 1) * 200;
-          await new Promise((r) => setTimeout(r, delay));
-        }
-      }
-
-      if (!rows || rows.length === 0) {
-        if (lastError) {
-          console.warn('[guestSportsService] get_guest_fixtures failed after retries, running fallback:', lastError);
-        }
-        return await _getGuestFixturesFallback(params);
-      }
-
-      const results = (rows as any[]).map((r: any): GuestFixture => ({
-        id: r.id,
-        competition_id: r.competition_id || '',
-        competition_name: r.competition_name || 'Campus Football',
-        matchday: r.matchday || 1,
-        scheduled_time: r.scheduled_time,
-        venue: r.venue || 'Egerton Main Grounds',
-        status: (r.status || 'UPCOMING') as any,
-        score_home: typeof r.score_home === 'number' ? r.score_home : 0,
-        score_away: typeof r.score_away === 'number' ? r.score_away : 0,
-        home_penalty_score: r.home_penalty_score ?? null,
-        away_penalty_score: r.away_penalty_score ?? null,
-        home_team: {
-          id: r.home_team_id || '',
-          name: r.home_team_name || '',
-          short_name: r.home_short_name || null,
-          logo_url: r.home_logo_url || DEFAULT_LOGO,
-          color_code: r.home_color_code || '#059669',
-        },
-        away_team: {
-          id: r.away_team_id || '',
-          name: r.away_team_name || '',
-          short_name: r.away_short_name || null,
-          logo_url: r.away_logo_url || DEFAULT_LOGO,
-          color_code: r.away_color_code || '#2563EB',
-        },
-      }));
-
-      // Strictly DO NOT cache if placeholder team names exist
+      // Range query on scheduled_time. The guest RPC's DATE() comparison
+      // cannot use the fixtures index and was taking several seconds.
+      const results = await _getGuestFixturesFallback(params);
       if (!hasPlaceholderTeamData(results)) {
         guestCache.set('fixtures', cacheKey, results, 60 * 1000, true);
       }
@@ -281,44 +209,18 @@ export async function getGuestFixturesFast(params?: {
 }): Promise<GuestFixture[]> {
   const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
   const scopedKey = `${FIXTURES_CACHE_KEY}_${cacheKey}`;
-  
-  // 1. INSTANT PAINT: Read from local cache synchronously (0ms) ONLY for exact cacheKey
-  let cachedData = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
-  if (cachedData && hasPlaceholderTeamData(cachedData)) {
-    guestCache.delete('fixtures', cacheKey);
-    cachedData = null;
-  }
 
-  if (!cachedData) {
-    try {
-      // Strictly scoped key only — never fall back to global unscoped FIXTURES_CACHE_KEY
-      const raw = localStorage.getItem(scopedKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0 && !hasPlaceholderTeamData(parsed)) {
-          cachedData = parsed;
-        } else {
-          localStorage.removeItem(scopedKey);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  // 2. BACKGROUND REVALIDATE: Call the RPC without blocking initial paint
+  // Screens paint from their own cache first. This call returns the database rows.
   const networkPromise = fetchGuestFixturesNetwork(params).then((data) => {
     if (data && data.length > 0 && !hasPlaceholderTeamData(data)) {
       try {
         localStorage.setItem(scopedKey, JSON.stringify(data));
       } catch {}
-      return data;
     }
-    return cachedData || [];
+    return data || [];
   });
 
-  // If we have clean cached data for this exact key, return it immediately; otherwise wait for network
-  return cachedData && cachedData.length > 0 ? cachedData : await networkPromise;
+  return networkPromise;
 }
 
 export async function getGuestFixtures(params?: {
@@ -558,10 +460,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
 
       const results = rows.map((row: any): GuestStanding => {
         const tm = teamMap.get(row.team_id) || {};
-        const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
-          ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
-        const rawPoints = Number(row.points) || 0;
-        const points = isLegends ? Math.max(0, rawPoints - 2) : rawPoints;
+        const points = Number(row.points) || 0;
 
         return {
           team_id: row.team_id || '',
@@ -601,20 +500,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
 }
 
 export async function getGuestStandings(competitionId?: string): Promise<GuestStanding[]> {
-  const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId))
-    ? competitionId
-    : '11111111-1111-1111-1111-111111111111';
-  const cacheKey = `standings_${targetCompId}`;
-  const cachedData = guestCache.getStale<GuestStanding[]>('standings', cacheKey);
-
-  const networkPromise = fetchGuestStandingsNetwork(competitionId);
-
-  if (cachedData && cachedData.length > 0) {
-    void networkPromise;
-    return cachedData;
-  }
-
-  return networkPromise;
+  return fetchGuestStandingsNetwork(competitionId);
 }
 
 // ============================================================================
@@ -996,5 +882,12 @@ export async function getGuestMatches(params?: {
 
 export async function getGuestLeagueTableEntries(competitionId?: string): Promise<LeagueTableEntry[]> {
   const standings = await getGuestStandings(competitionId);
-  return standings.map((s, idx) => guestStandingToLeagueTableEntry(s, idx));
+  const entries = standings.map((s, idx) => guestStandingToLeagueTableEntry(s, idx));
+  const targetCompId = (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId))
+    ? competitionId
+    : '11111111-1111-1111-1111-111111111111';
+  if (entries.length > 0) {
+    guestCache.set('standings', `standings_${targetCompId}`, entries, 2 * 60 * 1000);
+  }
+  return entries;
 }

@@ -151,7 +151,7 @@ export const PresidentHeader: React.FC<PresidentHeaderProps> = ({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`w-72 h-full ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} border-r p-6 flex flex-col justify-between shadow-2xl transition-all`}
+            className={`w-72 max-w-[85vw] h-full max-h-[100dvh] ${isDark ? 'bg-[#0e1e2d] border-[#1a2e45]' : 'bg-white border-[#e6e8ec]'} border-r p-6 flex flex-col shadow-2xl transition-all overflow-y-auto overscroll-contain`}
           >
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-[#1a2e45]">

@@ -197,3 +197,15 @@ body {
 .animate-favorite-pop {
   animation: favorite-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+.safe-area-pb {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* Keep overlay panels inside the visual viewport, including large text and browser chrome. */
+.fixed.inset-0:not(.esn-stage) > * {
+  max-height: 100dvh;
+  max-height: 100svh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

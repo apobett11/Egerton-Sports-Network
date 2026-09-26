@@ -313,21 +313,42 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
         if (data.leg_2) processLeg(data.leg_2, 2);
       }
 
-      // Cleanup prior operational schedule if re-initializing
-      await supabase
+      // One transaction when migration 67 is applied. Falls back to checked deletes
+      // only if that function is not on the database yet.
+      const { error: rpcErr } = await supabase.rpc('replace_competition_fixtures', {
+        p_rows: baseRows,
+      });
+      if (!rpcErr) {
+        return;
+      }
+      const rpcMissing = /replace_competition_fixtures|PGRST202|schema cache/i.test(rpcErr.message || '');
+      if (!rpcMissing) {
+        throw new Error(`Database fixture replace failed: ${rpcErr.message}`);
+      }
+
+      const { error: scheduleDeleteErr } = await supabase
         .from('matchday_schedules')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (scheduleDeleteErr) {
+        throw new Error(`Could not clear matchday schedules: ${scheduleDeleteErr.message}`);
+      }
 
-      await supabase
+      const { error: baseDeleteErr } = await supabase
         .from('base_fixtures')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (baseDeleteErr) {
+        throw new Error(`Could not clear base fixtures: ${baseDeleteErr.message}`);
+      }
 
-      await supabase
+      const { error: fixtureDeleteErr } = await supabase
         .from('fixtures')
         .delete()
         .in('competition_id', [EPL_COMP_ID, CHAMP_COMP_ID]);
+      if (fixtureDeleteErr) {
+        throw new Error(`Could not clear competition fixtures: ${fixtureDeleteErr.message}`);
+      }
 
       // Direct write into immutable base_fixtures table (database assigns UUIDs)
       const insertedBaseFixtures: any[] = [];
@@ -363,7 +384,7 @@ export const createAgent0Adapters = (_seasonId: string): Agent0Adapters => {
           const batch = legacyFixtures.slice(i, i + 50);
           const { error: insertFixErr } = await supabase.from('fixtures').insert(batch);
           if (insertFixErr) {
-            console.warn('Note on legacy fixtures sync:', insertFixErr.message);
+            throw new Error(`Database fixtures insert failed: ${insertFixErr.message}`);
           }
         }
       }
@@ -1053,7 +1074,8 @@ export const PresidentActionBridge = {
   async confirmAndLockViaAgent0(
     seasonId: string,
     executionId: string,
-    generatedResult: Algo1Output
+    generatedResult: Algo1Output,
+    options?: { skipBaseRewrite?: boolean }
   ): Promise<{
     success: boolean;
     count: number;
@@ -1080,7 +1102,7 @@ export const PresidentActionBridge = {
         (d) => (d.leg_1?.length || 0) > 0 || (d.leg_2?.length || 0) > 0
       );
 
-      if (hasGeneratedFixtures) {
+      if (hasGeneratedFixtures && !options?.skipBaseRewrite) {
         const adapters = createAgent0Adapters(seasonId);
         if (adapters.insertBaseFixtures) {
           await adapters.insertBaseFixtures({

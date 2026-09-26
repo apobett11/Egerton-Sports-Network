@@ -79,12 +79,12 @@ export const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <nav
-      className={`sticky top-[52px] z-30 w-full select-none border-b transition-colors duration-150 py-1.5 ${
+      className={`sticky top-[52px] z-30 w-full max-w-[100vw] min-w-0 select-none border-b transition-colors duration-150 py-1.5 ${
         isDark ? 'bg-[#0e1e2d] border-[#14263b]' : 'bg-white border-[#e6e8ec]'
       }`}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-        <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth">
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar scroll-smooth min-w-0 max-w-full">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;

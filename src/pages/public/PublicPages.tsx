@@ -43,8 +43,7 @@ export const PublicFixturesPage: React.FC<{
       setIsLoading(false);
     });
 
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
+    const channel = supabase
         .channel('public-fixtures-page')
         .on(
           'postgres_changes',
@@ -69,13 +68,8 @@ export const PublicFixturesPage: React.FC<{
         )
         .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
-
     return () => {
-      cleanupRealtime();
+      supabase.removeChannel(channel);
     };
   }, [formattedDateStr]);
 
@@ -377,7 +371,7 @@ export const PublicFixturesPage: React.FC<{
 export const PublicLeaguePage: React.FC = () => {
   const [table, setTable] = useState<LeagueTableEntry[]>(() => {
     const cached = guestCache.getStale<LeagueTableEntry[]>('standings', 'standings_11111111-1111-1111-1111-111111111111');
-    return cached && cached.length > 0 ? cached : [];
+    return cached && cached.length > 0 && cached[0]?.teamName ? cached : [];
   });
   const [isLoading, setIsLoading] = useState(table.length === 0);
 
@@ -393,30 +387,24 @@ export const PublicLeaguePage: React.FC = () => {
 
     loadStandings();
 
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('public-league-standings-channel')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'fixtures' },
-          async () => {
-            setTable((prevTable) => {
-              ApiService.getLeagueTable(undefined, undefined, prevTable).then((res) => {
-                if (res.data) setTable(res.data);
-              });
-              return prevTable;
-            });
-          }
-        )
-        .subscribe();
+    const reloadTable = () => {
+      ApiService.invalidateStandingsCache();
+      ApiService.getLeagueTable().then((res) => {
+        if (res.data && res.data.length > 0) setTable(res.data);
+      });
+    };
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    const channel = supabase
+      .channel('public-league-standings-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, reloadTable)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, (payload) => {
+        const status = (payload.new as { status?: string } | null)?.status;
+        if (status === 'FT' || status === 'FINAL') reloadTable();
+      })
+      .subscribe();
 
     return () => {
-      cleanupRealtime();
+      supabase.removeChannel(channel);
     };
   }, []);
 

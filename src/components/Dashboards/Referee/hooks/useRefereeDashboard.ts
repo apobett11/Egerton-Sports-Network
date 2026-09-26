@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ApiService } from '../../../../services/api';
 import { supabase } from '../../../../lib/supabase';
@@ -108,7 +108,20 @@ export const useRefereeDashboard = () => {
 
   // Load Assigned Fixtures Scoped by Referee UID from Database
   // Load Assigned Fixtures Scoped by Referee UID from Database
+  const didPaintCache = useRef(false);
+  const selectedFixtureIdRef = useRef(selectedFixtureId);
+  selectedFixtureIdRef.current = selectedFixtureId;
+
   const loadDashboardData = useCallback(async () => {
+    if (!didPaintCache.current) {
+      const cachedMatches = guestCache.getStale<Match[]>('fixtures', 'referee_dashboard');
+      if (cachedMatches && cachedMatches.length > 0) {
+        setFixtures(cachedMatches);
+        setIsLoading(false);
+      }
+      didPaintCache.current = true;
+    }
+
     try {
       // 1. Instant / Priority Fetch: Real fixtures, teams, and competitions mapped cleanly
       let formattedMatches: Match[] = [];
@@ -227,8 +240,11 @@ export const useRefereeDashboard = () => {
 
       setFixtures(sortedMatches);
       setIsLoading(false);
+      if (sortedMatches.length > 0) {
+        guestCache.set('fixtures', 'referee_dashboard', sortedMatches, 60 * 1000);
+      }
 
-      if (sortedMatches.length > 0 && !selectedFixtureId) {
+      if (sortedMatches.length > 0 && !selectedFixtureIdRef.current) {
         const activeOne = sortedMatches.find((m) => m.status !== 'FT' && m.status !== 'CANCELLED') || sortedMatches[0];
         setSelectedFixtureId(activeOne.id);
       }
@@ -273,7 +289,7 @@ export const useRefereeDashboard = () => {
       console.warn('Referee data load notice:', err);
       setIsLoading(false);
     }
-  }, [currentUserName, selectedFixtureId]);
+  }, [currentUserName]);
 
   useEffect(() => {
     loadDashboardData();
@@ -289,21 +305,16 @@ export const useRefereeDashboard = () => {
       }, 350);
     };
 
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('referee-dashboard-live-channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    const channel = supabase
+      .channel('referee-dashboard-live-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
+      .subscribe();
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      cleanupRealtime();
+      supabase.removeChannel(channel);
     };
   }, [loadDashboardData]);
 
@@ -885,38 +896,22 @@ export const useRefereeDashboard = () => {
 
     try {
       await executeWithRetry(async () => {
-        await matchLiveEngine.refereeDeclareWalkover({
-          match_uid: fixtureId,
-          referee_uid: effectiveRefereeId,
-          winning_team_uid: winningTeamUid,
-          idempotency_key: idempotencyKey,
-        }).catch((engineErr) => {
-          console.warn('Algorithm 1 walkover note:', engineErr);
+        const res = await ApiService.verifyOfficialMatchResult({
+          ...walkoverParams,
+          idempotencyKey,
+          outcome: 'WALKOVER',
+          winningTeamId: winningTeamUid,
         });
-
-        const { error } = await supabase
-          .from('fixtures')
-          .update(fixtureUpdate)
-          .eq('id', fixtureId);
-
-        if (error) throw error;
-
-        // Invariant: 3-0 walkovers strictly bypass MOTM nomination (zero player stats attribution)
-        try {
-          await supabase
-            .from('man_of_the_match_nominations')
-            .delete()
-            .eq('fixture_id', fixtureId);
-        } catch {}
-
-        await ApiService.verifyOfficialMatchResult(walkoverParams);
-      }, { maxRetries: 3, initialDelayMs: 400 });
+        if (!res.success && !res.data) {
+          throw new Error(res.message || 'Walkover was not saved.');
+        }
+      }, { maxRetries: 1, initialDelayMs: 200, timeoutMs: 8000 });
 
       setSuccessMsg(`Walkover awarded successfully! Score: ${scoreHome} - ${scoreAway} (3-0 win committed).`);
       setActiveTab('overview');
       setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4000);
-      await loadDashboardData();
+      void loadDashboardData();
     } catch (err: any) {
       console.warn('Network issue while awarding walkover, saving to offline resilient queue:', err);
       enqueueOfflineSubmission({
@@ -1043,84 +1038,26 @@ export const useRefereeDashboard = () => {
 
     try {
       const result = await executeWithRetry(async () => {
-        // Sync Algorithm 1 working set with the official events BEFORE refereeConfirmNormalResult
-        await matchRepository.saveRefereeWorkingSet({
-          match_uid: targetMatch.id,
-          opened_by_uid: effectiveRefereeId,
-          period: 'FULL_TIME' as any,
-          home_score: reportData.scoreHome,
-          away_score: reportData.scoreAway,
-          events: [
-            ...reportData.goals.map((g) => ({
-              event_uid: g.id || crypto.randomUUID(),
-              match_uid: targetMatch.id,
-              team_uid: g.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
-              player_uid: g.playerId || null,
-              player_number: g.jerseyNumber ? Number(g.jerseyNumber) : null,
-              type: 'GOAL' as const,
-              goal_type: (g.goalType === 'penalty' ? 'PENALTY' : 'OTHER') as any,
-              minute: Number(g.minute) || 1,
-              period: 'FIRST_HALF' as const,
-              status: 'ACTIVE' as const,
-              created_by_role: 'REFEREE' as const,
-              created_by_uid: effectiveRefereeId,
-              idempotency_key: `ref_goal_${g.id || crypto.randomUUID()}`,
-              is_derived_red: false,
-              created_at: new Date().toISOString(),
-            })),
-            ...reportData.cards.map((c) => ({
-              event_uid: c.id || crypto.randomUUID(),
-              match_uid: targetMatch.id,
-              team_uid: c.teamTarget === 'home' ? targetMatch.teamA.id : targetMatch.teamB.id,
-              player_uid: c.playerId || null,
-              player_number: c.jerseyNumber ? Number(c.jerseyNumber) : null,
-              type: (c.cardType === 'yellow' ? 'YELLOW_CARD' : 'RED_CARD') as any,
-              card_type: (c.cardType === 'yellow' ? 'YELLOW' : 'RED') as any,
-              minute: Number(c.minute) || 1,
-              period: 'FIRST_HALF' as const,
-              status: 'ACTIVE' as const,
-              created_by_role: 'REFEREE' as const,
-              created_by_uid: effectiveRefereeId,
-              idempotency_key: `ref_card_${c.id || crypto.randomUUID()}`,
-              is_derived_red: false,
-              created_at: new Date().toISOString(),
-            })),
-          ] as any,
-          opened_at: new Date().toISOString(),
-          base_live_version: 1,
-        }).catch((wsErr) => console.warn('Working set save note:', wsErr));
-
-        // Harmonize Algorithm 1: Confirm normal result and create permanent canonical state
-        await matchLiveEngine.refereeConfirmNormalResult({
-          match_uid: targetMatch.id,
-          referee_uid: effectiveRefereeId,
-          idempotency_key: idempotencyKey,
-        }).catch((engineErr) => {
-          console.warn('Algorithm 1 normal result note:', engineErr);
+        // One database transaction writes the score, official events, and the table.
+        const res = await ApiService.verifyOfficialMatchResult({
+          ...reportParams,
+          idempotencyKey,
         });
-
-        const res = await ApiService.verifyOfficialMatchResult(reportParams);
         if (!res.success && !res.data) {
           throw new Error(res.message || 'Server rejected official report verification.');
         }
-
-        // Submit Man of the Match (MOTM) Nomination if provided
-        if (reportData.motmNomination && reportData.motmNomination.playerId && reportData.motmNomination.teamId) {
-          try {
-            await potwService.submitMotmNomination({
-              fixtureId: targetMatch.id,
-              playerId: reportData.motmNomination.playerId,
-              teamId: reportData.motmNomination.teamId,
-              competitionId,
-              refereeId: effectiveRefereeId,
-            });
-          } catch (motmErr) {
-            console.warn('MOTM nomination submit note:', motmErr);
-          }
-        }
-
         return res;
-      }, { maxRetries: 4, initialDelayMs: 500 });
+      }, { maxRetries: 1, initialDelayMs: 200, timeoutMs: 8000 });
+
+      if (reportData.motmNomination && reportData.motmNomination.playerId && reportData.motmNomination.teamId) {
+        void potwService.submitMotmNomination({
+          fixtureId: targetMatch.id,
+          playerId: reportData.motmNomination.playerId,
+          teamId: reportData.motmNomination.teamId,
+          competitionId,
+          refereeId: effectiveRefereeId,
+        }).catch((motmErr) => console.warn('MOTM nomination submit note:', motmErr));
+      }
 
       if (result.success || result.data) {
         setSuccessMsg(
@@ -1129,7 +1066,7 @@ export const useRefereeDashboard = () => {
         setActiveTab('overview');
         setSelectedFixtureId(null);
         setTimeout(() => setSuccessMsg(null), 4000);
-        await loadDashboardData();
+        void loadDashboardData();
       } else {
         setAuthError(result.message || 'Failed to submit official report.');
       }
@@ -1187,7 +1124,7 @@ export const useRefereeDashboard = () => {
           : "Status updated to Available. You will now be allocated into the next game's match allocation."
       );
       setTimeout(() => setSuccessMsg(null), 4500);
-      await loadDashboardData();
+      void loadDashboardData();
     } catch (err: any) {
       setAuthError(err.message || 'Failed to update referee availability status.');
     } finally {
@@ -1265,7 +1202,7 @@ export const useRefereeDashboard = () => {
 
       setSuccessMsg('Match details updated successfully! Live time and scores reflected at frontend guest page.');
       setTimeout(() => setSuccessMsg(null), 4000);
-      await loadDashboardData();
+      void loadDashboardData();
     } catch (err: any) {
       setAuthError(err.message || 'Failed to update match details.');
       throw err;

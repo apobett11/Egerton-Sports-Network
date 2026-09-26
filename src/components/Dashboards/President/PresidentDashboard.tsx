@@ -382,7 +382,7 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
 
       {/* MOBILE FIXED BOTTOM NAVIGATION BAR */}
       <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${isDark ? 'bg-[#0e1e2d]/95 border-[#14263b] text-slate-400' : 'bg-white/95 border-[#e6e8ec] text-slate-600'} backdrop-blur-md border-t shadow-2xl safe-area-pb`}>
-        <div className="grid grid-cols-5 h-14 max-w-md mx-auto items-center px-1">
+        <div className="grid grid-cols-5 max-w-md mx-auto items-center px-1 py-1">
           {[
             { id: 'overview', label: 'Overview', icon: Activity },
             { id: 'season_engine', label: 'Leagues', icon: Calendar },
@@ -396,14 +396,14 @@ export const PresidentDashboard: React.FC<PresidentDashboardProps> = ({ onLogout
               <button
                 key={item.id}
                 onClick={() => setActiveView(item.id as any)}
-                className={`flex flex-col items-center justify-center py-1 transition-colors cursor-pointer min-h-[44px] ${
+                className={`flex min-w-0 flex-col items-center justify-center py-1 transition-colors cursor-pointer min-h-[44px] ${
                   isActive
                     ? 'text-[#ff0046] font-black'
                     : 'hover:text-slate-900 dark:hover:text-white font-medium'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
-                <span className="text-[10px] uppercase font-bold tracking-tight mt-0.5">{item.label}</span>
+                <span className="text-[10px] uppercase font-bold tracking-tight mt-0.5 max-w-full truncate">{item.label}</span>
                 {isActive && (
                   <span className="w-1 h-1 rounded-full bg-[#ff0046] mt-0.5" />
                 )}

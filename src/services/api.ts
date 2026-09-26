@@ -40,6 +40,11 @@ const leagueTableCache = new Map<string, { timestamp: number; data: LeagueTableE
 
 export const ApiService = {
   // Clear in-memory and guest cache when data changes
+  invalidateStandingsCache(): void {
+    leagueTableCache.clear();
+    guestCache.invalidate('standings');
+  },
+
   invalidateCache(category?: string): void {
     cachedTeams = null;
     cachedLeagues = null;
@@ -67,54 +72,6 @@ export const ApiService = {
   // --- FIXTURES ---
   async getFixtures(competitionId?: string, selectedDate?: string, page?: number, pageSize?: number): Promise<ApiResponse<Match[]> & { total?: number; page?: number; totalPages?: number }> {
     const cacheKey = `${competitionId || 'all'}_${selectedDate || 'all'}_p${page || 'all'}_s${pageSize || 'all'}`;
-    const cached = guestCache.get<Match[]>('fixtures', cacheKey);
-    const isInvalid = (list?: Match[] | null) =>
-      !list || list.length === 0 || list.some((m: any) => {
-        const h = (m.teamA?.name || m.homeTeamName || '').trim().toLowerCase();
-        const a = (m.teamB?.name || m.awayTeamName || '').trim().toLowerCase();
-        return !h || !a || h === 'home team' || a === 'away team' || h === 'home' || a === 'away';
-      });
-
-    if (cached && !isInvalid(cached)) {
-      return { success: true, data: cached };
-    }
-    if (cached && isInvalid(cached)) {
-      guestCache.delete('fixtures', cacheKey);
-    }
-
-    // Instant extraction from master cache if available (zero-latency guest experience)
-    if (!page && !pageSize) {
-      const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
-      if (allCached && allCached.length > 0 && !isInvalid(allCached)) {
-        let filtered = allCached;
-        if (competitionId && competitionId !== 'all') {
-          if (competitionId === '11111111-1111-1111-1111-111111111111') {
-            filtered = filtered.filter(m => m.league?.toLowerCase().includes('premier') || !m.league?.toLowerCase().includes('championship'));
-          } else if (competitionId === '22222222-2222-2222-2222-222222222222') {
-            filtered = filtered.filter(m => m.league?.toLowerCase().includes('championship'));
-          } else if (competitionId === 'friendlies' || competitionId === '33333333-3333-3333-3333-333333333333') {
-            filtered = filtered.filter(m => m.league?.toLowerCase().includes('friend'));
-          }
-        }
-        if (selectedDate && selectedDate !== 'all') {
-          const targetDateStr = /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
-            ? selectedDate
-            : new Date(selectedDate).toISOString().split('T')[0];
-          filtered = filtered.filter(m => {
-            const raw = m.scheduledTime || (m as any).scheduled_time;
-            if (!raw) return false;
-            const d = new Date(raw);
-            if (isNaN(d.getTime())) return false;
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            return key === targetDateStr;
-          });
-        }
-        if (!isInvalid(filtered)) {
-          guestCache.set('fixtures', cacheKey, filtered);
-          return { success: true, data: filtered, total: filtered.length };
-        }
-      }
-    }
 
     try {
       // Delegate to guestSportsService for reliable batch queries without FK constraint hint issues
@@ -1110,12 +1067,13 @@ export const ApiService = {
           });
 
           if (!rpcError && rpcData) {
-            await this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, {
+            void this.logAuditAction('OFFICIAL_MATCH_RESULT_VERIFIED', 'fixtures', params.fixtureId, {
               scoreHome: rpcData.home_score ?? params.scoreHome,
               scoreAway: rpcData.away_score ?? params.scoreAway,
               status: rpcData.status,
               outcome,
             }).catch(() => {});
+            this.invalidateCache();
 
             return { success: true, data: rpcData };
           }
@@ -1128,7 +1086,8 @@ export const ApiService = {
               msg.includes('INVALID_REFEREE_ID') ||
               msg.includes('INVALID_WALKOVER') ||
               msg.includes('INVALID_WALKOVER_WINNER') ||
-              msg.includes('INVALID_WALKOVER_TEAMS')
+              msg.includes('INVALID_WALKOVER_TEAMS') ||
+              msg.includes('NOT_AUTHORIZED')
             ) {
               return { success: false, data: null, message: msg };
             }
@@ -1486,10 +1445,7 @@ export const ApiService = {
         const teamMap2 = new Map<string, any>((teamsData2 || []).map((t: any) => [t.id, t]));
         const rawEntries = rawStandings.map((row: any) => {
           const tm = teamMap2.get(row.team_id) || {};
-          const isLegends = row.team_id === '10000000-0000-4000-8000-000000000007' ||
-            ((tm.name || '').toLowerCase().includes('legends') && !(tm.name || '').toLowerCase().includes('young'));
-          const rawPts = Number(row.points) || 0;
-          const points = isLegends ? Math.max(0, rawPts - 2) : rawPts;
+          const points = Number(row.points) || 0;
 
           return {
             teamId: row.team_id || '',

@@ -215,11 +215,13 @@ export const HomePage: React.FC<HomePageProps> = ({
 
     // 1. Check exact key in guestCache
     const cacheKey = `${compId}_${dateStr}_pall_sall`;
-    const cachedExact = guestCache.get<Match[]>('fixtures', cacheKey);
+    const cachedExact = guestCache.get<Match[]>('fixtures', cacheKey)
+      || guestCache.getStale<Match[]>('fixtures', cacheKey);
     if (cachedExact && cachedExact.length > 0 && !isInvalid(cachedExact)) return cachedExact;
 
     // 2. Check master 'all_all_pall_sall' in guestCache or dbFixtures prop
-    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall');
+    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall')
+      || guestCache.getStale<Match[]>('fixtures', 'all_all_pall_sall');
     const sourceList = (allCached && allCached.length > 0 && !isInvalid(allCached)) ? allCached : dbFixtures;
 
     if (sourceList && sourceList.length > 0 && !isInvalid(sourceList)) {
@@ -259,11 +261,17 @@ export const HomePage: React.FC<HomePageProps> = ({
     return { data: [], loading: true, error: null };
   });
 
-  const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>({
-    epl: [],
-    champ: [],
-    loading: false,
-    error: null
+  const [standingsState, setStandingsState] = useState<{ epl: LeagueTableEntry[]; champ: LeagueTableEntry[]; loading: boolean; error: string | null }>(() => {
+    const readTable = (key: string) => {
+      const rows = guestCache.getStale<LeagueTableEntry[]>('standings', key);
+      return rows && rows.length > 0 && rows[0]?.teamName ? rows : [];
+    };
+    return {
+      epl: readTable('standings_11111111-1111-1111-1111-111111111111'),
+      champ: readTable('standings_22222222-2222-2222-2222-222222222222'),
+      loading: false,
+      error: null
+    };
   });
 
   const [newsState, setNewsState] = useState<{ data: NewsItem[]; loading: boolean; error: string | null }>({
@@ -394,7 +402,11 @@ export const HomePage: React.FC<HomePageProps> = ({
   // Section 2: Standings snapshot loads ON-DEMAND when scrolled into view
   const loadStandings = useCallback(() => {
     let isMounted = true;
-    setStandingsState(prev => ({ ...prev, loading: true, error: null }));
+    setStandingsState(prev => ({
+      ...prev,
+      loading: prev.epl.length === 0 && prev.champ.length === 0,
+      error: null
+    }));
 
     Promise.all([
       ApiService.getLeagueTable(EPL_ID),
@@ -543,6 +555,11 @@ export const HomePage: React.FC<HomePageProps> = ({
     return () => observer.disconnect();
   }, [perfHasLoaded, milestonesHasLoaded, standingsHasLoaded, newsHasLoaded, loadPerformance, loadMilestones, loadStandings, loadNews]);
 
+  useEffect(() => {
+    setStandingsHasLoaded(true);
+    return loadStandings();
+  }, [loadStandings]);
+
   useCacheSubscription('standings', () => { if (standingsHasLoaded) loadStandings(); });
   useCacheSubscription('news', () => { if (newsHasLoaded) loadNews(); });
   useCacheSubscription('performance', () => { if (perfHasLoaded) loadPerformance(); });
@@ -554,51 +571,54 @@ export const HomePage: React.FC<HomePageProps> = ({
     const triggerDebouncedPerfReload = () => {
       if (perfDebounce) clearTimeout(perfDebounce);
       perfDebounce = setTimeout(() => {
-        loadPerformance();
+        if (perfHasLoaded) loadPerformance();
       }, 500);
     };
 
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('public-homepage-fixtures-v7')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'fixtures' },
-          (payload) => {
-            if (payload.new) {
-              const updated = payload.new as any;
-              setFixturesState(prev => ({
-                ...prev,
-                data: prev.data.map(f =>
-                  f.id === updated.id
-                    ? {
-                        ...f,
-                        scoreA: updated.score_home ?? f.scoreA,
-                        scoreB: updated.score_away ?? f.scoreB,
-                        status: updated.status ?? f.status
-                      }
-                    : f
-                )
-              }));
-            }
-            triggerDebouncedPerfReload();
-          }
-        )
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedPerfReload)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
-        .subscribe();
+    const triggerStandingsReload = () => {
+      if (perfDebounce) clearTimeout(perfDebounce);
+      perfDebounce = setTimeout(() => {
+        ApiService.invalidateStandingsCache();
+        loadStandings();
+        if (perfHasLoaded) loadPerformance();
+      }, 400);
+    };
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    const channel = supabase
+      .channel('public-homepage-fixtures-v7')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'fixtures' },
+        (payload) => {
+          if (payload.new) {
+            const updated = payload.new as any;
+            setFixturesState(prev => ({
+              ...prev,
+              data: prev.data.map(f =>
+                f.id === updated.id
+                  ? {
+                      ...f,
+                      scoreA: updated.score_home ?? f.scoreA,
+                      scoreB: updated.score_away ?? f.scoreB,
+                      status: updated.status ?? f.status
+                    }
+                  : f
+              )
+            }));
+          }
+          triggerDebouncedPerfReload();
+        }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerStandingsReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
+      .subscribe();
 
     return () => {
       if (perfDebounce) clearTimeout(perfDebounce);
-      cleanupRealtime();
+      supabase.removeChannel(channel);
     };
-  }, [loadPerformance]);
+  }, [loadPerformance, loadStandings, perfHasLoaded]);
 
   const toggleFavourite = (fixtureId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -663,8 +683,10 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     if (!deviceId) return;
     let isMounted = true;
+    const timer = window.setTimeout(() => {
+    if (!isMounted) return;
 
-    // Record guest page visit
+    // Record guest page visit after fixtures have had the connection.
     FeaturePollService.recordGuestPageVisit(deviceId);
 
     // Indexed database check: has this device ever opened the odds page?
@@ -691,9 +713,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         }
       }
     });
+    }, 4000);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timer);
     };
   }, [deviceId]);
 

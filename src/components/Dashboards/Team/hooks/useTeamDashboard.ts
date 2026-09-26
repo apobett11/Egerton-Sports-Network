@@ -24,7 +24,8 @@ import {
   saveMatchLineup,
   saveTeamTacticsAndSquad,
   deletePlayerFromTeam,
-  fetchCoachCaptainProfiles
+  fetchCoachCaptainProfiles,
+  invalidateTeamReadCaches
 } from '../lib/supabaseClient';
 
 export type DashboardView = 'DASHBOARD' | 'TACTICS' | 'ROSTER' | 'ROLES' | 'STANDINGS' | 'NEWS' | 'SETTINGS' | 'FIXTURES' | 'KITS';
@@ -320,24 +321,25 @@ export const useTeamDashboard = () => {
   useEffect(() => {
     refreshLiveDashboard();
 
-    // Subscribe to realtime database updates so data is always fresh
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        invalidateTeamReadCaches();
+        refreshLiveDashboard();
+      }, 800);
+    };
+
     const channel = supabase
       .channel('coach_dashboard_live_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-        refreshLiveDashboard();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, () => {
-        refreshLiveDashboard();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
-        refreshLiveDashboard();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-        refreshLiveDashboard();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, scheduleRefresh)
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
   }, [refreshLiveDashboard]);

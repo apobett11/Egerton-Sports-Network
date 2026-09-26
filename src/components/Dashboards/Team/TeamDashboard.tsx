@@ -131,7 +131,7 @@ export const TeamDashboard: React.FC = () => {
   // Per strict instructions: You must not touch the squad page.
   if (activeView === 'TACTICS') {
     return (
-      <div className="fixed inset-0 z-[9999] w-screen h-screen overflow-hidden bg-[#030716] select-none touch-none">
+      <div className="esn-stage fixed inset-0 z-[9999] w-full max-w-[100vw] h-dvh max-h-dvh overflow-hidden bg-[#030716] select-none">
         <TeamSquadView
           currentRole={currentRole}
           teamId={teamId}

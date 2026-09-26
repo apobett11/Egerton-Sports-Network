@@ -649,7 +649,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#030716] text-slate-100 flex flex-col font-sans select-none">
+    <div className="relative w-full h-dvh max-h-dvh overflow-hidden bg-[#030716] text-slate-100 flex flex-col font-sans select-none">
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -left-[10%] -top-[15%] w-[45%] h-[60%] rounded-full bg-blue-600/10 blur-3xl" />
@@ -690,7 +690,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       {/* ========================================================================= */}
       {/* MAIN WIZARD CONTAINER                                                     */}
       {/* ========================================================================= */}
-      <main className={`relative z-10 flex-1 flex flex-col items-center ${activeStep === 5 ? 'overflow-y-auto justify-start p-2 sm:p-4' : 'overflow-hidden justify-center p-2 sm:p-4'}`}>
+      <main className={`relative z-10 flex-1 min-h-0 flex flex-col items-center ${activeStep === 5 ? 'overflow-hidden justify-center p-2 sm:p-4' : 'overflow-y-auto overscroll-contain justify-start p-2 sm:p-4'}`}>
         {/* STEPS OUTSIDE THE CARD, ABOVE STEP HEADING WITH CLEAR FULL WORDINGS */}
         <div className="w-full max-w-4xl px-2 sm:px-0 mb-3 shrink-0">
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 w-full">
@@ -1370,7 +1370,7 @@ export const TeamSquadView: React.FC<TeamSquadViewProps> = ({
       {/* ========================================================================= */}
       {isRightNavOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-72 h-full bg-[#070f24] border-l border-slate-800 shadow-2xl p-5 flex flex-col justify-between animate-in slide-in-from-right duration-250">
+          <div className="w-72 max-w-[85vw] h-full max-h-[100dvh] bg-[#070f24] border-l border-slate-800 shadow-2xl p-5 flex flex-col overflow-y-auto overscroll-contain animate-in slide-in-from-right duration-250">
             <div>
               <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
                 <span className="text-sm font-black text-white tracking-wide">Pages Navigation</span>

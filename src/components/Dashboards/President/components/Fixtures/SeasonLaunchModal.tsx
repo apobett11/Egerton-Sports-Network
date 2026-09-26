@@ -279,14 +279,26 @@ export const SeasonLaunchModal: React.FC<SeasonLaunchModalProps> = ({
 
     try {
       const canonicalSeasonId = '11111111-2026-4000-8000-000000000001';
-      // 1. Send Begin Season command to Agent 0 with anchor date for Algorithm 2
-      await PresidentActionBridge.beginSeason(canonicalSeasonId, selectedStartDate);
+      const begin = await PresidentActionBridge.beginSeason(canonicalSeasonId, selectedStartDate);
+      if (!begin.success) {
+        setLockOutcome({
+          success: false,
+          count: 0,
+          eplCount: 0,
+          champCount: 0,
+          reReadVerified: false,
+          error: begin.error?.message || 'Season generation stopped before the schedule was locked.',
+        });
+        setStep('PREVIEW_AND_LOCK');
+        return;
+      }
 
-      // 2. Send Confirm & Lock command to Agent 0 (writes to database and verifies)
+      // Lock only. beginSeason already wrote pairings, matchdays, pitches, and officials.
       const outcome = await PresidentActionBridge.confirmAndLockViaAgent0(
         canonicalSeasonId,
         executionId || crypto.randomUUID(),
-        agent0GenResult
+        agent0GenResult,
+        { skipBaseRewrite: true }
       );
 
       setLockOutcome(outcome);

@@ -34,6 +34,11 @@ const teamRecordCache = new Map<string, { timestamp: number; data: any }>();
 const SQUAD_CACHE_TTL_MS = 30000; // 30s cache TTL
 const TEAM_CACHE_TTL_MS = 60000; // 60s cache TTL to deliver sub-second team profile loads
 
+export function invalidateTeamReadCaches(): void {
+  teamFixturesUnitCache.clear();
+  teamStandingsUnitCache.clear();
+}
+
 export async function resolveRealTeamId(input: string): Promise<string> {
     if (!input) return DEFAULT_TEAM_UUID;
     if (isValidUuid(input)) return input;
@@ -227,12 +232,6 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
 
-        // Fast-path: Check memory cache (sub-millisecond instant return)
-        const cached = teamFixturesUnitCache.get(actualTeamId);
-        if (cached && Date.now() - cached.timestamp < TEAM_CACHE_TTL_MS) {
-            return cached.data;
-        }
-
         const { data, error } = await supabase
             .from('fixtures')
             .select(`
@@ -335,10 +334,6 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
         }
 
         const cacheKey = `${actualTeamId}_${targetCompId || 'all'}`;
-        const cached = teamStandingsUnitCache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < TEAM_CACHE_TTL_MS) {
-            return cached.data;
-        }
 
         // 1. Query standings table strictly for the specified league/competition
         let standingsQuery = supabase

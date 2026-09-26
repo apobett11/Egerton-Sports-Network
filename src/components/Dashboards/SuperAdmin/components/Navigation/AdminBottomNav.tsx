@@ -35,7 +35,7 @@ export const AdminBottomNav: React.FC<AdminBottomNavProps> = ({
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161616]/95 backdrop-blur-md border-t border-[#262626] px-2 py-1.5 flex items-center justify-around shadow-2xl">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161616]/95 backdrop-blur-md border-t border-[#262626] px-1 pt-1.5 safe-area-pb flex items-stretch justify-around shadow-2xl overflow-x-auto overscroll-contain">
       {bottomItems.map((item) => {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
@@ -43,7 +43,7 @@ export const AdminBottomNav: React.FC<AdminBottomNavProps> = ({
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
-            className={`flex flex-col items-center justify-center min-w-[50px] py-1 px-1.5 rounded-xl transition-all cursor-pointer relative ${
+            className={`flex flex-1 min-w-0 flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all cursor-pointer relative ${
               isActive
                 ? item.isSpecial
                   ? 'text-amber-400 font-bold bg-amber-600/15 border border-amber-500/30'
@@ -61,7 +61,7 @@ export const AdminBottomNav: React.FC<AdminBottomNavProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-[9px] tracking-tight mt-0.5">{item.label}</span>
+            <span className="text-[10px] tracking-tight mt-0.5 max-w-full truncate">{item.label}</span>
           </button>
         );
       })}

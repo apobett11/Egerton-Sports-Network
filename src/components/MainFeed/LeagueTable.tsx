@@ -34,12 +34,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   // Data States (SWR Instant Initial Paint)
   const [eplStandings, setEplStandings] = useState<LeagueTableEntry[]>(() => {
     const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${EPL_COMP_ID}`);
-    if (cached && cached.length > 0) return cached;
+    if (cached && cached.length > 0 && cached[0]?.teamName) return cached;
     return tableData && tableData.length > 0 ? tableData : [];
   });
   const [champStandings, setChampStandings] = useState<LeagueTableEntry[]>(() => {
     const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${CHAMP_COMP_ID}`);
-    return cached && cached.length > 0 ? cached : [];
+    return cached && cached.length > 0 && cached[0]?.teamName ? cached : [];
   });
   const [teamFormsMap, setTeamFormsMap] = useState<Record<string, string[]>>({});
   
@@ -182,6 +182,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     const triggerDebouncedRefresh = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        ApiService.invalidateStandingsCache();
         loadStandingsTables();
         if (scorersLoaded) loadScorers();
         if (potwLoaded) loadPotw();
@@ -189,23 +190,19 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       }, 400);
     };
 
-    // Event-driven real-time auto-reload on database updates (deferred to idle)
-    const cleanupRealtime = guestCache.setupRealtimeDeferred(() => {
-      const channel = supabase
-        .channel('public_league_table_realtime_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerDebouncedRefresh)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    });
+    const channel = supabase
+      .channel('public_league_table_realtime_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, (payload) => {
+        const status = (payload.new as { status?: string } | null)?.status;
+        if (status === 'FT' || status === 'FINAL') triggerDebouncedRefresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
+      .subscribe();
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      cleanupRealtime();
+      supabase.removeChannel(channel);
     };
   }, [loadStandingsTables, scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
 

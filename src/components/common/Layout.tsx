@@ -92,7 +92,7 @@ export const AppLayout: React.FC<LayoutProps> = ({
           onClick={() => setSidebarOpen(false)}
         >
           <div
-            className="w-72 max-w-[80vw] h-full bg-white dark:bg-[#1d2022] shadow-2xl p-6 flex flex-col justify-between"
+            className="w-72 max-w-[85vw] h-full max-h-[100dvh] bg-white dark:bg-[#1d2022] shadow-2xl p-6 flex flex-col overflow-y-auto overscroll-contain"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="space-y-6">

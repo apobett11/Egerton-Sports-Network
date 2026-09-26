@@ -64,18 +64,21 @@ export function useDeviceIdentity() {
   // Sync favorites from anonymous device record in background
   useEffect(() => {
     if (!deviceId) return;
-    DeviceService.getFavoriteMatches(deviceId).then((matches) => {
-      if (matches && Array.isArray(matches)) {
-        setDeviceFavorites((prev) => {
-          const merged = Array.from(new Set([...prev, ...matches]));
-          try {
-            localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(merged));
-            localStorage.setItem('favorites', JSON.stringify(merged));
-          } catch {}
-          return merged;
-        });
-      }
-    });
+    const timer = window.setTimeout(() => {
+      DeviceService.getFavoriteMatches(deviceId).then((matches) => {
+        if (matches && Array.isArray(matches)) {
+          setDeviceFavorites((prev) => {
+            const merged = Array.from(new Set([...prev, ...matches]));
+            try {
+              localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(merged));
+              localStorage.setItem('favorites', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      });
+    }, 4000);
+    return () => window.clearTimeout(timer);
   }, [deviceId]);
 
   const toggleDeviceFavorite = useCallback(async (matchId: string): Promise<boolean> => {

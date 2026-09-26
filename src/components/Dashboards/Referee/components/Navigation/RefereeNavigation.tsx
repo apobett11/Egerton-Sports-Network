@@ -21,8 +21,8 @@ export const RefereeNavigation: React.FC<RefereeNavigationProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-45 md:sticky md:top-[124px] md:z-20 bg-white/95 dark:bg-[#0e1e2d] backdrop-blur-md border-t md:border-t-0 md:border-b border-[#e6e8ec] dark:border-[#1a2e45] shadow-md transition-colors duration-200 select-none">
-      <div className="flex items-center justify-around md:justify-center md:gap-2 lg:gap-3 px-2 sm:px-4 py-2 max-w-5xl mx-auto h-[64px] md:h-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-45 md:sticky md:top-[124px] md:z-20 bg-white/95 dark:bg-[#0e1e2d] backdrop-blur-md border-t md:border-t-0 md:border-b border-[#e6e8ec] dark:border-[#1a2e45] shadow-md transition-colors duration-200 select-none safe-area-pb md:pb-0">
+      <div className="flex items-stretch justify-around md:justify-center md:gap-2 lg:gap-3 px-1 sm:px-4 py-1 max-w-5xl mx-auto min-h-0 overflow-x-auto overscroll-contain">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive =
@@ -39,7 +39,7 @@ export const RefereeNavigation: React.FC<RefereeNavigationProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex flex-col md:flex-row items-center gap-1 sm:gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all duration-200 active:scale-95 cursor-pointer ${
+              className={`relative flex flex-1 min-w-0 flex-col md:flex-none md:flex-row items-center gap-1 sm:gap-2 px-1 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all duration-200 active:scale-95 cursor-pointer ${
                 isActive ? activeClass : inactiveClass
               }`}
             >
@@ -59,7 +59,7 @@ export const RefereeNavigation: React.FC<RefereeNavigationProps> = ({
                   </span>
                 )}
               </div>
-              <span className="text-[10px] md:text-xs tracking-wider uppercase font-black">
+              <span className="text-[10px] md:text-xs tracking-wider uppercase font-black max-w-full truncate">
                 {tab.label}
               </span>
               {isActive && (

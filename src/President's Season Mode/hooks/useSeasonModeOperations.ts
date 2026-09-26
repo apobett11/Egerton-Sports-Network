@@ -86,8 +86,10 @@ export function useSeasonModeOperations() {
   // =========================================================================
   // LOAD CORE OPERATIONAL DATA
   // =========================================================================
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const [refRes, pitchRes, teamRes] = await Promise.all([
@@ -121,18 +123,22 @@ export function useSeasonModeOperations() {
   useEffect(() => {
     loadData();
 
-    // Continuous Realtime Synchronization for Live Games, Status Transitions & Scores
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleSilentRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        loadData({ silent: true });
+      }, 800);
+    };
+
     const channel = supabase
       .channel('president_season_ops_live_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, () => {
-        loadData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchday_schedules' }, () => {
-        loadData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, scheduleSilentRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchday_schedules' }, scheduleSilentRefresh)
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
   }, [loadData]);

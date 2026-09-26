@@ -271,10 +271,10 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
       </button>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0e1e2d] border-t border-[#1a2e45] px-4 py-2 flex items-center justify-around text-slate-400 select-none shadow-lg">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0e1e2d] border-t border-[#1a2e45] px-1 pt-2 safe-area-pb flex items-stretch text-slate-400 select-none shadow-lg overflow-x-auto overscroll-contain">
         <button
           onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+          className={`flex flex-1 min-w-0 flex-col items-center gap-1 cursor-pointer transition-colors ${
             activeTab === 'home' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
@@ -284,7 +284,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
 
         <button
           onClick={() => setActiveTab('articles')}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+          className={`flex flex-1 min-w-0 flex-col items-center gap-1 cursor-pointer transition-colors ${
             activeTab === 'articles' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
@@ -294,7 +294,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
 
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${
+          className={`flex flex-1 min-w-0 flex-col items-center gap-1 cursor-pointer transition-colors ${
             activeTab === 'analytics' ? 'text-[#ff0046] font-black' : 'text-slate-400 hover:text-slate-200 font-bold'
           }`}
         >
@@ -304,7 +304,7 @@ export const JournalistDashboard: React.FC<{ onLogout?: () => void }> = ({ onLog
 
         <button
           onClick={() => setIsProfileOpen(true)}
-          className="flex flex-col items-center gap-1 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors font-bold"
+          className="flex flex-1 min-w-0 flex-col items-center gap-1 cursor-pointer text-slate-400 hover:text-slate-200 transition-colors font-bold"
         >
           <User className="w-5 h-5" />
           <span className="text-[10px] uppercase tracking-wider font-bold">Profile</span>
