@@ -1491,7 +1491,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                       <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
                       <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
-                    <div className="flex items-center gap-3 font-mono">
+                    <div className="flex items-center gap-3 font-mono shrink-0">
                       <span className="text-slate-500 text-[11px]">{row.played}p</span>
                       <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
                     </div>
@@ -1517,7 +1517,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                       <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
                       <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
-                    <div className="flex items-center gap-3 font-mono">
+                    <div className="flex items-center gap-3 font-mono shrink-0">
                       <span className="text-slate-500 text-[11px]">{row.played}p</span>
                       <span className="font-black text-slate-900 dark:text-white">{row.points} pts</span>
                     </div>
