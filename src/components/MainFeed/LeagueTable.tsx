@@ -316,7 +316,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             <span
               key={`${mark.matchday}-${i}`}
               title={`Matchday ${mark.matchday}`}
-              className={`w-5 h-6 sm:w-6 sm:h-7 rounded-[2px] shrink-0 flex flex-col items-center justify-center font-bold text-white select-none leading-none ${
+              className={`standings-form-pip w-5 h-6 sm:w-6 sm:h-7 rounded-[2px] shrink-0 flex flex-col items-center justify-center font-bold text-white select-none leading-none ${
                 mark.result === 'W'
                   ? 'bg-[#00b04f]'
                   : mark.result === 'D'
@@ -387,7 +387,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
         {/* Table Content: Sticky Rank and Team Name with scrolling data */}
         <div className="w-full overflow-x-auto">
-          <table className="w-full text-left text-xs border-separate border-spacing-0 table-fixed" style={{ minWidth: '18.25rem' }}>
+          <table className="w-full text-left text-xs border-separate border-spacing-0 table-fixed" style={{ minWidth: '428px' }}>
             <colgroup>
               <col className="w-9" />
               <col />
@@ -401,7 +401,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black text-slate-400 uppercase">
                 <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45]"># ▲</th>
-                <th className="sticky left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
+                <th className="standings-team-cell sticky left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
                 <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">MP</th>
                 <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">W</th>
                 <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">D</th>
@@ -456,7 +456,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                         {row.position}.
                       </td>
                       <td
-                        className={`sticky left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-2 min-w-0 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
+                        className={`standings-team-cell sticky left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-2 min-w-0 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
                         onClick={() => {
                           if (row.teamId && onSelectTeam) {
                             onSelectTeam(row.teamId, row.teamName);
@@ -469,9 +469,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                             teamId={row.teamId}
                             src={row.teamLogo}
                             alt={row.teamName}
-                            className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
+                            className="standings-crest w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
                           />
-                          <span className="font-extrabold text-slate-900 dark:text-white truncate whitespace-nowrap group-hover:text-[#ff0046] transition-colors">
+                          <span className="standings-name font-extrabold text-slate-900 dark:text-white truncate whitespace-nowrap group-hover:text-[#ff0046] transition-colors">
                             {row.teamName}
                           </span>
                         </div>
@@ -523,7 +523,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[9px] sm:text-[10px] font-black text-slate-400 uppercase">
                 <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 text-center w-8 sm:w-9 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
-                <th className="sticky left-8 sm:left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
+                <th className="standings-team-cell sticky left-8 sm:left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
                 <th className="py-2 px-2 text-center w-11 sm:w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
                 <th className="py-2 px-2 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45]">FORM</th>
                 <th className="py-2 px-3 text-center w-12 sm:w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
@@ -567,7 +567,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   <tr key={row.teamId || row.position} className="group hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
                     <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 text-center font-bold text-[10px] sm:text-[11px] text-slate-400 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.position}.</td>
                     <td
-                      className={`sticky left-8 sm:left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 min-w-0 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
+                      className={`standings-team-cell sticky left-8 sm:left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2 px-2.5 min-w-0 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
                       onClick={() => {
                         if (row.teamId && onSelectTeam) {
                           onSelectTeam(row.teamId, row.teamName);
@@ -580,9 +580,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                           teamId={row.teamId}
                           src={row.teamLogo}
                           alt={row.teamName}
-                          className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
+                          className="standings-crest w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
                         />
-                        <span className="font-bold text-[11px] sm:text-xs text-slate-900 dark:text-white truncate whitespace-nowrap group-hover:text-[#ff0046] transition-colors">
+                        <span className="standings-name font-bold text-[11px] sm:text-xs text-slate-900 dark:text-white truncate whitespace-nowrap group-hover:text-[#ff0046] transition-colors">
                           {row.teamName}
                         </span>
                       </div>
@@ -667,7 +667,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   );
 
   return (
-    <div className="space-y-6 pb-12 select-none">
+    <div className="standings-page space-y-6 pb-12 select-none">
       {/* 1. TOP STICKY NAVIGATION CONTROLS BAR (REMAINS STICKY DURING SCROLL) */}
       <div className="sticky top-[80px] sm:top-[90px] z-30 bg-white/95 dark:bg-[#0e1c2b]/95 backdrop-blur-md border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm p-2 sm:p-2.5 space-y-2 shadow-md">
         {/* ROW 1: ALL LEAGUES PRESELECTED (LEFT) & SMALL TOGGLE SWITCH (RIGHT) */}

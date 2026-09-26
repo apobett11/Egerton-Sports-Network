@@ -1436,7 +1436,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section 
         ref={standingsSectionRef}
         aria-label="Standings Snapshot Section" 
-        className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+        className="standings-page bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
       >
         <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1488,8 +1488,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                      <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="standings-crest w-4 h-4 rounded-full" />
+                      <span className="standings-name font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
                     <div className="flex items-center gap-3 font-mono shrink-0">
                       <span className="text-slate-500 text-[11px]">{row.played}p</span>
@@ -1514,8 +1514,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div key={row.teamId} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b]">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-mono font-bold text-slate-400 w-4">{row.position}</span>
-                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="w-4 h-4 rounded-full" />
-                      <span className="font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                      <TeamLogo teamId={row.teamId} src={row.teamLogo} alt={row.teamName} className="standings-crest w-4 h-4 rounded-full" />
+                      <span className="standings-name font-bold text-slate-900 dark:text-white truncate">{row.teamName}</span>
                     </div>
                     <div className="flex items-center gap-3 font-mono shrink-0">
                       <span className="text-slate-500 text-[11px]">{row.played}p</span>
