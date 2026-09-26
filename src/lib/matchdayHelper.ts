@@ -37,7 +37,7 @@ export function dateFromKey(key: string): Date {
   return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
 }
 
-function isFriendlyRow(row: { competition_id?: string; league?: string; is_friendly?: boolean }): boolean {
+function isFriendlyRow(row: { competition_id?: string | null; league?: string | null; is_friendly?: boolean }): boolean {
   const league = (row.league || '').toLowerCase();
   return Boolean(
     row.is_friendly ||

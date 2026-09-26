@@ -44,7 +44,7 @@ async function getTeamsMap(): Promise<Map<string, any>> {
         const retry = await supabase
           .from('teams')
           .select('id, name, short_name, color_code');
-        data = retry.data;
+        data = (retry.data || []).map((team) => ({ ...team, updated_at: null }));
       }
 
       reconcileLogoStamps((data || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
