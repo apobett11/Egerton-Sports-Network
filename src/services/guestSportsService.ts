@@ -120,6 +120,19 @@ export interface GuestStanding {
   points: number;
 }
 
+export interface MatchFormMark {
+  result: 'W' | 'D' | 'L';
+  matchday: number;
+}
+
+const LEGENDS_FC_ID = '10000000-0000-4000-8000-000000000007';
+const LEGENDS_POINTS_DEDUCTION = 2;
+const matchFormByTeam = new Map<string, MatchFormMark[]>();
+
+export function getCachedMatchForm(teamId: string): MatchFormMark[] {
+  return matchFormByTeam.get(teamId) || [];
+}
+
 export interface GuestTopScorer {
   player_id: string;
   player_name: string;
@@ -440,39 +453,82 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
 
   const promise = (async () => {
     try {
-      const query = supabase
-        .from('league_standings')
-        .select('team_id, competition_id, played, won, drawn, lost, goals_for, goals_against, goal_difference, points')
-        .eq('competition_id', targetCompId)
-        .order('points', { ascending: false })
-        .order('goal_difference', { ascending: false })
-        .order('goals_for', { ascending: false });
-
-      const [standingsRes, teamMap] = await Promise.all([
-        query,
-        getTeamsMap()
+      const [teamsRes, fixturesRes] = await Promise.all([
+        supabase.from('teams').select('id, name, logo_url').eq('competition_id', targetCompId),
+        supabase
+          .from('fixtures')
+          .select('home_team_id, away_team_id, score_home, score_away, matchday, scheduled_time, status')
+          .eq('competition_id', targetCompId)
+          .in('status', ['FT', 'FINISHED', 'ft', 'finished'])
+          .order('matchday', { ascending: true })
+          .order('scheduled_time', { ascending: true }),
       ]);
 
-      const rows = standingsRes.data;
-      if (standingsRes.error || !rows || rows.length === 0) {
+      if (teamsRes.error || fixturesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
         return [];
       }
 
-      const results = rows.map((row: any): GuestStanding => {
-        const tm = teamMap.get(row.team_id) || {};
-        const points = Number(row.points) || 0;
+      type Acc = {
+        played: number; won: number; drawn: number; lost: number;
+        gf: number; ga: number; points: number; form: MatchFormMark[];
+      };
+      const blank = (): Acc => ({ played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0, form: [] });
+      const acc = new Map<string, Acc>(teamsRes.data.map((t: any) => [t.id, blank()]));
 
+      const fixtures = [...(fixturesRes.data || [])].sort((a: any, b: any) => {
+        const md = (Number(a.matchday) || 0) - (Number(b.matchday) || 0);
+        if (md !== 0) return md;
+        return new Date(a.scheduled_time || 0).getTime() - new Date(b.scheduled_time || 0).getTime();
+      });
+
+      const applySide = (teamId: string, goalsFor: number, goalsAgainst: number, matchday: number) => {
+        if (!teamId) return;
+        if (!acc.has(teamId)) acc.set(teamId, blank());
+        const row = acc.get(teamId)!;
+        row.played += 1;
+        row.gf += goalsFor;
+        row.ga += goalsAgainst;
+        let result: 'W' | 'D' | 'L' = 'D';
+        if (goalsFor > goalsAgainst) {
+          row.won += 1;
+          row.points += 3;
+          result = 'W';
+        } else if (goalsFor < goalsAgainst) {
+          row.lost += 1;
+          result = 'L';
+        } else {
+          row.drawn += 1;
+          row.points += 1;
+        }
+        row.form.push({ result, matchday });
+      };
+
+      for (const fixture of fixtures) {
+        const scoreHome = Number(fixture.score_home) || 0;
+        const scoreAway = Number(fixture.score_away) || 0;
+        const matchday = Number(fixture.matchday) || 0;
+        applySide(fixture.home_team_id, scoreHome, scoreAway, matchday);
+        applySide(fixture.away_team_id, scoreAway, scoreHome, matchday);
+      }
+
+      const teamById = new Map<string, any>(teamsRes.data.map((t: any) => [t.id, t]));
+      const results = [...acc.entries()].map(([teamId, row]): GuestStanding => {
+        matchFormByTeam.set(teamId, row.form);
+        const team = teamById.get(teamId) || {};
+        const points = teamId === LEGENDS_FC_ID
+          ? Math.max(0, row.points - LEGENDS_POINTS_DEDUCTION)
+          : row.points;
         return {
-          team_id: row.team_id || '',
-          team_name: tm.name || 'Campus Team',
-          logo_url: tm.logo_url || DEFAULT_LOGO,
-          played: Number(row.played) || 0,
-          won: Number(row.won) || 0,
-          drawn: Number(row.drawn) || 0,
-          lost: Number(row.lost) || 0,
-          goals_for: Number(row.goals_for) || 0,
-          goals_against: Number(row.goals_against) || 0,
-          goal_difference: Number(row.goal_difference) || 0,
+          team_id: teamId,
+          team_name: team.name || 'Campus Team',
+          logo_url: team.logo_url || DEFAULT_LOGO,
+          played: row.played,
+          won: row.won,
+          drawn: row.drawn,
+          lost: row.lost,
+          goals_for: row.gf,
+          goals_against: row.ga,
+          goal_difference: row.gf - row.ga,
           points,
         };
       });
@@ -503,24 +559,37 @@ export async function getGuestStandings(competitionId?: string): Promise<GuestSt
   return fetchGuestStandingsNetwork(competitionId);
 }
 
+export async function getMatchFormsForTeams(teamIds: string[]): Promise<Record<string, MatchFormMark[]>> {
+  const missing = teamIds.filter((id) => !matchFormByTeam.has(id));
+  if (missing.length > 0) {
+    await Promise.all([
+      getGuestStandings('11111111-1111-1111-1111-111111111111'),
+      getGuestStandings('22222222-2222-2222-2222-222222222222'),
+    ]);
+  }
+  const forms: Record<string, MatchFormMark[]> = {};
+  for (const id of teamIds) {
+    forms[id] = matchFormByTeam.get(id) || [];
+  }
+  return forms;
+}
+
 // ============================================================================
 // SECTION 3: TOP SCORERS
 // ============================================================================
 
+export async function getGuestAllTimeTopScorers(limitCount = 10): Promise<GuestTopScorer[]> {
+  return getGuestTopScorers(limitCount);
+}
+
 export async function getGuestTopScorers(limitCount = 10, competitionId?: string): Promise<GuestTopScorer[]> {
   const cacheKey = `scorers_${competitionId || 'all'}_${limitCount}`;
-  const cached = guestCache.get<GuestTopScorer[]>('players', cacheKey);
-  if (cached && cached.length > 0) {
-    return cached;
-  }
 
   try {
     let psQuery = supabase
       .from('player_stats')
       .select('player_id, competition_id, goals')
-      .gt('goals', 0)
-      .order('goals', { ascending: false })
-      .limit(limitCount * 3);
+      .gt('goals', 0);
 
     if (competitionId && competitionId !== 'all' && competitionId !== 'ALL' && /^[0-9a-fA-F-]{36}$/.test(competitionId)) {
       psQuery = psQuery.eq('competition_id', competitionId);

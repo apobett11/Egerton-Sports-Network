@@ -35,7 +35,7 @@ let cacheTimestamp = 0;
 const CACHE_TTL_MS = 60000; // 1 minute TTL
 
 // Rapid-access in-memory caches for high-frequency queries
-const teamFormCache = new Map<string, { timestamp: number; data: Array<{ result: 'W' | 'D' | 'L'; label: string }> }>();
+const teamFormCache = new Map<string, { timestamp: number; data: Array<{ result: 'W' | 'D' | 'L'; label: string; matchday?: number }> }>();
 const leagueTableCache = new Map<string, { timestamp: number; data: LeagueTableEntry[] }>();
 
 export const ApiService = {
@@ -1320,7 +1320,7 @@ export const ApiService = {
   // --- BATCH TEAM FORMS (Reduces N+1 queries to a single batch call) ---
   async getBatchTeamForms(
     teamIds: string[]
-  ): Promise<Record<string, Array<{ result: 'W' | 'D' | 'L'; label: string }>>> {
+  ): Promise<Record<string, Array<{ result: 'W' | 'D' | 'L'; label: string; matchday?: number }>>> {
     const uniqueIds = Array.from(new Set(teamIds.filter(Boolean)));
     if (uniqueIds.length === 0) return {};
 
@@ -1343,24 +1343,16 @@ export const ApiService = {
     }
 
     try {
-      // 2. Fetch all missing teams in ONE single query
-      const { data: formRows, error } = await supabase
-        .from('team_form')
-        .select('team_id, latest_results')
-        .in('team_id', idsToFetch);
-
-      if (!error && formRows) {
-        for (const row of formRows) {
-          const formEntries = (row.latest_results || []).map((res: string) => {
-            const letter = (res === 'W' || res === 'D' || res === 'L') ? res : 'D';
-            return {
-              result: letter as 'W' | 'D' | 'L',
-              label: letter === 'W' ? 'Win' : letter === 'D' ? 'Draw' : 'Loss'
-            };
-          });
-          result[row.team_id] = formEntries;
-          teamFormCache.set(row.team_id, { timestamp: now, data: formEntries });
-        }
+      const { getMatchFormsForTeams } = await import('./guestSportsService');
+      const forms = await getMatchFormsForTeams(idsToFetch);
+      for (const id of idsToFetch) {
+        const formEntries = (forms[id] || []).map((mark) => ({
+          result: mark.result,
+          label: `Matchday ${mark.matchday}`,
+          matchday: mark.matchday,
+        }));
+        result[id] = formEntries;
+        teamFormCache.set(id, { timestamp: now, data: formEntries });
       }
 
       // 3. Fallback for any team not yet in team_form: initialize empty and cache
@@ -1540,7 +1532,22 @@ export const ApiService = {
     teamLogo: string;
     goals: number;
   }>>> {
-    return this.getTopScorers(undefined, limit);
+    try {
+      const { getGuestAllTimeTopScorers } = await import('./guestSportsService');
+      const scorers = await getGuestAllTimeTopScorers(limit || 10);
+      return {
+        success: true,
+        data: (scorers || []).map((s) => ({
+          playerId: s.player_id,
+          playerName: s.player_name,
+          teamName: s.team_name,
+          teamLogo: s.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+          goals: s.goals,
+        })),
+      };
+    } catch {
+      return { success: true, data: [] };
+    }
   },
 
   // --- PLAYERS OF THE WEEK ---

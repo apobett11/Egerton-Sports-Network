@@ -109,6 +109,7 @@ export const useRefereeDashboard = () => {
   // Load Assigned Fixtures Scoped by Referee UID from Database
   // Load Assigned Fixtures Scoped by Referee UID from Database
   const didPaintCache = useRef(false);
+  const submitLock = useRef(new Set<string>());
   const selectedFixtureIdRef = useRef(selectedFixtureId);
   selectedFixtureIdRef.current = selectedFixtureId;
 
@@ -846,6 +847,9 @@ export const useRefereeDashboard = () => {
       return;
     }
 
+    if (submitLock.current.has(fixtureId)) return;
+    submitLock.current.add(fixtureId);
+
     setIsSubmitting(true);
     setAuthError(null);
 
@@ -925,6 +929,7 @@ export const useRefereeDashboard = () => {
       setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
+      submitLock.current.delete(fixtureId);
       setIsSubmitting(false);
     }
   };
@@ -962,6 +967,9 @@ export const useRefereeDashboard = () => {
       setAuthError('Confirmed past matches or finalized results cannot be altered.');
       return;
     }
+
+    if (submitLock.current.has(targetMatch.id)) return;
+    submitLock.current.add(targetMatch.id);
 
     setIsSubmitting(true);
     setAuthError(null);
@@ -1034,7 +1042,7 @@ export const useRefereeDashboard = () => {
       officialEvents: compiledEvents,
     };
 
-    const idempotencyKey = `ref_confirm_${targetMatch.id}_${Date.now()}`;
+    const idempotencyKey = `ref_confirm_${targetMatch.id}`;
 
     try {
       const result = await executeWithRetry(async () => {
@@ -1093,6 +1101,7 @@ export const useRefereeDashboard = () => {
       setSelectedFixtureId(null);
       setTimeout(() => setSuccessMsg(null), 4500);
     } finally {
+      submitLock.current.delete(targetMatch.id);
       setIsSubmitting(false);
     }
   };

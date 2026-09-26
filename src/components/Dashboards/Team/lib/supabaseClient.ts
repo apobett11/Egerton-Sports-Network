@@ -347,6 +347,29 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
             standingsQuery = standingsQuery.eq('competition_id', targetCompId);
         }
 
+        const { getGuestStandings, getCachedMatchForm } = await import('../../../../services/guestSportsService');
+        const fromMatches = targetCompId ? await getGuestStandings(targetCompId) : [];
+        if (fromMatches.length > 0) {
+            const mapped = fromMatches.map((row, idx) => ({
+                position: idx + 1,
+                teamId: row.team_id,
+                teamName: row.team_name,
+                teamLogo: row.logo_url || '',
+                played: row.played,
+                won: row.won,
+                drawn: row.drawn,
+                lost: row.lost,
+                goalsFor: row.goals_for,
+                goalsAgainst: row.goals_against,
+                goalDifference: row.goal_difference,
+                points: row.points,
+                isCurrent: row.team_id === actualTeamId,
+                recentForm: getCachedMatchForm(row.team_id).map((mark) => mark.result),
+            }));
+            teamStandingsUnitCache.set(cacheKey, { timestamp: Date.now(), data: mapped });
+            return mapped;
+        }
+
         const { data: tblData, error: tblErr } = await standingsQuery
             .order('points', { ascending: false })
             .order('goal_difference', { ascending: false })
@@ -375,17 +398,13 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
 
                 if (hId) {
                     const arr = formMap.get(hId) || [];
-                    if (arr.length < 6) {
-                        arr.push(sh > sa ? 'W' : sh === sa ? 'D' : 'L');
-                        formMap.set(hId, arr);
-                    }
+                    arr.push(sh > sa ? 'W' : sh === sa ? 'D' : 'L');
+                    formMap.set(hId, arr);
                 }
                 if (aId) {
                     const arr = formMap.get(aId) || [];
-                    if (arr.length < 6) {
-                        arr.push(sa > sh ? 'W' : sa === sh ? 'D' : 'L');
-                        formMap.set(aId, arr);
-                    }
+                    arr.push(sa > sh ? 'W' : sa === sh ? 'D' : 'L');
+                    formMap.set(aId, arr);
                 }
             }
         }

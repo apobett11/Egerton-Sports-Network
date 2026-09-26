@@ -41,7 +41,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     const cached = guestCache.getStale<LeagueTableEntry[]>('standings', `standings_${CHAMP_COMP_ID}`);
     return cached && cached.length > 0 && cached[0]?.teamName ? cached : [];
   });
-  const [teamFormsMap, setTeamFormsMap] = useState<Record<string, string[]>>({});
+  const [teamFormsMap, setTeamFormsMap] = useState<Record<string, Array<{ result: 'W' | 'D' | 'L'; matchday: number }>>>({});
   
   // Top Scorers States (EPL, Champ, All-Time)
   const [eplScorers, setEplScorers] = useState<Array<{ playerId: string; playerName: string; teamName: string; teamLogo: string; goals: number }>>([]);
@@ -262,10 +262,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     if (teamIds.length === 0) return;
 
     ApiService.getBatchTeamForms(teamIds).then((batchMap) => {
-      const newFormsMap: Record<string, ('W' | 'D' | 'L')[]> = {};
+      const newFormsMap: Record<string, Array<{ result: 'W' | 'D' | 'L'; matchday: number }>> = {};
       Object.entries(batchMap).forEach(([teamId, entries]) => {
         if (entries && entries.length > 0) {
-          newFormsMap[teamId] = entries.map((item) => item.result);
+          newFormsMap[teamId] = entries.map((item, index) => ({
+            result: item.result,
+            matchday: item.matchday || index + 1,
+          }));
         }
       });
       setTeamFormsMap((prev) => ({ ...prev, ...newFormsMap }));
@@ -304,22 +307,24 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
 
     return (
-      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
-        <div className="flex items-center gap-1 justify-start w-max">
-          {rawForm.map((res, i) => (
+      <div className="max-w-[34vw] sm:max-w-[220px] overflow-x-auto no-scrollbar mx-auto py-0.5">
+        <div className="flex items-end gap-1 justify-start w-max">
+          {rawForm.map((mark, i) => (
             <span
-              key={i}
-              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white select-none ${
-                res === 'W'
+              key={`${mark.matchday}-${i}`}
+              title={`Matchday ${mark.matchday}`}
+              className={`w-5 h-6 sm:w-6 sm:h-7 rounded-[2px] shrink-0 flex flex-col items-center justify-center font-bold text-white select-none leading-none ${
+                mark.result === 'W'
                   ? 'bg-[#00b04f]'
-                  : res === 'D'
+                  : mark.result === 'D'
                   ? 'bg-[#ff9800]'
-                  : res === 'L'
+                  : mark.result === 'L'
                   ? 'bg-[#d63031]'
                   : 'bg-[#8fa1b4]'
               }`}
             >
-              {res}
+              <span className="text-[8px] sm:text-[9px]">{mark.result}</span>
+              <span className="text-[7px] sm:text-[8px] opacity-90">{mark.matchday}</span>
             </span>
           ))}
         </div>
@@ -485,7 +490,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                 <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 text-center w-8 sm:w-9 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
                 <th className="sticky left-8 sm:left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 min-w-[130px] sm:min-w-[170px] border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
                 <th className="py-2 px-2 text-center w-11 sm:w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
-                <th className="py-2 px-2 text-center min-w-[124px] sm:min-w-[136px] border-b border-[#e6e8ec] dark:border-[#1a2e45]">RECENT FORM</th>
+                <th className="py-2 px-2 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45]">FORM</th>
                 <th className="py-2 px-3 text-center w-12 sm:w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
               </tr>
             </thead>
