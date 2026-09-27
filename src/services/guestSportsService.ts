@@ -196,7 +196,7 @@ async function fetchGuestFixturesNetwork(params?: {
   competitionId?: string;
   date?: string;
   matchday?: number;
-}): Promise<GuestFixture[]> {
+}, notify = false): Promise<GuestFixture[]> {
   const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
 
   if (inFlightFixturesPromises.has(cacheKey)) {
@@ -205,11 +205,17 @@ async function fetchGuestFixturesNetwork(params?: {
 
   const promise = (async () => {
     try {
-      // Range query on scheduled_time. The guest RPC's DATE() comparison
-      // cannot use the fixtures index and was taking several seconds.
+      // Range query on scheduled_time. The guest RPC embeds logo_url, so the
+      // narrow column query stays the revalidate path and keeps crest bytes out.
       const results = await _getGuestFixturesFallback(params);
       if (results.length > 0 && !hasPlaceholderTeamData(results)) {
-        guestCache.set('fixtures', cacheKey, results, 60 * 1000);
+        guestCache.set('fixtures', cacheKey, results, 5 * 60 * 1000, notify);
+        try {
+          localStorage.setItem(`${FIXTURES_CACHE_KEY}_${cacheKey}`, JSON.stringify(results));
+          localStorage.setItem(`guest_fixtures_v1_${cacheKey}`, JSON.stringify(results));
+        } catch {
+          // Storage full. The memory cache still paints this session.
+        }
       }
       return results;
     } catch (err: any) {
@@ -224,6 +230,25 @@ async function fetchGuestFixturesNetwork(params?: {
   return promise;
 }
 
+function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
+  const stale = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
+  if (stale && stale.length > 0 && !hasPlaceholderTeamData(stale)) return stale;
+  if (typeof localStorage === 'undefined') return null;
+  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v1_${cacheKey}`];
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const data = Array.isArray(parsed) ? parsed : parsed?.data;
+      if (Array.isArray(data) && data.length > 0 && !hasPlaceholderTeamData(data)) return data;
+    } catch {
+      // Ignore a corrupt cache entry and fall through to the network.
+    }
+  }
+  return null;
+}
+
 const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v1';
 
 export async function getGuestFixturesFast(params?: {
@@ -232,19 +257,19 @@ export async function getGuestFixturesFast(params?: {
   matchday?: number;
 }): Promise<GuestFixture[]> {
   const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
-  const scopedKey = `${FIXTURES_CACHE_KEY}_${cacheKey}`;
+  const fresh = guestCache.get<GuestFixture[]>('fixtures', cacheKey);
+  if (fresh && fresh.length > 0 && !hasPlaceholderTeamData(fresh)) {
+    return fresh;
+  }
 
-  // Screens paint from their own cache first. This call returns the database rows.
-  const networkPromise = fetchGuestFixturesNetwork(params).then((data) => {
-    if (data && data.length > 0 && !hasPlaceholderTeamData(data)) {
-      try {
-        localStorage.setItem(scopedKey, JSON.stringify(data));
-      } catch {}
-    }
-    return data || [];
-  });
+  const stale = readStoredFixtures(cacheKey);
+  if (stale && stale.length > 0) {
+    void fetchGuestFixturesNetwork(params, true);
+    return stale;
+  }
 
-  return networkPromise;
+  const data = await fetchGuestFixturesNetwork(params, false);
+  return data || [];
 }
 
 export async function getGuestFixtures(params?: {
