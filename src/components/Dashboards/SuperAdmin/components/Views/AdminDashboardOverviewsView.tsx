@@ -26,7 +26,7 @@ interface AdminDashboardOverviewsViewProps {
   teamOverview: TeamOverviewSummary;
   refereeOverview: RefereeOverviewSummary;
   presidentOverview: PresidentOverviewSummary;
-  onOpenModal: (type: 'journalist' | 'team' | 'referee' | 'president') => void;
+  onOpenModal: (type: 'journalist' | 'team' | 'referee' | 'president' | 'cache') => void;
 }
 
 export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewProps> = ({
@@ -164,10 +164,10 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
           </div>
 
           <button
-            onClick={() => onOpenModal('team')}
+            onClick={() => onOpenModal('cache')}
             className="w-full py-2.5 px-4 bg-[#222222] hover:bg-emerald-600 hover:text-white text-emerald-300 font-bold text-xs rounded-xl border border-[#333333] hover:border-emerald-500 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
-            <span>View Team Details</span>
+            <span>Cache Analysis</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

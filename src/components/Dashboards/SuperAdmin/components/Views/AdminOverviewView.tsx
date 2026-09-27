@@ -83,7 +83,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
   };
 
   const quickActions = [
-    { label: 'Teams Readiness', icon: Shield, modal: 'team', color: 'text-emerald-400' },
+    { label: 'Cache Analysis', icon: Database, modal: 'cache', color: 'text-orange-400' },
     { label: 'Health & Diagnostics', icon: Activity, tab: 'health' as AdminTabType, color: 'text-emerald-400' },
     { label: 'Admin 2 Telemetry 🔒', icon: Lock, tab: 'admin_2' as AdminTabType, color: 'text-amber-400' },
     { label: 'User Directory', icon: Users, tab: 'users' as AdminTabType, color: 'text-blue-400' },
@@ -135,9 +135,9 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           </div>
 
           <div
-            onClick={() => onOpenModal('team')}
+            onClick={() => onOpenModal('cache')}
             className="p-4 rounded-2xl bg-[#1A1A1A] border border-[#2A2A2A] hover:border-emerald-500/60 hover:bg-[#1f2e24]/20 transition-all space-y-1 cursor-pointer group"
-            title="Click to view Teams Readiness & Squad Checklist"
+            title="Open Cache Analysis"
           >
             <div className="text-[11px] font-bold text-gray-400 group-hover:text-emerald-400 uppercase tracking-tight flex items-center justify-between transition-colors">
               <span>Total Teams</span>
@@ -146,7 +146,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
             <div className="text-2xl font-black text-white font-mono">{platformHealth.totalTeams}</div>
             <div className="text-[10px] text-emerald-400 font-semibold flex items-center justify-between">
               <span>Registered Clubs</span>
-              <span className="text-[9px] underline">Checklist →</span>
+              <span className="text-[9px] underline">Cache analysis →</span>
             </div>
           </div>
 

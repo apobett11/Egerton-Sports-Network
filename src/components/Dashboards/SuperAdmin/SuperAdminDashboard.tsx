@@ -19,8 +19,8 @@ import { AdminPlayerApprovalsView } from './components/Views/AdminPlayerApproval
 import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
-import { AdminCoachAnalysisModal } from './components/Modals/AdminCoachAnalysisModal';
-import { RefreshCw, Zap, ShieldAlert, Loader2, ArrowLeft, Lock, Activity, Shield, BarChart3 } from 'lucide-react';
+import { AdminCacheAnalysisModal } from './components/Modals/AdminCacheAnalysisModal';
+import { RefreshCw, Zap, ShieldAlert, ArrowLeft, Lock, Activity, Database } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
@@ -90,7 +90,7 @@ export const SuperAdminDashboard: React.FC = () => {
     clearFailedCalls,
   } = useAdminOperationsData();
 
-  const [showCoachAnalysis, setShowCoachAnalysis] = React.useState(false);
+  const [showCacheAnalysis, setShowCacheAnalysis] = React.useState(false);
 
   // Check if hash routes directly to Admin 2 on initial render
   useEffect(() => {
@@ -106,6 +106,10 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleOpenModal = (type: any, item?: any) => {
+    if (type === 'team' || type === 'cache') {
+      setShowCacheAnalysis(true);
+      return;
+    }
     setSelectedItemForModal(item || null);
     setActiveModal(type);
   };
@@ -202,20 +206,12 @@ export const SuperAdminDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowCoachAnalysis(true)}
+              onClick={() => setShowCacheAnalysis(true)}
               className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-orange-400 hover:text-orange-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
-              title="Coach Analysis — per-team, per-match readiness"
+              title="Cache Analysis — kits, squad, events, and logo"
             >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Coach Analysis</span>
-            </button>
-            <button
-              onClick={() => handleOpenModal('team')}
-              className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
-              title="View Teams Readiness & Squad Checklist"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Teams</span>
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Cache Analysis</span>
             </button>
             <button
               onClick={() => refreshData()}
@@ -399,10 +395,9 @@ export const SuperAdminDashboard: React.FC = () => {
         showToast={showToast}
       />
 
-      {/* Coach Analysis Popup */}
-      <AdminCoachAnalysisModal
-        isOpen={showCoachAnalysis}
-        onClose={() => setShowCoachAnalysis(false)}
+      <AdminCacheAnalysisModal
+        isOpen={showCacheAnalysis}
+        onClose={() => setShowCacheAnalysis(false)}
       />
     </div>
   );
