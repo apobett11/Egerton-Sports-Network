@@ -14,6 +14,9 @@
 -- 5. Cascade (reverse order): MD9→MD10, MD10→MD11 ... MD18→MD19
 -- ============================================================================
 
+-- Ensure is_cancelled column exists on match_events
+ALTER TABLE public.match_events ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE;
+
 -- ─── STEP 1: Mark the 2 played MD8 Championship games as FT ─────────────────
 
 -- young stars 1-1 Rangers fc
