@@ -7,6 +7,9 @@
 -- 4. Exposes RPC recalculate_all_player_stats() with SECURITY DEFINER
 -- ============================================================================
 
+-- Add is_cancelled column to match_events if it doesn't exist
+ALTER TABLE public.match_events ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE;
+
 CREATE OR REPLACE FUNCTION public.recalculate_all_player_stats()
 RETURNS VOID AS $$
 DECLARE
