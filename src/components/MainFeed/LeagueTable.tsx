@@ -183,14 +183,16 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const triggerDebouncedRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         ApiService.invalidateStandingsCache();
         loadStandingsTables();
         if (scorersLoaded) loadScorers();
         if (potwLoaded) loadPotw();
         if (assistsLoaded) loadAssists();
-      }, 400);
+      }, 3000);
     };
 
     const channel = supabase

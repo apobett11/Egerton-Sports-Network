@@ -123,41 +123,64 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   // Realtime updates
   useEffect(() => {
     if (!teamId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = (fn: () => void) => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        fn();
+      }, 3000);
+    };
     const channel = supabase
       .channel(`team_details_${teamId}_sync`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fixtures' },
         () => {
-          loadPrimaryData();
+          schedule(() => loadPrimaryData());
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'league_standings' },
         () => {
-          standingsLoadedRef.current = false;
-          loadStandingsData();
+          schedule(() => {
+            standingsLoadedRef.current = false;
+            loadStandingsData();
+          });
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'players', filter: `team_id=eq.${teamId}` },
         () => {
-          playersLoadedRef.current = false;
-          loadPlayersData();
+          schedule(() => {
+            playersLoadedRef.current = false;
+            loadPlayersData();
+          });
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'teams', filter: `id=eq.${teamId}` },
-        () => {
-          loadPrimaryData();
+        (payload) => {
+          const next = (payload.new || {}) as Record<string, unknown>;
+          const prev = (payload.old || {}) as Record<string, unknown>;
+          if (Object.keys(prev).length > 0) {
+            const watched = ['name', 'short_name', 'coach_id', 'captain_id', 'starting_xi_str', 'substitutes_str', 'tactics_config'];
+            const changed = watched.some((key) => JSON.stringify(next[key]) !== JSON.stringify(prev[key]));
+            if (!changed) return;
+          } else {
+            return;
+          }
+          schedule(() => loadPrimaryData());
         }
       )
       .subscribe();
 
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [teamId, loadPrimaryData, loadStandingsData, loadPlayersData]);

@@ -136,7 +136,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         t = await fetchTeamById(slugOrId);
       }
       if (!t) {
-        const { data } = await supabase.from('teams').select('*').eq('id', slugOrId).maybeSingle();
+        const { data } = await supabase.from('teams').select('id, name, short_name, logo_url, faculty, color_code, status, competition_id').eq('id', slugOrId).maybeSingle();
         t = data;
       }
 

@@ -125,10 +125,12 @@ export function useSeasonModeOperations() {
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleSilentRefresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         loadData({ silent: true });
-      }, 800);
+      }, 3000);
     };
 
     const channel = supabase

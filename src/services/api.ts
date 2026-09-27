@@ -2780,7 +2780,7 @@ export const ApiService = {
       const champCompId = '22222222-2222-2222-2222-222222222222';
       const { data: existing } = await supabase
         .from('teams')
-        .select('*')
+        .select('id, name, short_name, competition_id, status')
         .eq('competition_id', champCompId)
         .is('deleted_at', null);
 

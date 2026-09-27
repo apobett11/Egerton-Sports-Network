@@ -10,12 +10,14 @@ export interface RetryOptions {
 }
 
 const DEFAULT_RETRY_OPTIONS: Required<Omit<RetryOptions, 'shouldRetry'>> = {
-  maxRetries: 3,
-  initialDelayMs: 500,
-  maxDelayMs: 5000,
-  backoffFactor: 2,
-  timeoutMs: 10000, // 10s default timeout
+  maxRetries: 2,
+  initialDelayMs: 1000,
+  maxDelayMs: 3000,
+  backoffFactor: 3,
+  timeoutMs: 10000,
 };
+
+const RETRY_DELAYS_MS = [1000, 3000];
 
 export function isRetryableError(error: AppError): boolean {
   // Never retry validation, authorization, forbidden, conflict, or not found errors
@@ -31,9 +33,7 @@ export async function executeWithRetry<T>(
   options: RetryOptions = {}
 ): Promise<T> {
   const maxRetries = options.maxRetries ?? DEFAULT_RETRY_OPTIONS.maxRetries;
-  const initialDelay = options.initialDelayMs ?? DEFAULT_RETRY_OPTIONS.initialDelayMs;
   const maxDelay = options.maxDelayMs ?? DEFAULT_RETRY_OPTIONS.maxDelayMs;
-  const factor = options.backoffFactor ?? DEFAULT_RETRY_OPTIONS.backoffFactor;
   const timeoutMs = options.timeoutMs ?? DEFAULT_RETRY_OPTIONS.timeoutMs;
   const customShouldRetry = options.shouldRetry;
 
@@ -56,14 +56,20 @@ export async function executeWithRetry<T>(
         ? customShouldRetry(classified, attempt) 
         : isRetryableError(classified);
 
+      if (
+        classified.message.includes('circuit_open') ||
+        classified.message.includes('Temporarily paused')
+      ) {
+        throw classified;
+      }
+
       if (attempt > maxRetries || !canRetry) {
         throw classified;
       }
 
-      // Calculate exponential backoff delay with jitter
-      const exponentialDelay = initialDelay * Math.pow(factor, attempt - 1);
-      const jitter = Math.random() * 200;
-      const delay = Math.min(exponentialDelay + jitter, maxDelay);
+      const scheduled = RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)];
+      const jitter = Math.floor(Math.random() * 150);
+      const delay = Math.min(scheduled + jitter, maxDelay);
 
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

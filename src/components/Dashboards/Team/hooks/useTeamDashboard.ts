@@ -4,6 +4,8 @@ import { calculateDynamicPitchCoordinates } from '../mockData';
 import { useDraftRecovery } from '../../../../hooks/useDraftRecovery';
 import { useUnsavedChanges } from '../../../../hooks/useUnsavedChanges';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { isTabVisible } from '../../../../lib/tabVisibility';
+import { peekTeamLogo, prioritizeTeamLogo, publicTeamLogo, subscribeTeamLogos } from '../../../../lib/teamLogoCache';
 import { supabase } from '../../../../lib/supabase';
 import {
   fetchAuthenticatedUserTeam,
@@ -181,23 +183,12 @@ export const useTeamDashboard = () => {
       const resolvedTeamId = team?.id || DEFAULT_TEAM_UUID;
       setTeamId(resolvedTeamId);
 
-      // Anti-Reversion Logo Guard
-      const cachedLogo = typeof window !== 'undefined'
-        ? (localStorage.getItem(`team_logo_${resolvedTeamId}`) || localStorage.getItem(`team_logo_${teamId}`))
-        : null;
-
-      if (cachedLogo && team) {
-        const isDbDefaultOrEmpty = !team.logo_url || team.logo_url.includes('unsplash.com') || team.logo_url.includes('dicebear');
-        if (isDbDefaultOrEmpty) {
-          team = { ...team, logo_url: cachedLogo };
-          supabase
-            .from('teams')
-            .update({ logo_url: cachedLogo, updated_at: new Date().toISOString() })
-            .eq('id', resolvedTeamId)
-            .then();
+      if (team) {
+        const cachedLogo = peekTeamLogo(resolvedTeamId) || publicTeamLogo(resolvedTeamId);
+        if (cachedLogo && !cachedLogo.startsWith('data:')) {
+          team = { ...team, logo_url: cachedLogo, crest_url: cachedLogo };
         }
-      } else if (team && !team.logo_url && cachedLogo) {
-        team = { ...team, logo_url: cachedLogo };
+        prioritizeTeamLogo(resolvedTeamId);
       }
 
       setTeamInfo(team);
@@ -319,23 +310,45 @@ export const useTeamDashboard = () => {
   }, [user]);
 
   useEffect(() => {
+    return subscribeTeamLogos(() => {
+      setTeamInfo((prev: any) => {
+        if (!prev?.id) return prev;
+        const next = peekTeamLogo(prev.id);
+        if (!next || next.startsWith('data:') || next === prev.logo_url) return prev;
+        return { ...prev, logo_url: next, crest_url: next };
+      });
+    });
+  }, []);
+
+  useEffect(() => {
     refreshLiveDashboard();
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
+    const scheduleRefresh = (payload?: { table?: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
+      if (!isTabVisible()) return;
+      if (payload?.table === 'teams') {
+        const next = payload.new || {};
+        const prev = payload.old || {};
+        const watched = ['name', 'short_name', 'coach_id', 'captain_id', 'status', 'competition_id', 'starting_xi_str', 'substitutes_str', 'tactics_config', 'practice_schedule'];
+        const oldPresent = Object.keys(prev).length > 0;
+        if (!oldPresent) return;
+        const changed = watched.some((key) => JSON.stringify(next[key]) !== JSON.stringify(prev[key]));
+        if (!changed) return;
+      }
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
+        if (!isTabVisible()) return;
         invalidateTeamReadCaches();
         refreshLiveDashboard();
-      }, 800);
+      }, 3000);
     };
 
     const channel = supabase
       .channel('coach_dashboard_live_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, (payload) => scheduleRefresh(payload as any))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, (payload) => scheduleRefresh(payload as any))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, (payload) => scheduleRefresh({ ...(payload as any), table: 'teams' }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => scheduleRefresh(payload as any))
       .subscribe();
 
     return () => {

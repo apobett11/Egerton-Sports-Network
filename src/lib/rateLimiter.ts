@@ -1,3 +1,5 @@
+import { circuitAllows, circuitMessage, endpointKeyFromUrl, noteCircuitResult } from './circuitBreaker';
+
 export type RateLimitScope = 
   | 'global'
   | 'admin'
@@ -350,13 +352,29 @@ export async function rateLimitedFetch(
     ? input.toString()
     : (input as Request)?.url || '';
 
+  const circuitKey = endpointKeyFromUrl(urlString);
+  if (!circuitAllows(circuitKey)) {
+    return new Response(JSON.stringify({
+      message: circuitMessage(circuitKey),
+      code: 'circuit_open',
+      status: 503,
+    }), {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'application/json', 'x-circuit-open': '1' },
+    });
+  }
+
   if (isPublicGuestRead(urlString, init)) {
-    return nativeFetch(input, init);
+    const response = await nativeFetch(input, init);
+    noteCircuitResult(circuitKey, response.status);
+    return response;
   }
 
   try {
     const quota = await rateLimiter.acquire(scope, urlString);
     const response = await nativeFetch(input, init);
+    noteCircuitResult(circuitKey, response.status);
 
     if (response.status === 429) {
       rateLimiter.setConfig(scope, {

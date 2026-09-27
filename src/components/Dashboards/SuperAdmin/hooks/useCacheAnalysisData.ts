@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { TEAM_CACHE_COLUMNS } from '../../../../lib/teamColumns';
 import { supabase } from '../../../../lib/supabase';
 
 export type CacheOption = 'kits' | 'squad' | 'events' | 'logo';
@@ -262,7 +263,7 @@ export function useCacheAnalysisData(enabled: boolean, option: CacheOption | nul
 
     try {
       const [teams, profiles, competitions, fixtures, lineups, events] = await Promise.all([
-        fetchAll((from, to) => supabase.from('teams').select('*').range(from, to)),
+        fetchAll((from, to) => supabase.from('teams').select(TEAM_CACHE_COLUMNS).range(from, to)),
         fetchAll((from, to) =>
           supabase.from('profiles').select('id, first_name, last_name, email').range(from, to),
         ),
@@ -308,39 +309,6 @@ export function useCacheAnalysisData(enabled: boolean, option: CacheOption | nul
     if (!enabled) return;
 
     void load(true);
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        void load(false);
-      }, 400);
-    };
-
-    const channel = supabase
-      .channel('admin-cache-analysis')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, schedule)
-      .subscribe();
-
-    const poll = window.setInterval(() => {
-      void load(false);
-    }, 12000);
-
-    const onFocus = () => {
-      void load(false);
-    };
-    window.addEventListener('focus', onFocus);
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      window.clearInterval(poll);
-      window.removeEventListener('focus', onFocus);
-      supabase.removeChannel(channel);
-    };
   }, [enabled, load]);
 
   return { leagues, isLoading, isRefreshing, error, updatedAt, reload: () => load(false) };

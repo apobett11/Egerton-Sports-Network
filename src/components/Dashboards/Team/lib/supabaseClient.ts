@@ -1,5 +1,6 @@
 import { supabase } from '../../../../lib/supabase';
-import { publicTeamLogo, prioritizeTeamLogo, reconcileLogoStamps } from '../../../../lib/teamLogoCache';
+import { TEAM_DASHBOARD_COLUMNS, TEAM_LIST_COLUMNS } from '../../../../lib/teamColumns';
+import { publicTeamLogo, prioritizeTeamLogo, reconcileLogoStamps, rememberTeamLogo } from '../../../../lib/teamLogoCache';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { DBTeam, DBSquadConfiguration, SquadPosition, Player, Match, TacticalSliders, KitConfig, StandingEntry, LinesmanMatch } from '../types';
 
@@ -88,7 +89,7 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
             // 1. Direct check on coach_id or captain_id in teams table
             const { data: directTeam, error: directError } = await supabase
                 .from('teams')
-                .select('*')
+                .select(TEAM_DASHBOARD_COLUMNS)
                 .or(`coach_id.eq.${userId},captain_id.eq.${userId}`)
                 .limit(1);
 
@@ -106,7 +107,7 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
             if (profileData?.team_id) {
                 const { data: profileTeam } = await supabase
                     .from('teams')
-                    .select('*')
+                    .select(TEAM_DASHBOARD_COLUMNS)
                     .eq('id', profileData.team_id)
                     .maybeSingle();
 
@@ -119,7 +120,7 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
         // 3. Fallback: Fetch primary active approved team from database
         const { data: defaultTeams, error: defaultError } = await supabase
             .from('teams')
-            .select('*')
+            .select(TEAM_DASHBOARD_COLUMNS)
             .order('created_at', { ascending: true })
             .limit(1);
 
@@ -346,7 +347,7 @@ export async function fetchTeamStandings(teamId: string, competitionId?: string)
             .from('league_standings')
             .select(`
                 played, won, drawn, lost, goals_for, goals_against, goal_difference, points, team_id,
-                team:teams!team_id (id, name, logo_url, short_name)
+                team:teams!team_id (id, name, short_name)
             `);
 
         if (targetCompId) {
@@ -666,6 +667,9 @@ export async function updateTeamSettings(
         if (settings.name !== undefined) updatePayload.name = settings.name;
         if (settings.short_name !== undefined) updatePayload.short_name = settings.short_name;
         const resolvedLogo = settings.logo_url !== undefined ? settings.logo_url : settings.crest_url;
+        if (resolvedLogo && resolvedLogo.trim().startsWith('data:')) {
+            throw new Error('Crest upload failed. The image was not saved.');
+        }
         if (resolvedLogo !== undefined && resolvedLogo.trim() !== '' && !resolvedLogo.trim().startsWith('data:')) {
             updatePayload.logo_url = resolvedLogo.trim();
         }
@@ -970,17 +974,9 @@ export async function optimizeImageForLogo(file: File): Promise<{
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
     const teamUuid = await resolveRealTeamId(teamId);
 
-    // Step 1: Immediate local preview
-    const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string) || '');
-        reader.onerror = () => resolve('');
-        reader.readAsDataURL(file);
-    });
-
     // Step 2: Optimize image to save space, memory and CPU
     const { fileOrBlob, extension, mimeType } = await optimizeImageForLogo(file);
-    const fileName = `logos/${teamUuid}_${Date.now()}.${extension}`;
+    const fileName = `logos/${teamUuid}.${extension}`;
 
     // Step 3: Upload to Supabase Storage — prioritize dedicated 'team-logos' bucket
     let storageUrl = '';
@@ -1021,9 +1017,13 @@ export async function uploadTeamCrest(teamId: string, file: File): Promise<strin
         }
     }
 
-    const finalUrl = storageUrl || dataUrl;
+    if (!storageUrl) {
+        throw new Error('Crest upload failed. The image was not saved.');
+    }
+    const finalUrl = storageUrl;
+    void rememberTeamLogo(teamUuid, finalUrl, String(Date.now()));
 
-    // Step 4: Persist immediately to teams table so the logo sticks and NEVER reverts
+    // Step 4: Persist the storage URL only. Never write a data: URI into the row.
     if (finalUrl) {
         try {
             const { error: updateErr } = await supabase
@@ -1082,6 +1082,9 @@ export async function updateCoachCredentialsAndLogo({
 
         // 1. Update team logo in teams table if provided
         if (logoUrl !== undefined && logoUrl.trim() !== '') {
+            if (logoUrl.trim().startsWith('data:')) {
+                throw new Error('Crest upload failed. The image was not saved.');
+            }
             const { error: teamErr } = await supabase
                 .from('teams')
                 .update({
@@ -1288,7 +1291,7 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
     try {
         // 1. Fetch auxiliary reference mappings: Teams & Pitches
         const [teamsRes, pitchesRes] = await Promise.all([
-            supabase.from('teams').select('id, name, short_name, logo_url'),
+            supabase.from('teams').select('id, name, short_name'),
             supabase.from('pitches').select('id, name, short_code, location')
         ]);
 
@@ -1361,10 +1364,10 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                     id: key,
                     fixtureId: s.fixture_id,
                     homeTeamName: homeTeam?.name || 'Home Team',
-                    homeTeamLogo: homeTeam?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    homeTeamLogo: publicTeamLogo(homeTeam?.id),
                     homeTeamShortName: homeTeam?.short_name || 'HOM',
                     awayTeamName: awayTeam?.name || 'Away Team',
-                    awayTeamLogo: awayTeam?.logo_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+                    awayTeamLogo: publicTeamLogo(awayTeam?.id),
                     awayTeamShortName: awayTeam?.short_name || 'AWY',
                     pitch: pitchName,
                     time: timeStr,
@@ -1397,8 +1400,8 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                 linesman_2_id,
                 linesman_team_a_id,
                 linesman_team_b_id,
-                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url),
-                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url),
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name),
                 competition:competitions!fixtures_competition_id_fkey (name)
             `)
             .or(fixOrFilter)
@@ -1422,10 +1425,10 @@ export async function fetchTeamLinesmanMatches(teamId: string, userId?: string):
                     id: f.id,
                     fixtureId: f.id,
                     homeTeamName: f.home_team?.name || 'Home Team',
-                    homeTeamLogo: f.home_team?.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                    homeTeamLogo: publicTeamLogo(f.home_team?.id),
                     homeTeamShortName: f.home_team?.short_name || 'HOM',
                     awayTeamName: f.away_team?.name || 'Away Team',
-                    awayTeamLogo: f.away_team?.logo_url || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+                    awayTeamLogo: publicTeamLogo(f.away_team?.id),
                     awayTeamShortName: f.away_team?.short_name || 'AWY',
                     pitch: f.venue || '',
                     time: timeStr,
@@ -1466,8 +1469,8 @@ export async function fetchTeamById(teamId: string): Promise<FullTeamRecord | nu
         const teamColumns = `
                 id, name, short_name, color_code, competition_id, coach_id, captain_id,
                 description, contact_email, contact_phone, stadium, primary_color, secondary_color, accent_color,
-                season, starting_xi_str, substitutes_str, practice_schedule, temporary_match_squad,
-                tactics_config, kits_config, created_at, updated_at
+                season, starting_xi_str, substitutes_str, practice_schedule,
+                tactics_config, created_at, updated_at
             `;
         const { data, error } = await supabase
             .from('teams')
@@ -1730,7 +1733,7 @@ export async function fetchTeamBySlugOrName(slugOrName: string): Promise<any | n
         const targetSlug = nameToSlug(slugOrName);
         const { data, error } = await supabase
             .from('teams')
-            .select('*')
+            .select(TEAM_LIST_COLUMNS)
             .is('deleted_at', null);
 
         if (error || !data) return null;

@@ -306,6 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     syncSessionUptimeToDatabase(user.id, role);
 
     const heartbeatInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (isSessionActive() && user) {
         syncSessionUptimeToDatabase(user.id, role);
       }

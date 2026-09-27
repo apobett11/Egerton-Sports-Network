@@ -10,6 +10,8 @@ import { mockMatches } from '../../../../mockData';
 import * as potwService from '../../../../services/potwService';
 import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../../services/potwService';
 import { guestCache } from '../../../../lib/guestCache';
+import { isTabVisible } from '../../../../lib/tabVisibility';
+import { peekTeamLogo, prioritizeTeamLogo, publicTeamLogo, subscribeTeamLogos } from '../../../../lib/teamLogoCache';
 import type {
   RefereeTab,
   PlayerLookupItem,
@@ -152,7 +154,7 @@ export const useRefereeDashboard = () => {
             .order('scheduled_time', { ascending: true }),
           supabase
             .from('teams')
-            .select('id, name, short_name, logo_url, color_code'),
+            .select('id, name, short_name, color_code'),
           supabase
             .from('competitions')
             .select('id, name')
@@ -162,6 +164,7 @@ export const useRefereeDashboard = () => {
         const teamsList = teamsRes.data || [];
         const compsList = compsRes.data || [];
 
+        teamsList.forEach((t: any) => prioritizeTeamLogo(t.id));
         const teamsMap = new Map<string, any>(teamsList.map((t: any) => [t.id, t]));
         const compsMap = new Map<string, string>(compsList.map((c: any) => [c.id, c.name]));
 
@@ -184,14 +187,14 @@ export const useRefereeDashboard = () => {
                 id: home.id || f.home_team_id || '',
                 name: home.name || home.short_name || 'Faculty of Arts',
                 shortName: home.short_name || (home.name ? home.name.slice(0, 3).toUpperCase() : 'FOA'),
-                logo: home.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                logo: publicTeamLogo(home.id || f.home_team_id),
                 colorCode: home.color_code || '#059669',
               },
               teamB: {
                 id: away.id || f.away_team_id || '',
                 name: away.name || away.short_name || 'Njoro FC',
                 shortName: away.short_name || (away.name ? away.name.slice(0, 3).toUpperCase() : 'NJR'),
-                logo: away.logo_url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+                logo: publicTeamLogo(away.id || f.away_team_id),
                 colorCode: away.color_code || '#2563EB',
               },
               scoreA: f.score_home || 0,
@@ -296,14 +299,26 @@ export const useRefereeDashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  useEffect(() => {
+    return subscribeTeamLogos(() => {
+      setFixtures((prev) => prev.map((m) => ({
+        ...m,
+        teamA: { ...m.teamA, logo: peekTeamLogo(m.teamA?.id) || m.teamA?.logo },
+        teamB: { ...m.teamB, logo: peekTeamLogo(m.teamB?.id) || m.teamB?.logo },
+      })));
+    });
+  }, []);
+
   // Real-time Database Subscription with Debounce Protection (deferred to idle)
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const triggerReload = () => {
+      if (!isTabVisible()) return;
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        if (!isTabVisible()) return;
         loadDashboardData();
-      }, 350);
+      }, 3000);
     };
 
     const channel = supabase
@@ -775,7 +790,10 @@ export const useRefereeDashboard = () => {
     drainOfflineQueue();
     const handleOnline = () => drainOfflineQueue();
     window.addEventListener('online', handleOnline);
-    const interval = setInterval(drainOfflineQueue, 20000);
+    const interval = setInterval(() => {
+      if (!isTabVisible()) return;
+      drainOfflineQueue();
+    }, 20000);
     return () => {
       window.removeEventListener('online', handleOnline);
       clearInterval(interval);

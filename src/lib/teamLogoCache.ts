@@ -1,3 +1,4 @@
+import { needsAssetFetch, writeCachedAsset } from './cache/assetCache';
 import { supabase } from './supabase';
 
 export const DEFAULT_TEAM_LOGO =
@@ -104,7 +105,8 @@ async function persist(teamId: string, record: LogoRecord): Promise<void> {
 }
 
 export async function rememberTeamLogo(teamId: string, src: string, stamp: string): Promise<void> {
-  if (!teamId || !src) return;
+  if (!teamId || !src || src.startsWith('data:')) return;
+  writeCachedAsset(teamId, src, stamp && stamp !== 'legacy' ? stamp : undefined);
   const prev = memory.get(teamId);
   if (prev && prev.src === src && prev.stamp === stamp) return;
   const record = { src, stamp: stamp || 'legacy' };
@@ -188,6 +190,10 @@ async function fetchOne(teamId: string, expectedStamp: string): Promise<void> {
 
   if (error || !data) return;
   const src = typeof data.logo_url === 'string' && data.logo_url ? data.logo_url : DEFAULT_TEAM_LOGO;
+  if (src.startsWith('data:')) {
+    await rememberTeamLogo(teamId, DEFAULT_TEAM_LOGO, 'embedded-skip');
+    return;
+  }
   const stamp = (data.updated_at as string) || expectedStamp || 'legacy';
   await rememberTeamLogo(teamId, src, stamp);
 }
@@ -219,21 +225,26 @@ async function pump(): Promise<void> {
   }
 }
 
-/** Fetch this crest before the background warm-up of the other teams. */
-export function prioritizeTeamLogo(teamId?: string | null): void {
+/** Fetch this crest only when it is missing, or when an explicit version token changed. */
+export function prioritizeTeamLogo(teamId?: string | null, version?: string): void {
   if (!teamId) return;
+  if (!needsAssetFetch(teamId, version) || (memory.has(teamId) && !version)) return;
   void hydrateTeamLogos().then(() => {
-    if (memory.has(teamId)) return;
-    enqueue(teamId, '', true);
+    if (!needsAssetFetch(teamId, version) || (memory.has(teamId) && !version)) return;
+    enqueue(teamId, version || '', true);
   });
 }
 
-/** Refresh a crest only when the team's updated_at stamp changed. */
-export function reconcileLogoStamps(rows: Array<{ id?: string; updated_at?: string | null }>): void {
+/** Crests already on disk are not re-checked. Pass a version to force one team. */
+export function reconcileLogoStamps(
+  rows: Array<{ id?: string; updated_at?: string | null }>,
+  version?: string,
+): void {
+  if (!version) return;
   void hydrateTeamLogos().then(() => {
     for (const row of rows) {
-      if (!row?.id) continue;
-      enqueue(row.id, row.updated_at || '', false);
+      if (!row?.id || !needsAssetFetch(row.id, version)) continue;
+      enqueue(row.id, version, false);
     }
   });
 }

@@ -280,6 +280,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         }
         setFixturesLoading(false);
         window.setTimeout(() => {
+          if (document.hidden) return;
           preloadPastFixtures(formattedDateStr, compId).catch(() => {});
         }, 1200);
       })
@@ -509,6 +510,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     let perfDebounce: ReturnType<typeof setTimeout> | null = null;
     const triggerDebouncedPerfReload = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (perfDebounce) clearTimeout(perfDebounce);
       perfDebounce = setTimeout(() => {
         if (perfHasLoaded) loadPerformance();
@@ -516,6 +518,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
 
     const triggerStandingsReload = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       if (perfDebounce) clearTimeout(perfDebounce);
       perfDebounce = setTimeout(() => {
         ApiService.invalidateStandingsCache();

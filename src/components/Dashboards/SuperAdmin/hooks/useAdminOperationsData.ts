@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { TEAM_ADMIN_COLUMNS } from '../../../../lib/teamColumns';
+import { isTabVisible } from '../../../../lib/tabVisibility';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimiter } from '../../../../lib/rateLimiter';
 import type {
@@ -287,7 +289,7 @@ export const useAdminOperationsData = () => {
         { data: matchLineups },
       ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(300),
-        supabase.from('teams').select('*').limit(100),
+        supabase.from('teams').select(TEAM_ADMIN_COLUMNS).limit(100),
         supabase.from('players').select('*').limit(500),
         supabase.from('fixtures').select('*').order('scheduled_time', { ascending: true }).limit(200),
         supabase.from('news_articles').select('*').order('created_at', { ascending: false }).limit(100),
@@ -613,9 +615,9 @@ export const useAdminOperationsData = () => {
         // Action 1: Upload Kits (must actually have custom kit configuration uploaded/assigned, not just default color code)
         const hasUploadedKits = Boolean(
           (Array.isArray(t.kits_config) && t.kits_config.length > 0) ||
-          (t.kits && typeof t.kits === 'object' && Object.keys(t.kits).length > 0) ||
-          t.primary_kit ||
-          t.secondary_kit
+          ((t as any).kits && typeof (t as any).kits === 'object' && Object.keys((t as any).kits).length > 0) ||
+          (t as any).primary_kit ||
+          (t as any).secondary_kit
         );
 
         // Action 2: Arrange Squad / First 11 submitted by Coach
@@ -703,7 +705,7 @@ export const useAdminOperationsData = () => {
           readinessScore,
           readinessPercentage,
           status,
-          lastSubmission: new Date(t.created_at).toLocaleDateString(),
+          lastSubmission: new Date((t as any).created_at).toLocaleDateString(),
         };
       });
 
@@ -731,7 +733,7 @@ export const useAdminOperationsData = () => {
         latestSquadSubmission: teamWithLatestSquad
           ? {
               teamName: teamWithLatestSquad.name,
-              submittedAt: new Date(teamWithLatestSquad.updated_at || teamWithLatestSquad.created_at).toLocaleDateString(),
+              submittedAt: new Date(teamWithLatestSquad.updated_at || (teamWithLatestSquad as any).created_at).toLocaleDateString(),
               coachName: latestCoach
                 ? `${latestCoach.first_name} ${latestCoach.last_name}`
                 : 'Head Coach',
@@ -886,26 +888,34 @@ export const useAdminOperationsData = () => {
   useEffect(() => {
     fetchOperationsData();
 
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedReload = () => {
+      if (!isTabVisible()) return;
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        if (!isTabVisible()) return;
+        fetchOperationsData(true);
+      }, 10000);
+    };
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        fetchOperationsData(true);
+        debouncedReload();
       }
     });
 
-    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedReload = () => {
-      if (reloadTimer) clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => {
-        fetchOperationsData(true);
-      }, 500);
-    };
-
     const channel = supabase
       .channel('admin-operations-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, debouncedReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, debouncedReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups' }, debouncedReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, debouncedReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, (payload) => {
+        const next = (payload.new || {}) as Record<string, unknown>;
+        const prev = (payload.old || {}) as Record<string, unknown>;
+        if (Object.keys(prev).length > 0) {
+          const watched = ['name', 'coach_id', 'captain_id', 'status', 'competition_id', 'starting_xi_str', 'substitutes_str', 'kits_config', 'tactics_config', 'temporary_match_squad'];
+          const changed = watched.some((key) => JSON.stringify(next[key]) !== JSON.stringify(prev[key]));
+          if (!changed) return;
+        }
+        debouncedReload();
+      })
       .subscribe();
 
     return () => {
@@ -1303,6 +1313,7 @@ export const useAdminOperationsData = () => {
   useEffect(() => {
     if (!isProbeRunning) return;
     const interval = setInterval(() => {
+      if (!isTabVisible()) return;
       runLiveDiagnostic(true);
     }, 30000);
     return () => clearInterval(interval);

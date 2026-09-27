@@ -86,7 +86,7 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
 
             // Wait with exponential backoff
             await new Promise((resolve) => setTimeout(resolve, delay));
-            delay *= 2;
+            delay = 3000;
         }
     }
 
