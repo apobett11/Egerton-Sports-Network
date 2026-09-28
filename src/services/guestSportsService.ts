@@ -39,18 +39,18 @@ async function getTeamsMap(): Promise<Map<string, any>> {
     try {
       let { data, error } = await supabase
         .from('teams')
-        .select('id, name, short_name, color_code, updated_at');
+        .select('id, name, short_name, color_code, logo_url, updated_at');
       if (error) {
         const retry = await supabase
           .from('teams')
-          .select('id, name, short_name, color_code');
+          .select('id, name, short_name, color_code, logo_url');
         data = (retry.data || []).map((team) => ({ ...team, updated_at: null }));
       }
 
       reconcileLogoStamps((data || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
       cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, {
         ...t,
-        logo_url: publicTeamLogo(t.id),
+        logo_url: publicTeamLogo(t.id, t.logo_url),
       }]));
       teamsCacheTimestamp = Date.now();
       return cachedTeamsMap;
@@ -230,11 +230,15 @@ async function fetchGuestFixturesNetwork(params?: {
   return promise;
 }
 
+const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v4';
+const lastRevalidateTimes = new Map<string, number>();
+const REVALIDATE_COOLDOWN_MS = 60_000; // Minimum 60s cooldown to protect DB and connection pool
+
 function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
   const stale = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
   if (stale && stale.length > 0 && !hasPlaceholderTeamData(stale)) return stale;
   if (typeof localStorage === 'undefined') return null;
-  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v2_${cacheKey}`];
+  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v4_${cacheKey}`];
   for (const key of keys) {
     try {
       const raw = localStorage.getItem(key);
@@ -243,13 +247,11 @@ function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
       const data = Array.isArray(parsed) ? parsed : parsed?.data;
       if (Array.isArray(data) && data.length > 0 && !hasPlaceholderTeamData(data)) return data;
     } catch {
-      // Ignore a corrupt cache entry and fall through to the network.
+      // Ignore corrupt cache entry and fall through to the network.
     }
   }
   return null;
 }
-
-const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v2';
 
 export async function getGuestFixturesFast(params?: {
   competitionId?: string;
@@ -264,7 +266,12 @@ export async function getGuestFixturesFast(params?: {
 
   const stale = readStoredFixtures(cacheKey);
   if (stale && stale.length > 0) {
-    void fetchGuestFixturesNetwork(params, true);
+    const now = Date.now();
+    const lastReval = lastRevalidateTimes.get(cacheKey) || 0;
+    if (now - lastReval > REVALIDATE_COOLDOWN_MS) {
+      lastRevalidateTimes.set(cacheKey, now);
+      void fetchGuestFixturesNetwork(params, true);
+    }
     return stale;
   }
 

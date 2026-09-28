@@ -303,7 +303,14 @@ export const HomePage: React.FC<HomePageProps> = ({
     return loadFixtures();
   }, [loadFixtures]);
 
-  useCacheSubscription('fixtures', loadFixtures);
+  // Synchronize UI from cache when background SWR completes without triggering another network request
+  useCacheSubscription('fixtures', () => {
+    const key = `${selectedCompetitionId}|${formattedDateStr}`;
+    const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
+    if (cached && cached.length > 0) {
+      setFixtureBundle({ key, data: cached, error: null });
+    }
+  });
 
   useEffect(() => {
     const nextKey = shiftPlayday(formattedDateStr, 1, playdays);

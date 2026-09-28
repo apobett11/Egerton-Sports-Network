@@ -39,7 +39,7 @@ const DEFAULT_TTLS: Record<string, number> = {
   referees: 24 * 60 * 60 * 1000
 };
 
-const STORAGE_PREFIX = 'esn_guest_cache_v3_';
+const STORAGE_PREFIX = 'esn_guest_cache_v4_';
 
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
@@ -49,10 +49,18 @@ class GuestCacheManager {
   constructor() {
     if (typeof window !== 'undefined') {
       try {
-        // Purge legacy v1 and v2 cache keys on startup to clear pre-wipe stale mock data
+        // Universal self-healing cache migration: automatically purge all legacy or corrupt keys across any client device
+        const LEGACY_PREFIXES = [
+          'esn_guest_cache_v1_',
+          'esn_guest_cache_v2_',
+          'esn_guest_cache_v3_',
+          'egerscore_guest_fixtures_',
+          'guest_fixtures_v',
+          'esn_session_network_budget_'
+        ];
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
-          if (k && (k.startsWith('esn_guest_cache_v1_') || k.startsWith('esn_guest_cache_v2_'))) {
+          if (k && LEGACY_PREFIXES.some(prefix => k.startsWith(prefix))) {
             localStorage.removeItem(k);
           }
         }

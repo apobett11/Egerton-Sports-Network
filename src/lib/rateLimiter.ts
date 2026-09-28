@@ -47,10 +47,16 @@ export class RateLimitError extends Error {
 
 const DEFAULT_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   'global': {
-    maxRequests: 300,
+    maxRequests: 100,
     windowMs: 10_000,
     maxBurstDelayMs: 0,
     description: 'Global Application Rate Limit',
+  },
+  'guest-read': {
+    maxRequests: 40,
+    windowMs: 5_000,
+    maxBurstDelayMs: 0,
+    description: 'Public Guest Reads Rate Limit',
   },
   'dashboard': {
     maxRequests: 150,
@@ -340,6 +346,33 @@ function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
   return false;
 }
 
+const inFlightGetRequests = new Map<string, Promise<Response>>();
+
+async function deduplicatedFetch(
+  nativeFetch: typeof fetch,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  urlString?: string,
+  method = 'GET'
+): Promise<Response> {
+  if (method === 'GET' && urlString) {
+    const existing = inFlightGetRequests.get(urlString);
+    if (existing) {
+      return existing.then((res) => res.clone());
+    }
+
+    const promise = nativeFetch(input, init)
+      .finally(() => {
+        inFlightGetRequests.delete(urlString);
+      });
+
+    inFlightGetRequests.set(urlString, promise);
+    return promise.then((res) => res.clone());
+  }
+
+  return nativeFetch(input, init);
+}
+
 export async function rateLimitedFetch(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -352,6 +385,8 @@ export async function rateLimitedFetch(
     : input instanceof URL
     ? input.toString()
     : (input as Request)?.url || '';
+
+  const method = (init?.method || (input as Request)?.method || 'GET').toUpperCase();
 
   const circuitKey = endpointKeyFromUrl(urlString);
   if (!circuitAllows(circuitKey)) {
@@ -382,14 +417,27 @@ export async function rateLimitedFetch(
   recordSessionCall(scope.startsWith('dashboard') || scope.startsWith('admin'), 2048);
 
   if (isPublicGuestRead(urlString, init)) {
-    const response = await nativeFetch(input, init);
+    try {
+      await rateLimiter.acquire('guest-read', urlString);
+    } catch {
+      return new Response(JSON.stringify({
+        message: 'Request rate limit reached to protect database health.',
+        code: 'rate_limited',
+        status: 429
+      }), {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' }
+      });
+    }
+    const response = await deduplicatedFetch(nativeFetch, input, init, urlString, method);
     noteCircuitResult(circuitKey, response.status);
     return response;
   }
 
   try {
     const quota = await rateLimiter.acquire(scope, urlString);
-    const response = await nativeFetch(input, init);
+    const response = await deduplicatedFetch(nativeFetch, input, init, urlString, method);
     noteCircuitResult(circuitKey, response.status);
 
     if (response.status === 429) {
