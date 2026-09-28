@@ -167,7 +167,7 @@ export const AdminDashboardOverviewsView: React.FC<AdminDashboardOverviewsViewPr
             onClick={() => onOpenModal('cache')}
             className="w-full py-2.5 px-4 bg-[#222222] hover:bg-emerald-600 hover:text-white text-emerald-300 font-bold text-xs rounded-xl border border-[#333333] hover:border-emerald-500 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
           >
-            <span>Cache Analysis</span>
+            <span>Team Preparedness</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

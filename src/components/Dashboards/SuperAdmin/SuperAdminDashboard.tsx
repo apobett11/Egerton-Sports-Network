@@ -20,7 +20,7 @@ import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
 import { AdminCacheAnalysisModal } from './components/Modals/AdminCacheAnalysisModal';
-import { RefreshCw, Zap, ShieldAlert, ArrowLeft, Lock, Activity, Database } from 'lucide-react';
+import { RefreshCw, Zap, ShieldAlert, ArrowLeft, Lock, Activity, ClipboardCheck } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
@@ -208,10 +208,10 @@ export const SuperAdminDashboard: React.FC = () => {
             <button
               onClick={() => setShowCacheAnalysis(true)}
               className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-orange-400 hover:text-orange-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
-              title="Cache Analysis — kits, squad, events, and logo"
+              title="Team preparedness — kits, match details, match log, and logo"
             >
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Cache Analysis</span>
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Team Preparedness</span>
             </button>
             <button
               onClick={() => refreshData()}
