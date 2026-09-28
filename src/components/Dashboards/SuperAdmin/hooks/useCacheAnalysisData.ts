@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TEAM_CACHE_COLUMNS } from '../../../../lib/teamColumns';
 import { supabase } from '../../../../lib/supabase';
+import { isSessionActive } from '../../../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
 
 export type CacheOption = 'kits' | 'squad' | 'events' | 'logo';
 
@@ -377,6 +379,15 @@ export function useCacheAnalysisData(enabled: boolean) {
       queuedRef.current = true;
       return;
     }
+
+    if (!isSessionActive()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      setError(budget.reason || 'Session call budget reached.');
+      return;
+    }
+    recordSessionCall(true, 400000);
+
     inFlightRef.current = true;
     if (initial) setIsLoading(true);
     else setIsRefreshing(true);
@@ -426,28 +437,7 @@ export function useCacheAnalysisData(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-
     void load(true);
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        void load(false);
-      }, 1200);
-    };
-
-    const channel = supabase
-      .channel('admin-team-preparedness')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups' }, schedule)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, schedule)
-      .subscribe();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      supabase.removeChannel(channel);
-    };
   }, [enabled, load]);
 
   return { leagues, isLoading, isRefreshing, error, updatedAt, reload: () => load(false) };

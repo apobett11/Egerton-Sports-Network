@@ -22,6 +22,8 @@ import {
 import { PresidentActionBridge } from '../../services/presidentAgent0Bridge';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
+import { isSessionActive } from '../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../lib/sessionBudgetManager';
 
 export function useSeasonModeOperations() {
   const [seasonId, setSeasonId] = useState<string>('season-2026-official');
@@ -87,6 +89,14 @@ export function useSeasonModeOperations() {
   // LOAD CORE OPERATIONAL DATA
   // =========================================================================
   const loadData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!isSessionActive()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      console.warn(budget.reason);
+      return;
+    }
+    recordSessionCall(true, 100000);
+
     if (!options?.silent) {
       setIsLoading(true);
     }
@@ -122,27 +132,6 @@ export function useSeasonModeOperations() {
 
   useEffect(() => {
     loadData();
-
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleSilentRefresh = () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        if (typeof document !== 'undefined' && document.hidden) return;
-        loadData({ silent: true });
-      }, 3000);
-    };
-
-    const channel = supabase
-      .channel('president_season_ops_live_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchday_schedules' }, scheduleSilentRefresh)
-      .subscribe();
-
-    return () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      supabase.removeChannel(channel);
-    };
   }, [loadData]);
 
   // Derived teams split

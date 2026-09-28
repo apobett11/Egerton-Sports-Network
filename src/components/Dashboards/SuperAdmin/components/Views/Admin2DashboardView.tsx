@@ -44,6 +44,8 @@ import {
   Terminal,
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
+import { isSessionActive } from '../../../../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../../../../lib/sessionBudgetManager';
 import { AdminPollsView } from './AdminPollsView';
 import type {
   HourlyTrafficData,
@@ -212,6 +214,14 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
 
   // Fetch real database telemetry in the least number of calls (1 batch call!)
   const fetchDirectDatabaseAnalytics = useCallback(async () => {
+    if (!isSessionActive()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      console.warn(budget.reason);
+      return;
+    }
+    recordSessionCall(true, 250000);
+
     setIsRefreshing(true);
     try {
       // 1 batch query: devices, analytics settings, teams, and live counts in parallel
@@ -475,66 +485,10 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
     }
   }, []);
 
-  // Initial load on mount/login + Realtime Subscription
+  // Initial load on mount/login
   useEffect(() => {
     fetchDirectDatabaseAnalytics();
-
-    // Setup Supabase Realtime channel to listen to device check-ins & analytics updates
-    const channel = supabase
-      .channel('admin_2_realtime_stream')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'anonymous_devices' },
-        (payload: any) => {
-          // Increment live active device count on checkin
-          setDeviceStats((prev) => ({
-            ...prev,
-            activeToday: prev.activeToday + 1,
-            totalDevices: prev.totalDevices + (payload.eventType === 'INSERT' ? 1 : 0),
-          }));
-          setLiveMutations((prev) => [
-            {
-              id: `mut-${Date.now()}`,
-              timestamp: new Date().toLocaleTimeString(),
-              action: `DEVICE_${payload.eventType || 'SYNC'}`,
-              table: 'anonymous_devices',
-              type: payload.eventType === 'INSERT' ? 'insert' : 'update',
-            },
-            ...prev.slice(0, 5),
-          ]);
-          setLastSyncTime(new Date().toLocaleTimeString());
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'system_settings', filter: 'key=eq.admin_2_analytics' },
-        (payload: any) => {
-          if (payload?.new?.value) {
-            const v = payload.new.value;
-            if (v.pageViewsCurrent) setCurrentPages(v.pageViewsCurrent);
-            if (v.pageViewsPrevious) setPreviousPages(v.pageViewsPrevious);
-            if (v.teams) setTeamVisits(v.teams);
-            setLiveMutations((prev) => [
-              {
-                id: `mut-${Date.now()}`,
-                timestamp: new Date().toLocaleTimeString(),
-                action: 'ANALYTICS_SETTINGS_UPDATED',
-                table: 'system_settings',
-                type: 'update',
-              },
-              ...prev.slice(0, 5),
-            ]);
-            setLastSyncTime(new Date().toLocaleTimeString());
-          }
-        }
-      )
-      .subscribe((status) => {
-        setIsRealtimeActive(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    setIsRealtimeActive(false);
   }, [fetchDirectDatabaseAnalytics]);
 
   // Master Password Form Handler

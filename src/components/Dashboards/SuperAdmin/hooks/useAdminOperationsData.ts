@@ -3,6 +3,8 @@ import { TEAM_ADMIN_COLUMNS } from '../../../../lib/teamColumns';
 import { isTabVisible } from '../../../../lib/tabVisibility';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimiter } from '../../../../lib/rateLimiter';
+import { isSessionActive } from '../../../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
 import type {
   AdminTabType,
   PlatformHealthMetrics,
@@ -266,6 +268,14 @@ export const useAdminOperationsData = () => {
 
   // 1. Fetch Real Supabase Data
   const fetchOperationsData = useCallback(async (isSilent = false) => {
+    if (!isSessionActive() || !isTabVisible()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      setErrorMsg(budget.reason || 'Session call budget reached.');
+      return;
+    }
+    recordSessionCall(true, 500000);
+
     if (!isSilent) setIsLoading(true);
     setErrorMsg(null);
     const startPing = performance.now();
@@ -884,44 +894,18 @@ export const useAdminOperationsData = () => {
     }
   }, []);
 
-  // Fresh reload on mount, on auth state change (login/token refresh), and on tab switch
+  // Fresh reload on mount and explicit login
   useEffect(() => {
     fetchOperationsData();
 
-    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedReload = () => {
-      if (!isTabVisible()) return;
-      if (reloadTimer) clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => {
-        if (!isTabVisible()) return;
-        fetchOperationsData(true);
-      }, 10000);
-    };
-
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        debouncedReload();
+      if (event === 'SIGNED_IN') {
+        fetchOperationsData(true);
       }
     });
 
-    const channel = supabase
-      .channel('admin-operations-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, (payload) => {
-        const next = (payload.new || {}) as Record<string, unknown>;
-        const prev = (payload.old || {}) as Record<string, unknown>;
-        if (Object.keys(prev).length > 0) {
-          const watched = ['name', 'coach_id', 'captain_id', 'status', 'competition_id', 'starting_xi_str', 'substitutes_str', 'kits_config', 'tactics_config', 'temporary_match_squad'];
-          const changed = watched.some((key) => JSON.stringify(next[key]) !== JSON.stringify(prev[key]));
-          if (!changed) return;
-        }
-        debouncedReload();
-      })
-      .subscribe();
-
     return () => {
-      if (reloadTimer) clearTimeout(reloadTimer);
       authListener?.subscription?.unsubscribe();
-      supabase.removeChannel(channel);
     };
   }, [fetchOperationsData]);
 

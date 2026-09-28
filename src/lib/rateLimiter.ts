@@ -1,4 +1,5 @@
 import { circuitAllows, circuitMessage, endpointKeyFromUrl, noteCircuitResult } from './circuitBreaker';
+import { getSessionUsage, recordSessionCall } from './sessionBudgetManager';
 
 export type RateLimitScope = 
   | 'global'
@@ -364,6 +365,21 @@ export async function rateLimitedFetch(
       headers: { 'Content-Type': 'application/json', 'x-circuit-open': '1' },
     });
   }
+
+  const usage = getSessionUsage();
+  if (usage.isBudgetExceeded) {
+    return new Response(JSON.stringify({
+      message: usage.exceededReason || 'Session network budget reached to protect project quota.',
+      code: 'session_budget_exceeded',
+      status: 429,
+    }), {
+      status: 429,
+      statusText: 'Too Many Requests',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  recordSessionCall(scope.startsWith('dashboard') || scope.startsWith('admin'), 2048);
 
   if (isPublicGuestRead(urlString, init)) {
     const response = await nativeFetch(input, init);

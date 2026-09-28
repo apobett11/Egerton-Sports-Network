@@ -34,3 +34,4 @@ blob-report/
 supabase/.temp/
 supabase/.branches/
 .agents/
+database_backup/

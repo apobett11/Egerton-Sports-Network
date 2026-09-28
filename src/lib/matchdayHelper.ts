@@ -2,7 +2,7 @@ import type { Match } from '../types';
 import { guestCache } from './guestCache';
 import { supabase } from './supabase';
 
-export const PLAYDAY_INDEX_KEY = 'playday_index_v2';
+export const PLAYDAY_INDEX_KEY = 'playday_index_v3';
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
 

@@ -7,6 +7,8 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { isTabVisible } from '../../../../lib/tabVisibility';
 import { peekTeamLogo, prioritizeTeamLogo, publicTeamLogo, subscribeTeamLogos } from '../../../../lib/teamLogoCache';
 import { supabase } from '../../../../lib/supabase';
+import { isSessionActive } from '../../../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
 import {
   fetchAuthenticatedUserTeam,
   fetchTeamPlayers,
@@ -175,6 +177,14 @@ export const useTeamDashboard = () => {
 
   // Synchronize Live Supabase Data with Priority Splitting & Caching
   const refreshLiveDashboard = useCallback(async () => {
+    if (!isSessionActive() || !isTabVisible()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      console.warn(budget.reason);
+      return;
+    }
+    recordSessionCall(true, 50000);
+
     try {
       const coachUserId = user?.id || '';
 
@@ -322,39 +332,6 @@ export const useTeamDashboard = () => {
 
   useEffect(() => {
     refreshLiveDashboard();
-
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = (payload?: { table?: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
-      if (!isTabVisible()) return;
-      if (payload?.table === 'teams') {
-        const next = payload.new || {};
-        const prev = payload.old || {};
-        const watched = ['name', 'short_name', 'coach_id', 'captain_id', 'status', 'competition_id', 'starting_xi_str', 'substitutes_str', 'tactics_config', 'practice_schedule'];
-        const oldPresent = Object.keys(prev).length > 0;
-        if (!oldPresent) return;
-        const changed = watched.some((key) => JSON.stringify(next[key]) !== JSON.stringify(prev[key]));
-        if (!changed) return;
-      }
-      if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        if (!isTabVisible()) return;
-        invalidateTeamReadCaches();
-        refreshLiveDashboard();
-      }, 3000);
-    };
-
-    const channel = supabase
-      .channel('coach_dashboard_live_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, (payload) => scheduleRefresh(payload as any))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, (payload) => scheduleRefresh(payload as any))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, (payload) => scheduleRefresh({ ...(payload as any), table: 'teams' }))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => scheduleRefresh(payload as any))
-      .subscribe();
-
-    return () => {
-      if (refreshTimer) clearTimeout(refreshTimer);
-      supabase.removeChannel(channel);
-    };
   }, [refreshLiveDashboard]);
 
   // Immediately synchronize teamFixtures and standings across the dashboard whenever teamInfo logo changes

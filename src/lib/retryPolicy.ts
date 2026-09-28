@@ -10,14 +10,14 @@ export interface RetryOptions {
 }
 
 const DEFAULT_RETRY_OPTIONS: Required<Omit<RetryOptions, 'shouldRetry'>> = {
-  maxRetries: 2,
-  initialDelayMs: 1000,
-  maxDelayMs: 3000,
-  backoffFactor: 3,
-  timeoutMs: 10000,
+  maxRetries: 1,
+  initialDelayMs: 800,
+  maxDelayMs: 2000,
+  backoffFactor: 2,
+  timeoutMs: 6000,
 };
 
-const RETRY_DELAYS_MS = [1000, 3000];
+const RETRY_DELAYS_MS = [1000];
 
 export function isRetryableError(error: AppError): boolean {
   // Never retry validation, authorization, forbidden, conflict, or not found errors

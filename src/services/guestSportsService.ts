@@ -234,7 +234,7 @@ function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
   const stale = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
   if (stale && stale.length > 0 && !hasPlaceholderTeamData(stale)) return stale;
   if (typeof localStorage === 'undefined') return null;
-  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v1_${cacheKey}`];
+  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v2_${cacheKey}`];
   for (const key of keys) {
     try {
       const raw = localStorage.getItem(key);
@@ -249,7 +249,7 @@ function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
   return null;
 }
 
-const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v1';
+const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v2';
 
 export async function getGuestFixturesFast(params?: {
   competitionId?: string;

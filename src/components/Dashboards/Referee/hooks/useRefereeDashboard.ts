@@ -11,6 +11,8 @@ import * as potwService from '../../../../services/potwService';
 import { EPL_COMP_ID, CHAMP_COMP_ID } from '../../../../services/potwService';
 import { guestCache } from '../../../../lib/guestCache';
 import { isTabVisible } from '../../../../lib/tabVisibility';
+import { isSessionActive } from '../../../../lib/inactivityManager';
+import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
 import { peekTeamLogo, prioritizeTeamLogo, publicTeamLogo, subscribeTeamLogos } from '../../../../lib/teamLogoCache';
 import type {
   RefereeTab,
@@ -116,6 +118,14 @@ export const useRefereeDashboard = () => {
   selectedFixtureIdRef.current = selectedFixtureId;
 
   const loadDashboardData = useCallback(async () => {
+    if (!isSessionActive() || !isTabVisible()) return;
+    const budget = canMakeDashboardCall();
+    if (!budget.allowed) {
+      console.warn(budget.reason);
+      return;
+    }
+    recordSessionCall(true, 150000);
+
     if (!didPaintCache.current) {
       const cachedMatches = guestCache.getStale<Match[]>('fixtures', 'referee_dashboard');
       if (cachedMatches && cachedMatches.length > 0) {
@@ -309,29 +319,9 @@ export const useRefereeDashboard = () => {
     });
   }, []);
 
-  // Real-time Database Subscription with Debounce Protection (deferred to idle)
+  // Initial load on mount
   useEffect(() => {
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const triggerReload = () => {
-      if (!isTabVisible()) return;
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        if (!isTabVisible()) return;
-        loadDashboardData();
-      }, 3000);
-    };
-
-    const channel = supabase
-      .channel('referee-dashboard-live-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerReload)
-      .subscribe();
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      supabase.removeChannel(channel);
-    };
+    loadDashboardData();
   }, [loadDashboardData]);
 
   // Selected Fixture
