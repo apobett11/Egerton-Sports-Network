@@ -78,7 +78,7 @@ export const ApiService = {
       // Delegate to guestSportsService for reliable batch queries without FK constraint hint issues
       const { getGuestFixtures, guestFixtureToMatch, hasPlaceholderTeamData } = await import('./guestSportsService');
       const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
-      const formattedMatches: Match[] = guestFixtures.map(guestFixtureToMatch);
+      const formattedMatches: Match[] = (guestFixtures || []).map(guestFixtureToMatch).filter(Boolean);
       if (formattedMatches.length > 0 && !hasPlaceholderTeamData(formattedMatches)) {
         guestCache.set('fixtures', cacheKey, formattedMatches);
         if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {

@@ -935,8 +935,13 @@ export async function getGuestCleanSheets(limitCount = 10, competitionId?: strin
 // TYPE ADAPTERS
 // ============================================================================
 
-export function guestFixtureToMatch(gf: GuestFixture): Match {
-  const d = new Date(gf.scheduled_time);
+export function guestFixtureToMatch(gf: any): Match {
+  if (!gf) return null as any;
+  if (gf.teamA && gf.teamB && gf.teamA.id && gf.teamB.id) {
+    return gf as Match;
+  }
+
+  const d = new Date(gf.scheduled_time || gf.scheduledTime || '');
   const timeFormatted = isNaN(d.getTime())
     ? '15:00'
     : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -947,65 +952,74 @@ export function guestFixtureToMatch(gf: GuestFixture): Match {
   const lA = gf.linesman_team_a_name || officials.linesmanTeamA || undefined;
   const lB = gf.linesman_team_b_name || officials.linesmanTeamB || undefined;
 
+  const home = gf.home_team || gf.teamA || {};
+  const away = gf.away_team || gf.teamB || {};
+  const homeId = home.id || gf.home_team_id || gf.homeTeamId || '';
+  const awayId = away.id || gf.away_team_id || gf.awayTeamId || '';
+
   return {
     id: gf.id,
-    status: gf.status as any,
+    status: (gf.status || 'UPCOMING') as any,
     time: gf.status === 'FT' ? 'FT' : gf.status === 'HT' ? 'HT' : timeFormatted,
     minute: gf.status === 'LIVE' ? "85'" : gf.status === 'HT' ? 'HT' : gf.status === 'FT' ? 'FT' : '-',
-    league: gf.competition_name,
+    league: gf.competition_name || gf.league || 'Campus Football',
     teamA: {
-      id: gf.home_team.id,
-      name: gf.home_team.name,
-      shortName: gf.home_team.short_name || gf.home_team.name.substring(0, 3).toUpperCase(),
-      logo: publicTeamLogo(gf.home_team.id, gf.home_team.logo_url),
-      colorCode: gf.home_team.color_code || '#059669',
-      club_id: '',
-      competition_id: gf.competition_id,
+      id: homeId,
+      name: home.name || 'Home Team',
+      shortName: home.short_name || home.shortName || (home.name ? home.name.substring(0, 3).toUpperCase() : 'HOM'),
+      logo: publicTeamLogo(homeId, home.logo || home.logo_url),
+      colorCode: home.color_code || home.colorCode || '#059669',
+      club_id: home.club_id || '',
+      competition_id: gf.competition_id || '',
     },
     teamB: {
-      id: gf.away_team.id,
-      name: gf.away_team.name,
-      shortName: gf.away_team.short_name || gf.away_team.name.substring(0, 3).toUpperCase(),
-      logo: publicTeamLogo(gf.away_team.id, gf.away_team.logo_url),
-      colorCode: gf.away_team.color_code || '#2563EB',
-      club_id: '',
-      competition_id: gf.competition_id,
+      id: awayId,
+      name: away.name || 'Away Team',
+      shortName: away.short_name || away.shortName || (away.name ? away.name.substring(0, 3).toUpperCase() : 'AWY'),
+      logo: publicTeamLogo(awayId, away.logo || away.logo_url),
+      colorCode: away.color_code || away.colorCode || '#2563EB',
+      club_id: away.club_id || '',
+      competition_id: gf.competition_id || '',
     },
-    scoreA: gf.score_home,
-    scoreB: gf.score_away,
-    events: [],
-    stats: [],
-    lineups: { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
-    venue: gf.venue,
+    scoreA: typeof gf.score_home === 'number' ? gf.score_home : (typeof gf.scoreA === 'number' ? gf.scoreA : 0),
+    scoreB: typeof gf.score_away === 'number' ? gf.score_away : (typeof gf.scoreB === 'number' ? gf.scoreB : 0),
+    events: gf.events || [],
+    stats: gf.stats || [],
+    lineups: gf.lineups || { teamA: [], teamB: [], formationA: '4-3-3', formationB: '4-3-3' },
+    venue: gf.venue || 'Egerton Main Grounds',
     referee: cr || 'Accredited League Referee',
     centerReferee: cr,
     refereeId: crId,
     centerRefereeId: crId,
     linesmanTeamAName: lA,
     linesmanTeamBName: lB,
-    matchday: gf.matchday,
-    homePenaltyScore: gf.home_penalty_score ?? undefined,
-    awayPenaltyScore: gf.away_penalty_score ?? undefined,
-    scheduledTime: gf.scheduled_time,
+    matchday: gf.matchday || 1,
+    homePenaltyScore: gf.home_penalty_score ?? gf.homePenaltyScore ?? undefined,
+    awayPenaltyScore: gf.away_penalty_score ?? gf.awayPenaltyScore ?? undefined,
+    scheduledTime: gf.scheduled_time || gf.scheduledTime,
   };
 }
 
 
-export function guestStandingToLeagueTableEntry(gs: GuestStanding, index: number): LeagueTableEntry {
+export function guestStandingToLeagueTableEntry(gs: any, index: number): LeagueTableEntry {
+  if (!gs) return null as any;
+  const teamId = gs.team_id || gs.teamId || '';
+  const teamName = gs.team_name || gs.teamName || 'Team';
+  const logoUrl = gs.logo_url || gs.teamLogo || null;
   return {
-    position: index + 1,
-    teamId: gs.team_id,
-    teamName: gs.team_name,
-    teamLogo: publicTeamLogo(gs.team_id, gs.logo_url),
-    played: gs.played,
-    won: gs.won,
-    drawn: gs.drawn,
-    lost: gs.lost,
-    goalsFor: gs.goals_for,
-    goalsAgainst: gs.goals_against,
-    goalDifference: gs.goal_difference,
-    points: gs.points,
-    lastUpdated: new Date().toISOString(),
+    position: typeof gs.position === 'number' ? gs.position : index + 1,
+    teamId,
+    teamName,
+    teamLogo: publicTeamLogo(teamId, logoUrl),
+    played: gs.played ?? 0,
+    won: gs.won ?? 0,
+    drawn: gs.drawn ?? 0,
+    lost: gs.lost ?? 0,
+    goalsFor: gs.goals_for ?? gs.goalsFor ?? 0,
+    goalsAgainst: gs.goals_against ?? gs.goalsAgainst ?? 0,
+    goalDifference: gs.goal_difference ?? gs.goalDifference ?? 0,
+    points: gs.points ?? 0,
+    lastUpdated: gs.lastUpdated || new Date().toISOString(),
   };
 }
 
