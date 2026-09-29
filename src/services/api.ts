@@ -29,6 +29,12 @@ import { FORMATION_CONFIGS } from '../components/Dashboards/Team/components/Squa
 // Helper for unwrapping Supabase joins (object vs 1-element array)
 const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
 
+function performanceHasLeaders(data: any): boolean {
+  if (!data) return false;
+  const blocks = [data.epl, data.championship, data.goats];
+  return blocks.some((block) => block && (block.topScorer || block.mostAssists || block.mostCleanSheets));
+}
+
 // In-Memory Session Cache for static data deduplication
 let cachedTeams: any[] | null = null;
 let cachedLeagues: any[] | null = null;
@@ -1803,8 +1809,8 @@ export const ApiService = {
       mostCleanSheets: { playerId: string; playerName: string; teamName: string; league: string; cleanSheets: number; streak: number } | null;
     };
   }>> {
-    const cached = guestCache.get<any>('performance', 'dual_perf');
-    if (cached) return { success: true, data: cached };
+    const cached = guestCache.getStale<any>('performance', 'dual_perf');
+    const cachedLeaders = performanceHasLeaders(cached) ? cached : null;
 
     try {
       const EPL_ID = '11111111-1111-1111-1111-111111111111';
@@ -1999,9 +2005,15 @@ export const ApiService = {
         }
       };
 
+      if (!performanceHasLeaders(performanceData)) {
+        if (cachedLeaders) return { success: true, data: cachedLeaders };
+        return { success: true, data: performanceData };
+      }
+
       guestCache.set('performance', 'dual_perf', performanceData);
       return { success: true, data: performanceData };
     } catch (err) {
+      if (cachedLeaders) return { success: true, data: cachedLeaders };
       return {
         success: true,
         data: {

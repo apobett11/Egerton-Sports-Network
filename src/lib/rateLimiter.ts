@@ -331,12 +331,9 @@ function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
       lowerUrl.includes('/rest/v1/teams') ||
       lowerUrl.includes('/rest/v1/competitions') ||
       lowerUrl.includes('/rest/v1/news_articles') ||
-      lowerUrl.includes('/rest/v1/players') ||
       lowerUrl.includes('/rest/v1/announcements') ||
       lowerUrl.includes('/rest/v1/potw') ||
       lowerUrl.includes('/rest/v1/pitches') ||
-      lowerUrl.includes('/rest/v1/player_stats') ||
-      lowerUrl.includes('/rest/v1/match_events') ||
       lowerUrl.includes('/rest/v1/team_form')
     ) {
       return true;

@@ -189,9 +189,6 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         if (typeof document !== 'undefined' && document.hidden) return;
         ApiService.invalidateStandingsCache();
         loadStandingsTables();
-        if (scorersLoaded) loadScorers();
-        if (potwLoaded) loadPotw();
-        if (assistsLoaded) loadAssists();
       }, 3000);
     };
 
@@ -202,14 +199,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         if (status === 'FT' || status === 'FINAL') triggerDebouncedRefresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedRefresh)
       .subscribe();
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [loadStandingsTables, scorersLoaded, potwLoaded, assistsLoaded, loadScorers, loadPotw, loadAssists]);
+  }, [loadStandingsTables]);
 
   // Viewport observer to trigger lazy loading of sub-sections when scrolled near
   useEffect(() => {

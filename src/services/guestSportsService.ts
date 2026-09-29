@@ -720,11 +720,19 @@ export async function getGuestTopScorers(limitCount = 10, competitionId?: string
 
     const { data: psRows, error: psErr } = await psQuery;
 
+    if (psErr) {
+      const stored = guestCache.getStale<GuestTopScorer[]>('players', cacheKey);
+      if (stored && stored.length > 0) return stored;
+    }
+
     if (psErr || !psRows || psRows.length === 0) {
       const fallbackResults = await getTopScorersFromEvents(limitCount, competitionId);
       if (fallbackResults && fallbackResults.length > 0) {
         guestCache.set('players', cacheKey, fallbackResults, 2 * 60 * 1000);
+        return fallbackResults;
       }
+      const stored = guestCache.getStale<GuestTopScorer[]>('players', cacheKey);
+      if (psErr && stored && stored.length > 0) return stored;
       return fallbackResults;
     }
 
@@ -781,7 +789,8 @@ export async function getGuestTopScorers(limitCount = 10, competitionId?: string
     return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestTopScorers exception:', err);
-    return [];
+    const stored = guestCache.getStale<GuestTopScorer[]>('players', cacheKey);
+    return stored && stored.length > 0 ? stored : [];
   }
 }
 

@@ -549,27 +549,17 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   useCacheSubscription('standings', () => { if (standingsHasLoaded) loadStandings(); });
   useCacheSubscription('news', () => { if (newsHasLoaded) loadNews(); });
-  useCacheSubscription('performance', () => { if (perfHasLoaded) loadPerformance(); });
   useCacheSubscription('milestones', () => { if (milestonesHasLoaded) loadMilestones(); });
 
   // Realtime subscription for live match updates and algorithm table feeds (deferred to idle)
   useEffect(() => {
-    let perfDebounce: ReturnType<typeof setTimeout> | null = null;
-    const triggerDebouncedPerfReload = () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      if (perfDebounce) clearTimeout(perfDebounce);
-      perfDebounce = setTimeout(() => {
-        if (perfHasLoaded) loadPerformance();
-      }, 500);
-    };
-
+    let standingsDebounce: ReturnType<typeof setTimeout> | null = null;
     const triggerStandingsReload = () => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      if (perfDebounce) clearTimeout(perfDebounce);
-      perfDebounce = setTimeout(() => {
+      if (standingsDebounce) clearTimeout(standingsDebounce);
+      standingsDebounce = setTimeout(() => {
         ApiService.invalidateStandingsCache();
         loadStandings();
-        if (perfHasLoaded) loadPerformance();
       }, 400);
     };
 
@@ -598,19 +588,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               };
             });
           }
-          triggerDebouncedPerfReload();
         }
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, triggerDebouncedPerfReload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerStandingsReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_events' }, triggerDebouncedPerfReload)
       .subscribe();
 
     return () => {
-      if (perfDebounce) clearTimeout(perfDebounce);
+      if (standingsDebounce) clearTimeout(standingsDebounce);
       supabase.removeChannel(channel);
     };
-  }, [loadPerformance, loadStandings, perfHasLoaded, requestKey]);
+  }, [loadStandings, requestKey]);
 
   const toggleFavourite = (fixtureId: string, e: React.MouseEvent) => {
     e.stopPropagation();
