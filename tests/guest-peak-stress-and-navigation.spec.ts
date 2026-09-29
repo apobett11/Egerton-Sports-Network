@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * GUEST PAGE PEAK LOAD & FULL NAVIGATION STRESS TEST (300+ CONCURRENT USERS)
@@ -19,9 +19,9 @@
  *    - UI responsiveness under load
  */
 
-const SUPABASE_URL = 'https://hizfgvgbsguhduxortrx.supabase.co';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
 const APP_URL = 'http://localhost:5173';
-const ANON_KEY = 'sb_publishable_GQXQug1evzVkDsPxdYRobA_c7nCszDs';
+const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
 
 const headers = {
   apikey: ANON_KEY,

@@ -6,7 +6,7 @@ import { test, expect, type Page } from '@playwright/test';
 // ============================================================================
 
 const BASE = 'http://localhost:5173';
-const SUPABASE_HOST = 'hizfgvgbsguhduxortrx.supabase.co';
+const SUPABASE_HOST = process.env.VITE_SUPABASE_URL ? new URL(process.env.VITE_SUPABASE_URL).host : 'tdfiodqlzptaruhivapj.supabase.co';
 
 // Helper: measure time for a page section to be visible
 async function measureLoad(page: Page, selector: string, label: string): Promise<number> {
@@ -231,7 +231,7 @@ test.describe('ESN — Docker/Container Diagnosis', () => {
       console.log('\n⚠️  APP IS HITTING LOCAL DOCKER — but Docker is NOT running!');
       console.log('   This causes 5s+ timeouts: TCP connection to 127.0.0.1:54321 hangs');
       console.log('   until OS-level TCP timeout fires (~5 seconds default)');
-      console.log('   FIX: Ensure VITE_SUPABASE_URL=https://hizfgvgbsguhduxortrx.supabase.co');
+      console.log('   FIX: Ensure VITE_SUPABASE_URL=https://tdfiodqlzptaruhivapj.supabase.co');
       for (const h of localHits) console.log(`   ❌ ${h}`);
     } else {
       console.log('\n✅ App correctly points to remote Supabase — Docker not involved in query path');

@@ -92,10 +92,10 @@ test.describe('ZERO BLUFF FULL-PAYLOAD PLAYWRIGHT AUDIT', () => {
     const localBase = 'http://127.0.0.1:54321';
     const localAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
 
-    await page.route(/https:\/\/hizfgvgbsguhduxortrx\.supabase\.co\/.*/, async (route) => {
+    await page.route(/https:\/\/(?:hizfgvgbsguhduxortrx|tdfiodqlzptaruhivapj)\.supabase\.co\/.*/, async (route) => {
       const request = route.request();
       const origUrl = request.url();
-      const targetUrl = origUrl.replace('https://hizfgvgbsguhduxortrx.supabase.co', localBase);
+      const targetUrl = origUrl.replace(/https:\/\/(?:hizfgvgbsguhduxortrx|tdfiodqlzptaruhivapj)\.supabase\.co/, localBase);
       const headers = { ...request.headers() };
       if (headers['apikey'] && !headers['apikey'].startsWith('eyJ')) {
         headers['apikey'] = localAnonKey;

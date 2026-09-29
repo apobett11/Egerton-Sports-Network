@@ -22,6 +22,7 @@ export function endpointKeyFromUrl(url: string): string {
 }
 
 export function circuitAllows(key: string): boolean {
+  if (key === 'auth') return true;
   const row = circuits.get(key);
   if (!row) return true;
   return Date.now() >= row.openUntil;

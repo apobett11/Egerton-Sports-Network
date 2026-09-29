@@ -48,7 +48,7 @@ serve(async (req: Request) => {
     }
     recentHits.push(now);
     ipRateLimitMap.set(clientIp, recentHits);
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://hizfgvgbsguhduxortrx.supabase.co';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://tdfiodqlzptaruhivapj.supabase.co';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
     if (!supabaseUrl || !supabaseServiceKey) {

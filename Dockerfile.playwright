@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/playwright:v1.50.0-noble
+
+WORKDIR /app
+
+# Copy dependency definitions
+COPY package*.json ./
+
+# Install npm dependencies
+RUN npm ci || npm install
+
+# Copy application and test assets
+COPY . .
+
+# Set environment to run Playwright headless
+ENV CI=true
+ENV NODE_ENV=development
+
+# Expose Vite dev server port
+EXPOSE 5173
+
+# Execute the live Playwright dashboard login test suite
+CMD ["npx", "playwright", "test", "tests/full-dashboards-live-login.spec.ts", "--reporter=list"]

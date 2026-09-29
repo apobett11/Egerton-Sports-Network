@@ -1,6 +1,6 @@
 # Supabase Production Setup & Integration Guide
 
-This guide describes how the application is integrated with the live production Supabase environment (`https://hizfgvgbsguhduxortrx.supabase.co`).
+This guide describes how the application is integrated with the live production Supabase environment (`https://tdfiodqlzptaruhivapj.supabase.co`).
 
 ---
 
@@ -10,7 +10,7 @@ The application communicates exclusively with the live production Supabase proje
 
 ```env
 # URL for live Supabase production API Gateway
-VITE_SUPABASE_URL=https://hizfgvgbsguhduxortrx.supabase.co
+VITE_SUPABASE_URL=https://tdfiodqlzptaruhivapj.supabase.co
 
 # Public anonymous key (safe to include in browser JS compilation)
 VITE_SUPABASE_ANON_KEY=your_production_anon_key_here

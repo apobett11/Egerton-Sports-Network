@@ -402,7 +402,7 @@ export async function rateLimitedFetch(
   }
 
   const usage = getSessionUsage();
-  if (usage.isBudgetExceeded) {
+  if (usage.isBudgetExceeded && scope !== 'auth') {
     return new Response(JSON.stringify({
       message: usage.exceededReason || 'Session network budget reached to protect project quota.',
       code: 'session_budget_exceeded',

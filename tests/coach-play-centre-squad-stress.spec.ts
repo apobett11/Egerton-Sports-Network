@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { FORMATION_CONFIGS, FormationType } from '../src/components/Dashboards/Team/components/Squad/TeamSquadView';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://hizfgvgbsguhduxortrx.supabase.co';
-const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GQXQug1evzVkDsPxdYRobA_c7nCszDs';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
+const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
 const supabase = createClient(SUPABASE_URL, ANON_KEY);
 
 // 10 Distinct realistic team test UUIDs

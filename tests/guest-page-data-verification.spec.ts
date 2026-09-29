@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  * 5. Verifying zero 500 errors across all public sections
  */
 
-const SUPABASE_URL = 'https://hizfgvgbsguhduxortrx.supabase.co';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
 const APP_URL = 'http://localhost:5173';
 
 test.describe('Guest Page: All Data Sections', () => {

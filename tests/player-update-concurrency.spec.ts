@@ -33,8 +33,8 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://hizfgvgbsguhduxortrx.supabase.co';
-const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GQXQug1evzVkDsPxdYRobA_c7nCszDs';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
+const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
 
 // Read-only live client for indexing & pagination assertions
 const liveSupabase = createClient(SUPABASE_URL, ANON_KEY);

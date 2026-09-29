@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  */
 
 const APP_URL = 'http://localhost:5173';
-const SUPABASE_URL = 'https://hizfgvgbsguhduxortrx.supabase.co';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
 
 test.describe('Guest Page: Stepped Section Performance & Caching', () => {
 

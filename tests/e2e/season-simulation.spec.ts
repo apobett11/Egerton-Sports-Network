@@ -58,6 +58,7 @@ test.describe('DETERMINISTIC FULL-SEASON END-TO-END SIMULATION & PRODUCTION-GATE
     const envLocal = fs.readFileSync(path.resolve(process.cwd(), '.env.local'), 'utf-8');
     expect(envLocal).toContain('http://127.0.0.1:54321');
     expect(envLocal).not.toContain('hizfgvgbsguhduxortrx.supabase.co');
+    expect(envLocal).not.toContain('tdfiodqlzptaruhivapj.supabase.co');
     console.log('✓ Frontend configured exclusively to local Supabase (127.0.0.1:54321).');
 
     // 4. Prove no production service credentials are being used

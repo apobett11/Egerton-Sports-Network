@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SUPABASE_URL = 'https://hizfgvgbsguhduxortrx.supabase.co';
-const ANON_KEY = 'sb_publishable_GQXQug1evzVkDsPxdYRobA_c7nCszDs';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://tdfiodqlzptaruhivapj.supabase.co';
+const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
 
 // All known tables in the schema
 const ALL_TABLES = [

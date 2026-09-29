@@ -17,13 +17,13 @@ async function runTests() {
 
   // 1. Classification Tests
   console.log('\n--- 1. Scope Classification Tests ---');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/players') === 'dashboard-doctor' || classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/injuries') === 'dashboard-doctor', 'Doctor scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/news_articles') === 'dashboard-journalist', 'Journalist scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/pitches') === 'dashboard-president', 'President scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/match_events') === 'dashboard-referee', 'Referee scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/temporary_match_squad') === 'dashboard-team', 'Team scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/functions/v1/admin-2fa') === 'admin-2fa', 'Admin 2FA scope classified');
-  assert(classifyRequestScope('https://hizfgvgbsguhduxortrx.supabase.co/rest/v1/system_settings', { method: 'POST' }) === 'admin-operations', 'Admin operations scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/players') === 'dashboard-doctor' || classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/injuries') === 'dashboard-doctor', 'Doctor scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/news_articles') === 'dashboard-journalist', 'Journalist scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/pitches') === 'dashboard-president', 'President scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/match_events') === 'dashboard-referee', 'Referee scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/temporary_match_squad') === 'dashboard-team', 'Team scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/functions/v1/admin-2fa') === 'admin-2fa', 'Admin 2FA scope classified');
+  assert(classifyRequestScope('https://tdfiodqlzptaruhivapj.supabase.co/rest/v1/system_settings', { method: 'POST' }) === 'admin-operations', 'Admin operations scope classified');
 
   // 2. Rate Limiting Enactment & Quota Exhaustion
   console.log('\n--- 2. Rate Limit Quota & 429 Violation Tests ---');
@@ -85,7 +85,7 @@ async function runTests() {
   await rateLimiter.acquire(testFetchScope);
 
   // Directly verify simulated fetch response for rate-limited endpoint
-  const mockUrl = 'https://hizfgvgbsguhduxortrx.supabase.co/functions/v1/admin-2fa';
+  const mockUrl = 'https://tdfiodqlzptaruhivapj.supabase.co/functions/v1/admin-2fa';
   rateLimiter.setConfig('admin-2fa', {
     maxRequests: 1,
     windowMs: 5000,

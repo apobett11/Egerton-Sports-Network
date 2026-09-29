@@ -1,0 +1,13 @@
+services:
+  playwright-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    environment:
+      - CI=true
+      - VITE_SUPABASE_URL=https://tdfiodqlzptaruhivapj.supabase.co
+      - VITE_SUPABASE_ANON_KEY=sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6
+    ipc: host
+    ports:
+      - "5173:5173"
+    command: ["npx", "playwright", "test", "tests/full-dashboards-live-login.spec.ts", "--reporter=list"]
