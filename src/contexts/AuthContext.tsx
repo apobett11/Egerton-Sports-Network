@@ -569,11 +569,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           first_name: off.firstName,
           last_name: off.lastName,
           email: cleanEmail,
-          bio: off.bio || null,
-          avatar_url: null,
-          phone: null,
-          country: null,
-        } as UserProfile;
+          bio: off.bio,
+        };
       }
 
       if (!fetchedProf) {
