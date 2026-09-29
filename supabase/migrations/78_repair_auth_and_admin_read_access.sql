@@ -100,28 +100,30 @@ SET identity_data = COALESCE(identity_data, '{}'::jsonb),
 WHERE identity_data IS NULL OR provider_id IS NULL OR created_at IS NULL OR updated_at IS NULL;
 
 -- Ensure pgcrypto is available for bcrypt hashing
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Set standard passwords for verified officials and coaches
 DO $$
 BEGIN
+  PERFORM set_config('search_path', 'extensions, public, auth', true);
+
   -- SuperAdmin (Apo1574bett7687)
   UPDATE auth.users
-  SET encrypted_password = crypt('Apo1574bett7687', gen_salt('bf')),
+  SET encrypted_password = extensions.crypt('Apo1574bett7687', extensions.gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       updated_at = NOW()
   WHERE email = 'apobett11@gmail.com';
 
   -- Coach Alex Mbui / Fass Elites (CoachAlex@2026!)
   UPDATE auth.users
-  SET encrypted_password = crypt('CoachAlex@2026!', gen_salt('bf')),
+  SET encrypted_password = extensions.crypt('CoachAlex@2026!', extensions.gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       updated_at = NOW()
   WHERE email = 'masasiadavid@gmail.com';
 
   -- All Other Team Coaches (Coach@2026!)
   UPDATE auth.users
-  SET encrypted_password = crypt('Coach@2026!', gen_salt('bf')),
+  SET encrypted_password = extensions.crypt('Coach@2026!', extensions.gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       updated_at = NOW()
   WHERE email IN (
@@ -143,14 +145,14 @@ BEGIN
 
   -- Official Referees (Official@referee2026)
   UPDATE auth.users
-  SET encrypted_password = crypt('Official@referee2026', gen_salt('bf')),
+  SET encrypted_password = extensions.crypt('Official@referee2026', extensions.gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       updated_at = NOW()
   WHERE email IN ('officialreferee@gmail.com', 'officialreferee@egerscore.com', 'referee1@gmail.com');
 
   -- Sports Journalist (Journalist@2026!)
   UPDATE auth.users
-  SET encrypted_password = crypt('Journalist@2026!', gen_salt('bf')),
+  SET encrypted_password = extensions.crypt('Journalist@2026!', extensions.gen_salt('bf')),
       email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
       updated_at = NOW()
   WHERE email = 'journalist@gmail.com';
