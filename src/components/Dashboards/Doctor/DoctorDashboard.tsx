@@ -106,7 +106,7 @@ export const DoctorDashboard: React.FC<{ onLogout?: () => void }> = ({ onLogout 
       onLogout();
     } else {
       await logout();
-      window.location.hash = '/login';
+      window.location.hash = '/home';
     }
   };
 

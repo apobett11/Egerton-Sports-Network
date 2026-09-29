@@ -864,7 +864,7 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
             <Server className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-3xl font-black text-cyan-400 font-mono">
-            {performanceMetrics.dbLatencyMs || 18} <span className="text-sm font-semibold text-gray-400">ms</span>
+            {performanceMetrics.dbLatencyMs} <span className="text-sm font-semibold text-gray-400">ms</span>
           </div>
           <div className="text-[10px] text-cyan-300 font-mono font-medium flex items-center gap-1">
             <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />

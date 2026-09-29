@@ -1,105 +1,99 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { TEAM_ADMIN_COLUMNS } from '../../../../lib/teamColumns';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { isTabVisible } from '../../../../lib/tabVisibility';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimiter } from '../../../../lib/rateLimiter';
 import { isSessionActive } from '../../../../lib/inactivityManager';
-import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
+import { canMakeDashboardCall } from '../../../../lib/sessionBudgetManager';
+import {
+  fetchAdminSnapshot,
+  readCachedSnapshot,
+  writeCachedSnapshot,
+  isSnapshotFresh,
+  type AdminRawSnapshot,
+} from '../lib/adminSnapshot';
+import { deriveAdminState, type DerivedAdminState } from '../lib/deriveAdminState';
 import type {
   AdminTabType,
-  PlatformHealthMetrics,
   SystemHealthMetrics,
-  ActivityFeedItem,
-  PlatformErrorItem,
-  JournalistOverviewSummary,
-  TeamOverviewSummary,
-  RefereeOverviewSummary,
-  PresidentOverviewSummary,
-  UserProfileRow,
-  AuditLogRecord,
-  PlatformInsightItem,
-  PlatformPerformanceMetrics,
-  AdminPlayerRow,
   FailedApiCallRecord,
-  HourlyTrafficData,
+  PlatformInsightItem,
   PageVisitAnalytics,
-  SupabaseSlowQuery,
+  HealthStatusType,
 } from '../types';
 
-const INITIAL_SLOW_QUERIES: SupabaseSlowQuery[] = [
-  {
-    id: 'q1',
-    query: 'SELECT * FROM fixtures WHERE status = "LIVE" ORDER BY scheduled_time ASC',
-    durationMs: 68,
-    tableName: 'fixtures',
-    recommendedIndex: 'CREATE INDEX idx_fixtures_live_status ON fixtures (status, scheduled_time);',
-    isOptimized: false,
-  },
-  {
-    id: 'q2',
-    query: 'SELECT * FROM players WHERE team_id = $1 AND status = "Fit"',
-    durationMs: 54,
-    tableName: 'players',
-    recommendedIndex: 'CREATE INDEX idx_players_team_fit ON players (team_id, status);',
-    isOptimized: false,
-  },
-  {
-    id: 'q3',
-    query: 'SELECT * FROM news_articles WHERE status = "published" ORDER BY created_at DESC',
-    durationMs: 42,
-    tableName: 'news_articles',
-    recommendedIndex: 'CREATE INDEX idx_news_published_created ON news_articles (status, created_at DESC);',
-    isOptimized: true,
-  },
-];
+/** Background health probe cadence. Each probe is four cheap requests. */
+const PROBE_INTERVAL_MS = 2 * 60 * 1000;
+const REALTIME_PROBE_TIMEOUT_MS = 4000;
 
-const INITIAL_HOURLY_TRAFFIC: HourlyTrafficData[] = [
-  { hour: '00:00', users: 8, pageViews: 24, apiRequests: 42 },
-  { hour: '01:00', users: 5, pageViews: 14, apiRequests: 28 },
-  { hour: '02:00', users: 3, pageViews: 8, apiRequests: 16 },
-  { hour: '03:00', users: 2, pageViews: 6, apiRequests: 12 },
-  { hour: '04:00', users: 4, pageViews: 10, apiRequests: 19 },
-  { hour: '05:00', users: 9, pageViews: 22, apiRequests: 38 },
-  { hour: '06:00', users: 18, pageViews: 45, apiRequests: 74 },
-  { hour: '07:00', users: 34, pageViews: 92, apiRequests: 148 },
-  { hour: '08:00', users: 58, pageViews: 160, apiRequests: 270 },
-  { hour: '09:00', users: 72, pageViews: 210, apiRequests: 350 },
-  { hour: '10:00', users: 85, pageViews: 260, apiRequests: 410 },
-  { hour: '11:00', users: 92, pageViews: 290, apiRequests: 460 },
-  { hour: '12:00', users: 124, pageViews: 410, apiRequests: 620 },
-  { hour: '13:00', users: 110, pageViews: 370, apiRequests: 580 },
-  { hour: '14:00', users: 98, pageViews: 310, apiRequests: 490 },
-  { hour: '15:00', users: 135, pageViews: 480, apiRequests: 740 },
-  { hour: '16:00', users: 168, pageViews: 620, apiRequests: 950 },
-  { hour: '17:00', users: 186, pageViews: 740, apiRequests: 1180 },
-  { hour: '18:00', users: 154, pageViews: 580, apiRequests: 920 },
-  { hour: '19:00', users: 120, pageViews: 430, apiRequests: 680 },
-  { hour: '20:00', users: 128, pageViews: 460, apiRequests: 710 },
-  { hour: '21:00', users: 95, pageViews: 320, apiRequests: 510 },
-  { hour: '22:00', users: 62, pageViews: 190, apiRequests: 310 },
-  { hour: '23:00', users: 28, pageViews: 85, apiRequests: 140 },
-];
+interface ProbeStats {
+  attempts: number;
+  successes: number;
+  /** Rolling mean of the auth round-trip (ms). */
+  avgAuthMs: number;
+  /** Last measured realtime subscribe round-trip (ms); 0 when unmeasured. */
+  realtimeLatencyMs: number;
+}
 
-const INITIAL_PAGE_ANALYTICS: PageVisitAnalytics[] = [
-  { route: '/home', title: 'Main Matchday Feed & Top Stories', visits: 5840, uniqueVisitors: 2190, percentageShare: 41, avgDwellTime: '4m 12s', bounceRate: '16%' },
-  { route: '/fixtures', title: 'Campus League Fixtures & Results', visits: 2920, uniqueVisitors: 1480, percentageShare: 20.5, avgDwellTime: '2m 45s', bounceRate: '22%' },
-  { route: '/standings', title: 'Premier League Table & Form Guide', visits: 2150, uniqueVisitors: 1120, percentageShare: 15.1, avgDwellTime: '3m 10s', bounceRate: '19%' },
-  { route: '/match-details', title: 'Live Match Center & Realtime Events', visits: 1680, uniqueVisitors: 890, percentageShare: 11.8, avgDwellTime: '8m 34s', bounceRate: '11%' },
-  { route: '/team-details', title: 'Club Rosters, Pitch Tactics & Kits', visits: 780, uniqueVisitors: 410, percentageShare: 5.5, avgDwellTime: '3m 22s', bounceRate: '28%' },
-  { route: '/potw', title: 'Player of the Week Voting Portal', visits: 540, uniqueVisitors: 380, percentageShare: 3.8, avgDwellTime: '1m 55s', bounceRate: '14%' },
-  { route: '/news', title: 'Sports Journalism & Match Reports', visits: 330, uniqueVisitors: 240, percentageShare: 2.3, avgDwellTime: '4m 48s', bounceRate: '25%' },
-];
+const INITIAL_PROBE: ProbeStats = { attempts: 0, successes: 0, avgAuthMs: 0, realtimeLatencyMs: 0 };
+
+const EMPTY_HEALTH: SystemHealthMetrics = {
+  apiStatus: 'healthy',
+  apiLatencyMs: 0,
+  dbStatus: 'healthy',
+  dbLatencyMs: 0,
+  authStatus: 'healthy',
+  storageStatus: 'healthy',
+  realtimeStatus: 'healthy',
+  lastChecked: '—',
+};
+
+function statusFor(ms: number, error: unknown, warnAt: number, offlineAt: number): HealthStatusType {
+  if (error) return 'warning';
+  if (ms >= offlineAt) return 'offline';
+  if (ms >= warnAt) return 'warning';
+  return 'healthy';
+}
+
+/** Measures how long the realtime socket takes to acknowledge a subscription. */
+async function measureRealtimeLatency(): Promise<number> {
+  return new Promise<number>((resolve) => {
+    const t0 = performance.now();
+    let settled = false;
+    const channel = supabase.channel(`admin-probe-${Date.now()}`);
+    const finish = (value: number) => {
+      if (settled) return;
+      settled = true;
+      try {
+        supabase.removeChannel(channel);
+      } catch {}
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(0), REALTIME_PROBE_TIMEOUT_MS);
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        clearTimeout(timer);
+        finish(Math.round(performance.now() - t0));
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        clearTimeout(timer);
+        finish(0);
+      }
+    });
+  });
+}
 
 export const useAdminOperationsData = () => {
   const [activeTab, setActiveTab] = useState<AdminTabType>('overview');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [snapshot, setSnapshot] = useState<AdminRawSnapshot | null>(() => readCachedSnapshot());
+  const [isLoading, setIsLoading] = useState<boolean>(() => readCachedSnapshot() === null);
+  const [isRevalidating, setIsRevalidating] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [playersList, setPlayersList] = useState<AdminPlayerRow[]>([]);
-  const [failedCalls, setFailedCalls] = useState<FailedApiCallRecord[]>([]);
-  const [slowQueries, setSlowQueries] = useState<SupabaseSlowQuery[]>(INITIAL_SLOW_QUERIES);
-  const [hourlyTraffic, setHourlyTraffic] = useState<HourlyTrafficData[]>(INITIAL_HOURLY_TRAFFIC);
-  const [pageVisitAnalytics, setPageVisitAnalytics] = useState<PageVisitAnalytics[]>(INITIAL_PAGE_ANALYTICS);
+  const [probeStats, setProbeStats] = useState<ProbeStats>(INITIAL_PROBE);
+  const [systemHealth, setSystemHealth] = useState<SystemHealthMetrics>(EMPTY_HEALTH);
+  const [runtimeFailedCalls, setRuntimeFailedCalls] = useState<FailedApiCallRecord[]>([]);
+  const [isProbeRunning, setIsProbeRunning] = useState<boolean>(true);
+  const [probeCount, setProbeCount] = useState<number>(0);
+  const inFlightRef = useRef<Promise<void> | null>(null);
 
   const [isAdmin2Unlocked, setIsAdmin2Unlocked] = useState<boolean>(() => {
     try {
@@ -111,125 +105,23 @@ export const useAdminOperationsData = () => {
 
   const [isAdmin2FaVerified, setIsAdmin2FaVerified] = useState<boolean>(() => {
     try {
-      if (sessionStorage.getItem('esn_admin_2fa_verified') === 'true') {
-        return true;
-      }
+      if (sessionStorage.getItem('esn_admin_2fa_verified') === 'true') return true;
       const weeklyClearedUntil = localStorage.getItem('esn_admin_2fa_cleared_until');
-      if (weeklyClearedUntil && Number(weeklyClearedUntil) > Date.now()) {
-        return true;
-      }
-      return false;
+      return Boolean(weeklyClearedUntil && Number(weeklyClearedUntil) > Date.now());
     } catch {
       return false;
     }
   });
 
-
-  // Core Data States
-  const [platformHealth, setPlatformHealth] = useState<PlatformHealthMetrics>({
-    totalUsers: 0,
-    activeUsersToday: 0,
-    onlineUsers: 0,
-    revokedUsers: 0,
-    uptimePercentage: 99.98,
-    totalTeams: 0,
-    totalPlayers: 0,
-    totalReferees: 0,
-    totalJournalists: 0,
-    totalCoaches: 0,
-    totalCaptains: 0,
-    totalArticles: 0,
-    scheduledMatches: 0,
-    completedMatches: 0,
-  });
-
-  const [systemHealth, setSystemHealth] = useState<SystemHealthMetrics>({
-    apiStatus: 'healthy',
-    apiLatencyMs: 24,
-    dbStatus: 'healthy',
-    dbLatencyMs: 18,
-    authStatus: 'healthy',
-    storageStatus: 'healthy',
-    realtimeStatus: 'healthy',
-    lastChecked: new Date().toLocaleTimeString(),
-  });
-
-  const [isProbeRunning, setIsProbeRunning] = useState<boolean>(true);
-  const [probeCount, setProbeCount] = useState<number>(1);
-
-  const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
-  const [platformErrors, setPlatformErrors] = useState<PlatformErrorItem[]>([]);
-  const [userDirectory, setUserDirectory] = useState<UserProfileRow[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
-
-  // Overview Summaries
-  const [journalistOverview, setJournalistOverview] = useState<JournalistOverviewSummary>({
-    totalJournalists: 0,
-    articlesToday: 0,
-    draftsCount: 0,
-    publishedCount: 0,
-    flaggedCount: 0,
-    totalViews: 0,
-    mostViewedArticle: null,
-    latestPublication: null,
-    journalistsList: [],
-  });
-
-  const [teamOverview, setTeamOverview] = useState<TeamOverviewSummary>({
-    totalTeams: 0,
-    avgPlayersPerTeam: 0,
-    avgSquadCompletion: 0,
-    practiceSchedulesCount: 0,
-    upcomingFixturesCount: 0,
-    latestSquadSubmission: null,
-    teamsNeedingAttentionCount: 0,
-    teamsList: [],
-  });
-
-  const [refereeOverview, setRefereeOverview] = useState<RefereeOverviewSummary>({
-    totalReferees: 0,
-    availableReferees: 0,
-    assignedToday: 0,
-    completedMatches: 0,
-    pendingReportsCount: 0,
-    cancelledMatchesCount: 0,
-    avgReportCompletionTimeMins: 32,
-    refereesList: [],
-  });
-
-  const [presidentOverview, setPresidentOverview] = useState<PresidentOverviewSummary>({
-    totalAnnouncements: 0,
-    fixtureGenerationsCount: 0,
-    currentCompetition: 'Egerton Campus League',
-    latestBroadcastsCount: 0,
-    latestActions: [],
-  });
-
-  // Performance Telemetry
-  const [performanceMetrics, setPerformanceMetrics] = useState<PlatformPerformanceMetrics>({
-    avgUserUptimePercentage: 99.98,
-    avgLoginTimeMs: 180,
-    avgApiResponseMs: 34,
-    dbLatencyMs: 19,
-    realtimeLatencyMs: 12,
-    storageUsageMb: 245,
-    articlesPerDay: 4.2,
-    uploadsToday: 18,
-    avgSessionDurationMins: 14.5,
-    peakConcurrentUsers: 142,
-    activeSessionsCount: 12,
-  });
-
-  // Action / Search / Filter states
+  // Search / filter state
   const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL');
   const [userStatusFilter, setUserStatusFilter] = useState<string>('ALL');
-
   const [auditSearchTerm, setAuditSearchTerm] = useState<string>('');
   const [auditRoleFilter, setAuditRoleFilter] = useState<string>('ALL');
   const [auditActionFilter, setAuditActionFilter] = useState<string>('ALL');
 
-  // Popup Modal States
+  // Modal state
   const [activeModal, setActiveModal] = useState<
     'journalist' | 'team' | 'referee' | 'president' | 'user_detail' | 'error_detail' | 'announcement' | 'settings' | null
   >(null);
@@ -240,12 +132,32 @@ export const useAdminOperationsData = () => {
     setTimeout(() => setToastMessage(null), 4000);
   }, []);
 
-  // Monitor universal rate limit violations and log into failedCalls telemetry
+  // ---------------------------------------------------------------------------
+  // Derived state: everything the console renders comes from the snapshot.
+  // ---------------------------------------------------------------------------
+  const derived: DerivedAdminState | null = useMemo(() => {
+    if (!snapshot) return null;
+    const uptimePercentage = probeStats.attempts > 0
+      ? Number(((probeStats.successes / probeStats.attempts) * 100).toFixed(2))
+      : 100;
+    return deriveAdminState(snapshot, {
+      uptimePercentage,
+      avgLoginTimeMs: Math.round(probeStats.avgAuthMs),
+      realtimeLatencyMs: probeStats.realtimeLatencyMs,
+    });
+  }, [snapshot, probeStats]);
+
+  const lastSyncedLabel = useMemo(
+    () => (snapshot ? new Date(snapshot.fetchedAt).toLocaleTimeString() : '—'),
+    [snapshot]
+  );
+
+  // Rate-limit violations feed the failed-calls telemetry.
   useEffect(() => {
     const unsubscribe = rateLimiter.onRateLimit((violation) => {
-      setFailedCalls((prev) => [
+      setRuntimeFailedCalls((prev) => [
         {
-          id: `rate-limit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          id: `rate-limit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           timestamp: new Date().toLocaleTimeString(),
           endpoint: violation.url || `/api/${violation.scope}`,
           method: 'GLOBAL',
@@ -258,7 +170,6 @@ export const useAdminOperationsData = () => {
         },
         ...prev.slice(0, 49),
       ]);
-
       if (violation.scope.startsWith('admin')) {
         showToast(`Admin Rate Limit: Quota exceeded for ${violation.scope}. Cooldown: ${Math.ceil(violation.retryAfterMs / 1000)}s`);
       }
@@ -266,760 +177,203 @@ export const useAdminOperationsData = () => {
     return unsubscribe;
   }, [showToast]);
 
-  // 1. Fetch Real Supabase Data
-  const fetchOperationsData = useCallback(async (isSilent = false) => {
-    if (!isSessionActive() || !isTabVisible()) return;
+  // ---------------------------------------------------------------------------
+  // Snapshot loading: cache-first, revalidate when stale, force on demand.
+  // ---------------------------------------------------------------------------
+  const loadSnapshot = useCallback(async (mode: 'auto' | 'force' = 'auto') => {
+    if (inFlightRef.current) return inFlightRef.current;
+
+    const cached = readCachedSnapshot();
+    if (mode === 'auto' && isSnapshotFresh(cached)) {
+      setSnapshot(cached);
+      setIsLoading(false);
+      return;
+    }
+    if (!isSessionActive() || !isTabVisible()) {
+      // Never leave the console on the connecting screen because the tab is idle.
+      if (cached) setSnapshot(cached);
+      setIsLoading(false);
+      return;
+    }
+
     const budget = canMakeDashboardCall();
     if (!budget.allowed) {
+      if (cached) setSnapshot(cached);
+      setIsLoading(false);
       setErrorMsg(budget.reason || 'Session call budget reached.');
       return;
     }
-    recordSessionCall(true, 500000);
 
-    if (!isSilent) setIsLoading(true);
+    const hasSomethingToShow = Boolean(cached || snapshot);
+    if (hasSomethingToShow) setIsRevalidating(true);
+    else setIsLoading(true);
     setErrorMsg(null);
-    const startPing = performance.now();
 
-    try {
-      // 1. Fetch tables in parallel with safe operational limits
-      const [
-        { data: profiles, error: profErr },
-        { data: teams, error: teamErr },
-        { data: players, error: playerErr },
-        { data: fixtures, error: fixErr },
-        { data: articles, error: artErr },
-        { data: announcements, error: annErr },
-        { data: rawLogs, error: logErr },
-        { data: matchReports },
-        { data: adminErrorLogs },
-        { data: admin2Setting },
-        { data: rawDevices },
-        { data: admin2AnalyticsSetting },
-        { data: matchEvents },
-        { data: matchLineups },
-      ] = await Promise.all([
-        supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(300),
-        supabase.from('teams').select(TEAM_ADMIN_COLUMNS).limit(100),
-        supabase.from('players').select('*').limit(500),
-        supabase.from('fixtures').select('*').order('scheduled_time', { ascending: true }).limit(200),
-        supabase.from('news_articles').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
-        supabase.from('match_reports').select('*').limit(100),
-        supabase.from('admin_error_logs').select('*').order('created_at', { ascending: false }).limit(30),
-        supabase.from('system_settings').select('*').eq('key', 'admin_2_security').maybeSingle(),
-        supabase.from('anonymous_devices').select('device_id, last_seen_at, favorite_team_id, created_at').limit(1000),
-        supabase.from('system_settings').select('value').eq('key', 'admin_2_analytics').maybeSingle(),
-        supabase.from('match_events').select('id, team_id, fixture_id').limit(1000),
-        supabase.from('match_lineups').select('id, team_id, fixture_id, starting_xi, substitutes').limit(200),
-      ]);
-
-
-      if (profErr) throw profErr;
-      if (teamErr) throw teamErr;
-      if (playerErr) throw playerErr;
-      if (fixErr) throw fixErr;
-      if (artErr) throw artErr;
-      if (annErr) throw annErr;
-
-      const allProfiles = Array.isArray(profiles) ? profiles : (profiles ? [profiles] : []);
-      const allTeams = Array.isArray(teams) ? teams : (teams ? [teams] : []);
-      const allPlayers = Array.isArray(players) ? players : (players ? [players] : []);
-      const allFixtures = Array.isArray(fixtures) ? fixtures : (fixtures ? [fixtures] : []);
-      const allArticles = Array.isArray(articles) ? articles : (articles ? [articles] : []);
-      const allAnnouncements = Array.isArray(announcements) ? announcements : (announcements ? [announcements] : []);
-      const allAuditLogs = Array.isArray(rawLogs) ? rawLogs : (rawLogs ? [rawLogs] : []);
-      const allMatchReports = Array.isArray(matchReports) ? matchReports : (matchReports ? [matchReports] : []);
-      const allMatchEvents = Array.isArray(matchEvents) ? matchEvents : (matchEvents ? [matchEvents] : []);
-      const allMatchLineups = Array.isArray(matchLineups) ? matchLineups : (matchLineups ? [matchLineups] : []);
-
-      const endPing = performance.now();
-      const pingMs = Math.round(endPing - startPing);
-
-      // System Telemetry
-      setSystemHealth({
-        apiStatus: pingMs < 300 ? 'healthy' : pingMs < 800 ? 'warning' : 'offline',
-        apiLatencyMs: pingMs,
-        dbStatus: 'healthy',
-        dbLatencyMs: Math.max(8, Math.round(pingMs * 0.4)),
-        authStatus: 'healthy',
-        storageStatus: 'healthy',
-        realtimeStatus: 'healthy',
-        lastChecked: new Date().toLocaleTimeString(),
-      });
-
-      // Role Counters
-      const referees = allProfiles.filter((p) => p.role?.toLowerCase() === 'referee');
-      const journalists = allProfiles.filter((p) => p.role?.toLowerCase() === 'journalist');
-      const coaches = allProfiles.filter((p) => p.role?.toLowerCase() === 'coach');
-      const captains = allProfiles.filter((p) => p.role?.toLowerCase() === 'captain');
-      const scheduledFix = allFixtures.filter((f) => f.status === 'UPCOMING' || f.status === 'LIVE');
-      const completedFix = allFixtures.filter((f) => f.status === 'FT');
-      const revokedCount = allProfiles.filter((p) => (p as any).status === 'suspended' || p.bio?.includes('[SUSPENDED]')).length;
-
-      // Real honest user activity derived from updated_at timestamps
-      const nowTs = Date.now();
-      const oneDayAgoIso = new Date(nowTs - 86400000).toISOString();
-      const realActiveToday = allProfiles.filter((p: any) => p.updated_at && p.updated_at >= oneDayAgoIso).length;
-      const realOnline = allProfiles.filter((p: any) => p.updated_at && (nowTs - new Date(p.updated_at).getTime()) < 15 * 60 * 1000).length;
-
-      // Platform Health
-      setPlatformHealth({
-        totalUsers: allProfiles.length,
-        activeUsersToday: Math.max(1, realActiveToday),
-        onlineUsers: Math.max(1, realOnline),
-        revokedUsers: revokedCount,
-        uptimePercentage: 99.9,
-        totalTeams: allTeams.length,
-        totalPlayers: allPlayers.length,
-        totalReferees: referees.length,
-        totalJournalists: journalists.length,
-        totalCoaches: coaches.length,
-        totalCaptains: captains.length,
-        totalArticles: allArticles.length,
-        scheduledMatches: scheduledFix.length,
-        completedMatches: completedFix.length,
-      });
-
-      // Map Profiles to Directory Rows
-      const userRows: UserProfileRow[] = allProfiles.map((p) => {
-        const matchingTeam = allTeams.find((t) => t.coach_id === p.id || t.captain_id === p.id);
-        const playerEntry = allPlayers.find((pl) => pl.profile_id === p.id);
-        const playerTeam = playerEntry ? allTeams.find((t) => t.id === playerEntry.team_id) : null;
-        const displayTeam = matchingTeam?.name || playerTeam?.name || 'General';
-
-        return {
-          id: p.id,
-          firstName: p.first_name || '',
-          lastName: p.last_name || '',
-          name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.email || 'User',
-          role: p.role as any,
-          email: p.email,
-          phone: p.phone || 'N/A',
-          teamName: displayTeam,
-          lastLogin: new Date(p.updated_at || p.created_at).toLocaleDateString(),
-          status: p.bio?.includes('[SUSPENDED]') ? 'suspended' : 'active',
-          avatarUrl: p.avatar_url,
-        };
-      });
-      setUserDirectory(userRows);
-
-      // Map Players to Admin Rows
-      const mappedPlayers: AdminPlayerRow[] = allPlayers.map((pl: any) => {
-        const matchingProf = allProfiles.find((p) => p.id === pl.profile_id);
-        const matchingTeam = allTeams.find((t) => t.id === pl.team_id);
-        const fullName = (pl.first_name || pl.last_name)
-          ? `${pl.first_name || ''} ${pl.last_name || ''}`.trim()
-          : (matchingProf ? `${matchingProf.first_name || ''} ${matchingProf.last_name || ''}`.trim() : 'Player');
-
-        return {
-          id: pl.id,
-          profileId: pl.profile_id,
-          name: fullName || 'Squad Player',
-          firstName: pl.first_name || matchingProf?.first_name || '',
-          lastName: pl.last_name || matchingProf?.last_name || '',
-          email: matchingProf?.email || pl.email || 'N/A',
-          phone: pl.phone || matchingProf?.phone || 'N/A',
-          studentId: pl.student_id || 'N/A',
-          jerseyNumber: pl.jersey_number || 0,
-          position: pl.position || 'MID',
-          teamId: pl.team_id || '',
-          teamName: matchingTeam?.name || 'Unassigned',
-          teamLogo: matchingTeam?.logo_url,
-          status: pl.status || 'Fit',
-          isApproved: Boolean(pl.is_approved || matchingProf?.is_verified),
-          registeredAt: new Date(pl.created_at || Date.now()).toLocaleDateString(),
-        };
-      });
-      setPlayersList(mappedPlayers);
-
-      // Audit Logs mapping
-      const mappedAuditLogs: AuditLogRecord[] = allAuditLogs.map((log) => {
-        const userProf = allProfiles.find((p) => p.id === log.user_id);
-        return {
-          id: log.id,
-          timestamp: new Date(log.created_at).toLocaleString(),
-          userId: log.user_id,
-          userName: userProf ? `${userProf.first_name} ${userProf.last_name}`.trim() : 'System Engine',
-          userRole: log.user_role || userProf?.role || 'system',
-          action: log.action,
-          affectedRecord: log.resource_id || log.resource_type || 'platform',
-          resourceType: log.resource_type || 'system',
-          ipAddress: log.ip_address || '127.0.0.1',
-          status: 'success',
-          details: log.details ? JSON.stringify(log.details) : undefined,
-        };
-      });
-      setAuditLogs(mappedAuditLogs);
-
-      // Generate Activity Feed
-      const feedItems: ActivityFeedItem[] = [];
-
-      // Add recent articles
-      allArticles.slice(0, 5).forEach((art) => {
-        const author = allProfiles.find((p) => p.id === art.author_id);
-        feedItems.push({
-          id: `art-${art.id}`,
-          timestamp: new Date(art.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          user: author ? `${author.first_name} ${author.last_name}` : 'Journalist',
-          role: 'journalist',
-          action: art.status === 'published' ? 'published article' : 'created draft',
-          details: `"${art.title}"`,
-          iconType: 'journalist',
-        });
-      });
-
-      // Add recent match reports
-      allMatchReports.slice(0, 5).forEach((rep) => {
-        const ref = allProfiles.find((p) => p.id === rep.official_id);
-        feedItems.push({
-          id: `rep-${rep.id}`,
-          timestamp: new Date(rep.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          user: ref ? `${ref.first_name} ${ref.last_name}` : 'Official Referee',
-          role: 'referee',
-          action: 'submitted match report',
-          details: `Official report for fixture ID ${rep.fixture_id?.slice(0, 8)}`,
-          iconType: 'referee',
-        });
-      });
-
-      // Add recent user registrations
-      allProfiles.slice(0, 5).forEach((prof) => {
-        feedItems.push({
-          id: `prof-${prof.id}`,
-          timestamp: new Date(prof.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          user: `${prof.first_name} ${prof.last_name}`.trim(),
-          role: prof.role,
-          action: 'registered account',
-          details: `New ${prof.role} onboarded to platform`,
-          iconType: prof.role as any,
-        });
-      });
-
-      // Sort feed items newest first
-      feedItems.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-      setActivityFeed(feedItems.slice(0, 15));
-
-      // Platform Errors computed dynamically from real database audit logs
-      const errorLogs = allAuditLogs.filter(
-        (l) => l.action?.includes('ERROR') || l.action?.includes('FAIL') || l.action?.includes('SUSPEND')
-      );
-
-      const computedErrors: PlatformErrorItem[] = errorLogs.map((errLog, idx) => ({
-        id: errLog.id || `err-${idx}`,
-        timestamp: new Date(errLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        source: errLog.resource_type || 'System Engine',
-        errorType: errLog.action,
-        message: errLog.details ? (typeof errLog.details === 'string' ? errLog.details : JSON.stringify(errLog.details)) : `Event logged for ${errLog.action}`,
-        severity: errLog.action?.includes('SUSPEND') ? 'medium' : 'high',
-        details: `Audit ID: ${errLog.id} | User: ${errLog.user_id || 'System'} | Action: ${errLog.action}`,
-        resolved: false,
-      }));
-
-      setPlatformErrors(computedErrors);
-
-      // Populate Plain-Language Failed API Calls
-      const mappedFailed: FailedApiCallRecord[] = [];
-      (adminErrorLogs || []).forEach((el: any) => {
-        mappedFailed.push({
-          id: el.id,
-          timestamp: new Date(el.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          endpoint: `/rest/v1/fixtures/${el.fixture_id ? el.fixture_id.slice(0, 8) : 'stats'}`,
-          method: 'POST',
-          statusCode: 422,
-          errorName: el.module_name || 'Calculation Error',
-          plainExplanation: el.error_message || 'A match statistics calculation failed database business logic validation.',
-          rootCause: 'Data inconsistency or missing foreign key in match events table during finalization.',
-          actionToFix: 'Verify match roster entries and ensure jersey numbers are correctly registered.',
-          resolved: false,
-        });
-      });
-
-      errorLogs.forEach((al: any) => {
-        mappedFailed.push({
-          id: `audit-${al.id}`,
-          timestamp: new Date(al.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          endpoint: `/rest/v1/${al.resource_type || 'platform'}`,
-          method: 'PATCH/POST',
-          statusCode: 403,
-          errorName: al.action,
-          plainExplanation: typeof al.details === 'string' ? al.details : (al.details?.reason || 'Security policy blocked an unauthorized operation.'),
-          rootCause: `Action ${al.action} blocked on ${al.resource_type} table.`,
-          actionToFix: 'Check user role privileges or verify database Row Level Security policies.',
-          resolved: false,
-        });
-      });
-
-      setFailedCalls(mappedFailed);
-
-
-      // Journalist Overview Summary
-      const publishedArt = allArticles.filter((a) => a.status === 'published');
-      const draftsArt = allArticles.filter((a) => a.status === 'draft');
-      const topArt = publishedArt[0] || null;
-      const totalArticleViews = allArticles.reduce((sum, a) => sum + (Number((a as any).views) || 0), 0);
-
-      setJournalistOverview({
-        totalJournalists: journalists.length,
-        articlesToday: publishedArt.length,
-        draftsCount: draftsArt.length,
-        publishedCount: publishedArt.length,
-        flaggedCount: allArticles.filter((a) => a.title?.includes('🔥') || a.status === 'flagged').length,
-        totalViews: totalArticleViews,
-        mostViewedArticle: topArt
-          ? {
-              id: topArt.id,
-              title: topArt.title,
-              views: Number((topArt as any).views) || 0,
-              author: journalists.find((j) => j.id === topArt.author_id)
-                ? `${journalists.find((j) => j.id === topArt.author_id)!.first_name} ${journalists.find((j) => j.id === topArt.author_id)!.last_name}`
-                : 'Journalist',
-            }
-          : null,
-        latestPublication: topArt
-          ? {
-              id: topArt.id,
-              title: topArt.title,
-              author: journalists.find((j) => j.id === topArt.author_id)
-                ? `${journalists.find((j) => j.id === topArt.author_id)!.first_name} ${journalists.find((j) => j.id === topArt.author_id)!.last_name}`
-                : 'Journalist',
-              publishedAt: new Date(topArt.created_at).toLocaleDateString(),
-            }
-          : null,
-        journalistsList: journalists.map((j) => {
-          const authorArticles = allArticles.filter((a) => a.author_id === j.id);
-          const views = authorArticles.reduce((s, a) => s + (Number((a as any).views) || 0), 0);
-          return {
-            id: j.id,
-            name: `${j.first_name || ''} ${j.last_name || ''}`.trim() || j.email,
-            email: j.email,
-            articlesCount: authorArticles.length,
-            totalViews: views,
-            impressions: views * 3,
-            status: j.bio?.includes('[SUSPENDED]') ? 'suspended' : 'active',
-            latestPublishDate: authorArticles[0]
-              ? new Date(authorArticles[0].created_at).toLocaleDateString()
-              : 'No articles yet',
-          };
-        }),
-      });
-
-      // Team Overview Summary
-      const avgP = allTeams.length > 0 ? Math.round(allPlayers.length / allTeams.length) : 0;
-      const squadCompPercent = allTeams.length > 0 ? Math.min(100, Math.round((allPlayers.length / (allTeams.length * 11)) * 100)) : 0;
-
-      // Build truthful teamsList first to derive truthful overview metrics
-      const mappedTeamsList = allTeams.map((t) => {
-        const coach = allProfiles.find((p) => p.id === t.coach_id);
-        const captain = allProfiles.find((p) => p.id === t.captain_id);
-        const teamPlayerCount = allPlayers.filter((p) => p.team_id === t.id).length;
-        const status: 'complete' | 'incomplete' | 'attention_needed' = !coach || !captain ? 'attention_needed' : teamPlayerCount < 11 ? 'incomplete' : 'complete';
-
-        // Determine League
-        const isChamp =
-          t.competition_id === '22222222-2222-2222-2222-222222222222' ||
-          t.competition_id?.includes('2222') ||
-          t.name?.toLowerCase().includes('championship');
-        const league: 'EPL' | 'Championship' = isChamp ? 'Championship' : 'EPL';
-
-        // Action 1: Upload Kits (must actually have custom kit configuration uploaded/assigned, not just default color code)
-        const hasUploadedKits = Boolean(
-          (Array.isArray(t.kits_config) && t.kits_config.length > 0) ||
-          ((t as any).kits && typeof (t as any).kits === 'object' && Object.keys((t as any).kits).length > 0) ||
-          (t as any).primary_kit ||
-          (t as any).secondary_kit
-        );
-
-        // Action 2: Arrange Squad / First 11 submitted by Coach
-        // Strict truth: Must have at least 11 player IDs and ALL 11 must actually be present in registered team roster
-        let rawXIIds: string[] = [];
-        if (t.starting_xi_str && typeof t.starting_xi_str === 'string') {
-          rawXIIds = t.starting_xi_str.split(',').map((id: string) => id.trim()).filter(Boolean);
-        } else if (t.temporary_match_squad?.startingXI && Array.isArray(t.temporary_match_squad.startingXI)) {
-          rawXIIds = t.temporary_match_squad.startingXI.map((p: any) => typeof p === 'string' ? p : p?.id).filter(Boolean);
-        }
-
-        const teamPlayers = allPlayers.filter((p) => p.team_id === t.id);
-        const teamPlayerIds = new Set(teamPlayers.map((p) => p.id));
-        const verifiedXI = rawXIIds.filter((id) => teamPlayerIds.has(id));
-        const hasLineupSubmitted = allMatchLineups.some(
-          (ml: any) => ml.team_id === t.id && Array.isArray(ml.starting_xi) && ml.starting_xi.length >= 11
-        );
-        const hasArrangedSquad = verifiedXI.length >= 11 || hasLineupSubmitted;
-        const coachHasSubmittedXI = hasArrangedSquad;
-
-        // Double tick for substitutes: check if substitutes are actually submitted and present in team roster
-        let rawSubIds: string[] = [];
-        if (t.substitutes_str && typeof t.substitutes_str === 'string') {
-          rawSubIds = t.substitutes_str.split(',').map((id: string) => id.trim()).filter(Boolean);
-        } else if (t.temporary_match_squad?.substitutes && Array.isArray(t.temporary_match_squad.substitutes)) {
-          rawSubIds = t.temporary_match_squad.substitutes.map((p: any) => typeof p === 'string' ? p : p?.id).filter(Boolean);
-        }
-        const hasSubsInLineup = allMatchLineups.some(
-          (ml: any) => ml.team_id === t.id && Array.isArray(ml.substitutes) && ml.substitutes.length > 0
-        );
-        const verifiedSubs = rawSubIds.filter((id) => teamPlayerIds.has(id) && !verifiedXI.includes(id));
-        const hasSubstitutes = hasArrangedSquad && (verifiedSubs.length > 0 || hasSubsInLineup);
-
-        // Action 3: Update Match Events (team has actual events recorded in match_events)
-        const hasMatchEvents = allMatchEvents.some((ev: any) => ev.team_id === t.id);
-
-        // Action 4: Upload Team Logo (must have valid logo_url update that actually went through to DB)
-        const hasUploadedLogo = Boolean(
-          t.logo_url &&
-          typeof t.logo_url === 'string' &&
-          t.logo_url.trim().length > 10 &&
-          !t.logo_url.startsWith('data:') &&
-          !t.logo_url.includes('placeholder')
-        );
-
-        // Team Readiness out of 4 actions (Upload Kits, Arrange Squad, Update Match Events, Upload Team Logo)
-        const readinessScore = [hasUploadedKits, hasArrangedSquad, hasMatchEvents, hasUploadedLogo].filter(Boolean).length;
-        const readinessPercentage = Math.round((readinessScore / 4) * 100);
-
-        let resolvedCoachName = coach ? `${coach.first_name} ${coach.last_name}`.trim() : 'Unassigned';
-        if (t.name?.toLowerCase().includes('super eagle') && (!coach || coach.first_name === 'Head Coach')) {
-          resolvedCoachName = 'The Special One';
-        }
-
-        let resolvedCaptainName = 'Unassigned';
-        const inMatchCapId = t.tactics_config?.roles?.captainId || t.temporary_match_squad?.roles?.captainId;
-        if (inMatchCapId) {
-          const inMatchCap = allPlayers.find((p) => p.id === inMatchCapId || p.profile_id === inMatchCapId);
-          if (inMatchCap) {
-            const capProf = allProfiles.find((p) => p.id === inMatchCap.profile_id);
-            resolvedCaptainName = (inMatchCap.first_name || inMatchCap.last_name)
-              ? `${inMatchCap.first_name || ''} ${inMatchCap.last_name || ''}`.trim()
-              : (capProf ? `${capProf.first_name} ${capProf.last_name}`.trim() : inMatchCap.name || 'Team Captain');
-          }
-        }
-        if (resolvedCaptainName === 'Unassigned' && captain) {
-          resolvedCaptainName = `${captain.first_name} ${captain.last_name}`.trim();
-        }
-
-        return {
-          id: t.id,
-          name: t.name,
-          logoUrl: t.logo_url,
-          coachName: resolvedCoachName,
-          captainName: resolvedCaptainName,
-          playersCount: teamPlayerCount,
-          league,
-          hasUploadedKits,
-          hasArrangedSquad,
-          hasSubstitutes,
-          substitutesCount: verifiedSubs.length,
-          hasMatchEvents,
-          hasUploadedLogo,
-          coachHasSubmittedXI,
-          readinessScore,
-          readinessPercentage,
-          status,
-          lastSubmission: new Date((t as any).created_at).toLocaleDateString(),
-        };
-      });
-
-      // Truthful latest squad submission
-      const teamWithLatestSquad = allTeams
-        .filter((t) => {
-          const m = mappedTeamsList.find((mt) => mt.id === t.id);
-          return m?.hasArrangedSquad;
-        })
-        .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())[0];
-
-      const latestCoach = teamWithLatestSquad ? allProfiles.find((p) => p.id === teamWithLatestSquad.coach_id) : null;
-
-      const avgReadinessPercentage = mappedTeamsList.length > 0
-        ? Math.round(mappedTeamsList.reduce((acc, t) => acc + t.readinessPercentage, 0) / mappedTeamsList.length)
-        : 0;
-
-      setTeamOverview({
-        totalTeams: allTeams.length,
-        avgPlayersPerTeam: avgP,
-        avgSquadCompletion: squadCompPercent,
-        avgReadinessPercentage,
-        practiceSchedulesCount: allTeams.length * 2,
-        upcomingFixturesCount: scheduledFix.length,
-        latestSquadSubmission: teamWithLatestSquad
-          ? {
-              teamName: teamWithLatestSquad.name,
-              submittedAt: new Date(teamWithLatestSquad.updated_at || (teamWithLatestSquad as any).created_at).toLocaleDateString(),
-              coachName: latestCoach
-                ? `${latestCoach.first_name} ${latestCoach.last_name}`
-                : 'Head Coach',
-            }
-          : null,
-        teamsNeedingAttentionCount: allTeams.filter((t) => !t.coach_id || !t.captain_id).length,
-        teamsList: mappedTeamsList,
-      });
-
-      // Referee Overview Summary
-      const unassignedRefs = referees.filter(
-        (r) => !allFixtures.some((f) => f.referee_id === r.id && (f.status === 'LIVE' || f.status === 'UPCOMING'))
-      );
-      const pendingMatchReports = completedFix.filter(
-        (f) => !allMatchReports.some((rep) => rep.fixture_id === f.id)
-      ).length;
-
-      setRefereeOverview({
-        totalReferees: referees.length,
-        availableReferees: unassignedRefs.length,
-        assignedToday: referees.length - unassignedRefs.length,
-        completedMatches: completedFix.length,
-        pendingReportsCount: pendingMatchReports,
-        cancelledMatchesCount: allFixtures.filter((f) => f.status === 'POSTPONED' || f.status === 'CANCELLED').length,
-        avgReportCompletionTimeMins: allMatchReports.length > 0 ? 25 : 0,
-        refereesList: referees.map((r) => {
-          const assignedCount = allFixtures.filter((f) => f.referee_id === r.id).length;
-          const reportsCount = allMatchReports.filter((m) => m.official_id === r.id).length;
-          const pendingCount = allFixtures.filter(
-            (f) => f.referee_id === r.id && f.status === 'FT' && !allMatchReports.some((m) => m.fixture_id === f.id)
-          ).length;
-          return {
-            id: r.id,
-            name: `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email,
-            email: r.email,
-            assignedFixturesCount: assignedCount,
-            completedFixturesCount: reportsCount,
-            pendingReportsCount: pendingCount,
-            status: assignedCount > 0 ? 'assigned' : 'available',
-            performanceRating: 5.0,
-          };
-        }),
-      });
-
-      // President Overview Summary
-      setPresidentOverview({
-        totalAnnouncements: allAnnouncements.length,
-        fixtureGenerationsCount: allFixtures.length > 0 ? Math.ceil(allFixtures.length / 10) : 0,
-        currentCompetition: 'Egerton Campus Premier League',
-        latestBroadcastsCount: allAnnouncements.length,
-        latestActions: allAnnouncements.map((a) => ({
-          id: a.id,
-          action: `Published announcement: "${a.title}"`,
-          timestamp: new Date(a.created_at).toLocaleString(),
-          user: 'League President',
-        })),
-      });
-
-      // Performance Telemetry from Real Database
-      const devicesList = Array.isArray(rawDevices) ? rawDevices : [];
-      const totalDevs = devicesList.length;
-      const todayIsoPrefix = new Date().toISOString().slice(0, 10);
-      const devicesToday = devicesList.filter((d) => d.last_seen_at && d.last_seen_at.startsWith(todayIsoPrefix)).length;
-
-      setPerformanceMetrics({
-        avgUserUptimePercentage: 99.98,
-        avgLoginTimeMs: 165,
-        avgApiResponseMs: pingMs,
-        dbLatencyMs: Math.max(8, Math.round(pingMs * 0.4)),
-        realtimeLatencyMs: 14,
-        storageUsageMb: 312,
-        articlesPerDay: Number((allArticles.length / 7).toFixed(1)),
-        uploadsToday: 24,
-        avgSessionDurationMins: 15.2,
-        peakConcurrentUsers: Math.max(devicesToday, 14),
-        activeSessionsCount: Math.max(1, Math.round(allProfiles.length * 0.22)),
-      });
-
-      // Compute Real Hourly Traffic dynamically from database timestamps
-      const realHourlyTraffic: HourlyTrafficData[] = [];
-      const currentH = new Date().getHours();
-      for (let h = 0; h < 24; h++) {
-        const hourLabel = `${String(h).padStart(2, '0')}:00`;
-        const devicesInHour = devicesList.filter((d: any) => {
-          if (!d.last_seen_at) return false;
-          const dt = new Date(d.last_seen_at);
-          return dt.toISOString().startsWith(todayIsoPrefix) && dt.getHours() === h;
-        }).length;
-
-        const usersCount = devicesInHour > 0 ? devicesInHour : (h <= currentH ? Math.max(1, Math.round(allProfiles.length * 0.015)) : 0);
-        realHourlyTraffic.push({
-          hour: hourLabel,
-          users: usersCount,
-          pageViews: usersCount * 4,
-          apiRequests: usersCount * 7,
-        });
+    const run = (async () => {
+      try {
+        const fresh = await fetchAdminSnapshot();
+        setSnapshot(fresh);
+        setProbeStats((prev) => ({ ...prev, attempts: prev.attempts + 1, successes: prev.successes + 1 }));
+        setSystemHealth((prev) => ({
+          ...prev,
+          apiStatus: statusFor(fresh.batchDurationMs, null, 1500, 5000),
+          apiLatencyMs: fresh.batchDurationMs,
+          dbStatus: fresh.timings.some((t) => t.error) ? 'warning' : statusFor(fresh.batchDurationMs, null, 1500, 5000),
+          dbLatencyMs: Math.min(...fresh.timings.filter((t) => !t.error).map((t) => t.durationMs), fresh.batchDurationMs),
+          lastChecked: new Date().toLocaleTimeString(),
+        }));
+      } catch (err: any) {
+        console.error('Error loading admin snapshot:', err);
+        setProbeStats((prev) => ({ ...prev, attempts: prev.attempts + 1 }));
+        setErrorMsg(err?.message || 'Failed to load system data from Supabase.');
+        if (cached) setSnapshot(cached);
+      } finally {
+        setIsLoading(false);
+        setIsRevalidating(false);
+        inFlightRef.current = null;
       }
-      setHourlyTraffic(realHourlyTraffic);
+    })();
+    inFlightRef.current = run;
+    return run;
+  }, [snapshot]);
 
-      // Compute Real Page Visit Analytics from database setting or live schema metrics
-      if (admin2AnalyticsSetting?.value?.pageViewsCurrent?.perDay) {
-        const pCur = admin2AnalyticsSetting.value.pageViewsCurrent.perDay;
-        const totalVisits = (pCur.homepage || 0) + (pCur.fixtures || 0) + (pCur.standings || 0) + (pCur.formTables || 0) + (pCur.teamsProfiles || 0) + (pCur.matchDetails || 0) + (pCur.otherPages || 0);
-        setPageVisitAnalytics([
-          { route: '/home', title: 'Main Matchday Feed & Top Stories', visits: pCur.homepage, uniqueVisitors: Math.round(pCur.homepage * 0.4), percentageShare: totalVisits ? Math.round((pCur.homepage / totalVisits) * 100) : 35, avgDwellTime: '4m 12s', bounceRate: '16%' },
-          { route: '/fixtures', title: 'Campus League Fixtures & Results', visits: pCur.fixtures, uniqueVisitors: Math.round(pCur.fixtures * 0.5), percentageShare: totalVisits ? Math.round((pCur.fixtures / totalVisits) * 100) : 20, avgDwellTime: '2m 45s', bounceRate: '22%' },
-          { route: '/standings', title: 'Premier League Table & Form Guide', visits: pCur.standings, uniqueVisitors: Math.round(pCur.standings * 0.45), percentageShare: totalVisits ? Math.round((pCur.standings / totalVisits) * 100) : 15, avgDwellTime: '3m 10s', bounceRate: '19%' },
-          { route: '/match-details', title: 'Live Match Center & Realtime Events', visits: pCur.matchDetails, uniqueVisitors: Math.round(pCur.matchDetails * 0.55), percentageShare: totalVisits ? Math.round((pCur.matchDetails / totalVisits) * 100) : 12, avgDwellTime: '8m 34s', bounceRate: '11%' },
-          { route: '/team-details', title: 'Club Rosters, Pitch Tactics & Kits', visits: pCur.teamsProfiles, uniqueVisitors: Math.round(pCur.teamsProfiles * 0.4), percentageShare: totalVisits ? Math.round((pCur.teamsProfiles / totalVisits) * 100) : 10, avgDwellTime: '3m 22s', bounceRate: '28%' },
-          { route: '/form', title: 'Form Tables & Tactical Streaks', visits: pCur.formTables, uniqueVisitors: Math.round(pCur.formTables * 0.35), percentageShare: totalVisits ? Math.round((pCur.formTables / totalVisits) * 100) : 5, avgDwellTime: '2m 15s', bounceRate: '20%' },
-          { route: '/other', title: 'Other Campus Sports Portals', visits: pCur.otherPages, uniqueVisitors: Math.round(pCur.otherPages * 0.3), percentageShare: totalVisits ? Math.round((pCur.otherPages / totalVisits) * 100) : 3, avgDwellTime: '1m 50s', bounceRate: '25%' },
-        ]);
-      }
-
-      // Real query duration benchmarking against actual tables
-      setSlowQueries([
-        {
-          id: 'q1',
-          query: 'SELECT * FROM profiles WHERE role = "player" AND team_id IS NOT NULL',
-          durationMs: Math.max(12, Math.round(pingMs * 0.6)),
-          tableName: 'profiles',
-          recommendedIndex: 'CREATE INDEX idx_profiles_role_team ON profiles (role, team_id);',
-          isOptimized: true,
-        },
-        {
-          id: 'q2',
-          query: 'SELECT * FROM fixtures WHERE status IN ("LIVE", "UPCOMING") ORDER BY scheduled_time ASC',
-          durationMs: Math.max(16, Math.round(pingMs * 0.8)),
-          tableName: 'fixtures',
-          recommendedIndex: 'CREATE INDEX idx_fixtures_status_scheduled ON fixtures (status, scheduled_time ASC);',
-          isOptimized: true,
-        },
-        {
-          id: 'q3',
-          query: 'SELECT * FROM news_articles WHERE status = "published" ORDER BY created_at DESC',
-          durationMs: Math.max(10, Math.round(pingMs * 0.5)),
-          tableName: 'news_articles',
-          recommendedIndex: 'CREATE INDEX idx_news_published_created ON news_articles (status, created_at DESC);',
-          isOptimized: true,
-        },
-      ]);
-
-    } catch (err: any) {
-      console.error('Error fetching admin operations data:', err);
-      setErrorMsg(err.message || 'Failed to load system data from Supabase.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Fresh reload on mount and explicit login
+  // Mount: serve the cache instantly and revalidate only if stale.
   useEffect(() => {
-    fetchOperationsData();
-
+    loadSnapshot('auto');
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
-        fetchOperationsData(true);
-      }
+      if (event === 'SIGNED_IN') loadSnapshot('auto');
     });
-
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, [fetchOperationsData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // When switching directly into Admin 2, trigger a fresh reload
+  // Entering Admin 2 gets a stale-check, never an unconditional re-pull.
   useEffect(() => {
-    if (activeTab === 'admin_2') {
-      fetchOperationsData(true);
-    }
-  }, [activeTab, fetchOperationsData]);
+    if (activeTab === 'admin_2') loadSnapshot('auto');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
-  // 2. Action: Suspend User
+  /** Optimistically patch cached raw rows so the UI reflects an action immediately. */
+  const patchSnapshot = useCallback((mutate: (draft: AdminRawSnapshot) => void) => {
+    setSnapshot((prev) => {
+      if (!prev) return prev;
+      const draft: AdminRawSnapshot = {
+        ...prev,
+        profiles: prev.profiles.map((p) => ({ ...p })),
+        players: prev.players.map((p) => ({ ...p })),
+        announcements: [...prev.announcements],
+        auditLogs: [...prev.auditLogs],
+      };
+      mutate(draft);
+      writeCachedSnapshot(draft);
+      return draft;
+    });
+  }, []);
+
+  const appendAuditRow = useCallback((draft: AdminRawSnapshot, row: Record<string, any>) => {
+    draft.auditLogs.unshift({ id: `local-${Date.now()}`, created_at: new Date().toISOString(), ...row });
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
   const handleSuspendUser = useCallback(async (userId: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
-      const user = userDirectory.find((u) => u.id === userId);
+      const user = derived?.userDirectory.find((u) => u.id === userId);
       if (!user) return;
 
       const updatedBio = `[SUSPENDED] Account suspended by Admin on ${new Date().toLocaleDateString()}`;
-      const { error } = await supabase
-        .from('profiles')
-        .update({ bio: updatedBio })
-        .eq('id', userId);
-
+      const { error } = await supabase.from('profiles').update({ bio: updatedBio }).eq('id', userId);
       if (error) throw error;
 
-      // Log in audit log table
-      await supabase.from('audit_logs').insert({
+      const auditRow = {
         user_id: userId,
         user_role: user.role,
         action: 'SUSPEND_USER',
         resource_type: 'profiles',
         resource_id: userId,
         details: { email: user.email, reason: 'Admin suspended account' },
-      });
+      };
+      await supabase.from('audit_logs').insert(auditRow);
 
-      setUserDirectory((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, status: 'suspended' } : u))
-      );
+      patchSnapshot((draft) => {
+        const row = draft.profiles.find((p) => p.id === userId);
+        if (row) row.bio = updatedBio;
+        appendAuditRow(draft, auditRow);
+      });
       showToast(`User ${user.name} has been suspended.`);
     } catch (err: any) {
       console.error('Error suspending user:', err);
       showToast(`Failed to suspend user: ${err.message}`);
     }
-  }, [userDirectory, showToast]);
+  }, [derived, patchSnapshot, appendAuditRow, showToast]);
 
-  // 3. Action: Activate User
   const handleActivateUser = useCallback(async (userId: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
-      const user = userDirectory.find((u) => u.id === userId);
+      const user = derived?.userDirectory.find((u) => u.id === userId);
       if (!user) return;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ bio: '' })
-        .eq('id', userId);
-
+      const { error } = await supabase.from('profiles').update({ bio: '' }).eq('id', userId);
       if (error) throw error;
 
-      await supabase.from('audit_logs').insert({
+      const auditRow = {
         user_id: userId,
         user_role: user.role,
         action: 'ACTIVATE_USER',
         resource_type: 'profiles',
         resource_id: userId,
         details: { email: user.email, reason: 'Admin restored account access' },
-      });
+      };
+      await supabase.from('audit_logs').insert(auditRow);
 
-      setUserDirectory((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, status: 'active' } : u))
-      );
+      patchSnapshot((draft) => {
+        const row = draft.profiles.find((p) => p.id === userId);
+        if (row) row.bio = '';
+        appendAuditRow(draft, auditRow);
+      });
       showToast(`User ${user.name} access restored.`);
     } catch (err: any) {
       console.error('Error activating user:', err);
       showToast(`Failed to activate user: ${err.message}`);
     }
-  }, [userDirectory, showToast]);
+  }, [derived, patchSnapshot, appendAuditRow, showToast]);
 
-  // 4. Action: Change User Role
   const handleChangeUserRole = useCallback(async (userId: string, newRole: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
-      const user = userDirectory.find((u) => u.id === userId);
+      const user = derived?.userDirectory.find((u) => u.id === userId);
       if (!user) return;
       const oldRole = user.role;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
+      const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
       if (error) throw error;
 
-      await supabase.from('audit_logs').insert({
+      const auditRow = {
         user_id: userId,
         user_role: newRole,
         action: 'CHANGE_USER_ROLE',
         resource_type: 'profiles',
         resource_id: userId,
         details: { oldRole, newRole, updated_by: 'admin' },
-      });
+      };
+      await supabase.from('audit_logs').insert(auditRow);
 
-      setUserDirectory((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, role: newRole as any } : u))
-      );
+      patchSnapshot((draft) => {
+        const row = draft.profiles.find((p) => p.id === userId);
+        if (row) row.role = newRole;
+        appendAuditRow(draft, auditRow);
+      });
       showToast(`User ${user.name} role changed to ${newRole.toUpperCase()}`);
-      fetchOperationsData();
     } catch (err: any) {
       console.error('Error changing user role:', err);
       showToast(`Failed to change role: ${err.message}`);
     }
-  }, [userDirectory, showToast, fetchOperationsData]);
+  }, [derived, patchSnapshot, appendAuditRow, showToast]);
 
-  // 4. Action: Reset Password Trigger
   const handleResetPassword = useCallback(async (email: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
@@ -1032,78 +386,90 @@ export const useAdminOperationsData = () => {
         resource_id: email,
         details: { triggered_by: 'admin' },
       });
-
       showToast(`Password reset link dispatched to ${email}`);
     } catch (err: any) {
-      showToast(`Password reset notification recorded for ${email}`);
+      showToast(`Password reset failed for ${email}: ${err?.message || 'auth service error'}`);
     }
   }, [showToast]);
 
-  // 5. Action: Post Announcement
   const handlePostAnnouncement = useCallback(async (title: string, content: string, targetRole: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
       const { data: authData } = await supabase.auth.getUser();
       const adminId = authData.user?.id;
 
-      const { error } = await supabase.from('announcements').insert({
-        title,
-        content,
-        target_role: targetRole,
-        author_id: adminId || null,
-      });
-
+      const { data: inserted, error } = await supabase
+        .from('announcements')
+        .insert({ title, content, target_role: targetRole, author_id: adminId || null })
+        .select('*')
+        .maybeSingle();
       if (error) throw error;
 
-      await supabase.from('audit_logs').insert({
+      const auditRow = {
         user_id: adminId || null,
         user_role: 'admin',
         action: 'CREATE_ANNOUNCEMENT',
         resource_type: 'announcements',
         details: { title, targetRole },
-      });
+      };
+      await supabase.from('audit_logs').insert(auditRow);
 
+      patchSnapshot((draft) => {
+        draft.announcements.unshift(
+          inserted || { id: `local-${Date.now()}`, title, content, target_role: targetRole, author_id: adminId, created_at: new Date().toISOString() }
+        );
+        appendAuditRow(draft, auditRow);
+      });
       showToast('Platform announcement published successfully!');
-      fetchOperationsData();
     } catch (err: any) {
       console.error('Error posting announcement:', err);
       showToast(`Failed to post announcement: ${err.message}`);
     }
-  }, [showToast, fetchOperationsData]);
+  }, [patchSnapshot, appendAuditRow, showToast]);
 
-  // 5b. Action: Approve Player
   const handleApprovePlayer = useCallback(async (playerId: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
-      const pl = playersList.find((p) => p.id === playerId);
-      await supabase.from('players').update({ is_approved: true, status: 'Fit' }).eq('id', playerId);
+      const pl = derived?.playersList.find((p) => p.id === playerId);
+      const { error } = await supabase.from('players').update({ is_approved: true, status: 'Fit' }).eq('id', playerId);
+      if (error) throw error;
       if (pl?.profileId) {
         await supabase.from('profiles').update({ is_verified: true }).eq('id', pl.profileId);
       }
-      setPlayersList((prev) =>
-        prev.map((p) => (p.id === playerId ? { ...p, isApproved: true, status: 'Fit' } : p))
-      );
+      patchSnapshot((draft) => {
+        const row = draft.players.find((p) => p.id === playerId);
+        if (row) {
+          row.is_approved = true;
+          row.status = 'Fit';
+        }
+        if (pl?.profileId) {
+          const prof = draft.profiles.find((p) => p.id === pl.profileId);
+          if (prof) prof.is_verified = true;
+        }
+      });
       showToast(`Player ${pl?.name || ''} approved and activated successfully!`);
     } catch (err: any) {
       showToast(`Failed to approve player: ${err.message}`);
     }
-  }, [playersList, showToast]);
+  }, [derived, patchSnapshot, showToast]);
 
-  // 5c. Action: Reject / Remove Player
   const handleRejectPlayer = useCallback(async (playerId: string) => {
     try {
       await rateLimiter.acquire('admin-operations');
-      const pl = playersList.find((p) => p.id === playerId);
-      await supabase.from('players').delete().eq('id', playerId);
-      setPlayersList((prev) => prev.filter((p) => p.id !== playerId));
+      const pl = derived?.playersList.find((p) => p.id === playerId);
+      const { error } = await supabase.from('players').delete().eq('id', playerId);
+      if (error) throw error;
+      patchSnapshot((draft) => {
+        draft.players = draft.players.filter((p) => p.id !== playerId);
+      });
       showToast(`Removed ${pl?.name || 'player'} from squad.`);
     } catch (err: any) {
       showToast(`Failed to remove player: ${err.message}`);
     }
-  }, [playersList, showToast]);
+  }, [derived, patchSnapshot, showToast]);
 
-  // 6. Action: Export Audit Logs CSV
   const handleExportAuditLogsCSV = useCallback(() => {
+    const auditLogs = derived?.auditLogs || [];
     if (auditLogs.length === 0) {
       showToast('No audit logs available to export.');
       return;
@@ -1121,188 +487,216 @@ export const useAdminOperationsData = () => {
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', encodeURI(csvContent));
     link.setAttribute('download', `system_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     showToast('Audit logs exported to CSV file.');
-  }, [auditLogs, showToast]);
+  }, [derived, showToast]);
 
-  // Filtered User Directory
+  // ---------------------------------------------------------------------------
+  // Filters
+  // ---------------------------------------------------------------------------
+  const userDirectory = useMemo(() => derived?.userDirectory ?? [], [derived]);
+  const auditLogs = useMemo(() => derived?.auditLogs ?? [], [derived]);
+
   const filteredUsers = useMemo(() => {
+    const term = userSearchTerm.toLowerCase();
     return userDirectory.filter((user) => {
       const matchesSearch =
-        user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        user.name.toLowerCase().includes(term) ||
+        user.email.toLowerCase().includes(term) ||
         user.phone.includes(userSearchTerm);
-
       const matchesRole = userRoleFilter === 'ALL' || user.role.toLowerCase() === userRoleFilter.toLowerCase();
       const matchesStatus = userStatusFilter === 'ALL' || user.status === userStatusFilter;
-
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [userDirectory, userSearchTerm, userRoleFilter, userStatusFilter]);
 
-  // Filtered Audit Logs
   const filteredAuditLogs = useMemo(() => {
+    const term = auditSearchTerm.toLowerCase();
     return auditLogs.filter((log) => {
       const matchesSearch =
-        log.userName.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
-        log.action.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
-        log.affectedRecord.toLowerCase().includes(auditSearchTerm.toLowerCase());
-
+        log.userName.toLowerCase().includes(term) ||
+        log.action.toLowerCase().includes(term) ||
+        log.affectedRecord.toLowerCase().includes(term);
       const matchesRole = auditRoleFilter === 'ALL' || log.userRole.toLowerCase() === auditRoleFilter.toLowerCase();
       const matchesAction = auditActionFilter === 'ALL' || log.action.toUpperCase().includes(auditActionFilter.toUpperCase());
-
       return matchesSearch && matchesRole && matchesAction;
     });
   }, [auditLogs, auditSearchTerm, auditRoleFilter, auditActionFilter]);
 
-  // Actionable Platform Insights
+  // ---------------------------------------------------------------------------
+  // Insights, computed from the derived figures only
+  // ---------------------------------------------------------------------------
   const platformInsights = useMemo<PlatformInsightItem[]>(() => {
     const insights: PlatformInsightItem[] = [];
+    if (!derived) return insights;
+    const { refereeOverview, teamOverview, journalistOverview, playersList, storageUsageMb } = derived;
 
-    // Referees pending reports
     if (refereeOverview.pendingReportsCount > 0) {
       insights.push({
         id: 'ins-ref',
         severity: 'critical',
-        title: `${refereeOverview.pendingReportsCount} Referee match reports unsubmitted`,
-        message: 'Matches finished without official referee confirmation report.',
+        title: `${refereeOverview.pendingReportsCount} referee match reports unsubmitted`,
+        message: 'Matches finished without an official referee confirmation report.',
         actionRequired: 'Review Referee Overview',
         targetTab: 'overviews',
       });
     }
-
-    // Teams lacking complete roster
     if (teamOverview.teamsNeedingAttentionCount > 0) {
       insights.push({
         id: 'ins-team',
         severity: 'warning',
-        title: `${teamOverview.teamsNeedingAttentionCount} Teams require leadership assignment`,
+        title: `${teamOverview.teamsNeedingAttentionCount} teams require leadership assignment`,
         message: 'Teams missing either an assigned Head Coach or Team Captain.',
         actionRequired: 'Inspect Team Overview',
         targetTab: 'overviews',
       });
     }
-
-    // Flagged articles
+    const pendingPlayers = playersList.filter((p) => !p.isApproved).length;
+    if (pendingPlayers > 0) {
+      insights.push({
+        id: 'ins-players',
+        severity: 'warning',
+        title: `${pendingPlayers} player registrations awaiting approval`,
+        message: 'Registered players are not eligible for selection until approved.',
+        actionRequired: 'Open Player Approvals',
+        targetTab: 'players',
+      });
+    }
     if (journalistOverview.flaggedCount > 0) {
       insights.push({
         id: 'ins-news',
         severity: 'warning',
-        title: `${journalistOverview.flaggedCount} News articles awaiting moderation`,
-        message: 'Articles marked with high engagement or editorial flags.',
+        title: `${journalistOverview.flaggedCount} news articles awaiting moderation`,
+        message: 'Articles carrying an editorial flag.',
         actionRequired: 'Inspect Journalist Overview',
         targetTab: 'overviews',
       });
     }
-
-    // Storage Status
+    const failedTables = snapshot?.timings.filter((t) => t.error) ?? [];
+    if (failedTables.length > 0) {
+      insights.push({
+        id: 'ins-grants',
+        severity: 'critical',
+        title: `${failedTables.length} tables could not be read by the admin session`,
+        message: failedTables.map((t) => `${t.table}: ${t.error}`).join(' · '),
+        actionRequired: 'Open Health Diagnostics',
+        targetTab: 'health',
+      });
+    }
     insights.push({
       id: 'ins-storage',
       severity: 'info',
-      title: 'Media Storage Usage at 312 MB',
-      message: 'Supabase storage bucket is operating within nominal limits (31.2% capacity).',
+      title: `Team logo storage at ${storageUsageMb} MB`,
+      message: `${snapshot?.storageObjects.length ?? 0} objects measured in the team-logos bucket.`,
       actionRequired: 'View Storage Telemetry',
-      targetTab: 'performance',
+      targetTab: 'health',
     });
-
-    // System Status
-    insights.push({
-      id: 'ins-sys',
-      severity: 'success',
-      title: 'All Core Platform Services Operational',
-      message: 'Database, Authentication, Storage, and Realtime engines are healthy.',
-    });
-
+    if (failedTables.length === 0 && !errorMsg) {
+      insights.push({
+        id: 'ins-sys',
+        severity: 'success',
+        title: 'All admin data sources readable',
+        message: `Snapshot of ${snapshot?.timings.length ?? 0} tables completed in ${snapshot?.batchDurationMs ?? 0}ms.`,
+      });
+    }
     return insights;
-  }, [refereeOverview, teamOverview, journalistOverview]);
+  }, [derived, snapshot, errorMsg]);
 
+  // ---------------------------------------------------------------------------
+  // Live health probe (measured, not simulated)
+  // ---------------------------------------------------------------------------
   const runLiveDiagnostic = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
+    if (!isSilent) setIsRevalidating(true);
     try {
       const t0 = performance.now();
       const { error: dbErr } = await supabase.from('profiles').select('id', { head: true, count: 'exact' });
       const dbMs = Math.round(performance.now() - t0);
 
       const t1 = performance.now();
-      const { error: authErr } = await supabase.auth.getSession();
+      const { error: authErr } = await supabase.auth.getUser();
       const authMs = Math.round(performance.now() - t1);
 
       const t2 = performance.now();
-      const { error: storErr } = await supabase.storage.listBuckets();
+      const { error: storErr } = await supabase.storage.from('team-logos').list('logos', { limit: 1 });
       const storMs = Math.round(performance.now() - t2);
 
-      const avgMs = Math.max(12, Math.round((dbMs + authMs + storMs) / 3));
+      const realtimeMs = await measureRealtimeLatency();
+
+      const anyErr = dbErr || authErr || storErr;
+      const avgMs = Math.round((dbMs + authMs + storMs) / 3);
 
       setSystemHealth({
-        apiStatus: avgMs < 400 ? 'healthy' : avgMs < 900 ? 'warning' : 'offline',
+        apiStatus: statusFor(avgMs, anyErr, 800, 3000),
         apiLatencyMs: avgMs,
-        dbStatus: !dbErr && dbMs < 300 ? 'healthy' : 'warning',
-        dbLatencyMs: dbMs || 18,
-        authStatus: !authErr ? 'healthy' : 'warning',
-        storageStatus: !storErr ? 'healthy' : 'warning',
-        realtimeStatus: 'healthy',
+        dbStatus: statusFor(dbMs, dbErr, 600, 3000),
+        dbLatencyMs: dbMs,
+        authStatus: authErr ? 'warning' : 'healthy',
+        storageStatus: storErr ? 'warning' : 'healthy',
+        realtimeStatus: realtimeMs > 0 ? 'healthy' : 'warning',
         lastChecked: new Date().toLocaleTimeString(),
       });
 
-      if (dbErr || authErr || storErr) {
+      setProbeStats((prev) => {
+        const attempts = prev.attempts + 1;
+        const successes = prev.successes + (anyErr ? 0 : 1);
+        const avgAuthMs = prev.avgAuthMs === 0 ? authMs : prev.avgAuthMs * 0.7 + authMs * 0.3;
+        return { attempts, successes, avgAuthMs, realtimeLatencyMs: realtimeMs || prev.realtimeLatencyMs };
+      });
+
+      if (anyErr) {
         const err = dbErr || authErr || storErr;
-        setFailedCalls((prev) => [
+        setRuntimeFailedCalls((prev) => [
           {
             id: `diag-err-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            endpoint: '/rest/v1/health-check',
+            endpoint: dbErr ? '/rest/v1/profiles' : authErr ? '/auth/v1/user' : '/storage/v1/object/list/team-logos',
             method: 'GET',
-            statusCode: 500,
-            errorName: 'Diagnostic Ping Intercept',
-            plainExplanation: 'A diagnostic query returned an unexpected response.',
-            rootCause: err?.message || 'High network latency between client and cloud database.',
-            actionToFix: 'Check internet connection and verify Supabase project status in cloud console.',
+            statusCode: /permission denied/i.test(err?.message || '') ? 403 : 500,
+            errorName: 'Diagnostic Probe Failure',
+            plainExplanation: err?.message || 'A diagnostic query returned an unexpected response.',
+            rootCause: dbErr ? 'Database grant/RLS or connectivity problem.' : authErr ? 'Auth service rejected the session token.' : 'Storage bucket unreadable.',
+            actionToFix: 'Check the Supabase project status and the signed-in role grants.',
             resolved: false,
           },
-          ...prev,
+          ...prev.slice(0, 49),
         ]);
       }
 
       setProbeCount((c) => c + 1);
-      if (!isSilent) {
-        showToast('Live diagnostic completed successfully.');
-      }
+      if (!isSilent) showToast('Live diagnostic completed.');
     } catch (err: any) {
-      if (!isSilent) {
-        showToast(`Diagnostic failed: ${err.message}`);
-      }
+      setProbeStats((prev) => ({ ...prev, attempts: prev.attempts + 1 }));
+      if (!isSilent) showToast(`Diagnostic failed: ${err.message}`);
     } finally {
-      if (!isSilent) {
-        setIsLoading(false);
-      }
+      if (!isSilent) setIsRevalidating(false);
     }
   }, [showToast]);
 
   const toggleProbe = useCallback(() => {
     setIsProbeRunning((prev) => {
       const next = !prev;
-      showToast(next ? 'Health probe activated (30s interval).' : 'Health probe paused.');
+      showToast(next ? `Health probe activated (${PROBE_INTERVAL_MS / 60000} min interval).` : 'Health probe paused.');
       return next;
     });
   }, [showToast]);
 
-  // Automated background health probe running every 30 seconds
   useEffect(() => {
     if (!isProbeRunning) return;
     const interval = setInterval(() => {
-      if (!isTabVisible()) return;
+      if (!isTabVisible() || !isSessionActive()) return;
       runLiveDiagnostic(true);
-    }, 30000);
+    }, PROBE_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [isProbeRunning, runLiveDiagnostic]);
 
+  // ---------------------------------------------------------------------------
+  // Admin 2 gate
+  // ---------------------------------------------------------------------------
   const verifyAdmin2Password = useCallback(async (passwordInput: string): Promise<boolean> => {
     try {
       await rateLimiter.acquire('admin-operations');
@@ -1311,13 +705,8 @@ export const useAdminOperationsData = () => {
         .select('value')
         .eq('key', 'admin_2_security')
         .maybeSingle();
-
-      if (error || !data?.value?.password) {
-        return false;
-      }
-
-      const storedPass = data.value.password;
-      return passwordInput.trim() === storedPass.trim();
+      if (error || !data?.value?.password) return false;
+      return passwordInput.trim() === String(data.value.password).trim();
     } catch {
       return false;
     }
@@ -1328,11 +717,7 @@ export const useAdminOperationsData = () => {
       await rateLimiter.acquire('admin-operations');
       const { error } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'admin_2_security',
-          value: { password: newPassword, updated_at: new Date().toISOString() },
-        });
-
+        .upsert({ key: 'admin_2_security', value: { password: newPassword, updated_at: new Date().toISOString() } });
       if (error) throw error;
 
       await supabase.from('audit_logs').insert({
@@ -1340,7 +725,6 @@ export const useAdminOperationsData = () => {
         resource_type: 'system_settings',
         details: { updated_at: new Date().toISOString() },
       });
-
       showToast('Admin 2 Master Password updated in database.');
       return true;
     } catch (err: any) {
@@ -1349,16 +733,15 @@ export const useAdminOperationsData = () => {
     }
   }, [showToast]);
 
-  const applyIndexOptimization = useCallback((queryId: string) => {
-    setSlowQueries((prev) =>
-      prev.map((q) => (q.id === queryId ? { ...q, isOptimized: true, durationMs: Math.round(q.durationMs * 0.25) } : q))
-    );
-    showToast('Applied index optimization simulation.');
-  }, [showToast]);
+  /** Re-measures the batch; the "index advisor" reports real timings only. */
+  const applyIndexOptimization = useCallback(() => {
+    showToast('Re-measuring query timings against the live database…');
+    loadSnapshot('force');
+  }, [showToast, loadSnapshot]);
 
   const clearFailedCalls = useCallback(() => {
-    setFailedCalls([]);
-    showToast('Failed calls log cleared.');
+    setRuntimeFailedCalls([]);
+    showToast('Runtime failed-call log cleared. Persisted database errors remain listed.');
   }, [showToast]);
 
   const unlockAdmin2 = useCallback(() => {
@@ -1366,8 +749,8 @@ export const useAdminOperationsData = () => {
     try {
       sessionStorage.setItem('esn_admin_2_unlocked', 'true');
     } catch {}
-    fetchOperationsData(true);
-  }, [fetchOperationsData]);
+    loadSnapshot('auto');
+  }, [loadSnapshot]);
 
   const relockAdmin2 = useCallback(() => {
     setIsAdmin2Unlocked(false);
@@ -1383,32 +766,44 @@ export const useAdminOperationsData = () => {
     try {
       sessionStorage.setItem('esn_admin_2fa_verified', 'true');
       if (clearanceType === 'weekly') {
-        const weeklyClearedUntil = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        localStorage.setItem('esn_admin_2fa_cleared_until', String(weeklyClearedUntil));
+        localStorage.setItem('esn_admin_2fa_cleared_until', String(Date.now() + 7 * 24 * 60 * 60 * 1000));
         showToast('Two-factor authentication clearance granted for 1 week.');
       } else {
         localStorage.removeItem('esn_admin_2fa_cleared_until');
         showToast('Emergency passkey accepted for current session.');
       }
     } catch {}
-    fetchOperationsData(true);
-  }, [showToast, fetchOperationsData]);
+    loadSnapshot('auto');
+  }, [showToast, loadSnapshot]);
 
   const refreshData = useCallback(() => {
-    fetchOperationsData();
-  }, [fetchOperationsData]);
+    loadSnapshot('force');
+  }, [loadSnapshot]);
+
+  const failedCalls = useMemo(
+    () => [...runtimeFailedCalls, ...(derived?.failedCalls ?? [])],
+    [runtimeFailedCalls, derived]
+  );
+
+  const emptyPageAnalytics: PageVisitAnalytics[] = [];
 
   return {
     activeTab,
     setActiveTab,
     isLoading,
+    isRevalidating,
+    lastSyncedLabel,
     errorMsg,
     toastMessage,
     showToast,
-    platformHealth,
+    platformHealth: derived?.platformHealth ?? {
+      totalUsers: 0, activeUsersToday: 0, onlineUsers: 0, revokedUsers: 0, uptimePercentage: 0,
+      totalTeams: 0, totalPlayers: 0, totalReferees: 0, totalJournalists: 0, totalCoaches: 0,
+      totalCaptains: 0, totalArticles: 0, scheduledMatches: 0, completedMatches: 0,
+    },
     systemHealth,
-    activityFeed,
-    platformErrors,
+    activityFeed: derived?.activityFeed ?? [],
+    platformErrors: derived?.platformErrors ?? [],
     userDirectory,
     filteredUsers,
     userSearchTerm,
@@ -1425,11 +820,25 @@ export const useAdminOperationsData = () => {
     setAuditRoleFilter,
     auditActionFilter,
     setAuditActionFilter,
-    journalistOverview,
-    teamOverview,
-    refereeOverview,
-    presidentOverview,
-    performanceMetrics,
+    journalistOverview: derived?.journalistOverview ?? {
+      totalJournalists: 0, articlesToday: 0, draftsCount: 0, publishedCount: 0, flaggedCount: 0,
+      totalViews: 0, mostViewedArticle: null, latestPublication: null, journalistsList: [],
+    },
+    teamOverview: derived?.teamOverview ?? {
+      totalTeams: 0, avgPlayersPerTeam: 0, avgSquadCompletion: 0, practiceSchedulesCount: 0,
+      upcomingFixturesCount: 0, latestSquadSubmission: null, teamsNeedingAttentionCount: 0, teamsList: [],
+    },
+    refereeOverview: derived?.refereeOverview ?? {
+      totalReferees: 0, availableReferees: 0, assignedToday: 0, completedMatches: 0,
+      pendingReportsCount: 0, cancelledMatchesCount: 0, avgReportCompletionTimeMins: 0, refereesList: [],
+    },
+    presidentOverview: derived?.presidentOverview ?? {
+      totalAnnouncements: 0, fixtureGenerationsCount: 0, currentCompetition: '—', latestBroadcastsCount: 0, latestActions: [],
+    },
+    performanceMetrics: derived?.performanceMetrics ?? {
+      avgUserUptimePercentage: 0, avgLoginTimeMs: 0, avgApiResponseMs: 0, dbLatencyMs: 0, realtimeLatencyMs: 0,
+      storageUsageMb: 0, articlesPerDay: 0, uploadsToday: 0, avgSessionDurationMins: 0, peakConcurrentUsers: 0, activeSessionsCount: 0,
+    },
     platformInsights,
     activeModal,
     setActiveModal,
@@ -1441,14 +850,14 @@ export const useAdminOperationsData = () => {
     handleResetPassword,
     handlePostAnnouncement,
     handleExportAuditLogsCSV,
-    playersList,
+    playersList: derived?.playersList ?? [],
     handleApprovePlayer,
     handleRejectPlayer,
     refreshData,
     failedCalls,
-    slowQueries,
-    hourlyTraffic,
-    pageVisitAnalytics,
+    slowQueries: derived?.slowQueries ?? [],
+    hourlyTraffic: derived?.hourlyTraffic ?? [],
+    pageVisitAnalytics: derived?.pageVisitAnalytics ?? emptyPageAnalytics,
     isAdmin2Unlocked,
     unlockAdmin2,
     relockAdmin2,
@@ -1464,5 +873,3 @@ export const useAdminOperationsData = () => {
     clearFailedCalls,
   };
 };
-
-

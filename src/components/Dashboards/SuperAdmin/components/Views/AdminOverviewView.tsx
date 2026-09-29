@@ -210,7 +210,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
               <span>System Uptime</span>
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-2xl font-black text-emerald-400 font-mono">{platformHealth.uptimePercentage || 99.98}%</div>
+            <div className="text-2xl font-black text-emerald-400 font-mono">{platformHealth.uptimePercentage}%</div>
             <div className="text-[10px] text-emerald-400 font-semibold">SLA Availability</div>
           </div>
 

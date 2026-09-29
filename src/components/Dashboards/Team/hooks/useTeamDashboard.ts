@@ -394,7 +394,7 @@ export const useTeamDashboard = () => {
 
   const handleLogout = async () => {
     await authLogout();
-    window.location.hash = '/login';
+    window.location.hash = '/home';
   };
 
   const collectiveRating = Math.round(

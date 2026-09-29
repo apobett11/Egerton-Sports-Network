@@ -42,7 +42,7 @@ export const AdminPerformanceView: React.FC<AdminPerformanceViewProps> = ({
             <Activity className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-3xl font-black font-mono text-emerald-400">
-            {metrics.avgUserUptimePercentage || 99.98}%
+            {metrics.avgUserUptimePercentage}%
           </div>
           <div className="text-[11px] text-gray-400">Platform SLA availability (30-day rolling)</div>
         </div>

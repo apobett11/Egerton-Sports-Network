@@ -20,6 +20,7 @@ import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
 import { AdminCacheAnalysisModal } from './components/Modals/AdminCacheAnalysisModal';
+import { clearCachedSnapshot } from './lib/adminSnapshot';
 import { RefreshCw, Zap, ShieldAlert, ArrowLeft, Lock, Activity, ClipboardCheck } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -28,6 +29,8 @@ export const SuperAdminDashboard: React.FC = () => {
     activeTab,
     setActiveTab,
     isLoading,
+    isRevalidating,
+    lastSyncedLabel,
     errorMsg,
     toastMessage,
     showToast,
@@ -101,6 +104,7 @@ export const SuperAdminDashboard: React.FC = () => {
   }, [setActiveTab]);
 
   const handleLogout = async () => {
+    clearCachedSnapshot();
     await logout();
     window.location.hash = '/home';
   };
@@ -138,6 +142,9 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
         <span className="text-sm font-bold text-white tracking-wide">
           Connecting to Supabase Platform Operations...
+        </span>
+        <span className="text-[11px] text-gray-500 mt-2">
+          First load builds a local snapshot of every table. Later visits render instantly from cache.
         </span>
       </div>
     );
@@ -199,7 +206,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 </h1>
               </div>
               <p className="text-[11px] text-gray-400 hidden sm:block">
-                Live Supabase Connection • Synced at {systemHealth.lastChecked}
+                {isRevalidating ? 'Refreshing snapshot from Supabase…' : `Cached snapshot • Synced at ${lastSyncedLabel} • Probe ${systemHealth.lastChecked}`}
               </p>
             </div>
           </div>
@@ -215,11 +222,11 @@ export const SuperAdminDashboard: React.FC = () => {
             </button>
             <button
               onClick={() => refreshData()}
-              disabled={isLoading}
-              className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px]"
-              title="Re-query all Supabase database tables"
+              disabled={isRevalidating}
+              className="px-3.5 py-1.5 bg-[#202020] hover:bg-[#2A2A2A] text-emerald-400 hover:text-emerald-300 rounded-xl border border-[#333333] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer min-h-[38px] disabled:opacity-60"
+              title="Re-query all Supabase database tables (bypasses the local snapshot cache)"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRevalidating ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh Data</span>
             </button>
           </div>
@@ -259,7 +266,7 @@ export const SuperAdminDashboard: React.FC = () => {
               systemHealth={systemHealth}
               failedCalls={failedCalls}
               onRunDiagnostic={runLiveDiagnostic}
-              isLoading={isLoading}
+              isLoading={isRevalidating}
               onClearErrors={clearFailedCalls}
               isProbeRunning={isProbeRunning}
               onToggleProbe={toggleProbe}

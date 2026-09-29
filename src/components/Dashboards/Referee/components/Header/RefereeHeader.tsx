@@ -46,7 +46,7 @@ export const RefereeHeader: React.FC<RefereeHeaderProps> = ({
     if (onLogout) {
       onLogout();
     } else {
-      window.location.hash = '/login';
+      window.location.hash = '/home';
     }
   };
 

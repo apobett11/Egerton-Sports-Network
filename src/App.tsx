@@ -34,7 +34,7 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { X, Activity, Trophy, Award, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail } from 'lucide-react';
+import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -160,8 +160,16 @@ export const AppContent: React.FC = () => {
     return h;
   });
 
-  const { role, user } = useAuth();
+  const { role, user, logout } = useAuth();
   const isAuthenticated = Boolean(user && role !== 'guest');
+
+  /** Every dashboard logout ends the Supabase session and lands on the public homepage. */
+  const handleDashboardLogout = async () => {
+    try {
+      await logout();
+    } catch {}
+    handleNavigateHash('/home');
+  };
 
   // Season Mode Switch State: Determined strictly from database fixtures table on each reload/mount
   const [isSeasonMode, setIsSeasonMode] = useState<boolean>(() => {
@@ -393,6 +401,7 @@ export const AppContent: React.FC = () => {
     return resolveGuestMatchdayDate();
   });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [legalMenuOpen, setLegalMenuOpen] = useState<boolean>(false);
 
   // Competition Switcher State with Session Persistence
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>(() => {
@@ -824,7 +833,7 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['doctor', 'team_doctor', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <DoctorDashboard onLogout={() => handleNavigateHash('/home')} />
+          <DoctorDashboard onLogout={handleDashboardLogout} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -834,7 +843,7 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['journalist', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <JournalistDashboard onLogout={() => handleNavigateHash('/home')} />
+          <JournalistDashboard onLogout={handleDashboardLogout} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -847,10 +856,10 @@ export const AppContent: React.FC = () => {
           {isCheckingSeasonMode ? (
             <DashboardLoader />
           ) : isSeasonMode ? (
-            <PresidentSeasonModeApp onLogout={() => handleNavigateHash('/home')} />
+            <PresidentSeasonModeApp onLogout={handleDashboardLogout} />
           ) : (
             <PresidentDashboard
-              onLogout={() => handleNavigateHash('/home')}
+              onLogout={handleDashboardLogout}
               onSeasonModeOn={() => {
                 setIsSeasonMode(true);
                 try {
@@ -868,7 +877,7 @@ export const AppContent: React.FC = () => {
     return (
       <ProtectedRoute allowedRoles={['referee', 'admin']} onUnauthorized={() => handleNavigateHash('/login')}>
         <Suspense fallback={<DashboardLoader />}>
-          <RefereeDashboard onLogout={() => handleNavigateHash('/login')} />
+          <RefereeDashboard onLogout={handleDashboardLogout} />
         </Suspense>
       </ProtectedRoute>
     );
@@ -1029,60 +1038,62 @@ export const AppContent: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Campus Competitions</div>
-                  <ul className="space-y-1.5">
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('11111111-1111-1111-1111-111111111111'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Activity className="w-4 h-4 text-[#ff0046]" />
-                      <span>Egerton Premier League</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('22222222-2222-2222-2222-222222222222'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Award className="w-4 h-4 text-amber-500" />
-                      <span>Egerton Championships</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); setSelectedCompetitionId('friendlies'); setActiveTab('scores'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Trophy className="w-4 h-4 text-blue-500" />
-                      <span>Friendlies</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); setActiveTab('potw'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-amber-400 cursor-pointer">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      <span>Player of the Week</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Institutional & Legal Pages Section in Sidebar */}
-                <div className="space-y-3">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Institutional & Legal</div>
-                  <ul className="space-y-1.5">
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/privacy'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                      <span>Privacy Policy</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/terms'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <FileText className="w-4 h-4 text-blue-500" />
-                      <span>Terms of Service</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/about'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Info className="w-4 h-4 text-amber-500" />
-                      <span>About ESN Ecosystem</span>
-                    </li>
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/contact'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
-                      <Mail className="w-4 h-4 text-[#ff0046]" />
-                      <span>Contact Administration</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Authentication Entry Point */}
-                <div className="space-y-3">
+                {/* Official Login — directly below announcements, kept prominent */}
+                <div className="space-y-2">
                   <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Platform Portal</div>
-                  <ul className="space-y-1.5">
-                    <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-[#0e1e2d] hover:bg-[#152e47] dark:bg-[#152e47] dark:hover:bg-[#1c3c5c] text-xs font-bold text-white cursor-pointer shadow-sm transition-colors">
-                      <LogIn className="w-4 h-4 text-[#ff0046]" />
-                      <span>Official Login</span>
-                    </li>
-                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => { setSidebarOpen(false); handleNavigateHash('/login'); }}
+                    className="group w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#ff0046] via-[#ff2d6a] to-[#ff7a1a] text-white shadow-lg shadow-[#ff0046]/30 ring-1 ring-white/20 hover:shadow-xl hover:shadow-[#ff0046]/40 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                        <LogIn className="w-4 h-4 text-white" />
+                      </span>
+                      <span className="text-left leading-tight">
+                        <span className="block text-sm font-black tracking-wide">Official Login</span>
+                        <span className="block text-[10px] font-semibold text-white/85">Coaches · Referees · Journalists · Admin</span>
+                      </span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </div>
+
+                {/* Institutional & Legal — collapsed by default */}
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setLegalMenuOpen((open) => !open)}
+                    aria-expanded={legalMenuOpen}
+                    aria-controls="sidebar-legal-menu"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#14263b] text-xs font-bold cursor-pointer hover:bg-slate-200 dark:hover:bg-[#1a3350] transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      <span>Institutional & Legal</span>
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${legalMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {legalMenuOpen && (
+                    <ul id="sidebar-legal-menu" className="space-y-1 pl-2 border-l-2 border-slate-100 dark:border-[#1a2e45] ml-3">
+                      <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/privacy'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                        <span>Privacy Policy</span>
+                      </li>
+                      <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/terms'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                        <span>Terms of Service</span>
+                      </li>
+                      <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/about'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <Info className="w-4 h-4 text-amber-500" />
+                        <span>About ESN Ecosystem</span>
+                      </li>
+                      <li onClick={() => { setSidebarOpen(false); handleNavigateHash('/contact'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#14263b] text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <Mail className="w-4 h-4 text-[#ff0046]" />
+                        <span>Contact Administration</span>
+                      </li>
+                    </ul>
+                  )}
                 </div>
               </div>
 
