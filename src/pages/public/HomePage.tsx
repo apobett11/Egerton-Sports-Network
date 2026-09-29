@@ -41,6 +41,23 @@ interface HomePageProps {
 
 const FAVOURITES_KEY = 'esn_guest_favourites_v1';
 
+function sameFixtureList(a: Match[], b: Match[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i];
+    const right = b[i];
+    if (
+      left.id !== right.id ||
+      left.status !== right.status ||
+      left.scoreA !== right.scoreA ||
+      left.scoreB !== right.scoreB ||
+      left.scheduledTime !== right.scheduledTime ||
+      left.time !== right.time
+    ) return false;
+  }
+  return true;
+}
+
 export const HomePage: React.FC<HomePageProps> = ({ 
   onNavigate, 
   onSelectMatch, 
@@ -271,10 +288,15 @@ export const HomePage: React.FC<HomePageProps> = ({
     ApiService.getFixtures(compId, formattedDateStr)
       .then(res => {
         if (!isMounted) return;
-        if (res.success && Array.isArray(res.data) && (res.data.length > 0 || !cached || cached.length === 0)) {
-          setFixtureBundle({ key, data: res.data, error: null });
+        const incoming = Array.isArray(res.data) ? res.data : [];
+        if (res.success && (incoming.length > 0 || !cached || cached.length === 0)) {
+          setFixtureBundle((prev) => (
+            prev && prev.key === key && !prev.error && sameFixtureList(prev.data, incoming) ? prev : { key, data: incoming, error: null }
+          ));
         } else if (cached && cached.length > 0) {
-          setFixtureBundle({ key, data: cached, error: null });
+          setFixtureBundle((prev) => (
+            prev && prev.key === key && !prev.error && sameFixtureList(prev.data, cached) ? prev : { key, data: cached, error: null }
+          ));
         } else {
           setFixtureBundle({ key, data: [], error: res.message || 'Failed to load fixtures.' });
         }
@@ -303,14 +325,31 @@ export const HomePage: React.FC<HomePageProps> = ({
     return loadFixtures();
   }, [loadFixtures]);
 
-  // Synchronize UI from cache when background SWR completes without triggering another network request
-  useCacheSubscription('fixtures', () => {
+  const syncFixturesFromCache = useCallback(() => {
     const key = `${selectedCompetitionId}|${formattedDateStr}`;
     const cached = getCachedFixtures(formattedDateStr, selectedCompetitionId);
-    if (cached && cached.length > 0) {
-      setFixtureBundle({ key, data: cached, error: null });
-    }
-  });
+    if (!cached || cached.length === 0) return;
+    setFixtureBundle((prev) => (
+      prev && prev.key === key && !prev.error && sameFixtureList(prev.data, cached) ? prev : { key, data: cached, error: null }
+    ));
+  }, [selectedCompetitionId, formattedDateStr, getCachedFixtures]);
+
+  useCacheSubscription('fixtures', syncFixturesFromCache);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      loadFixtures();
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadFixtures();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loadFixtures]);
 
   useEffect(() => {
     const nextKey = shiftPlayday(formattedDateStr, 1, playdays);

@@ -346,8 +346,28 @@ function isPublicGuestRead(urlString: string, init?: RequestInit): boolean {
   return false;
 }
 
-const inFlightGetRequests = new Map<string, Promise<Response>>();
+type SharedGetBody = {
+  status: number;
+  statusText: string;
+  headers: [string, string][];
+  body: ArrayBuffer;
+};
 
+const inFlightGetRequests = new Map<string, Promise<SharedGetBody>>();
+
+function responseFromShared(shared: SharedGetBody): Response {
+  return new Response(shared.body.slice(0), {
+    status: shared.status,
+    statusText: shared.statusText,
+    headers: shared.headers,
+  });
+}
+
+/**
+ * Share one in-flight GET, then give each caller its own Response.
+ * Response.clone() on a keepalive fetch tees the body stream and has crashed
+ * the Chrome renderer ("Aw, Snap"). The body is read once into bytes instead.
+ */
 async function deduplicatedFetch(
   nativeFetch: typeof fetch,
   input: RequestInfo | URL,
@@ -355,22 +375,37 @@ async function deduplicatedFetch(
   urlString?: string,
   method = 'GET'
 ): Promise<Response> {
-  if (method === 'GET' && urlString) {
-    const existing = inFlightGetRequests.get(urlString);
-    if (existing) {
-      return existing.then((res) => res.clone());
-    }
-
-    const promise = nativeFetch(input, init)
-      .finally(() => {
-        inFlightGetRequests.delete(urlString);
-      });
-
-    inFlightGetRequests.set(urlString, promise);
-    return promise.then((res) => res.clone());
+  if (method !== 'GET' || !urlString) {
+    return nativeFetch(input, init);
   }
 
-  return nativeFetch(input, init);
+  const existing = inFlightGetRequests.get(urlString);
+  if (existing) {
+    return responseFromShared(await existing);
+  }
+
+  const promise = nativeFetch(input, init)
+    .then(async (res) => {
+      const body = await res.arrayBuffer();
+      const headers: [string, string][] = [];
+      res.headers.forEach((value, key) => {
+        const lower = key.toLowerCase();
+        if (lower === 'content-encoding' || lower === 'content-length') return;
+        headers.push([key, value]);
+      });
+      return {
+        status: res.status,
+        statusText: res.statusText,
+        headers,
+        body,
+      };
+    })
+    .finally(() => {
+      inFlightGetRequests.delete(urlString);
+    });
+
+  inFlightGetRequests.set(urlString, promise);
+  return responseFromShared(await promise);
 }
 
 export async function rateLimitedFetch(

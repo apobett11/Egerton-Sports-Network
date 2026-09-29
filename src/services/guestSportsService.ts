@@ -26,33 +26,108 @@ const inFlightScorersPromises = new Map<string, Promise<GuestTopScorer[]>>();
 const inFlightAssistsPromises = new Map<string, Promise<GuestAssistLeader[]>>();
 
 const CACHE_TTL = 300000; // 5 minutes static master cache TTL
+const TEAMS_PROBE_MS = 60_000;
+const TEAMS_META_KEY = 'meta_v1';
+const TEAMS_REV_KEY = 'rev_v1';
+const TEAM_META_COLUMNS = 'id, name, short_name, color_code, updated_at';
+
+function teamRecord(row: any) {
+  return {
+    id: row.id,
+    name: row.name,
+    short_name: row.short_name,
+    color_code: row.color_code,
+    updated_at: row.updated_at || null,
+    logo_url: publicTeamLogo(row.id),
+  };
+}
+
+function readPersistedTeams(): Map<string, any> | null {
+  const rows = guestCache.getStale<any[]>('teams', TEAMS_META_KEY);
+  if (!rows || rows.length === 0) return null;
+  return new Map(rows.map((row) => [row.id, teamRecord(row)]));
+}
+
+function persistTeams(rev: string) {
+  if (!cachedTeamsMap) return;
+  const rows = [...cachedTeamsMap.values()].map((row) => ({
+    id: row.id,
+    name: row.name,
+    short_name: row.short_name,
+    color_code: row.color_code,
+    updated_at: row.updated_at || null,
+  }));
+  guestCache.set('teams', TEAMS_META_KEY, rows, 24 * 60 * 60 * 1000);
+  if (rev) guestCache.set('teams', TEAMS_REV_KEY, rev, 24 * 60 * 60 * 1000);
+  teamsCacheTimestamp = Date.now();
+}
+
+async function loadAllTeamMeta(revHint?: string): Promise<Map<string, any>> {
+  let { data, error } = await supabase.from('teams').select(TEAM_META_COLUMNS);
+  if (error) {
+    const retry = await supabase.from('teams').select('id, name, short_name, color_code');
+    data = (retry.data || []).map((team: any) => ({ ...team, updated_at: null }));
+  }
+  const rows = data || [];
+  cachedTeamsMap = new Map(rows.map((row: any) => [row.id, teamRecord(row)]));
+  const rev = revHint || rows.reduce((max: string, row: any) => (
+    row.updated_at && row.updated_at > max ? row.updated_at : max
+  ), '');
+  persistTeams(rev);
+  return cachedTeamsMap;
+}
 
 async function getTeamsMap(): Promise<Map<string, any>> {
-  const now = Date.now();
-  if (cachedTeamsMap && now - teamsCacheTimestamp < CACHE_TTL) {
+  if (!cachedTeamsMap) cachedTeamsMap = readPersistedTeams();
+  if (cachedTeamsMap && Date.now() - teamsCacheTimestamp < TEAMS_PROBE_MS) {
     return cachedTeamsMap;
   }
-  if (inFlightTeamsPromise) {
-    return inFlightTeamsPromise;
-  }
+  if (inFlightTeamsPromise) return inFlightTeamsPromise;
+
   inFlightTeamsPromise = (async () => {
     try {
-      let { data, error } = await supabase
+      const persistedRev = guestCache.getStale<string>('teams', TEAMS_REV_KEY) || '';
+      const latest = await supabase
         .from('teams')
-        .select('id, name, short_name, color_code, logo_url, updated_at');
-      if (error) {
-        const retry = await supabase
-          .from('teams')
-          .select('id, name, short_name, color_code, logo_url');
-        data = (retry.data || []).map((team) => ({ ...team, updated_at: null }));
+        .select('updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      if (latest.error || !cachedTeamsMap) {
+        if (cachedTeamsMap && latest.error) return cachedTeamsMap;
+        const rev = latest.data?.[0]?.updated_at || '';
+        return loadAllTeamMeta(rev);
       }
 
-      reconcileLogoStamps((data || []).map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
-      cachedTeamsMap = new Map<string, any>((data || []).map((t: any) => [t.id, {
-        ...t,
-        logo_url: publicTeamLogo(t.id, t.logo_url),
-      }]));
-      teamsCacheTimestamp = Date.now();
+      const rev = latest.data?.[0]?.updated_at || '';
+      if (rev && rev === persistedRev) {
+        teamsCacheTimestamp = Date.now();
+        return cachedTeamsMap;
+      }
+
+      const stamps = await supabase.from('teams').select('id, updated_at');
+      if (stamps.error || !stamps.data) return cachedTeamsMap;
+
+      const seen = new Set<string>();
+      const changedIds: string[] = [];
+      for (const row of stamps.data) {
+        seen.add(row.id);
+        const prev = cachedTeamsMap.get(row.id);
+        if (!prev || (prev.updated_at || '') !== (row.updated_at || '')) changedIds.push(row.id);
+      }
+      for (const id of [...cachedTeamsMap.keys()]) {
+        if (!seen.has(id)) cachedTeamsMap.delete(id);
+      }
+
+      if (changedIds.length > 0) {
+        const changed = await supabase.from('teams').select(TEAM_META_COLUMNS).in('id', changedIds);
+        if (!changed.error && changed.data) {
+          for (const row of changed.data) cachedTeamsMap.set(row.id, teamRecord(row));
+          reconcileLogoStamps(changed.data.map((t: any) => ({ id: t.id, updated_at: t.updated_at })));
+        }
+      }
+
+      persistTeams(rev);
       return cachedTeamsMap;
     } finally {
       inFlightTeamsPromise = null;
@@ -192,12 +267,127 @@ export function hasPlaceholderTeamData(fixtures: any[]): boolean {
 // SECTION 1: FIXTURES & PAST FIXTURES PRELOAD CACHE
 // ============================================================================
 
+const FIXTURE_COLUMNS = 'id,competition_id,home_team_id,away_team_id,matchday,scheduled_time,venue,status,score_home,score_away,home_penalty_score,away_penalty_score,updated_at';
+const FIXTURE_TTL = 6 * 60 * 60 * 1000;
+const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v4';
+const lastRevalidateTimes = new Map<string, number>();
+const REVALIDATE_COOLDOWN_MS = 60_000;
+
+function fixtureCacheKey(params?: { competitionId?: string; date?: string; matchday?: number }) {
+  return `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
+}
+
+function fixtureStampKey(cacheKey: string) {
+  return `stamps_${cacheKey}`;
+}
+
+function fixtureUiKey(params?: { competitionId?: string; date?: string }) {
+  return `${params?.competitionId || 'all'}_${params?.date || 'all'}_pall_sall`;
+}
+
+function applyGuestFixtureFilters(query: any, params?: { competitionId?: string; date?: string; matchday?: number }) {
+  let next = query;
+  if (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL') {
+    const compId = (params.competitionId === 'friendlies' || params.competitionId === 'friendly')
+      ? '33333333-3333-3333-3333-333333333333'
+      : params.competitionId;
+    next = next.eq('competition_id', compId);
+  }
+  if (params?.matchday) next = next.eq('matchday', params.matchday);
+  if (params?.date && params.date !== 'all') {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0];
+    next = next.gte('scheduled_time', `${d}T00:00:00.000Z`).lte('scheduled_time', `${d}T23:59:59.999Z`);
+  }
+  return next;
+}
+
+function publishGuestFixtures(
+  params: { competitionId?: string; date?: string; matchday?: number } | undefined,
+  cacheKey: string,
+  fixtures: GuestFixture[],
+  stamps: Record<string, string>,
+  notify: boolean,
+) {
+  if (hasPlaceholderTeamData(fixtures)) return;
+  guestCache.set('fixtures', cacheKey, fixtures, FIXTURE_TTL, false);
+  guestCache.set('fixtures', fixtureStampKey(cacheKey), stamps, FIXTURE_TTL, false);
+  const matches = fixtures.map((fixture) => guestFixtureToMatch(fixture)).filter(Boolean);
+  if (hasPlaceholderTeamData(matches)) return;
+  guestCache.set('fixtures', fixtureUiKey(params), matches, FIXTURE_TTL, notify);
+}
+
+async function probeFixtureStamps(params?: {
+  competitionId?: string;
+  date?: string;
+  matchday?: number;
+}): Promise<Array<{ id: string; updated_at: string | null }> | null> {
+  try {
+    const query = applyGuestFixtureFilters(
+      supabase.from('fixtures').select('id, updated_at').order('scheduled_time', { ascending: true }),
+      params,
+    );
+    const { data, error } = await query;
+    if (error) return null;
+    return (data || []) as Array<{ id: string; updated_at: string | null }>;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGuestFixturesByIds(ids: string[]): Promise<GuestFixture[] | null> {
+  if (ids.length === 0) return [];
+  try {
+    const [fixtureRes, teamMap, compMap] = await Promise.all([
+      supabase.from('fixtures').select(FIXTURE_COLUMNS).in('id', ids),
+      getTeamsMap(),
+      getCompetitionsMap(),
+    ]);
+    if (fixtureRes.error || !fixtureRes.data) return null;
+    return fixtureRes.data.map((row: any) => rowToGuestFixture(row, teamMap, compMap));
+  } catch {
+    return null;
+  }
+}
+
+async function revalidateGuestFixtures(
+  params: { competitionId?: string; date?: string; matchday?: number } | undefined,
+  cacheKey: string,
+  cached: GuestFixture[],
+) {
+  const probe = await Promise.all([probeFixtureStamps(params), getTeamsMap()]).then(([stamps]) => stamps);
+  if (!probe) return;
+
+  const stamps = guestCache.getStale<Record<string, string>>('fixtures', fixtureStampKey(cacheKey)) || {};
+  const probeById = new Map(probe.map((row) => [row.id, row.updated_at || '']));
+  const changedIds = probe
+    .filter((row) => stamps[row.id] !== (row.updated_at || ''))
+    .map((row) => row.id);
+  const removed = cached.some((fixture) => !probeById.has(fixture.id)) || cached.length !== probe.length;
+  if (changedIds.length === 0 && !removed) return;
+
+  const fetched = changedIds.length > 0 ? await fetchGuestFixturesByIds(changedIds) : [];
+  if (fetched === null) return;
+
+  const fetchedById = new Map(fetched.map((fixture) => [fixture.id, fixture]));
+  const previous = new Map(cached.map((fixture) => [fixture.id, fixture]));
+  const merged: GuestFixture[] = [];
+  for (const row of probe) {
+    const next = fetchedById.get(row.id) || previous.get(row.id);
+    if (next) merged.push(next);
+  }
+  if (hasPlaceholderTeamData(merged)) return;
+
+  const nextStamps: Record<string, string> = {};
+  for (const row of probe) nextStamps[row.id] = row.updated_at || '';
+  publishGuestFixtures(params, cacheKey, merged, nextStamps, true);
+}
+
 async function fetchGuestFixturesNetwork(params?: {
   competitionId?: string;
   date?: string;
   matchday?: number;
 }, notify = false): Promise<GuestFixture[]> {
-  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
+  const cacheKey = fixtureCacheKey(params);
 
   if (inFlightFixturesPromises.has(cacheKey)) {
     return inFlightFixturesPromises.get(cacheKey)!;
@@ -205,22 +395,15 @@ async function fetchGuestFixturesNetwork(params?: {
 
   const promise = (async () => {
     try {
-      // Range query on scheduled_time. The guest RPC embeds logo_url, so the
-      // narrow column query stays the revalidate path and keeps crest bytes out.
-      const results = await _getGuestFixturesFallback(params);
-      if (results.length > 0 && !hasPlaceholderTeamData(results)) {
-        guestCache.set('fixtures', cacheKey, results, 5 * 60 * 1000, notify);
-        try {
-          localStorage.setItem(`${FIXTURES_CACHE_KEY}_${cacheKey}`, JSON.stringify(results));
-          localStorage.setItem(`guest_fixtures_v1_${cacheKey}`, JSON.stringify(results));
-        } catch {
-          // Storage full. The memory cache still paints this session.
-        }
+      const loaded = await loadGuestFixtureRows(params);
+      if (loaded.fixtures.length > 0 && !hasPlaceholderTeamData(loaded.fixtures)) {
+        publishGuestFixtures(params, cacheKey, loaded.fixtures, loaded.stamps, notify);
       }
-      return results;
+      return loaded.fixtures;
     } catch (err: any) {
       console.error('[guestSportsService] getGuestFixtures exception:', err);
-      return _getGuestFixturesFallback(params);
+      const loaded = await loadGuestFixtureRows(params);
+      return loaded.fixtures;
     } finally {
       inFlightFixturesPromises.delete(cacheKey);
     }
@@ -229,10 +412,6 @@ async function fetchGuestFixturesNetwork(params?: {
   inFlightFixturesPromises.set(cacheKey, promise);
   return promise;
 }
-
-const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v4';
-const lastRevalidateTimes = new Map<string, number>();
-const REVALIDATE_COOLDOWN_MS = 60_000; // Minimum 60s cooldown to protect DB and connection pool
 
 function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
   const stale = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
@@ -247,7 +426,7 @@ function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
       const data = Array.isArray(parsed) ? parsed : parsed?.data;
       if (Array.isArray(data) && data.length > 0 && !hasPlaceholderTeamData(data)) return data;
     } catch {
-      // Ignore corrupt cache entry and fall through to the network.
+      // Ignore a corrupt legacy entry and use the network for this date.
     }
   }
   return null;
@@ -258,21 +437,16 @@ export async function getGuestFixturesFast(params?: {
   date?: string;
   matchday?: number;
 }): Promise<GuestFixture[]> {
-  const cacheKey = `${params?.competitionId || 'all'}_${params?.date || 'all'}_m${params?.matchday || 'all'}`;
-  const fresh = guestCache.get<GuestFixture[]>('fixtures', cacheKey);
-  if (fresh && fresh.length > 0 && !hasPlaceholderTeamData(fresh)) {
-    return fresh;
-  }
-
-  const stale = readStoredFixtures(cacheKey);
-  if (stale && stale.length > 0) {
+  const cacheKey = fixtureCacheKey(params);
+  const cached = readStoredFixtures(cacheKey);
+  if (cached && cached.length > 0) {
     const now = Date.now();
     const lastReval = lastRevalidateTimes.get(cacheKey) || 0;
     if (now - lastReval > REVALIDATE_COOLDOWN_MS) {
       lastRevalidateTimes.set(cacheKey, now);
-      void fetchGuestFixturesNetwork(params, true);
+      void revalidateGuestFixtures(params, cacheKey, cached);
     }
-    return stale;
+    return cached;
   }
 
   const data = await fetchGuestFixturesNetwork(params, false);
@@ -287,197 +461,70 @@ export async function getGuestFixtures(params?: {
   return getGuestFixturesFast(params);
 }
 
-// Internal fallback: original 3-query approach used only if RPC is unavailable
-async function _getGuestFixturesFallback(params?: {
+function rowToGuestFixture(f: any, teamMap: Map<string, any>, compMap: Map<string, string>): GuestFixture {
+  const home = teamMap.get(f.home_team_id) || {};
+  const away = teamMap.get(f.away_team_id) || {};
+  return {
+    id: f.id,
+    competition_id: f.competition_id || '',
+    competition_name: compMap.get(f.competition_id) || 'Campus Football',
+    matchday: f.matchday || 1,
+    scheduled_time: f.scheduled_time,
+    venue: f.venue || 'Egerton Main Grounds',
+    status: (f.status || 'UPCOMING') as any,
+    score_home: typeof f.score_home === 'number' ? f.score_home : 0,
+    score_away: typeof f.score_away === 'number' ? f.score_away : 0,
+    home_penalty_score: f.home_penalty_score ?? null,
+    away_penalty_score: f.away_penalty_score ?? null,
+    home_team: { id: home.id || '', name: home.name || '', short_name: home.short_name || null, logo_url: home.logo_url || DEFAULT_LOGO, color_code: home.color_code || '#059669' },
+    away_team: { id: away.id || '', name: away.name || '', short_name: away.short_name || null, logo_url: away.logo_url || DEFAULT_LOGO, color_code: away.color_code || '#2563EB' },
+  };
+}
+
+async function loadGuestFixtureRows(params?: {
   competitionId?: string;
   date?: string;
   matchday?: number;
-}): Promise<GuestFixture[]> {
+}): Promise<{ fixtures: GuestFixture[]; stamps: Record<string, string> }> {
   try {
-    let query = supabase
-      .from('fixtures')
-      .select('id,competition_id,home_team_id,away_team_id,matchday,scheduled_time,venue,status,score_home,score_away,home_penalty_score,away_penalty_score')
-      .order('scheduled_time', { ascending: true });
-
-    if (params?.competitionId && params.competitionId !== 'all' && params.competitionId !== 'ALL') {
-      const compId = (params.competitionId === 'friendlies' || params.competitionId === 'friendly')
-        ? '33333333-3333-3333-3333-333333333333'
-        : params.competitionId;
-      query = query.eq('competition_id', compId);
-    }
-    if (params?.matchday) query = query.eq('matchday', params.matchday);
-    if (params?.date && params.date !== 'all') {
-      const d = /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : new Date(params.date).toISOString().split('T')[0];
-      query = query.gte('scheduled_time', `${d}T00:00:00.000Z`).lte('scheduled_time', `${d}T23:59:59.999Z`);
-    }
-
-    const [fixtureRes, teamMap, compMap] = await Promise.all([query, getTeamsMap(), getCompetitionsMap()]);
-    const fixtureRows = fixtureRes.data;
-    if (fixtureRes.error || !fixtureRows || fixtureRows.length === 0) return [];
-
-    return fixtureRows.map((f: any): GuestFixture => {
-      const home = teamMap.get(f.home_team_id) || {};
-      const away = teamMap.get(f.away_team_id) || {};
-      return {
-        id: f.id,
-        competition_id: f.competition_id || '',
-        competition_name: compMap.get(f.competition_id) || 'Campus Football',
-        matchday: f.matchday || 1,
-        scheduled_time: f.scheduled_time,
-        venue: f.venue || 'Egerton Main Grounds',
-        status: (f.status || 'UPCOMING') as any,
-        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
-        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
-        home_penalty_score: f.home_penalty_score ?? null,
-        away_penalty_score: f.away_penalty_score ?? null,
-        home_team: { id: home.id || '', name: home.name || '', short_name: home.short_name || null, logo_url: home.logo_url || DEFAULT_LOGO, color_code: home.color_code || '#059669' },
-        away_team: { id: away.id || '', name: away.name || '', short_name: away.short_name || null, logo_url: away.logo_url || DEFAULT_LOGO, color_code: away.color_code || '#2563EB' },
-      };
+    let query = applyGuestFixtureFilters(
+      supabase.from('fixtures').select(FIXTURE_COLUMNS).order('scheduled_time', { ascending: true }),
+      params,
+    );
+    let fixtureRes = await Promise.all([query, getTeamsMap(), getCompetitionsMap()]).then(async ([res, teamMap, compMap]) => {
+      if (res.error && String(res.error.message || '').toLowerCase().includes('updated_at')) {
+        const narrow = applyGuestFixtureFilters(
+          supabase.from('fixtures').select('id,competition_id,home_team_id,away_team_id,matchday,scheduled_time,venue,status,score_home,score_away,home_penalty_score,away_penalty_score').order('scheduled_time', { ascending: true }),
+          params,
+        );
+        const retry = await narrow;
+        return { res: retry, teamMap, compMap };
+      }
+      return { res, teamMap, compMap };
     });
+
+    const fixtureRows = fixtureRes.res.data;
+    if (fixtureRes.res.error || !fixtureRows) return { fixtures: [], stamps: {} };
+
+    const stamps: Record<string, string> = {};
+    for (const row of fixtureRows as any[]) {
+      if (row?.id) stamps[row.id] = row.updated_at || '';
+    }
+    return {
+      fixtures: (fixtureRows as any[]).map((row) => rowToGuestFixture(row, fixtureRes.teamMap, fixtureRes.compMap)),
+      stamps,
+    };
   } catch {
-    return [];
+    return { fixtures: [], stamps: {} };
   }
 }
 
 /**
- * Preload past fixtures into guestCache in the background once matchday fixtures load.
- * Bounded to 90 days back so the query never becomes an unbounded full-table scan.
+ * Adjacent matchdays are filled by the homepage date prefetch.
+ * A 90-day preload downloaded the season and crest bytes on every visit.
  */
-export async function preloadPastFixtures(currentDateStr?: string, competitionId?: string): Promise<void> {
-  try {
-    // Skip if the master cache is already populated (teams and comps already warm)
-    if (guestCache.get<any[]>('fixtures', 'all_all_pall_sall')) {
-      return;
-    }
-
-    const compKey = competitionId && competitionId !== 'all' ? competitionId : undefined;
-
-    // Bound to 90 days back to avoid full-table scan growing every season
-    const boundDate = new Date();
-    boundDate.setDate(boundDate.getDate() - 90);
-    const boundStr = boundDate.toISOString();
-
-    let query = supabase
-      .from('fixtures')
-      .select(`
-        id,
-        competition_id,
-        home_team_id,
-        away_team_id,
-        matchday,
-        scheduled_time,
-        venue,
-        status,
-        score_home,
-        score_away,
-        home_penalty_score,
-        away_penalty_score
-      `)
-      .gte('scheduled_time', boundStr)
-      .order('scheduled_time', { ascending: false });
-
-    if (compKey) {
-      query = query.eq('competition_id', compKey);
-    }
-
-    const [fixtureRes, teamMap, compMap] = await Promise.all([
-      query,
-      getTeamsMap(),
-      getCompetitionsMap()
-    ]);
-
-    const fixtureRows = fixtureRes.data;
-    if (!fixtureRows || fixtureRows.length === 0 || !teamMap || teamMap.size === 0) return;
-
-    const byDate = new Map<string, Match[]>();
-    const allPastMatches: Match[] = [];
-    const curTime = currentDateStr ? new Date(`${currentDateStr}T00:00:00.000Z`).getTime() : Date.now();
-
-    fixtureRows.forEach((f: any) => {
-      const home = teamMap.get(f.home_team_id) || {};
-      const away = teamMap.get(f.away_team_id) || {};
-      const gf: GuestFixture = {
-        id: f.id,
-        competition_id: f.competition_id || '',
-        competition_name: compMap.get(f.competition_id) || 'Campus Football',
-        matchday: f.matchday || 1,
-        scheduled_time: f.scheduled_time,
-        venue: f.venue || 'Egerton Main Grounds',
-        status: (f.status || 'FT') as any,
-        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
-        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
-        home_penalty_score: f.home_penalty_score ?? null,
-        away_penalty_score: f.away_penalty_score ?? null,
-        home_team: {
-          id: home.id || '',
-          name: home.name || '',
-          short_name: home.short_name || null,
-          logo_url: home.logo_url || DEFAULT_LOGO,
-          color_code: home.color_code || '#059669',
-        },
-        away_team: {
-          id: away.id || '',
-          name: away.name || '',
-          short_name: away.short_name || null,
-          logo_url: away.logo_url || DEFAULT_LOGO,
-          color_code: away.color_code || '#2563EB',
-        },
-      };
-
-      const match = guestFixtureToMatch(gf);
-      const fixtureTime = f.scheduled_time ? new Date(f.scheduled_time).getTime() : 0;
-      if (fixtureTime < curTime || f.status === 'FT') {
-        allPastMatches.push(match);
-      }
-
-      if (f.scheduled_time) {
-        const d = new Date(f.scheduled_time);
-        if (!isNaN(d.getTime())) {
-          const dKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          if (!byDate.has(dKey)) byDate.set(dKey, []);
-          byDate.get(dKey)!.push(match);
-        }
-      }
-    });
-
-    const cId = competitionId || 'all';
-    byDate.forEach((matches, dKey) => {
-      if (!hasPlaceholderTeamData(matches)) {
-        guestCache.set('fixtures', `${cId}_${dKey}_pall_sall`, matches, 5 * 60 * 1000);
-        guestCache.set('fixtures', `${cId}_${dKey}_mall`, matches, 5 * 60 * 1000);
-      }
-    });
-
-    if (!hasPlaceholderTeamData(allPastMatches)) {
-      guestCache.set('fixtures', `past_fixtures_${cId}`, allPastMatches, 5 * 60 * 1000);
-    }
-
-    const allMatches = fixtureRows.map((f: any) => {
-      const home = teamMap.get(f.home_team_id) || {};
-      const away = teamMap.get(f.away_team_id) || {};
-      return guestFixtureToMatch({
-        id: f.id,
-        competition_id: f.competition_id || '',
-        competition_name: compMap.get(f.competition_id) || 'Campus Football',
-        matchday: f.matchday || 1,
-        scheduled_time: f.scheduled_time,
-        venue: f.venue || 'Egerton Main Grounds',
-        status: (f.status || 'FT') as any,
-        score_home: typeof f.score_home === 'number' ? f.score_home : 0,
-        score_away: typeof f.score_away === 'number' ? f.score_away : 0,
-        home_penalty_score: f.home_penalty_score ?? null,
-        away_penalty_score: f.away_penalty_score ?? null,
-        home_team: { id: home.id || '', name: home.name || '', short_name: home.short_name || null, logo_url: home.logo_url || DEFAULT_LOGO, color_code: home.color_code || '#059669' },
-        away_team: { id: away.id || '', name: away.name || '', short_name: away.short_name || null, logo_url: away.logo_url || DEFAULT_LOGO, color_code: away.color_code || '#2563EB' }
-      });
-    });
-
-    if (!hasPlaceholderTeamData(allMatches)) {
-      guestCache.set('fixtures', 'all_all_pall_sall', allMatches, 5 * 60 * 1000);
-    }
-  } catch (err) {
-    console.warn('[guestSportsService] preloadPastFixtures error:', err);
-  }
+export async function preloadPastFixtures(_currentDateStr?: string, _competitionId?: string): Promise<void> {
+  return;
 }
 
 // ============================================================================

@@ -191,7 +191,9 @@ async function fetchOne(teamId: string, expectedStamp: string): Promise<void> {
   if (error || !data) return;
   const src = typeof data.logo_url === 'string' && data.logo_url ? data.logo_url : DEFAULT_TEAM_LOGO;
   if (src.startsWith('data:')) {
-    await rememberTeamLogo(teamId, DEFAULT_TEAM_LOGO, 'embedded-skip');
+    // Keep the coach's stamp so an embedded crest is not downloaded again
+    // until that team row actually changes.
+    await rememberTeamLogo(teamId, DEFAULT_TEAM_LOGO, expectedStamp || 'embedded-skip');
     return;
   }
   const stamp = (data.updated_at as string) || expectedStamp || 'legacy';
@@ -235,16 +237,20 @@ export function prioritizeTeamLogo(teamId?: string | null, version?: string): vo
   });
 }
 
-/** Crests already on disk are not re-checked. Pass a version to force one team. */
+/**
+ * Logos stay in the permanent cache until a team's updated_at changes
+ * (coach replaced the crest or another team field). Only those teams are fetched.
+ */
 export function reconcileLogoStamps(
   rows: Array<{ id?: string; updated_at?: string | null }>,
   version?: string,
 ): void {
-  if (!version) return;
   void hydrateTeamLogos().then(() => {
     for (const row of rows) {
-      if (!row?.id || !needsAssetFetch(row.id, version)) continue;
-      enqueue(row.id, version, false);
+      if (!row?.id) continue;
+      const stamp = version || row.updated_at || '';
+      if (!stamp || !needsAssetFetch(row.id, stamp)) continue;
+      enqueue(row.id, stamp, false);
     }
   });
 }

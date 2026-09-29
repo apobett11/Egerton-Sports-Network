@@ -49,20 +49,24 @@ class GuestCacheManager {
   constructor() {
     if (typeof window !== 'undefined') {
       try {
-        // Universal self-healing cache migration: automatically purge all legacy or corrupt keys across any client device
-        const LEGACY_PREFIXES = [
-          'esn_guest_cache_v1_',
-          'esn_guest_cache_v2_',
-          'esn_guest_cache_v3_',
-          'egerscore_guest_fixtures_',
-          'guest_fixtures_v',
-          'esn_session_network_budget_'
-        ];
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i);
-          if (k && LEGACY_PREFIXES.some(prefix => k.startsWith(prefix))) {
-            localStorage.removeItem(k);
+        // One-time migration off v1–v3. The live v4 store and the session
+        // network budget are left in place so a reload can paint from cache.
+        const MIGRATION_FLAG = 'esn_guest_cache_migrated_v4';
+        if (!localStorage.getItem(MIGRATION_FLAG)) {
+          const LEGACY_PREFIXES = [
+            'esn_guest_cache_v1_',
+            'esn_guest_cache_v2_',
+            'esn_guest_cache_v3_',
+            'egerscore_guest_fixtures_',
+            'guest_fixtures_v',
+          ];
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k && LEGACY_PREFIXES.some(prefix => k.startsWith(prefix))) {
+              localStorage.removeItem(k);
+            }
           }
+          localStorage.setItem(MIGRATION_FLAG, '1');
         }
       } catch {}
 
@@ -95,13 +99,14 @@ class GuestCacheManager {
   private startGuestPolling(): void {
     if (this.pollTimer !== null || typeof window === 'undefined') return;
 
-    // 1-hour polling interval (3,600,000 ms) with visibility check
+    // Ask listeners to re-read cache. Do not delete fixtures: a wipe forced a
+    // full-table download on the next paint and crashed the guest tab.
     this.pollTimer = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-        return; // Don't poll when tab is in background / minimized
+        return;
       }
-      this.invalidate('fixtures');
-      this.invalidate('standings');
+      this.revalidate('fixtures');
+      this.revalidate('standings');
     }, 60 * 60 * 1000);
   }
 

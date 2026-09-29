@@ -93,23 +93,52 @@ export function readPlaydayIndex(): PlaydayMark[] {
 
 let playdayInflight: Promise<PlaydayMark[]> | null = null;
 
-/** Paint from cache, then refresh the season date index in the background. */
+const PLAYDAY_REV_KEY = 'playday_rev_v1';
+const PLAYDAY_TTL = 24 * 60 * 60 * 1000;
+
+/**
+ * Paint the cached calendar. One newest-timestamp plus a count decides if the
+ * dates changed. Score updates move updated_at but not the count, so the
+ * calendar is not downloaded again. A count change loads date columns only.
+ */
 export function refreshPlaydayIndex(): Promise<PlaydayMark[]> {
   if (playdayInflight) return playdayInflight;
   playdayInflight = (async () => {
+    const cached = readPlaydayIndex();
+    const cachedRev = guestCache.getStale<{ updatedAt: string; count: number }>('fixtures', PLAYDAY_REV_KEY);
     try {
+      const [latestRes, countRes] = await Promise.all([
+        supabase.from('fixtures').select('updated_at').order('updated_at', { ascending: false }).limit(1),
+        supabase.from('fixtures').select('id', { count: 'exact', head: true }),
+      ]);
+      const updatedAt = latestRes.data?.[0]?.updated_at || '';
+      const count = typeof countRes.count === 'number' ? countRes.count : null;
+      const probeOk = !latestRes.error && !countRes.error && !!updatedAt && count !== null;
+
+      if (probeOk && cached.length > 0 && cachedRev && cachedRev.count === count) {
+        if (cachedRev.updatedAt !== updatedAt) {
+          guestCache.set('fixtures', PLAYDAY_REV_KEY, { updatedAt, count }, PLAYDAY_TTL);
+        }
+        return cached;
+      }
+
+      if (!probeOk && cached.length > 0) return cached;
+
       const { data } = await supabase
         .from('fixtures')
         .select('scheduled_time, matchday, competition_id')
         .order('scheduled_time', { ascending: true });
       const index = buildPlaydayIndex(data || []);
       if (index.length > 0) {
-        guestCache.set('fixtures', PLAYDAY_INDEX_KEY, index, 6 * 60 * 60 * 1000);
+        guestCache.set('fixtures', PLAYDAY_INDEX_KEY, index, PLAYDAY_TTL);
+        if (updatedAt && count !== null) {
+          guestCache.set('fixtures', PLAYDAY_REV_KEY, { updatedAt, count }, PLAYDAY_TTL);
+        }
         return index;
       }
-      return readPlaydayIndex();
+      return cached;
     } catch {
-      return readPlaydayIndex();
+      return cached;
     } finally {
       playdayInflight = null;
     }
