@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+const ADMIN_PASSWORD = process.env.LIVE_TEST_ADMIN_PASSWORD || 'TestAdminPassword123!';
+const ADMIN_PASSKEY = process.env.LIVE_TEST_ADMIN_PASSKEY || '00000000';
+const COACH_PASSWORD = process.env.LIVE_TEST_COACH_PASSWORD || 'TestCoachPassword123!';
+const REFEREE_PASSWORD = process.env.LIVE_TEST_REFEREE_PASSWORD || 'TestRefereePassword123!';
+const JOURNALIST_PASSWORD = process.env.LIVE_TEST_JOURNALIST_PASSWORD || 'TestJournalistPassword123!';
+
 test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Functional Suite', () => {
 
   // =========================================================================
@@ -13,9 +19,9 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await expect(page.locator('#login-email')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#login-password')).toBeVisible();
 
-    // 2. Perform live login with authentic Admin credentials
+    // 2. Perform live login with Admin credentials
     await page.fill('#login-email', 'apobett11@gmail.com');
-    await page.fill('#login-password', 'Apo1574bett7687');
+    await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('button[type="submit"]');
 
     // 3. Verify successful authentication and redirection to /admin
@@ -30,10 +36,10 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await expect(passkeyToggleBtn).toBeVisible();
     await passkeyToggleBtn.click();
 
-    // 6. Enter authentic Executive Passkey "15747687"
+    // 6. Enter Executive Passkey
     const passkeyInput = page.locator('input[placeholder="Enter secret passkey..."]');
     await expect(passkeyInput).toBeVisible();
-    await passkeyInput.fill('15747687');
+    await passkeyInput.fill(ADMIN_PASSKEY);
 
     // 7. Submit Passkey authentication
     const authPasskeyBtn = page.locator('button:has-text("Authenticate with Passkey")');
@@ -68,7 +74,7 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
       const admin2Modal = page.locator('text=Admin 2 Clearance').or(page.locator('text=Master Password')).first();
       if (await admin2Modal.isVisible()) {
         const masterPwInput = page.locator('input[type="password"]');
-        await masterPwInput.fill('Apo1574bett7687');
+        await masterPwInput.fill(ADMIN_PASSWORD);
         await page.locator('button:has-text("Unlock Admin 2"), button:has-text("Unlock Module")').first().click();
         await page.waitForTimeout(1000);
       }
@@ -94,9 +100,9 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await page.goto('/#/login');
     await expect(page.locator('#login-email')).toBeVisible({ timeout: 15000 });
 
-    // 2. Fill authentic Coach credentials (Coach Alex mbui - Fass Elites)
+    // 2. Fill Coach credentials
     await page.fill('#login-email', 'masasiadavid@gmail.com');
-    await page.fill('#login-password', 'CoachAlex@2026!');
+    await page.fill('#login-password', COACH_PASSWORD);
     await page.click('button[type="submit"]');
 
     // 3. Verify redirection to /coach
@@ -136,9 +142,9 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await page.goto('/#/login');
     await expect(page.locator('#login-email')).toBeVisible({ timeout: 15000 });
 
-    // 2. Fill authentic Referee credentials
+    // 2. Fill Referee credentials
     await page.fill('#login-email', 'officialreferee@gmail.com');
-    await page.fill('#login-password', 'Official@referee2026');
+    await page.fill('#login-password', REFEREE_PASSWORD);
     await page.click('button[type="submit"]');
 
     // 3. Verify redirection to /referee
@@ -169,9 +175,9 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await page.goto('/#/login');
     await expect(page.locator('#login-email')).toBeVisible({ timeout: 15000 });
 
-    // 2. Fill authentic Journalist credentials
+    // 2. Fill Journalist credentials
     await page.fill('#login-email', 'journalist@gmail.com');
-    await page.fill('#login-password', 'Journalist@2026!');
+    await page.fill('#login-password', JOURNALIST_PASSWORD);
     await page.click('button[type="submit"]');
 
     // 3. Verify redirection to /journalist
@@ -192,7 +198,7 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     // 1. Login with authorized Executive Administrator credentials
     await page.goto('/#/login');
     await page.fill('#login-email', 'apobett11@gmail.com');
-    await page.fill('#login-password', 'Apo1574bett7687');
+    await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('button[type="submit"]');
 
     // 2. Wait for auth completion and navigate to /president
@@ -237,7 +243,7 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
 
     // Now authenticate with real credentials on the same form to prove full success
     await page.fill('#login-email', 'apobett11@gmail.com');
-    await page.fill('#login-password', 'Apo1574bett7687');
+    await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('button[type="submit"]');
 
     // Verify successful authentication and redirection to /admin

@@ -171,7 +171,7 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     await instantBypassBtn.click();
 
     const passkeyInput = page.locator('input[placeholder="Enter secret passkey..."]');
-    await passkeyInput.fill('15747687');
+    await passkeyInput.fill(process.env.ADMIN_EMERGENCY_PASSKEY || '00000000');
     await page.locator('button:has-text("Authenticate with Passkey")').click();
 
     // Verify 2FA modal dismisses and main dashboard appears
@@ -210,8 +210,8 @@ test.describe('SuperAdmin Dashboard Makeover & Admin 2 Portal Tests', () => {
     await page.locator('button:has-text("Unlock Admin 2")').click();
     await expect(page.locator('text=Incorrect Admin 2 Master Password. Access denied.')).toBeVisible();
 
-    // 9. Enter exact required password: "Apo1574bett7687"
-    await passwordInput.fill('Apo1574bett7687');
+    // 9. Enter exact required password
+    await passwordInput.fill(process.env.ADMIN_2_PASSWORD || 'TestAdmin2Pass!');
     await page.locator('button:has-text("Unlock Admin 2")').click();
 
     // 10. Verify Admin 2 Unlocked and Renders Full Telemetry Suite

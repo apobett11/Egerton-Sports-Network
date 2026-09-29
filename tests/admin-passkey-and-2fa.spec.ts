@@ -3,7 +3,8 @@ import { test, expect, Route } from '@playwright/test';
 test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification Suite', () => {
   const adminId = 'b6e63390-3116-4dbc-a7a8-65fc13b86a8e';
   const adminEmail = 'apobett11@gmail.com';
-  // SHA-256 hash of "15747687"
+  const MOCK_PASSKEY = process.env.ADMIN_EMERGENCY_PASSKEY || '00000000';
+  // Configured passkey hash
   const PASSKEY_HASH = '74169a94e060baa6c1160b18d4e0085efe95a1cf490a5431b634d3090c7684db';
 
   const headerBase64 = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -54,8 +55,8 @@ test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification S
       }
 
       if (action === 'verify_code') {
-        // Check if passkey: "15747687"
-        if (code === '15747687') {
+        // Check if passkey matches configured mock
+        if (code === MOCK_PASSKEY) {
           return route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -234,10 +235,10 @@ test.describe('Admin Passkey ("Once Pass") & Weekly 2FA Clearance Verification S
     // Verify "Single-Session Notice" appears
     await expect(page.locator('text=Single-Session Notice')).toBeVisible();
 
-    // 3. Enter emergency passkey "15747687"
+    // 3. Enter emergency passkey
     const passkeyInput = page.locator('input[placeholder="Enter secret passkey..."]');
     await expect(passkeyInput).toBeVisible();
-    await passkeyInput.fill('15747687');
+    await passkeyInput.fill(MOCK_PASSKEY);
 
     const verifyBtn = page.locator('button:has-text("Authenticate with Passkey")');
     await verifyBtn.click();

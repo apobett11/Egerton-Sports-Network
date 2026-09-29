@@ -19,8 +19,8 @@ const supabaseAdmin = createClient(
 );
 
 async function provisionJournalist() {
-  const email = 'journalist@gmail.com';
-  const password = 'Journalist@2026!';
+  const email = process.env.JOURNALIST_SEED_EMAIL || 'journalist@gmail.com';
+  const password = process.env.JOURNALIST_SEED_PASSWORD || 'JournalistPass123!';
   const role = 'journalist';
   const fullName = 'Official Journalist';
   const firstName = 'Official';

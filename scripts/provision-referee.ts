@@ -193,16 +193,17 @@ async function main() {
   console.log('OFFICIAL REFEREE AUTHENTICATION & PROFILE PROVISIONING');
   console.log('===========================================================');
 
+  const refereeDefaultPw = process.env.REFEREE_SEED_PASSWORD || 'RefereePass123!';
   const targets: ProvisionConfig[] = [
     {
       email: 'officialreferee@gmail.com',
-      password: 'Official@referee2026',
+      password: refereeDefaultPw,
       role: 'REFEREE',
       fullName: 'Official Referee'
     },
     {
       email: 'officialreferee@egerscore.com',
-      password: 'Official@referee2026',
+      password: refereeDefaultPw,
       role: 'REFEREE',
       fullName: 'Official Referee'
     }

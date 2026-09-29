@@ -107,7 +107,7 @@ test.describe('Admin 2 Deep Telemetry & Analytics Suite', () => {
 
       if (url.includes('/rest/v1/system_settings')) {
         if (url.includes('admin_2_security')) {
-          const setting = { key: 'admin_2_security', value: { password: 'Apo1574bett7687', updated_at: new Date().toISOString() } };
+          const setting = { key: 'admin_2_security', value: { password: process.env.ADMIN_2_PASSWORD || 'TestAdmin2Pass!', updated_at: new Date().toISOString() } };
           return route.fulfill({
             status: 200,
             contentType: 'application/json',
