@@ -39,13 +39,14 @@ const DEFAULT_TTLS: Record<string, number> = {
   referees: 24 * 60 * 60 * 1000
 };
 
-const STORAGE_PREFIX = 'esn_guest_cache_v5_';
+const STORAGE_PREFIX = 'esn_guest_cache_v6_';
 const MAX_STORED_CHARS = 80_000;
 const RETIRED_PREFIXES = [
   'esn_guest_cache_v1_',
   'esn_guest_cache_v2_',
   'esn_guest_cache_v3_',
   'esn_guest_cache_v4_',
+  'esn_guest_cache_v5_',
   'egerscore_guest_fixtures_',
   'guest_fixtures_v',
 ];

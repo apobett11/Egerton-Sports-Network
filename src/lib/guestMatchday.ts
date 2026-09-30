@@ -2,6 +2,20 @@ import { useSyncExternalStore } from 'react';
 import { localDateKey, readPlaydayIndex, resolveGuestMatchdayDate } from './matchdayHelper';
 
 const STORAGE_KEY = 'esn_selected_date';
+const DATA_GENERATION = 'v6';
+const GENERATION_KEY = 'esn_guest_data_generation';
+
+function dropSkewedSessionDate(): void {
+  try {
+    if (sessionStorage.getItem(GENERATION_KEY) === DATA_GENERATION) return;
+    sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.setItem(GENERATION_KEY, DATA_GENERATION);
+  } catch {
+    // A blocked session store still misses the retired fixture cache.
+  }
+}
+
+dropSkewedSessionDate();
 
 function readInitial(): Date {
   try {

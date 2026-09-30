@@ -269,7 +269,6 @@ export function hasPlaceholderTeamData(fixtures: any[]): boolean {
 
 const FIXTURE_COLUMNS = 'id,competition_id,home_team_id,away_team_id,matchday,scheduled_time,venue,status,score_home,score_away,home_penalty_score,away_penalty_score,updated_at';
 const FIXTURE_TTL = 6 * 60 * 60 * 1000;
-const FIXTURES_CACHE_KEY = 'egerscore_guest_fixtures_v4';
 const lastRevalidateTimes = new Map<string, number>();
 const REVALIDATE_COOLDOWN_MS = 60_000;
 
@@ -416,19 +415,6 @@ async function fetchGuestFixturesNetwork(params?: {
 function readStoredFixtures(cacheKey: string): GuestFixture[] | null {
   const stale = guestCache.getStale<GuestFixture[]>('fixtures', cacheKey);
   if (stale && stale.length > 0 && !hasPlaceholderTeamData(stale)) return stale;
-  if (typeof localStorage === 'undefined') return null;
-  const keys = [`${FIXTURES_CACHE_KEY}_${cacheKey}`, `guest_fixtures_v4_${cacheKey}`];
-  for (const key of keys) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      const parsed = JSON.parse(raw);
-      const data = Array.isArray(parsed) ? parsed : parsed?.data;
-      if (Array.isArray(data) && data.length > 0 && !hasPlaceholderTeamData(data)) return data;
-    } catch {
-      // Ignore a corrupt legacy entry and use the network for this date.
-    }
-  }
   return null;
 }
 
