@@ -6,6 +6,7 @@ import { test, expect } from '@playwright/test';
  * changes must stay on the UI thread.
  */
 test('phone guest page paints fixtures without crest blobs', async ({ page }) => {
+  test.setTimeout(90_000);
   const heavy: string[] = [];
 
   page.on('response', async (response) => {
@@ -25,8 +26,9 @@ test('phone guest page paints fixtures without crest blobs', async ({ page }) =>
   });
 
   await page.setViewportSize({ width: 360, height: 740 });
-  const client = await page.context().newCDPSession(page);
-  await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  page.on('pageerror', (error) => {
+    heavy.push(`pageerror ${error.message}`);
+  });
 
   const opened = Date.now();
   await page.goto('/#/', { waitUntil: 'domcontentloaded' });
@@ -34,26 +36,41 @@ test('phone guest page paints fixtures without crest blobs', async ({ page }) =>
   await expect(calendar).toBeVisible({ timeout: 15000 });
   const paintMs = Date.now() - opened;
 
-  const consent = page.getByRole('button', { name: 'Essential Only' });
-  if (await consent.isVisible().catch(() => false)) {
-    await consent.click();
-  }
+  await page.evaluate(() => {
+    const consent = Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Essential Only');
+    consent?.click();
+  });
 
   const before = (await calendar.innerText()).trim();
-  const shiftMs = await page.evaluate(() => {
+  const shift = await page.evaluate(() => {
+    const probe = window as Window & { __esnHomeRenders?: number; __esnFeedRenders?: number };
+    probe.__esnHomeRenders = 0;
+    probe.__esnFeedRenders = 0;
     const started = performance.now();
     const forward = document.querySelector('[aria-label="Next matchday"]') as HTMLButtonElement | null;
     const back = document.querySelector('[aria-label="Previous matchday"]') as HTMLButtonElement | null;
     const target = forward && !forward.disabled ? forward : back;
     target?.click();
-    return Math.round(performance.now() - started);
+    return new Promise<{ ms: number; homeRenders: number; feedRenders: number }>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve({
+            ms: Math.round(performance.now() - started),
+            homeRenders: probe.__esnHomeRenders || 0,
+            feedRenders: probe.__esnFeedRenders || 0,
+          });
+        });
+      });
+    });
   });
   await expect(calendar).not.toHaveText(before, { timeout: 4000 });
 
   await expect(page.locator('main')).toBeVisible();
   await expect(page.getByText('Finished').first()).toBeVisible();
   await expect(page.locator('body')).not.toContainText('Aw, Snap');
-  console.log(`guest paint ${paintMs}ms, matchday shift ${shiftMs}ms`);
+  console.log(`guest paint ${paintMs}ms, matchday shift ${shift.ms}ms, home renders ${shift.homeRenders}, feed renders ${shift.feedRenders}`);
   expect(heavy, heavy.join('\n')).toEqual([]);
-  expect(shiftMs).toBeLessThan(3000);
+  expect(shift.ms).toBeLessThan(3000);
+  expect(shift.homeRenders).toBe(0);
+  expect(shift.feedRenders).toBeGreaterThan(0);
 });

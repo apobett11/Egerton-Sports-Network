@@ -146,6 +146,16 @@ class GuestCacheManager {
   }
 
   /**
+   * Memory only. Safe to call while painting; it never touches localStorage.
+   */
+  peek<T>(category: string, key: string): T | null {
+    const mem = this.memoryCache.get(`${category}:${key}`);
+    if (!mem) return null;
+    if (Date.now() - mem.timestamp >= mem.ttl) return null;
+    return mem.data as T;
+  }
+
+  /**
    * Get cached entry if valid (unexpired).
    */
   get<T>(category: string, key: string): T | null {

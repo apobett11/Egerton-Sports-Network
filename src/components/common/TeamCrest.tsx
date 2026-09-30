@@ -35,7 +35,10 @@ export const TeamCrest: React.FC<TeamCrestProps> = ({ teamId, src, alt = '', cla
     if (teamId && needsAssetFetch(teamId, version)) {
       prioritizeTeamLogo(teamId, version);
     }
-    return subscribeTeamLogos(() => setLogo(resolveCrest(teamId, src)));
+    return subscribeTeamLogos((changedId) => {
+      if (changedId && changedId !== teamId) return;
+      setLogo(resolveCrest(teamId, src));
+    });
   }, [teamId, src, version]);
 
   return <img src={logo} alt={alt} className={className} loading="lazy" decoding="async" />;

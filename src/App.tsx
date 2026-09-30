@@ -24,6 +24,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import type { Match, Team } from './types';
 import { calculateLeagueStandings } from './lib/leagueEngine';
 import { resolveGuestMatchdayDate, readPlaydayIndex, localDateKey, fixtureDateKey } from './lib/matchdayHelper';
+import { getGuestMatchday, setGuestMatchday } from './lib/guestMatchday';
 import { useLiveMatchRealtime } from './hooks/useLiveMatchRealtime';
 import { ToastContainer } from './components/common/ToastContainer';
 import { useDeviceIdentity } from './hooks/useDeviceIdentity';
@@ -744,7 +745,10 @@ export const AppContent: React.FC = () => {
       });
       if (!hasFixturesOnDate) {
         const targetDate = resolveGuestMatchdayDate(liveMatches);
-        if (localDateKey(targetDate) !== curKey) setSelectedDate(targetDate);
+        if (localDateKey(targetDate) !== curKey) {
+          setGuestMatchday(targetDate);
+          setSelectedDate(targetDate);
+        }
       }
     }
   }, [liveMatches, selectedDate]);
@@ -798,13 +802,15 @@ export const AppContent: React.FC = () => {
     const map = new Map<string, Match>();
     (liveMatches || []).forEach((m) => map.set(m.id, m));
 
-    const allCached = guestCache.get<Match[]>('fixtures', 'all_all_pall_sall') || [];
-    allCached.forEach((m) => {
+    const dayKey = `${selectedCompetitionId || 'all'}_${localDateKey(getGuestMatchday())}_pall_sall`;
+    const dayCached = guestCache.peek<Match[]>('fixtures', dayKey) || [];
+    const allCached = guestCache.peek<Match[]>('fixtures', 'all_all_pall_sall') || [];
+    [...dayCached, ...allCached].forEach((m) => {
       if (!map.has(m.id)) map.set(m.id, m);
     });
 
     return favorites.map((id) => map.get(id)).filter((m): m is Match => Boolean(m));
-  }, [liveMatches, favorites]);
+  }, [liveMatches, favorites, activeTab, selectedCompetitionId]);
 
   // --- DIRECT UNPROMPTED DASHBOARD ROUTING WITH ROLE GUARDS ---
   if (route === 'admin' || route === 'admin2' || route === 'admin-2' || route === 'dashboard/admin') {

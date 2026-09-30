@@ -7,7 +7,7 @@ export const DEFAULT_TEAM_LOGO =
 type LogoRecord = { src: string; stamp: string };
 
 const memory = new Map<string, LogoRecord>();
-const listeners = new Set<() => void>();
+const listeners = new Set<(teamId?: string) => void>();
 const queue: Array<{ teamId: string; stamp: string; priority: boolean }> = [];
 const inflight = new Set<string>();
 
@@ -17,17 +17,17 @@ let pumpScheduled = false;
 const MAX_CONCURRENT = 1;
 const LOGO_GAP_MS = 700;
 
-function notify(): void {
+function notify(teamId?: string): void {
   listeners.forEach((fn) => {
     try {
-      fn();
+      fn(teamId);
     } catch {
       // A logo subscriber must not break the rest of the page.
     }
   });
 }
 
-export function subscribeTeamLogos(fn: () => void): () => void {
+export function subscribeTeamLogos(fn: (teamId?: string) => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
@@ -113,7 +113,7 @@ export async function rememberTeamLogo(teamId: string, src: string, stamp: strin
   if (prev && prev.src === src && prev.stamp === stamp) return;
   const record = { src, stamp: stamp || 'legacy' };
   memory.set(teamId, record);
-  notify();
+  notify(teamId);
   await persist(teamId, record);
 }
 

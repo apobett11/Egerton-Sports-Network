@@ -3,6 +3,7 @@ import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, 
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
+import { setGuestMatchday, useGuestMatchday } from '../../lib/guestMatchday';
 
 interface HeaderProps {
     darkMode: boolean;
@@ -64,7 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
     // Calendar Modal State
     const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [showPotwComingSoonModal, setShowPotwComingSoonModal] = useState(false);
-    const [viewDate, setViewDate] = useState(() => new Date(selectedDate));
+    const liveDate = useGuestMatchday();
+    const [viewDate, setViewDate] = useState(() => new Date(liveDate));
     const [playdayIndex, setPlaydayIndex] = useState<PlaydayMark[]>(() => readPlaydayIndex());
 
     React.useEffect(() => {
@@ -79,10 +81,10 @@ export const Header: React.FC<HeaderProps> = ({
 
     React.useEffect(() => {
         if (isCalendarOpen) {
-            setViewDate(new Date(selectedDate));
+            setViewDate(new Date(liveDate));
             setShowCalendarModal(true);
         }
-    }, [isCalendarOpen, selectedDate]);
+    }, [isCalendarOpen, liveDate]);
 
     const handlePrevYear = () => {
         setViewDate(new Date(viewDate.getFullYear() - 1, viewDate.getMonth(), 1));
@@ -409,7 +411,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 const dayNum = i + 1;
                                 const targetDate = new Date(year, month, dayNum);
                                 const dateKey = targetDate.toDateString();
-                                const isSelected = dateKey === selectedDate.toDateString();
+                                const isSelected = dateKey === liveDate.toDateString();
                                 const isToday = dateKey === new Date().toDateString();
                                 const matchInfo = dateMatchMap.get(dateKey);
                                 const isFriendly = Boolean(matchInfo?.isFriendly && !matchInfo?.isLeague);
@@ -426,7 +428,7 @@ export const Header: React.FC<HeaderProps> = ({
                                         key={dayNum}
                                         type="button"
                                         onClick={() => {
-                                            setSelectedDate(targetDate);
+                                            setGuestMatchday(targetDate);
                                             setShowCalendarModal(false);
                                             if (onCloseCalendar) onCloseCalendar();
                                         }}
@@ -482,7 +484,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setSelectedDate(new Date());
+                                        setGuestMatchday(new Date());
                                         setShowCalendarModal(false);
                                         if (onCloseCalendar) onCloseCalendar();
                                     }}

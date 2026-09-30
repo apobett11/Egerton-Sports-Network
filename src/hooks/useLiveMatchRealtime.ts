@@ -21,21 +21,25 @@ export interface UseLiveMatchRealtimeOptions {
   competitionId?: string;
 }
 
+const EMPTY_MATCHES: Match[] = [];
+
 export const useLiveMatchRealtime = (
-  initialMatches: Match[] = [],
+  initialMatches: Match[] = EMPTY_MATCHES,
   onMatchUpdated?: (matches: Match[]) => void,
   options?: UseLiveMatchRealtimeOptions
 ) => {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const matchesRef = useRef<Match[]>(initialMatches);
+  const initialMatchesRef = useRef(initialMatches);
 
   const hasFetchedInitialRef = useRef(false);
 
   useEffect(() => {
-    if (initialMatches && initialMatches.length > 0) {
-      setMatches(initialMatches);
-      matchesRef.current = initialMatches;
+    const seeded = initialMatchesRef.current;
+    if (seeded && seeded.length > 0) {
+      setMatches(seeded);
+      matchesRef.current = seeded;
       return;
     }
 
@@ -45,8 +49,7 @@ export const useLiveMatchRealtime = (
       const exactKey = options.selectedDate
         ? `${options.competitionId || 'all'}_${options.selectedDate}_pall_sall`
         : 'all_all_pall_sall';
-      const cached = guestCache.get<Match[]>('fixtures', exactKey)
-        || guestCache.getStale<Match[]>('fixtures', exactKey);
+      const cached = guestCache.peek<Match[]>('fixtures', exactKey);
       if (cached && cached.length > 0) {
         setMatches(cached);
         matchesRef.current = cached;
@@ -72,7 +75,7 @@ export const useLiveMatchRealtime = (
         }).catch(() => {});
       }
     }
-  }, [initialMatches, options?.autoFetchAll, options?.selectedDate, options?.competitionId]);
+  }, [options?.autoFetchAll, options?.selectedDate, options?.competitionId]);
 
   const addToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
