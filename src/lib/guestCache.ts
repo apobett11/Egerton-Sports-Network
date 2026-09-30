@@ -39,41 +39,29 @@ const DEFAULT_TTLS: Record<string, number> = {
   referees: 24 * 60 * 60 * 1000
 };
 
-const STORAGE_PREFIX = 'esn_guest_cache_v4_';
+const STORAGE_PREFIX = 'esn_guest_cache_v5_';
+const MAX_STORED_CHARS = 80_000;
+const RETIRED_PREFIXES = [
+  'esn_guest_cache_v1_',
+  'esn_guest_cache_v2_',
+  'esn_guest_cache_v3_',
+  'esn_guest_cache_v4_',
+  'egerscore_guest_fixtures_',
+  'guest_fixtures_v',
+];
 
 class GuestCacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
   private subscribers: Set<CacheSubscriber> = new Set();
   private pollTimer: number | null = null;
+  private persistQueue: Array<{ storageKey: string; entry: CacheEntry<any> }> = [];
+  private persistScheduled = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
-      try {
-        // One-time migration off v1–v3. The live v4 store and the session
-        // network budget are left in place so a reload can paint from cache.
-        const MIGRATION_FLAG = 'esn_guest_cache_migrated_v4';
-        if (!localStorage.getItem(MIGRATION_FLAG)) {
-          const LEGACY_PREFIXES = [
-            'esn_guest_cache_v1_',
-            'esn_guest_cache_v2_',
-            'esn_guest_cache_v3_',
-            'egerscore_guest_fixtures_',
-            'guest_fixtures_v',
-          ];
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const k = localStorage.key(i);
-            if (k && LEGACY_PREFIXES.some(prefix => k.startsWith(prefix))) {
-              localStorage.removeItem(k);
-            }
-          }
-          localStorage.setItem(MIGRATION_FLAG, '1');
-        }
-      } catch {}
-
-      this.compactEmbeddedLogos();
+      this.scheduleRetiredKeyCleanup();
 
       window.addEventListener('online', () => {
-        // Revalidate stale cache on network recovery
         this.clearStaleMemory();
       });
 
@@ -182,7 +170,8 @@ class GuestCacheManager {
   }
 
   /**
-   * Set cached entry with TTL.
+   * Keep the value in memory for this page immediately.
+   * localStorage is filled one entry at a time, off the paint turn.
    */
   set<T>(category: string, key: string, data: T, customTtl?: number, notify = false): void {
     const fullKey = `${category}:${key}`;
@@ -194,16 +183,67 @@ class GuestCacheManager {
     };
 
     this.memoryCache.set(fullKey, entry);
-
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${fullKey}`, JSON.stringify(entry));
-    } catch {
-      // Clean old keys if storage full
-      this.evictOldestLocalStorage();
-    }
+    this.persistQueue = this.persistQueue.filter((job) => job.storageKey !== `${STORAGE_PREFIX}${fullKey}`);
+    this.persistQueue.push({ storageKey: `${STORAGE_PREFIX}${fullKey}`, entry });
+    this.schedulePersist();
 
     if (notify) {
       this.notifySubscribers(category, key);
+    }
+  }
+
+  private schedulePersist(): void {
+    if (this.persistScheduled || typeof window === 'undefined') return;
+    this.persistScheduled = true;
+    const run = () => {
+      this.persistScheduled = false;
+      const job = this.persistQueue.shift();
+      if (job) {
+        try {
+          const json = JSON.stringify(job.entry);
+          if (json.length <= MAX_STORED_CHARS && !json.includes('data:image')) {
+            localStorage.setItem(job.storageKey, json);
+          }
+        } catch {
+          this.evictOldestLocalStorage();
+        }
+      }
+      if (this.persistQueue.length > 0) {
+        window.setTimeout(() => this.schedulePersist(), 220);
+      }
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(run, { timeout: 700 });
+    } else {
+      window.setTimeout(run, 120);
+    }
+  }
+
+  /**
+   * Drop retired cache keys by name only, one key at a time.
+   * Their bodies are not read, so an old crest blob cannot freeze startup.
+   */
+  private scheduleRetiredKeyCleanup(): void {
+    const step = () => {
+      let retired: string | null = null;
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && RETIRED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+            retired = key;
+            break;
+          }
+        }
+        if (retired) localStorage.removeItem(retired);
+      } catch {
+        return;
+      }
+      if (retired) window.setTimeout(step, 180);
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => step(), { timeout: 2500 });
+    } else {
+      window.setTimeout(step, 1200);
     }
   }
 
@@ -256,37 +296,13 @@ class GuestCacheManager {
       const storageKey = `${STORAGE_PREFIX}${fullKey}`;
       const raw = localStorage.getItem(storageKey);
       if (!raw) return null;
-      const parsed: CacheEntry<T> = JSON.parse(raw);
-      if (raw.includes('data:image')) {
-        parsed.data = detachEmbeddedLogos(parsed.data) as T;
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-        } catch {
-          // The in-memory copy is already slim.
-        }
+      if (raw.length > MAX_STORED_CHARS || raw.includes('data:image')) {
+        try { localStorage.removeItem(storageKey); } catch {}
+        return null;
       }
-      return parsed;
+      return JSON.parse(raw) as CacheEntry<T>;
     } catch {
       return null;
-    }
-  }
-
-  /**
-   * Move embedded crests out of fixture and standings cache so those payloads stay small.
-   */
-  private compactEmbeddedLogos(): void {
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const storageKey = localStorage.key(i);
-        if (!storageKey || !storageKey.startsWith(STORAGE_PREFIX)) continue;
-        const raw = localStorage.getItem(storageKey);
-        if (!raw || !raw.includes('data:image')) continue;
-        const parsed = JSON.parse(raw);
-        parsed.data = detachEmbeddedLogos(parsed.data);
-        localStorage.setItem(storageKey, JSON.stringify(parsed));
-      }
-    } catch {
-      // Ignore quota and private-mode failures.
     }
   }
 

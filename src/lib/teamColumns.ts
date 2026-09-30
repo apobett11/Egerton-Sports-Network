@@ -5,7 +5,7 @@
  */
 
 export const TEAM_LIST_COLUMNS =
-  'id, name, short_name, logo_url, faculty, color_code, status, competition_id, coach_id, captain_id, updated_at';
+  'id, name, short_name, faculty, color_code, status, competition_id, coach_id, captain_id, updated_at';
 
 /** Coach home screen. Crest bytes stay in the asset cache, not in this row. */
 export const TEAM_DASHBOARD_COLUMNS =

@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { publicTeamLogo } from '../lib/teamLogoCache';
 import type {
   MotmNomination,
   PotwCandidate,
@@ -98,7 +99,7 @@ export async function getActiveBallotCandidates(
     const [fixturesRes, playersRes, teamsRes, profilesRes, compRes] = await Promise.all([
       supabase.from('fixtures').select('id, matchday, scheduled_time, score_home, score_away, home_team_id, away_team_id').in('id', fixtureIds),
       supabase.from('players').select('id, jersey_number, position, profile_id').in('id', playerIds),
-      supabase.from('teams').select('id, name, logo_url').in('id', teamIds),
+      supabase.from('teams').select('id, name').in('id', teamIds),
       supabase.from('profiles').select('id, first_name, last_name, avatar_url').in('id', [...refereeIds]),
       supabase.from('competitions').select('id, name').eq('id', competitionId).maybeSingle(),
     ]);
@@ -116,7 +117,7 @@ export async function getActiveBallotCandidates(
       if (f.away_team_id) allFixtureTeamIds.add(f.away_team_id);
     });
     const allTeamsRes = allFixtureTeamIds.size > 0
-      ? await supabase.from('teams').select('id, name, logo_url').in('id', Array.from(allFixtureTeamIds))
+      ? await supabase.from('teams').select('id, name').in('id', Array.from(allFixtureTeamIds))
       : { data: [] };
 
     // Build lookup maps
@@ -167,7 +168,7 @@ export async function getActiveBallotCandidates(
           position: player?.position ?? undefined,
           team_id: nom.team_id,
           team_name: team?.name || 'Campus Team',
-          team_logo: team?.logo_url || undefined,
+          team_logo: publicTeamLogo(team?.id),
           competition_id: nom.competition_id,
           competition_name: competitionName,
           fixture_id: nom.fixture_id,

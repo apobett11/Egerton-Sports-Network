@@ -409,6 +409,12 @@ export async function rateLimitedFetch(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> {
+  if (init && 'keepalive' in init) {
+    const nextInit: RequestInit = { ...init };
+    delete nextInit.keepalive;
+    init = nextInit;
+  }
+
   const nativeFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : fetch;
   const scope = classifyRequestScope(input, init);
 

@@ -22,12 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'egerscore_auth_token'
   },
   global: {
-    fetch: (input, init) => {
-      return rateLimitedFetch(input, {
-        ...init,
-        keepalive: true,
-      });
-    },
+    fetch: (input, init) => rateLimitedFetch(input, init),
     headers: {
       'x-application-name': 'egerton-sports-network',
       'Connection': 'keep-alive'

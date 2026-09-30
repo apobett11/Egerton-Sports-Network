@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { publicTeamLogo } from '../../lib/teamLogoCache';
 import { fetchTeamById, updatePlayerInfo, fetchTeamBySlugOrName } from '../../components/Dashboards/Team/lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import {
@@ -136,7 +137,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         t = await fetchTeamById(slugOrId);
       }
       if (!t) {
-        const { data } = await supabase.from('teams').select('id, name, short_name, logo_url, faculty, color_code, status, competition_id').eq('id', slugOrId).maybeSingle();
+        const { data } = await supabase.from('teams').select('id, name, short_name, faculty, color_code, status, competition_id').eq('id', slugOrId).maybeSingle();
         t = data;
       }
 
@@ -193,7 +194,7 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
   const loadAllTeams = async () => {
     setIsLoadingData(true);
     try {
-      const { data } = await supabase.from('teams').select('id, name, short_name, logo_url').order('name');
+      const { data } = await supabase.from('teams').select('id, name, short_name').order('name');
       if (data && data.length > 0) {
         setAvailableTeams(data);
         const firstTeamId = data[0].id;
@@ -354,8 +355,8 @@ export const PlayerRegistrationPage: React.FC<PlayerRegistrationPageProps> = ({ 
         {/* Minimalist Google Form Header Card */}
         <div className="bg-[#161B22] border-t-4 border-t-emerald-500 border-x border-b border-[#2A3441] rounded-2xl p-6 shadow-xl space-y-2">
           <div className="flex items-center gap-3">
-            {teamInfo?.logo_url ? (
-              <img src={teamInfo.logo_url} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#2A3441]" />
+            {teamInfo?.id ? (
+              <img src={publicTeamLogo(teamInfo.id)} alt="" className="w-10 h-10 rounded-xl object-cover border border-[#2A3441]" />
             ) : (
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                 <Shield className="w-5 h-5" />

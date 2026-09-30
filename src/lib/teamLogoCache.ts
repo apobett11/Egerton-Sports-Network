@@ -13,7 +13,9 @@ const inflight = new Set<string>();
 
 let hydrated: Promise<void> | null = null;
 let active = 0;
-const MAX_CONCURRENT = 2;
+let pumpScheduled = false;
+const MAX_CONCURRENT = 1;
+const LOGO_GAP_MS = 700;
 
 function notify(): void {
   listeners.forEach((fn) => {
@@ -178,26 +180,39 @@ function enqueue(teamId: string, stamp: string, priority: boolean): void {
   const job = { teamId, stamp, priority };
   if (priority) queue.unshift(job);
   else queue.push(job);
-  void pump();
+  schedulePump();
+}
+
+function schedulePump(): void {
+  if (pumpScheduled || active >= MAX_CONCURRENT || queue.length === 0) return;
+  pumpScheduled = true;
+  const start = () => {
+    pumpScheduled = false;
+    void pump();
+  };
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(start, { timeout: 1600 });
+  } else {
+    setTimeout(start, 800);
+  }
 }
 
 async function fetchOne(teamId: string, expectedStamp: string): Promise<void> {
+  // Embedded crests stay in the database. The filter keeps data: bytes off the wire.
   const { data, error } = await supabase
     .from('teams')
     .select('logo_url, updated_at')
     .eq('id', teamId)
+    .not('logo_url', 'like', 'data:%')
     .maybeSingle();
 
-  if (error || !data) return;
-  const src = typeof data.logo_url === 'string' && data.logo_url ? data.logo_url : DEFAULT_TEAM_LOGO;
-  if (src.startsWith('data:')) {
-    // Keep the coach's stamp so an embedded crest is not downloaded again
-    // until that team row actually changes.
-    await rememberTeamLogo(teamId, DEFAULT_TEAM_LOGO, expectedStamp || 'embedded-skip');
+  if (error) return;
+  const stamp = (data?.updated_at as string) || expectedStamp || 'embedded-skip';
+  if (!data?.logo_url || String(data.logo_url).startsWith('data:')) {
+    await rememberTeamLogo(teamId, DEFAULT_TEAM_LOGO, stamp);
     return;
   }
-  const stamp = (data.updated_at as string) || expectedStamp || 'legacy';
-  await rememberTeamLogo(teamId, src, stamp);
+  await rememberTeamLogo(teamId, data.logo_url, stamp);
 }
 
 async function pump(): Promise<void> {
@@ -223,7 +238,9 @@ async function pump(): Promise<void> {
   } finally {
     inflight.delete(job.teamId);
     active -= 1;
-    if (queue.length > 0) void pump();
+    if (queue.length > 0) {
+      setTimeout(() => schedulePump(), LOGO_GAP_MS);
+    }
   }
 }
 
