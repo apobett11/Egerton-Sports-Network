@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserRole } from '../types';
-import { updateTeamSettings, updateCoachCredentialsAndLogo, uploadTeamCrest, DEFAULT_TEAM_UUID } from '../lib/supabaseClient';
+import { updateTeamSettings, updateCoachCredentialsAndLogo, uploadTeamCrest } from '../lib/supabaseClient';
 import {
   Settings,
   Shield,
@@ -43,7 +43,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   setDarkMode,
   showToast,
   onLogout,
-  teamId = DEFAULT_TEAM_UUID,
+  teamId = '',
   roster = [],
   teamInfo,
   coachProfile,
@@ -121,9 +121,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const coachOwnsThisTeam = Boolean(
+    teamId &&
+    coachUserId &&
+    teamInfo?.id === teamId &&
+    teamInfo?.coach_id === coachUserId
+  );
+
   const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!coachOwnsThisTeam) {
+      showToast('This account is not linked to this team.');
+      return;
+    }
     setIsUploadingLogo(true);
     try {
       // Immediate local preview so coach sees the selected photo instantly
@@ -153,6 +164,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleSaveTeamSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!coachOwnsThisTeam) {
+      showToast('This account is not linked to this team.');
+      return;
+    }
 
     if (coachEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(coachEmail)) {
       showToast('Please enter a valid coach email address.');
@@ -240,6 +256,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleSaveMatchRoles = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!coachOwnsThisTeam) {
+      showToast('This account is not linked to this team.');
+      return;
+    }
     try {
       await updateTeamSettings(teamId, {
         captain_id: designatedCaptain,

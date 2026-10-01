@@ -81,53 +81,87 @@ export async function resolveRealTeamId(input: string): Promise<string> {
 }
 
 /**
- * Resolves the authenticated user's assigned team record from Supabase 'teams' table.
+ * Picks the single team this coach UID actually owns.
+ * A profile.team_id that points at a different club is ignored.
+ * More than one owned team is rendered only when that profile UID matches one of them.
+ */
+export function selectTeamOwnedByCoach<T extends { id: string; coach_id?: string | null }>(
+    coachUserId: string,
+    teams: T[] | null | undefined,
+    profileTeamId?: string | null
+): T | null {
+    if (!coachUserId || !isValidUuid(coachUserId) || !teams?.length) return null;
+    const owned = teams.filter((team) => team.coach_id === coachUserId);
+    if (owned.length === 1) return owned[0];
+    if (owned.length > 1 && profileTeamId) {
+        return owned.find((team) => team.id === profileTeamId) ?? null;
+    }
+    return null;
+}
+
+/**
+ * Confirms the signed-in user is teams.coach_id for this team UID.
+ * Used before any coach dashboard write so a request cannot target another club.
+ */
+export async function requireCoachOwnedTeam(teamId: string): Promise<{ teamId: string; userId: string }> {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id || '';
+    if (!userId || !isValidUuid(userId) || !teamId || !isValidUuid(teamId)) {
+        throw new Error('This coach account is not linked to this team.');
+    }
+
+    const { data, error } = await supabase
+        .from('teams')
+        .select('id, coach_id')
+        .eq('id', teamId)
+        .eq('coach_id', userId)
+        .maybeSingle();
+
+    if (error || !data || data.coach_id !== userId || data.id !== teamId) {
+        throw new Error('This coach account is not linked to this team.');
+    }
+
+    return { teamId: data.id, userId };
+}
+
+/**
+ * Resolves the signed-in coach's team from teams.coach_id = auth UID.
+ * Never follows another profile's team_id and never falls back to a different club.
  */
 export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTeam | null> {
     try {
-        if (userId && isValidUuid(userId)) {
-            // 1. Direct check on coach_id or captain_id in teams table
-            const { data: directTeam, error: directError } = await supabase
-                .from('teams')
-                .select(TEAM_DASHBOARD_COLUMNS)
-                .or(`coach_id.eq.${userId},captain_id.eq.${userId}`)
-                .limit(1);
+        if (!userId || !isValidUuid(userId)) return null;
 
-            if (!directError && directTeam && directTeam.length > 0) {
-                return directTeam[0] as DBTeam;
-            }
-
-            // 2. Check profile's team_id
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('team_id')
-                .eq('id', userId)
-                .maybeSingle();
-
-            if (profileData?.team_id) {
-                const { data: profileTeam } = await supabase
-                    .from('teams')
-                    .select(TEAM_DASHBOARD_COLUMNS)
-                    .eq('id', profileData.team_id)
-                    .maybeSingle();
-
-                if (profileTeam) {
-                    return profileTeam as DBTeam;
-                }
-            }
-        }
-
-        // 3. Fallback: Fetch primary active approved team from database
-        const { data: defaultTeams, error: defaultError } = await supabase
+        const { data: directTeams, error: directError } = await supabase
             .from('teams')
             .select(TEAM_DASHBOARD_COLUMNS)
-            .order('created_at', { ascending: true })
-            .limit(1);
+            .eq('coach_id', userId)
+            .is('deleted_at', null);
 
-        if (!defaultError && defaultTeams && defaultTeams.length > 0) {
-            return defaultTeams[0] as DBTeam;
+        if (directError) {
+            console.warn('[Supabase Client] Coach team lookup failed:', directError.message);
+            return null;
         }
-        return null;
+
+        const { data: profileData } = await supabase
+            .from('profiles')
+            .select('team_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const team = selectTeamOwnedByCoach(
+            userId,
+            (directTeams || []) as DBTeam[],
+            profileData?.team_id
+        );
+
+        if (!team?.id || team.coach_id !== userId) return null;
+
+        if (profileData && profileData.team_id !== team.id) {
+            await supabase.from('profiles').update({ team_id: team.id }).eq('id', userId);
+        }
+
+        return team;
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch team profile from DB:', err);
         return null;
@@ -659,8 +693,8 @@ export async function updateTeamSettings(
         captain_id?: string;
     }
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-    const teamUuid = await resolveRealTeamId(teamId);
     try {
+        const { teamId: teamUuid } = await requireCoachOwnedTeam(teamId);
         const updatePayload: any = {
             updated_at: new Date().toISOString(),
         };
@@ -972,7 +1006,7 @@ export async function optimizeImageForLogo(file: File): Promise<{
  * Persists directly to the database so it sticks permanently and never reverts.
  */
 export async function uploadTeamCrest(teamId: string, file: File): Promise<string> {
-    const teamUuid = await resolveRealTeamId(teamId);
+    const { teamId: teamUuid } = await requireCoachOwnedTeam(teamId);
 
     // Step 2: Optimize image to save space, memory and CPU
     const { fileOrBlob, extension, mimeType } = await optimizeImageForLogo(file);
@@ -1076,7 +1110,10 @@ export async function updateCoachCredentialsAndLogo({
     password?: string;
 }): Promise<{ success: boolean; error?: string; updatedEmail?: string; updatedLogoUrl?: string }> {
     try {
-        const teamUuid = await resolveRealTeamId(teamId);
+        const { teamId: teamUuid, userId: signedInUserId } = await requireCoachOwnedTeam(teamId);
+        if (coachUserId && coachUserId !== signedInUserId) {
+            return { success: false, error: 'This coach account is not linked to this team.' };
+        }
         let updatedLogoUrl = logoUrl;
         let updatedEmail = email;
 
@@ -1144,7 +1181,7 @@ export async function updateCoachCredentialsAndLogo({
         }
 
         // 4. Update profile email if email was updated
-        const targetUserId = coachUserId || (await supabase.auth.getUser()).data.user?.id;
+        const targetUserId = signedInUserId;
         if (email && targetUserId && isValidUuid(targetUserId)) {
             const { error: profErr } = await supabase
                 .from('profiles')
@@ -1207,8 +1244,14 @@ export async function fetchCoachCaptainProfiles(teamId: string, coachUserId?: st
             .maybeSingle();
 
         if (teamData) {
+            if (coachUserId && teamData.coach_id && teamData.coach_id !== coachUserId) {
+                return {};
+            }
             if (!coachData && teamData.coach_profile) {
-                coachData = teamData.coach_profile;
+                const linkedCoach = teamData.coach_profile as any;
+                if (!coachUserId || linkedCoach?.id === coachUserId) {
+                    coachData = linkedCoach;
+                }
             }
             if (teamData.captain_profile) {
                 captainData = teamData.captain_profile;
@@ -1247,22 +1290,19 @@ export async function fetchCoachCaptainProfiles(teamId: string, coachUserId?: st
             }
         }
 
-        return {
-            coach: coachData ? {
+        const resolvedCoach = coachData && (!coachUserId || coachData.id === coachUserId)
+            ? {
                 id: coachData.id,
                 name: `${coachData.first_name || ''} ${coachData.last_name || ''}`.trim() || 'Head Coach',
                 email: coachData.email,
                 phone: coachData.phone,
                 avatarUrl: coachData.avatar_url || '',
                 role: (coachData.role || 'coach').toLowerCase() === 'coach' ? 'coach' : coachData.role
-            } : {
-                id: DEFAULT_COACH_UUID,
-                name: 'Head Coach',
-                email: 'coach@egerton.ac.ke',
-                phone: '',
-                avatarUrl: '',
-                role: 'coach'
-            },
+            }
+            : undefined;
+
+        return {
+            coach: resolvedCoach,
             captain: captainData ? {
                 id: captainData.id,
                 name: `${captainData.first_name || ''} ${captainData.last_name || ''}`.trim() || 'Team Captain',

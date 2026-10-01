@@ -81,6 +81,8 @@ export const TeamDashboard: React.FC = () => {
     toastMessage,
     showToast,
     handleLogout,
+    isLoadingData,
+    teamLinkStatus,
     collectiveRating: _collectiveRating,
     collectiveStrength: _collectiveStrength,
     benchPlayers: _benchPlayers,
@@ -126,6 +128,44 @@ export const TeamDashboard: React.FC = () => {
     setSelectedMatchForEvents(matchId);
     setShowMatchEventsModal(true);
   };
+
+  const coachOwnsTeam = Boolean(
+    user?.id &&
+    teamInfo?.id &&
+    teamId === teamInfo.id &&
+    teamInfo.coach_id === user.id &&
+    teamLinkStatus === 'linked'
+  );
+
+  if (isLoadingData || teamLinkStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-[#081018] flex items-center justify-center p-6 text-slate-300 font-sans">
+        <div className="flex items-center gap-3 bg-[#0e1c2b] px-6 py-4 rounded-2xl border border-[#1a2e45]">
+          <div className="w-5 h-5 border-2 border-[#ff0046] border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold">Confirming this coach is linked to their team...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coachOwnsTeam) {
+    return (
+      <div className="min-h-screen bg-[#081018] text-slate-100 flex items-center justify-center p-4 font-sans">
+        <div className="max-w-md w-full bg-[#0e1c2b] border border-[#1a2e45] rounded-2xl p-6 md:p-8 shadow-2xl space-y-4 text-center">
+          <h2 className="text-xl font-black tracking-tight">Team link required</h2>
+          <p className="text-sm text-slate-400">
+            This login is not the head coach of a team. The dashboard stays closed so another club cannot be opened.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="w-full py-3 rounded-xl bg-[#ff0046] text-white font-bold text-xs"
+          >
+            Return to login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // When in TACTICS (Team Squad) view, render completely full screen as a standalone game plan (no header, no sidebar)
   // Per strict instructions: You must not touch the squad page.
@@ -335,7 +375,7 @@ export const TeamDashboard: React.FC = () => {
               roster={roster}
               teamInfo={teamInfo}
               coachProfile={coachProfile}
-              coachUserId={user?.id || coachProfile?.id}
+              coachUserId={user?.id}
               onOpenTeamModal={() => setIsTeamInfoModalOpen(true)}
               onUpdateTeamInfo={(updated) => {
                 setTeamInfo((prev: any) => ({ ...(prev || {}), ...updated }));
