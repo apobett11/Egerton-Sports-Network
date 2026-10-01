@@ -125,7 +125,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     teamId &&
     coachUserId &&
     teamInfo?.id === teamId &&
-    teamInfo?.coach_id === coachUserId
+    (!teamInfo?.coach_id || teamInfo.coach_id === coachUserId)
   );
 
   const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

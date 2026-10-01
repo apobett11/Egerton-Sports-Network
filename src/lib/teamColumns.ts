@@ -9,7 +9,7 @@ export const TEAM_LIST_COLUMNS =
 
 /** Coach home screen. Crest bytes stay in the asset cache, not in this row. */
 export const TEAM_DASHBOARD_COLUMNS =
-  'id, name, short_name, faculty, color_code, status, competition_id, coach_id, captain_id, description, contact_email, contact_phone, stadium, primary_color, secondary_color, accent_color, season, starting_xi_str, substitutes_str, practice_schedule, tactics_config, created_at, updated_at';
+  'id, name, short_name, faculty, color_code, status, competition_id, coach_id, captain_id, description, stadium, primary_color, secondary_color, accent_color, starting_xi_str, substitutes_str, practice_schedule, tactics_config, created_at, updated_at';
 
 /** Admin readiness still needs kit and squad scalars. Crest files are not repeated here. */
 export const TEAM_ADMIN_COLUMNS =

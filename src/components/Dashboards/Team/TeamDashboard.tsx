@@ -133,8 +133,8 @@ export const TeamDashboard: React.FC = () => {
     user?.id &&
     teamInfo?.id &&
     teamId === teamInfo.id &&
-    teamInfo.coach_id === user.id &&
-    teamLinkStatus === 'linked'
+    teamLinkStatus === 'linked' &&
+    (!teamInfo.coach_id || teamInfo.coach_id === user.id)
   );
 
   if (isLoadingData || teamLinkStatus === 'loading') {

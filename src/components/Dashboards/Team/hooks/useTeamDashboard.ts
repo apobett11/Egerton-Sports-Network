@@ -193,45 +193,36 @@ export const useTeamDashboard = () => {
       return;
     }
 
-    if (!isSessionActive() || !isTabVisible()) return;
-    const budget = canMakeDashboardCall();
-    if (!budget.allowed) {
-      console.warn(budget.reason);
-      return;
-    }
-    recordSessionCall(true, 50000);
-
     const stillThisCoach = () => activeCoachIdRef.current === coachUserId;
 
     try {
-
-      // Team UID comes only from teams.coach_id = this user's UID.
       let team = await fetchAuthenticatedUserTeam(coachUserId);
       if (!stillThisCoach()) return;
 
-      if (!team?.id || team.coach_id !== coachUserId) {
+      if (!team?.id || (team.coach_id && team.coach_id !== coachUserId)) {
         clearLinkedDashboard();
         setTeamLinkStatus('unlinked');
         setIsLoadingData(false);
         return;
       }
 
-      try {
-        const pinRaw = sessionStorage.getItem('esn_linked_coach_team');
-        if (pinRaw) {
-          const pin = JSON.parse(pinRaw) as { userId?: string; teamId?: string };
-          if (pin.userId && pin.userId !== coachUserId) {
-            sessionStorage.removeItem('esn_linked_coach_team');
-          } else if (pin.userId === coachUserId && pin.teamId && pin.teamId !== team.id) {
-            clearLinkedDashboard();
-            setTeamLinkStatus('unlinked');
-            setIsLoadingData(false);
-            return;
-          }
-        }
-      } catch {
-        /* ignore a broken login pin and trust teams.coach_id */
+      if (!isSessionActive() || !isTabVisible()) {
+        setTeamId(team.id);
+        setTeamInfo(team);
+        setTeamLinkStatus('linked');
+        setIsLoadingData(false);
+        return;
       }
+      const budget = canMakeDashboardCall();
+      if (!budget.allowed) {
+        console.warn(budget.reason);
+        setTeamId(team.id);
+        setTeamInfo(team);
+        setTeamLinkStatus('linked');
+        setIsLoadingData(false);
+        return;
+      }
+      recordSessionCall(true, 50000);
 
       const resolvedTeamId = team.id;
       confirmedCoachIdRef.current = coachUserId;

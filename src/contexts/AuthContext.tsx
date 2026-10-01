@@ -536,45 +536,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: 'Profile could not be loaded. Please try again.', role: 'guest', profile: null };
       }
 
-      if (fetchedProf.role === 'coach') {
-        const { data: ownedTeams, error: teamLinkError } = await supabase
-          .from('teams')
-          .select('id, coach_id')
-          .eq('coach_id', authUser.id)
-          .is('deleted_at', null);
-
-        const owned = (ownedTeams || []).filter((team) => team.coach_id === authUser.id && team.id);
-        if (teamLinkError || owned.length !== 1) {
-          await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
-          setRole('guest');
-          localStorage.removeItem(STORAGE_KEY_CACHED_USER);
-          localStorage.removeItem(STORAGE_KEY_CACHED_PROFILE);
-          localStorage.removeItem(STORAGE_KEY_CACHED_ROLE);
-          setIsLoading(false);
-          return {
-            error: 'This coach login is not linked to exactly one team. Another club’s dashboard will not open.',
-            role: 'guest',
-            profile: null,
-          };
-        }
-
-        const linkedTeamId = owned[0].id;
-        if (fetchedProf.team_id !== linkedTeamId) {
-          await supabase.from('profiles').update({ team_id: linkedTeamId }).eq('id', authUser.id);
-          fetchedProf.team_id = linkedTeamId;
-        }
-        try {
-          sessionStorage.setItem(
-            'esn_linked_coach_team',
-            JSON.stringify({ userId: authUser.id, teamId: linkedTeamId })
-          );
-        } catch {
-          /* sessionStorage can be unavailable */
-        }
-      }
-
       // Access Revocation Check
       const isSuspended = (fetchedProf as any).status === 'suspended' || fetchedProf.bio?.includes('[SUSPENDED]');
       if (isSuspended) {

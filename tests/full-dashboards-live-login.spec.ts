@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const ADMIN_PASSWORD = process.env.LIVE_TEST_ADMIN_PASSWORD || 'TestAdminPassword123!';
 const ADMIN_PASSKEY = process.env.LIVE_TEST_ADMIN_PASSKEY || '00000000';
+const COACH_EMAIL = process.env.LIVE_TEST_COACH_EMAIL || 'richkyson062@gmail.com';
 const COACH_PASSWORD = process.env.LIVE_TEST_COACH_PASSWORD || 'TestCoachPassword123!';
 const REFEREE_PASSWORD = process.env.LIVE_TEST_REFEREE_PASSWORD || 'TestRefereePassword123!';
 const JOURNALIST_PASSWORD = process.env.LIVE_TEST_JOURNALIST_PASSWORD || 'TestJournalistPassword123!';
@@ -101,7 +102,7 @@ test.describe('Egerscore Ecosystem Live Authentication & Full Dashboard Function
     await expect(page.locator('#login-email')).toBeVisible({ timeout: 15000 });
 
     // 2. Fill Coach credentials
-    await page.fill('#login-email', 'masasiadavid@gmail.com');
+    await page.fill('#login-email', COACH_EMAIL);
     await page.fill('#login-password', COACH_PASSWORD);
     await page.click('button[type="submit"]');
 

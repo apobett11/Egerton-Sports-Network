@@ -125,8 +125,10 @@ export async function requireCoachOwnedTeam(teamId: string): Promise<{ teamId: s
 }
 
 /**
- * Resolves the signed-in coach's team from teams.coach_id = auth UID.
- * Never follows another profile's team_id and never falls back to a different club.
+ * Resolves the signed-in coach's team for the dashboard.
+ * Prefer teams.coach_id. If that row is not visible, use this user's profile.team_id
+ * only when that club is not already assigned to a different coach.
+ * Does not write profile or auth data.
  */
 export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTeam | null> {
     try {
@@ -136,11 +138,13 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
             .from('teams')
             .select(TEAM_DASHBOARD_COLUMNS)
             .eq('coach_id', userId)
-            .is('deleted_at', null);
+            .limit(1);
 
-        if (directError) {
-            console.warn('[Supabase Client] Coach team lookup failed:', directError.message);
-            return null;
+        if (!directError && directTeams && directTeams.length > 0) {
+            const owned = directTeams[0] as DBTeam;
+            if (owned?.id && (!owned.coach_id || owned.coach_id === userId)) {
+                return owned;
+            }
         }
 
         const { data: profileData } = await supabase
@@ -149,19 +153,17 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
             .eq('id', userId)
             .maybeSingle();
 
-        const team = selectTeamOwnedByCoach(
-            userId,
-            (directTeams || []) as DBTeam[],
-            profileData?.team_id
-        );
+        if (!profileData?.team_id || !isValidUuid(profileData.team_id)) return null;
 
-        if (!team?.id || team.coach_id !== userId) return null;
+        const { data: profileTeam, error: profileTeamError } = await supabase
+            .from('teams')
+            .select(TEAM_DASHBOARD_COLUMNS)
+            .eq('id', profileData.team_id)
+            .maybeSingle();
 
-        if (profileData && profileData.team_id !== team.id) {
-            await supabase.from('profiles').update({ team_id: team.id }).eq('id', userId);
-        }
-
-        return team;
+        if (profileTeamError || !profileTeam?.id) return null;
+        if (profileTeam.coach_id && profileTeam.coach_id !== userId) return null;
+        return profileTeam as DBTeam;
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch team profile from DB:', err);
         return null;
