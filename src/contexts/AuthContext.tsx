@@ -47,24 +47,6 @@ const STORAGE_KEY_SESSION_START = 'esn_session_start_timestamp';
 const STORAGE_KEY_CACHED_USER = 'esn_cached_user';
 const STORAGE_KEY_CACHED_PROFILE = 'esn_cached_profile';
 const STORAGE_KEY_CACHED_ROLE = 'esn_cached_role';
-const COACH_AUTH_ALIASES: Record<string, { primary: string; aliases: string[] }> = {
-  'masasiadavid@gmail.com': { primary: 'CoachAlex@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'erickmuteti620@gmail.com': { primary: 'CoachCityboy@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'blacksheriff088@gmail.com': { primary: 'CoachJerry@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'markkevint9@gmail.com': { primary: 'CoachDeMarko@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'coachteam1@gmail.com': { primary: 'CoachTeam1@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'ogolamiket@gmail.com': { primary: 'CoachOgola@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'johanakinuthianew@gmail.com': { primary: 'CoachJohana@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'churchillkimori2@gmail.com': { primary: 'CoachChurchill@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'otienojulius421@gmail.com': { primary: 'CoachJulius@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'lameckagwata0@gmail.com': { primary: 'CoachLameck@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'otienowallace222@gmail.com': { primary: 'CoachWallace@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'ngetichagrippa357@gmail.com': { primary: 'CoachAgrippa@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'ochiengerdman@gmail.com': { primary: 'CoachErdman@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'iankipruto166@gmail.com': { primary: 'CoachIan@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'richkyson062@gmail.com': { primary: 'CoachRichard@2026!', aliases: ['Coach@2026!', 'CoachPass123!'] },
-  'coach@egerton.ac.ke': { primary: 'CoachPass123!', aliases: ['Coach@2026!'] },
-};
 
 interface AuthContextType {
   user: User | null;
@@ -498,23 +480,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data?.user) {
           authUser = data.user;
         } else if (error) {
-          // If login failed, check if the user is a registered coach trying an official alias (e.g. Coach@2026! or CoachPass123!)
-          const coachConfig = COACH_AUTH_ALIASES[cleanEmail];
-          if (coachConfig && coachConfig.aliases.includes(pass) && pass !== coachConfig.primary) {
-            const retryRes = await supabase.auth.signInWithPassword({
-              email: cleanEmail,
-              password: coachConfig.primary,
-            });
-            if (retryRes.data?.user) {
-              authUser = retryRes.data.user;
-            } else {
-              authError = error.message;
-              authStatus = (error as { status?: number }).status;
-            }
-          } else {
-            authError = error.message;
-            authStatus = (error as { status?: number }).status;
-          }
+          authError = error.message;
+          authStatus = (error as { status?: number }).status;
         }
       } catch (networkErr: any) {
         authError = networkErr?.message || 'Authentication network request failed';
