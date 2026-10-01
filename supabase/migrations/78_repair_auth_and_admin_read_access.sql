@@ -114,34 +114,23 @@ BEGIN
       updated_at = NOW()
   WHERE email = 'apobett11@gmail.com';
 
-  -- Coach Alex Mbui / Fass Elites (CoachAlex@2026!)
-  UPDATE auth.users
-  SET encrypted_password = extensions.crypt('CoachAlex@2026!', extensions.gen_salt('bf')),
-      email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-      updated_at = NOW()
-  WHERE email = 'masasiadavid@gmail.com';
-
-  -- All Other Team Coaches (Coach@2026!)
-  UPDATE auth.users
-  SET encrypted_password = extensions.crypt('Coach@2026!', extensions.gen_salt('bf')),
-      email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
-      updated_at = NOW()
-  WHERE email IN (
-    'johanakinuthianew@gmail.com',
-    'churchillkimori2@gmail.com',
-    'otienojulius421@gmail.com',
-    'lameckagwata0@gmail.com',
-    'coachteam1@gmail.com',
-    'otienowallace222@gmail.com',
-    'ngetichagrippa357@gmail.com',
-    'ochiengerdman@gmail.com',
-    'ogolamiket@gmail.com',
-    'iankipruto166@gmail.com',
-    'erickmuteti620@gmail.com',
-    'richkyson062@gmail.com',
-    'markkevint9@gmail.com',
-    'blacksheriff088@gmail.com'
-  );
+  -- Authentic Team Coaches (Individual Passwords)
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachAlex@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'masasiadavid@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachCityboy@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'erickmuteti620@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachJerry@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'blacksheriff088@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachDeMarko@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'markkevint9@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachTeam1@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'coachteam1@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachOgola@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'ogolamiket@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachJohana@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'johanakinuthianew@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachChurchill@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'churchillkimori2@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachJulius@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'otienojulius421@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachLameck@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'lameckagwata0@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachWallace@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'otienowallace222@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachAgrippa@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'ngetichagrippa357@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachErdman@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'ochiengerdman@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachIan@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'iankipruto166@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachRichard@2026!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'richkyson062@gmail.com';
+  UPDATE auth.users SET encrypted_password = extensions.crypt('CoachPass123!', extensions.gen_salt('bf')), email_confirmed_at = COALESCE(email_confirmed_at, NOW()), updated_at = NOW() WHERE email = 'coach@egerton.ac.ke';
 
   -- Official Referees (Official@referee2026)
   UPDATE auth.users
