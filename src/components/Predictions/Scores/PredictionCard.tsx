@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, MessageSquare, Lock, CheckCircle2, Shield } from 'lucide-react';
 import { formatKickoffTime, calculateCountdown } from '../../../lib/predictions/utils';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface PredictionCardProps {
@@ -28,6 +29,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   }, [match.scheduledTime]);
 
   const isLocked = countdown.isLocked || match.status === 'LIVE' || match.status === 'FT';
+  const showVotes = showVotesForConsensus(consensus, match.id);
 
   return (
     <div className="relative rounded-xl border border-[#1a2e45] bg-[#0e1c2b] p-4 tactical-card-shadow transition-all hover:border-slate-600/60">
@@ -175,33 +177,33 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         <div className="mt-3 rounded-lg bg-[#081018] p-2.5 border border-[#16283d]">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
             <span className="text-slate-300">Fan Consensus</span>
-            <span className="text-slate-400 font-normal">{consensus.pulseLabel}</span>
+            <span className="text-slate-400 font-normal">{showVotes.total.toLocaleString()} fan predictions</span>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
             <div className="flex flex-col">
               <span className={userSelection === '1' ? 'text-[#00b04f]' : 'text-slate-300'}>
-                {consensus.homePct}%
+                {showVotes.homePct}%
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
-                <div className="bg-[#00b04f] h-full rounded-full" style={{ width: `${consensus.homePct}%` }} />
+                <div className="bg-[#00b04f] h-full rounded-full" style={{ width: `${showVotes.homePct}%` }} />
               </div>
             </div>
 
             <div className="flex flex-col">
               <span className={userSelection === 'X' ? 'text-[#ff9800]' : 'text-slate-300'}>
-                {consensus.drawPct}%
+                {showVotes.drawPct}%
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
-                <div className="bg-[#ff9800] h-full rounded-full" style={{ width: `${consensus.drawPct}%` }} />
+                <div className="bg-[#ff9800] h-full rounded-full" style={{ width: `${showVotes.drawPct}%` }} />
               </div>
             </div>
 
             <div className="flex flex-col">
               <span className={userSelection === '2' ? 'text-[#ff0046]' : 'text-slate-300'}>
-                {consensus.awayPct}%
+                {showVotes.awayPct}%
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
-                <div className="bg-[#ff0046] h-full rounded-full" style={{ width: `${consensus.awayPct}%` }} />
+                <div className="bg-[#ff0046] h-full rounded-full" style={{ width: `${showVotes.awayPct}%` }} />
               </div>
             </div>
           </div>

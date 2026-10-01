@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Flame, Share2, Copy, Check, Shield, Users, Lock, Unlock, AlertTriangle, Swords } from 'lucide-react';
 import { shareService } from '../../../services/predictions/shareService';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import type { Match, PredictionOption, ConsensusData, ConsensusIQResult, UserPrediction } from '../../../types/predictions';
 
 interface MatchdayDerbySharePopupProps {
@@ -28,6 +29,7 @@ export const MatchdayDerbySharePopup: React.FC<MatchdayDerbySharePopupProps> = (
 }) => {
   const [copied, setCopied] = useState(false);
   const [unlockedState, setUnlockedState] = useState(isUnlocked);
+  const showVotes = showVotesForConsensus(consensus, derbyMatch.id);
 
   const selectedTeamName =
     userSelection === '1'
@@ -140,24 +142,24 @@ export const MatchdayDerbySharePopup: React.FC<MatchdayDerbySharePopupProps> = (
               <div className="grid grid-cols-3 gap-2.5 text-center my-3">
                 <div className={`p-3 rounded-xl border ${userSelection === '1' ? 'border-[#00b04f] bg-[#00b04f]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">{derbyMatch.homeTeam.shortName}</span>
-                  <span className="text-xl font-black text-[#00b04f]">{consensus.homePct}%</span>
+                  <span className="text-xl font-black text-[#00b04f]">{showVotes.homePct}%</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
                 <div className={`p-3 rounded-xl border ${userSelection === 'X' ? 'border-[#ff9800] bg-[#ff9800]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Draw</span>
-                  <span className="text-xl font-black text-[#ff9800]">{consensus.drawPct}%</span>
+                  <span className="text-xl font-black text-[#ff9800]">{showVotes.drawPct}%</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
                 <div className={`p-3 rounded-xl border ${userSelection === '2' ? 'border-[#ff0046] bg-[#ff0046]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">{derbyMatch.awayTeam.shortName}</span>
-                  <span className="text-xl font-black text-[#ff0046]">{consensus.awayPct}%</span>
+                  <span className="text-xl font-black text-[#ff0046]">{showVotes.awayPct}%</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
               </div>
             )}
 
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800 pt-2.5">
-              <span>{consensus?.pulseLabel || 'Active fan votes verified'}</span>
+              <span>{showVotes.total.toLocaleString()} active fan votes</span>
               <span className="text-emerald-400 font-bold">Consensus IQ: {iq.score}/100</span>
             </div>
 

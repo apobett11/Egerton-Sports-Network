@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Sparkles, Trophy, ArrowRight, Shield } from 'lucide-react';
 import type { Match, ConsensusData } from '../../../types/predictions';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 
 interface DerbyConsensusModalProps {
   derbyMatch: Match;
@@ -15,10 +16,8 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
   onClose,
   onNavigateStandings,
 }) => {
-  const homePct = consensus?.homePct || 49;
-  const drawPct = consensus?.drawPct || 22;
-  const awayPct = consensus?.awayPct || 29;
-  const totalVotes = consensus?.totalVotes || 1420;
+  const { homePct, drawPct, awayPct, total: totalVotes } =
+    showVotesForConsensus(consensus, derbyMatch.id);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fadeIn">

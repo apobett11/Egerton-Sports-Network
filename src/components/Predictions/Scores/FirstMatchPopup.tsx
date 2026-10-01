@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Shield, Flame } from 'lucide-react';
 import { VoteRangeBar } from './VoteRangeBar';
 import { formatTeamName } from '../../../lib/predictions/utils';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface FirstMatchPopupProps {
@@ -22,15 +23,8 @@ export const FirstMatchPopup: React.FC<FirstMatchPopupProps> = ({
   // Always clean slate on preload - never preselect a team
   const [selectedOption, setSelectedOption] = useState<PredictionOption | null>(null);
 
-  // Fallback consensus values if not ready
-  const totalVotes = consensus?.totalVotes || 1240;
-  const homePct = consensus?.homePct || 54;
-  const drawPct = consensus?.drawPct || 22;
-  const awayPct = consensus?.awayPct || 24;
-
-  const homeVotes = Math.round((totalVotes * homePct) / 100);
-  const drawVotes = Math.round((totalVotes * drawPct) / 100);
-  const awayVotes = Math.round((totalVotes * awayPct) / 100);
+  const { homePct, drawPct, awayPct, homeVotes, drawVotes, awayVotes } =
+    showVotesForConsensus(consensus, match.id);
 
   const homeDisplayName = formatTeamName(match.homeTeam.name);
   const awayDisplayName = formatTeamName(match.awayTeam.name);

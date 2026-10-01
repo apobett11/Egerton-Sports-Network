@@ -1,6 +1,7 @@
 import type { ConsensusData, ConsensusIQResult, Match, PredictionOption, UserPrediction } from '../../types/predictions';
 import { formatTeamName } from '../../lib/predictions/utils';
 import { derbyCard, encodeShareCard, slipCard, talkCard } from '../../lib/predictions/shareCard.mjs';
+import { showVotesForConsensus } from '../../lib/predictions/voteDisplay.mjs';
 
 export interface ShareDataPayload {
   title: string;
@@ -31,8 +32,8 @@ class ShareService {
       ? `\nLocked Matchday Climax: ${derbyMatch.homeTeam.name} vs ${derbyMatch.awayTeam.name}`
       : '';
 
-    const text = `ðŸ”¥ My EPL Matchday Consensus IQ: ${iqResult.score}/100 (${iqResult.statusLabel})!\n\n${backedSummary}${derbyTeaser}\n\nSee what the fans voted before kickoff on EgerScore:`;
-    const url = window.location.origin;
+    const text = `🔥 My EPL Matchday Consensus IQ: ${iqResult.score}/100 (${iqResult.statusLabel})!\n\n${backedSummary}${derbyTeaser}\n\nSee what the fans voted before kickoff on EgerScore:`;
+    const url = this.predictionsPageUrl();
 
     return {
       title: 'EgerScore EPL Matchday Picks',
@@ -73,6 +74,7 @@ class ShareService {
   public predictionsPageUrl(): string {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('view', 'picks');
+    url.hash = '/news';
     return url.toString();
   }
 
@@ -89,16 +91,15 @@ class ShareService {
   }
 
   public voteSplit(consensus?: ConsensusData | null, fallbackTotal = 1240) {
-    const total = consensus?.totalVotes || fallbackTotal;
-    const homePct = consensus?.homePct ?? 54;
-    const drawPct = consensus?.drawPct ?? 22;
-    const awayPct = consensus?.awayPct ?? 24;
-    return {
-      total,
-      homeVotes: Math.round((total * homePct) / 100),
-      drawVotes: Math.round((total * drawPct) / 100),
-      awayVotes: Math.round((total * awayPct) / 100),
-    };
+    if (consensus) return showVotesForConsensus(consensus);
+    return showVotesForConsensus({
+      matchId: 'share-fallback',
+      totalVotes: fallbackTotal,
+      homePct: 50,
+      drawPct: 10,
+      awayPct: 40,
+      pulseLabel: '',
+    });
   }
 
   public pickName(match: Match, pick: PredictionOption): string {
@@ -115,28 +116,14 @@ class ShareService {
   }
 
   private cardPageUrl(card: ReturnType<typeof derbyCard> | ReturnType<typeof slipCard> | ReturnType<typeof talkCard>): string {
-    const page = new URL('/share', window.location.origin);
+    const page = new URL('/api/share', window.location.origin);
     page.searchParams.set('d', encodeShareCard(card));
     return page.toString();
   }
 
   public async presentCard(card: ReturnType<typeof derbyCard> | ReturnType<typeof slipCard> | ReturnType<typeof talkCard>): Promise<boolean> {
     const pageUrl = this.cardPageUrl(card);
-    try {
-      const imageUrl = new URL('/og.png', window.location.origin);
-      imageUrl.searchParams.set('d', new URL(pageUrl).searchParams.get('d') || '');
-      const response = await fetch(imageUrl.toString());
-      if (response.ok && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
-        const blob = await response.blob();
-        const file = new File([blob], 'egerscore.png', { type: 'image/png' });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], url: pageUrl });
-          return true;
-        }
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return false;
-    }
+    // A URL preview remains clickable in WhatsApp; an uploaded image file does not.
     this.openWhatsApp(pageUrl);
     return true;
   }
@@ -152,31 +139,28 @@ class ShareService {
     const home = formatTeamName(args.derby.homeTeam.name);
     const away = formatTeamName(args.derby.awayTeam.name);
     const picked = this.pickName(args.derby, args.selection);
-    const split = this.voteSplit(args.consensus, 1680);
-    const mine = this.votesForPick(args.selection, args.consensus, 1680);
+    const split = this.voteSplit(args.consensus, 0);
+    const mine = this.votesForPick(args.selection, args.consensus, 0);
     const holding = mine >= Math.max(split.homeVotes, split.drawVotes, split.awayVotes);
-    const call = args.selection === 'X'
-      ? (holding
-        ? 'Call other fans to vote draw with you to keep this.'
-        : 'Call other fans to vote draw with you to secure this.')
-      : (holding
-        ? `Call other fans to vote for ${picked} to keep this win.`
-        : `Call other fans to vote for ${picked} to secure this win.`);
-    const stake = holding
-      ? 'Stay quiet and this lead will not hold till Saturday.'
-      : 'Without them, this will not stay yours.';
+    const opponent = args.selection === '1' ? away : args.selection === '2' ? home : 'The two teams';
+    const call = holding
+      ? `${opponent} will catch up soon. Invite others to uplift ${picked}.`
+      : `You need to invite more people to uplift ${picked}.`;
+    const stake = `${Math.max(0, mine - 1).toLocaleString()} other fanatics made this choice.`;
     const others = args.matches
       .filter((m) => m.id !== args.derby.id && args.userPredictions.has(m.id))
       .slice(0, 4)
       .map((m) => {
         const pick = args.userPredictions.get(m.id)!;
         const votes = this.votesForPick(pick, args.consensusMap?.get(m.id));
-        return `${formatTeamName(m.homeTeam.name)} vs ${formatTeamName(m.awayTeam.name)} Â· ${this.pickName(m, pick)} Â· ${votes.toLocaleString()} fan votes`;
+        return `${formatTeamName(m.homeTeam.name)} vs ${formatTeamName(m.awayTeam.name)} · ${this.pickName(m, pick)} · ${votes.toLocaleString()} fan votes`;
       });
 
     return this.presentCard(derbyCard({
       home,
       away,
+      homeLogo: args.derby.homeTeam.logoUrl,
+      awayLogo: args.derby.awayTeam.logoUrl,
       pick: picked,
       call,
       stake,
@@ -192,20 +176,21 @@ class ShareService {
     userPredictions: Map<string, PredictionOption>;
     consensusMap?: Map<string, ConsensusData>;
   }): Promise<boolean> {
-    const picked = args.matches.filter((m) => args.userPredictions.has(m.id) && !m.isDerby);
     const hasDerby = args.matches.some((m) => m.isDerby && args.userPredictions.has(m.id));
-    const shown = picked.slice(0, 5);
+    const shown = args.matches.slice(0, 8);
     const rows = shown.map((m) => {
-      const pick = args.userPredictions.get(m.id)!;
+      const pick = args.userPredictions.get(m.id);
       return {
         match: `${formatTeamName(m.homeTeam.name)} vs ${formatTeamName(m.awayTeam.name)}`,
-        pick: this.pickName(m, pick),
-        votes: this.votesForPick(pick, args.consensusMap?.get(m.id)),
+        pick: pick ? this.pickName(m, pick) : 'Not selected',
+        votes: pick ? this.votesForPick(pick, args.consensusMap?.get(m.id)) : 0,
+        isDerby: Boolean(m.isDerby),
+        selected: Boolean(pick),
       };
     });
     return this.presentCard(slipCard({
       rows,
-      hidden: picked.length - shown.length,
+      hidden: Math.max(0, args.matches.length - shown.length),
       hasDerby,
     }));
   }

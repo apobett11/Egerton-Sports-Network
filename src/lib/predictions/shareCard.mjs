@@ -35,6 +35,8 @@ export function derbyCard(args) {
     k: 'derby',
     home: clip(args.home, 32),
     away: clip(args.away, 32),
+    homeLogo: clip(args.homeLogo, 400),
+    awayLogo: clip(args.awayLogo, 400),
     pick: clip(args.pick, 32),
     call: clip(args.call, 110),
     stake: clip(args.stake, 90),
@@ -48,10 +50,12 @@ export function derbyCard(args) {
 export function slipCard(args) {
   return {
     k: 'slip',
-    rows: (args.rows || []).slice(0, 5).map((row) => ({
+    rows: (args.rows || []).slice(0, 8).map((row) => ({
       match: clip(row.match, 42),
       pick: clip(row.pick, 28),
       votes: Number(row.votes) || 0,
+      isDerby: Boolean(row.isDerby),
+      selected: Boolean(row.selected),
     })),
     hidden: Number(args.hidden) || 0,
     hasDerby: Boolean(args.hasDerby),
@@ -84,5 +88,5 @@ export function cardDestination(card) {
     const post = card.postId ? `&post=${encodeURIComponent(card.postId)}` : '';
     return `/?view=talk${post}`;
   }
-  return '/?view=picks';
+  return '/?view=picks#/news';
 }

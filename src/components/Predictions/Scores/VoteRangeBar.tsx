@@ -27,7 +27,6 @@ export const VoteRangeBar: React.FC<VoteRangeBarProps> = ({
   homeName = 'Home',
   awayName = 'Away',
   selectedOption = null,
-  hideVoteNumbers = false,
   hideSelectedHeader = false,
 }) => {
   const isSelected = selectedOption !== null;
@@ -55,21 +54,21 @@ export const VoteRangeBar: React.FC<VoteRangeBarProps> = ({
   // Colors: Selected range in color, others in gray-ish
   const homeColor =
     selectedOption === '1'
-      ? 'bg-[#00b04f] text-white shadow-md font-black z-10'
+      ? 'bg-[#00b04f] text-white shadow-md font-semibold z-10'
       : isSelected
       ? 'bg-slate-800/90 text-slate-400'
       : 'bg-[#00b04f]/80 text-white';
 
   const drawColor =
     selectedOption === 'X'
-      ? 'bg-[#ff9800] text-black shadow-md font-black z-10'
+      ? 'bg-[#ff9800] text-black shadow-md font-semibold z-10'
       : isSelected
       ? 'bg-slate-700/80 text-slate-400'
       : 'bg-[#ff9800]/80 text-black';
 
   const awayColor =
     selectedOption === '2'
-      ? 'bg-[#ff0046] text-white shadow-md font-black z-10'
+      ? 'bg-[#ff0046] text-white shadow-md font-semibold z-10'
       : isSelected
       ? 'bg-slate-800/90 text-slate-400'
       : 'bg-[#ff0046]/80 text-white';
@@ -91,32 +90,32 @@ export const VoteRangeBar: React.FC<VoteRangeBarProps> = ({
       )}
 
       {/* The Single Range Bar that runs across: Home | X | Away */}
-      <div className="h-10 w-full rounded-lg bg-[#060d16] p-0.5 flex overflow-hidden border border-slate-800/90 shadow-inner">
+      <div className="h-11 w-full rounded-2xl bg-[#060d16] p-1 flex gap-1 overflow-hidden border border-slate-800/90 shadow-inner">
         <div
           style={{ width: `${Math.max(homePct, 22)}%` }}
-          className={`h-full rounded-l-md flex flex-col items-center justify-center px-1 text-center leading-none min-w-0 ${homeColor}`}
+          className={`h-full rounded-xl flex flex-col items-center justify-center px-1 text-center leading-none min-w-0 ${homeColor}`}
           title={`Home: ${homeVotes.toLocaleString()} fan votes`}
         >
-          <span className="truncate max-w-full text-[11px] sm:text-xs font-black">{homeVotes.toLocaleString()}</span>
-          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-bold opacity-90">fan votes</span>
+          <span className="truncate max-w-full text-[11px] sm:text-xs font-semibold">{homeVotes.toLocaleString()}</span>
+          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-medium opacity-90">fan votes</span>
         </div>
 
         <div
           style={{ width: `${Math.max(drawPct, 18)}%` }}
-          className={`h-full flex flex-col items-center justify-center px-1 text-center leading-none border-x border-slate-900/40 min-w-0 ${drawColor}`}
+          className={`h-full rounded-xl flex flex-col items-center justify-center px-1 text-center leading-none min-w-0 ${drawColor}`}
           title={`Draw: ${drawVotes.toLocaleString()} fan votes`}
         >
-          <span className="truncate max-w-full text-[11px] sm:text-xs font-black">{drawVotes.toLocaleString()}</span>
-          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-bold opacity-90">fan votes</span>
+          <span className="truncate max-w-full text-[11px] sm:text-xs font-semibold">{drawVotes.toLocaleString()}</span>
+          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-medium opacity-90">fan votes</span>
         </div>
 
         <div
           style={{ width: `${Math.max(awayPct, 22)}%` }}
-          className={`h-full rounded-r-md flex flex-col items-center justify-center px-1 text-center leading-none min-w-0 ${awayColor}`}
+          className={`h-full rounded-xl flex flex-col items-center justify-center px-1 text-center leading-none min-w-0 ${awayColor}`}
           title={`Away: ${awayVotes.toLocaleString()} fan votes`}
         >
-          <span className="truncate max-w-full text-[11px] sm:text-xs font-black">{awayVotes.toLocaleString()}</span>
-          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-bold opacity-90">fan votes</span>
+          <span className="truncate max-w-full text-[11px] sm:text-xs font-semibold">{awayVotes.toLocaleString()}</span>
+          <span className="truncate max-w-full text-[8px] sm:text-[10px] font-medium opacity-90">fan votes</span>
         </div>
       </div>
     </div>

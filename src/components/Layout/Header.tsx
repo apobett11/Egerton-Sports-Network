@@ -223,10 +223,10 @@ export const Header: React.FC<HeaderProps> = ({
                                 if (onSelectMainTab) onSelectMainTab('scores');
                                 window.location.hash = '/home';
                             }}
-                            className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 border-r border-slate-700/60 ${
+                            className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 border ${
                                 isScoresActive 
-                                    ? 'bg-[#152a40] text-white shadow-sm font-black ring-1 ring-white/15' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
+                                    ? 'bg-[#152a40] border-[#36506b] text-white shadow-sm font-black ring-1 ring-white/10'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
                             <div className="flex items-center gap-2">
@@ -246,10 +246,10 @@ export const Header: React.FC<HeaderProps> = ({
                                 if (onNavigateNews) onNavigateNews();
                                 window.location.hash = '/news';
                             }}
-                            className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 ${
+                            className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 border ${
                                 isNewsActive 
-                                    ? 'bg-[#152a40] text-white shadow-sm font-black ring-1 ring-white/15' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
+                                    ? 'bg-[#152a40] border-[#36506b] text-white shadow-sm font-black ring-1 ring-white/10'
+                                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
                             <div className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* ROW 3: SCORES SUB-MENU (LEFT ALIGNED: FAVOURITES ICON | FIXTURES | STANDINGS) */}
-            {isScoresActive && (
+            {(isScoresActive || isNewsActive) && (
                 <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
                     <div className="max-w-7xl mx-auto px-2 sm:px-4 py-0 flex items-center justify-start gap-1 sm:gap-4 h-10 overflow-x-auto no-scrollbar">
                         {/* 1. FAVOURITES (Orange Icon Button) */}

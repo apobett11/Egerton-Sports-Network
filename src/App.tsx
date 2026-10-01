@@ -367,6 +367,9 @@ export const AppContent: React.FC = () => {
         }
       }
       const initialRoute = getHashRoute();
+      if (initialRoute === 'news' || initialRoute.startsWith('news')) {
+        return 'news';
+      }
       if (initialRoute === 'potw' || initialRoute.startsWith('potw')) {
         return 'potw';
       }

@@ -364,6 +364,9 @@ export function PredictionExperience() {
     try {
       const nextList = await predictionService.savePrediction(match, option, slate);
       setPredictions(nextList);
+      if (match.isDerby) {
+        setDerbyPopupData({ match, option });
+      }
     } catch {
       // The card stays put. The write itself is already fired in the background.
     }

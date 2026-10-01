@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, CheckCircle2, ChevronRight, Sparkles, ArrowRight } from 'lucide-react';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 
 interface ProgressivePredictionDeckProps {
   regularMatches: Match[];
@@ -28,6 +29,7 @@ export const ProgressivePredictionDeck: React.FC<ProgressivePredictionDeckProps>
 
   const currentSelection = userPredictions.get(currentMatch.id) || null;
   const currentConsensus = consensusMap.get(currentMatch.id);
+  const showVotes = showVotesForConsensus(currentConsensus, currentMatch.id);
   const isLast = currentIndex === regularMatches.length - 1;
 
   const handleSelect = (option: PredictionOption) => {
@@ -135,23 +137,23 @@ export const ProgressivePredictionDeck: React.FC<ProgressivePredictionDeckProps>
               <Sparkles className="h-3 w-3 text-[#ff0046]" />
               Fan Consensus Revealed:
             </span>
-            <span>{currentConsensus.pulseLabel}</span>
+            <span>{showVotes.total.toLocaleString()} fan predictions</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === '1' ? 'text-[#00b04f]' : 'text-slate-300'}>
-                {currentConsensus.homePct}% Home
+                {showVotes.homePct}% Home
               </span>
             </div>
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === 'X' ? 'text-[#ff9800]' : 'text-slate-300'}>
-                {currentConsensus.drawPct}% Draw
+                {showVotes.drawPct}% Draw
               </span>
             </div>
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === '2' ? 'text-[#ff0046]' : 'text-slate-300'}>
-                {currentConsensus.awayPct}% Away
+                {showVotes.awayPct}% Away
               </span>
             </div>
           </div>

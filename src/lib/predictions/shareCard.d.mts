@@ -2,6 +2,8 @@ export interface DerbyCard {
   k: 'derby';
   home: string;
   away: string;
+  homeLogo: string;
+  awayLogo: string;
   pick: string;
   call: string;
   stake: string;
@@ -13,7 +15,7 @@ export interface DerbyCard {
 
 export interface SlipCard {
   k: 'slip';
-  rows: { match: string; pick: string; votes: number }[];
+  rows: { match: string; pick: string; votes: number; isDerby: boolean; selected: boolean }[];
   hidden: number;
   hasDerby: boolean;
 }
@@ -32,6 +34,8 @@ export function decodeShareCard(token: string): ShareCard | null;
 export function derbyCard(args: {
   home: string;
   away: string;
+  homeLogo?: string;
+  awayLogo?: string;
   pick: string;
   call: string;
   stake: string;
@@ -41,7 +45,7 @@ export function derbyCard(args: {
   others?: string[];
 }): DerbyCard;
 export function slipCard(args: {
-  rows: { match: string; pick: string; votes: number }[];
+  rows: { match: string; pick: string; votes: number; isDerby?: boolean; selected?: boolean }[];
   hidden: number;
   hasDerby: boolean;
 }): SlipCard;

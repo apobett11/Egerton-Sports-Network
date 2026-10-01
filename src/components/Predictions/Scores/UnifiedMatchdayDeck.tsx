@@ -6,6 +6,7 @@ import { MyVotesModal } from './MyVotesModal';
 import { VoteRangeBar } from './VoteRangeBar';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { describeVotingWindow, slipTick } from '../../../lib/predictions/votingWindow';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import type { Match, PredictionOption, ConsensusData, UserPrediction } from '../../../types/predictions';
 import type { SlipTick } from '../../../lib/predictions/votingWindow';
 
@@ -64,23 +65,6 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
   const totalMatchesCount = matches.length;
   const picksCount = userPredictions.size;
   const allGamesSelected = totalMatchesCount > 0 && matches.every(m => userPredictions.has(m.id));
-
-  // Calculate vote count estimates deterministically from totalVotes
-  const getVoteCounts = (consensus?: ConsensusData | null) => {
-    const total = consensus?.totalVotes || 1240;
-    const homePct = consensus?.homePct || 55;
-    const drawPct = consensus?.drawPct || 20;
-    const awayPct = consensus?.awayPct || 25;
-    return {
-      total,
-      homeVotes: Math.round((total * homePct) / 100),
-      drawVotes: Math.round((total * drawPct) / 100),
-      awayVotes: Math.round((total * awayPct) / 100),
-      homePct,
-      drawPct,
-      awayPct,
-    };
-  };
 
   const handlePredict = (match: Match, option: PredictionOption) => {
     // No change of the vote once casted
@@ -201,7 +185,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
           const isDerby = match.isDerby;
           const userSel = userPredictions.get(match.id) || null;
           const consensus = consensusMap.get(match.id);
-          const stats = getVoteCounts(consensus);
+          const stats = showVotesForConsensus(consensus, match.id);
           const isPicked = userSel !== null;
           const voteLocked = isPicked || votingClosed;
           const tick = userSel ? slipTick(match, userSel) : null;
