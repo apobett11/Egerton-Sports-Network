@@ -90,14 +90,26 @@ class ShareService {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  public voteSplit(consensus?: ConsensusData | null, fallbackTotal = 1240) {
+  private derbyPageUrl(match: Match, selection: PredictionOption): string {
+    const picked = this.pickName(match, selection);
+    const team = picked
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 36) || 'team';
+    const fixture = match.id.replace(/-/g, '');
+    const pick = selection === '1' ? 'home' : selection === '2' ? 'away' : 'draw';
+    return `${window.location.origin}/prediction/${team}/${fixture}/${pick}`;
+  }
+
+  public voteSplit(consensus?: ConsensusData | null) {
     if (consensus) return showVotesForConsensus(consensus);
     return showVotesForConsensus({
-      matchId: 'share-fallback',
-      totalVotes: fallbackTotal,
-      homePct: 50,
-      drawPct: 10,
-      awayPct: 40,
+      matchId: '',
+      totalVotes: 0,
+      homePct: 0,
+      drawPct: 0,
+      awayPct: 0,
       pulseLabel: '',
     });
   }
@@ -108,8 +120,8 @@ class ShareService {
     return 'Draw';
   }
 
-  public votesForPick(pick: PredictionOption, consensus?: ConsensusData | null, fallbackTotal = 1240): number {
-    const split = this.voteSplit(consensus, fallbackTotal);
+  public votesForPick(pick: PredictionOption, consensus?: ConsensusData | null): number {
+    const split = this.voteSplit(consensus);
     if (pick === '1') return split.homeVotes;
     if (pick === '2') return split.awayVotes;
     return split.drawVotes;
@@ -136,39 +148,8 @@ class ShareService {
     userPredictions: Map<string, PredictionOption>;
     consensusMap?: Map<string, ConsensusData>;
   }): Promise<boolean> {
-    const home = formatTeamName(args.derby.homeTeam.name);
-    const away = formatTeamName(args.derby.awayTeam.name);
-    const picked = this.pickName(args.derby, args.selection);
-    const split = this.voteSplit(args.consensus, 0);
-    const mine = this.votesForPick(args.selection, args.consensus, 0);
-    const holding = mine >= Math.max(split.homeVotes, split.drawVotes, split.awayVotes);
-    const opponent = args.selection === '1' ? away : args.selection === '2' ? home : 'The two teams';
-    const call = holding
-      ? `${opponent} will catch up soon. Invite others to uplift ${picked}.`
-      : `You need to invite more people to uplift ${picked}.`;
-    const stake = `${Math.max(0, mine - 1).toLocaleString()} other fanatics made this choice.`;
-    const others = args.matches
-      .filter((m) => m.id !== args.derby.id && args.userPredictions.has(m.id))
-      .slice(0, 4)
-      .map((m) => {
-        const pick = args.userPredictions.get(m.id)!;
-        const votes = this.votesForPick(pick, args.consensusMap?.get(m.id));
-        return `${formatTeamName(m.homeTeam.name)} vs ${formatTeamName(m.awayTeam.name)} · ${this.pickName(m, pick)} · ${votes.toLocaleString()} fan votes`;
-      });
-
-    return this.presentCard(derbyCard({
-      home,
-      away,
-      homeLogo: args.derby.homeTeam.logoUrl,
-      awayLogo: args.derby.awayTeam.logoUrl,
-      pick: picked,
-      call,
-      stake,
-      homeVotes: split.homeVotes,
-      drawVotes: split.drawVotes,
-      awayVotes: split.awayVotes,
-      others,
-    }));
+    this.openWhatsApp(this.derbyPageUrl(args.derby, args.selection));
+    return Promise.resolve(true);
   }
 
   public shareSlip(args: {

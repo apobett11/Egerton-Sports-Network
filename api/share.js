@@ -1,9 +1,13 @@
 import {
   cardDescription,
-  cardDestination,
   cardTitle,
   decodeShareCard,
 } from '../src/lib/predictions/shareCard.mjs';
+import {
+  loadPredictionShare,
+  normalizeFixtureId,
+  predictionDestination,
+} from '../src/lib/predictions/shareServer.mjs';
 
 function escapeHtml(value) {
   return String(value || '')
@@ -14,15 +18,23 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   const token = typeof req.query?.d === 'string' ? req.query.d : '';
-  const card = decodeShareCard(token);
+  const shared = req.query?.m
+    ? await loadPredictionShare(req.query.m, req.query.p)
+    : null;
+  const card = shared?.card || decodeShareCard(token);
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const origin = `${protocol}://${req.headers.host}`;
   const title = cardTitle(card);
   const description = cardDescription(card);
-  const image = `${origin}/api/og?d=${encodeURIComponent(token)}`;
-  const destination = `${origin}${cardDestination(card)}`;
+  const image = shared
+    ? `${origin}/api/og?m=${encodeURIComponent(shared.matchId)}&p=${encodeURIComponent(shared.pick)}`
+    : `${origin}/api/og?d=${encodeURIComponent(token)}`;
+  const linkedMatch = shared?.matchId || normalizeFixtureId(req.query?.m);
+  const destination = linkedMatch
+    ? predictionDestination(origin, linkedMatch)
+    : `${origin}/?view=picks#/news`;
 
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

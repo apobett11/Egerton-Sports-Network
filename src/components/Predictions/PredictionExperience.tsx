@@ -22,7 +22,7 @@ import { StandingsPreviewModal } from './Standings/StandingsPreviewModal';
 import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
 import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
 
-import { eplFixtureService, FALLBACK_EPL_FIXTURES } from '../../services/predictions/eplFixtureService';
+import { eplFixtureService } from '../../services/predictions/eplFixtureService';
 import { predictionService } from '../../services/predictions/predictionService';
 import { consensusService } from '../../services/predictions/consensusService';
 import { derbyService } from '../../services/predictions/derbyService';
@@ -52,21 +52,25 @@ import type {
 } from '../../types/predictions';
 import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users } from 'lucide-react';
 
-export function PredictionExperience() {
+interface PredictionExperienceProps {
+  activeTab: 'banter' | 'scores';
+  onSelectTab: (tab: 'banter' | 'scores') => void;
+}
+
+export function PredictionExperience({ activeTab, onSelectTab }: PredictionExperienceProps) {
   // Master Livescore Hierarchy Navigation
   const [mainNav, setMainNav] = useState<'livescore' | 'news' | 'standings'>('news');
 
-  // Sub Navigation State under NEWS (The Two Subtitles: BANTER and SCORES)
-  // When the person has voted, and they reload the page, they will be taken to the banter page
-  const [activeTab, setActiveTab] = useState<'banter' | 'scores'>(() => {
-    const view = new URLSearchParams(window.location.search).get('view');
-    return view === 'talk' ? 'banter' : 'scores';
-  });
+  const setActiveTab = onSelectTab;
   const [focusPostId] = useState(() => new URLSearchParams(window.location.search).get('post'));
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [repostedIds, setRepostedIds] = useState<string[]>([]);
-  const [activeMatchday, setActiveMatchday] = useState<number>(7);
+  const [activeMatchday, setActiveMatchday] = useState<number>(0);
   const [activeDayKey, setActiveDayKey] = useState(() => weekendDates().saturday);
+  const [linkedMatchId] = useState(() => {
+    const value = new URLSearchParams(window.location.search).get('match');
+    return value && /^[0-9a-f-]{36}$/i.test(value) ? value.toLowerCase() : null;
+  });
 
   // Identity State
   const [identity, setIdentity] = useState(() => anonymousIdentityService.getIdentity());
@@ -74,11 +78,9 @@ export function PredictionExperience() {
   // Matches & Consensus State
   const [fixtures, setFixtures] = useState<Match[]>(() => {
     const peeked = eplFixtureService.peek();
-    return weekendFixtures(peeked && peeked.length ? peeked : FALLBACK_EPL_FIXTURES);
+    return weekendFixtures(peeked || []);
   });
-  const [consensusMap, setConsensusMap] = useState<Map<string, ConsensusData>>(() =>
-    consensusService.getInitialConsensusSync(FALLBACK_EPL_FIXTURES)
-  );
+  const [consensusMap, setConsensusMap] = useState<Map<string, ConsensusData>>(() => new Map());
   const [predictions, setPredictions] = useState<UserPrediction[]>(() => {
     return predictionService.getPredictions();
   });
@@ -133,6 +135,13 @@ export function PredictionExperience() {
       if (!mounted) return;
       const weekend = weekendFixtures(matches || []);
       setFixtures(weekend);
+      const linked = linkedMatchId
+        ? weekend.find((match) => match.id === linkedMatchId)
+        : null;
+      if (linked) {
+        setActiveDayKey(matchDayKey(linked));
+        setActiveMatchday(linked.matchday);
+      }
 
       const matchIds = weekend.map(m => m.id);
       const cMap = await consensusService.getConsensusForMatches(matchIds);
@@ -141,7 +150,7 @@ export function PredictionExperience() {
       }
     });
     return () => { mounted = false; };
-  }, []);
+  }, [linkedMatchId]);
 
   // Extract all distinct EPL teams for favourite team selection (prioritizing teams playing in the current matchday)
   const availableTeams = useMemo(() => teamsFromMatches(fixtures), [fixtures]);
@@ -149,6 +158,15 @@ export function PredictionExperience() {
   // Filter matches for active matchday with dynamic derby based on user's favourite team
   const matchdayMatches = useMemo(() => {
     const rawMatches = fixtures.filter((m) => matchDayKey(m) === activeDayKey);
+    const linked = linkedMatchId
+      ? rawMatches.find((match) => match.id === linkedMatchId)
+      : null;
+    if (linked) {
+      return [
+        { ...linked, isDerby: true },
+        ...rawMatches.filter((match) => match.id !== linked.id).map((match) => ({ ...match, isDerby: false })),
+      ];
+    }
     if (!favouriteTeam) {
       return [...rawMatches].sort((a, b) => (b.isDerby ? 1 : 0) - (a.isDerby ? 1 : 0));
     }
@@ -185,7 +203,7 @@ export function PredictionExperience() {
 
     // The game in which the favourite team plays will be the first game in the list
     return [...mapped].sort((a, b) => (b.isDerby ? 1 : 0) - (a.isDerby ? 1 : 0));
-  }, [fixtures, activeDayKey, favouriteTeam]);
+  }, [fixtures, activeDayKey, favouriteTeam, linkedMatchId]);
 
   const regularMatches = useMemo(() => {
     return matchdayMatches.filter(m => !m.isDerby);
@@ -202,10 +220,10 @@ export function PredictionExperience() {
   const weekend = useMemo(() => weekendDays(fixtures), [fixtures]);
 
   const pairDays = useMemo(() => {
-    return weekend.map((day) => ({
-      matchday: day.matches[0]?.matchday ?? 0,
+    return weekend.filter((day) => day.matches.length > 0).map((day) => ({
+      matchday: day.matches[0].matchday,
       dayKey: day.key,
-      label: day.label,
+      label: `${day.label} Matchday ${day.matches[0].matchday}`,
       ...matchdayTeamLine(day.matches, favouriteTeam),
     }));
   }, [weekend, favouriteTeam]);
@@ -218,15 +236,28 @@ export function PredictionExperience() {
   }, [predictions, fixtures]);
 
   const pickQueue = useMemo(
-    () => predictionQueue(fixtures, favouriteTeam),
-    [fixtures, favouriteTeam]
+    () => predictionQueue(
+      fixtures.filter((match) => matchDayKey(match) === activeDayKey),
+      favouriteTeam,
+      new Date(),
+      linkedMatchId,
+    ),
+    [fixtures, favouriteTeam, activeDayKey, linkedMatchId]
   );
 
   useEffect(() => {
-    if (weekend.some((day) => day.key === activeDayKey)) return;
-    const next = weekend.find((day) => day.matches.length > 0) ?? weekend[0];
-    if (next) setActiveDayKey(next.key);
-  }, [weekend, activeDayKey]);
+    const selected = weekend.find((day) => day.key === activeDayKey && day.matches.length > 0);
+    if (selected) {
+      const matchday = selected.matches[0].matchday;
+      if (activeMatchday !== matchday) setActiveMatchday(matchday);
+      return;
+    }
+    const next = weekend.find((day) => day.matches.length > 0);
+    if (next) {
+      setActiveDayKey(next.key);
+      setActiveMatchday(next.matches[0].matchday);
+    }
+  }, [weekend, activeDayKey, activeMatchday]);
 
   // User predictions mapping for easy lookup
   const userPredMap = useMemo(() => {
@@ -453,7 +484,6 @@ export function PredictionExperience() {
         mainNav={mainNav}
         onSelectMainNav={setMainNav}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
         identity={identity}
         completedPicksCount={matchdayMatches.filter((m) => userPredMap.has(m.id)).length}
         totalRequiredPicks={matchdayMatches.length}
@@ -650,8 +680,8 @@ export function PredictionExperience() {
         {/* 3. NEWS SECTION (THE MAIN HUB WITH BANTER & SCORES)              */}
         {/* ================================================================ */}
         {mainNav === 'news' && (
-          <div className="space-y-4">
-            {!(activeTab === 'scores' && slipOpen) && (
+          <div className={activeTab === 'scores' && slipOpen ? 'flex min-h-0 flex-1 flex-col gap-1.5' : 'space-y-4'}>
+            {pairDays.length > 0 && (
               <MatchdayPair
                 days={pairDays}
                 activeMatchday={activeMatchday}

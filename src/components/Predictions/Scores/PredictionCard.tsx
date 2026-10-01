@@ -29,7 +29,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   }, [match.scheduledTime]);
 
   const isLocked = countdown.isLocked || match.status === 'LIVE' || match.status === 'FT';
-  const showVotes = showVotesForConsensus(consensus, match.id);
+  const showVotes = showVotesForConsensus(consensus, match.id, userSelection);
 
   return (
     <div className="relative rounded-xl border border-[#1a2e45] bg-[#0e1c2b] p-4 tactical-card-shadow transition-all hover:border-slate-600/60">

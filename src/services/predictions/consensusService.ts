@@ -117,57 +117,11 @@ export class ConsensusService {
       // offline fallback
     }
 
-    // For any matchId not found in DB cache, provide deterministic baseline (preserving vote integrity)
-    matchIds.forEach((id) => {
-      if (!map.has(id)) {
-        const hash = this.hashString(id);
-        const homePct = 50 + (hash % 25);
-        const drawPct = 15 + ((hash >> 2) % 15);
-        const awayPct = 100 - (homePct + drawPct);
-        const baseVotes = 80 + (hash % 120);
-
-        map.set(id, {
-          matchId: id,
-          homePct,
-          drawPct,
-          awayPct,
-          totalVotes: baseVotes,
-          pulseLabel: `${baseVotes} early community votes`
-        });
-      }
-    });
-
     return map;
   }
 
-  public getInitialConsensusSync(matches: { id: string }[]): Map<string, ConsensusData> {
-    const map = new Map<string, ConsensusData>();
-    matches.forEach((m) => {
-      const hash = this.hashString(m.id);
-      const homePct = 50 + (hash % 25);
-      const drawPct = 15 + ((hash >> 2) % 15);
-      const awayPct = 100 - (homePct + drawPct);
-      const baseVotes = 80 + (hash % 120);
-
-      map.set(m.id, {
-        matchId: m.id,
-        homePct,
-        drawPct,
-        awayPct,
-        totalVotes: baseVotes,
-        pulseLabel: `${baseVotes} fan predictions`
-      });
-    });
-    return map;
-  }
-
-  private hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return Math.abs(hash);
+  public getInitialConsensusSync(): Map<string, ConsensusData> {
+    return new Map();
   }
 }
 

@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/prediction/:team/:match/:pick",
+      "destination": "/api/share?m=:match&p=:pick"
+    }
+  ]
+}

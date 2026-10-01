@@ -102,7 +102,22 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   onSelectTeam,
   onPick,
 }) => {
-  const [fanaticAnswered, setFanaticAnswered] = useState(false);
+  const [fanaticAnswered, setFanaticAnswered] = useState(() => {
+    try {
+      return localStorage.getItem('esn_fanatic_prompt_seen') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const continueToTeams = (answer: 'yes' | 'no') => {
+    setFanaticAnswered(true);
+    try {
+      localStorage.setItem('esn_fanatic_prompt_seen', 'true');
+      localStorage.setItem('esn_football_fanatic', answer);
+    } catch {
+      // The prompt can still advance for storage-restricted browsers.
+    }
+  };
   const remaining = queue.filter((match) => !pickedIds.has(match.id));
   const current = remaining[0] ?? null;
   const ahead = remaining.slice(1, 3);
@@ -121,14 +136,14 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setFanaticAnswered(true)}
+                onClick={() => continueToTeams('yes')}
                 className="rounded-2xl border border-[#ff0046]/70 bg-[#ff0046]/15 px-4 py-3 text-sm font-semibold text-white cursor-pointer hover:bg-[#ff0046]/25"
               >
                 Yes, I am
               </button>
               <button
                 type="button"
-                onClick={() => setFanaticAnswered(true)}
+                onClick={() => continueToTeams('no')}
                 className="rounded-2xl border border-slate-600 bg-[#0a1624] px-4 py-3 text-sm font-medium text-slate-200 cursor-pointer hover:border-slate-400"
               >
                 Not really
@@ -192,7 +207,7 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   }
 
   return (
-    <div className="relative">
+    <div className="epl-slip-stage relative">
       <div key={current.id} className="slip-card-in">
         <MatchPickCard
           match={current}

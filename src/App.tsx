@@ -380,6 +380,15 @@ export const AppContent: React.FC = () => {
     } catch {}
     return 'scores';
   });
+  const [predictionView, setPredictionView] = useState<'banter' | 'scores'>(() =>
+    new URLSearchParams(window.location.search).get('view') === 'talk' ? 'banter' : 'scores'
+  );
+  const selectPredictionView = (view: 'banter' | 'scores') => {
+    setPredictionView(view);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view === 'banter' ? 'talk' : 'picks');
+    window.history.replaceState(null, '', url);
+  };
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
@@ -1158,6 +1167,8 @@ export const AppContent: React.FC = () => {
               onCloseCalendar={() => setIsCalendarOpen(false)}
               unreadAnnouncementsCount={deviceAnnouncements.filter((a) => a.status === 'unread').length}
               onOpenNotifications={() => setIsNotificationsModalOpen(true)}
+              predictionView={predictionView}
+              onSelectPredictionView={selectPredictionView}
             />
 
             <Navigation
@@ -1219,7 +1230,9 @@ export const AppContent: React.FC = () => {
                 />
               )}
 
-              {activeTab === 'news' && <PredictionExperience />}
+              {activeTab === 'news' && (
+                <PredictionExperience activeTab={predictionView} onSelectTab={selectPredictionView} />
+              )}
 
               {activeTab === 'favorites' && (
                 favoriteMatches.length > 0 ? (

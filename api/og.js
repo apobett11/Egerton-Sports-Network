@@ -1,6 +1,7 @@
 import React from 'react';
 import { ImageResponse } from '@vercel/og';
 import { decodeShareCard } from '../src/lib/predictions/shareCard.mjs';
+import { loadPredictionShare } from '../src/lib/predictions/shareServer.mjs';
 
 const h = React.createElement;
 
@@ -156,8 +157,12 @@ function fallbackCard() {
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
-  const token = new URL(request.url).searchParams.get('d') || '';
-  const card = decodeShareCard(token);
+  const url = new URL(request.url);
+  const token = url.searchParams.get('d') || '';
+  const shared = url.searchParams.get('m')
+    ? await loadPredictionShare(url.searchParams.get('m'), url.searchParams.get('p'))
+    : null;
+  const card = shared?.card || decodeShareCard(token);
   const title = card?.k === 'derby' ? 'MY DERBY PICK' : card?.k === 'slip' ? 'MY EPL TEAM SHEET' : 'EGERSCORE';
 
   const tree = h(

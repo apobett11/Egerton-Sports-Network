@@ -251,22 +251,18 @@ class EplFixtureService {
       return this.inFlightPromise;
     }
 
-    this.inFlightPromise = this.fetchFromDbOrFallback();
+    this.inFlightPromise = this.fetchFromDb();
     try {
       const result = await this.inFlightPromise;
-      const fallbackIds = new Set(FALLBACK_EPL_FIXTURES.map((match) => match.id));
-      const isFallback = result.length > 0 && result.every((match) => fallbackIds.has(match.id));
-      if (!isFallback) {
-        this.cache = result;
-        this.cacheTimestamp = Date.now();
-      }
+      this.cache = result;
+      this.cacheTimestamp = Date.now();
       return result;
     } finally {
       this.inFlightPromise = null;
     }
   }
 
-  private async fetchFromDbOrFallback(): Promise<Match[]> {
+  private async fetchFromDb(): Promise<Match[]> {
     try {
       // 1. Fetch fixtures from DB using indexed scan
       const windowStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
@@ -290,7 +286,7 @@ class EplFixtureService {
         .limit(40);
 
       if (error || !fixtures || fixtures.length === 0) {
-        return weekendFixtures(FALLBACK_EPL_FIXTURES);
+        return [];
       }
 
       // Check if derby config exists in DB
@@ -342,9 +338,9 @@ class EplFixtureService {
       });
 
       const weekend = weekendFixtures(parsed);
-      return weekend.length > 0 ? weekend : weekendFixtures(FALLBACK_EPL_FIXTURES);
+      return weekend;
     } catch {
-      return weekendFixtures(FALLBACK_EPL_FIXTURES);
+      return [];
     }
   }
 

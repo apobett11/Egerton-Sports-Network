@@ -13,16 +13,36 @@ function stableHash(value) {
   return hash >>> 0;
 }
 
-function seededDisplay(seedKey, homeLeads) {
-  const homeIsStronger = homeLeads ?? stableHash(seedKey) % 2 === 0;
+function seededDisplay(seedKey, homeLeads, preferredOption) {
+  if (preferredOption === 'X') {
+    return {
+      total: 28,
+      homeVotes: 9,
+      drawVotes: 10,
+      awayVotes: 9,
+      homePct: 32,
+      drawPct: 36,
+      awayPct: 32,
+    };
+  }
+  const homeIsStronger = preferredOption === '1'
+    ? true
+    : preferredOption === '2'
+      ? false
+      : homeLeads ?? stableHash(seedKey) % 2 === 0;
+  const homeVotes = homeIsStronger ? 10 : 9;
+  const awayVotes = homeIsStronger ? 9 : 10;
+  const total = homeVotes + awayVotes + 2;
+  const homePct = Math.round((homeVotes * 100) / total);
+  const awayPct = Math.round((awayVotes * 100) / total);
   return {
-    total: SEED_TOTAL,
-    homeVotes: homeIsStronger ? 10 : 8,
+    total,
+    homeVotes,
     drawVotes: 2,
-    awayVotes: homeIsStronger ? 8 : 10,
-    homePct: homeIsStronger ? 50 : 40,
-    drawPct: 10,
-    awayPct: homeIsStronger ? 40 : 50,
+    awayVotes,
+    homePct,
+    drawPct: 100 - homePct - awayPct,
+    awayPct,
   };
 }
 
@@ -61,7 +81,7 @@ export function actualVoteSplit(consensus) {
  * twice the weaker side's real count. The resulting presentation sample is
  * normalized around a close 49/41 team split, leaving about 10% for draws.
  */
-export function deriveShowVotes(actual, seedKey = '') {
+export function deriveShowVotes(actual, seedKey = '', preferredOption = null) {
   const homeActual = cleanCount(actual?.homeVotes);
   const drawActual = cleanCount(actual?.drawVotes);
   const awayActual = cleanCount(actual?.awayVotes);
@@ -69,7 +89,7 @@ export function deriveShowVotes(actual, seedKey = '') {
   const homeLeads = homeActual === awayActual ? stableHash(seedKey) % 2 === 0 : homeActual > awayActual;
 
   if (actualTotal < LOW_COUNT_THRESHOLD || Math.min(homeActual, awayActual) === 0) {
-    return seededDisplay(seedKey, homeLeads);
+    return seededDisplay(seedKey, homeLeads, preferredOption);
   }
 
   const strongerActual = homeLeads ? homeActual : awayActual;
@@ -100,6 +120,6 @@ export function deriveShowVotes(actual, seedKey = '') {
   };
 }
 
-export function showVotesForConsensus(consensus, seedKey = consensus?.matchId || '') {
-  return deriveShowVotes(actualVoteSplit(consensus), seedKey);
+export function showVotesForConsensus(consensus, seedKey = consensus?.matchId || '', preferredOption = null) {
+  return deriveShowVotes(actualVoteSplit(consensus), seedKey, preferredOption);
 }

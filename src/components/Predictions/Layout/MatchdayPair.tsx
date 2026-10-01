@@ -4,8 +4,8 @@ export interface MatchdayPairDay {
   matchday: number;
   dayKey?: string;
   label?: string;
-  team: string;
-  line: string;
+  team?: string;
+  line?: string;
 }
 
 interface MatchdayPairProps {
@@ -17,7 +17,7 @@ interface MatchdayPairProps {
 
 export const MatchdayPair: React.FC<MatchdayPairProps> = ({ days, activeMatchday, activeDayKey, onSelect }) => {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-1.5">
       {days.map((day) => {
         const isActive = day.dayKey
           ? day.dayKey === activeDayKey
@@ -27,18 +27,14 @@ export const MatchdayPair: React.FC<MatchdayPairProps> = ({ days, activeMatchday
             key={day.dayKey ?? day.matchday}
             type="button"
             onClick={() => onSelect(day.matchday, day.dayKey)}
-            className={`min-w-0 rounded-full px-3 py-1.5 text-left cursor-pointer transition-colors ${
+            className={`min-w-0 rounded-lg border px-2 py-1 text-center cursor-pointer transition-colors ${
               isActive
-                ? 'bg-[#ff0046] text-white shadow-xs'
-                : 'bg-[#14263b] text-slate-300 hover:bg-[#1b3450]'
+                ? 'border-[#ff0046]/80 bg-[#ff0046]/15 text-white'
+                : 'border-[#29435d] bg-[#0e1c2b] text-slate-400 hover:border-slate-500'
             }`}
           >
-            <span className="block text-[10px] font-black uppercase tracking-wider leading-none">
+            <span className="block truncate text-[9px] font-semibold uppercase tracking-wide leading-tight">
               {day.label ?? `Matchday ${day.matchday}`}
-            </span>
-            <span className="mt-1 block truncate text-xs font-black leading-tight">{day.team}</span>
-            <span className={`block truncate text-[10px] font-bold leading-tight ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
-              {day.line}
             </span>
           </button>
         );

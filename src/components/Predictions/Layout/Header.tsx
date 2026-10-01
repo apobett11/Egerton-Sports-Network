@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, User, Radio, Newspaper, Table, Star, List, MessageSquare, ClipboardList } from 'lucide-react';
+import { Trophy, User, Radio, Newspaper, Table, Star, List } from 'lucide-react';
 import type { AnonymousDevice } from '../../../types/predictions';
 
 interface HeaderProps {
@@ -7,7 +7,6 @@ interface HeaderProps {
   mainNav: 'livescore' | 'news' | 'standings';
   onSelectMainNav: (nav: 'livescore' | 'news' | 'standings') => void;
   activeTab: 'banter' | 'scores';
-  onSelectTab: (tab: 'banter' | 'scores') => void;
   identity: AnonymousDevice;
   completedPicksCount: number;
   totalRequiredPicks: number;
@@ -23,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
   mainNav,
   onSelectMainNav,
   activeTab,
-  onSelectTab,
   identity,
   completedPicksCount,
   totalRequiredPicks,
@@ -167,36 +165,11 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => onSelectTab('banter')}
-              className={`flex h-full items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-xs font-black uppercase tracking-wider cursor-pointer transition-colors sm:text-sm ${
-                activeTab === 'banter'
-                  ? 'border-[#ff0046] text-[#ff0046]'
-                  : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              <span>Banter</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onSelectTab('scores')}
-              className={`flex h-full items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-xs font-black uppercase tracking-wider cursor-pointer transition-colors sm:text-sm ${
-                activeTab === 'scores'
-                  ? 'border-[#ff0046] text-[#ff0046]'
-                  : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-            >
-              <ClipboardList className="h-3.5 w-3.5" />
-              <span>Predictions</span>
-              {totalRequiredPicks > 0 && (
-                <span className={`text-[10px] font-mono ${activeTab === 'scores' ? 'text-[#ff0046]' : 'text-slate-500'}`}>
-                  {completedPicksCount}/{totalRequiredPicks}
-                </span>
-              )}
-            </button>
+            {activeTab === 'scores' && totalRequiredPicks > 0 && (
+              <span className="ml-auto text-[10px] font-mono font-bold text-slate-400">
+                {completedPicksCount}/{totalRequiredPicks} selected
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList } from 'lucide-react';
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
@@ -25,6 +25,8 @@ interface HeaderProps {
     onCloseCalendar?: () => void;
     unreadAnnouncementsCount?: number;
     onOpenNotifications?: () => void;
+    predictionView?: 'banter' | 'scores';
+    onSelectPredictionView?: (view: 'banter' | 'scores') => void;
 }
 
 const SPORTS_LIST = [
@@ -58,6 +60,8 @@ export const Header: React.FC<HeaderProps> = ({
     onCloseCalendar,
     unreadAnnouncementsCount = 0,
     onOpenNotifications,
+    predictionView = 'scores',
+    onSelectPredictionView,
 }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -266,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* ROW 3: SCORES SUB-MENU (LEFT ALIGNED: FAVOURITES ICON | FIXTURES | STANDINGS) */}
-            {(isScoresActive || isNewsActive) && (
+            {isScoresActive && (
                 <div className="w-full bg-[#ffffff] dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100 transition-colors">
                     <div className="max-w-7xl mx-auto px-2 sm:px-4 py-0 flex items-center justify-start gap-1 sm:gap-4 h-10 overflow-x-auto no-scrollbar">
                         {/* 1. FAVOURITES (Orange Icon Button) */}
@@ -331,6 +335,37 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 animate-pulse" />
                             <span>PLAYER OF THE WEEK</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {isNewsActive && (
+                <div className="w-full bg-white dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100">
+                    <div className="max-w-7xl mx-auto px-2 sm:px-4 flex h-10 items-center justify-start gap-2 sm:gap-5">
+                        <button
+                            type="button"
+                            onClick={() => onSelectPredictionView?.('banter')}
+                            className={`flex h-full items-center gap-1.5 border-b-2 px-2 text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer transition-colors ${
+                                predictionView === 'banter'
+                                    ? 'border-[#ff0046] text-[#ff0046]'
+                                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>Banter</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onSelectPredictionView?.('scores')}
+                            className={`flex h-full items-center gap-1.5 border-b-2 px-2 text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer transition-colors ${
+                                predictionView === 'scores'
+                                    ? 'border-[#ff0046] text-[#ff0046]'
+                                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <ClipboardList className="h-3.5 w-3.5" />
+                            <span>Predictions</span>
                         </button>
                     </div>
                 </div>

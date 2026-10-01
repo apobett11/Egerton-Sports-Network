@@ -114,9 +114,23 @@ function involvesTeam(match: Match, teamName: string): boolean {
   );
 }
 
-/** Favourite club's game first, then the rest of this open weekend. */
-export function predictionQueue(matches: Match[], favouriteTeam: string | null, now = new Date()): Match[] {
+/** Shared match first, otherwise favourite club's game, then the rest of this open slate. */
+export function predictionQueue(
+  matches: Match[],
+  favouriteTeam: string | null,
+  now = new Date(),
+  preferredMatchId?: string | null,
+): Match[] {
   const open = openWeekendMatches(matches, now);
+  const preferred = preferredMatchId
+    ? open.find((match) => match.id === preferredMatchId)
+    : null;
+  if (preferred) {
+    return [
+      { ...preferred, isDerby: true },
+      ...open.filter((match) => match.id !== preferred.id).map((match) => ({ ...match, isDerby: false })),
+    ];
+  }
   if (!favouriteTeam) return open;
   const derby = open.find((match) => involvesTeam(match, favouriteTeam));
   const rest = open.filter((match) => match.id !== derby?.id);

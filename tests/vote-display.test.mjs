@@ -8,8 +8,8 @@ import {
 
 function assertCloseDerbyRange(result) {
   const teamShares = [result.homePct, result.awayPct].sort((a, b) => a - b);
-  assert.ok(teamShares[0] >= 40 && teamShares[0] <= 42, `weaker share was ${teamShares[0]}%`);
-  assert.ok(teamShares[1] >= 48 && teamShares[1] <= 50, `stronger share was ${teamShares[1]}%`);
+  assert.ok(teamShares[0] >= 41 && teamShares[0] <= 43, `weaker share was ${teamShares[0]}%`);
+  assert.ok(teamShares[1] >= 48 && teamShares[1] <= 49, `stronger share was ${teamShares[1]}%`);
   assert.ok(result.homeVotes > 0);
   assert.ok(result.awayVotes > 0);
   assert.equal(result.total, result.homeVotes + result.drawVotes + result.awayVotes);
@@ -21,14 +21,23 @@ test('zero votes receive a deterministic non-zero seed', () => {
   const second = deriveShowVotes({ homeVotes: 0, drawVotes: 0, awayVotes: 0 }, 'derby-1');
 
   assert.deepEqual(first, second);
-  assert.equal(first.total, 20);
+  assert.equal(first.total, 21);
   assert.ok(first.homeVotes > 0 && first.drawVotes > 0 && first.awayVotes > 0);
 });
 
 test('very low counts use the fun-game baseline without a first-voter state', () => {
   const result = deriveShowVotes({ homeVotes: 2, drawVotes: 1, awayVotes: 0 }, 'low');
-  assert.equal(result.total, 20);
-  assert.ok(Math.min(result.homeVotes, result.awayVotes) >= 8);
+  assert.equal(result.total, 21);
+  assert.ok(Math.min(result.homeVotes, result.awayVotes) >= 9);
+});
+
+test('the first displayed range favors the option the fanatic selected', () => {
+  const home = deriveShowVotes({ homeVotes: 1, drawVotes: 0, awayVotes: 0 }, 'first', '1');
+  const away = deriveShowVotes({ homeVotes: 0, drawVotes: 0, awayVotes: 1 }, 'first', '2');
+  assert.equal(home.homeVotes, 10);
+  assert.equal(home.awayVotes, 9);
+  assert.equal(away.awayVotes, 10);
+  assert.equal(away.homeVotes, 9);
 });
 
 test('lopsided totals are projected to a close range and cap weaker augmentation', () => {

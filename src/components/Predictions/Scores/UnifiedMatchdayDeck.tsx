@@ -185,7 +185,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
           const isDerby = match.isDerby;
           const userSel = userPredictions.get(match.id) || null;
           const consensus = consensusMap.get(match.id);
-          const stats = showVotesForConsensus(consensus, match.id);
+          const stats = showVotesForConsensus(consensus, match.id, userSel);
           const isPicked = userSel !== null;
           const voteLocked = isPicked || votingClosed;
           const tick = userSel ? slipTick(match, userSel) : null;
