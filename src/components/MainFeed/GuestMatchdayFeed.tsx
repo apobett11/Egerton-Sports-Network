@@ -437,13 +437,12 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
         localStorage.setItem(`esn_predictions_opened_${deviceId}`, 'true');
         localStorage.setItem('esn_predictions_page_opened_v3', 'true');
       } catch {
-        // The modal still opens.
+        // Navigation still opens the shared prediction page.
       }
       FeaturePollService.recordOddsPageOpen(deviceId);
     }
-    setShowOddsModal(true);
-    setFilterStatus('PREDICTIONS');
-  }, [deviceId]);
+    onNavigate('/news');
+  }, [deviceId, onNavigate]);
 
   const dismissOddsPopup = useCallback(() => {
     setShowOddsTooltip(false);
@@ -745,7 +744,7 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
           setShowOddsModal(false);
           setFilterStatus('ALL');
         }}
-        deviceId={deviceId}
+        deviceId={deviceId ?? ''}
       />
     </>
   );

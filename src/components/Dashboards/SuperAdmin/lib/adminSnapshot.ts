@@ -160,7 +160,7 @@ export async function fetchAdminSnapshot(): Promise<AdminRawSnapshot> {
     timed<any[]>('admin_error_logs', 'select * order by created_at desc limit 30', () =>
       supabase.from('admin_error_logs').select('*').order('created_at', { ascending: false }).limit(30), []),
     timed<any[]>('anonymous_devices', `select ${DEVICE_COLUMNS} limit 2000`, () =>
-      supabase.from('anonymous_devices').select(DEVICE_COLUMNS, { count: 'exact' }).limit(2000), []),
+      supabase.from('anonymous_devices').select(DEVICE_COLUMNS, { count: 'exact' }).order('last_seen_at', { ascending: false }).range(0, 49), []),
     timed<any | null>('system_settings', "select value where key = 'admin_2_analytics'", () =>
       supabase.from('system_settings').select('value').eq('key', 'admin_2_analytics').maybeSingle(), null),
     timed<any[]>('match_events', `select ${MATCH_EVENT_COLUMNS} limit 1000`, () =>

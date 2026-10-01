@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { getDeviceCredentials, readDevicePlatform } from '../lib/deviceCopies';
 
 export interface DeviceAnnouncementItem {
   id: string;
@@ -14,12 +15,36 @@ export interface DeviceAnnouncementItem {
 export interface DeviceProfile {
   device_id: string;
   favorite_team_id: string | null;
+  favorite_team_label?: string | null;
   has_completed_onboarding: boolean;
   interaction_history?: Record<string, any>;
   announcements?: DeviceAnnouncementItem[];
   favorite_matches?: string[];
   last_seen_at?: string;
   created_at?: string;
+}
+
+function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST202' || /could not find the function/i.test(error.message || '');
+}
+
+function lockTeam(profile: DeviceProfile | null) {
+  if (!profile?.favorite_team_id && !profile?.favorite_team_label) return;
+  try {
+    localStorage.setItem('esn_onboarding_completed', 'true');
+    if (profile.favorite_team_id) {
+      localStorage.setItem('esn_favorite_team_id', profile.favorite_team_id);
+    }
+    if (profile.favorite_team_label) {
+      localStorage.setItem('esn_favorite_team_label', profile.favorite_team_label);
+    }
+    window.dispatchEvent(new CustomEvent('esn-favorite-team-locked', {
+      detail: { teamId: profile.favorite_team_id, label: profile.favorite_team_label || null },
+    }));
+  } catch {
+    // The database row is the lock.
+  }
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,42 +60,41 @@ export const DeviceService = {
   async registerOrCheckInDevice(deviceId: string): Promise<DeviceProfile | null> {
     try {
       if (!deviceId || !isValidUUID(deviceId)) return null;
+      const creds = await getDeviceCredentials();
+      if (!creds.deviceId || creds.deviceId !== deviceId || !creds.secret) return null;
 
-      const cacheKey = `esn_device_last_checkin_${deviceId}`;
-      const cachedProfileKey = `esn_device_profile_${deviceId}`;
-      const lastCheckin = localStorage.getItem(cacheKey);
-      const cachedProfile = localStorage.getItem(cachedProfileKey);
-      const now = Date.now();
+      const hints = readDevicePlatform();
+      const { data, error } = await supabase.rpc('register_or_check_in_device', {
+        p_device_id: deviceId,
+        p_secret: creds.secret,
+        p_platform: hints.platform,
+        p_label: hints.label,
+      });
 
-      // Avoid hammering the database on every page load/refresh if checked in within the last 6 hours
-      if (lastCheckin && cachedProfile && (now - parseInt(lastCheckin, 10)) < 6 * 60 * 60 * 1000) {
-        try {
-          return JSON.parse(cachedProfile);
-        } catch {
-          // Fall through to query if cache is corrupted
-        }
+      if (!error && data) {
+        const profile = data as DeviceProfile;
+        lockTeam(profile);
+        return profile;
+      }
+      if (!isMissingRpc(error)) {
+        console.error('Failed to check in device to Supabase:', error);
+        return null;
       }
 
-      const { data, error } = await supabase
+      const { data: row, error: rowError } = await supabase
         .from('anonymous_devices')
         .upsert(
-          { 
-            device_id: deviceId, 
-            last_seen_at: new Date().toISOString() 
+          {
+            device_id: deviceId,
+            last_seen_at: new Date().toISOString(),
           },
           { onConflict: 'device_id' }
         )
         .select()
         .single();
-
-      if (error) throw error;
-      
-      if (data) {
-        localStorage.setItem(cacheKey, String(now));
-        localStorage.setItem(cachedProfileKey, JSON.stringify(data));
-      }
-
-      return data;
+      if (rowError) throw rowError;
+      lockTeam(row as DeviceProfile);
+      return row as DeviceProfile;
     } catch (error) {
       console.error("Failed to check in device to Supabase:", error);
       return null;
@@ -80,12 +104,42 @@ export const DeviceService = {
   /**
    * Matches the device UUID to the selected team's UID and completes onboarding.
    */
-  async setFavoriteTeam(deviceId: string, teamId: string | null): Promise<DeviceProfile | null> {
+  async setFavoriteTeam(deviceId: string, teamId: string | null, label?: string | null): Promise<DeviceProfile | null> {
     try {
       if (!deviceId || !isValidUUID(deviceId)) return null;
+      const creds = await getDeviceCredentials();
+      if (!creds.secret || creds.deviceId !== deviceId) return null;
       const validTeamUUID = isValidUUID(teamId) ? teamId : null;
+      const teamLabel = typeof label === 'string' && label.trim() ? label.trim() : null;
 
-      const { data, error } = await supabase
+      const { data, error } = await supabase.rpc('set_device_favorite_team', {
+        p_device_id: deviceId,
+        p_secret: creds.secret,
+        p_team_id: validTeamUUID,
+        p_label: teamLabel,
+      });
+      if (!error && data) {
+        const profile = data as DeviceProfile;
+        lockTeam(profile);
+        return profile;
+      }
+      if (!isMissingRpc(error)) {
+        console.error('Failed to bind favorite team:', error);
+        return null;
+      }
+
+      const existing = await supabase
+        .from('anonymous_devices')
+        .select('device_id, favorite_team_id, favorite_team_label, has_completed_onboarding')
+        .eq('device_id', deviceId)
+        .maybeSingle();
+      const current = existing.data as DeviceProfile | null;
+      if (current?.favorite_team_id || current?.favorite_team_label) {
+        lockTeam(current);
+        return current;
+      }
+
+      const { data: row, error: rowError } = await supabase
         .from('anonymous_devices')
         .upsert(
           {
@@ -98,10 +152,9 @@ export const DeviceService = {
         )
         .select()
         .single();
-
-      if (error) throw error;
-      
-      return data;
+      if (rowError) throw rowError;
+      lockTeam(row as DeviceProfile);
+      return row as DeviceProfile;
     } catch (error) {
       console.error("Failed to bind favorite team:", error);
       return null;
@@ -122,7 +175,8 @@ export const DeviceService = {
           .from('announcements')
           .select('*')
           .or('target_role.eq.all,target_role.eq.public')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(0, 49);
         if (data) dbAnnouncements = data;
       } catch (e) {
         console.warn('Failed to query announcements table:', e);
@@ -221,26 +275,47 @@ export const DeviceService = {
         localStorage.setItem(`esn_device_announcements_${deviceId}`, JSON.stringify(updatedList));
       } catch {}
 
-      // 2. Persist to anonymous_devices table in Supabase
+      // 2. Persist read state without replacing the matchday slip.
       try {
-        const updatePayload: any = {
-          device_id: deviceId,
-          announcements: updatedList,
-          last_seen_at: new Date().toISOString(),
-        };
+        const creds = await getDeviceCredentials();
+        if (creds.secret && creds.deviceId === deviceId) {
+          const { error: rpcError } = await supabase.rpc('set_device_announcement_reads', {
+            p_device_id: deviceId,
+            p_secret: creds.secret,
+            p_announcements: updatedList,
+          });
+          if (!rpcError || !isMissingRpc(rpcError)) {
+            return updatedList;
+          }
+        }
 
+        const current = await supabase
+          .from('anonymous_devices')
+          .select('interaction_history, favorite_matches')
+          .eq('device_id', deviceId)
+          .maybeSingle();
+        const history = (current.data?.interaction_history && typeof current.data.interaction_history === 'object')
+          ? current.data.interaction_history
+          : {};
         const { error: upsertErr } = await supabase
           .from('anonymous_devices')
-          .upsert(updatePayload, { onConflict: 'device_id' });
+          .upsert(
+            {
+              device_id: deviceId,
+              announcements: updatedList,
+              interaction_history: { ...history, announcements: updatedList },
+              last_seen_at: new Date().toISOString(),
+            },
+            { onConflict: 'device_id' }
+          );
 
         if (upsertErr && (upsertErr.code === '42703' || upsertErr.message?.includes('announcements'))) {
-          // If column doesn't exist on remote table yet, store in interaction_history.announcements
           await supabase
             .from('anonymous_devices')
             .upsert(
               {
                 device_id: deviceId,
-                interaction_history: { announcements: updatedList },
+                interaction_history: { ...history, announcements: updatedList },
                 last_seen_at: new Date().toISOString(),
               },
               { onConflict: 'device_id' }
@@ -277,11 +352,11 @@ export const DeviceService = {
     cachedList = Array.from(new Set(cachedList));
 
     try {
-      const { data, error } = await supabase
-        .from('anonymous_devices')
-        .select('favorite_matches, interaction_history')
-        .eq('device_id', deviceId)
-        .maybeSingle();
+      const profile = await this.registerOrCheckInDevice(deviceId);
+      const data = profile
+        ? { favorite_matches: profile.favorite_matches, interaction_history: profile.interaction_history }
+        : null;
+      const error = profile ? null : { message: 'no profile' };
 
       if (!error && data) {
         const dbList = Array.isArray(data.favorite_matches)
@@ -291,12 +366,12 @@ export const DeviceService = {
           : null;
 
         if (dbList && Array.isArray(dbList)) {
-          const merged = Array.from(new Set([...cachedList, ...dbList]));
+          const serverList = Array.from(new Set(dbList));
           try {
-            localStorage.setItem(localKey, JSON.stringify(merged));
-            localStorage.setItem('favorites', JSON.stringify(merged));
+            localStorage.setItem(localKey, JSON.stringify(serverList));
+            localStorage.setItem('favorites', JSON.stringify(serverList));
           } catch {}
-          return merged;
+          return serverList;
         }
       }
     } catch (err) {
@@ -344,33 +419,55 @@ export const DeviceService = {
       localStorage.setItem('favorites', JSON.stringify(uniqueList));
     } catch {}
 
-    (async () => {
-      try {
-        const payload: any = {
-          device_id: deviceId,
-          favorite_matches: uniqueList,
-          last_seen_at: new Date().toISOString()
-        };
-        const { error: upsertErr } = await supabase
-          .from('anonymous_devices')
-          .upsert(payload, { onConflict: 'device_id' });
+    if (typeof window === 'undefined') return uniqueList;
 
-        if (upsertErr) {
-          await supabase
-            .from('anonymous_devices')
-            .upsert(
-              {
-                device_id: deviceId,
-                interaction_history: { favorite_matches: uniqueList },
-                last_seen_at: new Date().toISOString()
-              },
-              { onConflict: 'device_id' }
-            );
-        }
-      } catch (e) {
-        console.warn('Failed to sync favorite matches to Supabase:', e);
+    try {
+      const creds = await getDeviceCredentials();
+      if (creds.secret && creds.deviceId === deviceId) {
+        const { error: rpcError } = await supabase.rpc('set_device_matchday_slip', {
+          p_device_id: deviceId,
+          p_secret: creds.secret,
+          p_favorite_matches: uniqueList,
+        });
+        if (!rpcError) return uniqueList;
+        if (!isMissingRpc(rpcError)) return uniqueList;
       }
-    })();
+
+      const current = await supabase
+        .from('anonymous_devices')
+        .select('interaction_history')
+        .eq('device_id', deviceId)
+        .maybeSingle();
+      const history = (current.data?.interaction_history && typeof current.data.interaction_history === 'object')
+        ? current.data.interaction_history
+        : {};
+      const { error: upsertErr } = await supabase
+        .from('anonymous_devices')
+        .upsert(
+          {
+            device_id: deviceId,
+            favorite_matches: uniqueList,
+            interaction_history: { ...history, favorite_matches: uniqueList },
+            last_seen_at: new Date().toISOString()
+          },
+          { onConflict: 'device_id' }
+        );
+
+      if (upsertErr) {
+        await supabase
+          .from('anonymous_devices')
+          .upsert(
+            {
+              device_id: deviceId,
+              interaction_history: { ...history, favorite_matches: uniqueList },
+              last_seen_at: new Date().toISOString()
+            },
+            { onConflict: 'device_id' }
+          );
+      }
+    } catch (e) {
+      console.warn('Failed to sync favorite matches to Supabase:', e);
+    }
 
     return uniqueList;
   },

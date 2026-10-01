@@ -1,34 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { DeviceService } from '../services/DeviceService';
+import { generateUUID, resolveDeviceIdentity } from '../lib/deviceCopies';
 
-const DEVICE_STORAGE_KEY = 'esn_device_id';
 const ONBOARDING_STORAGE_KEY = 'esn_onboarding_completed';
 const FAVORITE_TEAM_STORAGE_KEY = 'esn_favorite_team_id';
 
-export function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+export { generateUUID };
 
 export function useDeviceIdentity() {
-  const [deviceId, setDeviceId] = useState<string>(() => {
-    try {
-      let id = localStorage.getItem(DEVICE_STORAGE_KEY);
-      if (!id) {
-        id = generateUUID();
-        localStorage.setItem(DEVICE_STORAGE_KEY, id);
-      }
-      return id;
-    } catch {
-      return generateUUID();
-    }
-  });
+  const [deviceId, setDeviceIdState] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const [cachedCompleted, setCachedCompleted] = useState<boolean>(() => {
     try {
@@ -41,79 +22,76 @@ export function useDeviceIdentity() {
   const [cachedTeamId, setCachedTeamId] = useState<string | null>(() => {
     try {
       const favTeam = localStorage.getItem(FAVORITE_TEAM_STORAGE_KEY);
-      if (favTeam === null || favTeam === 'null') return null;
+      if (favTeam === null || favTeam === 'null' || favTeam === '') return null;
       return favTeam;
     } catch {
       return null;
     }
   });
 
-  const [deviceFavorites, setDeviceFavorites] = useState<string[]>(() => {
-    try {
-      const devId = localStorage.getItem(DEVICE_STORAGE_KEY) || deviceId;
-      const localKey = `esn_device_favorites_${devId}`;
-      const saved = localStorage.getItem(localKey) || localStorage.getItem('favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [deviceFavorites, setDeviceFavorites] = useState<string[]>([]);
 
-  const [isInitializing] = useState<boolean>(false);
-
-  // Sync favorites from anonymous device record in background
   useEffect(() => {
-    if (!deviceId) return;
-    const timer = window.setTimeout(() => {
-      DeviceService.getFavoriteMatches(deviceId).then((matches) => {
-        if (matches && Array.isArray(matches)) {
-          setDeviceFavorites((prev) => {
-            const merged = Array.from(new Set([...prev, ...matches]));
-            try {
-              localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(merged));
-              localStorage.setItem('favorites', JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
-        }
-      });
-    }, 4000);
-    return () => window.clearTimeout(timer);
-  }, [deviceId]);
+    let cancelled = false;
+    resolveDeviceIdentity().then((resolved) => {
+      if (cancelled) return;
+      setDeviceIdState(resolved.deviceId);
+      setIsInitializing(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onLocked = (event: Event) => {
+      const detail = (event as CustomEvent<{ teamId: string | null; label?: string | null }>).detail;
+      if (!detail) return;
+      setCachedCompleted(true);
+      if (detail.teamId) setCachedTeamId(detail.teamId);
+      try {
+        localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
+        if (detail.teamId) localStorage.setItem(FAVORITE_TEAM_STORAGE_KEY, detail.teamId);
+      } catch {
+        // The server row is the lock. This copy is only a hint for the next paint.
+      }
+    };
+    window.addEventListener('esn-favorite-team-locked', onLocked);
+    return () => window.removeEventListener('esn-favorite-team-locked', onLocked);
+  }, []);
+
+  useEffect(() => {
+    if (!deviceId || isInitializing) return;
+    let cancelled = false;
+    DeviceService.getFavoriteMatches(deviceId).then((matches) => {
+      if (cancelled || !Array.isArray(matches)) return;
+      setDeviceFavorites(matches);
+      try {
+        localStorage.setItem(`esn_device_favorites_${deviceId}`, JSON.stringify(matches));
+      } catch {
+        // Server list already won.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deviceId, isInitializing]);
 
   const toggleDeviceFavorite = useCallback(async (matchId: string): Promise<boolean> => {
-    if (!matchId) return false;
-
-    const localKey = `esn_device_favorites_${deviceId}`;
-    let current = deviceFavorites;
-    try {
-      const stored = localStorage.getItem(localKey) || localStorage.getItem('favorites');
-      if (stored) {
-        current = JSON.parse(stored);
-      }
-    } catch {}
-
-    const isFav = current.includes(matchId);
-    const isAdding = !isFav;
-    const nextList = isFav
-      ? current.filter((id) => id !== matchId)
-      : Array.from(new Set([...current, matchId]));
-
+    if (!matchId || !deviceId) return false;
+    const isAdding = !deviceFavorites.includes(matchId);
+    const nextList = isAdding
+      ? Array.from(new Set([...deviceFavorites, matchId]))
+      : deviceFavorites.filter((id) => id !== matchId);
     setDeviceFavorites(nextList);
-
-    try {
-      localStorage.setItem(localKey, JSON.stringify(nextList));
-      localStorage.setItem('favorites', JSON.stringify(nextList));
-    } catch {}
-
-    if (deviceId) {
-      DeviceService.setFavoriteMatches(deviceId, nextList);
-    }
-
-    return isAdding;
+    const saved = await DeviceService.setFavoriteMatches(deviceId, nextList);
+    setDeviceFavorites(saved);
+    return saved.includes(matchId);
   }, [deviceId, deviceFavorites]);
 
   const saveLocalPreference = useCallback((teamId: string | null) => {
+    if (cachedTeamId && teamId && teamId !== cachedTeamId) return;
+    if (cachedTeamId && !teamId) return;
     try {
       localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
       localStorage.setItem(FAVORITE_TEAM_STORAGE_KEY, teamId === null ? 'null' : teamId);
@@ -122,14 +100,13 @@ export function useDeviceIdentity() {
     }
     setCachedCompleted(true);
     setCachedTeamId(teamId);
-    if (deviceId) {
+    if (deviceId && teamId) {
       DeviceService.completeOnboarding(deviceId, teamId);
     }
-  }, [deviceId]);
+  }, [deviceId, cachedTeamId]);
 
   return {
     deviceId,
-    setDeviceId,
     isInitializing,
     cachedCompleted,
     cachedTeamId,
@@ -139,4 +116,3 @@ export function useDeviceIdentity() {
     saveLocalPreference
   };
 }
-

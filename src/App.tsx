@@ -8,7 +8,8 @@ import type { MainTabType } from './components/Layout/Navigation';
 import { FixturesList } from './components/MainFeed/FixturesList';
 import { LeagueTable } from './components/MainFeed/LeagueTable';
 import { PotwVotingSection } from './components/POTW/PotwVotingSection';
-import { PublicNewsPage, PublicStaticPage } from './pages/public/PublicPages';
+import { PublicStaticPage } from './pages/public/PublicPages';
+import { PredictionExperience } from './components/Predictions/PredictionExperience';
 import { EsnLogo } from './components/common/EsnLogo';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import { HomePage } from './pages/public/HomePage';
@@ -1183,7 +1184,10 @@ export const AppContent: React.FC = () => {
                   setSelectedDate={setSelectedDate}
                   selectedCompetitionId={selectedCompetitionId}
                   onNavigate={(path) => {
-                    if (path.includes('news')) setActiveTab('news');
+                    if (path.includes('news')) {
+                      setActiveTab('news');
+                      window.location.hash = '/news';
+                    }
                     else if (path.includes('league') || path.includes('standings') || path.includes('scorers') || path.includes('table')) setActiveTab('table');
                     else if (path.includes('fixtures')) setActiveTab('scores');
                     else handleNavigateHash(path);
@@ -1212,7 +1216,7 @@ export const AppContent: React.FC = () => {
                 />
               )}
 
-              {activeTab === 'news' && <PublicNewsPage />}
+              {activeTab === 'news' && <PredictionExperience />}
 
               {activeTab === 'favorites' && (
                 favoriteMatches.length > 0 ? (

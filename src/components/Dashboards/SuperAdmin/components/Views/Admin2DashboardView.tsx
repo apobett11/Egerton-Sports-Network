@@ -239,7 +239,8 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
         supabase
           .from('anonymous_devices')
           .select('device_id, last_seen_at, created_at, favorite_team_id, favorite_matches', { count: 'exact' })
-          .limit(2000),
+          .order('last_seen_at', { ascending: false })
+          .range(0, 49),
         supabase
           .from('system_settings')
           .select('value')
@@ -300,11 +301,13 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
         (d) => d.last_seen_at && nowMs - new Date(d.last_seen_at).getTime() < 30 * 24 * 3600 * 1000
       ).length;
 
+      const statsRes = await supabase.rpc('device_activity_counts').maybeSingle();
+      const stats = statsRes.data as { total_devices?: number; active_today?: number; active_week?: number; active_month?: number } | null;
       setDeviceStats({
-        totalDevices: total,
-        activeToday: activeTodayCount,
-        activeThisWeek: activeWeekCount,
-        activeThisMonth: activeMonthCount,
+        totalDevices: stats?.total_devices ?? total,
+        activeToday: stats?.active_today ?? activeTodayCount,
+        activeThisWeek: stats?.active_week ?? activeWeekCount,
+        activeThisMonth: stats?.active_month ?? activeMonthCount,
       });
 
       // Live Table Inventory from real database
