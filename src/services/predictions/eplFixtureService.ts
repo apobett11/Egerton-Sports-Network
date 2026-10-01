@@ -1,7 +1,6 @@
 import { supabase } from '../../lib/supabase';
+import { EPL_COMPETITION_ID, weekendFixtures } from '../../lib/predictions/weekendSlate';
 import type { Match, Team, MatchSquadInfo } from '../../types/predictions';
-
-const EPL_COMPETITION_ID = '11111111-1111-1111-1111-111111111111';
 
 export function generateSquadInfo(homeName: string, awayName: string): MatchSquadInfo {
   return {
@@ -26,7 +25,7 @@ export function generateSquadInfo(homeName: string, awayName: string): MatchSqua
 
 function slateKickoff(weekday: number, hour: number, extraDays = 0): string {
   const kick = new Date();
-  const delta = (weekday - kick.getDay() + 7) % 7 || 7;
+  const delta = (weekday - kick.getDay() + 7) % 7;
   kick.setDate(kick.getDate() + delta + extraDays);
   kick.setHours(hour, 0, 0, 0);
   return kick.toISOString();
@@ -254,9 +253,14 @@ class EplFixtureService {
 
     this.inFlightPromise = this.fetchFromDbOrFallback();
     try {
-      this.cache = await this.inFlightPromise;
-      this.cacheTimestamp = Date.now();
-      return this.cache;
+      const result = await this.inFlightPromise;
+      const fallbackIds = new Set(FALLBACK_EPL_FIXTURES.map((match) => match.id));
+      const isFallback = result.length > 0 && result.every((match) => fallbackIds.has(match.id));
+      if (!isFallback) {
+        this.cache = result;
+        this.cacheTimestamp = Date.now();
+      }
+      return result;
     } finally {
       this.inFlightPromise = null;
     }
@@ -265,6 +269,7 @@ class EplFixtureService {
   private async fetchFromDbOrFallback(): Promise<Match[]> {
     try {
       // 1. Fetch fixtures from DB using indexed scan
+      const windowStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
       const { data: fixtures, error } = await supabase
         .from('fixtures')
         .select(`
@@ -279,11 +284,13 @@ class EplFixtureService {
           home_team:teams!fixtures_home_team_id_fkey(id, name, short_name, logo_url, color_code),
           away_team:teams!fixtures_away_team_id_fkey(id, name, short_name, logo_url, color_code)
         `)
+        .eq('competition_id', EPL_COMPETITION_ID)
+        .gte('scheduled_time', windowStart)
         .order('scheduled_time', { ascending: true })
-        .limit(30);
+        .limit(40);
 
       if (error || !fixtures || fixtures.length === 0) {
-        return FALLBACK_EPL_FIXTURES;
+        return weekendFixtures(FALLBACK_EPL_FIXTURES);
       }
 
       // Check if derby config exists in DB
@@ -303,12 +310,12 @@ class EplFixtureService {
       const parsed: Match[] = fixtures.map((f: any, idx: number) => {
         const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team;
         const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team;
-        const isDerby = derbyMap.has(f.id) || (idx === fixtures.length - 1 && fixtures.length > 2);
+        const isDerby = derbyMap.has(f.id);
 
         return {
           id: f.id,
-          competitionId: f.competition_id || EPL_COMPETITION_ID,
-          league: 'EPL',
+          competitionId: f.competition_id,
+          league: f.competition_id === EPL_COMPETITION_ID ? 'EPL' : 'OTHER',
           matchday: f.matchday || 7,
           scheduledTime: f.scheduled_time,
           status: f.status || 'UPCOMING',
@@ -334,10 +341,15 @@ class EplFixtureService {
         };
       });
 
-      return parsed.length > 0 ? parsed : FALLBACK_EPL_FIXTURES;
+      const weekend = weekendFixtures(parsed);
+      return weekend.length > 0 ? weekend : weekendFixtures(FALLBACK_EPL_FIXTURES);
     } catch {
-      return FALLBACK_EPL_FIXTURES;
+      return weekendFixtures(FALLBACK_EPL_FIXTURES);
     }
+  }
+
+  public peek(): Match[] | null {
+    return this.cache;
   }
 
   public getAvailableMatchdays(matches: Match[]): number[] {
@@ -348,3 +360,7 @@ class EplFixtureService {
 }
 
 export const eplFixtureService = new EplFixtureService();
+
+if (typeof window !== 'undefined') {
+  void eplFixtureService.getAllEplFixtures();
+}

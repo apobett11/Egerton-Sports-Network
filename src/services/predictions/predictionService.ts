@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { anonymousIdentityService } from './anonymousIdentityService';
-import { closeAtForKickoff } from '../../lib/predictions/votingWindow';
+import { matchdayCloseAt } from '../../lib/predictions/votingWindow';
 import type { PredictionOption, UserPrediction, Match } from '../../types/predictions';
 
 class PredictionService {
@@ -32,16 +32,12 @@ class PredictionService {
 
   public async savePrediction(
     match: Match,
-    option: PredictionOption
+    option: PredictionOption,
+    slate: Match[] = [match]
   ): Promise<UserPrediction[]> {
-    const now = Date.now();
-    const closeAt = closeAtForKickoff(match.scheduledTime).getTime();
-    if (now >= closeAt) {
+    const closeAt = matchdayCloseAt(slate.length ? slate : [match]);
+    if (closeAt && Date.now() >= closeAt.getTime()) {
       throw new Error('Voting is closed for this matchday.');
-    }
-    const scheduled = new Date(match.scheduledTime).getTime();
-    if (now >= scheduled) {
-      throw new Error('Prediction window is locked for this fixture.');
     }
 
     // Double-click lock guard

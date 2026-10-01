@@ -3,6 +3,7 @@ import { X, List, MessageCircle } from 'lucide-react';
 import { MatchdayPair, type MatchdayPairDay } from '../Layout/MatchdayPair';
 import { formatTeamName } from '../../../lib/predictions/utils';
 import { slipTick } from '../../../lib/predictions/votingWindow';
+import { matchDayKey } from '../../../lib/predictions/weekendSlate';
 import { shareService } from '../../../services/predictions/shareService';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
@@ -13,7 +14,7 @@ interface PredictionSlipsModalProps {
   userPredictions: Map<string, PredictionOption>;
   consensusMap?: Map<string, ConsensusData>;
   onClose: () => void;
-  onPickMatchday: (matchday: number) => void;
+  onPickMatchday: (matchday: number, dayKey?: string) => void;
 }
 
 export const PredictionSlipsModal: React.FC<PredictionSlipsModalProps> = ({
@@ -25,11 +26,16 @@ export const PredictionSlipsModal: React.FC<PredictionSlipsModalProps> = ({
   onClose,
   onPickMatchday,
 }) => {
-  const [slipDay, setSlipDay] = useState(() =>
-    days.some((day) => day.matchday === initialMatchday) ? initialMatchday : days[0]?.matchday ?? initialMatchday
-  );
+  const [slipKey, setSlipKey] = useState(() => {
+    const found = days.find((day) => day.matchday === initialMatchday);
+    return found?.dayKey ?? String(found?.matchday ?? days[0]?.matchday ?? initialMatchday);
+  });
+  const selected = days.find((day) => (day.dayKey ?? String(day.matchday)) === slipKey) ?? days[0];
+  const slipDay = selected?.matchday ?? initialMatchday;
 
-  const matches = fixtures.filter((match) => match.matchday === slipDay);
+  const matches = selected?.dayKey
+    ? fixtures.filter((match) => matchDayKey(match) === selected.dayKey)
+    : fixtures.filter((match) => match.matchday === slipDay);
   const voted = matches.filter((match) => userPredictions.has(match.id));
   const slipDone = matches.length > 0 && voted.length >= matches.length;
 
@@ -65,7 +71,12 @@ export const PredictionSlipsModal: React.FC<PredictionSlipsModalProps> = ({
         </div>
 
         <div className="px-4 pt-3">
-          <MatchdayPair days={days} activeMatchday={slipDay} onSelect={setSlipDay} />
+          <MatchdayPair
+            days={days}
+            activeMatchday={slipDay}
+            activeDayKey={selected?.dayKey}
+            onSelect={(day, dayKey) => setSlipKey(dayKey ?? String(day))}
+          />
           <p className="mt-2 text-[11px] font-bold text-slate-400">
             {voted.length} of {matches.length} picked on matchday {slipDay}
           </p>
@@ -112,7 +123,7 @@ export const PredictionSlipsModal: React.FC<PredictionSlipsModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onPickMatchday(slipDay)}
+            onClick={() => onPickMatchday(slipDay, selected?.dayKey)}
             className="flex-1 min-h-[44px] rounded-full bg-[#ff0046] text-white text-xs font-black uppercase tracking-wider cursor-pointer"
           >
             {slipDone ? 'Back to games' : 'Pick these games'}

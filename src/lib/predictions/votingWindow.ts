@@ -1,11 +1,8 @@
 import type { Match, PredictionOption } from '../../types/predictions';
 
-const CLOSE_HOUR = 19;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export type VotingPhase = 'date' | 'hours' | 'minutes' | 'seconds' | 'closed' | 'none';
 
@@ -17,15 +14,12 @@ export interface VotingWindowView {
   closeAt: Date | null;
 }
 
+/** Picks close when this fixture's matchday kicks off. */
 export function closeAtForKickoff(scheduledTime: string): Date {
-  const kick = new Date(scheduledTime);
-  const close = new Date(kick);
-  close.setDate(close.getDate() - 1);
-  close.setHours(CLOSE_HOUR, 0, 0, 0);
-  return close;
+  return new Date(scheduledTime);
 }
 
-/** One deadline for the slate: 7:00 PM the day before the earliest kickoff. */
+/** The slate locks at the earliest kickoff in the group. */
 export function matchdayCloseAt(matches: Match[]): Date | null {
   if (!matches.length) return null;
   const earliest = matches.reduce((best, match) =>
@@ -42,14 +36,13 @@ export function describeVotingWindow(matches: Match[], now = new Date()): Voting
 
   const remaining = closeAt.getTime() - now.getTime();
   if (remaining <= 0) {
-    return { phase: 'closed', label: 'Voting is closed', urgent: false, closed: true, closeAt };
+    return { phase: 'closed', label: 'This matchday has begun', urgent: false, closed: true, closeAt };
   }
 
   if (remaining > DAY_MS) {
-    const weekday = WEEKDAYS[closeAt.getDay()];
     return {
       phase: 'date',
-      label: `Voting closes on ${weekday} 7:00 PM`,
+      label: 'Picks lock when this matchday begins',
       urgent: false,
       closed: false,
       closeAt,

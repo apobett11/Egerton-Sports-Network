@@ -1,3 +1,46 @@
+.prediction-feature.slip-lock {
+  height: calc(100dvh - 9.5rem);
+  max-height: calc(100dvh - 9.5rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.prediction-feature.slip-lock .epl-slip-stage {
+  height: auto;
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.prediction-feature .epl-slip-stage {
+  overflow: hidden;
+}
+
+.prediction-feature .slip-card-in {
+  animation: slip-card-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.prediction-feature .slip-preload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes slip-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .prediction-feature {
   --brand-bg: #081018;
   --brand-card-bg: #0e1c2b;

@@ -1177,7 +1177,7 @@ export const AppContent: React.FC = () => {
               onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
-            <main className="flex-1 w-full max-w-5xl mx-auto px-0 sm:px-2 md:px-4 pb-12 pt-2">
+            <main className={`flex-1 w-full max-w-5xl mx-auto px-0 sm:px-2 md:px-4 pt-2 ${activeTab === 'news' ? 'pb-0' : 'pb-12'}`}>
               {activeTab === 'scores' && (
                 <HomePage
                   selectedDate={selectedDate}
@@ -1242,7 +1242,7 @@ export const AppContent: React.FC = () => {
               )}
             </main>
 
-            <Footer />
+            {activeTab !== 'news' && <Footer />}
           </>
         )}
 
