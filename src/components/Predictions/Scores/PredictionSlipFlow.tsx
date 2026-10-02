@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { patchDashboardCache, readDashboardCache } from '../../../lib/predictions/predictionDashboardCache';
-import { dayLabel, matchDayKey } from '../../../lib/predictions/weekendSlate';
+import { dayLabel } from '../../../lib/predictions/weekendSlate';
 import type { Match, PredictionOption, Team } from '../../../types/predictions';
 
 interface PredictionSlipFlowProps {
@@ -35,7 +35,7 @@ function MatchPickCard({
   return (
     <div className="rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] px-3 py-3 font-sans">
       <p className="text-center text-[10px] font-black uppercase tracking-widest text-[#ff0046]">
-        {match.isDerby ? 'Your derby' : dayLabel(match)}
+        {match.isDerby ? 'Derby' : dayLabel(match)}
       </p>
       {match.isDerby ? (
         <h1 className="mt-1 text-center text-base font-semibold text-white">
@@ -115,7 +115,6 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   teams,
   queue,
   favouriteTeam,
-  pickedIds,
   onSelectTeam,
   onPick,
 }) => {
@@ -132,9 +131,6 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
     setFanaticAnswered(true);
     patchDashboardCache({ fanaticAnswered: true, footballFanatic: answer, step: 'club' });
   };
-  const remaining = queue.filter((match) => !pickedIds.has(match.id));
-  const current = remaining[0] ?? null;
-  const ahead = remaining.slice(1, 3);
   const rows = Math.max(1, Math.ceil(teams.length / 4));
 
   if (!favouriteTeam) {
@@ -212,7 +208,7 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
     );
   }
 
-  if (!current) {
+  if (queue.length === 0) {
     return (
       <div className="rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] px-4 py-6 text-center">
         <p className="text-sm font-black text-white">This weekend&apos;s matchdays have begun.</p>
@@ -222,18 +218,14 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   }
 
   return (
-    <div className="epl-slip-stage relative">
-      <div key={current.id} className="slip-card-in">
+    <div className="space-y-3">
+      {queue.map((match) => (
         <MatchPickCard
-          match={current}
-          onPick={(option) => onPick(current, option)}
+          key={match.id}
+          match={match}
+          onPick={(option) => onPick(match, option)}
         />
-      </div>
-      <div className="slip-preload" aria-hidden inert>
-        {ahead.map((match) => (
-          <MatchPickCard key={`${matchDayKey(match)}-${match.id}`} match={match} onPick={() => {}} />
-        ))}
-      </div>
+      ))}
     </div>
   );
 };

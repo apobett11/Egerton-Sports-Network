@@ -191,15 +191,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   // Filter matches for active matchday with dynamic derby based on user's favourite team
   const matchdayMatches = useMemo(() => {
     const rawMatches = fixtures.filter((m) => matchDayKey(m) === activeDayKey);
-    const linked = linkedMatchId
-      ? rawMatches.find((match) => match.id === linkedMatchId)
-      : null;
-    if (linked) {
-      return [
-        { ...linked, isDerby: true },
-        ...rawMatches.filter((match) => match.id !== linked.id).map((match) => ({ ...match, isDerby: false })),
-      ];
-    }
     if (!favouriteTeam) {
       return [...rawMatches].sort((a, b) => (b.isDerby ? 1 : 0) - (a.isDerby ? 1 : 0));
     }
@@ -236,7 +227,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
     // The game in which the favourite team plays will be the first game in the list
     return [...mapped].sort((a, b) => (b.isDerby ? 1 : 0) - (a.isDerby ? 1 : 0));
-  }, [fixtures, activeDayKey, favouriteTeam, linkedMatchId]);
+  }, [fixtures, activeDayKey, favouriteTeam]);
 
   const regularMatches = useMemo(() => {
     return matchdayMatches.filter(m => !m.isDerby);
@@ -384,10 +375,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     [fixtures, activeDayKey],
   );
   const activeDayComplete = activeDayMatches.length > 0 && activeDayMatches.every((match) => userPredMap.has(match.id));
-  const selectionPickedIds = useMemo(() => {
-    if (activeDayComplete) return new Set<string>();
-    return new Set(activeDayMatches.filter((match) => userPredMap.has(match.id)).map((match) => match.id));
-  }, [activeDayComplete, activeDayMatches, userPredMap]);
   const nextSelectionDay = useMemo(() => {
     return pairDays.find((day) => {
       const games = fixtures.filter((match) => matchDayKey(match) === day.dayKey);
@@ -540,7 +527,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       return;
     }
     const dayKey = matchDayKey(match);
-    const secondDay = pairDays.length > 1 && pairDays[1]?.dayKey === dayKey;
     let nextSlips = slips;
     let active = pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null;
     if (!active) {
@@ -572,10 +558,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     patchDashboardCache({ predictions: nextPicks, slips: updatedSlips, activeSlipId: slipId });
     const pickedIds = new Set(nextPicks.map((row) => row.matchId));
     const dayDone = slate.length > 0 && slate.every((row) => pickedIds.has(row.id));
-    const pairDone = pairMatches.length > 0 && pairMatches.every((row) => pickedIds.has(row.id));
-    if (match.isDerby && !secondDay && !slipListOpen && !pairDone) {
-      setDerbyPopupData({ match, option });
-    }
     if (dayDone) {
       setShareSlip({ dayKey, matchday: slate[0]?.matchday ?? match.matchday });
     }
@@ -619,10 +601,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   const beginSelection = (match: Match, option: PredictionOption) => {
-    if (activeDayComplete) {
+    if (activeDayComplete || pairComplete) {
       setResumePrompt(pairComplete ? 'another' : 'continue');
       return;
     }
+    if (userPredMap.has(match.id)) return;
     handleMakePrediction(match, option);
   };
 
@@ -902,9 +885,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                 )}
                 <PredictionSlipFlow
                   teams={availableTeams}
-                  queue={pickQueue}
+                  queue={favouriteTeam ? matchdayMatches : pickQueue}
                   favouriteTeam={favouriteTeam}
-                  pickedIds={favouriteTeam ? selectionPickedIds : new Set()}
+                  pickedIds={new Set()}
                   onSelectTeam={handleSelectFavouriteTeam}
                   onPick={beginSelection}
                 />
@@ -977,7 +960,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           picks={userPredMap}
           isFirst={false}
           inviteOnly
-          onClose={() => setShareSlip(null)}
+          onClose={() => {
+            setShareSlip(null);
+            setDerbyPopupData(null);
+            setMainNav('news');
+            setActiveTab('scores');
+          }}
           onShare={() => {
             shareService.shareSlip({
               matches: pairMatches,
@@ -991,6 +979,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               setSlips(stamped);
               patchDashboardCache({ slips: stamped });
               setShareSlip(null);
+              setDerbyPopupData(null);
+              setMainNav('news');
+              setActiveTab('scores');
             });
           }}
         />
@@ -1013,7 +1004,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   Go on
                 </button>
               </>
-            ) : (
+            ) : resumePrompt === 'another' ? (
               <>
                 <p className="mt-2 text-sm text-slate-300">Make another slip.</p>
                 <button
@@ -1024,7 +1015,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   Make another slip
                 </button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       )}
