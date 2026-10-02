@@ -1,8 +1,10 @@
 import './predictions.css';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Header } from './Layout/Header';
 import { Footer } from './Layout/Footer';
-import { PeekMatchdayPopup, PredictionSlipsModal, ShareSlipPopup } from './Scores/PredictionSlipsModal';
+import { PeekMatchdayPopup, ShareSlipPopup } from './Scores/PredictionSlipsModal';
+import { AllSlipsPage } from './Scores/AllSlipsPage';
+import { MySlipModal } from './Scores/MySlipModal';
+import { TriesLeftPopup } from './Scores/TriesLeftPopup';
 import { MatchdayPair } from './Layout/MatchdayPair';
 import { ConsensusIQCard } from './Scores/ConsensusIQCard';
 import { UnifiedMatchdayDeck } from './Scores/UnifiedMatchdayDeck';
@@ -10,7 +12,6 @@ import { PredictionCard } from './Scores/PredictionCard';
 import { DerbyConsensusModal } from './Scores/DerbyConsensusModal';
 import { MatchdayCompletionModal } from './Scores/MatchdayCompletionModal';
 import { GameSquadsModal } from './Scores/GameSquadsModal';
-import { BanterTabs } from './Banter/BanterTabs';
 import { BanterComposer } from './Banter/BanterComposer';
 import { BanterFeed } from './Banter/BanterFeed';
 import { TalkDashboard } from './Banter/TalkDashboard';
@@ -33,6 +34,14 @@ import { matchdayTeamLine } from '../../lib/predictions/newsMatchdays';
 import { slipResult } from '../../lib/predictions/votingWindow';
 import { EPL_TEAMS } from '../../lib/predictions/eplTeams';
 import { cacheStepFromState, cachedWeekendLock, patchDashboardCache, readDashboardCache } from '../../lib/predictions/predictionDashboardCache';
+import { usePredictionChrome } from './PredictionChromeContext';
+import {
+  newSlipId,
+  SLIPS_PER_PAIR,
+  slipsForPair,
+  weekendPairKey,
+  type DeviceSlip,
+} from '../../lib/predictions/slipBook';
 import { predictionSessionService } from '../../services/predictions/predictionSessionService';
 import {
   matchDayKey,
@@ -121,6 +130,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const [banterFilter, setBanterFilter] = useState<BanterFilterType>('trending');
   const [clubBanterOnly, setClubBanterOnly] = useState(false);
   const [showSlips, setShowSlips] = useState(false);
+  const [showAllSlips, setShowAllSlips] = useState(false);
+  const [triesUsed, setTriesUsed] = useState<number | null>(null);
+  const [slips, setSlips] = useState<DeviceSlip[]>(() => readDashboardCache().slips);
+  const [activeSlipId, setActiveSlipId] = useState<string | null>(() => readDashboardCache().activeSlipId);
+  const predictionChrome = usePredictionChrome();
   const [contextMatch, setContextMatch] = useState<Match | null>(null);
   const [banterPosts, setBanterPosts] = useState<BanterPost[]>([]);
   const [isLoadingBanter, setIsLoadingBanter] = useState(true);
@@ -246,7 +260,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return weekend.filter((day) => day.matches.length > 0).map((day) => ({
       matchday: day.matches[0].matchday,
       dayKey: day.key,
-      label: `${day.label} Matchday ${day.matches[0].matchday}`,
+      label: `${day.label === 'Saturday' ? 'Sat' : 'Sun'} ${day.matches[0].matchday}`,
       ...matchdayTeamLine(day.matches, favouriteTeam),
     }));
   }, [weekend, favouriteTeam]);
@@ -309,6 +323,56 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     setActiveMatchday(next.matchday);
     setSlipListOpen(true);
   }, [fixtures, pairDays]);
+
+  const pairKey = weekendPairKey(lockedPair.saturday, lockedPair.sunday);
+  const pairSlips = useMemo(() => slipsForPair(slips, pairKey), [slips, pairKey]);
+  const pairMatches = useMemo(
+    () => fixtures.filter((match) => pairDays.some((day) => day.dayKey === matchDayKey(match))),
+    [fixtures, pairDays],
+  );
+  const pairComplete = pairMatches.length > 0 && pairMatches.every((match) => userPredMap.has(match.id));
+  const mySlipIncomplete = userPredMap.size > 0 && !pairComplete;
+  const picksFrozen = pairSlips.length >= SLIPS_PER_PAIR && pairComplete;
+
+  useEffect(() => {
+    predictionChrome?.setChrome({
+      banterFilter,
+      setBanterFilter,
+      clubFilterOn: clubBanterOnly,
+      hasFavouriteClub: Boolean(favouriteTeam),
+      onToggleClubBanter: () => {
+        if (!favouriteTeam) {
+          setMainNav('news');
+          setActiveTab('scores');
+          return;
+        }
+        setClubBanterOnly((on) => !on);
+        setActiveTab('banter');
+      },
+      onOpenAllSlips: () => setShowAllSlips(true),
+      matchContextName: contextMatch
+        ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}`
+        : null,
+      onClearMatchContext: () => setContextMatch(null),
+    });
+  }, [banterFilter, clubBanterOnly, favouriteTeam, contextMatch, setActiveTab]);
+
+  useEffect(() => {
+    if (slips.length > 0) return;
+    const cached = readDashboardCache();
+    if (cached.predictions.length === 0) return;
+    const seeded: DeviceSlip = {
+      id: newSlipId(pairKey, 1),
+      pairKey,
+      slot: 1,
+      picks: cached.predictions,
+      sharedAt: null,
+      createdAt: cached.updatedAt || new Date().toISOString(),
+    };
+    setSlips([seeded]);
+    setActiveSlipId(seeded.id);
+    patchDashboardCache({ slips: [seeded], activeSlipId: seeded.id });
+  }, [pairKey, slips.length]);
 
   const derbyAlreadyPicked = Boolean(derbyMatch && userPredMap.has(derbyMatch.id));
   const showDerbyPick = Boolean(
@@ -456,21 +520,83 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const handleMakePrediction = async (match: Match, option: PredictionOption) => {
     const slate = fixtures.filter((row) => matchDayKey(row) === matchDayKey(match));
     if (slateHasBegun(slate)) return;
+    if (userPredMap.has(match.id) || picksFrozen) {
+      setTriesUsed(pairSlips.length);
+      return;
+    }
+    const dayKey = matchDayKey(match);
+    const secondDay = pairDays.length > 1 && pairDays[1]?.dayKey === dayKey;
+    let nextSlips = slips;
+    let slipId = activeSlipId;
+    let active = pairSlips.find((row) => row.id === slipId) || pairSlips[pairSlips.length - 1] || null;
+    if (!active) {
+      if (pairSlips.length >= SLIPS_PER_PAIR) {
+        setTriesUsed(pairSlips.length);
+        return;
+      }
+      active = {
+        id: newSlipId(pairKey, pairSlips.length + 1),
+        pairKey,
+        slot: pairSlips.length + 1,
+        picks: [],
+        sharedAt: null,
+        createdAt: new Date().toISOString(),
+      };
+      nextSlips = [...slips, active];
+      slipId = active.id;
+      setSlips(nextSlips);
+      setActiveSlipId(slipId);
+    }
+    const nextPick = { matchId: match.id, prediction: option, matchday: match.matchday, updatedAt: new Date().toISOString() };
+    const nextPicks = [...predictions, nextPick];
+    const updatedSlips = nextSlips.map((row) => (
+      row.id === slipId ? { ...row, picks: [...row.picks, nextPick] } : row
+    ));
+    setPredictions(nextPicks);
+    setSlips(updatedSlips);
+    patchDashboardCache({ predictions: nextPicks, slips: updatedSlips, activeSlipId: slipId });
+    const pairDone = pairMatches.length > 0 && pairMatches.every((row) => row.id === match.id || userPredMap.has(row.id));
+    if (match.isDerby && !secondDay && !slipListOpen && !pairDone) {
+      setDerbyPopupData({ match, option });
+    }
+    if (pairDone) {
+      setShareSlip({ dayKey, matchday: slate[0]?.matchday ?? match.matchday });
+    }
     try {
-      const nextList = await predictionService.savePrediction(match, option, slate);
-      setPredictions(nextList);
-      const dayKey = matchDayKey(match);
-      const secondDay = pairDays.length > 1 && pairDays[1]?.dayKey === dayKey;
-      if (match.isDerby && !secondDay && !slipListOpen) {
-        setDerbyPopupData({ match, option });
-      }
-      const finishedPicks = slate.length > 0 && slate.every((row) => nextList.some((pick) => pick.matchId === row.id));
-      if (finishedPicks && (slipListOpen || secondDay)) {
-        setShareSlip({ dayKey, matchday: slate[0]?.matchday ?? match.matchday });
-      }
+      await predictionService.savePrediction(match, option, slate);
     } catch {
       // The card stays put. The write itself is already fired in the background.
     }
+  };
+
+  const handleMakeAnotherSlip = () => {
+    if (pairSlips.length >= SLIPS_PER_PAIR) {
+      setTriesUsed(pairSlips.length);
+      return;
+    }
+    const created: DeviceSlip = {
+      id: newSlipId(pairKey, pairSlips.length + 1),
+      pairKey,
+      slot: pairSlips.length + 1,
+      picks: [],
+      sharedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    const next = [...slips, created];
+    setSlips(next);
+    setActiveSlipId(created.id);
+    setPredictions([]);
+    predictionService.clearPredictions();
+    patchDashboardCache({ slips: next, activeSlipId: created.id, predictions: [] });
+    const saturday = pairDays[0];
+    if (saturday?.dayKey) {
+      setActiveDayKey(saturday.dayKey);
+      setActiveMatchday(saturday.matchday);
+    }
+    setShowSlips(false);
+    setShowAllSlips(false);
+    setSlipListOpen(true);
+    setActiveTab('scores');
   };
 
   const handleDerbyUnlocked = () => {
@@ -544,29 +670,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
   return (
     <div className={`prediction-feature min-h-screen bg-[#081018] text-white flex flex-col font-sans overflow-hidden ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'slip-lock' : ''}`} data-prediction-step={!favouriteTeam ? 'onboarding' : showDerbyPick ? 'derby' : 'dashboard'} data-favorite-team={favouriteTeam || ''}>
-      <Header
-        mainNav={mainNav}
-        onSelectMainNav={setMainNav}
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        identity={identity}
-        completedPicksCount={matchdayMatches.filter((m) => userPredMap.has(m.id)).length}
-        totalRequiredPicks={matchdayMatches.length}
-        clubFilterOn={clubBanterOnly}
-        hasFavouriteClub={Boolean(favouriteTeam)}
-        onToggleClubBanter={() => {
-          if (!favouriteTeam) {
-            setMainNav('news');
-            setActiveTab('scores');
-            return;
-          }
-          setClubBanterOnly((on) => !on);
-          setActiveTab('banter');
-        }}
-        onOpenSlips={() => setShowSlips(true)}
-        slipCount={slipCount}
-      />
-
       {/* Main Content Area */}
       <main className={`mx-auto w-full max-w-4xl px-3 sm:px-6 ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'flex min-h-0 flex-1 flex-col overflow-hidden py-1' : 'flex-1 py-4'}`}>
         {/* ================================================================ */}
@@ -691,13 +794,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   authorHandle={identity.publicHandle}
                 />
 
-                <BanterTabs
-                  activeFilter={banterFilter}
-                  onSelectFilter={setBanterFilter}
-                  activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
-                  onClearMatchContext={() => setContextMatch(null)}
-                />
-
                 {clubBanterOnly && favouriteTeam && (
                   <p className="text-[11px] font-bold text-amber-300">
                     Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
@@ -805,10 +901,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   onMakePrediction={handleMakePrediction}
                   onDerbyUnlocked={handleDerbyUnlocked}
                   onOpenDerbyPopup={isSecondMatchday ? undefined : (match, option) => setDerbyPopupData({ match, option })}
-                  onOpenCompletionModal={() => setShowCompletionModal(true)}
+                  onOpenCompletionModal={undefined}
                   onOpenMatchBanter={handleOpenMatchBanter}
                   onOpenFavouriteTeamModal={undefined}
                   onOpenMySlips={() => setShowSlips(true)}
+                  mySlipIncomplete={mySlipIncomplete}
+                  picksFrozen={picksFrozen}
+                  onLockedPick={() => setTriesUsed(pairSlips.length)}
                   onSeeTrending={() => {
                     setMainNav('news');
                     setActiveTab('banter');
@@ -860,46 +959,25 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       {shareSlip && (
         <ShareSlipPopup
           matchday={shareSlip.matchday}
-          matches={[...fixtures.filter((match) => matchDayKey(match) === shareSlip.dayKey)].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby)))}
+          matches={[...pairMatches].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby)))}
           picks={userPredMap}
-          isFirst={pairDays[0]?.dayKey === shareSlip.dayKey}
+          isFirst={false}
+          inviteOnly
           onClose={() => setShareSlip(null)}
           onShare={() => {
-            const slate = [...fixtures.filter((match) => matchDayKey(match) === shareSlip.dayKey)].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby)));
-            const sharingFirst = pairDays[0]?.dayKey === shareSlip.dayKey;
             shareService.shareSlip({
-              matches: slate,
+              matches: pairMatches,
               userPredictions: userPredMap,
               consensusMap,
             }).then((sent) => {
               if (!sent) return;
+              const stamped = slips.map((row) => (
+                row.id === activeSlipId ? { ...row, sharedAt: new Date().toISOString() } : row
+              ));
+              setSlips(stamped);
+              patchDashboardCache({ slips: stamped });
               setShareSlip(null);
-              if (sharingFirst && pairDays[1]) setPeekNext(true);
-              else setShowSlips(true);
             });
-          }}
-          onSeeNext={() => {
-            const next = pairDays[1];
-            if (!next?.dayKey) return;
-            setShareSlip(null);
-            setPeekNext(false);
-            setActiveDayKey(next.dayKey);
-            setActiveMatchday(next.matchday);
-            setSlipListOpen(true);
-            setMainNav('news');
-            setActiveTab('scores');
-          }}
-          onSeeArticles={() => {
-            setShareSlip(null);
-            setMainNav('news');
-            setActiveTab('banter');
-            setBanterFilter('latest');
-          }}
-          onSeeBanter={() => {
-            setShareSlip(null);
-            setMainNav('news');
-            setActiveTab('banter');
-            setBanterFilter('trending');
           }}
         />
       )}
@@ -999,21 +1077,33 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       )}
 
       {showSlips && (
-        <PredictionSlipsModal
+        <MySlipModal
           days={pairDays}
-          initialMatchday={activeMatchday}
+          activeDayKey={activeDayKey}
           fixtures={fixtures}
-          userPredictions={userPredMap}
-          consensusMap={consensusMap}
+          slip={pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null}
+          incomplete={mySlipIncomplete}
+          canMakeAnother={pairSlips.length < SLIPS_PER_PAIR}
           onClose={() => setShowSlips(false)}
-          onPickMatchday={(day, dayKey) => {
+          onSelectDay={(day, dayKey) => {
             selectNewsMatchday(day, dayKey);
-            setShowSlips(false);
             setMainNav('news');
             setActiveTab('scores');
-            window.scrollTo({ top: 0 });
           }}
+          onMakeAnother={handleMakeAnotherSlip}
         />
+      )}
+
+      {showAllSlips && (
+        <AllSlipsPage
+          slips={slips}
+          fixtures={eplFixtureService.peek() || fixtures}
+          onClose={() => setShowAllSlips(false)}
+        />
+      )}
+
+      {triesUsed !== null && (
+        <TriesLeftPopup used={triesUsed} onClose={() => setTriesUsed(null)} />
       )}
 
       {/* Standings Table Transition Modal */}

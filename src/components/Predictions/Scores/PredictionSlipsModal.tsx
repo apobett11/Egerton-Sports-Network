@@ -155,6 +155,7 @@ export function ShareSlipPopup({
   matches,
   picks,
   isFirst,
+  inviteOnly = false,
   onClose,
   onShare,
   onSeeNext,
@@ -165,6 +166,7 @@ export function ShareSlipPopup({
   matches: Match[];
   picks: Map<string, PredictionOption>;
   isFirst: boolean;
+  inviteOnly?: boolean;
   onClose: () => void;
   onShare: () => void;
   onSeeNext?: () => void;
@@ -178,7 +180,7 @@ export function ShareSlipPopup({
         <div className="flex items-center justify-between border-b border-[#1a2e45] px-4 py-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-[#00b04f]">Share slip</p>
-            <h2 className="text-base font-black">Matchday {matchday}</h2>
+            <h2 className="text-base font-black">{inviteOnly ? 'Invite others' : `Matchday ${matchday}`}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-slate-400 hover:bg-[#14263b] hover:text-white cursor-pointer">
             <X className="h-4 w-4" />
@@ -203,24 +205,26 @@ export function ShareSlipPopup({
           <button type="button" onClick={onShare} className="min-h-[44px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
             Share slip
           </button>
-          {isFirst && onSeeNext && (
+          {!inviteOnly && isFirst && onSeeNext && (
             <button type="button" onClick={onSeeNext} className="min-h-[44px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
               See matchday {matchday + 1}
             </button>
           )}
-          {isFirst && onSeeArticles && (
+          {!inviteOnly && isFirst && onSeeArticles && (
             <button type="button" onClick={onSeeArticles} className="min-h-[44px] rounded-full border border-[#29435d] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
               See match articles
             </button>
           )}
-          {!isFirst && onSeeBanter && (
+          {!inviteOnly && !isFirst && onSeeBanter && (
             <button type="button" onClick={onSeeBanter} className="min-h-[44px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
               See the banter
             </button>
           )}
+          {!inviteOnly && (
           <button type="button" onClick={onClose} className="min-h-[40px] text-xs font-bold text-slate-400 cursor-pointer">
             Close
           </button>
+          )}
         </div>
       </div>
     </div>

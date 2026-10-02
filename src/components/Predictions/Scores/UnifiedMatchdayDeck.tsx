@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shield, Crown, Sparkles, List } from 'lucide-react';
+import { Shield, Crown, List } from 'lucide-react';
 import { GameSquadsModal } from './GameSquadsModal';
 import { DerbyUltimatePopup } from './DerbyUltimatePopup';
 import { MyVotesModal } from './MyVotesModal';
@@ -35,6 +35,9 @@ interface UnifiedMatchdayDeckProps {
   onSeeTrending?: () => void;
   onSharePicks?: () => void;
   onOpenMySlips?: () => void;
+  mySlipIncomplete?: boolean;
+  picksFrozen?: boolean;
+  onLockedPick?: () => void;
 }
 
 export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
@@ -44,10 +47,14 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
   favouriteTeam,
   onMakePrediction,
   onOpenDerbyPopup,
+  onOpenCompletionModal,
   onOpenFavouriteTeamModal,
   onSeeTrending,
   onSharePicks,
   onOpenMySlips,
+  mySlipIncomplete = false,
+  picksFrozen = false,
+  onLockedPick,
 }) => {
   const [inspectSquadMatch, setInspectSquadMatch] = useState<Match | null>(null);
   const [derbyPopupData, setDerbyPopupData] = useState<{ match: Match; option: PredictionOption } | null>(null);
@@ -67,11 +74,20 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
 
   const handlePredict = (match: Match, option: PredictionOption) => {
     // No change of the vote once casted
-    if (votingClosed || userPredictions.has(match.id)) {
+    if (userPredictions.has(match.id) || picksFrozen) {
+      onLockedPick?.();
+      return;
+    }
+    if (votingClosed) {
       return;
     }
 
+    const completing = matches.length > 0 && matches.every((row) => row.id === match.id || userPredictions.has(row.id));
     onMakePrediction(match, option);
+    if (completing) {
+      onOpenCompletionModal?.();
+      return;
+    }
     if (match.isDerby) {
       if (onOpenDerbyPopup) {
         onOpenDerbyPopup(match, option);
@@ -89,13 +105,13 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
       <div className="rounded-xl sm:rounded-2xl border border-slate-700/80 bg-[#070e18] p-3 sm:p-3.5 space-y-3 shadow-xl">
         <div ref={matchListRef} className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800/80 text-xs font-bold text-slate-400">
           <div className="min-w-0">
-            <h1 className="text-white flex items-center gap-1.5 text-sm font-black">
-              <Sparkles className="h-3.5 w-3.5 text-[#ff0046]" />
-              Who do you think will win?
+            <h1 className="text-white text-sm font-black">
+              Hello fanatic, how much do you know your teams?
             </h1>
-            <span className="text-[11px] text-slate-400 font-normal">
-              {allGamesSelected ? 'Every vote is locked.' : 'One tap. It locks.'}
-            </span>
+            <p className="mt-1 text-[11px] font-normal leading-snug text-orange-400">
+              NB: the votes are based on fans of the displayed teams. This is meant for fun, and football fanatics to show how much they love football, how much they know their clubs😉.
+              No currency is involved. No hate. just football⚽🔥
+            </p>
           </div>
           <button
             type="button"
@@ -103,12 +119,15 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
               if (onOpenMySlips) onOpenMySlips();
               else setShowMyVotesModal(true);
             }}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-[#14263b] px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-[#1c3857] cursor-pointer"
-            title="My slips"
-            aria-label="My slips"
+            className="relative shrink-0 inline-flex items-center gap-1.5 rounded-md bg-[#14263b] px-2.5 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-[#1c3857] cursor-pointer"
+            title="My slip"
+            aria-label="My slip"
           >
+            {mySlipIncomplete && (
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#ff0046] shadow-[0_0_8px_#ff0046]" />
+            )}
             <List className="h-3.5 w-3.5" />
-            <span>My slips</span>
+            <span>My slip</span>
           </button>
         </div>
 
@@ -118,7 +137,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
           const consensus = consensusMap.get(match.id);
           const stats = showVotesForConsensus(consensus, match.id, userSel);
           const isPicked = userSel !== null;
-          const voteLocked = isPicked || votingClosed;
+          const voteLocked = isPicked || votingClosed || picksFrozen;
           const tick = userSel ? slipTick(match, userSel) : null;
           const showTick = tick && match.status !== 'UPCOMING' && match.status !== 'POSTPONED';
 

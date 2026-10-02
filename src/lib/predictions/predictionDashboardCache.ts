@@ -1,5 +1,7 @@
 import { readLivescoreDeviceId } from './livescoreDevice';
+import type { DeviceSlip } from './slipBook';
 import type { PredictionOption, UserPrediction } from '../../types/predictions';
+import { slipsForPair } from './slipBook';
 
 export type PredictionStep = 'fanatic' | 'club' | 'derby' | 'picks' | 'dashboard';
 
@@ -15,6 +17,8 @@ export interface PredictionDashboardCache {
   activeDayKey: string | null;
   lockedSaturday: string | null;
   lockedSunday: string | null;
+  slips: DeviceSlip[];
+  activeSlipId: string | null;
   updatedAt: string;
 }
 
@@ -33,6 +37,8 @@ const EMPTY: PredictionDashboardCache = {
   activeDayKey: null,
   lockedSaturday: null,
   lockedSunday: null,
+  slips: [],
+  activeSlipId: null,
   updatedAt: '',
 };
 
@@ -84,11 +90,32 @@ function parseCache(raw: string | null, deviceId: string | null): PredictionDash
       activeDayKey: typeof parsed.activeDayKey === 'string' ? parsed.activeDayKey : null,
       lockedSaturday: typeof parsed.lockedSaturday === 'string' ? parsed.lockedSaturday : null,
       lockedSunday: typeof parsed.lockedSunday === 'string' ? parsed.lockedSunday : null,
+      slips: normalizeSlips(parsed.slips),
+      activeSlipId: typeof parsed.activeSlipId === 'string' ? parsed.activeSlipId : null,
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
     };
   } catch {
     return null;
   }
+}
+
+function normalizeSlips(list: unknown): DeviceSlip[] {
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const slip = row as DeviceSlip;
+    if (typeof slip.id !== 'string' || typeof slip.pairKey !== 'string') return [];
+    const slot = Number(slip.slot);
+    if (!Number.isFinite(slot) || slot < 1) return [];
+    return [{
+      id: slip.id,
+      pairKey: slip.pairKey,
+      slot,
+      picks: normalizePredictions(slip.picks),
+      sharedAt: typeof slip.sharedAt === 'string' ? slip.sharedAt : null,
+      createdAt: typeof slip.createdAt === 'string' ? slip.createdAt : new Date().toISOString(),
+    }];
+  });
 }
 
 function persist(next: PredictionDashboardCache): void {
@@ -132,6 +159,7 @@ export function patchDashboardCache(patch: Partial<PredictionDashboardCache>): P
     ...patch,
     deviceId,
     predictions: patch.predictions ? normalizePredictions(patch.predictions) : current.predictions,
+    slips: patch.slips ? normalizeSlips(patch.slips) : current.slips,
     favouriteTeam: patch.favouriteTeam !== undefined
       ? (patch.favouriteTeam && patch.favouriteTeam.trim() ? patch.favouriteTeam.trim() : current.favouriteTeam)
       : current.favouriteTeam,
@@ -149,12 +177,21 @@ export function rememberPick(matchId: string, prediction: PredictionOption, matc
   const current = readDashboardCache();
   const already = current.predictions.find((row) => row.matchId === matchId);
   if (already) return current;
+  const nextPick = { matchId, prediction, matchday, updatedAt: new Date().toISOString() };
+  const nextPredictions = [...current.predictions, nextPick];
+  const slips = current.slips.map((slip) => (
+    slip.id === current.activeSlipId
+      ? { ...slip, picks: slip.picks.some((row) => row.matchId === matchId) ? slip.picks : [...slip.picks, nextPick] }
+      : slip
+  ));
   return patchDashboardCache({
-    predictions: [
-      ...current.predictions,
-      { matchId, prediction, matchday, updatedAt: new Date().toISOString() },
-    ],
+    predictions: nextPredictions,
+    slips,
   });
+}
+
+export function slipsForWeekend(saturday: string, sunday: string): DeviceSlip[] {
+  return slipsForPair(readDashboardCache().slips, `${saturday}|${sunday}`);
 }
 
 export function cacheStepFromState(input: {

@@ -4,6 +4,7 @@ import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
 import { setGuestMatchday, useGuestMatchday } from '../../lib/guestMatchday';
+import { BANTER_SORTS, usePredictionChrome } from '../Predictions/PredictionChromeContext';
 
 interface HeaderProps {
     darkMode: boolean;
@@ -63,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
     predictionView = 'scores',
     onSelectPredictionView,
 }) => {
+    const predictionChrome = usePredictionChrome();
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -220,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* ROW 2: PRIMARY TABS (SCORES | NEWS) */}
             <div className="w-full bg-[#0e1e2d] text-white py-2.5 px-3">
                 <div className="max-w-7xl mx-auto flex items-center justify-center">
-                    <div className="inline-flex items-center border border-slate-700/60 dark:border-slate-700/60 rounded-xl p-1 bg-[#0a1520]/80 backdrop-blur-xs shadow-md">
+                    <div className="inline-flex items-center rounded-xl border border-slate-700/70 bg-[#0a1520]/80 p-1 backdrop-blur-xs">
                         <button
                             type="button"
                             onClick={() => {
@@ -229,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
                             }}
                             className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 border ${
                                 isScoresActive 
-                                    ? 'bg-[#152a40] border-[#36506b] text-white shadow-sm font-black ring-1 ring-white/10'
+                                    ? 'border-slate-400/70 bg-[#1a334d] text-white shadow-[0_3px_0_0_rgba(8,16,24,0.95),0_8px_14px_rgba(0,0,0,0.35)] -translate-y-0.5'
                                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
@@ -252,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({
                             }}
                             className={`px-10 sm:px-16 md:px-24 py-3 sm:py-3.5 text-sm sm:text-base md:text-lg font-black uppercase tracking-wider transition-all duration-150 cursor-pointer rounded-lg flex items-center justify-center gap-2.5 border ${
                                 isNewsActive 
-                                    ? 'bg-[#152a40] border-[#36506b] text-white shadow-sm font-black ring-1 ring-white/10'
+                                    ? 'border-slate-400/70 bg-[#1a334d] text-white shadow-[0_3px_0_0_rgba(8,16,24,0.95),0_8px_14px_rgba(0,0,0,0.35)] -translate-y-0.5'
                                     : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-[#112236]/50'
                             }`}
                         >
@@ -342,10 +344,14 @@ export const Header: React.FC<HeaderProps> = ({
 
             {isNewsActive && (
                 <div className="w-full bg-white dark:bg-[#0e1c2b] border-b border-[#e6e8ec] dark:border-[#1a2e45] text-slate-800 dark:text-slate-100">
-                    <div className="max-w-7xl mx-auto px-2 sm:px-4 flex h-10 items-center justify-start gap-2 sm:gap-5">
+                    <div className="max-w-7xl mx-auto flex flex-col">
+                    <div className="px-2 sm:px-4 pt-3 flex h-11 items-center justify-center gap-2 sm:gap-5">
                         <button
                             type="button"
-                            onClick={() => onSelectPredictionView?.('banter')}
+                            onClick={() => {
+                                onSelectPredictionView?.('banter');
+                                predictionChrome?.setView('banter');
+                            }}
                             className={`flex h-full items-center gap-1.5 border-b-2 px-2 text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer transition-colors ${
                                 predictionView === 'banter'
                                     ? 'border-[#ff0046] text-[#ff0046]'
@@ -357,7 +363,10 @@ export const Header: React.FC<HeaderProps> = ({
                         </button>
                         <button
                             type="button"
-                            onClick={() => onSelectPredictionView?.('scores')}
+                            onClick={() => {
+                                onSelectPredictionView?.('scores');
+                                predictionChrome?.setView('scores');
+                            }}
                             className={`flex h-full items-center gap-1.5 border-b-2 px-2 text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer transition-colors ${
                                 predictionView === 'scores'
                                     ? 'border-[#ff0046] text-[#ff0046]'
@@ -367,6 +376,52 @@ export const Header: React.FC<HeaderProps> = ({
                             <ClipboardList className="h-3.5 w-3.5" />
                             <span>Predictions</span>
                         </button>
+                    </div>
+                    {predictionView === 'banter' && (
+                        <div className="px-2 sm:px-4 flex h-11 items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => predictionChrome?.chrome.onToggleClubBanter()}
+                                className={`relative shrink-0 flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors ${
+                                    predictionChrome?.chrome.clubFilterOn ? 'bg-amber-500/15 ring-1 ring-amber-500/40' : 'hover:bg-slate-100 dark:hover:bg-[#14263b]'
+                                }`}
+                                title={predictionChrome?.chrome.hasFavouriteClub ? 'Takes about your club' : 'Pick your club'}
+                                aria-label="Favourites"
+                            >
+                                <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                            </button>
+                            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
+                                {BANTER_SORTS.map((sort) => {
+                                    const isActive = predictionChrome?.chrome.banterFilter === sort.id;
+                                    return (
+                                        <button
+                                            key={sort.id}
+                                            type="button"
+                                            onClick={() => predictionChrome?.chrome.setBanterFilter(sort.id)}
+                                            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-black cursor-pointer transition-colors ${
+                                                isActive
+                                                    ? 'bg-[#ff0046] text-white'
+                                                    : 'bg-[#14263b] text-slate-300 hover:bg-[#1b3450]'
+                                            }`}
+                                        >
+                                            {sort.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                    {predictionView === 'scores' && (
+                        <div className="px-2 sm:px-4 flex h-11 items-center justify-end">
+                            <button
+                                type="button"
+                                onClick={() => predictionChrome?.chrome.onOpenAllSlips()}
+                                className="rounded-full bg-[#14263b] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-white hover:bg-[#1c3857] cursor-pointer"
+                            >
+                                All slips
+                            </button>
+                        </div>
+                    )}
                     </div>
                 </div>
             )}

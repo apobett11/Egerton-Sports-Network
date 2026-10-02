@@ -17,7 +17,7 @@ interface MatchdayPairProps {
 
 export const MatchdayPair: React.FC<MatchdayPairProps> = ({ days, activeMatchday, activeDayKey, onSelect }) => {
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="flex flex-wrap items-center justify-center gap-2">
       {days.map((day) => {
         const isActive = day.dayKey
           ? day.dayKey === activeDayKey
@@ -27,15 +27,13 @@ export const MatchdayPair: React.FC<MatchdayPairProps> = ({ days, activeMatchday
             key={day.dayKey ?? day.matchday}
             type="button"
             onClick={() => onSelect(day.matchday, day.dayKey)}
-            className={`min-w-0 rounded-lg border px-2 py-1 text-center cursor-pointer transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wider cursor-pointer transition-colors ${
               isActive
-                ? 'border-[#ff0046]/80 bg-[#ff0046]/15 text-white'
-                : 'border-[#29435d] bg-[#0e1c2b] text-slate-400 hover:border-slate-500'
+                ? 'bg-[#ff0046] text-white'
+                : 'bg-[#14263b] text-slate-300 hover:bg-[#1b3450]'
             }`}
           >
-            <span className="block truncate text-[9px] font-semibold uppercase tracking-wide leading-tight">
-              {day.label ?? `Matchday ${day.matchday}`}
-            </span>
+            {day.label ?? `MD ${day.matchday}`}
           </button>
         );
       })}

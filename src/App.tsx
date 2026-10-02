@@ -10,6 +10,7 @@ import { LeagueTable } from './components/MainFeed/LeagueTable';
 import { PotwVotingSection } from './components/POTW/PotwVotingSection';
 import { PublicStaticPage } from './pages/public/PublicPages';
 import { PredictionExperience } from './components/Predictions/PredictionExperience';
+import { PredictionChromeProvider } from './components/Predictions/PredictionChromeContext';
 import { EsnLogo } from './components/common/EsnLogo';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
 import { HomePage } from './pages/public/HomePage';
@@ -1146,7 +1147,7 @@ export const AppContent: React.FC = () => {
           )
         ) : (
           // Home view
-          <>
+          <PredictionChromeProvider view={predictionView} setView={selectPredictionView}>
             <Header
               darkMode={darkMode}
               toggleDarkMode={toggleDarkMode}
@@ -1259,7 +1260,7 @@ export const AppContent: React.FC = () => {
             </main>
 
             {activeTab !== 'news' && <Footer />}
-          </>
+          </PredictionChromeProvider>
         )}
 
         {/* Public Announcement Popup for Anonymous Devices */}
