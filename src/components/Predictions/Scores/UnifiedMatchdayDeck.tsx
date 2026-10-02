@@ -63,7 +63,6 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
   }, [matches]);
 
   const totalMatchesCount = matches.length;
-  const picksCount = userPredictions.size;
   const allGamesSelected = totalMatchesCount > 0 && matches.every(m => userPredictions.has(m.id));
 
   const handlePredict = (match: Match, option: PredictionOption) => {
@@ -87,75 +86,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
       {/* ========================================================================= */}
       {/* 1. PROGRESS BAR & MY PREDICTIONS BUTTON (ELASTIC RESPONSIVE)               */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 px-3 rounded-xl bg-[#091420] border border-slate-800 text-xs">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-300">
-              {allGamesSelected
-                ? 'All games picked. Share your slip.'
-                : picksCount === 0
-                ? 'Tap Home, Draw, or Away.'
-                : `${totalMatchesCount - picksCount} left. Pick the next game.`}
-            </span>
-            <span className="font-mono font-black text-white bg-slate-800 px-2 py-0.5 rounded">
-              {picksCount}/{totalMatchesCount}
-            </span>
-          </div>
-
-          {favouriteTeam ? (
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#14263b] border border-amber-500/40 text-slate-200 text-xs"
-              title="Your locked derby team"
-            >
-              <Crown className="h-3.5 w-3.5 text-amber-400" />
-              <span className="text-slate-400">Derby Team:</span>
-              <span className="font-black text-amber-300">
-                {formatTeamName(favouriteTeam)}
-              </span>
-              <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-700/50 ml-1">
-                Locked
-              </span>
-            </div>
-          ) : onOpenFavouriteTeamModal ? (
-            <button
-              type="button"
-              onClick={onOpenFavouriteTeamModal}
-              className="tactile-button flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#14263b] hover:bg-[#1b3452] border border-amber-500/40 text-slate-200 transition-colors cursor-pointer text-xs"
-              title="Pick your favourite derby team"
-            >
-              <Crown className="h-3.5 w-3.5 text-amber-400" />
-              <span className="text-slate-400">Derby Team:</span>
-              <span className="font-black text-amber-300">Pick your club</span>
-            </button>
-          ) : null}
-        </div>
-
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. MATCHDAY FIXTURES LIST (VIVID CARD BORDERS & HIGH VISIBILITY)          */}
-      {/* ========================================================================= */}
       <div className="rounded-xl sm:rounded-2xl border border-slate-700/80 bg-[#070e18] p-3 sm:p-3.5 space-y-3 shadow-xl">
-        {picksCount === 0 && (
-          <div className="rounded-xl border border-slate-700 bg-[#0b1624] px-3 py-4 text-center space-y-2">
-            <p className="text-sm font-black text-white">No games on this slip yet.</p>
-            <p className="text-xs text-slate-400">
-              {votingClosed
-                ? 'Voting is closed for this matchday.'
-                : 'Your club is already locked. Pick who wins.'}
-            </p>
-            {!votingClosed && (
-              <button
-                type="button"
-                onClick={() => matchListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="px-4 py-2 rounded-xl bg-white text-[#081018] text-xs font-black cursor-pointer"
-              >
-                Select the matches
-              </button>
-            )}
-          </div>
-        )}
-
         <div ref={matchListRef} className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800/80 text-xs font-bold text-slate-400">
           <div className="min-w-0">
             <h1 className="text-white flex items-center gap-1.5 text-sm font-black">

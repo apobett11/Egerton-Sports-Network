@@ -311,16 +311,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   }, [fixtures, pairDays]);
 
   const derbyAlreadyPicked = Boolean(derbyMatch && userPredMap.has(derbyMatch.id));
-  const remainingOpen = pickQueue.filter((match) => !userPredMap.has(match.id));
   const showDerbyPick = Boolean(
     favouriteTeam && derbyMatch && !derbyAlreadyPicked && !isSecondMatchday && !slipListOpen && !derbyPopupData
   );
-  const showRemainingPicks = Boolean(
-    favouriteTeam && remainingOpen.length > 0 && (derbyAlreadyPicked || !derbyMatch) && !isSecondMatchday && !slipListOpen && !derbyPopupData
-  );
-  const showSlipDashboard = Boolean(
-    favouriteTeam && !derbyPopupData && !showDerbyPick && !showRemainingPicks && (isSecondMatchday || slipListOpen || remainingOpen.length === 0)
-  );
+  const showSlipDashboard = Boolean(favouriteTeam && !derbyPopupData && !showDerbyPick);
 
   useEffect(() => {
     patchDashboardCache({
@@ -333,12 +327,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       fanaticAnswered: Boolean(favouriteTeam || readDashboardCache().fanaticAnswered),
       step: cacheStepFromState({
         favouriteTeam,
-        remainingPicks: remainingOpen.length,
-        slipListOpen,
+        remainingPicks: pickQueue.filter((match) => !userPredMap.has(match.id)).length,
+        slipListOpen: slipListOpen || derbyAlreadyPicked || isSecondMatchday,
       }),
     });
     predictionSessionService.pushRemoteSession();
-  }, [favouriteTeam, predictions, slipListOpen, activeDayKey, lockedPair, remainingOpen.length]);
+  }, [favouriteTeam, predictions, slipListOpen, activeDayKey, lockedPair, pickQueue, userPredMap, derbyAlreadyPicked, isSecondMatchday]);
   const consensusIQ = useMemo(() => {
     return consensusService.calculateConsensusIQ(
       predictions,
@@ -549,7 +543,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   return (
-    <div className={`prediction-feature min-h-screen bg-[#081018] text-white flex flex-col font-sans overflow-hidden ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'slip-lock' : ''}`} data-prediction-step={!favouriteTeam ? 'onboarding' : showDerbyPick ? 'derby' : showRemainingPicks ? 'picks' : 'dashboard'} data-favorite-team={favouriteTeam || ''}>
+    <div className={`prediction-feature min-h-screen bg-[#081018] text-white flex flex-col font-sans overflow-hidden ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'slip-lock' : ''}`} data-prediction-step={!favouriteTeam ? 'onboarding' : showDerbyPick ? 'derby' : 'dashboard'} data-favorite-team={favouriteTeam || ''}>
       <Header
         mainNav={mainNav}
         onSelectMainNav={setMainNav}
@@ -789,17 +783,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               />
             )}
 
-            {activeTab === 'scores' && showRemainingPicks && (
-              <PredictionSlipFlow
-                teams={availableTeams}
-                queue={pickQueue}
-                favouriteTeam={favouriteTeam}
-                pickedIds={new Set(userPredMap.keys())}
-                onSelectTeam={handleSelectFavouriteTeam}
-                onPick={handleMakePrediction}
-              />
-            )}
-
             {activeTab === 'scores' && showSlipDashboard && (
               <div className="space-y-4 animate-fadeIn">
                 {pairDays.length > 0 && (
@@ -846,7 +829,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         )}
       </main>
 
-      {!(mainNav === 'news' && activeTab === 'scores' && (!favouriteTeam || showDerbyPick || showRemainingPicks)) && <Footer />}
+      {!(mainNav === 'news' && activeTab === 'scores' && (!favouriteTeam || showDerbyPick)) && <Footer />}
 
       {/* Derby Ultimate Share Popup with Share & Continue Options */}
       {derbyPopupData && (
