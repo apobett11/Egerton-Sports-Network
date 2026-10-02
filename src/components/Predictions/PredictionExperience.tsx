@@ -260,7 +260,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return weekend.filter((day) => day.matches.length > 0).map((day) => ({
       matchday: day.matches[0].matchday,
       dayKey: day.key,
-      label: `${day.label === 'Saturday' ? 'Sat' : 'Sun'} ${day.matches[0].matchday}`,
+      label: `Matchday ${day.matches[0].matchday}`,
       ...matchdayTeamLine(day.matches, favouriteTeam),
     }));
   }, [weekend, favouriteTeam]);
@@ -570,6 +570,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   const handleMakeAnotherSlip = () => {
+    if (!pairComplete) return;
     if (pairSlips.length >= SLIPS_PER_PAIR) {
       setTriesUsed(pairSlips.length);
       return;
@@ -1083,7 +1084,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           fixtures={fixtures}
           slip={pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null}
           incomplete={mySlipIncomplete}
-          canMakeAnother={pairSlips.length < SLIPS_PER_PAIR}
+          canMakeAnother={pairComplete && pairSlips.length < SLIPS_PER_PAIR}
           onClose={() => setShowSlips(false)}
           onSelectDay={(day, dayKey) => {
             selectNewsMatchday(day, dayKey);

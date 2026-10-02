@@ -33,7 +33,7 @@ export const MatchdayPair: React.FC<MatchdayPairProps> = ({ days, activeMatchday
                 : 'bg-[#14263b] text-slate-300 hover:bg-[#1b3450]'
             }`}
           >
-            {day.label ?? `MD ${day.matchday}`}
+            {day.label ?? `Matchday ${day.matchday}`}
           </button>
         );
       })}
