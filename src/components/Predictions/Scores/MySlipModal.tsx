@@ -13,21 +13,25 @@ export function MySlipModal({
   activeDayKey,
   fixtures,
   slip,
+  livePicks,
   incomplete,
   canMakeAnother,
   onClose,
   onSelectDay,
   onMakeAnother,
+  onShare,
 }: {
   days: MatchdayPairDay[];
   activeDayKey: string;
   fixtures: Match[];
   slip: DeviceSlip | null;
+  livePicks?: Map<string, PredictionOption>;
   incomplete: boolean;
   canMakeAnother: boolean;
   onClose: () => void;
   onSelectDay: (matchday: number, dayKey?: string) => void;
   onMakeAnother: () => void;
+  onShare: () => void;
 }) {
   const [dayKey, setDayKey] = useState(activeDayKey);
   const focus = days.find((day) => day.dayKey === dayKey) ?? days[0];
@@ -35,7 +39,20 @@ export function MySlipModal({
     ? fixtures.filter((match) => matchDayKey(match) === focus.dayKey)
     : [];
   const picks = new Map((slip?.picks || []).map((row) => [row.matchId, row.prediction]));
+  livePicks?.forEach((prediction, matchId) => {
+    if (!picks.has(matchId)) picks.set(matchId, prediction);
+  });
   const stats = pickStats(rows, (id) => picks.get(id) as PredictionOption | undefined);
+  const dayRows = (day: MatchdayPairDay) => (
+    day.dayKey ? fixtures.filter((match) => matchDayKey(match) === day.dayKey) : []
+  );
+  const dayComplete = (day: MatchdayPairDay) => {
+    const games = dayRows(day);
+    return games.length > 0 && games.every((match) => picks.has(match.id));
+  };
+  const other = days.find((day) => day.dayKey !== focus?.dayKey);
+  const bothComplete = days.length > 0 && days.every(dayComplete);
+  const nextDay = focus && !dayComplete(focus) ? focus : other && !dayComplete(other) ? other : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
@@ -69,7 +86,13 @@ export function MySlipModal({
           </p>
           {rows.map((match) => {
             const pick = picks.get(match.id);
-            const label = pick === '1' ? 'Home' : pick === '2' ? 'Away' : pick === 'X' ? 'Draw' : 'Not picked';
+            const label = pick === '1'
+              ? formatTeamName(match.homeTeam.name)
+              : pick === '2'
+                ? formatTeamName(match.awayTeam.name)
+                : pick === 'X'
+                  ? 'Draw'
+                  : 'Not picked';
             const tick = pick ? slipTick(match, pick) : 'waiting';
             const mark = !matchClosed(match) ? '' : tick === 'won' ? 'Got it' : tick === 'lost' ? 'Missed' : '';
             return (
@@ -80,14 +103,35 @@ export function MySlipModal({
             );
           })}
         </div>
-        <div className="border-t border-[#1a2e45] px-4 py-3">
+        <div className="flex flex-col gap-2 border-t border-[#1a2e45] px-4 py-3">
+          {nextDay?.dayKey && (
+            <button
+              type="button"
+              onClick={() => {
+                setDayKey(nextDay.dayKey || dayKey);
+                onSelectDay(nextDay.matchday, nextDay.dayKey);
+              }}
+              className="min-h-[44px] w-full rounded-full bg-[#14263b] text-xs font-black uppercase tracking-wider text-white cursor-pointer"
+            >
+              {dayComplete(focus || nextDay) ? 'Go to' : 'Finish'} Matchday {nextDay.matchday}
+            </button>
+          )}
+          {bothComplete && (
+            <button
+              type="button"
+              onClick={onMakeAnother}
+              disabled={!canMakeAnother}
+              className="min-h-[44px] w-full rounded-full bg-[#ff0046] disabled:opacity-40 text-xs font-black uppercase tracking-wider text-white cursor-pointer"
+            >
+              Make another slip
+            </button>
+          )}
           <button
             type="button"
-            onClick={onMakeAnother}
-            disabled={!canMakeAnother}
-            className="min-h-[44px] w-full rounded-full bg-[#ff0046] disabled:opacity-40 text-xs font-black uppercase tracking-wider text-white cursor-pointer"
+            onClick={onShare}
+            className="min-h-[44px] w-full rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer"
           >
-            Make another slip
+            Share slip
           </button>
         </div>
       </div>

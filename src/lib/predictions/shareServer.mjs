@@ -90,3 +90,14 @@ export async function loadPredictionShare(matchValue, pickValue) {
 export function predictionDestination(origin, matchId) {
   return `${origin}/?view=picks&match=${encodeURIComponent(matchId)}#/news`;
 }
+
+export async function loadShareCode(code) {
+  const safe = String(code || '').replace(/[^a-zA-Z0-9]/g, '');
+  if (safe.length < 6 || safe.length > 12) return null;
+  const rows = await supabaseGet(
+    `prediction_share_links?code=eq.${safe}&select=code,kind,card&limit=1`,
+  );
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row?.card || (row.card.k !== 'derby' && row.card.k !== 'slip' && row.card.k !== 'talk')) return null;
+  return { code: row.code, kind: row.kind, card: row.card };
+}

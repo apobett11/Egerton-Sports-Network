@@ -374,6 +374,17 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     patchDashboardCache({ slips: [seeded], activeSlipId: seeded.id });
   }, [pairKey, slips.length]);
 
+  useEffect(() => {
+    if (!activeSlipId) return;
+    const slip = slips.find((row) => row.id === activeSlipId);
+    if (!slip) return;
+    const missing = predictions.filter((pick) => !slip.picks.some((row) => row.matchId === pick.matchId));
+    if (missing.length === 0) return;
+    const next = slips.map((row) => (row.id === slip.id ? { ...row, picks: [...row.picks, ...missing] } : row));
+    setSlips(next);
+    patchDashboardCache({ slips: next, activeSlipId });
+  }, [activeSlipId, predictions, slips]);
+
   const derbyAlreadyPicked = Boolean(derbyMatch && userPredMap.has(derbyMatch.id));
   const showDerbyPick = Boolean(
     favouriteTeam && derbyMatch && !derbyAlreadyPicked && !isSecondMatchday && !slipListOpen && !derbyPopupData
@@ -527,8 +538,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     const dayKey = matchDayKey(match);
     const secondDay = pairDays.length > 1 && pairDays[1]?.dayKey === dayKey;
     let nextSlips = slips;
-    let slipId = activeSlipId;
-    let active = pairSlips.find((row) => row.id === slipId) || pairSlips[pairSlips.length - 1] || null;
+    let active = pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null;
     if (!active) {
       if (pairSlips.length >= SLIPS_PER_PAIR) {
         setTriesUsed(pairSlips.length);
@@ -543,15 +553,16 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         createdAt: new Date().toISOString(),
       };
       nextSlips = [...slips, active];
-      slipId = active.id;
-      setSlips(nextSlips);
-      setActiveSlipId(slipId);
     }
+    const slipId = active.id;
     const nextPick = { matchId: match.id, prediction: option, matchday: match.matchday, updatedAt: new Date().toISOString() };
     const nextPicks = [...predictions, nextPick];
     const updatedSlips = nextSlips.map((row) => (
-      row.id === slipId ? { ...row, picks: [...row.picks, nextPick] } : row
+      row.id === slipId
+        ? { ...row, picks: row.picks.some((pick) => pick.matchId === match.id) ? row.picks : [...row.picks, nextPick] }
+        : row
     ));
+    setActiveSlipId(slipId);
     setPredictions(nextPicks);
     setSlips(updatedSlips);
     patchDashboardCache({ predictions: nextPicks, slips: updatedSlips, activeSlipId: slipId });
@@ -1083,6 +1094,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           activeDayKey={activeDayKey}
           fixtures={fixtures}
           slip={pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null}
+          livePicks={userPredMap}
           incomplete={mySlipIncomplete}
           canMakeAnother={pairComplete && pairSlips.length < SLIPS_PER_PAIR}
           onClose={() => setShowSlips(false)}
@@ -1092,6 +1104,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
             setActiveTab('scores');
           }}
           onMakeAnother={handleMakeAnotherSlip}
+          onShare={() => {
+            shareService.shareSlip({
+              matches: pairMatches,
+              userPredictions: userPredMap,
+              consensusMap,
+            });
+          }}
         />
       )}
 

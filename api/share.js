@@ -5,6 +5,7 @@ import {
 } from '../src/lib/predictions/shareCard.mjs';
 import {
   loadPredictionShare,
+  loadShareCode,
   normalizeFixtureId,
   predictionDestination,
 } from '../src/lib/predictions/shareServer.mjs';
@@ -20,17 +21,21 @@ function escapeHtml(value) {
 
 export default async function handler(req, res) {
   const token = typeof req.query?.d === 'string' ? req.query.d : '';
-  const shared = req.query?.m
+  const code = typeof req.query?.c === 'string' ? req.query.c : '';
+  const stored = code ? await loadShareCode(code) : null;
+  const shared = !stored && req.query?.m
     ? await loadPredictionShare(req.query.m, req.query.p)
     : null;
-  const card = shared?.card || decodeShareCard(token);
+  const card = stored?.card || shared?.card || decodeShareCard(code.length > 12 ? code : token);
   const protocol = req.headers['x-forwarded-proto'] || 'https';
   const origin = `${protocol}://${req.headers.host}`;
   const title = cardTitle(card);
   const description = cardDescription(card);
-  const image = shared
+  const image = stored
+    ? `${origin}/api/og?c=${encodeURIComponent(stored.code)}`
+    : shared
     ? `${origin}/api/og?m=${encodeURIComponent(shared.matchId)}&p=${encodeURIComponent(shared.pick)}`
-    : `${origin}/api/og?d=${encodeURIComponent(token)}`;
+    : `${origin}/api/og?d=${encodeURIComponent(token || (code.length > 12 ? code : ''))}`;
   const linkedMatch = shared?.matchId || normalizeFixtureId(req.query?.m);
   const destination = linkedMatch
     ? predictionDestination(origin, linkedMatch)

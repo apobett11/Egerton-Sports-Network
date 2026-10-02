@@ -3,6 +3,10 @@
     {
       "source": "/prediction/:team/:match/:pick",
       "destination": "/api/share?m=:match&p=:pick"
+    },
+    {
+      "source": "/shareprediction/:kind/:code",
+      "destination": "/api/share?c=:code"
     }
   ]
 }
