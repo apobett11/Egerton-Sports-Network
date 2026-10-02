@@ -1,5 +1,7 @@
 import { supabase } from '../../lib/supabase';
-import { EPL_COMPETITION_ID, weekendFixtures } from '../../lib/predictions/weekendSlate';
+import { guestCache } from '../../lib/guestCache';
+import { readDashboardCache, patchDashboardCache } from '../../lib/predictions/predictionDashboardCache';
+import { EPL_COMPETITION_ID, nextFixtureWeekend, weekendFixtures } from '../../lib/predictions/weekendSlate';
 import type { Match, Team, MatchSquadInfo } from '../../types/predictions';
 
 export function generateSquadInfo(homeName: string, awayName: string): MatchSquadInfo {
@@ -263,6 +265,7 @@ class EplFixtureService {
   }
 
   private async fetchFromDb(): Promise<Match[]> {
+    const cachedWeekend = guestCache.getStale<Match[]>('fixtures', 'prediction_weekend_v1') || [];
     try {
       // 1. Fetch fixtures from DB using indexed scan
       const windowStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
@@ -286,7 +289,7 @@ class EplFixtureService {
         .limit(40);
 
       if (error || !fixtures || fixtures.length === 0) {
-        return [];
+        return cachedWeekend;
       }
 
       // Check if derby config exists in DB
@@ -337,10 +340,25 @@ class EplFixtureService {
         };
       });
 
-      const weekend = weekendFixtures(parsed);
+      const cached = readDashboardCache();
+      let locked = cached.lockedSaturday && cached.lockedSunday
+        ? { saturday: cached.lockedSaturday, sunday: cached.lockedSunday }
+        : null;
+      try {
+        const { data: weekendRow } = await supabase.rpc('get_next_epl_weekend');
+        const saturday = typeof weekendRow?.saturday === 'string' ? weekendRow.saturday.slice(0, 10) : null;
+        const sunday = typeof weekendRow?.sunday === 'string' ? weekendRow.sunday.slice(0, 10) : null;
+        if (!locked && saturday && sunday) locked = { saturday, sunday };
+      } catch {
+        // Client-side nextFixtureWeekend still uses the fetched rows.
+      }
+      const weekend = weekendFixtures(parsed, new Date(), locked);
+      const pair = nextFixtureWeekend(weekend.length ? weekend : parsed, new Date(), locked);
+      patchDashboardCache({ lockedSaturday: pair.saturday, lockedSunday: pair.sunday });
+      guestCache.set('fixtures', 'prediction_weekend_v1', weekend, 60 * 60 * 1000);
       return weekend;
     } catch {
-      return [];
+      return cachedWeekend;
     }
   }
 

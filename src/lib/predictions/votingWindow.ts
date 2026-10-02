@@ -89,6 +89,23 @@ export function matchdayFullyPlayed(matches: Match[]): boolean {
 
 export type SlipTick = 'waiting' | 'live' | 'won' | 'lost';
 
+export function matchClosed(match: Match): boolean {
+  return match.status === 'FT' || match.status === 'CANCELLED';
+}
+
+export function slipResult(matches: Match[], pickFor: (matchId: string) => PredictionOption | undefined) {
+  let got = 0;
+  matches.forEach((match) => {
+    const pick = pickFor(match.id);
+    if (pick && slipTick(match, pick) === 'won') got += 1;
+  });
+  return {
+    got,
+    total: matches.length,
+    allClosed: matches.length > 0 && matches.every(matchClosed),
+  };
+}
+
 export function slipTick(match: Match, pick: PredictionOption): SlipTick {
   if (match.status === 'LIVE' || match.status === 'HT') return 'live';
   if (match.status !== 'FT') return 'waiting';

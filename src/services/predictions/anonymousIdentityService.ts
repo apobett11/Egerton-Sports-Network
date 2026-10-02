@@ -2,6 +2,8 @@ import { supabase } from '../../lib/supabase';
 import { HANDLE_PREFIXES } from '../../lib/predictions/constants';
 import { getDeviceCredentials } from '../../lib/deviceCopies';
 import { DeviceService } from '../DeviceService';
+import { patchDashboardCache, readDashboardCache } from '../../lib/predictions/predictionDashboardCache';
+import { predictionSessionService } from './predictionSessionService';
 import type { AnonymousDevice, PredictionOption, UserPrediction } from '../../types/predictions';
 
 const PREDICTION_PAGE = 50;
@@ -68,11 +70,17 @@ class AnonymousIdentityService {
     favouriteTeam: string | null;
     predictions: UserPrediction[];
   }> {
+    const cached = readDashboardCache();
     const deviceId = await this.ensureDeviceRegistered();
-    if (!deviceId) return { favouriteTeam: null, predictions: [] };
+    if (!deviceId) {
+      return { favouriteTeam: cached.favouriteTeam, predictions: cached.predictions };
+    }
+
+    await predictionSessionService.pullRemoteSession();
+    const session = readDashboardCache();
 
     const profile = await DeviceService.registerOrCheckInDevice(deviceId);
-    let favouriteTeam: string | null = profile?.favorite_team_label || null;
+    let favouriteTeam: string | null = profile?.favorite_team_label || session.favouriteTeam || cached.favouriteTeam;
     if (!favouriteTeam && profile?.favorite_team_id) {
       try {
         const { data } = await supabase
@@ -95,16 +103,28 @@ class AnonymousIdentityService {
     }
     if (favouriteTeam) {
       this.favouriteTeam = favouriteTeam;
-      this.teamId = profile?.favorite_team_id || null;
+      this.teamId = profile?.favorite_team_id || session.favouriteTeamId;
     }
 
-    const predictions = await this.loadOwnPredictions(deviceId);
+    const remote = await this.loadOwnPredictions(deviceId);
+    const byMatch = new Map<string, UserPrediction>();
+    session.predictions.forEach((row) => byMatch.set(row.matchId, row));
+    remote.forEach((row) => {
+      if (!byMatch.has(row.matchId)) byMatch.set(row.matchId, row);
+    });
+    const predictions = Array.from(byMatch.values());
+    patchDashboardCache({
+      favouriteTeam,
+      favouriteTeamId: this.teamId,
+      predictions,
+      fanaticAnswered: Boolean(favouriteTeam || session.fanaticAnswered),
+    });
     return { favouriteTeam, predictions };
   }
 
   private async loadOwnPredictions(deviceId: string): Promise<UserPrediction[]> {
     const creds = await getDeviceCredentials();
-    if (!creds.secret) return [];
+    if (!creds.secret) return readDashboardCache().predictions;
     const predictions: UserPrediction[] = [];
     let offset = 0;
     try {
@@ -128,6 +148,7 @@ class AnonymousIdentityService {
         });
         if (data.length < PREDICTION_PAGE) break;
         offset += PREDICTION_PAGE;
+        if (offset > 500) break;
       }
     } catch {
       return predictions;
@@ -137,10 +158,20 @@ class AnonymousIdentityService {
 
   public async saveFavouriteTeam(teamName: string, teamId?: string | null): Promise<void> {
     if (this.favouriteTeam) return;
+    this.favouriteTeam = teamName;
+    this.teamId = teamId || null;
+    patchDashboardCache({
+      favouriteTeam: teamName,
+      favouriteTeamId: teamId || null,
+      fanaticAnswered: true,
+      step: 'derby',
+    });
+    predictionSessionService.pushRemoteSession();
+
     const deviceId = await this.ensureDeviceRegistered();
     if (!deviceId) return;
 
-    let resolvedId = teamId || null;
+    let resolvedId = teamId && /^[0-9a-f-]{36}$/i.test(teamId) ? teamId : null;
     if (!resolvedId) {
       try {
         const { data } = await supabase
@@ -160,11 +191,8 @@ class AnonymousIdentityService {
     if (lockedLabel) {
       this.favouriteTeam = lockedLabel;
       this.teamId = saved?.favorite_team_id || resolvedId;
-      return;
-    }
-    if (saved?.favorite_team_id) {
-      this.favouriteTeam = teamName;
-      this.teamId = saved.favorite_team_id;
+      patchDashboardCache({ favouriteTeam: lockedLabel, favouriteTeamId: this.teamId });
+      predictionSessionService.pushRemoteSession();
     }
   }
 }

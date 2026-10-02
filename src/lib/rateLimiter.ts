@@ -52,11 +52,11 @@ const DEFAULT_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
     maxBurstDelayMs: 0,
     description: 'Global Application Rate Limit',
   },
-  'guest-read': {
-    maxRequests: 40,
-    windowMs: 5_000,
+  'predictions': {
+    maxRequests: 24,
+    windowMs: 10_000,
     maxBurstDelayMs: 0,
-    description: 'Public Guest Reads Rate Limit',
+    description: 'Prediction dashboard reads and slip writes',
   },
   'dashboard': {
     maxRequests: 150,

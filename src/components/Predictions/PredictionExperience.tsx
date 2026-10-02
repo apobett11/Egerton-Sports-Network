@@ -1,9 +1,8 @@
 import './predictions.css';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header } from './Layout/Header';
 import { Footer } from './Layout/Footer';
-import { VotingCountdown } from './Scores/VotingCountdown';
-import { PredictionSlipsModal } from './Scores/PredictionSlipsModal';
+import { PeekMatchdayPopup, PredictionSlipsModal, ShareSlipPopup } from './Scores/PredictionSlipsModal';
 import { MatchdayPair } from './Layout/MatchdayPair';
 import { ConsensusIQCard } from './Scores/ConsensusIQCard';
 import { UnifiedMatchdayDeck } from './Scores/UnifiedMatchdayDeck';
@@ -20,7 +19,7 @@ import { MatchBanterDrawer } from './Banter/MatchBanterDrawer';
 import { shareService } from '../../services/predictions/shareService';
 import { StandingsPreviewModal } from './Standings/StandingsPreviewModal';
 import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
-import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
+import { DerbyPickPopup, PredictionSlipFlow } from './Scores/PredictionSlipFlow';
 
 import { eplFixtureService } from '../../services/predictions/eplFixtureService';
 import { predictionService } from '../../services/predictions/predictionService';
@@ -31,11 +30,15 @@ import { anonymousIdentityService } from '../../services/predictions/anonymousId
 import { supabase } from '../../lib/supabase';
 import { formatKickoffTime, formatTeamName } from '../../lib/predictions/utils';
 import { matchdayTeamLine } from '../../lib/predictions/newsMatchdays';
+import { slipResult } from '../../lib/predictions/votingWindow';
+import { EPL_TEAMS } from '../../lib/predictions/eplTeams';
+import { cacheStepFromState, cachedWeekendLock, patchDashboardCache, readDashboardCache } from '../../lib/predictions/predictionDashboardCache';
+import { predictionSessionService } from '../../services/predictions/predictionSessionService';
 import {
   matchDayKey,
+  nextFixtureWeekend,
   predictionQueue,
   slateHasBegun,
-  teamsFromMatches,
   weekendDates,
   weekendDays,
   weekendFixtures,
@@ -66,7 +69,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const [likedIds, setLikedIds] = useState<string[]>([]);
   const [repostedIds, setRepostedIds] = useState<string[]>([]);
   const [activeMatchday, setActiveMatchday] = useState<number>(0);
-  const [activeDayKey, setActiveDayKey] = useState(() => weekendDates().saturday);
+  const [activeDayKey, setActiveDayKey] = useState(() => {
+    const cached = readDashboardCache();
+    return cached.activeDayKey || cached.lockedSaturday || weekendDates().saturday;
+  });
   const [linkedMatchId] = useState(() => {
     const value = new URLSearchParams(window.location.search).get('match');
     return value && /^[0-9a-f-]{36}$/i.test(value) ? value.toLowerCase() : null;
@@ -78,7 +84,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   // Matches & Consensus State
   const [fixtures, setFixtures] = useState<Match[]>(() => {
     const peeked = eplFixtureService.peek();
-    return weekendFixtures(peeked || []);
+    return weekendFixtures(peeked || [], new Date(), cachedWeekendLock());
   });
   const [consensusMap, setConsensusMap] = useState<Map<string, ConsensusData>>(() => new Map());
   const [predictions, setPredictions] = useState<UserPrediction[]>(() => {
@@ -87,6 +93,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   // Favourite Team & Initial Drive State (Derby team once selected cannot be changed)
   const [favouriteTeam, setFavouriteTeam] = useState<string | null>(() => {
+    const cached = readDashboardCache();
+    if (cached.favouriteTeam) return cached.favouriteTeam;
     try {
       const label = localStorage.getItem('esn_favorite_team_label');
       return label && label !== 'null' ? label : null;
@@ -95,6 +103,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
   });
   const [derbyPopupData, setDerbyPopupData] = useState<{ match: Match; option: PredictionOption } | null>(null);
+  const [slipListOpen, setSlipListOpen] = useState(() => readDashboardCache().slipListOpen);
+  const [shareSlip, setShareSlip] = useState<{ dayKey: string; matchday: number } | null>(null);
+  const [peekNext, setPeekNext] = useState(false);
+  const switchedToNext = useRef(false);
 
   // Modals & Drawers
   const [activeCommentPost, setActiveCommentPost] = useState<BanterPost | null>(null);
@@ -133,7 +145,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     let mounted = true;
     eplFixtureService.getAllEplFixtures().then(async (matches) => {
       if (!mounted) return;
-      const weekend = weekendFixtures(matches || []);
+      const cached = readDashboardCache();
+      const locked = cached.lockedSaturday && cached.lockedSunday
+        ? { saturday: cached.lockedSaturday, sunday: cached.lockedSunday }
+        : null;
+      const weekend = weekendFixtures(matches || [], new Date(), locked);
+      const pair = nextFixtureWeekend(weekend, new Date(), locked);
+      patchDashboardCache({ lockedSaturday: pair.saturday, lockedSunday: pair.sunday });
       setFixtures(weekend);
       const linked = linkedMatchId
         ? weekend.find((match) => match.id === linkedMatchId)
@@ -141,6 +159,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       if (linked) {
         setActiveDayKey(matchDayKey(linked));
         setActiveMatchday(linked.matchday);
+      } else if (cached.activeDayKey && weekend.some((match) => matchDayKey(match) === cached.activeDayKey)) {
+        setActiveDayKey(cached.activeDayKey);
       }
 
       const matchIds = weekend.map(m => m.id);
@@ -152,8 +172,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return () => { mounted = false; };
   }, [linkedMatchId]);
 
-  // Extract all distinct EPL teams for favourite team selection (prioritizing teams playing in the current matchday)
-  const availableTeams = useMemo(() => teamsFromMatches(fixtures), [fixtures]);
+  const availableTeams = EPL_TEAMS;
 
   // Filter matches for active matchday with dynamic derby based on user's favourite team
   const matchdayMatches = useMemo(() => {
@@ -217,7 +236,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return regularMatches[0] || matchdayMatches[0] || fixtures[0] || null;
   }, [regularMatches, matchdayMatches, fixtures]);
 
-  const weekend = useMemo(() => weekendDays(fixtures), [fixtures]);
+  const lockedPair = useMemo(() => {
+    return nextFixtureWeekend(fixtures, new Date(), cachedWeekendLock());
+  }, [fixtures]);
+
+  const weekend = useMemo(() => weekendDays(fixtures, new Date(), lockedPair), [fixtures, lockedPair]);
 
   const pairDays = useMemo(() => {
     return weekend.filter((day) => day.matches.length > 0).map((day) => ({
@@ -241,8 +264,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       favouriteTeam,
       new Date(),
       linkedMatchId,
+      lockedPair,
     ),
-    [fixtures, favouriteTeam, activeDayKey, linkedMatchId]
+    [fixtures, favouriteTeam, activeDayKey, linkedMatchId, lockedPair]
   );
 
   useEffect(() => {
@@ -266,9 +290,55 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return map;
   }, [predictions]);
 
-  const slipOpen = !favouriteTeam || pickQueue.some((match) => !userPredMap.has(match.id));
+  const isSecondMatchday = pairDays.length > 1 && pairDays[1]?.dayKey === activeDayKey;
+  const slipMatches = useMemo(
+    () => [...matchdayMatches].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby))),
+    [matchdayMatches],
+  );
+  const slipScore = slipResult(slipMatches, (id) => userPredMap.get(id));
 
-  // Consensus IQ calculation
+  useEffect(() => {
+    if (switchedToNext.current || pairDays.length < 2) return;
+    const first = pairDays[0];
+    const next = pairDays[1];
+    if (!first?.dayKey || !next?.dayKey) return;
+    const games = fixtures.filter((match) => matchDayKey(match) === first.dayKey);
+    if (!slipResult(games, () => undefined).allClosed) return;
+    switchedToNext.current = true;
+    setActiveDayKey(next.dayKey);
+    setActiveMatchday(next.matchday);
+    setSlipListOpen(true);
+  }, [fixtures, pairDays]);
+
+  const derbyAlreadyPicked = Boolean(derbyMatch && userPredMap.has(derbyMatch.id));
+  const remainingOpen = pickQueue.filter((match) => !userPredMap.has(match.id));
+  const showDerbyPick = Boolean(
+    favouriteTeam && derbyMatch && !derbyAlreadyPicked && !isSecondMatchday && !slipListOpen && !derbyPopupData
+  );
+  const showRemainingPicks = Boolean(
+    favouriteTeam && remainingOpen.length > 0 && (derbyAlreadyPicked || !derbyMatch) && !isSecondMatchday && !slipListOpen && !derbyPopupData
+  );
+  const showSlipDashboard = Boolean(
+    favouriteTeam && !derbyPopupData && !showDerbyPick && !showRemainingPicks && (isSecondMatchday || slipListOpen || remainingOpen.length === 0)
+  );
+
+  useEffect(() => {
+    patchDashboardCache({
+      favouriteTeam,
+      predictions,
+      slipListOpen,
+      activeDayKey,
+      lockedSaturday: lockedPair.saturday,
+      lockedSunday: lockedPair.sunday,
+      fanaticAnswered: Boolean(favouriteTeam || readDashboardCache().fanaticAnswered),
+      step: cacheStepFromState({
+        favouriteTeam,
+        remainingPicks: remainingOpen.length,
+        slipListOpen,
+      }),
+    });
+    predictionSessionService.pushRemoteSession();
+  }, [favouriteTeam, predictions, slipListOpen, activeDayKey, lockedPair, remainingOpen.length]);
   const consensusIQ = useMemo(() => {
     return consensusService.calculateConsensusIQ(
       predictions,
@@ -395,8 +465,14 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     try {
       const nextList = await predictionService.savePrediction(match, option, slate);
       setPredictions(nextList);
-      if (match.isDerby) {
+      const dayKey = matchDayKey(match);
+      const secondDay = pairDays.length > 1 && pairDays[1]?.dayKey === dayKey;
+      if (match.isDerby && !secondDay && !slipListOpen) {
         setDerbyPopupData({ match, option });
+      }
+      const finishedPicks = slate.length > 0 && slate.every((row) => nextList.some((pick) => pick.matchId === row.id));
+      if (finishedPicks && (slipListOpen || secondDay)) {
+        setShareSlip({ dayKey, matchday: slate[0]?.matchday ?? match.matchday });
       }
     } catch {
       // The card stays put. The write itself is already fired in the background.
@@ -410,18 +486,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
   };
 
-  const handleSelectFavouriteTeam = (teamName: string) => {
+  const handleSelectFavouriteTeam = (teamName: string, team?: { id?: string }) => {
     if (favouriteTeam) return;
     setFavouriteTeam(teamName);
     setActiveTab('scores');
-    try {
-      localStorage.setItem('esn_favorite_team_label', teamName);
-      localStorage.setItem('esn_onboarding_completed', 'true');
-    } catch {
-      // The device row is still the lock.
-    }
     derbyService.setFavouriteTeam(teamName);
-    void anonymousIdentityService.saveFavouriteTeam(teamName).catch(() => {});
+    patchDashboardCache({ favouriteTeam: teamName, favouriteTeamId: team?.id || null, fanaticAnswered: true, step: 'derby' });
+    void anonymousIdentityService.saveFavouriteTeam(teamName, team?.id).catch(() => {});
   };
 
   // Banter Handlers
@@ -478,12 +549,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   return (
-    <div className={`prediction-feature bg-[#081018] text-white flex flex-col font-sans rounded-none sm:rounded-sm overflow-hidden ${mainNav === 'news' && activeTab === 'scores' && slipOpen ? 'slip-lock' : ''}`}>
+    <div className={`prediction-feature min-h-screen bg-[#081018] text-white flex flex-col font-sans overflow-hidden ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'slip-lock' : ''}`} data-prediction-step={!favouriteTeam ? 'onboarding' : showDerbyPick ? 'derby' : showRemainingPicks ? 'picks' : 'dashboard'} data-favorite-team={favouriteTeam || ''}>
       <Header
-        embedded
         mainNav={mainNav}
         onSelectMainNav={setMainNav}
         activeTab={activeTab}
+        onSelectTab={setActiveTab}
         identity={identity}
         completedPicksCount={matchdayMatches.filter((m) => userPredMap.has(m.id)).length}
         totalRequiredPicks={matchdayMatches.length}
@@ -503,7 +574,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       />
 
       {/* Main Content Area */}
-      <main className={`mx-auto w-full max-w-4xl px-3 sm:px-6 ${mainNav === 'news' && activeTab === 'scores' && slipOpen ? 'flex min-h-0 flex-1 flex-col overflow-hidden py-1' : 'flex-1 py-4'}`}>
+      <main className={`mx-auto w-full max-w-4xl px-3 sm:px-6 ${mainNav === 'news' && activeTab === 'scores' && !favouriteTeam ? 'flex min-h-0 flex-1 flex-col overflow-hidden py-1' : 'flex-1 py-4'}`}>
         {/* ================================================================ */}
         {/* 1. LIVESCORE SECTION (Untouched Livescore match center)           */}
         {/* ================================================================ */}
@@ -536,75 +607,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                 <span>Make Matchday Picks →</span>
               </button>
             </div>
-
-            {/* Live EPL Fixtures Center */}
-            <div className="rounded-xl border border-slate-700/60 bg-[#0b1624] p-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs font-bold text-slate-400">
-                <span className="flex items-center gap-1.5 text-white">
-                  <span className="h-2 w-2 rounded-full bg-[#00b04f] animate-pulse" />
-                  EPL Matchday {activeMatchday} Fixtures
-                </span>
-                <span className="font-mono">Real-Time Sync</span>
-              </div>
-
-              <div className="divide-y divide-slate-800/80 mt-2">
-                {matchdayMatches.map((m) => (
-                  <div key={m.id} className="py-3 flex items-center justify-between hover:bg-[#0e1e30] px-2 rounded-lg transition-colors">
-                    {/* Time / Status */}
-                    <div className="w-20 text-center text-xs">
-                      {m.status === 'LIVE' ? (
-                        <span className="text-[#00b04f] font-black uppercase flex items-center justify-center gap-1">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#00b04f] animate-ping" />
-                          LIVE
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-mono font-bold">
-                          {formatKickoffTime(m.scheduledTime)}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Matchup */}
-                    <div className="flex-1 px-4 flex items-center justify-center gap-4">
-                      <div className="flex-1 flex items-center justify-end gap-2 text-right">
-                        <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[120px] sm:max-w-[180px]">{formatTeamName(m.homeTeam.name)}</span>
-                        <div className="h-7 w-7 rounded-full bg-slate-800 border border-slate-700 p-0.5 overflow-hidden shrink-0">
-                          {m.homeTeam.logoUrl ? (
-                            <img src={m.homeTeam.logoUrl} alt={m.homeTeam.name} className="h-full w-full object-cover rounded-full" />
-                          ) : (
-                            <Shield className="h-full w-full text-slate-500" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="px-3 py-1 rounded bg-[#081018] border border-slate-800 font-mono font-black text-sm text-white">
-                        {m.scoreHome} - {m.scoreAway}
-                      </div>
-
-                      <div className="flex-1 flex items-center justify-start gap-2 text-left">
-                        <div className="h-7 w-7 rounded-full bg-slate-800 border border-slate-700 p-0.5 overflow-hidden shrink-0">
-                          {m.awayTeam.logoUrl ? (
-                            <img src={m.awayTeam.logoUrl} alt={m.awayTeam.name} className="h-full w-full object-cover rounded-full" />
-                          ) : (
-                            <Shield className="h-full w-full text-slate-500" />
-                          )}
-                        </div>
-                        <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[120px] sm:max-w-[180px]">{formatTeamName(m.awayTeam.name)}</span>
-                      </div>
-                    </div>
-
-                    {/* Squads Action */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSquadMatch(m)}
-                      className="px-2.5 py-1 text-[11px] font-bold text-white hover:text-slate-200 bg-[#14263b] hover:bg-[#1a3554] rounded border border-slate-600 transition-colors cursor-pointer"
-                    >
-                      See squads
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -634,41 +636,21 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 font-medium">
-                    <tr className="hover:bg-[#0e1c2b]">
-                      <td className="py-2.5 px-3 font-bold text-white">1</td>
-                      <td className="py-2.5 px-3 font-bold text-white">Legends FC</td>
-                      <td className="py-2.5 px-3 text-center">6</td>
-                      <td className="py-2.5 px-3 text-center text-[#00b04f] font-mono">+11</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-white font-mono">16</td>
-                    </tr>
-                    <tr className="hover:bg-[#0e1c2b]">
-                      <td className="py-2.5 px-3 font-bold text-white">2</td>
-                      <td className="py-2.5 px-3 font-bold text-white">Spartans United</td>
-                      <td className="py-2.5 px-3 text-center">6</td>
-                      <td className="py-2.5 px-3 text-center text-[#00b04f] font-mono">+8</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-white font-mono">14</td>
-                    </tr>
-                    <tr className="hover:bg-[#0e1c2b]">
-                      <td className="py-2.5 px-3 font-bold text-white">3</td>
-                      <td className="py-2.5 px-3 font-bold text-white">Santos FC</td>
-                      <td className="py-2.5 px-3 text-center">6</td>
-                      <td className="py-2.5 px-3 text-center text-[#00b04f] font-mono">+5</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-white font-mono">13</td>
-                    </tr>
-                    <tr className="hover:bg-[#0e1c2b]">
-                      <td className="py-2.5 px-3 font-bold text-white">4</td>
-                      <td className="py-2.5 px-3 font-bold text-white">BCOM FC</td>
-                      <td className="py-2.5 px-3 text-center">6</td>
-                      <td className="py-2.5 px-3 text-center text-slate-400 font-mono">+2</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-white font-mono">11</td>
-                    </tr>
-                    <tr className="hover:bg-[#0e1c2b]">
-                      <td className="py-2.5 px-3 font-bold text-white">5</td>
-                      <td className="py-2.5 px-3 font-bold text-white">Blue Blazers</td>
-                      <td className="py-2.5 px-3 text-center">6</td>
-                      <td className="py-2.5 px-3 text-center text-slate-400 font-mono">-1</td>
-                      <td className="py-2.5 px-3 text-center font-bold text-white font-mono">9</td>
-                    </tr>
+                    {[
+                          { position: 1, teamName: 'Legends FC', played: 6, gd: '+11', points: 16 },
+                          { position: 2, teamName: 'Spartans United', played: 6, gd: '+8', points: 14 },
+                          { position: 3, teamName: 'Santos FC', played: 6, gd: '+5', points: 13 },
+                          { position: 4, teamName: 'BCOM FC', played: 6, gd: '+2', points: 11 },
+                          { position: 5, teamName: 'Blue Blazers', played: 6, gd: '-1', points: 9 },
+                        ].map((row) => (
+                      <tr key={row.position} className="hover:bg-[#0e1c2b]">
+                        <td className="py-2.5 px-3 font-bold text-white">{row.position}</td>
+                        <td className="py-2.5 px-3 font-bold text-white">{row.teamName}</td>
+                        <td className="py-2.5 px-3 text-center">{row.played}</td>
+                        <td className={`py-2.5 px-3 text-center font-mono ${row.gd.startsWith('-') || row.gd === '0' ? 'text-slate-400' : 'text-[#00b04f]'}`}>{row.gd}</td>
+                        <td className="py-2.5 px-3 text-center font-bold text-white font-mono">{row.points}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -680,16 +662,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         {/* 3. NEWS SECTION (THE MAIN HUB WITH BANTER & SCORES)              */}
         {/* ================================================================ */}
         {mainNav === 'news' && (
-          <div className={activeTab === 'scores' && slipOpen ? 'flex min-h-0 flex-1 flex-col gap-1.5' : 'space-y-4'}>
-            {pairDays.length > 0 && (
-              <MatchdayPair
-                days={pairDays}
-                activeMatchday={activeMatchday}
-                activeDayKey={activeDayKey}
-                onSelect={selectNewsMatchday}
-              />
-            )}
-
+          <div className={activeTab === 'scores' && !favouriteTeam ? 'flex min-h-0 flex-1 flex-col gap-1.5' : 'space-y-4'}>
             {activeTab === 'banter' && (
               <div className="space-y-4 animate-fadeIn">
                 <div className="flex items-end justify-between gap-3 px-0.5">
@@ -798,7 +771,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               </div>
             )}
 
-            {activeTab === 'scores' && slipOpen && (
+            {activeTab === 'scores' && !favouriteTeam && (
               <PredictionSlipFlow
                 teams={availableTeams}
                 queue={pickQueue}
@@ -809,12 +782,38 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               />
             )}
 
-            {activeTab === 'scores' && !slipOpen && (
-              <div className="space-y-4 animate-fadeIn">
-                <VotingCountdown matches={matchdayMatches} deviceBound={identity.bound} />
+            {activeTab === 'scores' && showDerbyPick && derbyMatch && (
+              <DerbyPickPopup
+                match={derbyMatch}
+                onPick={(option) => handleMakePrediction(derbyMatch, option)}
+              />
+            )}
 
+            {activeTab === 'scores' && showRemainingPicks && (
+              <PredictionSlipFlow
+                teams={availableTeams}
+                queue={pickQueue}
+                favouriteTeam={favouriteTeam}
+                pickedIds={new Set(userPredMap.keys())}
+                onSelectTeam={handleSelectFavouriteTeam}
+                onPick={handleMakePrediction}
+              />
+            )}
+
+            {activeTab === 'scores' && showSlipDashboard && (
+              <div className="space-y-4 animate-fadeIn">
+                {pairDays.length > 0 && (
+                  <MatchdayPair
+                    days={pairDays}
+                    activeMatchday={activeMatchday}
+                    activeDayKey={activeDayKey}
+                    onSelect={selectNewsMatchday}
+                  />
+                )}
+
+                <p className="px-1 text-sm font-black text-white">Slip {slipScore.got}/{slipScore.total}</p>
                 <UnifiedMatchdayDeck
-                  matches={matchdayMatches}
+                  matches={slipMatches}
                   userPredictions={userPredMap}
                   consensusMap={consensusMap}
                   allPredictions={predictions}
@@ -822,7 +821,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   favouriteTeam={favouriteTeam}
                   onMakePrediction={handleMakePrediction}
                   onDerbyUnlocked={handleDerbyUnlocked}
-                  onOpenDerbyPopup={(match, option) => setDerbyPopupData({ match, option })}
+                  onOpenDerbyPopup={isSecondMatchday ? undefined : (match, option) => setDerbyPopupData({ match, option })}
                   onOpenCompletionModal={() => setShowCompletionModal(true)}
                   onOpenMatchBanter={handleOpenMatchBanter}
                   onOpenFavouriteTeamModal={undefined}
@@ -847,7 +846,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         )}
       </main>
 
-      {!(mainNav === 'news' && activeTab === 'scores' && slipOpen) && <Footer />}
+      {!(mainNav === 'news' && activeTab === 'scores' && (!favouriteTeam || showDerbyPick || showRemainingPicks)) && <Footer />}
 
       {/* Derby Ultimate Share Popup with Share & Continue Options */}
       {derbyPopupData && (
@@ -860,6 +859,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           consensusMap={consensusMap}
           onClose={() => setDerbyPopupData(null)}
           onContinueSelecting={() => {
+            setSlipListOpen(true);
             setDerbyPopupData(null);
             setMainNav('news');
             setActiveTab('scores');
@@ -870,6 +870,71 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
             setActiveTab('banter');
             setBanterFilter('trending');
             window.scrollTo({ top: 0 });
+          }}
+        />
+      )}
+
+      {shareSlip && (
+        <ShareSlipPopup
+          matchday={shareSlip.matchday}
+          matches={[...fixtures.filter((match) => matchDayKey(match) === shareSlip.dayKey)].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby)))}
+          picks={userPredMap}
+          isFirst={pairDays[0]?.dayKey === shareSlip.dayKey}
+          onClose={() => setShareSlip(null)}
+          onShare={() => {
+            const slate = [...fixtures.filter((match) => matchDayKey(match) === shareSlip.dayKey)].sort((a, b) => Number(Boolean(b.isDerby)) - Number(Boolean(a.isDerby)));
+            const sharingFirst = pairDays[0]?.dayKey === shareSlip.dayKey;
+            shareService.shareSlip({
+              matches: slate,
+              userPredictions: userPredMap,
+              consensusMap,
+            }).then((sent) => {
+              if (!sent) return;
+              setShareSlip(null);
+              if (sharingFirst && pairDays[1]) setPeekNext(true);
+              else setShowSlips(true);
+            });
+          }}
+          onSeeNext={() => {
+            const next = pairDays[1];
+            if (!next?.dayKey) return;
+            setShareSlip(null);
+            setPeekNext(false);
+            setActiveDayKey(next.dayKey);
+            setActiveMatchday(next.matchday);
+            setSlipListOpen(true);
+            setMainNav('news');
+            setActiveTab('scores');
+          }}
+          onSeeArticles={() => {
+            setShareSlip(null);
+            setMainNav('news');
+            setActiveTab('banter');
+            setBanterFilter('latest');
+          }}
+          onSeeBanter={() => {
+            setShareSlip(null);
+            setMainNav('news');
+            setActiveTab('banter');
+            setBanterFilter('trending');
+          }}
+        />
+      )}
+
+      {peekNext && pairDays[0] && pairDays[1] && (
+        <PeekMatchdayPopup
+          matchday={pairDays[0].matchday}
+          nextMatchday={pairDays[1].matchday}
+          onClose={() => setPeekNext(false)}
+          onSeeNext={() => {
+            const next = pairDays[1];
+            if (!next?.dayKey) return;
+            setPeekNext(false);
+            setActiveDayKey(next.dayKey);
+            setActiveMatchday(next.matchday);
+            setSlipListOpen(true);
+            setMainNav('news');
+            setActiveTab('scores');
           }}
         />
       )}
@@ -958,8 +1023,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           userPredictions={userPredMap}
           consensusMap={consensusMap}
           onClose={() => setShowSlips(false)}
-          onPickMatchday={(day) => {
-            selectNewsMatchday(day);
+          onPickMatchday={(day, dayKey) => {
+            selectNewsMatchday(day, dayKey);
             setShowSlips(false);
             setMainNav('news');
             setActiveTab('scores');

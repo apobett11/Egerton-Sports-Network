@@ -1,20 +1,27 @@
 import { supabase } from '../../lib/supabase';
 import { anonymousIdentityService } from './anonymousIdentityService';
 import { matchdayCloseAt } from '../../lib/predictions/votingWindow';
+import { rememberPick, readDashboardCache } from '../../lib/predictions/predictionDashboardCache';
+import { matchDayKey } from '../../lib/predictions/weekendSlate';
+import { predictionSessionService } from './predictionSessionService';
 import type { PredictionOption, UserPrediction, Match } from '../../types/predictions';
 
 class PredictionService {
   private inMemoryPredictions: UserPrediction[] | null = null;
+  private activeLocks = new Set<string>();
 
   public getPredictions(): UserPrediction[] {
     if (this.inMemoryPredictions) return this.inMemoryPredictions;
-    this.inMemoryPredictions = [];
+    this.inMemoryPredictions = readDashboardCache().predictions;
     return this.inMemoryPredictions;
   }
 
   public hydrate(list: UserPrediction[]): void {
     const byMatch = new Map<string, UserPrediction>();
-    list.forEach((row) => byMatch.set(row.matchId, row));
+    this.getPredictions().forEach((row) => byMatch.set(row.matchId, row));
+    list.forEach((row) => {
+      if (!byMatch.has(row.matchId)) byMatch.set(row.matchId, row);
+    });
     this.inMemoryPredictions = Array.from(byMatch.values());
   }
 
@@ -28,8 +35,6 @@ class PredictionService {
     this.inMemoryPredictions = [];
   }
 
-  private activeLocks = new Set<string>();
-
   public async savePrediction(
     match: Match,
     option: PredictionOption,
@@ -40,13 +45,11 @@ class PredictionService {
       throw new Error('Voting is closed for this matchday.');
     }
 
-    // Double-click lock guard
     if (this.activeLocks.has(match.id)) {
       return this.getPredictions();
     }
     this.activeLocks.add(match.id);
 
-    // 2. Check if vote already exists (no change of vote once casted)
     const existing = this.getPredictions();
     const alreadyVoted = existing.find(p => p.matchId === match.id);
     if (alreadyVoted) {
@@ -54,7 +57,6 @@ class PredictionService {
       return existing;
     }
 
-    // Update local state immediately (instant optimistic responsiveness)
     const updatedRecord: UserPrediction = {
       matchId: match.id,
       prediction: option,
@@ -64,8 +66,9 @@ class PredictionService {
 
     const nextList = [...existing, updatedRecord];
     this.inMemoryPredictions = nextList;
+    rememberPick(match.id, option, match.matchday);
+    predictionSessionService.pushRemoteSession();
 
-    // 3. Persist to backend asynchronously
     this.persistToBackend(match, option)
       .catch(err => {
         console.warn('Backend prediction persist deferred:', err);
@@ -98,8 +101,17 @@ class PredictionService {
       if (error && error.code !== '23505' && !/already locked|duplicate/i.test(error.message || '')) {
         console.warn('Prediction lock deferred:', error.message);
       }
+
+      const dayKey = matchDayKey(match);
+      await supabase.rpc('touch_prediction_slip', {
+        p_device_id: devRowId,
+        p_secret: creds.secret,
+        p_matchday: match.matchday,
+        p_day_key: dayKey,
+        p_day_label: new Date(`${dayKey}T12:00:00Z`).getUTCDay() === 0 ? 'Sunday' : 'Saturday',
+      });
     } catch {
-      // Offline fallback
+      // Offline fallback: the device cache already holds the pick.
     }
   }
 

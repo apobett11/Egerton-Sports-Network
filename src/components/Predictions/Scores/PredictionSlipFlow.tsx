@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
+import { patchDashboardCache, readDashboardCache } from '../../../lib/predictions/predictionDashboardCache';
 import { dayLabel, matchDayKey } from '../../../lib/predictions/weekendSlate';
 import type { Match, PredictionOption, Team } from '../../../types/predictions';
 
@@ -9,7 +10,7 @@ interface PredictionSlipFlowProps {
   queue: Match[];
   favouriteTeam: string | null;
   pickedIds: Set<string>;
-  onSelectTeam: (teamName: string) => void;
+  onSelectTeam: (teamName: string, team?: Team) => void;
   onPick: (match: Match, option: PredictionOption) => void;
 }
 
@@ -94,6 +95,22 @@ function MatchPickCard({
   );
 }
 
+export function DerbyPickPopup({
+  match,
+  onPick,
+}: {
+  match: Match;
+  onPick: (option: PredictionOption) => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 top-36 z-30 flex items-start justify-center p-3 sm:p-4">
+      <div className="w-full max-w-md">
+        <MatchPickCard match={{ ...match, isDerby: true }} onPick={onPick} />
+      </div>
+    </div>
+  );
+}
+
 export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   teams,
   queue,
@@ -103,6 +120,8 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   onPick,
 }) => {
   const [fanaticAnswered, setFanaticAnswered] = useState(() => {
+    const cached = readDashboardCache();
+    if (cached.fanaticAnswered || cached.favouriteTeam) return true;
     try {
       return localStorage.getItem('esn_fanatic_prompt_seen') === 'true';
     } catch {
@@ -111,12 +130,7 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   });
   const continueToTeams = (answer: 'yes' | 'no') => {
     setFanaticAnswered(true);
-    try {
-      localStorage.setItem('esn_fanatic_prompt_seen', 'true');
-      localStorage.setItem('esn_football_fanatic', answer);
-    } catch {
-      // The prompt can still advance for storage-restricted browsers.
-    }
+    patchDashboardCache({ fanaticAnswered: true, footballFanatic: answer, step: 'club' });
   };
   const remaining = queue.filter((match) => !pickedIds.has(match.id));
   const current = remaining[0] ?? null;
@@ -127,7 +141,7 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
     if (!fanaticAnswered) {
       return (
         <div className="epl-slip-stage flex items-center justify-center overflow-hidden">
-          <section className="slip-card-in w-full max-w-md rounded-3xl border border-[#29435d] bg-[#0e1c2b] px-5 py-6 text-center shadow-xl">
+          <section className="slip-card-in w-full max-w-md rounded-3xl border border-[#29435d] bg-[#0e1c2b] px-5 py-6 text-center shadow-xl" data-onboarding-step="fanatic">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#ff0046]">EPL predictions</p>
             <h1 className="mt-2 text-xl font-semibold text-white">Are you a football fanatic?</h1>
             <p className="mt-1 text-sm font-normal text-slate-400">
@@ -155,7 +169,7 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
     }
 
     return (
-      <div className="epl-slip-stage flex flex-col overflow-hidden">
+      <div className="epl-slip-stage flex flex-col overflow-hidden" data-onboarding-step="club">
         <h1 className="shrink-0 px-1 pt-1 text-center text-sm font-semibold leading-tight text-white sm:text-base">
           Which EPL team are you a hardcore fan of?
         </h1>
@@ -170,8 +184,9 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
             <button
               key={team.id || team.name}
               type="button"
-              onClick={() => onSelectTeam(team.name)}
+              onClick={() => onSelectTeam(team.name, team)}
               className="flex min-h-0 min-w-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-slate-700/80 bg-[#0a1624] px-1 py-1 text-center cursor-pointer hover:border-[#ff0046]"
+              data-team-name={team.name}
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 sm:h-7 sm:w-7">
                 {team.logoUrl ? (
@@ -180,8 +195,8 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
                   <span className="text-[9px] font-black text-slate-300">{team.shortName?.slice(0, 3)}</span>
                 )}
               </span>
-              <span className="mt-0.5 w-full truncate text-[10px] font-black leading-tight text-white sm:text-[11px]">
-                {formatTeamName(team.name)}
+              <span className="mt-0.5 line-clamp-2 w-full text-[9px] font-black leading-tight text-white sm:text-[10px]">
+                {team.name}
               </span>
             </button>
           ))}
