@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
+import { fetchRecordedFixtureIds } from '../lib/supabaseClient';
 import { UserRole, Player, PracticeSession, Match, StandingEntry, LinesmanMatch } from '../types';
 import {
   Users,
@@ -69,41 +70,85 @@ export const Homepage: React.FC<HomepageProps> = ({
   onOpenMatchEventsModal,
   onOpenTeamModal,
 }) => {
-  // Step progression listener (Upload Player Kits -> Arrange Match Squad -> Update Match Events)
+  // Emergency border: match details (all 8) -> kits (one) -> logo -> match squad
   const [progressionVersion, setProgressionVersion] = useState(0);
+  const [recordedMatchCount, setRecordedMatchCount] = useState(0);
 
   useEffect(() => {
     const handleUpdate = () => setProgressionVersion((v) => v + 1);
     window.addEventListener('coach_progression_updated', handleUpdate);
+    window.addEventListener('team_logo_updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
       window.removeEventListener('coach_progression_updated', handleUpdate);
+      window.removeEventListener('team_logo_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
 
+  useEffect(() => {
+    const fixtureIds = (matches || []).map((match) => match.id).filter(Boolean);
+    const teamId = teamInfo?.id;
+    if (!teamId || fixtureIds.length === 0) {
+      setRecordedMatchCount(0);
+      return;
+    }
+    let cancelled = false;
+    fetchRecordedFixtureIds(fixtureIds, teamId).then((ids) => {
+      if (!cancelled) setRecordedMatchCount(ids.length);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [matches, teamInfo?.id, progressionVersion]);
+
+  const isMatchDetailsDone = recordedMatchCount >= 8;
+
   const isKitsDone = useMemo(() => {
+    const kits = teamInfo?.kits_config || [];
+    const hasUploadedKit = kits.some((kit) => {
+      const url = (kit.imageUrl || '').trim();
+      if (url.length < 8) return false;
+      const lower = url.toLowerCase();
+      return !lower.startsWith('data:') && !lower.includes('unsplash.com') && !lower.includes('placeholder');
+    });
+    if (hasUploadedKit) return true;
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('coach_kits_completed') === 'true';
-  }, [progressionVersion]);
+  }, [teamInfo?.kits_config, progressionVersion]);
+
+  const isLogoDone = useMemo(() => {
+    const url = (teamInfo?.logo_url || teamInfo?.crest_url || '').trim();
+    if (url.length < 8) return false;
+    const lower = url.toLowerCase();
+    return !lower.startsWith('data:') && !lower.includes('unsplash.com') && !lower.includes('placeholder');
+  }, [teamInfo?.logo_url, teamInfo?.crest_url]);
 
   const isSquadDone = useMemo(() => {
+    const squad = teamInfo?.temporary_match_squad;
+    const hasSquad = Boolean(
+      (teamInfo?.starting_xi_str && teamInfo.starting_xi_str.trim()) ||
+      (squad && typeof squad === 'object' && Object.keys(squad).length > 0)
+    );
+    if (hasSquad) return true;
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('coach_squad_completed') === 'true';
-  }, [progressionVersion]);
+  }, [teamInfo?.starting_xi_str, teamInfo?.temporary_match_squad, progressionVersion]);
 
-  const isEventsDone = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('coach_events_completed') === 'true';
-  }, [progressionVersion]);
-
-  const activeCommandDot: 'kits' | 'squad' | 'events' | null = !isKitsDone
+  const emergencyTarget: 'events' | 'kits' | 'logo' | 'squad' | null = !isMatchDetailsDone
+    ? 'events'
+    : !isKitsDone
     ? 'kits'
+    : !isLogoDone
+    ? 'logo'
     : !isSquadDone
     ? 'squad'
-    : !isEventsDone
-    ? 'events'
     : null;
+
+  const commandBorder = (active: boolean, hover: string) =>
+    active
+      ? 'border-2 border-[#ff0046] shadow-[0_0_0_3px_rgba(255,0,70,0.18)]'
+      : `border border-slate-200/80 dark:border-[#1a2e45] ${hover}`;
 
   // Resolve team identity from live database teamInfo
   const ourTeamName = teamInfo?.name || 'Egerton FC';
@@ -420,7 +465,7 @@ export const Homepage: React.FC<HomepageProps> = ({
         </div>
       </section>
 
-      {/* 2. SECTION: COACH COMMAND CENTER (WITH SEQUENTIAL GUIDED RED DOT) */}
+      {/* 2. SECTION: COACH COMMAND CENTER */}
       <section className="relative w-full bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] rounded-2xl shadow-xs overflow-hidden transition-all">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
 
@@ -441,24 +486,17 @@ export const Homepage: React.FC<HomepageProps> = ({
         {/* CARD CONTENT */}
         <div className="p-4 sm:p-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {/* Button 1: Upload Player Kits */}
             <button
               type="button"
               onClick={() => onNavigateView('KITS')}
-              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className={`relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'kits', 'hover:border-emerald-500/50 dark:hover:border-emerald-500/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >
-              {activeCommandDot === 'kits' && (
-                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
-                </span>
-              )}
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Shirt className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Upload Player Kits
+                  Kits
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
                   Uniforms & Gear
@@ -466,24 +504,17 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </button>
 
-            {/* Button 2: Arrange Match Squad */}
             <button
               type="button"
               onClick={() => onNavigateView('TACTICS')}
-              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-blue-500/50 dark:hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className={`relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'squad', 'hover:border-blue-500/50 dark:hover:border-blue-500/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >
-              {activeCommandDot === 'squad' && (
-                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
-                </span>
-              )}
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Users className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Arrange Match Squad
+                  Match Squad
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
                   2D Pitch & Lineup
@@ -491,24 +522,17 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </button>
 
-            {/* Button 3: Update Match Events */}
             <button
               type="button"
               onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
-              className="relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-amber-500/50 dark:hover:border-amber-500/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className={`relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'events', 'hover:border-amber-500/50 dark:hover:border-amber-500/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >
-              {activeCommandDot === 'events' && (
-                <span className="absolute top-2.5 right-2.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ff0046]"></span>
-                </span>
-              )}
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Trophy className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Update Match Events
+                  Match Details
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
                   Goals & Timeline
@@ -516,21 +540,20 @@ export const Homepage: React.FC<HomepageProps> = ({
               </div>
             </button>
 
-            {/* Button 4: Edit Team Details */}
             <button
               type="button"
               onClick={() => onOpenTeamModal && onOpenTeamModal()}
-              className="group p-4 bg-slate-50/70 dark:bg-[#112236]/60 border border-slate-200/80 dark:border-[#1a2e45] hover:border-[#ff0046]/50 dark:hover:border-[#ff0046]/50 rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]"
+              className={`group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'logo', 'hover:border-[#ff0046]/50 dark:hover:border-[#ff0046]/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >
               <div className="w-10 h-10 rounded-xl bg-[#ff0046]/10 text-[#ff0046] group-hover:bg-[#ff0046] group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs">
                 <Shield className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                  Edit Team Details
+                  Logo
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                  Logo, Email & Password
+                  Crest, Email & Password
                 </p>
               </div>
             </button>
