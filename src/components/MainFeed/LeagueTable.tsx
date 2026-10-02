@@ -128,6 +128,16 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   const [scorersLoaded, setScorersLoaded] = useState(false);
   const [potwLoaded, setPotwLoaded] = useState(false);
   const [assistsLoaded, setAssistsLoaded] = useState(false);
+  const scorersLoadedRef = useRef(false);
+  const assistsLoadedRef = useRef(false);
+
+  useEffect(() => {
+    scorersLoadedRef.current = scorersLoaded;
+  }, [scorersLoaded]);
+
+  useEffect(() => {
+    assistsLoadedRef.current = assistsLoaded;
+  }, [assistsLoaded]);
 
   // 1. Unified Standings Tables Fetcher ("Call the tables as a whole")
   const loadStandingsTables = useCallback(() => {
@@ -182,6 +192,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     loadStandingsTables();
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let playerStatsTimer: ReturnType<typeof setTimeout> | null = null;
     const triggerDebouncedRefresh = () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       if (debounceTimer) clearTimeout(debounceTimer);
@@ -199,13 +210,22 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         if (status === 'FT' || status === 'FINAL') triggerDebouncedRefresh();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (playerStatsTimer) clearTimeout(playerStatsTimer);
+        playerStatsTimer = setTimeout(() => {
+          if (scorersLoadedRef.current) loadScorers();
+          if (assistsLoadedRef.current) loadAssists();
+        }, 400);
+      })
       .subscribe();
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      if (playerStatsTimer) clearTimeout(playerStatsTimer);
       supabase.removeChannel(channel);
     };
-  }, [loadStandingsTables]);
+  }, [loadStandingsTables, loadScorers, loadAssists]);
 
   // Viewport observer to trigger lazy loading of sub-sections when scrolled near
   useEffect(() => {

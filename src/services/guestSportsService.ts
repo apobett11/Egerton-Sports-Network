@@ -842,10 +842,6 @@ async function getTopScorersFromEvents(limitCount: number, competitionId?: strin
 
 export async function getGuestAssists(limitCount = 10, competitionId?: string): Promise<GuestAssistLeader[]> {
   const cacheKey = `assists_${competitionId || 'all'}_${limitCount}`;
-  const cached = guestCache.get<GuestAssistLeader[]>('players', cacheKey);
-  if (cached && cached.length > 0) {
-    return cached;
-  }
 
   try {
     let psQuery = supabase
@@ -906,16 +902,13 @@ export async function getGuestAssists(limitCount = 10, competitionId?: string): 
     return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestAssists exception:', err);
-    return [];
+    const stored = guestCache.getStale<GuestAssistLeader[]>('players', cacheKey);
+    return stored && stored.length > 0 ? stored : [];
   }
 }
 
 export async function getGuestCleanSheets(limitCount = 10, competitionId?: string): Promise<GuestCleanSheetLeader[]> {
   const cacheKey = `cleansheets_${competitionId || 'all'}_${limitCount}`;
-  const cached = guestCache.get<GuestCleanSheetLeader[]>('players', cacheKey);
-  if (cached && cached.length > 0) {
-    return cached;
-  }
 
   try {
     let psQuery = supabase
@@ -976,7 +969,8 @@ export async function getGuestCleanSheets(limitCount = 10, competitionId?: strin
     return results;
   } catch (err: any) {
     console.error('[guestSportsService] getGuestCleanSheets exception:', err);
-    return [];
+    const stored = guestCache.getStale<GuestCleanSheetLeader[]>('players', cacheKey);
+    return stored && stored.length > 0 ? stored : [];
   }
 }
 

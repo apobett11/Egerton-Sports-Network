@@ -272,6 +272,34 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [loadStandings]);
 
+  const perfLoadedRef = useRef(false);
+  useEffect(() => {
+    perfLoadedRef.current = perfHasLoaded;
+  }, [perfHasLoaded]);
+
+  useEffect(() => {
+    let playerStatsDebounce: ReturnType<typeof setTimeout> | null = null;
+    const reloadPlayerAnalytics = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      if (playerStatsDebounce) clearTimeout(playerStatsDebounce);
+      playerStatsDebounce = setTimeout(() => {
+        guestCache.invalidate('players');
+        guestCache.invalidate('performance');
+        if (perfLoadedRef.current) loadPerformance();
+      }, 400);
+    };
+
+    const channel = supabase
+      .channel('public-homepage-player-stats-v1')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, reloadPlayerAnalytics)
+      .subscribe();
+
+    return () => {
+      if (playerStatsDebounce) clearTimeout(playerStatsDebounce);
+      supabase.removeChannel(channel);
+    };
+  }, [loadPerformance]);
+
   return (
     <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
       <GuestMatchdayFeed

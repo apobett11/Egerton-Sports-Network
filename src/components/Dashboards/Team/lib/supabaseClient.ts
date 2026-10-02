@@ -1,4 +1,5 @@
 import { supabase } from '../../../../lib/supabase';
+import { guestCache } from '../../../../lib/guestCache';
 import { TEAM_DASHBOARD_COLUMNS, TEAM_LIST_COLUMNS } from '../../../../lib/teamColumns';
 import { publicTeamLogo, prioritizeTeamLogo, reconcileLogoStamps, rememberTeamLogo } from '../../../../lib/teamLogoCache';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
@@ -1987,12 +1988,24 @@ export async function saveCoachMatchEvents(
                 return { success: false, error: insError.message };
             }
 
-            // Immediately trigger algorithm to recalculate clean sheets, goals, and assists
-            try {
-                await supabase.rpc('recalculate_all_player_stats');
-            } catch (recalcErr) {
-                console.warn('[Supabase Client] Real-time recalculate notice:', recalcErr);
+            // Rebuild goals, assists, and clean sheets from the full event log.
+            // PostgREST returns errors on the result; it does not throw.
+            const { error: recalcError } = await supabase.rpc('recalculate_all_player_stats');
+            if (recalcError) {
+                console.error('[Supabase Client] Player analytics rebuild failed:', recalcError.message);
+                await supabase
+                    .from('match_events')
+                    .delete()
+                    .eq('fixture_id', fixtureId)
+                    .eq('team_id', actualTeamId);
+                return {
+                    success: false,
+                    error: 'Player analytics could not be updated from these match details. Nothing was saved. Please try again.',
+                };
             }
+
+            guestCache.invalidate('players');
+            guestCache.invalidate('performance');
         }
 
         return { success: true };
