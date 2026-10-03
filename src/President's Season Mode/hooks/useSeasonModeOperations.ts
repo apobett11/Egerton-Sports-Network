@@ -22,6 +22,7 @@ import {
 import { PresidentActionBridge } from '../../services/presidentAgent0Bridge';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
+import { guestCache } from '../../lib/guestCache';
 import { isSessionActive } from '../../lib/inactivityManager';
 import { canMakeDashboardCall, recordSessionCall } from '../../lib/sessionBudgetManager';
 
@@ -352,6 +353,32 @@ export function useSeasonModeOperations() {
     [fixtures, showToast, loadData]
   );
 
+  const handleExecuteChangeMatchResult = useCallback(
+    async (matchId: string, matchdayNumber: number, homeScore: number, awayScore: number) => {
+      try {
+        const res = await seasonOperationsService.updateMatchResult(
+          matchId,
+          matchdayNumber,
+          homeScore,
+          awayScore,
+          fixtures
+        );
+        if (res.success) {
+          setFixtures(res.updatedFixtures);
+          guestCache.invalidate('fixtures');
+          guestCache.invalidate('standings');
+          showToast(`Matchday ${matchdayNumber} result successfully updated: ${homeScore} - ${awayScore}`);
+          await loadData({ silent: true });
+        } else {
+          showToast(res.error || 'Failed to update match result.');
+        }
+      } catch (err: any) {
+        showToast(err.message || 'Failed to update match result.');
+      }
+    },
+    [fixtures, showToast, loadData]
+  );
+
   const handleExecuteFlagLinesmanDefault = useCallback(
     async (matchId: string, team: 1 | 2) => {
       try {
@@ -481,6 +508,7 @@ export function useSeasonModeOperations() {
     handleExecuteSwapReferee,
     handleExecuteShiftMatch,
     handleExecuteCancelMatch,
+    handleExecuteChangeMatchResult,
     handleExecuteCancelMatchday,
     handleExecuteFlagLinesmanDefault,
     handleExecuteUpdatePitchAvailability,

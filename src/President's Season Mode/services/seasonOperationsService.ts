@@ -401,6 +401,85 @@ export const seasonOperationsService = {
   },
 
   /**
+   * Change or correct the result of a finished match strictly within its matchday
+   */
+  async updateMatchResult(
+    matchId: string,
+    matchdayNumber: number,
+    homeScore: number,
+    awayScore: number,
+    fixtures: OperationalMatch[]
+  ): Promise<{ success: boolean; updatedFixtures: OperationalMatch[]; error: string | null }> {
+    try {
+      const match = fixtures.find((f) => f.id === matchId);
+      if (!match) return { success: false, updatedFixtures: fixtures, error: 'Match not found' };
+
+      // Strictly enforce that this change is within the matchday the game was played
+      if (match.matchday !== matchdayNumber) {
+        return {
+          success: false,
+          updatedFixtures: fixtures,
+          error: `Result change rejected: Match belongs to Matchday ${match.matchday}, not Matchday ${matchdayNumber}. Changing results is strictly restricted to the matchday where the game was played.`,
+        };
+      }
+
+      if (homeScore < 0 || awayScore < 0 || isNaN(homeScore) || isNaN(awayScore)) {
+        return { success: false, updatedFixtures: fixtures, error: 'Scores must be valid non-negative numbers.' };
+      }
+
+      const nowIso = new Date().toISOString();
+
+      const { error: fixErr } = await supabase
+        .from('fixtures')
+        .update({
+          score_home: homeScore,
+          score_away: awayScore,
+          status: 'FT',
+          updated_at: nowIso,
+        })
+        .eq('id', matchId);
+
+      if (fixErr) throw fixErr;
+
+      // Update matchday_schedules status if present
+      await supabase
+        .from('matchday_schedules')
+        .update({
+          status: 'FT',
+          updated_at: nowIso,
+        })
+        .eq('fixture_id', matchId);
+
+      const updatedFixtures = fixtures.map((f) =>
+        f.id === matchId
+          ? { ...f, score_home: homeScore, score_away: awayScore, status: 'FT' as const, updated_at: nowIso }
+          : f
+      );
+
+      // Audit log entry
+      await supabase.from('audit_logs').insert([
+        {
+          action: 'MATCH_RESULT_MODIFIED',
+          resource_type: 'fixtures',
+          resource_id: matchId,
+          details: {
+            match_id: matchId,
+            matchday: matchdayNumber,
+            home_score: homeScore,
+            away_score: awayScore,
+            previous_home_score: match.score_home,
+            previous_away_score: match.score_away,
+          },
+        },
+      ]);
+
+      return { success: true, updatedFixtures, error: null };
+    } catch (err: any) {
+      return { success: false, updatedFixtures: fixtures, error: err.message || 'Failed to update match result' };
+    }
+  },
+
+  /**
    * FRIENDLIES ENGINE & CONFLICT VALIDATION
    */
   validateFriendlyConflicts(

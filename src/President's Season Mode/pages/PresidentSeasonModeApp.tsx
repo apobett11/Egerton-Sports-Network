@@ -44,6 +44,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
     handleExecuteSwapReferee,
     handleExecuteShiftMatch,
     handleExecuteCancelMatch,
+    handleExecuteChangeMatchResult,
     handleExecuteCancelMatchday,
     handleExecuteFlagLinesmanDefault,
     handleExecuteUpdatePitchAvailability,
@@ -133,6 +134,7 @@ export const PresidentSeasonModeApp: React.FC<PresidentSeasonModeAppProps> = ({ 
                 selectedDateStr={selectedDateStr}
                 onDateChange={(d) => setSelectedDateStr(d)}
                 onCancelMatch={handleExecuteCancelMatch}
+                onChangeMatchResult={handleExecuteChangeMatchResult}
                 onSwapReferee={handleExecuteSwapReferee}
                 onShiftMatch={handleExecuteShiftMatch}
                 onFlagLinesmanDefault={handleExecuteFlagLinesmanDefault}

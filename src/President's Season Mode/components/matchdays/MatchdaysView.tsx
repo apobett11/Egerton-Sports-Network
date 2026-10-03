@@ -23,9 +23,11 @@ import {
   Layers,
   X,
   ExternalLink,
+  Edit3,
 } from 'lucide-react';
 import type { OperationalMatch, SeasonReferee, SeasonPitch, SeasonTeam } from '../../types/seasonMode';
 import { COMPETITIONS } from '../../constants/seasonConstants';
+import { seasonOperationsService } from '../../services/seasonOperationsService';
 
 interface MatchdaysViewProps {
   isDark: boolean;
@@ -36,6 +38,7 @@ interface MatchdaysViewProps {
   selectedDateStr?: string;
   onDateChange?: (dateStr: string) => void;
   onCancelMatch: (fixtureId: string, reason: string) => void;
+  onChangeMatchResult?: (matchId: string, matchdayNumber: number, homeScore: number, awayScore: number) => Promise<void> | void;
   onSwapReferee: (fixtureId: string, newRefId: string) => void;
   onShiftMatch: (fixtureId: string, newTime: string) => void;
   onFlagLinesmanDefault: (matchId: string, team: 1 | 2) => void;
@@ -67,6 +70,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
   selectedDateStr,
   onDateChange,
   onCancelMatch,
+  onChangeMatchResult,
   onSwapReferee,
   onShiftMatch,
   onFlagLinesmanDefault,
@@ -90,6 +94,13 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
   const [shiftTargetMatch, setShiftTargetMatch] = useState<OperationalMatch | null>(null);
   const [proposedShiftTime, setProposedShiftTime] = useState<string>('');
+
+  // Result Editing State (Strictly bound to the matchday where the game was played)
+  const [editResultMatch, setEditResultMatch] = useState<{ match: OperationalMatch; matchdayNumber: number } | null>(null);
+  const [homeScoreInput, setHomeScoreInput] = useState<number>(0);
+  const [awayScoreInput, setAwayScoreInput] = useState<number>(0);
+  const [isSavingResult, setIsSavingResult] = useState<boolean>(false);
+  const [editResultError, setEditResultError] = useState<string | null>(null);
 
   // Fast Map Lookups strictly by UID without premeditated/prefilled fallbacks
   const teamsMap = useMemo(() => {
@@ -344,6 +355,101 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
     }
   };
 
+  // Today's matches derivation
+  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const formattedTodayDate = useMemo(() => {
+    const d = new Date();
+    return d.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }, []);
+
+  const todayMatches = useMemo(() => {
+    if (!fixtures || fixtures.length === 0) return [];
+    return fixtures.filter((f) => {
+      if (!f.scheduled_time) return false;
+      return f.scheduled_time.split('T')[0] === todayDateStr;
+    });
+  }, [fixtures, todayDateStr]);
+
+  const todayMatchdays = useMemo(() => {
+    const set = new Set<number>();
+    todayMatches.forEach((m) => {
+      if (m.matchday) set.add(m.matchday);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [todayMatches]);
+
+  // Open Edit Result modal strictly within the matchday where the game was played
+  const handleOpenEditResult = (match: OperationalMatch, matchdayNumber: number) => {
+    const officialMatchday = match.matchday || matchdayNumber;
+    if (match.matchday && match.matchday !== matchdayNumber) {
+      alert(`Strict Matchday Boundary: Match belongs to Matchday ${match.matchday}, cannot be edited under Matchday ${matchdayNumber}.`);
+      return;
+    }
+    setEditResultMatch({ match, matchdayNumber: officialMatchday });
+    setHomeScoreInput(typeof match.score_home === 'number' ? match.score_home : 0);
+    setAwayScoreInput(typeof match.score_away === 'number' ? match.score_away : 0);
+    setEditResultError(null);
+  };
+
+  const handleSaveResult = async () => {
+    if (!editResultMatch) return;
+    const { match, matchdayNumber } = editResultMatch;
+
+    // Strict boundary enforcement
+    if (match.matchday && match.matchday !== matchdayNumber) {
+      setEditResultError(
+        `Cannot change result: This game was played in Matchday ${match.matchday}, not Matchday ${matchdayNumber}. Modifications are strictly restricted to the matchday where the game was played.`
+      );
+      return;
+    }
+
+    if (homeScoreInput < 0 || awayScoreInput < 0 || isNaN(homeScoreInput) || isNaN(awayScoreInput)) {
+      setEditResultError('Scores must be non-negative integers.');
+      return;
+    }
+
+    setIsSavingResult(true);
+    setEditResultError(null);
+
+    try {
+      if (onChangeMatchResult) {
+        await onChangeMatchResult(match.id, matchdayNumber, homeScoreInput, awayScoreInput);
+      } else {
+        await seasonOperationsService.updateMatchResult(
+          match.id,
+          matchdayNumber,
+          homeScoreInput,
+          awayScoreInput,
+          fixtures
+        );
+      }
+      // Update the match object in popupMatchday if active
+      if (popupMatchday) {
+        setPopupMatchday((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            matches: prev.matches.map((m) =>
+              m.id === match.id
+                ? { ...m, score_home: homeScoreInput, score_away: awayScoreInput, status: 'FT' as const }
+                : m
+            ),
+          };
+        });
+      }
+      setEditResultMatch(null);
+    } catch (err: any) {
+      setEditResultError(err.message || 'Failed to update match result.');
+    } finally {
+      setIsSavingResult(false);
+    }
+  };
+
   if (!fixtures || fixtures.length === 0) {
     return (
       <div className="space-y-6 animate-fadeIn pb-16">
@@ -531,6 +637,215 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2.5 TODAY'S MATCHES SECTION (LIVE / SCHEDULED TODAY WITH POPUP QUICK LAUNCH) */}
+      {/* ========================================================================= */}
+      <div
+        className={`p-4 sm:p-5 rounded-md border ${
+          isDark ? 'bg-[#0e1c2b] border-[#1a2e45]' : 'bg-white border-[#e6e8ec] shadow-xs'
+        } space-y-3`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff0046] animate-pulse" />
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+              <span>Today&apos;s Matches</span>
+              <span className="text-slate-400 font-normal">({formattedTodayDate})</span>
+            </h2>
+            {todayMatches.length > 0 && (
+              <span className="px-2 py-0.5 rounded-sm bg-[#00b04f]/20 text-[#00b04f] border border-[#00b04f]/40 font-mono font-bold text-[10px] uppercase">
+                {todayMatches.length} in play / scheduled
+              </span>
+            )}
+          </div>
+
+          {todayMatchdays.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Today&apos;s Matchdays:</span>
+              {todayMatchdays.map((mdNum) => {
+                const group = matchdayGroups.find((g) => g.matchdayNumber === mdNum);
+                return (
+                  <button
+                    key={mdNum}
+                    onClick={() => {
+                      if (group) handleSelectMatchday(group);
+                    }}
+                    className="px-2.5 py-1 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-[#ff0046] hover:text-white border border-[#ff0046]/40 text-xs font-black uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                    title={`Open Matchday ${mdNum} Popup`}
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Open MD {mdNum} Popup</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {todayMatches.length === 0 ? (
+          <div
+            className={`p-4 rounded-md border text-center space-y-2 ${
+              isDark ? 'bg-[#0a1520] border-[#14263b]' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2 text-slate-400">
+              <CalendarIcon className="w-4 h-4 text-slate-500" />
+              <span className="text-xs font-bold">
+                No fixtures officially scheduled on campus for today ({formattedTodayDate}).
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 max-w-lg mx-auto">
+              Click any matchday card in the directory below to view all scheduled fixtures in the official popup modal and change results strictly within each matchday.
+            </p>
+            {activeSelectedMatchday && (
+              <button
+                onClick={() => setPopupMatchday(activeSelectedMatchday)}
+                className="mt-1 px-3 py-1.5 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white border border-white/10 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-[#ff0046]" />
+                <span>Open Matchday {activeSelectedMatchday.matchdayNumber} in Popup</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-[#14263b]">
+            <table className="w-full text-left border-collapse min-w-[900px]">
+              <thead>
+                <tr
+                  className={`border-b text-[10px] font-black uppercase tracking-wider ${
+                    isDark ? 'bg-[#112236] border-[#1a2e45] text-slate-300' : 'bg-[#f8f9fa] border-[#e6e8ec] text-slate-600'
+                  }`}
+                >
+                  <th className="py-2 px-3 w-[80px]">Matchday</th>
+                  <th className="py-2 px-3 w-[100px]">Time</th>
+                  <th className="py-2 px-3 w-[100px]">Division</th>
+                  <th className="py-2 px-3 min-w-[240px]">Fixture (Home vs Away)</th>
+                  <th className="py-2 px-3 min-w-[160px]">Pitch / Venue</th>
+                  <th className="py-2 px-3 w-[90px] text-center">Status</th>
+                  <th className="py-2 px-3 w-[170px] text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#14263b] text-xs font-semibold">
+                {todayMatches.map((match) => {
+                  const isPlayed = match.status === 'FT';
+                  const isCancelled = match.status === 'CANCELLED';
+                  const isEpl =
+                    match.competition_id === COMPETITIONS.PREMIER_LEAGUE.id ||
+                    (match as any).competition?.slug === 'epl';
+
+                  const hasValidTime =
+                    match.scheduled_time &&
+                    match.scheduled_time.includes('T') &&
+                    !match.scheduled_time.endsWith('T00:00:00') &&
+                    !match.scheduled_time.endsWith('T00:00:00.000Z');
+                  const timeStr = hasValidTime
+                    ? new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : 'Pending';
+
+                  const homeInfo = resolvePlayingTeam(match.home_team_id, match.home_team);
+                  const awayInfo = resolvePlayingTeam(match.away_team_id, match.away_team);
+                  const pitchInfo = resolvePitchVenue(null, match.venue);
+                  const matchdayNum = match.matchday || 1;
+
+                  return (
+                    <tr
+                      key={match.id}
+                      className={`hover:bg-[#13263b] transition-colors ${
+                        isPlayed ? 'bg-emerald-950/10' : isCancelled ? 'bg-rose-950/10 opacity-75' : ''
+                      }`}
+                    >
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-xs bg-[#152a40] text-amber-400 border border-[#223b56] font-mono font-black text-[10px]">
+                          MD {matchdayNum}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap font-mono text-slate-200">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#ff0046]" />
+                          <span>{timeStr}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <span
+                          className={`px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase ${
+                            isEpl
+                              ? 'bg-[#ff0046]/15 text-[#ff0046] border border-[#ff0046]/30'
+                              : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+                          }`}
+                        >
+                          {isEpl ? 'EPL' : 'Champ'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white truncate max-w-[120px] text-right">
+                            {homeInfo.name || 'Home'}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-xs bg-[#15273b] border border-[#223b56] text-center font-mono font-bold text-[10px] text-white shrink-0 min-w-[32px]">
+                            {isPlayed ? (
+                              <span className="text-[#00b04f] font-black">{match.score_home} - {match.score_away}</span>
+                            ) : (
+                              'VS'
+                            )}
+                          </span>
+                          <span className="font-bold text-white truncate max-w-[120px]">
+                            {awayInfo.name || 'Away'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap text-slate-300">
+                        <div className="flex items-center gap-1 truncate max-w-[140px]">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{pitchInfo.name || 'Unassigned'}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-center whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded-xs text-[9px] font-black uppercase ${
+                            isPlayed
+                              ? 'bg-[#00b04f]/15 text-[#00b04f] border border-[#00b04f]/30'
+                              : isCancelled
+                              ? 'bg-[#d63031]/15 text-[#d63031] border border-[#d63031]/30'
+                              : 'bg-[#152a40] text-slate-300 border border-[#1a2e45]'
+                          }`}
+                        >
+                          {match.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isPlayed && (
+                            <button
+                              onClick={() => handleOpenEditResult(match, matchdayNum)}
+                              className="px-2 py-1 rounded-md bg-[#00b04f]/20 hover:bg-[#00b04f] text-[#00b04f] hover:text-white border border-[#00b04f]/40 font-bold text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                              title={`Change Result strictly within Matchday ${matchdayNum}`}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Change Result</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const group = matchdayGroups.find((g) => g.matchdayNumber === matchdayNum);
+                              if (group) handleSelectMatchday(group);
+                            }}
+                            className="px-2 py-1 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-slate-300 hover:text-white border border-white/10 font-bold text-[10px] flex items-center gap-1 transition-all cursor-pointer"
+                            title={`Open Matchday ${matchdayNum} Popup`}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>MD {matchdayNum} Popup</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -820,6 +1135,20 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
               </div>
             </div>
 
+            {/* POPUP ADMINISTRATIVE BANNER */}
+            <div className="px-4 py-2 bg-[#122336] border-b border-[#1a2e45] flex items-center justify-between text-[11px] text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#00b04f] animate-pulse" />
+                <span className="font-bold text-white uppercase tracking-wider text-[10px]">
+                  Matchday {popupMatchday.matchdayNumber} Operations Console
+                </span>
+                <span className="text-slate-400 hidden sm:inline">• Results of finished matches can be modified strictly within this matchday</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Leg {popupMatchday.leg} • {popupMatchday.matches.length} Matches
+              </span>
+            </div>
+
             {/* POPUP BODY: TABLE OF SINGLE NEAT ROWS */}
             <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4 bg-[#0a1520]">
               {renderMatchdayTable(popupMatchday)}
@@ -1006,6 +1335,138 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* 4. CHANGE FINISHED MATCH RESULT MODAL (STRICTLY BOUND TO MATCHDAY) */}
+      {editResultMatch && (
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div
+            className={`w-full max-w-lg p-5 sm:p-6 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
+              isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
+            }`}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#1a2e45] pb-3">
+              <div className="flex items-center gap-2.5 text-[#00b04f]">
+                <Edit3 className="w-5 h-5 shrink-0" />
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    Change Finished Match Result
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    Official Matchday {editResultMatch.matchdayNumber} Result Entry
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditResultMatch(null)}
+                className="w-7 h-7 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Strict Matchday Scope Notice */}
+            <div className="p-3 rounded-md bg-[#102237] border border-[#1a2e45] text-xs space-y-1">
+              <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px] uppercase tracking-wider">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Strict Matchday Scope Enforced</span>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                This game was officially played in <strong className="text-white font-mono">Matchday {editResultMatch.matchdayNumber}</strong>. Result modifications are strictly saved within this matchday and will immediately recompute league standings.
+              </p>
+            </div>
+
+            {/* Teams & Score Input Form */}
+            <div className="grid grid-cols-5 items-center gap-3 py-3 px-2 rounded-md bg-[#0a1520] border border-[#14263b]">
+              {/* Home Team */}
+              <div className="col-span-2 text-center space-y-2">
+                <div
+                  className="font-black text-xs sm:text-sm text-white truncate px-1"
+                  title={resolvePlayingTeam(editResultMatch.match.home_team_id, editResultMatch.match.home_team).name || 'Home Team'}
+                >
+                  {resolvePlayingTeam(editResultMatch.match.home_team_id, editResultMatch.match.home_team).name || 'Home Team'}
+                </div>
+                <span className="text-[10px] font-black text-[#00b04f] uppercase tracking-wider block">Home Team</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={homeScoreInput}
+                  onChange={(e) => setHomeScoreInput(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={`w-20 mx-auto p-2.5 text-center text-xl font-black font-mono rounded-md border outline-none ${
+                    isDark
+                      ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#00b04f]'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-[#00b04f]'
+                  }`}
+                />
+              </div>
+
+              {/* VS Divider */}
+              <div className="col-span-1 text-center font-mono font-bold text-slate-400">
+                <span className="px-2 py-1 rounded-sm bg-[#152a40] border border-[#223b56] text-[10px] uppercase">
+                  VS
+                </span>
+              </div>
+
+              {/* Away Team */}
+              <div className="col-span-2 text-center space-y-2">
+                <div
+                  className="font-black text-xs sm:text-sm text-white truncate px-1"
+                  title={resolvePlayingTeam(editResultMatch.match.away_team_id, editResultMatch.match.away_team).name || 'Away Team'}
+                >
+                  {resolvePlayingTeam(editResultMatch.match.away_team_id, editResultMatch.match.away_team).name || 'Away Team'}
+                </div>
+                <span className="text-[10px] font-black text-sky-400 uppercase tracking-wider block">Away Team</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={awayScoreInput}
+                  onChange={(e) => setAwayScoreInput(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={`w-20 mx-auto p-2.5 text-center text-xl font-black font-mono rounded-md border outline-none ${
+                    isDark
+                      ? 'bg-[#15273b] border-[#223b56] text-white focus:border-[#00b04f]'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-[#00b04f]'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {editResultError && (
+              <div className="p-2.5 rounded-md bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300 font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{editResultError}</span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-3 border-t border-[#1a2e45]">
+              <button
+                onClick={() => setEditResultMatch(null)}
+                disabled={isSavingResult}
+                className="w-1/2 py-2 rounded-md bg-[#152a40] hover:bg-[#1c3857] text-white font-bold text-xs uppercase tracking-wider border border-white/10 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveResult}
+                disabled={isSavingResult}
+                className="w-1/2 py-2 rounded-md bg-[#00b04f] hover:bg-[#009241] disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                {isSavingResult ? (
+                  <span>Saving Result...</span>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save Result</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1049,7 +1510,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                 <th className="py-2.5 px-3 min-w-[160px]">Linesman Team 1 (Home Rep)</th>
                 <th className="py-2.5 px-3 min-w-[160px]">Linesman Team 2 (Away Rep)</th>
                 <th className="py-2.5 px-3 w-[100px] text-center">Status</th>
-                <th className="py-2.5 px-3 w-[110px] text-right">Actions</th>
+                <th className="py-2.5 px-3 w-[140px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#14263b] text-xs font-semibold">
@@ -1300,8 +1761,19 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      ) : isPlayed ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenEditResult(match, group.matchdayNumber)}
+                            title={`Change match result strictly within Matchday ${group.matchdayNumber}`}
+                            className="px-2.5 py-1 rounded-md bg-[#00b04f]/20 hover:bg-[#00b04f] text-[#00b04f] hover:text-white border border-[#00b04f]/40 font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Change Result</span>
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-[10px] text-slate-500 italic font-medium">Locked</span>
+                        <span className="text-[10px] text-slate-500 italic font-medium">Cancelled</span>
                       )}
                     </td>
                   </tr>
