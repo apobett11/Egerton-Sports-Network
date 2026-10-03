@@ -69,7 +69,16 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   // 1. Filter all completed matches (including the latest game, ordered latest first)
   const pastMatches = useMemo(() => {
     return (fixtures || [])
-      .filter((f) => f.status === 'FINISHED' || f.score !== undefined)
+      .filter((f) => {
+        const s = (f.status || '').toUpperCase();
+        return (
+          s === 'FINISHED' ||
+          s === 'FT' ||
+          s === 'COMPLETED' ||
+          f.score !== undefined ||
+          (f.scoreHome !== undefined && f.scoreHome !== null)
+        );
+      })
       .sort((a, b) => {
         const mdA = a.matchday || 0;
         const mdB = b.matchday || 0;
@@ -285,11 +294,6 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   // Validation before confirmation
   const handleProceedToConfirmation = () => {
     setValidationError(null);
-
-    if (isAlreadyRecorded) {
-      setValidationError('Match events for this fixture have already been submitted and cannot be rewritten.');
-      return;
-    }
 
     // Validate that all recorded goals have a scorer selected
     for (let i = 0; i < goals.length; i++) {
@@ -742,14 +746,12 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 </div>
               </div>
 
-              {/* Locked Warning Banner */}
+              {/* Status Banner */}
               {isAlreadyRecorded && (
                 <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2.5">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
                   <span>
-                    <strong>Match Events Logged (UPDATED):</strong> Scorers, assists, and cards for this
-                    fixture have been officially submitted. Each match can only be updated once to
-                    protect league integrity.
+                    <strong>Previously Submitted:</strong> Match scorers, assists, and cards are loaded. You can modify these details below and submit an update at any time.
                   </span>
                 </div>
               )}
@@ -852,7 +854,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             <select
                               value={goal.playerId}
                               onChange={(e) => handleUpdateGoal(idx, 'playerId', e.target.value)}
-                              disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                              disabled={isLoadingExisting || isSaving}
                               className={`w-full bg-white dark:bg-[#0e1c2b] text-xs font-bold rounded-xl px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                                 !hasScorer
                                   ? 'border-2 border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20'
@@ -897,7 +899,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'regular')}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                                disabled={isLoadingExisting || isSaving}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isRegular
                                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-300 ring-2 ring-emerald-500/20'
@@ -910,7 +912,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'solo')}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                                disabled={isLoadingExisting || isSaving}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isSolo
                                     ? 'bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-300 ring-2 ring-blue-500/20'
@@ -923,7 +925,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'freekick')}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                                disabled={isLoadingExisting || isSaving}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isFreekick
                                     ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-300 ring-2 ring-purple-500/20'
@@ -936,7 +938,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleSetGoalType(idx, 'penalty')}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                                disabled={isLoadingExisting || isSaving}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                                   isPenalty
                                     ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-300 ring-2 ring-rose-500/20'
@@ -959,7 +961,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                   handleUpdateGoal(idx, 'assistPlayerId', val);
                                   handleUpdateGoal(idx, 'goalType', val ? 'regular' : goal.goalType || 'regular');
                                 }}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
+                                disabled={isLoadingExisting || isSaving}
                                 className={`w-full bg-white dark:bg-[#0e1c2b] text-xs font-medium rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                                   isRegular && !goal.assistPlayerId
                                     ? 'border-2 border-emerald-500/70 ring-2 ring-emerald-500/20'
@@ -1011,29 +1013,27 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             <span>Yellow Cards ({yellowCards.length})</span>
                           </label>
 
-                          {!isAlreadyRecorded && (
-                            <div className="w-44 sm:w-52">
-                              <select
-                                value=""
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleAddYellowCard(e.target.value);
-                                  }
-                                }}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
-                              >
-                                <option value="">+ Add Yellow Card</option>
-                                {sortedRoster
-                                  .filter((p) => !yellowCards.includes(p.id))
-                                  .map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      #{p.number || '—'} {p.name}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                          )}
+                          <div className="w-44 sm:w-52">
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddYellowCard(e.target.value);
+                                }
+                              }}
+                              disabled={isLoadingExisting || isSaving}
+                              className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 transition-colors cursor-pointer"
+                            >
+                              <option value="">+ Add Yellow Card</option>
+                              {sortedRoster
+                                .filter((p) => !yellowCards.includes(p.id))
+                                .map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    #{p.number || '—'} {p.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
                         </div>
 
                         {yellowCards.length > 0 ? (
@@ -1048,16 +1048,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 >
                                   <span className="w-2 h-2.5 rounded-[1px] bg-amber-400 shrink-0"></span>
                                   <span>{pName}</span>
-                                  {!isAlreadyRecorded && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveYellowCard(pid)}
-                                      className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1"
-                                      title="Remove card"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveYellowCard(pid)}
+                                    disabled={isSaving}
+                                    className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1"
+                                    title="Remove card"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </span>
                               );
                             })}
@@ -1075,29 +1074,27 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             <span>Red Cards ({redCards.length})</span>
                           </label>
 
-                          {!isAlreadyRecorded && (
-                            <div className="w-44 sm:w-52">
-                              <select
-                                value=""
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleAddRedCard(e.target.value);
-                                  }
-                                }}
-                                disabled={isAlreadyRecorded || isLoadingExisting || isSaving}
-                                className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-rose-400 transition-colors cursor-pointer"
-                              >
-                                <option value="">+ Add Red Card</option>
-                                {sortedRoster
-                                  .filter((p) => !redCards.includes(p.id))
-                                  .map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      #{p.number || '—'} {p.name}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                          )}
+                          <div className="w-44 sm:w-52">
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddRedCard(e.target.value);
+                                }
+                              }}
+                              disabled={isLoadingExisting || isSaving}
+                              className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-rose-400 transition-colors cursor-pointer"
+                            >
+                              <option value="">+ Add Red Card</option>
+                              {sortedRoster
+                                .filter((p) => !redCards.includes(p.id))
+                                .map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    #{p.number || '—'} {p.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
                         </div>
 
                         {redCards.length > 0 ? (
@@ -1112,16 +1109,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 >
                                   <span className="w-2 h-2.5 rounded-[1px] bg-rose-600 shrink-0"></span>
                                   <span>{pName}</span>
-                                  {!isAlreadyRecorded && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveRedCard(pid)}
-                                      className="text-rose-500 hover:text-rose-700 dark:hover:text-white cursor-pointer ml-1"
-                                      title="Remove card"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRedCard(pid)}
+                                    disabled={isSaving}
+                                    className="text-rose-500 hover:text-rose-700 dark:hover:text-white cursor-pointer ml-1"
+                                    title="Remove card"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </span>
                               );
                             })}
@@ -1163,24 +1159,24 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                   disabled={isSaving}
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
                 >
-                  {isAlreadyRecorded ? 'Close' : 'Cancel'}
+                  Cancel
                 </button>
 
                 <button
                   type="button"
                   onClick={handleProceedToConfirmation}
-                  disabled={isAlreadyRecorded || isSaving || isLoadingExisting || !activeMatch}
+                  disabled={isSaving || isLoadingExisting || !activeMatch}
                   className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                {isAlreadyRecorded ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                      <span>UPDATED — Events Locked</span>
-                    </>
-                  ) : isSaving ? (
+                  {isSaving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Saving Events...</span>
+                    </>
+                  ) : isAlreadyRecorded ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Update Match Events</span>
                     </>
                   ) : (
                     <>

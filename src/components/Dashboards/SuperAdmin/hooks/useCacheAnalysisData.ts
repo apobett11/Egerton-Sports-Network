@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TEAM_CACHE_COLUMNS } from '../../../../lib/teamColumns';
+import { TEAM_ADMIN_COLUMNS } from '../../../../lib/teamColumns';
 import { supabase } from '../../../../lib/supabase';
 import { isSessionActive } from '../../../../lib/inactivityManager';
 import { canMakeDashboardCall, recordSessionCall } from '../../../../lib/sessionBudgetManager';
@@ -175,8 +175,12 @@ function leagueRank(name: string): number {
   return 2;
 }
 
-function squadFiled(lineup: { starting_xi: unknown[] } | undefined): boolean {
-  return Boolean(lineup && lineup.starting_xi.length > 0);
+function squadFiled(lineup: { starting_xi: unknown[] } | undefined, team?: any, hasEvents?: boolean): boolean {
+  if (lineup && lineup.starting_xi.length > 0) return true;
+  if (hasEvents) return true;
+  if (team?.starting_xi_str && String(team.starting_xi_str).trim().length > 2) return true;
+  if (team?.temporary_match_squad && team.temporary_match_squad.length > 0) return true;
+  return false;
 }
 
 export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
@@ -250,8 +254,8 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
           const isHome = fixture.home_team_id === team.id;
           const opponentId = isHome ? fixture.away_team_id : fixture.home_team_id;
           const key = `${fixture.id}__${team.id}`;
-          const squad = squadFiled(lineupMap.get(key));
           const events = eventKeys.has(key);
+          const squad = squadFiled(lineupMap.get(key), team, events);
           const existing = cells[matchday];
           if (existing) {
             existing.squad = existing.squad || squad;
@@ -386,7 +390,7 @@ export function useCacheAnalysisData(enabled: boolean) {
       setError(budget.reason || 'Session call budget reached.');
       return;
     }
-    recordSessionCall(true, 400000);
+    recordSessionCall(true, 25000);
 
     inFlightRef.current = true;
     if (initial) setIsLoading(true);
@@ -395,7 +399,7 @@ export function useCacheAnalysisData(enabled: boolean) {
 
     try {
       const [teams, profiles, competitions, fixtures, lineups, events] = await Promise.all([
-        fetchAll((from, to) => supabase.from('teams').select(TEAM_CACHE_COLUMNS).range(from, to)),
+        fetchAll((from, to) => supabase.from('teams').select(TEAM_ADMIN_COLUMNS).range(from, to)),
         fetchAll((from, to) =>
           supabase.from('profiles').select('id, first_name, last_name, email, phone, role').range(from, to),
         ),

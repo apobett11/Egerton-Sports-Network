@@ -178,7 +178,7 @@ export const useAdminOperationsData = () => {
   }, [showToast]);
 
   // ---------------------------------------------------------------------------
-  // Snapshot loading: cache-first, revalidate when stale, force on demand.
+  // Snapshot loading: cache-first for instant render, revalidate with live data.
   // ---------------------------------------------------------------------------
   const loadSnapshot = useCallback(async (mode: 'auto' | 'force' = 'auto') => {
     if (inFlightRef.current) return inFlightRef.current;
@@ -188,6 +188,10 @@ export const useAdminOperationsData = () => {
       setSnapshot(cached);
       setIsLoading(false);
       return;
+    }
+    if (cached && !snapshot) {
+      setSnapshot(cached);
+      setIsLoading(false);
     }
     if (!isSessionActive() || !isTabVisible()) {
       // Never leave the console on the connecting screen because the tab is idle.
@@ -237,11 +241,11 @@ export const useAdminOperationsData = () => {
     return run;
   }, [snapshot]);
 
-  // Mount: serve the cache instantly and revalidate only if stale.
+  // Mount/Reload: serve the cache instantly if present, but always fetch fresh live real data from Supabase
   useEffect(() => {
-    loadSnapshot('auto');
+    loadSnapshot('force');
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') loadSnapshot('auto');
+      if (event === 'SIGNED_IN') loadSnapshot('force');
     });
     return () => {
       authListener?.subscription?.unsubscribe();

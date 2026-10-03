@@ -447,6 +447,7 @@ export const TeamDashboard: React.FC = () => {
           fixtures={teamFixtures}
           selectedMatchId={selectedMatchForEvents}
           onShowToast={showToast}
+          onEventsSaved={refreshLiveDashboard}
         />
       )}
 

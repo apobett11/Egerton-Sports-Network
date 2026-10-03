@@ -58,7 +58,7 @@ const PROFILE_COLUMNS =
 const PLAYER_COLUMNS =
   'id, profile_id, team_id, first_name, last_name, phone, student_id, jersey_number, position, status, is_approved, created_at';
 const FIXTURE_COLUMNS =
-  'id, competition_id, home_team_id, away_team_id, scheduled_time, status, referee_id, matchday, created_at, updated_at';
+  'id, competition_id, home_team_id, away_team_id, scheduled_time, status, score_home, score_away, referee_id, matchday, created_at, updated_at';
 const DEVICE_COLUMNS = 'device_id, last_seen_at, favorite_team_id, created_at';
 const MATCH_REPORT_COLUMNS = 'id, fixture_id, official_id, official_role, submitted_at';
 const MATCH_EVENT_COLUMNS = 'id, team_id, fixture_id';

@@ -87,9 +87,15 @@ export function deriveAdminState(
   const journalists = byRole('journalist');
   const coaches = byRole('coach');
   const captains = byRole('captain');
-  const scheduledFix = allFixtures.filter((f) => f.status === 'UPCOMING' || f.status === 'LIVE');
-  const completedFix = allFixtures.filter((f) => f.status === 'FT');
   const revokedCount = allProfiles.filter(isSuspended).length;
+  const scheduledFix = allFixtures.filter((f) => {
+    const s = String(f.status || '').toUpperCase();
+    return s === 'UPCOMING' || s === 'SCHEDULED' || s === 'LIVE';
+  });
+  const completedFix = allFixtures.filter((f) => {
+    const s = String(f.status || '').toUpperCase();
+    return s === 'FT' || s === 'FINISHED' || s === 'COMPLETED';
+  });
 
   const realActiveToday = allProfiles.filter((p) => p.updated_at && p.updated_at >= oneDayAgoIso).length;
   const realOnline = allProfiles.filter((p) => p.updated_at && nowTs - toMs(p.updated_at) < 15 * 60 * 1000).length;
@@ -531,7 +537,10 @@ export function deriveAdminState(
     refereesList: referees.map((r) => {
       const assigned = allFixtures.filter((f) => f.referee_id === r.id);
       const reportsCount = allMatchReports.filter((m) => m.official_id === r.id).length;
-      const finished = assigned.filter((f) => f.status === 'FT');
+      const finished = assigned.filter((f) => {
+        const s = String(f.status || '').toUpperCase();
+        return s === 'FT' || s === 'FINISHED' || s === 'COMPLETED';
+      });
       const pendingCount = finished.filter((f) => !reportedFixtureIds.has(f.id)).length;
       // Share of finished assignments that have a filed report, on a 0–5 scale.
       const performanceRating = finished.length > 0
