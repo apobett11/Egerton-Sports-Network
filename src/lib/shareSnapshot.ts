@@ -310,7 +310,7 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#a855f7';
       ctx.font = '900 34px Arial, monospace';
-      const cs = row.cleanSheets !== undefined ? String(row.cleanSheets) : (row.right.match(/\d+/) ? row.right.match(/\d+/)[0] : '0');
+      const cs = row.cleanSheets !== undefined ? String(row.cleanSheets) : (row.right?.match(/\d+/)?.[0] ?? '0');
       ctx.fillText(cs, 760, y + 54);
 
       // Points
