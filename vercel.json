@@ -7,6 +7,14 @@
     {
       "source": "/shareprediction/:kind/:code",
       "destination": "/api/share?c=:code"
+    },
+    {
+      "source": "/share/table",
+      "destination": "/api/share?view=table"
+    },
+    {
+      "source": "/share/fixtures",
+      "destination": "/api/share?view=fixtures"
     }
   ]
 }

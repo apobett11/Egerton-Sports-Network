@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   Lock,
   Radio,
+  CalendarDays,
 } from 'lucide-react';
 import type {
   PlatformHealthMetrics,
@@ -84,6 +85,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
   };
 
   const quickActions = [
+    { label: 'Matchdays', icon: CalendarDays, modal: 'matchdays', color: 'text-rose-400' },
     { label: 'Team Preparedness', icon: ClipboardCheck, modal: 'cache', color: 'text-orange-400' },
     { label: 'Health & Diagnostics', icon: Activity, tab: 'health' as AdminTabType, color: 'text-emerald-400' },
     { label: 'Admin 2 Telemetry 🔒', icon: Lock, tab: 'admin_2' as AdminTabType, color: 'text-amber-400' },

@@ -19,7 +19,58 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function boardPage({ origin, view, requestUrl }) {
+  const destination = view === 'fixtures' ? `${origin}/#/fixtures` : `${origin}/#/table`;
+  const image = `${origin}/api/og?view=${view === 'fixtures' ? 'fixtures' : 'table'}`;
+  const title = view === 'fixtures' ? 'EPL Fixtures' : 'EPL Table';
+  const description = view === 'fixtures'
+    ? 'Open the fixtures. The card shows the top of the list.'
+    : 'Open the table. The card shows the top of the standings.';
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)} | EgerScore</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EgerScore">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(`${origin}${requestUrl}`)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
+  <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
+    <img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" style="width:100%;max-width:640px;display:block;margin:0 auto;">
+    <p style="text-align:center;padding:16px;">Open ${escapeHtml(title)}</p>
+  </a>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
+}
+
 export default async function handler(req, res) {
+  const view = typeof req.query?.view === 'string' ? req.query.view : '';
+  if (view === 'table' || view === 'fixtures') {
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const origin = `${protocol}://${req.headers.host}`;
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(boardPage({ origin, view, requestUrl: req.url || `/share/${view}` }));
+    return;
+  }
+
   const token = typeof req.query?.d === 'string' ? req.query.d : '';
   const code = typeof req.query?.c === 'string' ? req.query.c : '';
   const stored = code ? await loadShareCode(code) : null;

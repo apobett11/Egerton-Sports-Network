@@ -6,8 +6,9 @@ import { readCachedLeagueTable } from '../../services/guestSportsService';
 import { TeamLogo } from '../common/TeamLogo';
 import { 
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
-  ArrowUpRight, ChevronRight, Activity, Sparkles, Filter
+  ArrowUpRight, ChevronRight, Activity, Sparkles, Filter, Share2
 } from 'lucide-react';
+import { shareSnapshot } from '../../lib/shareSnapshot';
 import { PlayerOfTheWeekSpotlight } from '../POTW/PlayerOfTheWeekSpotlight';
 
 interface LeagueTableProps {
@@ -394,13 +395,37 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
               {title}
             </h3>
           </div>
-          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
-            divisionLabel === 'DIVISION 1'
-              ? 'bg-rose-500/10 text-[#ff0046] border-rose-500/20'
-              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-          }`}>
-            {divisionLabel}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
+              divisionLabel === 'DIVISION 1'
+                ? 'bg-rose-500/10 text-[#ff0046] border-rose-500/20'
+                : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+            }`}>
+              {divisionLabel}
+            </span>
+            {!isChamp && (
+              <button
+                type="button"
+                onClick={() => {
+                  void shareSnapshot({
+                    kind: 'table',
+                    title: 'EPL Table',
+                    subtitle: 'Top of the official standings',
+                    rows: list.slice(0, 8).map((row) => ({
+                      left: row.teamName,
+                      right: `${row.points} pts`,
+                      logo: row.teamLogo,
+                    })),
+                  });
+                }}
+                className="p-1.5 rounded-md bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-500 hover:text-[#ff0046] cursor-pointer"
+                aria-label="Share the EPL table"
+                title="Share the EPL table"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table Content: Sticky Rank and Team Name with scrolling data */}

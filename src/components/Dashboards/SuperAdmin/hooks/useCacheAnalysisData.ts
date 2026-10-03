@@ -24,6 +24,8 @@ export interface MatchCell {
   isHome: boolean;
   squad: boolean;
   events: boolean;
+  squadNames: string[];
+  eventLines: string[];
 }
 
 export interface PreparednessTeam {
@@ -63,6 +65,7 @@ interface RawBundle {
   fixtures: any[];
   lineups: any[];
   events: any[];
+  players: any[];
 }
 
 const PAGE = 1000;
@@ -175,12 +178,17 @@ function leagueRank(name: string): number {
   return 2;
 }
 
-function squadFiled(lineup: { starting_xi: unknown[] } | undefined, team?: any, hasEvents?: boolean): boolean {
-  if (lineup && lineup.starting_xi.length > 0) return true;
-  if (hasEvents) return true;
-  if (team?.starting_xi_str && String(team.starting_xi_str).trim().length > 2) return true;
-  if (team?.temporary_match_squad && team.temporary_match_squad.length > 0) return true;
-  return false;
+function entryId(entry: unknown): string {
+  if (typeof entry === 'string') return entry.trim();
+  if (!entry || typeof entry !== 'object') return '';
+  const rec = entry as Record<string, unknown>;
+  const id = rec.id || rec.player_id || rec.playerId;
+  return typeof id === 'string' ? id.trim() : '';
+}
+
+function playerName(player: any): string {
+  if (!player) return '';
+  return `${player.first_name || ''} ${player.last_name || ''}`.trim();
 }
 
 export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
@@ -199,17 +207,45 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
     if (team?.id) teamName.set(String(team.id), String(team.name || 'Team'));
   });
 
-  const lineupMap = new Map<string, { starting_xi: unknown[] }>();
-  raw.lineups.forEach((row) => {
-    if (!row?.fixture_id || !row?.team_id) return;
-    lineupMap.set(`${row.fixture_id}__${row.team_id}`, {
-      starting_xi: asList(row.starting_xi),
-    });
+  const playerById = new Map<string, string>();
+  raw.players.forEach((player) => {
+    const name = playerName(player);
+    if (player?.id && name) playerById.set(String(player.id), name);
   });
 
-  const eventKeys = new Set<string>();
+  const lineupMap = new Map<string, string[]>();
+  raw.lineups.forEach((row) => {
+    if (!row?.fixture_id || !row?.team_id) return;
+    const names = asList(row.starting_xi)
+      .map((entry) => playerById.get(entryId(entry)) || '')
+      .filter(Boolean);
+    if (names.length === 0) return;
+    lineupMap.set(`${row.fixture_id}__${row.team_id}`, names);
+  });
+
+  const eventLines = new Map<string, string[]>();
+  const confirmedKeys = new Set<string>();
   raw.events.forEach((row) => {
-    if (row?.fixture_id && row?.team_id) eventKeys.add(`${row.fixture_id}__${row.team_id}`);
+    if (!row?.fixture_id || !row?.team_id) return;
+    if (row.is_official !== true) return;
+    const key = `${row.fixture_id}__${row.team_id}`;
+    const type = String(row.type || '').toLowerCase();
+    const scorer = playerById.get(String(row.player_id || ''));
+    const assist = playerById.get(String(row.assist_player_id || ''));
+    if ((type === 'goal' || type === 'penalty') && scorer) {
+      const lines = eventLines.get(key) || [];
+      lines.push(assist ? `${scorer}, assist ${assist}` : scorer);
+      eventLines.set(key, lines);
+    } else if ((type === 'yellow' || type === 'red') && scorer) {
+      const lines = eventLines.get(key) || [];
+      lines.push(`${type === 'red' ? 'Red' : 'Yellow'}: ${scorer}`);
+      eventLines.set(key, lines);
+    } else if (type === 'ft') {
+      confirmedKeys.add(key);
+    }
+  });
+  confirmedKeys.forEach((key) => {
+    if (!eventLines.has(key)) eventLines.set(key, ['Coach confirmed. No scorer selected.']);
   });
 
   const leagueIds = new Set<string>();
@@ -254,12 +290,16 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
           const isHome = fixture.home_team_id === team.id;
           const opponentId = isHome ? fixture.away_team_id : fixture.home_team_id;
           const key = `${fixture.id}__${team.id}`;
-          const events = eventKeys.has(key);
-          const squad = squadFiled(lineupMap.get(key), team, events);
+          const squadNames = lineupMap.get(key) || [];
+          const lines = eventLines.get(key) || [];
+          const squad = squadNames.length > 0;
+          const events = lines.length > 0;
           const existing = cells[matchday];
           if (existing) {
             existing.squad = existing.squad || squad;
             existing.events = existing.events || events;
+            if (squadNames.length > existing.squadNames.length) existing.squadNames = squadNames;
+            if (lines.length > existing.eventLines.length) existing.eventLines = lines;
             return;
           }
           cells[matchday] = {
@@ -267,6 +307,8 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
             isHome,
             squad,
             events,
+            squadNames,
+            eventLines: lines,
           };
         });
 
@@ -398,7 +440,7 @@ export function useCacheAnalysisData(enabled: boolean) {
     setError(null);
 
     try {
-      const [teams, profiles, competitions, fixtures, lineups, events] = await Promise.all([
+      const [teams, profiles, competitions, fixtures, lineups, events, players] = await Promise.all([
         fetchAll((from, to) => supabase.from('teams').select(TEAM_ADMIN_COLUMNS).range(from, to)),
         fetchAll((from, to) =>
           supabase.from('profiles').select('id, first_name, last_name, email, phone, role').range(from, to),
@@ -414,11 +456,19 @@ export function useCacheAnalysisData(enabled: boolean) {
         fetchAll((from, to) =>
           supabase.from('match_lineups').select('fixture_id, team_id, starting_xi').range(from, to),
         ),
-        fetchAll((from, to) => supabase.from('match_events').select('fixture_id, team_id').range(from, to)),
+        fetchAll((from, to) =>
+          supabase
+            .from('match_events')
+            .select('fixture_id, team_id, player_id, assist_player_id, type, is_official')
+            .range(from, to),
+        ),
+        fetchAll((from, to) =>
+          supabase.from('players').select('id, first_name, last_name').range(from, to),
+        ),
       ]);
 
       if (!enabledRef.current) return;
-      setLeagues(buildPreparednessLeagues({ teams, profiles, competitions, fixtures, lineups, events }));
+      setLeagues(buildPreparednessLeagues({ teams, profiles, competitions, fixtures, lineups, events, players }));
       setUpdatedAt(new Date().toLocaleTimeString());
       setError(null);
     } catch (err: any) {

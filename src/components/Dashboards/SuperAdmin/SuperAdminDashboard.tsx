@@ -20,6 +20,7 @@ import { AdminPotwAuditView } from './components/Views/AdminPotwAuditView';
 import { AdminTwoFactorModal } from './components/Security/AdminTwoFactorModal';
 import { Admin2PasswordGateModal } from './components/Security/Admin2PasswordGateModal';
 import { AdminCacheAnalysisModal } from './components/Modals/AdminCacheAnalysisModal';
+import { AdminMatchdaysModal } from './components/Modals/AdminMatchdaysModal';
 import { clearCachedSnapshot } from './lib/adminSnapshot';
 import { RefreshCw, Zap, ShieldAlert, ArrowLeft, Lock, Activity, ClipboardCheck } from 'lucide-react';
 
@@ -94,6 +95,7 @@ export const SuperAdminDashboard: React.FC = () => {
   } = useAdminOperationsData();
 
   const [showCacheAnalysis, setShowCacheAnalysis] = React.useState(false);
+  const [showMatchdays, setShowMatchdays] = React.useState(false);
 
   // Check if hash routes directly to Admin 2 on initial render
   useEffect(() => {
@@ -112,6 +114,10 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleOpenModal = (type: any, item?: any) => {
     if (type === 'team' || type === 'cache') {
       setShowCacheAnalysis(true);
+      return;
+    }
+    if (type === 'matchdays') {
+      setShowMatchdays(true);
       return;
     }
     setSelectedItemForModal(item || null);
@@ -405,6 +411,11 @@ export const SuperAdminDashboard: React.FC = () => {
       <AdminCacheAnalysisModal
         isOpen={showCacheAnalysis}
         onClose={() => setShowCacheAnalysis(false)}
+      />
+
+      <AdminMatchdaysModal
+        isOpen={showMatchdays}
+        onClose={() => setShowMatchdays(false)}
       />
     </div>
   );

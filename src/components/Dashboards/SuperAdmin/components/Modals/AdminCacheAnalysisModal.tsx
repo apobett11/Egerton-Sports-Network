@@ -47,7 +47,7 @@ const OPTIONS: {
     id: 'squad',
     label: 'Match Details',
     coachCard: 'Arrange Match Squad',
-    hint: 'Tick only the matchdays the coach has filed',
+    hint: 'Only the starting players the coach saved for that match',
     icon: Users,
     color: 'text-blue-400',
   },
@@ -55,7 +55,7 @@ const OPTIONS: {
     id: 'events',
     label: 'Match Log',
     coachCard: 'Update Match Events',
-    hint: 'Tick only the matchdays with a saved log',
+    hint: 'Only scorers and assists the coach selected',
     icon: ScrollText,
     color: 'text-amber-400',
   },
@@ -186,6 +186,46 @@ const CoachPanel = ({ team, colSpan }: { team: PreparednessTeam; colSpan: number
   );
 };
 
+const CoachFiling = ({
+  team,
+  option,
+  colSpan,
+}: {
+  team: PreparednessTeam;
+  option: CacheOption;
+  colSpan: number;
+}) => {
+  const filed = Object.entries(team.cells)
+    .map(([matchday, cell]) => {
+      const lines = option === 'squad' ? cell.squadNames : cell.eventLines;
+      if (!lines || lines.length === 0) return null;
+      return {
+        matchday,
+        where: `${cell.isHome ? 'vs' : '@'} ${cell.opponentName}`,
+        lines,
+      };
+    })
+    .filter((row): row is { matchday: string; where: string; lines: string[] } => Boolean(row));
+
+  if (filed.length === 0) return null;
+
+  return (
+    <tr className="bg-[#101010]">
+      <td colSpan={colSpan} className="px-4 py-2 border-b border-[#242424]">
+        <div className="space-y-1">
+          {filed.map((row) => (
+            <p key={row.matchday} className="text-[11px] text-gray-300 leading-snug">
+              <span className="font-black text-white">MD {row.matchday}</span>
+              <span className="text-gray-500"> {row.where}: </span>
+              {row.lines.join(' · ')}
+            </p>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+};
+
 const teamNote = (team: PreparednessTeam, option: CacheOption) => {
   if (option === 'kits') {
     const filed = KIT_COLUMNS.filter((column) => team.kits[column.key]).length;
@@ -292,7 +332,8 @@ const LeagueTable = ({ league, option }: { league: PreparednessLeague; option: C
                         const cell = team.cells[matchday];
                         const filed = cell ? (option === 'squad' ? cell.squad : cell.events) : false;
                         const where = cell ? `${cell.isHome ? 'vs' : '@'} ${cell.opponentName}` : '';
-                        const label = option === 'squad' ? 'match details' : 'match log';
+                        const lines = cell ? (option === 'squad' ? cell.squadNames : cell.eventLines) : [];
+                        const detail = lines.length > 0 ? lines.join(' · ') : '';
                         return (
                           <td key={matchday} className="p-1.5 text-center bg-[#161616] group-hover:bg-[#1C1C1C] border-b border-[#242424]">
                             {!cell ? (
@@ -300,8 +341,8 @@ const LeagueTable = ({ league, option }: { league: PreparednessLeague; option: C
                             ) : (
                               <Mark
                                 on={filed}
-                                yes={`Matchday ${matchday} ${where} — ${label} filed`}
-                                no={`Matchday ${matchday} ${where} — ${label} missing`}
+                                yes={detail ? `MD ${matchday} ${where}: ${detail}` : `Matchday ${matchday} ${where}`}
+                                no={`Matchday ${matchday} ${where} — coach has not filed this`}
                               />
                             )}
                           </td>
@@ -315,6 +356,7 @@ const LeagueTable = ({ league, option }: { league: PreparednessLeague; option: C
                       />
                     </td>
                   </tr>
+                  {isMatch && <CoachFiling team={team} option={option} colSpan={colSpan} />}
                   {openCoachId === team.id && <CoachPanel team={team} colSpan={colSpan} />}
                 </React.Fragment>
               ))

@@ -204,6 +204,7 @@ export interface GuestStanding {
   goals_against: number;
   goal_difference: number;
   points: number;
+  clean_sheets: number;
 }
 
 export interface MatchFormMark {
@@ -554,6 +555,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
           goals_against: row.goalsAgainst,
           goal_difference: row.goalDifference,
           points: row.points,
+          clean_sheets: row.cleanSheets || 0,
         }));
       }
 
@@ -561,9 +563,9 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
 
       type Acc = {
         played: number; won: number; drawn: number; lost: number;
-        gf: number; ga: number; points: number; form: MatchFormMark[];
+        gf: number; ga: number; points: number; cleanSheets: number; form: MatchFormMark[];
       };
-      const blank = (): Acc => ({ played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0, form: [] });
+      const blank = (): Acc => ({ played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0, cleanSheets: 0, form: [] });
       const acc = new Map<string, Acc>(teamsRes.data.map((t: any) => [t.id, blank()]));
 
       const fixtures = [...(fixturesRes.data || [])].sort((a: any, b: any) => {
@@ -579,6 +581,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
         row.played += 1;
         row.gf += goalsFor;
         row.ga += goalsAgainst;
+        if (goalsAgainst === 0) row.cleanSheets += 1;
         let result: 'W' | 'D' | 'L' = 'D';
         if (goalsFor > goalsAgainst) {
           row.won += 1;
@@ -625,6 +628,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
           goals_against: row.ga,
           goal_difference: row.gf - row.ga,
           points,
+          clean_sheets: row.cleanSheets,
         };
       });
 
@@ -1062,6 +1066,7 @@ export function guestStandingToLeagueTableEntry(gs: any, index: number): LeagueT
     goalsAgainst: gs.goals_against ?? gs.goalsAgainst ?? 0,
     goalDifference: gs.goal_difference ?? gs.goalDifference ?? 0,
     points: gs.points ?? 0,
+    cleanSheets: gs.clean_sheets ?? gs.cleanSheets ?? 0,
     lastUpdated: gs.lastUpdated || new Date().toISOString(),
   };
 }

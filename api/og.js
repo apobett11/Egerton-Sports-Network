@@ -154,10 +154,124 @@ function fallbackCard() {
   return h('div', { style: { fontSize: 48, fontWeight: 650 } }, 'Make your EPL predictions');
 }
 
+async function supabaseRows(path) {
+  const base = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  if (!base || !key) return [];
+  try {
+    const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/${path}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function crest(src, name) {
+  return h(
+    'div',
+    {
+      style: {
+        width: 54,
+        height: 54,
+        borderRadius: 999,
+        overflow: 'hidden',
+        background: '#ff0046',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 700,
+      },
+    },
+    src
+      ? h('img', { src, width: 54, height: 54, style: { objectFit: 'cover' } })
+      : (name || 'E').slice(0, 2).toUpperCase(),
+  );
+}
+
+function boardRow(left, right, logo) {
+  return h(
+    'div',
+    {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: colors.card,
+        borderRadius: 16,
+        padding: '10px 16px',
+        marginBottom: 10,
+      },
+    },
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 14 } }, crest(logo, left), h('span', { style: { fontSize: 28, fontWeight: 700 } }, left)),
+    h('span', { style: { color: colors.green, fontSize: 28, fontWeight: 800 } }, right),
+  );
+}
+
+async function tableRows() {
+  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
+  const fixtures = await supabaseRows('fixtures?select=home_team_id,away_team_id,score_home,score_away,status&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)');
+  const acc = new Map(teams.map((team) => [team.id, { name: team.name || 'Team', logo: team.logo_url || '', points: 0, clean: 0 }]));
+  fixtures.forEach((fixture) => {
+    const home = Number(fixture.score_home) || 0;
+    const away = Number(fixture.score_away) || 0;
+    const apply = (id, goalsFor, goalsAgainst) => {
+      const row = acc.get(id);
+      if (!row) return;
+      if (goalsFor > goalsAgainst) row.points += 3;
+      else if (goalsFor === goalsAgainst) row.points += 1;
+      if (goalsAgainst === 0) row.clean += 1;
+    };
+    apply(fixture.home_team_id, home, away);
+    apply(fixture.away_team_id, away, home);
+  });
+  return [...acc.values()]
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
+    .slice(0, 6)
+    .map((row) => boardRow(row.name, `${row.points} pts`, row.logo));
+}
+
+async function fixtureRows() {
+  const fixtures = await supabaseRows('fixtures?select=scheduled_time,status,score_home,score_away,home_team:teams!fixtures_home_team_id_fkey(name,logo_url),away_team:teams!fixtures_away_team_id_fkey(name,logo_url)&order=scheduled_time.desc&limit=6');
+  return fixtures.map((fixture) => {
+    const home = fixture.home_team?.name || 'Home';
+    const away = fixture.away_team?.name || 'Away';
+    const finished = ['FT', 'FINISHED'].includes(String(fixture.status || '').toUpperCase());
+    const score = finished ? `${Number(fixture.score_home) || 0}-${Number(fixture.score_away) || 0}` : 'vs';
+    return boardRow(`${home} ${score} ${away}`, '', fixture.home_team?.logo_url);
+  });
+}
+
+function boardCard(title, rows) {
+  const body = rows.length > 0 ? rows : [boardRow('Egerton Premier League', '', '')];
+  return h(
+    'div',
+    { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: colors.bg, color: colors.text, padding: '36px 48px', fontFamily: 'Arial, sans-serif' } },
+    h('div', { style: { color: colors.red, fontSize: 22, fontWeight: 800, letterSpacing: 2 } }, 'EGERSCORE'),
+    h('div', { style: { fontSize: 48, fontWeight: 800, margin: '8px 0 18px' } }, title),
+    h('div', { style: { display: 'flex', flexDirection: 'column' } }, ...body),
+    h('div', { style: { marginTop: 'auto', color: colors.muted, fontSize: 22 } }, 'Tap to open the full list'),
+  );
+}
+
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
   const url = new URL(request.url);
+  const view = url.searchParams.get('view');
+  if (view === 'table' || view === 'fixtures') {
+    const rows = view === 'fixtures' ? await fixtureRows() : await tableRows();
+    return new ImageResponse(boardCard(view === 'fixtures' ? 'Fixtures' : 'EPL Table', rows), {
+      width: 1200,
+      height: 630,
+      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
+    });
+  }
   const token = url.searchParams.get('d') || '';
   const code = url.searchParams.get('c') || '';
   const stored = code ? await loadShareCode(code) : null;

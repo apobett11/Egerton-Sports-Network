@@ -208,7 +208,6 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
             initialSlots.push({
               playerId: '',
               assistPlayerId: '',
-              minute: Math.min(90, 15 + i * 25),
               goalType: '' as any,
             });
           }
@@ -830,7 +829,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                             </div>
 
                             <span className="text-[11px] font-mono text-slate-400">
-                              Min {goal.minute || Math.min(85, 15 + idx * 25)}&apos;
+                              {goal.minute ? `Min ${goal.minute}'` : 'Minute not set'}
                             </span>
                           </div>
 

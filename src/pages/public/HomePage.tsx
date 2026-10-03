@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
 import { GuestMatchdayFeed } from '../../components/MainFeed/GuestMatchdayFeed';
-import { Trophy, Newspaper, ArrowRight, Flame, Award, X, Zap } from 'lucide-react';
+import { Trophy, Newspaper, ArrowRight, Flame, Award, X, Zap, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
@@ -20,6 +20,74 @@ interface HomePageProps {
   favorites?: string[];
   toggleFavorite?: (matchId: string) => void;
 }
+
+const EplCleanSheetList: React.FC<{
+  rows: LeagueTableEntry[];
+  loading: boolean;
+  onOpenTable: () => void;
+}> = ({ rows, loading, onOpenTable }) => {
+  const ranked = [...rows].sort((a, b) => {
+    const sheets = (b.cleanSheets || 0) - (a.cleanSheets || 0);
+    if (sheets !== 0) return sheets;
+    if (b.points !== a.points) return b.points - a.points;
+    return a.teamName.localeCompare(b.teamName);
+  });
+
+  return (
+    <section
+      aria-label="EPL clean sheets"
+      className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+    >
+      <div className="px-3 sm:px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Shield className="w-4 h-4 text-purple-500 shrink-0" />
+          <h2 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white truncate">
+            EPL Clean Sheets
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenTable}
+          className="text-[10px] font-black text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider shrink-0"
+        >
+          <span>Table</span>
+          <ArrowRight className="w-3 h-3" />
+        </button>
+      </div>
+      {loading && ranked.length === 0 ? (
+        <div className="p-4 text-center text-xs text-slate-400">Loading clean sheets…</div>
+      ) : ranked.length === 0 ? (
+        <div className="p-4 text-center text-xs text-slate-500">No EPL teams on the table yet.</div>
+      ) : (
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="text-[10px] font-black uppercase text-slate-400 border-b border-[#f0f2f5] dark:border-[#14263b]">
+              <th className="py-2 px-3 w-8">#</th>
+              <th className="py-2 px-2">Team</th>
+              <th className="py-2 px-2 text-center w-16">CS</th>
+              <th className="py-2 px-3 text-center w-16">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((row, index) => (
+              <tr key={row.teamId || row.teamName} className="border-b border-[#f0f2f5] dark:border-[#14263b] last:border-0">
+                <td className="py-2 px-3 font-bold text-slate-400">{index + 1}</td>
+                <td className="py-2 px-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <TeamLogo teamId={row.teamId} src={row.teamLogo} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                    <span className="font-extrabold text-slate-900 dark:text-white truncate">{row.teamName}</span>
+                  </div>
+                </td>
+                <td className="py-2 px-2 text-center font-mono font-black text-purple-500">{row.cleanSheets || 0}</td>
+                <td className="py-2 px-3 text-center font-mono font-black text-slate-900 dark:text-white">{row.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+};
 
 export const HomePage: React.FC<HomePageProps> = ({ 
   onNavigate, 
@@ -264,6 +332,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     const channel = supabase
       .channel('public-homepage-standings-v1')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'league_standings' }, triggerStandingsReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fixtures' }, triggerStandingsReload)
       .subscribe();
 
     return () => {
@@ -311,6 +380,8 @@ export const HomePage: React.FC<HomePageProps> = ({
         favorites={propFavorites}
         toggleFavorite={propToggleFavorite}
       />
+
+      <EplCleanSheetList rows={standingsState.epl} loading={standingsState.loading} onOpenTable={() => onNavigate('/table')} />
 
       {/* 2. PLAYER PERFORMANCE & INDIVIDUAL STATS - SEPARATE CARDS FOR EPL & CHAMPIONSHIPS */}
       <div ref={perfSectionRef}>

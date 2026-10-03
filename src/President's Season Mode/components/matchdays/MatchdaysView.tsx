@@ -1071,7 +1071,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
       {/* 5. MATCHDAY FIXTURES POPUP MODAL (TRIGGERED ON MATCHDAY CLICK) */}
       {/* ========================================================================= */}
       {popupMatchday && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
           <div
             className={`w-full max-w-6xl max-h-[90vh] flex flex-col rounded-xl border border-[#1a2e45] shadow-2xl overflow-hidden ${
               isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
@@ -1174,7 +1174,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 1. CANCEL MATCH MODAL */}
       {cancelTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
             className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
               isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
@@ -1224,7 +1224,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 2. SWAP REFEREE MODAL */}
       {swapTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
             className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
               isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
@@ -1284,7 +1284,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 3. SHIFT MATCH MODAL */}
       {shiftTargetMatch && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
             className={`w-full max-w-md p-5 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
               isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'
@@ -1338,7 +1338,7 @@ export const MatchdaysView: React.FC<MatchdaysViewProps> = ({
 
       {/* 4. CHANGE FINISHED MATCH RESULT MODAL (STRICTLY BOUND TO MATCHDAY) */}
       {editResultMatch && (
-        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
             className={`w-full max-w-lg p-5 sm:p-6 rounded-xl border border-[#1a2e45] space-y-4 shadow-2xl ${
               isDark ? 'bg-[#0e1e2d] text-white' : 'bg-white text-slate-900'

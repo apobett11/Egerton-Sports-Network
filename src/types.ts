@@ -223,6 +223,7 @@ export interface LeagueTableEntry {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  cleanSheets?: number;
   movement?: 'up' | 'down' | 'same';
   previousPosition?: number;
   lastUpdated?: string;

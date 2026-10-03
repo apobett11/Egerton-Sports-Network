@@ -374,6 +374,12 @@ export const AppContent: React.FC = () => {
       if (initialRoute === 'potw' || initialRoute.startsWith('potw')) {
         return 'potw';
       }
+      if (initialRoute === 'table' || initialRoute === 'standings') {
+        return 'table';
+      }
+      if (initialRoute === 'fixtures' || initialRoute === 'scores') {
+        return 'scores';
+      }
       const saved = sessionStorage.getItem('esn_guest_active_tab');
       if (saved === 'scores' || saved === 'news' || saved === 'table' || saved === 'favorites' || saved === 'potw') {
         return saved as MainTabType;
@@ -494,6 +500,12 @@ export const AppContent: React.FC = () => {
 
   // Sync route on hash change
   useEffect(() => {
+    const sharePath = window.location.pathname.replace(/\/$/, '');
+    if (sharePath === '/share/table' || sharePath === '/share/fixtures') {
+      const nextHash = sharePath.endsWith('table') ? '#/table' : '#/fixtures';
+      window.location.replace(`${window.location.origin}/${nextHash}`);
+      return;
+    }
     // On initial load, resolve current hash immediately and check deep links
     const initialRoute = getHashRoute();
     if (initialRoute.startsWith('team/')) {
@@ -543,6 +555,9 @@ export const AppContent: React.FC = () => {
       }
       if (newRoute === 'standings' || newRoute === 'table') {
         setActiveTab('table');
+      }
+      if (newRoute === 'fixtures' || newRoute === 'scores') {
+        setActiveTab('scores');
       }
       if (!newRoute.startsWith('match/')) {
         setSelectedMatch(null);
@@ -1203,7 +1218,10 @@ export const AppContent: React.FC = () => {
                       setActiveTab('news');
                       window.location.hash = '/news';
                     }
-                    else if (path.includes('league') || path.includes('standings') || path.includes('scorers') || path.includes('table')) setActiveTab('table');
+                    else if (path.includes('league') || path.includes('standings') || path.includes('scorers') || path.includes('table')) {
+                      setActiveTab('table');
+                      window.location.hash = '/table';
+                    }
                     else if (path.includes('fixtures')) setActiveTab('scores');
                     else handleNavigateHash(path);
                   }}

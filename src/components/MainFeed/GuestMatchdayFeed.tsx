@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Calendar, ChevronLeft, ChevronRight, Sparkles, X, Zap } from 'lucide-react';
+import { AlertCircle, Calendar, ChevronLeft, ChevronRight, Share2, Sparkles, X, Zap } from 'lucide-react';
+import { shareSnapshot } from '../../lib/shareSnapshot';
 import type { Match } from '../../types';
 import { FixturesList } from './FixturesList';
 import { ApiService } from '../../services/api';
@@ -609,6 +610,29 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
           aria-label={soundEnabled ? 'Mute sound alerts' : 'Enable sound alerts'}
         >
           {soundEnabled ? <Zap className="w-4 h-4 text-amber-500 fill-amber-500" /> : <Zap className="w-4 h-4 text-slate-400" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void shareSnapshot({
+              kind: 'fixtures',
+              title: 'Fixtures',
+              subtitle: formattedDateTitle,
+              rows: filteredMatches.slice(0, 8).map((match) => ({
+                left: match.teamA?.name || 'Home',
+                away: match.teamB?.name || 'Away',
+                center: match.status === 'UPCOMING' ? (match.time || 'vs') : `${match.scoreA ?? 0}-${match.scoreB ?? 0}`,
+                right: match.status === 'UPCOMING' ? (match.time || 'vs') : `${match.scoreA ?? 0}-${match.scoreB ?? 0}`,
+                logo: match.teamA?.logo,
+                awayLogo: match.teamB?.logo,
+              })),
+            });
+          }}
+          className="p-1.5 rounded-full bg-[#eef1f5] dark:bg-[#14263b] hover:bg-slate-200 dark:hover:bg-[#1c3857] text-slate-400 hover:text-[#ff0046] transition-colors shrink-0 cursor-pointer shadow-xs ml-1.5"
+          title="Share these fixtures"
+          aria-label="Share these fixtures"
+        >
+          <Share2 className="w-4 h-4" />
         </button>
       </div>
 
