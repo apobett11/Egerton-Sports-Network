@@ -20,12 +20,19 @@ function escapeHtml(value) {
 }
 
 function boardPage({ origin, view, requestUrl }) {
-  const destination = view === 'fixtures' ? `${origin}/#/fixtures` : `${origin}/#/table`;
-  const image = `${origin}/api/og?view=${view === 'fixtures' ? 'fixtures' : 'table'}`;
-  const title = view === 'fixtures' ? 'EPL Fixtures' : 'EPL Table';
+  const destination = view === 'fixtures'
+    ? `${origin}/#/fixtures`
+    : view === 'cleansheets'
+      ? `${origin}/#/cleansheets`
+      : `${origin}/#/table`;
+  const imageView = view === 'fixtures' ? 'fixtures' : view === 'cleansheets' ? 'cleansheets' : 'table';
+  const image = `${origin}/api/og?view=${imageView}`;
+  const title = view === 'fixtures' ? 'EPL Fixtures' : view === 'cleansheets' ? 'EPL Clean Sheets' : 'EPL Table';
   const description = view === 'fixtures'
     ? 'Open the fixtures. The card shows the top of the list.'
-    : 'Open the table. The card shows the top of the standings.';
+    : view === 'cleansheets'
+      ? 'Open the clean sheets. The card shows the top of the list.'
+      : 'Open the table. The card shows the top of the standings.';
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -62,7 +69,7 @@ function boardPage({ origin, view, requestUrl }) {
 
 export default async function handler(req, res) {
   const view = typeof req.query?.view === 'string' ? req.query.view : '';
-  if (view === 'table' || view === 'fixtures') {
+  if (view === 'table' || view === 'fixtures' || view === 'cleansheets') {
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const origin = `${protocol}://${req.headers.host}`;
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');

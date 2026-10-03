@@ -15,6 +15,10 @@
     {
       "source": "/share/fixtures",
       "destination": "/api/share?view=fixtures"
+    },
+    {
+      "source": "/share/cleansheets",
+      "destination": "/api/share?view=cleansheets"
     }
   ]
 }

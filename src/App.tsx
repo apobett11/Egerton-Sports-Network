@@ -377,7 +377,7 @@ export const AppContent: React.FC = () => {
       if (initialRoute === 'table' || initialRoute === 'standings') {
         return 'table';
       }
-      if (initialRoute === 'fixtures' || initialRoute === 'scores') {
+      if (initialRoute === 'fixtures' || initialRoute === 'scores' || initialRoute === 'cleansheets') {
         return 'scores';
       }
       const saved = sessionStorage.getItem('esn_guest_active_tab');
@@ -501,8 +501,12 @@ export const AppContent: React.FC = () => {
   // Sync route on hash change
   useEffect(() => {
     const sharePath = window.location.pathname.replace(/\/$/, '');
-    if (sharePath === '/share/table' || sharePath === '/share/fixtures') {
-      const nextHash = sharePath.endsWith('table') ? '#/table' : '#/fixtures';
+    if (sharePath === '/share/table' || sharePath === '/share/fixtures' || sharePath === '/share/cleansheets') {
+      const nextHash = sharePath.endsWith('fixtures')
+        ? '#/fixtures'
+        : sharePath.endsWith('cleansheets')
+          ? '#/cleansheets'
+          : '#/table';
       window.location.replace(`${window.location.origin}/${nextHash}`);
       return;
     }
@@ -556,7 +560,7 @@ export const AppContent: React.FC = () => {
       if (newRoute === 'standings' || newRoute === 'table') {
         setActiveTab('table');
       }
-      if (newRoute === 'fixtures' || newRoute === 'scores') {
+      if (newRoute === 'fixtures' || newRoute === 'scores' || newRoute === 'cleansheets') {
         setActiveTab('scores');
       }
       if (!newRoute.startsWith('match/')) {

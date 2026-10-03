@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { ApiService } from '../../services/api';
 import type { Match, LeagueTableEntry, NewsItem } from '../../types';
 import { GuestMatchdayFeed } from '../../components/MainFeed/GuestMatchdayFeed';
-import { Trophy, Newspaper, ArrowRight, Flame, Award, X, Zap, Shield } from 'lucide-react';
+import { Trophy, Newspaper, ArrowRight, Flame, Award, X, Zap, Shield, Share2 } from 'lucide-react';
+import { shareSnapshot } from '../../lib/shareSnapshot';
 import { supabase } from '../../lib/supabase';
 import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
@@ -35,6 +36,7 @@ const EplCleanSheetList: React.FC<{
 
   return (
     <section
+      id="epl-clean-sheets"
       aria-label="EPL clean sheets"
       className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
     >
@@ -45,14 +47,36 @@ const EplCleanSheetList: React.FC<{
             EPL Clean Sheets
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={onOpenTable}
-          className="text-[10px] font-black text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider shrink-0"
-        >
-          <span>Table</span>
-          <ArrowRight className="w-3 h-3" />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onOpenTable}
+            className="text-[10px] font-black text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer uppercase tracking-wider"
+          >
+            <span>Table</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void shareSnapshot({
+                kind: 'cleansheets',
+                title: 'Clean Sheets',
+                subtitle: 'EPL teams ranked by clean sheets',
+                rows: ranked.slice(0, 8).map((row) => ({
+                  left: row.teamName,
+                  right: `${row.cleanSheets || 0} CS · ${row.points} pts`,
+                  logo: row.teamLogo,
+                })),
+              });
+            }}
+            className="p-1.5 rounded-md bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-500 hover:text-[#ff0046] cursor-pointer"
+            aria-label="Share the clean sheets"
+            title="Share the clean sheets"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
       {loading && ranked.length === 0 ? (
         <div className="p-4 text-center text-xs text-slate-400">Loading clean sheets…</div>
@@ -113,6 +137,16 @@ export const HomePage: React.FC<HomePageProps> = ({
       error: null
     };
   });
+
+  useEffect(() => {
+    const openSheets = () => {
+      if (window.location.hash.replace(/^#\/?/, '').toLowerCase() !== 'cleansheets') return;
+      document.getElementById('epl-clean-sheets')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    openSheets();
+    window.addEventListener('hashchange', openSheets);
+    return () => window.removeEventListener('hashchange', openSheets);
+  }, [standingsState.epl.length]);
 
   const [newsState, setNewsState] = useState<{ data: NewsItem[]; loading: boolean; error: string | null }>(() => {
     const cached = guestCache.getStale<NewsItem[]>('news', 'all_p1_s6') || [];

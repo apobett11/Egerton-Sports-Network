@@ -8,7 +8,7 @@ export interface SnapshotRow {
 }
 
 export interface SnapshotCard {
-  kind: 'table' | 'fixtures';
+  kind: 'table' | 'fixtures' | 'cleansheets';
   title: string;
   subtitle: string;
   rows: SnapshotRow[];
@@ -123,7 +123,7 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
     ctx.fillStyle = '#0e1c2b';
     ctx.fillRect(48, y, WIDTH - 96, 96);
 
-    if (card.kind === 'table') {
+    if (card.kind === 'table' || card.kind === 'cleansheets') {
       drawCrest(ctx, logos[index].home, row.left, 72, y + 18, 60);
       ctx.fillStyle = '#f8fafc';
       ctx.font = '700 32px Arial, sans-serif';
@@ -162,19 +162,24 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   ctx.fillStyle = '#f8fafc';
   ctx.font = '700 30px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(card.kind === 'table' ? 'Tap to open the full table' : 'Tap to open the fixtures', WIDTH / 2, 1240);
+  const tapLabel = card.kind === 'fixtures'
+    ? 'Tap to open the fixtures'
+    : card.kind === 'cleansheets'
+      ? 'Tap to open the clean sheets'
+      : 'Tap to open the full table';
+  ctx.fillText(tapLabel, WIDTH / 2, 1240);
   ctx.fillStyle = '#9fb0c2';
   ctx.font = '600 22px Arial, sans-serif';
   ctx.fillText('Egerton Sports Network', WIDTH / 2, 1288);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not save the share card.');
-  const name = card.kind === 'table' ? 'epl-table.png' : 'epl-fixtures.png';
+  const name = card.kind === 'fixtures' ? 'epl-fixtures.png' : card.kind === 'cleansheets' ? 'epl-clean-sheets.png' : 'epl-table.png';
   return new File([blob], name, { type: 'image/png' });
 }
 
 function pageUrl(kind: SnapshotCard['kind']): string {
-  const path = kind === 'table' ? '/share/table' : '/share/fixtures';
+  const path = kind === 'fixtures' ? '/share/fixtures' : kind === 'cleansheets' ? '/share/cleansheets' : '/share/table';
   return `${window.location.origin}${path}`;
 }
 
@@ -189,8 +194,8 @@ function showPicture(file: File, href: string, title: string) {
         <strong style="font-size:13px;letter-spacing:.04em;">${title}</strong>
         <button type="button" data-close style="background:#152a40;color:white;border:0;border-radius:8px;padding:6px 10px;cursor:pointer;">Close</button>
       </div>
-      <a href="${href}" style="display:block;">
-        <img alt="${title}" src="${objectUrl}" style="width:100%;display:block;" />
+      <a href="${href}" data-open style="display:block;cursor:pointer;">
+        <img alt="${title}" src="${objectUrl}" style="width:100%;display:block;cursor:pointer;" />
       </a>
       <div style="display:flex;gap:8px;padding:12px;">
         <button type="button" data-again style="flex:1;background:#ff0046;color:white;border:0;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;">Share picture</button>
@@ -202,6 +207,10 @@ function showPicture(file: File, href: string, title: string) {
     URL.revokeObjectURL(objectUrl);
   };
   root.querySelector('[data-close]')?.addEventListener('click', close);
+  root.querySelector('[data-open]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.location.assign(href);
+  });
   root.addEventListener('click', (event) => {
     if (event.target === root) close();
   });
@@ -223,19 +232,10 @@ export async function shareSnapshot(card: SnapshotCard): Promise<void> {
   const file = await renderSnapshot(card);
   const href = pageUrl(card.kind);
   const title = card.title;
-  const withLink = { files: [file], title, text: card.subtitle, url: href };
+  const withLink = { files: [file], title, text: `${card.subtitle}\n${href}`, url: href };
   if (navigator.canShare?.(withLink)) {
     try {
       await navigator.share(withLink);
-      return;
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return;
-    }
-  }
-  const pictureOnly = { files: [file], title };
-  if (navigator.canShare?.(pictureOnly)) {
-    try {
-      await navigator.share(pictureOnly);
       return;
     } catch (error: any) {
       if (error?.name === 'AbortError') return;
