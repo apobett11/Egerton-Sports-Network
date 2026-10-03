@@ -59,8 +59,7 @@ function boardPage({ origin, view, requestUrl }) {
 </head>
 <body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
   <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
-    <img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" style="width:100%;max-width:640px;display:block;margin:0 auto;">
-    <p style="text-align:center;padding:16px;">Open ${escapeHtml(title)}</p>
+    <img alt="" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
   </a>
   <script>location.replace(${JSON.stringify(destination)})</script>
 </body>

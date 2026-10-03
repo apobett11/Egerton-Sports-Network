@@ -89,25 +89,28 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not draw the share card.');
 
-  ctx.fillStyle = '#081018';
+  ctx.fillStyle = '#0e1c2b';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillStyle = '#ff0046';
+  ctx.fillRect(0, 0, WIDTH, 6);
+  ctx.fillStyle = '#112236';
+  ctx.fillRect(0, 6, WIDTH, 168);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 174, WIDTH, 2);
 
   ctx.fillStyle = '#ff0046';
-  ctx.fillRect(0, 0, WIDTH, 10);
-
-  ctx.fillStyle = '#ff0046';
-  ctx.font = '700 28px Arial, sans-serif';
+  ctx.font = '700 22px Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('EGERSCORE', 56, 78);
+  ctx.fillText('EGERSCORE', 48, 58);
 
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 54px Arial, sans-serif';
-  ctx.fillText(card.title, 56, 150);
+  ctx.font = '800 46px Arial, sans-serif';
+  ctx.fillText(card.title.toUpperCase(), 48, 118);
 
-  ctx.fillStyle = '#9fb0c2';
-  ctx.font = '600 26px Arial, sans-serif';
-  ctx.fillText(card.subtitle, 56, 196);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '700 22px Arial, sans-serif';
+  ctx.fillText(card.subtitle.toUpperCase(), 48, 154);
 
   const shown = card.rows.slice(0, 8);
   const logos = await Promise.all(shown.map(async (row) => ({
@@ -116,61 +119,66 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   })));
 
   shown.forEach((row, index) => {
-    const y = 250 + index * 112;
-    const fade = index < 5 ? 1 : Math.max(0.18, 1 - (index - 4) * 0.28);
+    const y = 196 + index * 108;
+    const fade = index < 4 ? 1 : Math.max(0.16, 1 - (index - 3) * 0.28);
     ctx.save();
     ctx.globalAlpha = fade;
-    ctx.fillStyle = '#0e1c2b';
-    ctx.fillRect(48, y, WIDTH - 96, 96);
+    ctx.fillStyle = index % 2 === 0 ? '#0e1c2b' : '#102033';
+    ctx.fillRect(0, y, WIDTH, 108);
+    ctx.fillStyle = '#1a2e45';
+    ctx.fillRect(0, y + 107, WIDTH, 1);
 
     if (card.kind === 'table' || card.kind === 'cleansheets') {
-      drawCrest(ctx, logos[index].home, row.left, 72, y + 18, 60);
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '700 32px Arial, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.font = '800 24px Arial, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(fit(ctx, row.left, 620), 152, y + 48);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#00b04f';
-      ctx.font = '800 32px Arial, sans-serif';
-      ctx.fillText(row.right, WIDTH - 80, y + 48);
-    } else {
-      drawCrest(ctx, logos[index].home, row.left, 72, y + 18, 60);
-      drawCrest(ctx, logos[index].away, row.away || row.right, WIDTH - 132, y + 18, 60);
+      ctx.fillText(String(index + 1), 36, y + 54);
+      drawCrest(ctx, logos[index].home, row.left, 84, y + 24, 60);
       ctx.fillStyle = '#f8fafc';
-      ctx.font = '700 26px Arial, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(fit(ctx, row.left, 250), 148, y + 48);
+      ctx.font = '800 30px Arial, sans-serif';
+      ctx.fillText(fit(ctx, row.left, 560), 164, y + 54);
       ctx.textAlign = 'right';
-      ctx.fillText(fit(ctx, row.away || '', 250), WIDTH - 148, y + 48);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ff9800';
+      ctx.fillStyle = card.kind === 'cleansheets' ? '#a855f7' : '#f8fafc';
       ctx.font = '800 28px Arial, sans-serif';
-      ctx.fillText(row.center || row.right, WIDTH / 2, y + 48);
+      ctx.fillText(row.right, WIDTH - 40, y + 54);
+    } else {
+      drawCrest(ctx, logos[index].home, row.left, 36, y + 24, 60);
+      drawCrest(ctx, logos[index].away, row.away || row.right, WIDTH - 96, y + 24, 60);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '800 26px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(fit(ctx, row.left, 280), 112, y + 54);
+      ctx.textAlign = 'right';
+      ctx.fillText(fit(ctx, row.away || '', 280), WIDTH - 112, y + 54);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '800 28px Arial, sans-serif';
+      ctx.fillText(row.center || row.right, WIDTH / 2, y + 54);
     }
     ctx.restore();
   });
 
-  const veil = ctx.createLinearGradient(0, 860, 0, HEIGHT);
-  veil.addColorStop(0, 'rgba(8,16,24,0)');
-  veil.addColorStop(0.55, 'rgba(8,16,24,0.72)');
-  veil.addColorStop(1, 'rgba(8,16,24,1)');
+  const veil = ctx.createLinearGradient(0, 760, 0, HEIGHT);
+  veil.addColorStop(0, 'rgba(14,28,43,0)');
+  veil.addColorStop(0.45, 'rgba(14,28,43,0.72)');
+  veil.addColorStop(1, 'rgba(14,28,43,1)');
   ctx.fillStyle = veil;
-  ctx.fillRect(0, 860, WIDTH, HEIGHT - 860);
+  ctx.fillRect(0, 760, WIDTH, HEIGHT - 760);
 
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '700 30px Arial, sans-serif';
+  ctx.font = '800 26px Arial, sans-serif';
   ctx.textAlign = 'center';
   const tapLabel = card.kind === 'fixtures'
-    ? 'Tap to open the fixtures'
+    ? 'TAP TO OPEN THE FIXTURES'
     : card.kind === 'cleansheets'
-      ? 'Tap to open the clean sheets'
-      : 'Tap to open the full table';
-  ctx.fillText(tapLabel, WIDTH / 2, 1240);
-  ctx.fillStyle = '#9fb0c2';
-  ctx.font = '600 22px Arial, sans-serif';
-  ctx.fillText('Egerton Sports Network', WIDTH / 2, 1288);
+      ? 'TAP TO OPEN THE CLEAN SHEETS'
+      : 'TAP TO OPEN THE FULL TABLE';
+  ctx.fillText(tapLabel, WIDTH / 2, 1248);
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 20px Arial, sans-serif';
+  ctx.fillText('EGERTON SPORTS NETWORK', WIDTH / 2, 1292);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not save the share card.');
@@ -183,24 +191,26 @@ function pageUrl(kind: SnapshotCard['kind']): string {
   return `${window.location.origin}${path}`;
 }
 
+function openHash(kind: SnapshotCard['kind']): string {
+  if (kind === 'fixtures') return '#/fixtures';
+  if (kind === 'cleansheets') return '#/cleansheets';
+  return '#/table';
+}
+
 function showPicture(file: File, href: string, title: string) {
   const objectUrl = URL.createObjectURL(file);
   const root = document.createElement('div');
   root.setAttribute('role', 'dialog');
   root.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px;';
   root.innerHTML = `
-    <div style="width:min(420px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:16px;overflow:hidden;color:white;font-family:Arial,sans-serif;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
-        <strong style="font-size:13px;letter-spacing:.04em;">${title}</strong>
+    <div style="width:min(420px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:8px;overflow:hidden;color:white;font-family:Arial,sans-serif;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#112236;">
+        <strong style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;">${title}</strong>
         <button type="button" data-close style="background:#152a40;color:white;border:0;border-radius:8px;padding:6px 10px;cursor:pointer;">Close</button>
       </div>
-      <a href="${href}" data-open style="display:block;cursor:pointer;">
-        <img alt="${title}" src="${objectUrl}" style="width:100%;display:block;cursor:pointer;" />
+      <a href="${href}" data-open style="display:block;cursor:pointer;text-decoration:none;color:inherit;">
+        <img alt="" draggable="false" src="${objectUrl}" style="width:100%;display:block;pointer-events:none;" />
       </a>
-      <div style="display:flex;gap:8px;padding:12px;">
-        <button type="button" data-again style="flex:1;background:#ff0046;color:white;border:0;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;">Share picture</button>
-        <a href="${objectUrl}" download="${file.name}" style="flex:1;text-align:center;background:#152a40;color:white;text-decoration:none;border-radius:10px;padding:10px;font-weight:700;">Save picture</a>
-      </div>
     </div>`;
   const close = () => {
     root.remove();
@@ -209,21 +219,11 @@ function showPicture(file: File, href: string, title: string) {
   root.querySelector('[data-close]')?.addEventListener('click', close);
   root.querySelector('[data-open]')?.addEventListener('click', (event) => {
     event.preventDefault();
-    window.location.assign(href);
+    close();
+    window.location.hash = href;
   });
   root.addEventListener('click', (event) => {
     if (event.target === root) close();
-  });
-  root.querySelector('[data-again]')?.addEventListener('click', async () => {
-    const payload = { files: [file], title, url: href };
-    if (navigator.canShare?.(payload)) {
-      try {
-        await navigator.share(payload);
-        close();
-      } catch {
-        // The picture stays on screen.
-      }
-    }
   });
   document.body.appendChild(root);
 }
@@ -231,15 +231,16 @@ function showPicture(file: File, href: string, title: string) {
 export async function shareSnapshot(card: SnapshotCard): Promise<void> {
   const file = await renderSnapshot(card);
   const href = pageUrl(card.kind);
+  const hash = openHash(card.kind);
   const title = card.title;
-  const withLink = { files: [file], title, text: `${card.subtitle}\n${href}`, url: href };
-  if (navigator.canShare?.(withLink)) {
+  const linkOnly = { title, text: `${card.subtitle}\n${href}`, url: href };
+  if (navigator.canShare?.(linkOnly)) {
     try {
-      await navigator.share(withLink);
+      await navigator.share(linkOnly);
       return;
     } catch (error: any) {
       if (error?.name === 'AbortError') return;
     }
   }
-  showPicture(file, href, title);
+  showPicture(file, hash, title);
 }
