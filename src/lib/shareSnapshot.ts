@@ -197,7 +197,7 @@ function openHash(kind: SnapshotCard['kind']): string {
   return '#/table';
 }
 
-function showPicture(file: File, href: string, title: string) {
+function showPicture(file: File, hash: string, shareHref: string, title: string) {
   const objectUrl = URL.createObjectURL(file);
   const root = document.createElement('div');
   root.setAttribute('role', 'dialog');
@@ -208,9 +208,10 @@ function showPicture(file: File, href: string, title: string) {
         <strong style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;">${title}</strong>
         <button type="button" data-close style="background:#152a40;color:white;border:0;border-radius:8px;padding:6px 10px;cursor:pointer;">Close</button>
       </div>
-      <a href="${href}" data-open style="display:block;cursor:pointer;text-decoration:none;color:inherit;">
-        <img alt="" draggable="false" src="${objectUrl}" style="width:100%;display:block;pointer-events:none;" />
-      </a>
+      <div style="position:relative;">
+        <img data-card alt="${title}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;display:block;background:#0e1c2b;" />
+        <a href="${hash}" data-open data-share="${shareHref}" style="position:absolute;inset:0;z-index:2;display:block;"></a>
+      </div>
     </div>`;
   const close = () => {
     root.remove();
@@ -220,7 +221,7 @@ function showPicture(file: File, href: string, title: string) {
   root.querySelector('[data-open]')?.addEventListener('click', (event) => {
     event.preventDefault();
     close();
-    window.location.hash = href;
+    window.location.hash = hash;
   });
   root.addEventListener('click', (event) => {
     if (event.target === root) close();
@@ -230,17 +231,6 @@ function showPicture(file: File, href: string, title: string) {
 
 export async function shareSnapshot(card: SnapshotCard): Promise<void> {
   const file = await renderSnapshot(card);
-  const href = pageUrl(card.kind);
-  const hash = openHash(card.kind);
-  const title = card.title;
-  const linkOnly = { title, text: `${card.subtitle}\n${href}`, url: href };
-  if (navigator.canShare?.(linkOnly)) {
-    try {
-      await navigator.share(linkOnly);
-      return;
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return;
-    }
-  }
-  showPicture(file, hash, title);
+  if (file.size < 1000) throw new Error('Share image was empty.');
+  showPicture(file, openHash(card.kind), pageUrl(card.kind), card.title);
 }
