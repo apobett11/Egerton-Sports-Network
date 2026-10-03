@@ -26,19 +26,19 @@ function boardPage({ origin, view, requestUrl }) {
       ? `${origin}/#/cleansheets`
       : `${origin}/#/table`;
   const imageView = view === 'fixtures' ? 'fixtures' : view === 'cleansheets' ? 'cleansheets' : 'table';
-  const image = `${origin}/api/og?view=${imageView}`;
-  const title = view === 'fixtures' ? 'EPL Fixtures' : view === 'cleansheets' ? 'EPL Clean Sheets' : 'EPL Table';
+  const image = `${origin}/api/og?view=${imageView}&v=202610`;
+  const title = view === 'fixtures' ? 'EPL Fixtures · EgerScore' : view === 'cleansheets' ? 'EPL Clean Sheets · EgerScore' : 'EPL League Standings · EgerScore';
   const description = view === 'fixtures'
-    ? 'Open the fixtures. The card shows the top of the list.'
+    ? 'Official EPL Matchday Fixtures & Live Scores · Tap to view full schedule'
     : view === 'cleansheets'
-      ? 'Open the clean sheets. The card shows the top of the list.'
-      : 'Open the table. The card shows the top of the standings.';
+      ? 'Official EPL Clean Sheets Leaderboard · Defensive Wall Rankings'
+      : 'Official EPL League Table & Standings · Tap to view full rankings';
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHtml(title)} | EgerScore</title>
+  <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="EgerScore">
@@ -56,10 +56,11 @@ function boardPage({ origin, view, requestUrl }) {
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
   <link rel="canonical" href="${escapeHtml(destination)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">
 </head>
 <body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
   <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
-    <img alt="" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
+    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
   </a>
   <script>location.replace(${JSON.stringify(destination)})</script>
 </body>

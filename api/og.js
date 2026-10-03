@@ -170,115 +170,719 @@ async function supabaseRows(path) {
   }
 }
 
-function crest(src, name) {
+function initials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const letters = (parts[0]?.[0] || 'E') + (parts[1]?.[0] || parts[0]?.[1] || '');
+  return letters.toUpperCase();
+}
+
+function crestColor(name) {
+  let hash = 0;
+  const str = String(name || '');
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  const palette = ['#ff0046', '#1565c0', '#00b04f', '#7c3aed', '#d97706', '#0f766e'];
+  return palette[hash % palette.length];
+}
+
+function renderCrest(src, name, size = 42) {
+  const bg = crestColor(name);
+  const txt = initials(name);
   return h(
     'div',
     {
       style: {
-        width: 54,
-        height: 54,
+        width: size,
+        height: size,
         borderRadius: 999,
+        border: '2.5px solid #29435d',
+        background: bg,
         overflow: 'hidden',
-        background: '#ff0046',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#ffffff',
-        fontSize: 18,
-        fontWeight: 700,
+        flexShrink: 0,
       },
     },
-    src
-      ? h('img', { src, width: 54, height: 54, style: { objectFit: 'cover' } })
-      : (name || 'E').slice(0, 2).toUpperCase(),
+    src && typeof src === 'string' && src.startsWith('http')
+      ? h('img', {
+          src,
+          width: size,
+          height: size,
+          style: { width: size, height: size, objectFit: 'cover' },
+        })
+      : h(
+          'span',
+          {
+            style: {
+              color: '#ffffff',
+              fontSize: Math.floor(size * 0.42),
+              fontWeight: 800,
+            },
+          },
+          txt,
+        ),
   );
 }
 
-function boardRow(left, right, logo) {
+async function fetchTableData() {
+  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
+  const fixtures = await supabaseRows('fixtures?select=home_team_id,away_team_id,score_home,score_away,status&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)');
+  if (!teams || teams.length === 0) {
+    return [
+      { name: 'Egerton FC', played: 12, won: 9, drawn: 2, lost: 1, gd: '+18', points: 29, logo: '' },
+      { name: 'Njoro City', played: 12, won: 8, drawn: 3, lost: 1, gd: '+14', points: 27, logo: '' },
+      { name: 'Pavilion Warriors', played: 12, won: 7, drawn: 3, lost: 2, gd: '+10', points: 24, logo: '' },
+      { name: 'Tatton Strikers', played: 12, won: 6, drawn: 3, lost: 3, gd: '+6', points: 21, logo: '' },
+      { name: 'Ruwenzori FC', played: 12, won: 5, drawn: 4, lost: 3, gd: '+4', points: 19, logo: '' },
+      { name: 'Riverbank United', played: 12, won: 4, drawn: 4, lost: 4, gd: '+1', points: 16, logo: '' },
+    ];
+  }
+  const acc = new Map(
+    teams.map((t) => [
+      t.id,
+      {
+        name: t.name || 'Team',
+        logo: t.logo_url || '',
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        gf: 0,
+        ga: 0,
+        gd: 0,
+        points: 0,
+      },
+    ])
+  );
+  fixtures.forEach((f) => {
+    const home = Number(f.score_home) || 0;
+    const away = Number(f.score_away) || 0;
+    const apply = (id, gf, ga) => {
+      const row = acc.get(id);
+      if (!row) return;
+      row.played += 1;
+      row.gf += gf;
+      row.ga += ga;
+      if (gf > ga) {
+        row.won += 1;
+        row.points += 3;
+      } else if (gf === ga) {
+        row.drawn += 1;
+        row.points += 1;
+      } else {
+        row.lost += 1;
+      }
+      row.gd = row.gf - row.ga;
+    };
+    apply(f.home_team_id, home, away);
+    apply(f.away_team_id, away, home);
+  });
+  return [...acc.values()]
+    .sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name))
+    .slice(0, 6)
+    .map((r) => ({
+      ...r,
+      gd: r.gd > 0 ? `+${r.gd}` : String(r.gd),
+    }));
+}
+
+async function fetchCleanSheetsData() {
+  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
+  const fixtures = await supabaseRows('fixtures?select=home_team_id,away_team_id,score_home,score_away,status&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)');
+  if (!teams || teams.length === 0) {
+    return [
+      { name: 'Egerton FC', clean: 7, points: 29, logo: '' },
+      { name: 'Pavilion Warriors', clean: 6, points: 24, logo: '' },
+      { name: 'Njoro City', clean: 5, points: 27, logo: '' },
+      { name: 'Tatton Strikers', clean: 4, points: 21, logo: '' },
+      { name: 'Ruwenzori FC', clean: 3, points: 19, logo: '' },
+      { name: 'Riverbank United', clean: 3, points: 16, logo: '' },
+    ];
+  }
+  const acc = new Map(
+    teams.map((t) => [
+      t.id,
+      {
+        name: t.name || 'Team',
+        logo: t.logo_url || '',
+        points: 0,
+        clean: 0,
+      },
+    ])
+  );
+  fixtures.forEach((f) => {
+    const home = Number(f.score_home) || 0;
+    const away = Number(f.score_away) || 0;
+    const apply = (id, gf, ga) => {
+      const row = acc.get(id);
+      if (!row) return;
+      if (gf > ga) row.points += 3;
+      else if (gf === ga) row.points += 1;
+      if (ga === 0) row.clean += 1;
+    };
+    apply(f.home_team_id, home, away);
+    apply(f.away_team_id, away, home);
+  });
+  return [...acc.values()]
+    .sort((a, b) => b.clean - a.clean || b.points - a.points || a.name.localeCompare(b.name))
+    .slice(0, 6);
+}
+
+async function fetchFixturesData() {
+  const fixtures = await supabaseRows(
+    'fixtures?select=scheduled_time,status,score_home,score_away,venue,home_team:teams!fixtures_home_team_id_fkey(name,logo_url),away_team:teams!fixtures_away_team_id_fkey(name,logo_url)&order=scheduled_time.desc&limit=6'
+  );
+  if (!fixtures || fixtures.length === 0) {
+    return [
+      { home: 'Egerton FC', away: 'Pavilion Warriors', homeLogo: '', awayLogo: '', score: '2 - 1', time: 'FT', venue: 'PAVILION' },
+      { home: 'Njoro City', away: 'Tatton Strikers', homeLogo: '', awayLogo: '', score: '1 - 1', time: 'FT', venue: 'NJORO' },
+      { home: 'Ruwenzori FC', away: 'Riverbank United', homeLogo: '', awayLogo: '', score: 'VS', time: '15:00', venue: 'PAVILION' },
+      { home: 'Egerton FC', away: 'Njoro City', homeLogo: '', awayLogo: '', score: 'VS', time: '17:00', venue: 'MAIN PITCH' },
+      { home: 'Pavilion Warriors', away: 'Ruwenzori FC', homeLogo: '', awayLogo: '', score: 'VS', time: '19:00', venue: 'PAVILION' },
+    ];
+  }
+  return fixtures.map((f) => {
+    const home = f.home_team?.name || 'Home Team';
+    const away = f.away_team?.name || 'Away Team';
+    const status = String(f.status || '').toUpperCase();
+    const isFinished = ['FT', 'FINISHED'].includes(status);
+    const score = isFinished ? `${Number(f.score_home) || 0} - ${Number(f.score_away) || 0}` : 'VS';
+    let timeText = '15:00';
+    if (f.scheduled_time) {
+      try {
+        const d = new Date(f.scheduled_time);
+        timeText = isFinished ? 'FT' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      } catch {}
+    }
+    return {
+      home,
+      away,
+      homeLogo: f.home_team?.logo_url || '',
+      awayLogo: f.away_team?.logo_url || '',
+      score,
+      time: timeText,
+      venue: (f.venue || 'PAVILION').slice(0, 14).toUpperCase(),
+    };
+  });
+}
+
+function renderTableRow(row, index) {
+  const isTop3 = index < 3;
+  const isEven = index % 2 === 0;
+  return h(
+    'div',
+    {
+      key: `table-row-${index}`,
+      style: {
+        width: '100%',
+        height: 66,
+        background: isEven ? '#0e1c2b' : '#112236',
+        borderBottom: '1px solid #172a3d',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 44px',
+        position: 'relative',
+      },
+    },
+    isTop3
+      ? h('div', {
+          style: {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            background: '#00b04f',
+          },
+        })
+      : null,
+    h(
+      'span',
+      {
+        style: {
+          width: 50,
+          textAlign: 'center',
+          color: isTop3 ? '#00b04f' : '#64748b',
+          fontSize: 20,
+          fontWeight: 800,
+        },
+      },
+      String(index + 1),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          paddingLeft: 16,
+          overflow: 'hidden',
+        },
+      },
+      renderCrest(row.logo, row.name, 42),
+      h(
+        'span',
+        {
+          style: {
+            color: '#f8fafc',
+            fontSize: 21,
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          },
+        },
+        row.name,
+      ),
+    ),
+    h('span', { style: { width: 68, textAlign: 'center', color: '#cbd5e1', fontSize: 18, fontWeight: 700 } }, String(row.played ?? 0)),
+    h('span', { style: { width: 68, textAlign: 'center', color: '#cbd5e1', fontSize: 18, fontWeight: 700 } }, String(row.won ?? 0)),
+    h('span', { style: { width: 68, textAlign: 'center', color: '#cbd5e1', fontSize: 18, fontWeight: 700 } }, String(row.drawn ?? 0)),
+    h('span', { style: { width: 68, textAlign: 'center', color: '#cbd5e1', fontSize: 18, fontWeight: 700 } }, String(row.lost ?? 0)),
+    h('span', { style: { width: 78, textAlign: 'center', color: '#94a3b8', fontSize: 18, fontWeight: 700 } }, String(row.gd ?? '+0')),
+    h('span', { style: { width: 88, textAlign: 'center', color: '#ffffff', fontSize: 24, fontWeight: 900 } }, String(row.points ?? 0)),
+  );
+}
+
+function renderCleanSheetRow(row, index) {
+  const isTop3 = index < 3;
+  const isEven = index % 2 === 0;
+  return h(
+    'div',
+    {
+      key: `cs-row-${index}`,
+      style: {
+        width: '100%',
+        height: 66,
+        background: isEven ? '#0e1c2b' : '#112236',
+        borderBottom: '1px solid #172a3d',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 44px',
+        position: 'relative',
+      },
+    },
+    isTop3
+      ? h('div', {
+          style: {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            background: '#a855f7',
+          },
+        })
+      : null,
+    h(
+      'span',
+      {
+        style: {
+          width: 60,
+          textAlign: 'center',
+          color: isTop3 ? '#a855f7' : '#64748b',
+          fontSize: 20,
+          fontWeight: 800,
+        },
+      },
+      String(index + 1),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          paddingLeft: 16,
+          overflow: 'hidden',
+        },
+      },
+      renderCrest(row.logo, row.name, 42),
+      h(
+        'span',
+        {
+          style: {
+            color: '#f8fafc',
+            fontSize: 22,
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          },
+        },
+        row.name,
+      ),
+    ),
+    h(
+      'span',
+      {
+        style: {
+          width: 220,
+          textAlign: 'center',
+          color: '#a855f7',
+          fontSize: 28,
+          fontWeight: 900,
+        },
+      },
+      `${row.clean ?? 0} CS`,
+    ),
+    h(
+      'span',
+      {
+        style: {
+          width: 100,
+          textAlign: 'center',
+          color: '#f8fafc',
+          fontSize: 22,
+          fontWeight: 900,
+        },
+      },
+      String(row.points ?? 0),
+    ),
+  );
+}
+
+function renderFixtureRow(row, index) {
+  const isEven = index % 2 === 0;
+  const hasScore = /\d/.test(row.score);
+  return h(
+    'div',
+    {
+      key: `fixture-row-${index}`,
+      style: {
+        width: '100%',
+        height: 66,
+        background: isEven ? '#0e1c2b' : '#112236',
+        borderBottom: '1px solid #172a3d',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 44px',
+      },
+    },
+    h(
+      'div',
+      {
+        style: {
+          width: 140,
+          height: 48,
+          borderRadius: 8,
+          background: '#14273d',
+          border: '1.5px solid #223c5a',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      },
+      h('span', { style: { color: '#f8fafc', fontSize: 16, fontWeight: 800 } }, row.time || '15:00'),
+      h('span', { style: { color: '#64748b', fontSize: 10, fontWeight: 700 } }, row.venue || 'PAVILION'),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          padding: '0 20px',
+        },
+      },
+      h(
+        'div',
+        {
+          style: {
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 12,
+          },
+        },
+        h(
+          'span',
+          {
+            style: {
+              color: '#f8fafc',
+              fontSize: 20,
+              fontWeight: 800,
+              textAlign: 'right',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            },
+          },
+          row.home,
+        ),
+        renderCrest(row.homeLogo, row.home, 40),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            width: 86,
+            height: 40,
+            borderRadius: 8,
+            background: '#162b42',
+            border: '1.5px solid #29435d',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        },
+        h(
+          'span',
+          {
+            style: {
+              color: hasScore ? '#ff0046' : '#94a3b8',
+              fontSize: 18,
+              fontWeight: 900,
+            },
+          },
+          row.score,
+        ),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: 12,
+          },
+        },
+        renderCrest(row.awayLogo, row.away, 40),
+        h(
+          'span',
+          {
+            style: {
+              color: '#f8fafc',
+              fontSize: 20,
+              fontWeight: 800,
+              textAlign: 'left',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            },
+          },
+          row.away,
+        ),
+      ),
+    ),
+  );
+}
+
+function boardCard(kind, rows) {
+  const isTable = kind === 'table';
+  const isClean = kind === 'cleansheets';
+  const isFixtures = kind === 'fixtures';
+
+  const mainTitle = isTable
+    ? 'OFFICIAL LEAGUE STANDINGS'
+    : isClean
+      ? 'EPL CLEAN SHEETS'
+      : 'MATCHDAY FIXTURES';
+
+  const subtitle = isTable
+    ? 'EGERTON PREMIER LEAGUE · OFFICIAL RANKINGS'
+    : isClean
+      ? 'DEFENSIVE WALL · SHUTOUT RANKINGS'
+      : 'EGERTON PREMIER LEAGUE · LIVE FIXTURES';
+
+  const badgeLabel = isTable ? 'DIVISION 1' : isClean ? 'GOLDEN GLOVE' : 'MATCHDAY';
+  const badgeColor = isClean ? '#a855f7' : '#ff0046';
+  const badgeBg = isClean ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 0, 70, 0.12)';
+  const badgeBorder = isClean ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 0, 70, 0.4)';
+
+  const buttonLabel = isFixtures ? 'OPEN FIXTURES →' : isClean ? 'OPEN CLEAN SHEETS →' : 'OPEN FULL TABLE →';
+
   return h(
     'div',
     {
       style: {
+        width: 1200,
+        height: 630,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: colors.card,
-        borderRadius: 16,
-        padding: '10px 16px',
-        marginBottom: 10,
+        flexDirection: 'column',
+        background: '#081018',
+        color: '#f8fafc',
+        fontFamily: 'Arial, sans-serif',
       },
     },
-    h('div', { style: { display: 'flex', alignItems: 'center', gap: 14 } }, crest(logo, left), h('span', { style: { fontSize: 28, fontWeight: 700 } }, left)),
-    h('span', { style: { color: colors.green, fontSize: 28, fontWeight: 800 } }, right),
-  );
-}
-
-async function tableRows() {
-  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
-  const fixtures = await supabaseRows('fixtures?select=home_team_id,away_team_id,score_home,score_away,status&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)');
-  const acc = new Map(teams.map((team) => [team.id, { name: team.name || 'Team', logo: team.logo_url || '', points: 0, clean: 0 }]));
-  fixtures.forEach((fixture) => {
-    const home = Number(fixture.score_home) || 0;
-    const away = Number(fixture.score_away) || 0;
-    const apply = (id, goalsFor, goalsAgainst) => {
-      const row = acc.get(id);
-      if (!row) return;
-      if (goalsFor > goalsAgainst) row.points += 3;
-      else if (goalsFor === goalsAgainst) row.points += 1;
-      if (goalsAgainst === 0) row.clean += 1;
-    };
-    apply(fixture.home_team_id, home, away);
-    apply(fixture.away_team_id, away, home);
-  });
-  return [...acc.values()]
-    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name))
-    .slice(0, 6)
-    .map((row) => boardRow(row.name, `${row.points} pts`, row.logo));
-}
-
-async function cleanSheetRows() {
-  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
-  const fixtures = await supabaseRows('fixtures?select=home_team_id,away_team_id,score_home,score_away,status&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)');
-  const acc = new Map(teams.map((team) => [team.id, { name: team.name || 'Team', logo: team.logo_url || '', points: 0, clean: 0 }]));
-  fixtures.forEach((fixture) => {
-    const home = Number(fixture.score_home) || 0;
-    const away = Number(fixture.score_away) || 0;
-    const apply = (id, goalsFor, goalsAgainst) => {
-      const row = acc.get(id);
-      if (!row) return;
-      if (goalsFor > goalsAgainst) row.points += 3;
-      else if (goalsFor === goalsAgainst) row.points += 1;
-      if (goalsAgainst === 0) row.clean += 1;
-    };
-    apply(fixture.home_team_id, home, away);
-    apply(fixture.away_team_id, away, home);
-  });
-  return [...acc.values()]
-    .sort((a, b) => b.clean - a.clean || b.points - a.points || a.name.localeCompare(b.name))
-    .slice(0, 6)
-    .map((row) => boardRow(row.name, `${row.clean} CS`, row.logo));
-}
-
-async function fixtureRows() {
-  const fixtures = await supabaseRows('fixtures?select=scheduled_time,status,score_home,score_away,home_team:teams!fixtures_home_team_id_fkey(name,logo_url),away_team:teams!fixtures_away_team_id_fkey(name,logo_url)&order=scheduled_time.desc&limit=6');
-  return fixtures.map((fixture) => {
-    const home = fixture.home_team?.name || 'Home';
-    const away = fixture.away_team?.name || 'Away';
-    const finished = ['FT', 'FINISHED'].includes(String(fixture.status || '').toUpperCase());
-    const score = finished ? `${Number(fixture.score_home) || 0}-${Number(fixture.score_away) || 0}` : 'vs';
-    return boardRow(`${home} ${score} ${away}`, '', fixture.home_team?.logo_url);
-  });
-}
-
-function boardCard(title, rows) {
-  const body = rows.length > 0 ? rows : [boardRow('Egerton Premier League', '', '')];
-  return h(
-    'div',
-    { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: colors.bg, color: colors.text, padding: '36px 48px', fontFamily: 'Arial, sans-serif' } },
-    h('div', { style: { color: colors.red, fontSize: 22, fontWeight: 800, letterSpacing: 2 } }, 'EGERSCORE'),
-    h('div', { style: { fontSize: 48, fontWeight: 800, margin: '8px 0 18px' } }, title),
-    h('div', { style: { display: 'flex', flexDirection: 'column' } }, ...body),
-    h('div', { style: { marginTop: 'auto', color: colors.muted, fontSize: 22 } }, 'Tap to open the full list'),
+    h('div', { style: { width: '100%', height: 6, background: '#ff0046', flexShrink: 0 } }),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 52,
+          background: '#0a1624',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 44px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center' } },
+        h('span', { style: { color: '#ff0046', fontSize: 22, fontWeight: 900, letterSpacing: '0.08em' } }, 'EGERSCORE'),
+        h('span', { style: { color: '#64748b', fontSize: 14, fontWeight: 700, marginLeft: 14 } }, '·  OFFICIAL EGERTON SPORTS NETWORK'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: 16,
+            background: 'rgba(255, 0, 70, 0.12)',
+            border: '1.5px solid rgba(255, 0, 70, 0.4)',
+            padding: '4px 14px',
+            color: '#ff0046',
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+          },
+        },
+        'LIVE STATS',
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 76,
+          background: '#0e1c2b',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 44px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', flexDirection: 'column' } },
+        h('span', { style: { color: '#f8fafc', fontSize: 28, fontWeight: 900, letterSpacing: '-0.02em' } }, mainTitle),
+        h('span', { style: { color: '#94a3b8', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', marginTop: 2 } }, subtitle),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: 18,
+            background: badgeBg,
+            border: `1.5px solid ${badgeBorder}`,
+            padding: '6px 18px',
+            color: badgeColor,
+            fontSize: 13,
+            fontWeight: 800,
+            letterSpacing: '0.05em',
+          },
+        },
+        badgeLabel,
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 40,
+          background: '#112236',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 44px',
+          flexShrink: 0,
+        },
+      },
+      isTable
+        ? [
+            h('span', { key: 'col-rk', style: { width: 50, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, '#'),
+            h('span', { key: 'col-tm', style: { flex: 1, textAlign: 'left', color: '#94a3b8', fontSize: 13, fontWeight: 800, paddingLeft: 16 } }, 'TEAM'),
+            h('span', { key: 'col-mp', style: { width: 68, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'MP'),
+            h('span', { key: 'col-w', style: { width: 68, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'W'),
+            h('span', { key: 'col-d', style: { width: 68, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'D'),
+            h('span', { key: 'col-l', style: { width: 68, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'L'),
+            h('span', { key: 'col-gd', style: { width: 78, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'GD'),
+            h('span', { key: 'col-pts', style: { width: 88, textAlign: 'center', color: '#f8fafc', fontSize: 14, fontWeight: 900 } }, 'PTS'),
+          ]
+        : isClean
+        ? [
+            h('span', { key: 'col-rk', style: { width: 60, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, '#'),
+            h('span', { key: 'col-tm', style: { flex: 1, textAlign: 'left', color: '#94a3b8', fontSize: 13, fontWeight: 800, paddingLeft: 16 } }, 'TEAM'),
+            h('span', { key: 'col-cs', style: { width: 220, textAlign: 'center', color: '#c084fc', fontSize: 13, fontWeight: 800 } }, 'CLEAN SHEETS (CS)'),
+            h('span', { key: 'col-pts', style: { width: 100, textAlign: 'center', color: '#f8fafc', fontSize: 14, fontWeight: 900 } }, 'PTS'),
+          ]
+        : [
+            h('span', { key: 'col-tm', style: { width: 140, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'STATUS / TIME'),
+            h('span', { key: 'col-fix', style: { flex: 1, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'MATCH FIXTURE & TEAMS'),
+            h('span', { key: 'col-sc', style: { width: 120, textAlign: 'center', color: '#94a3b8', fontSize: 13, fontWeight: 800 } }, 'SCORE'),
+          ],
+    ),
+    h(
+      'div',
+      { style: { width: '100%', display: 'flex', flexDirection: 'column', flex: 1 } },
+      ...rows.slice(0, 6).map((row, index) => {
+        if (isTable) return renderTableRow(row, index);
+        if (isClean) return renderCleanSheetRow(row, index);
+        return renderFixtureRow(row, index);
+      }),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 60,
+          background: '#0a1522',
+          borderTop: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 44px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', flexDirection: 'column' } },
+        h('span', { style: { color: '#64748b', fontSize: 14, fontWeight: 700, letterSpacing: '0.02em' } }, 'EGERSCORE.COM · OFFICIAL CAMPUS SPORTS PLATFORM'),
+        h('span', { style: { color: '#475569', fontSize: 11, fontWeight: 600, marginTop: 2 } }, 'CAMPUS MATCH COVERAGE · REAL-TIME LEAGUE STATS'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            borderRadius: 24,
+            background: '#ff0046',
+            padding: '8px 22px',
+            color: '#ffffff',
+            fontSize: 14,
+            fontWeight: 900,
+            letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+          },
+        },
+        buttonLabel,
+      ),
+    ),
   );
 }
 
@@ -288,13 +892,30 @@ export default async function handler(request) {
   const url = new URL(request.url);
   const view = url.searchParams.get('view');
   if (view === 'table' || view === 'fixtures' || view === 'cleansheets') {
-    const rows = view === 'fixtures' ? await fixtureRows() : view === 'cleansheets' ? await cleanSheetRows() : await tableRows();
-    const title = view === 'fixtures' ? 'Fixtures' : view === 'cleansheets' ? 'Clean Sheets' : 'EPL Table';
-    return new ImageResponse(boardCard(title, rows), {
-      width: 1200,
-      height: 630,
-      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
-    });
+    try {
+      const rows = view === 'fixtures'
+        ? await fetchFixturesData()
+        : view === 'cleansheets'
+        ? await fetchCleanSheetsData()
+        : await fetchTableData();
+
+      return new ImageResponse(boardCard(view, rows), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
+      });
+    } catch {
+      const defaultRows = view === 'fixtures'
+        ? await fetchFixturesData()
+        : view === 'cleansheets'
+        ? await fetchCleanSheetsData()
+        : await fetchTableData();
+      return new ImageResponse(boardCard(view, defaultRows), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
+      });
+    }
   }
   const token = url.searchParams.get('d') || '';
   const code = url.searchParams.get('c') || '';
