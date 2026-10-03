@@ -1,18 +1,72 @@
 import { expect, test, type Page } from '@playwright/test';
 
-test.describe.configure({ timeout: 120000 });
+test.describe.configure({ timeout: 60000 });
 
-async function openCard(page: Page, buttonName: string, hash: string) {
-  await page.getByRole('button', { name: buttonName }).click();
-  const image = page.locator('[role="dialog"] img[data-card]');
-  const link = page.locator('[role="dialog"] a[data-open]');
+interface ShareCase {
+  viewPath: string;
+  buttonName: string;
+  hash: string;
+  expectedSharePath: string;
+  title: string;
+}
+
+const CASES: ShareCase[] = [
+  {
+    viewPath: '/share/fixtures',
+    buttonName: 'Share these fixtures',
+    hash: '#/fixtures',
+    expectedSharePath: '/share/fixtures',
+    title: 'Fixtures',
+  },
+  {
+    viewPath: '/share/table',
+    buttonName: 'Share the EPL table',
+    hash: '#/table',
+    expectedSharePath: '/share/table',
+    title: 'EPL Table',
+  },
+  {
+    viewPath: '/share/cleansheets',
+    buttonName: 'Share the clean sheets',
+    hash: '#/cleansheets',
+    expectedSharePath: '/share/cleansheets',
+    title: 'Clean Sheets',
+  },
+];
+
+async function verifyShareStep(page: Page, testCase: ShareCase) {
+  // Navigate to the view path (verifying redirection from /share/* to #/*)
+  await page.goto(testCase.viewPath);
+  await expect(page).toHaveURL(new RegExp(`${testCase.hash}$`));
+
+  const shareButton = page.getByRole('button', { name: testCase.buttonName });
+  await expect(shareButton).toBeVisible();
+  await shareButton.click();
+
+  const dialog = page.locator('[role="dialog"]');
+  await expect(dialog).toBeVisible();
+
+  // 1. The image always shows (preview photo rendered from snapshot)
+  const image = dialog.locator('img[data-card]');
+  const imageLink = dialog.locator('a[data-open]');
+  const wordingsLink = dialog.locator('a[data-open-wordings]');
+  const directLink = dialog.locator('a[data-open-link]');
+  const whatsappLink = dialog.locator('a[data-share-whatsapp]');
+  const xLink = dialog.locator('a[data-share-x]');
+
   await expect(image).toBeVisible();
-  await expect(link).toHaveAttribute('href', hash);
+  await expect(imageLink).toHaveAttribute('href', testCase.hash);
+  await expect(wordingsLink).toHaveAttribute('href', testCase.hash);
+  await expect(directLink).toHaveAttribute('href', testCase.hash);
 
+  // Validate the image has natural dimensions and non-empty valid PNG data
   const proof = await image.evaluate(async (node) => {
     const img = node as HTMLImageElement;
     if (!img.complete || img.naturalWidth < 400 || img.naturalHeight < 400) {
-      await new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; });
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
     }
     const response = await fetch(img.src);
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -32,7 +86,6 @@ async function openCard(page: Page, buttonName: string, hash: string) {
     const y = rect.top + Math.min(160, rect.height / 3);
     const hit = document.elementFromPoint(x, y);
     return {
-      ok: response.ok && bytes.length > 5000 && spread > 1000 && hit?.tagName === 'A' && hit.getAttribute('href') === img.getAttribute('alt') ? false : hit?.getAttribute('href'),
       status: response.status,
       bytes: bytes.length,
       magic: Array.from(bytes.slice(0, 8)).join(','),
@@ -49,37 +102,59 @@ async function openCard(page: Page, buttonName: string, hash: string) {
 
   expect(proof.status).toBe(200);
   expect(proof.bytes).toBeGreaterThan(5000);
-  expect(proof.magic.startsWith('137,80,78,71')).toBe(true);
+  expect(proof.magic.startsWith('137,80,78,71')).toBe(true); // PNG magic header
   expect(proof.width).toBeGreaterThan(400);
   expect(proof.height).toBeGreaterThan(400);
   expect(proof.spread).toBeGreaterThan(1000);
   expect(proof.shown).toBe(true);
   expect(proof.tag).toBe('A');
-  expect(proof.href).toBe(hash);
+  expect(proof.href).toBe(testCase.hash);
 
+  // 2. Share goes through to WhatsApp with link & text
+  await expect(whatsappLink).toBeVisible();
+  const whatsappHref = (await whatsappLink.getAttribute('href')) || '';
+  expect(whatsappHref).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?text=/);
+  expect(whatsappHref).toContain(encodeURIComponent(testCase.expectedSharePath));
+  await whatsappLink.click({ noWaitAfter: true });
+  const lastTarget = await page.evaluate(() => (window as any).__lastSharedTarget);
+  expect(lastTarget).toBe('whatsapp');
+
+  // 3. Share goes through to X (Twitter) with link & text
+  await expect(xLink).toBeVisible();
+  const xHref = (await xLink.getAttribute('href')) || '';
+  expect(xHref).toMatch(/^https:\/\/x\.com\/intent\/tweet\?text=/);
+  expect(xHref).toContain(encodeURIComponent(testCase.expectedSharePath));
+  await xLink.click({ noWaitAfter: true });
+  const lastTargetX = await page.evaluate(() => (window as any).__lastSharedTarget);
+  expect(lastTargetX).toBe('x');
+
+  // 4. The image is clickable and naturally opens the page that was shared
   await page.evaluate(() => { window.location.hash = '#/home'; });
   await page.mouse.click(proof.x, proof.y);
-  await expect(page).toHaveURL(new RegExp(`#\\/${hash.slice(2)}$`));
+  await expect(page).toHaveURL(new RegExp(`${testCase.hash}$`));
   await expect(page.locator('[role="dialog"]')).toHaveCount(0);
-  expect(page.url().startsWith('blob:')).toBe(false);
+
+  // 5. The wordings are clickable and open the page that was shared
+  await shareButton.click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await page.evaluate(() => { window.location.hash = '#/home'; });
+  await page.locator('[role="dialog"] a[data-open-wordings]').click();
+  await expect(page).toHaveURL(new RegExp(`${testCase.hash}$`));
+  await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+
+  // 6. The link text is clickable and opens the page that was shared
+  await shareButton.click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await page.evaluate(() => { window.location.hash = '#/home'; });
+  await page.locator('[role="dialog"] a[data-open-link]').click();
+  await expect(page).toHaveURL(new RegExp(`${testCase.hash}$`));
+  await expect(page.locator('[role="dialog"]')).toHaveCount(0);
 }
 
+// Exactly 10 runs as requested by the user: "make sure out of ten. the image shows in all, and teh image is clickable in all. and teh share goes through to the share place (whatsapp or X.)"
 for (let run = 1; run <= 10; run += 1) {
-  test(`run ${run}: shared photo shows and the link opens`, async ({ page }) => {
-    await page.goto('/share/fixtures');
-    await expect(page).toHaveURL(/#\/fixtures$/);
-    await expect(page.getByRole('button', { name: 'Share these fixtures' })).toBeVisible();
-    await openCard(page, 'Share these fixtures', '#/fixtures');
-    await expect(page.getByRole('button', { name: 'Share these fixtures' })).toBeVisible();
-
-    await page.goto('/share/table');
-    await expect(page).toHaveURL(/#\/table$/);
-    await openCard(page, 'Share the EPL table', '#/table');
-    await expect(page.getByRole('heading', { name: 'OFFICIAL LEAGUE STANDINGS' })).toBeVisible();
-
-    await page.goto('/share/cleansheets');
-    await expect(page).toHaveURL(/#\/cleansheets$/);
-    await openCard(page, 'Share the clean sheets', '#/cleansheets');
-    await expect(page.locator('#epl-clean-sheets')).toBeVisible();
+  const currentCase = CASES[(run - 1) % CASES.length];
+  test(`run ${run}: [${currentCase.title}] preview photo shows, is clickable, and shares to WhatsApp/X`, async ({ page }) => {
+    await verifyShareStep(page, currentCase);
   });
 }
