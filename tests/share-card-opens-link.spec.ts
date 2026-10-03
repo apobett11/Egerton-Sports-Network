@@ -36,7 +36,19 @@ const CASES: ShareCase[] = [
 
 async function verifyShareStep(page: Page, testCase: ShareCase) {
   // Navigate to the view path (verifying redirection from /share/* to #/*)
-  await page.goto(testCase.viewPath);
+  let loaded = false;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(testCase.viewPath, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      loaded = true;
+      break;
+    } catch {
+      await page.waitForTimeout(600);
+    }
+  }
+  if (!loaded) {
+    await page.goto(testCase.viewPath);
+  }
   await expect(page).toHaveURL(new RegExp(`${testCase.hash}$`));
 
   const shareButton = page.getByRole('button', { name: testCase.buttonName });

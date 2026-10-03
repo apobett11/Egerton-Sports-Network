@@ -415,6 +415,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       left: row.teamName,
                       right: `${row.points} pts`,
                       logo: row.teamLogo,
+                      played: row.played,
+                      won: row.won,
+                      drawn: row.drawn,
+                      lost: row.lost,
+                      gd: row.goalDifference > 0 ? `+${row.goalDifference}` : String(row.goalDifference ?? 0),
+                      points: row.points,
                     })),
                   });
                 }}

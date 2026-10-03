@@ -67,6 +67,8 @@ const EplCleanSheetList: React.FC<{
                   left: row.teamName,
                   right: `${row.cleanSheets || 0} CS · ${row.points} pts`,
                   logo: row.teamLogo,
+                  cleanSheets: row.cleanSheets || 0,
+                  points: row.points,
                 })),
               });
             }}

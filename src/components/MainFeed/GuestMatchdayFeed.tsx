@@ -625,6 +625,9 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
                 right: match.status === 'UPCOMING' ? (match.time || 'vs') : `${match.scoreA ?? 0}-${match.scoreB ?? 0}`,
                 logo: match.teamA?.logo,
                 awayLogo: match.teamB?.logo,
+                time: match.time || '15:00',
+                status: match.status || 'UPCOMING',
+                venue: match.venue || 'Pavilion Ground',
               })),
             });
           }}

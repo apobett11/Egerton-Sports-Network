@@ -507,7 +507,14 @@ export const AppContent: React.FC = () => {
         : sharePath.endsWith('cleansheets')
           ? '#/cleansheets'
           : '#/table';
-      window.location.replace(`${window.location.origin}/${nextHash}`);
+      // Replace URL so refreshing stays on the page rather than returning to /share/*
+      window.history.replaceState(null, '', `/${nextHash}`);
+      window.location.hash = nextHash;
+      if (nextHash === '#/fixtures' || nextHash === '#/cleansheets') {
+        setActiveTab('scores');
+      } else {
+        setActiveTab('table');
+      }
       return;
     }
     // On initial load, resolve current hash immediately and check deep links

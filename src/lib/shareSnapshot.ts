@@ -5,6 +5,16 @@ export interface SnapshotRow {
   away?: string;
   logo?: string;
   awayLogo?: string;
+  played?: number;
+  won?: number;
+  drawn?: number;
+  lost?: number;
+  gd?: number | string;
+  points?: number;
+  cleanSheets?: number;
+  time?: string;
+  status?: string;
+  venue?: string;
 }
 
 export interface SnapshotCard {
@@ -82,6 +92,24 @@ function fit(ctx: CanvasRenderingContext2D, text: string, max: number): string {
   return `${next}…`;
 }
 
+function roundBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  if (typeof (ctx as any).roundRect === 'function') {
+    (ctx as any).roundRect(x, y, w, h, r);
+  } else {
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  }
+  ctx.closePath();
+}
+
 export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
@@ -89,29 +117,127 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not draw the share card.');
 
-  ctx.fillStyle = '#0e1c2b';
+  // Base background
+  ctx.fillStyle = '#081018';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 1. TOP SITE NAVIGATION BAR (Exact website look)
   ctx.fillStyle = '#ff0046';
-  ctx.fillRect(0, 0, WIDTH, 6);
-  ctx.fillStyle = '#112236';
-  ctx.fillRect(0, 6, WIDTH, 168);
+  ctx.fillRect(0, 0, WIDTH, 6); // Brand red accent top stripe
+  ctx.fillStyle = '#0a1624';
+  ctx.fillRect(0, 6, WIDTH, 64);
   ctx.fillStyle = '#1a2e45';
-  ctx.fillRect(0, 174, WIDTH, 2);
+  ctx.fillRect(0, 70, WIDTH, 1);
 
+  // Site Logo & Tagline
   ctx.fillStyle = '#ff0046';
-  ctx.font = '700 22px Arial, sans-serif';
+  ctx.font = '800 24px Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText('EGERSCORE', 48, 58);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('EGERSCORE', 48, 38);
 
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 16px Arial, sans-serif';
+  ctx.fillText('·  OFFICIAL EGERTON SPORTS NETWORK', 204, 38);
+
+  // Right pill badge
+  roundBox(ctx, WIDTH - 180, 22, 132, 32, 16);
+  ctx.fillStyle = 'rgba(255, 0, 70, 0.12)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 0, 70, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#ff0046';
+  ctx.font = '800 12px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('LIVE STATS', WIDTH - 114, 38);
+
+  // 2. HERO CARD HEADER
+  ctx.fillStyle = '#0e1c2b';
+  ctx.fillRect(0, 71, WIDTH, 124);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 195, WIDTH, 1);
+
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 46px Arial, sans-serif';
-  ctx.fillText(card.title.toUpperCase(), 48, 118);
+  ctx.font = '900 36px Arial, sans-serif';
+  const mainTitle = card.kind === 'table'
+    ? 'OFFICIAL LEAGUE STANDINGS'
+    : card.kind === 'cleansheets'
+      ? 'EPL CLEAN SHEETS'
+      : 'MATCHDAY FIXTURES';
+  ctx.fillText(mainTitle, 48, 122);
 
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '700 22px Arial, sans-serif';
-  ctx.fillText(card.subtitle.toUpperCase(), 48, 154);
+  ctx.font = '700 16px Arial, sans-serif';
+  const subText = card.kind === 'table'
+    ? 'EGERTON PREMIER LEAGUE · OFFICIAL RANKINGS'
+    : card.kind === 'cleansheets'
+      ? 'DEFENSIVE WALL · SHUTOUT RANKINGS'
+      : (card.subtitle || 'EGERTON PREMIER LEAGUE').toUpperCase();
+  ctx.fillText(subText, 48, 160);
 
+  // Category Pill Badge
+  const badgeLabel = card.kind === 'table'
+    ? 'DIVISION 1'
+    : card.kind === 'cleansheets'
+      ? 'GOLDEN GLOVE'
+      : 'EPL';
+  const badgeColor = card.kind === 'cleansheets' ? '#a855f7' : '#ff0046';
+  roundBox(ctx, WIDTH - 180, 114, 132, 36, 18);
+  ctx.fillStyle = card.kind === 'cleansheets' ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 0, 70, 0.12)';
+  ctx.fill();
+  ctx.strokeStyle = card.kind === 'cleansheets' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 0, 70, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = badgeColor;
+  ctx.font = '800 13px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(badgeLabel, WIDTH - 114, 132);
+
+  // 3. TABLE COLUMN HEADERS (Exact website layout)
+  ctx.fillStyle = '#112236';
+  ctx.fillRect(0, 196, WIDTH, 54);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 250, WIDTH, 1);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '800 16px Arial, sans-serif';
+  ctx.textBaseline = 'middle';
+
+  if (card.kind === 'table') {
+    ctx.textAlign = 'center';
+    ctx.fillText('#', 40, 223);
+    ctx.textAlign = 'left';
+    ctx.fillText('TEAM', 84, 223);
+    ctx.textAlign = 'center';
+    ctx.fillText('MP', 620, 223);
+    ctx.fillText('W', 695, 223);
+    ctx.fillText('D', 765, 223);
+    ctx.fillText('L', 835, 223);
+    ctx.fillText('GD', 915, 223);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('PTS', 1010, 223);
+  } else if (card.kind === 'cleansheets') {
+    ctx.textAlign = 'center';
+    ctx.fillText('#', 48, 223);
+    ctx.textAlign = 'left';
+    ctx.fillText('TEAM', 100, 223);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c084fc';
+    ctx.fillText('CLEAN SHEETS (CS)', 760, 223);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('PTS', 990, 223);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillText('STATUS / TIME', 110, 223);
+    ctx.textAlign = 'left';
+    ctx.fillText('MATCH FIXTURE & TEAMS', 260, 223);
+    ctx.textAlign = 'center';
+    ctx.fillText('SCORE', 540, 223);
+  }
+
+  // 4. DATA ROWS
   const shown = card.rows.slice(0, 8);
   const logos = await Promise.all(shown.map(async (row) => ({
     home: await loadCrest(row.logo),
@@ -119,66 +245,157 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
   })));
 
   shown.forEach((row, index) => {
-    const y = 196 + index * 108;
-    const fade = index < 4 ? 1 : Math.max(0.16, 1 - (index - 3) * 0.28);
-    ctx.save();
-    ctx.globalAlpha = fade;
-    ctx.fillStyle = index % 2 === 0 ? '#0e1c2b' : '#102033';
+    const y = 251 + index * 108;
+    ctx.fillStyle = index % 2 === 0 ? '#0e1c2b' : '#112236';
     ctx.fillRect(0, y, WIDTH, 108);
-    ctx.fillStyle = '#1a2e45';
+    ctx.fillStyle = '#172a3d';
     ctx.fillRect(0, y + 107, WIDTH, 1);
 
-    if (card.kind === 'table' || card.kind === 'cleansheets') {
-      ctx.fillStyle = '#64748b';
+    if (card.kind === 'table') {
+      // Top 3 promotion zone green line
+      if (index < 3) {
+        ctx.fillStyle = '#00b04f';
+        ctx.fillRect(0, y, 6, 108);
+      }
+      // Rank #
+      ctx.fillStyle = index < 3 ? '#00b04f' : '#64748b';
       ctx.font = '800 24px Arial, sans-serif';
-      ctx.textAlign = 'left';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(index + 1), 36, y + 54);
-      drawCrest(ctx, logos[index].home, row.left, 84, y + 24, 60);
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = '800 30px Arial, sans-serif';
-      ctx.fillText(fit(ctx, row.left, 560), 164, y + 54);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = card.kind === 'cleansheets' ? '#a855f7' : '#f8fafc';
-      ctx.font = '800 28px Arial, sans-serif';
-      ctx.fillText(row.right, WIDTH - 40, y + 54);
-    } else {
-      drawCrest(ctx, logos[index].home, row.left, 36, y + 24, 60);
-      drawCrest(ctx, logos[index].away, row.away || row.right, WIDTH - 96, y + 24, 60);
+      ctx.fillText(String(index + 1), 40, y + 54);
+
+      // Crest & Team Name
+      drawCrest(ctx, logos[index].home, row.left, 76, y + 24, 60);
       ctx.fillStyle = '#f8fafc';
       ctx.font = '800 26px Arial, sans-serif';
       ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(fit(ctx, row.left, 280), 112, y + 54);
-      ctx.textAlign = 'right';
-      ctx.fillText(fit(ctx, row.away || '', 280), WIDTH - 112, y + 54);
+      ctx.fillText(fit(ctx, row.left, 430), 150, y + 54);
+
+      // Standings Columns
       ctx.textAlign = 'center';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '700 22px Arial, sans-serif';
+      ctx.fillText(row.played !== undefined ? String(row.played) : '0', 620, y + 54);
+      ctx.fillText(row.won !== undefined ? String(row.won) : '0', 695, y + 54);
+      ctx.fillText(row.drawn !== undefined ? String(row.drawn) : '0', 765, y + 54);
+      ctx.fillText(row.lost !== undefined ? String(row.lost) : '0', 835, y + 54);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 22px Arial, monospace';
+      ctx.fillText(row.gd !== undefined ? String(row.gd) : '+0', 915, y + 54);
+
+      // Points (Bold White)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 32px Arial, sans-serif';
+      const pts = row.points !== undefined ? String(row.points) : row.right.replace(/\D/g, '') || '0';
+      ctx.fillText(pts, 1010, y + 54);
+    } else if (card.kind === 'cleansheets') {
+      if (index < 3) {
+        ctx.fillStyle = '#a855f7';
+        ctx.fillRect(0, y, 6, 108);
+      }
+      ctx.fillStyle = index < 3 ? '#a855f7' : '#64748b';
+      ctx.font = '800 24px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(index + 1), 48, y + 54);
+
+      drawCrest(ctx, logos[index].home, row.left, 88, y + 24, 60);
       ctx.fillStyle = '#f8fafc';
       ctx.font = '800 28px Arial, sans-serif';
-      ctx.fillText(row.center || row.right, WIDTH / 2, y + 54);
+      ctx.textAlign = 'left';
+      ctx.fillText(fit(ctx, row.left, 530), 168, y + 54);
+
+      // Clean Sheets (Bright Purple)
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#a855f7';
+      ctx.font = '900 34px Arial, monospace';
+      const cs = row.cleanSheets !== undefined ? String(row.cleanSheets) : (row.right.match(/\d+/) ? row.right.match(/\d+/)[0] : '0');
+      ctx.fillText(cs, 760, y + 54);
+
+      // Points
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '900 28px Arial, sans-serif';
+      const pts = row.points !== undefined ? String(row.points) : '0';
+      ctx.fillText(pts, 990, y + 54);
+    } else {
+      // Fixtures row (Exact card design matching FixturesList)
+      roundBox(ctx, 32, y + 24, 144, 60, 8);
+      ctx.fillStyle = '#14273d';
+      ctx.fill();
+      ctx.strokeStyle = '#223c5a';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '800 22px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(row.time || '15:00', 104, y + 44);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '700 11px Arial, sans-serif';
+      ctx.fillText(row.venue ? fit(ctx, row.venue.toUpperCase(), 130) : 'PAVILION', 104, y + 68);
+
+      // Home Team
+      drawCrest(ctx, logos[index].home, row.left, 196, y + 24, 60);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '800 26px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(fit(ctx, row.left, 210), 270, y + 54);
+
+      // Score / VS Container
+      roundBox(ctx, 540 - 55, y + 29, 110, 50, 8);
+      ctx.fillStyle = '#162b42';
+      ctx.fill();
+      ctx.strokeStyle = '#29435d';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      const scoreText = row.center || row.right || 'VS';
+      const hasScore = /\d/.test(scoreText);
+      ctx.fillStyle = hasScore ? '#ff0046' : '#94a3b8';
+      ctx.font = '900 24px Arial, sans-serif';
+      ctx.fillText(scoreText, 540, y + 54);
+
+      // Away Team
+      const awayName = row.away || '';
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '800 26px Arial, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(fit(ctx, awayName, 210), 804, y + 54);
+      drawCrest(ctx, logos[index].away, awayName, 820, y + 24, 60);
     }
-    ctx.restore();
   });
 
-  const veil = ctx.createLinearGradient(0, 760, 0, HEIGHT);
-  veil.addColorStop(0, 'rgba(14,28,43,0)');
-  veil.addColorStop(0.45, 'rgba(14,28,43,0.72)');
-  veil.addColorStop(1, 'rgba(14,28,43,1)');
-  ctx.fillStyle = veil;
-  ctx.fillRect(0, 760, WIDTH, HEIGHT - 760);
+  // 5. BOTTOM BRAND FOOTER (Screenshot footer bar)
+  ctx.fillStyle = '#0a1522';
+  ctx.fillRect(0, 1180, WIDTH, HEIGHT - 1180);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 1180, WIDTH, 1);
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 26px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  const tapLabel = card.kind === 'fixtures'
-    ? 'TAP TO OPEN THE FIXTURES'
-    : card.kind === 'cleansheets'
-      ? 'TAP TO OPEN THE CLEAN SHEETS'
-      : 'TAP TO OPEN THE FULL TABLE';
-  ctx.fillText(tapLabel, WIDTH / 2, 1248);
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#64748b';
-  ctx.font = '700 20px Arial, sans-serif';
-  ctx.fillText('EGERTON SPORTS NETWORK', WIDTH / 2, 1292);
+  ctx.font = '700 19px Arial, sans-serif';
+  ctx.fillText('EGERSCORE.COM · OFFICIAL CAMPUS SPORTS PLATFORM', 48, 1240);
+  ctx.fillStyle = '#475569';
+  ctx.font = '600 15px Arial, sans-serif';
+  ctx.fillText('CAMPUS MATCH COVERAGE · REAL-TIME LEAGUE STATS', 48, 1272);
+
+  // Call to action button on right
+  roundBox(ctx, WIDTH - 380, 1222, 332, 54, 27);
+  ctx.fillStyle = '#ff0046';
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 18px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  const buttonLabel = card.kind === 'fixtures'
+    ? 'OPEN FIXTURES →'
+    : card.kind === 'cleansheets'
+      ? 'OPEN CLEAN SHEETS →'
+      : 'OPEN FULL TABLE →';
+  ctx.fillText(buttonLabel, WIDTH - 214, 1249);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not save the share card.');
@@ -222,7 +439,7 @@ function showPicture(file: File, hash: string, shareHref: string, title: string,
   root.setAttribute('role', 'dialog');
   root.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
   root.innerHTML = `
-    <div style="width:min(440px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:14px;overflow:hidden;color:white;font-family:Arial,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);margin:auto;">
+    <div style="width:min(520px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:14px;overflow:hidden;color:white;font-family:Arial,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);margin:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#112236;border-bottom:1px solid #1a2e45;">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="color:#ff0046;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;">EGERSCORE</span>
@@ -232,12 +449,12 @@ function showPicture(file: File, hash: string, shareHref: string, title: string,
         <button type="button" data-close aria-label="Close" style="background:#152a40;color:#94a3b8;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
       </div>
 
-      <!-- Google Forms / WhatsApp Preview Card -->
+      <!-- Google Forms / WhatsApp Preview Card: Screenshot Presentation -->
       <div style="margin:14px;background:#08121d;border:1px solid #20354b;border-radius:10px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5),0 6px 12px -2px rgba(0,0,0,0.3);">
-        <!-- Cropped Photo with natural shade and preview badge -->
-        <div style="position:relative;width:100%;height:220px;overflow:hidden;background:#08121d;cursor:pointer;">
+        <!-- Cropped Photo with larger height (screenshot presentation) and preview badge -->
+        <div style="position:relative;width:100%;height:380px;overflow:hidden;background:#08121d;cursor:pointer;">
           <img data-card alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;display:block;background:#0e1c2b;pointer-events:none;" />
-          <div style="position:absolute;bottom:0;left:0;right:0;height:48px;background:linear-gradient(to top, rgba(8,18,29,0.95), transparent);pointer-events:none;z-index:1;"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(to top, rgba(8,18,29,0.95), transparent);pointer-events:none;z-index:1;"></div>
           <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.85);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;z-index:1;">PAGE PREVIEW</div>
           <a href="${hash}" data-open data-open-image data-share="${shareHref}" aria-label="Open ${escapeHtml(title)}" style="position:absolute;inset:0;z-index:2;display:block;cursor:pointer;"></a>
         </div>
