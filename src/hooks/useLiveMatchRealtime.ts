@@ -53,7 +53,11 @@ export const useLiveMatchRealtime = (
       matchesRef.current = cached;
     }
 
-    // 2. Always fetch latest fixtures from DB on page load and update cache / matches
+    if (options?.autoFetchAll === false) {
+      return;
+    }
+
+    // 2. Fetch latest fixtures from DB on page load if autoFetchAll enabled
     const fetchCall = options?.selectedDate
       ? ApiService.getFixtures(options.competitionId, options.selectedDate)
       : ApiService.getFixtures();

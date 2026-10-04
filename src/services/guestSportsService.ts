@@ -1103,7 +1103,7 @@ export async function getGuestLeagueTableEntries(competitionId?: string): Promis
     ? competitionId
     : '11111111-1111-1111-1111-111111111111';
   if (entries.length > 0) {
-    guestCache.set('standings', `standings_${targetCompId}`, entries, 6 * 60 * 60 * 1000, true);
+    guestCache.set('standings', `standings_${targetCompId}`, entries, 6 * 60 * 60 * 1000, false);
     return entries;
   }
   return readCachedLeagueTable(targetCompId);

@@ -86,9 +86,9 @@ export const ApiService = {
       const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
       const formattedMatches: Match[] = (guestFixtures || []).map(guestFixtureToMatch).filter(Boolean);
       if (formattedMatches.length > 0 && !hasPlaceholderTeamData(formattedMatches)) {
-        guestCache.set('fixtures', cacheKey, formattedMatches, undefined, true);
+        guestCache.set('fixtures', cacheKey, formattedMatches, undefined, false);
         if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
-          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches, undefined, true);
+          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches, undefined, false);
         }
         return { success: true, data: formattedMatches, total: formattedMatches.length };
       }

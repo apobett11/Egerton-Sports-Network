@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Header } from './components/Layout/Header';
@@ -390,12 +390,12 @@ export const AppContent: React.FC = () => {
   const [predictionView, setPredictionView] = useState<'banter' | 'scores'>(() =>
     new URLSearchParams(window.location.search).get('view') === 'talk' ? 'banter' : 'scores'
   );
-  const selectPredictionView = (view: 'banter' | 'scores') => {
+  const selectPredictionView = useCallback((view: 'banter' | 'scores') => {
     setPredictionView(view);
     const url = new URL(window.location.href);
     url.searchParams.set('view', view === 'banter' ? 'talk' : 'picks');
     window.history.replaceState(null, '', url);
-  };
+  }, []);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
@@ -560,6 +560,9 @@ export const AppContent: React.FC = () => {
       } catch {}
       if (newRoute === 'favorites' || newRoute === 'favourites') {
         setActiveTab('favorites');
+      }
+      if (newRoute === 'news' || newRoute.startsWith('news')) {
+        setActiveTab('news');
       }
       if (newRoute === 'potw' || newRoute.startsWith('potw')) {
         setActiveTab('potw');

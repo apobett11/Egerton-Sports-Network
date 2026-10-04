@@ -227,13 +227,12 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
         }
         setFixturesLoading(false);
 
-        // 3. Immediately query for the standings to check for any changes and update cache on each page load
+        // 3. Background standings sync without clearing or triggering cache invalidation storm
         void (async () => {
           try {
-            ApiService.invalidateStandingsCache();
             await Promise.all([
-              ApiService.getLeagueTable('11111111-1111-1111-1111-111111111111', undefined, undefined, true),
-              ApiService.getLeagueTable('22222222-2222-2222-2222-222222222222', undefined, undefined, true),
+              ApiService.getLeagueTable('11111111-1111-1111-1111-111111111111'),
+              ApiService.getLeagueTable('22222222-2222-2222-2222-222222222222'),
             ]);
           } catch {
             // background standings query
