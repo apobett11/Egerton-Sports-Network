@@ -19,6 +19,7 @@ export interface PredictionDashboardCache {
   lockedSunday: string | null;
   slips: DeviceSlip[];
   activeSlipId: string | null;
+  lastSlipCompletedAt: string | null;
   updatedAt: string;
 }
 
@@ -39,6 +40,7 @@ const EMPTY: PredictionDashboardCache = {
   lockedSunday: null,
   slips: [],
   activeSlipId: null,
+  lastSlipCompletedAt: null,
   updatedAt: '',
 };
 
@@ -92,6 +94,7 @@ function parseCache(raw: string | null, deviceId: string | null): PredictionDash
       lockedSunday: typeof parsed.lockedSunday === 'string' ? parsed.lockedSunday : null,
       slips: normalizeSlips(parsed.slips),
       activeSlipId: typeof parsed.activeSlipId === 'string' ? parsed.activeSlipId : null,
+      lastSlipCompletedAt: typeof parsed.lastSlipCompletedAt === 'string' ? parsed.lastSlipCompletedAt : null,
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
     };
   } catch {
@@ -114,6 +117,7 @@ function normalizeSlips(list: unknown): DeviceSlip[] {
       picks: normalizePredictions(slip.picks),
       sharedAt: typeof slip.sharedAt === 'string' ? slip.sharedAt : null,
       createdAt: typeof slip.createdAt === 'string' ? slip.createdAt : new Date().toISOString(),
+      completedAt: typeof slip.completedAt === 'string' ? slip.completedAt : null,
     }];
   });
 }

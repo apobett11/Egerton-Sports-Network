@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { Shield } from 'lucide-react';
+import React from 'react';
+import { Shield, Clock } from 'lucide-react';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
-import { patchDashboardCache, readDashboardCache } from '../../../lib/predictions/predictionDashboardCache';
 import { dayLabel } from '../../../lib/predictions/weekendSlate';
 import type { Match, PredictionOption, Team } from '../../../types/predictions';
 
 interface PredictionSlipFlowProps {
-  teams: Team[];
+  teams?: Team[];
   queue: Match[];
-  favouriteTeam: string | null;
-  pickedIds: Set<string>;
-  onSelectTeam: (teamName: string, team?: Team) => void;
+  favouriteTeam?: string | null;
+  userPredictions?: Map<string, PredictionOption>;
+  pickedIds?: Set<string>;
+  onSelectTeam?: (teamName: string, team?: Team) => void;
   onPick: (match: Match, option: PredictionOption) => void;
 }
 
@@ -22,74 +22,113 @@ const PICKS: PickChoice[] = [
   { id: '2', label: 'Away' },
 ];
 
-function MatchPickCard({
+export function MatchPickCard({
   match,
+  userSelection,
   onPick,
 }: {
   match: Match;
+  userSelection?: PredictionOption | null;
   onPick: (option: PredictionOption) => void;
 }) {
   const home = formatTeamName(match.homeTeam.name);
   const away = formatTeamName(match.awayTeam.name);
 
   return (
-    <div className="rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] px-3 py-3 font-sans">
-      <p className="text-center text-[10px] font-black uppercase tracking-widest text-[#ff0046]">
-        {match.isDerby ? 'Derby' : dayLabel(match)}
-      </p>
-      {match.isDerby ? (
-        <h1 className="mt-1 text-center text-base font-semibold text-white">
-          As a fanatic, which team do you think will win?
-        </h1>
-      ) : (
-        <h2 className="mt-1 text-center text-base font-semibold text-white">
-          {home} <span className="text-slate-500">vs</span> {away}
-        </h2>
-      )}
-      <p className="mt-0.5 text-center text-[11px] font-medium text-slate-400">
-        {formatKickoffTime(match.scheduledTime)}
-      </p>
+    <div
+      className="rounded-xl border border-[#1a2e45] bg-[#0e1c2b] p-2.5 sm:p-3 font-sans shadow-md transition-all hover:border-[#2a4565] max-w-full"
+      data-testid={`match-card-${match.id}`}
+    >
+      {/* Header: Day/Derby Badge & Kickoff */}
+      <div className="flex items-center justify-between border-b border-[#14263b] pb-1.5 text-[10px] sm:text-[11px] font-medium text-slate-400">
+        <span className="flex items-center gap-1.5 uppercase tracking-wider font-bold text-slate-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ff0046]" />
+          {match.isDerby ? 'DERBY MATCH' : dayLabel(match)}
+        </span>
+        <span className="font-mono text-slate-300 flex items-center gap-1">
+          <Clock className="h-3 w-3 text-slate-400" />
+          {formatKickoffTime(match.scheduledTime)}
+        </span>
+      </div>
 
-      {match.isDerby && (
-        <div className="mt-3 flex items-center justify-center gap-4 rounded-2xl border border-slate-800 bg-[#0a1624] px-3 py-2.5">
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-            <span className="truncate text-right text-xs font-semibold text-white">{home}</span>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-600 bg-slate-800">
-              {match.homeTeam.logoUrl ? (
-                <img src={match.homeTeam.logoUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <Shield className="h-5 w-5 text-slate-400" />
-              )}
-            </span>
+      {/* Teams Display with Logos and Names */}
+      <div className="my-2 grid grid-cols-7 items-center gap-1.5 sm:gap-2">
+        {/* Home Team */}
+        <div className="col-span-3 flex flex-col items-center text-center min-w-0">
+          <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
+            {match.homeTeam.logoUrl ? (
+              <img
+                src={match.homeTeam.logoUrl}
+                alt={home}
+                className="h-full w-full object-cover rounded-full"
+                loading="lazy"
+              />
+            ) : (
+              <Shield className="h-full w-full text-slate-500" />
+            )}
           </div>
-          <span className="shrink-0 text-[10px] font-semibold uppercase text-slate-500">vs</span>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-600 bg-slate-800">
-              {match.awayTeam.logoUrl ? (
-                <img src={match.awayTeam.logoUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <Shield className="h-5 w-5 text-slate-400" />
-              )}
-            </span>
-            <span className="truncate text-xs font-semibold text-white">{away}</span>
-          </div>
+          <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight" title={home}>
+            {home}
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            Home
+          </span>
         </div>
-      )}
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {PICKS.map((pick) => (
-          <button
-            key={pick.id}
-            type="button"
-            onClick={() => onPick(pick.id)}
-            className="flex min-w-0 flex-col items-center justify-center rounded-2xl border border-slate-700 bg-[#0a1624] px-2 py-3 text-sm font-semibold text-white cursor-pointer hover:border-[#ff0046] hover:bg-[#ff0046]/15"
-          >
-            <span className="block text-base">{pick.id}</span>
-            <span className="block truncate text-[10px] font-semibold uppercase tracking-wide text-slate-300">
-              {pick.label}
-            </span>
-          </button>
-        ))}
+        {/* Center VS */}
+        <div className="col-span-1 flex flex-col items-center justify-center">
+          <span className="text-[11px] font-black tracking-widest text-[#ff0046]">VS</span>
+        </div>
+
+        {/* Away Team */}
+        <div className="col-span-3 flex flex-col items-center text-center min-w-0">
+          <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
+            {match.awayTeam.logoUrl ? (
+              <img
+                src={match.awayTeam.logoUrl}
+                alt={away}
+                className="h-full w-full object-cover rounded-full"
+                loading="lazy"
+              />
+            ) : (
+              <Shield className="h-full w-full text-slate-500" />
+            )}
+          </div>
+          <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight" title={away}>
+            {away}
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            Away
+          </span>
+        </div>
+      </div>
+
+      {/* 1 / X / 2 Betting Odds / Pick Buttons */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5">
+        {PICKS.map((pick) => {
+          const isSelected = userSelection === pick.id;
+          return (
+            <button
+              key={pick.id}
+              type="button"
+              onClick={() => onPick(pick.id)}
+              data-testid={`pick-${pick.id}-${match.id}`}
+              className={`flex min-h-[38px] sm:min-h-[42px] min-w-0 flex-col items-center justify-center rounded-lg border py-1 px-1 text-xs font-bold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-[#ff0046] border-[#ff0046] text-white shadow-[0_0_12px_rgba(255,0,70,0.35)] ring-2 ring-[#ff0046]/40'
+                  : 'bg-[#0a1624] border-slate-700/80 text-slate-200 hover:border-[#ff0046]/60 hover:bg-[#122236]'
+              }`}
+            >
+              <span className="text-xs sm:text-sm font-black leading-tight flex items-center gap-1">
+                {pick.id}
+                {isSelected && <span className="text-[9px]">✓</span>}
+              </span>
+              <span className={`text-[9px] uppercase font-semibold tracking-wider ${isSelected ? 'text-white' : 'text-slate-400'}`}>
+                {pick.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -112,102 +151,10 @@ export function DerbyPickPopup({
 }
 
 export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
-  teams,
   queue,
-  favouriteTeam,
-  onSelectTeam,
+  userPredictions,
   onPick,
 }) => {
-  const [fanaticAnswered, setFanaticAnswered] = useState(() => {
-    const cached = readDashboardCache();
-    if (cached.fanaticAnswered || cached.favouriteTeam) return true;
-    try {
-      return localStorage.getItem('esn_fanatic_prompt_seen') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const continueToTeams = (answer: 'yes' | 'no') => {
-    setFanaticAnswered(true);
-    patchDashboardCache({ fanaticAnswered: true, footballFanatic: answer, step: 'club' });
-  };
-  const rows = Math.max(1, Math.ceil(teams.length / 4));
-
-  if (!favouriteTeam) {
-    if (!fanaticAnswered) {
-      return (
-        <div className="epl-slip-stage flex items-center justify-center overflow-hidden">
-          <section className="slip-card-in w-full max-w-md rounded-3xl border border-[#29435d] bg-[#0e1c2b] px-5 py-6 text-center shadow-xl" data-onboarding-step="fanatic">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#ff0046]">EPL predictions</p>
-            <h1 className="mt-2 text-xl font-semibold text-white">Are you a football fanatic?</h1>
-            <p className="mt-1 text-sm font-normal text-slate-400">
-              Either answer takes you straight to your club and this weekend&apos;s picks.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => continueToTeams('yes')}
-                className="rounded-2xl border border-[#ff0046]/70 bg-[#ff0046]/15 px-4 py-3 text-sm font-semibold text-white cursor-pointer hover:bg-[#ff0046]/25"
-              >
-                Yes, I am
-              </button>
-              <button
-                type="button"
-                onClick={() => continueToTeams('no')}
-                className="rounded-2xl border border-slate-600 bg-[#0a1624] px-4 py-3 text-sm font-medium text-slate-200 cursor-pointer hover:border-slate-400"
-              >
-                Not really
-              </button>
-            </div>
-          </section>
-        </div>
-      );
-    }
-
-    return (
-      <div className="epl-slip-stage flex flex-col overflow-hidden" data-onboarding-step="club">
-        <h1 className="shrink-0 px-1 pt-1 text-center text-sm font-semibold leading-tight text-white sm:text-base">
-          Which EPL team are you a hardcore fan of?
-        </h1>
-        <div
-          className="mt-2 grid min-h-0 flex-1 gap-1 overflow-hidden"
-          style={{
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-          }}
-        >
-          {teams.map((team) => (
-            <button
-              key={team.id || team.name}
-              type="button"
-              onClick={() => onSelectTeam(team.name, team)}
-              className="flex min-h-0 min-w-0 flex-col items-center justify-center overflow-hidden rounded-lg border border-slate-700/80 bg-[#0a1624] px-1 py-1 text-center cursor-pointer hover:border-[#ff0046]"
-              data-team-name={team.name}
-            >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 sm:h-7 sm:w-7">
-                {team.logoUrl ? (
-                  <img src={team.logoUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-[9px] font-black text-slate-300">{team.shortName?.slice(0, 3)}</span>
-                )}
-              </span>
-              <span className="mt-0.5 line-clamp-2 w-full text-[9px] font-black leading-tight text-white sm:text-[10px]">
-                {team.name}
-              </span>
-            </button>
-          ))}
-        </div>
-        {queue.length > 0 && (
-          <div className="slip-preload" aria-hidden inert>
-            {queue.slice(0, 3).map((match) => (
-              <MatchPickCard key={match.id} match={match} onPick={() => {}} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   if (queue.length === 0) {
     return (
       <div className="rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] px-4 py-6 text-center">
@@ -218,11 +165,12 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="match-cards-container">
       {queue.map((match) => (
         <MatchPickCard
           key={match.id}
           match={match}
+          userSelection={userPredictions?.get(match.id) ?? null}
           onPick={(option) => onPick(match, option)}
         />
       ))}

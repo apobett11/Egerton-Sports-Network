@@ -76,6 +76,26 @@ export const DeviceService = {
         lockTeam(profile);
         return profile;
       }
+      if (error && (error as any).code === '23505') {
+        const existing = await supabase
+          .from('anonymous_devices')
+          .select('device_id, favorite_team_id, favorite_team_label, has_completed_onboarding, last_seen_at, created_at')
+          .eq('device_id', deviceId)
+          .maybeSingle();
+        if (existing?.data) {
+          const profile = existing.data as DeviceProfile;
+          lockTeam(profile);
+          return profile;
+        }
+        return {
+          device_id: deviceId,
+          favorite_team_id: null,
+          favorite_team_label: null,
+          has_completed_onboarding: false,
+          created_at: new Date().toISOString(),
+          last_seen_at: new Date().toISOString(),
+        } as DeviceProfile;
+      }
       if (!isMissingRpc(error)) {
         console.error('Failed to check in device to Supabase:', error);
         return null;

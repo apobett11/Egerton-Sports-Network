@@ -350,7 +350,7 @@ export class FeaturePollService {
         .select('id, device_id, opened_guest_page, opened_odds_page, voted, vote, created_at')
         .eq('feature_key', featureKey)
         .order('created_at', { ascending: false })
-        .limit(300);
+        .limit(1000);
 
       if (!error && Array.isArray(data) && data.length > 0) {
         recordsList = data.map((row: any) => ({

@@ -10,7 +10,10 @@ export interface DeviceSlip {
   picks: UserPrediction[];
   sharedAt: string | null;
   createdAt: string;
+  completedAt?: string | null;
 }
+
+export const SLIP_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface PickStats {
   selected: number;
@@ -85,3 +88,32 @@ export function pickingFrozen(slip: DeviceSlip | null, pairMatches: Match[], pai
   if (dayIsComplete(pairMatches, slip.picks) && pairSlips.length >= SLIPS_PER_PAIR) return true;
   return false;
 }
+
+export interface CoupledWeekendSlips {
+  pairKey: string;
+  matchdayPair: string;
+  slip1: DeviceSlip | null;
+  slip2: DeviceSlip | null;
+  slip3: DeviceSlip | null;
+  updatedAt?: string;
+}
+
+export function coupleSlipsForPair(
+  slips: DeviceSlip[],
+  pairKey: string,
+  matchdayPairLabel?: string
+): CoupledWeekendSlips {
+  const forPair = slips.filter((s) => s.pairKey === pairKey || !s.pairKey);
+  const slip1 = forPair.find((s) => s.slot === 1) ?? null;
+  const slip2 = forPair.find((s) => s.slot === 2) ?? null;
+  const slip3 = forPair.find((s) => s.slot === 3) ?? null;
+  return {
+    pairKey,
+    matchdayPair: matchdayPairLabel || (pairKey.includes('|') ? `Weekend ${pairKey.replace('|', ' & ')}` : pairKey),
+    slip1,
+    slip2,
+    slip3,
+    updatedAt: slip3?.completedAt || slip2?.completedAt || slip1?.completedAt || undefined,
+  };
+}
+

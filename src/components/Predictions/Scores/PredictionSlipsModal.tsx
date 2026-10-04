@@ -156,6 +156,7 @@ export function ShareSlipPopup({
   picks,
   isFirst,
   inviteOnly = false,
+  nextMatchday,
   onClose,
   onShare,
   onSeeNext,
@@ -167,6 +168,7 @@ export function ShareSlipPopup({
   picks: Map<string, PredictionOption>;
   isFirst: boolean;
   inviteOnly?: boolean;
+  nextMatchday?: number;
   onClose: () => void;
   onShare: () => void;
   onSeeNext?: () => void;
@@ -175,57 +177,196 @@ export function ShareSlipPopup({
 }) {
   const result = slipResult(matches, (id) => picks.get(id));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
-      <div className="relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] text-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#1a2e45] px-4 py-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2.5 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="share-slip-popup">
+      <div className="relative flex max-h-[85dvh] w-full max-w-sm sm:max-w-md flex-col overflow-hidden rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] text-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#1a2e45] px-3.5 py-2.5 bg-[#0a1624]">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#00b04f]">Share slip</p>
-            <h2 className="text-base font-black">{inviteOnly ? 'Invite others' : `Matchday ${matchday}`}</h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-[#00b04f]">Share slip</p>
+            <h2 className="text-xs sm:text-sm font-black">{inviteOnly ? 'Invite others' : `Matchday ${matchday}`}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-slate-400 hover:bg-[#14263b] hover:text-white cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="px-4 pt-3 text-sm font-bold text-white">Slip {result.got}/{result.total}</p>
-        <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
+        <div className="flex items-center justify-between px-3.5 py-2 text-xs font-bold text-slate-300 border-b border-[#14263b] bg-[#081018]">
+          <span>Slip selections</span>
+          <span className="font-mono text-white text-[11px] bg-[#14263b] px-2 py-0.5 rounded-full">{result.got}/{result.total} completed</span>
+        </div>
+        <div className="flex-1 space-y-1.5 overflow-y-auto px-3 py-2 max-h-[40vh]">
           {matches.map((match) => {
             const pick = picks.get(match.id);
-            const label = pick === '1' ? 'Home' : pick === '2' ? 'Away' : pick === 'X' ? 'Draw' : 'Not picked';
+            const home = formatTeamName(match.homeTeam.name);
+            const away = formatTeamName(match.awayTeam.name);
+            const pickLabel = pick === '1' ? '1 (Home)' : pick === '2' ? '2 (Away)' : pick === 'X' ? 'X (Draw)' : 'Not picked';
             const tick = pick ? slipTick(match, pick) : 'waiting';
-            const mark = !matchClosed(match) ? '' : tick === 'won' ? 'Got it' : tick === 'lost' ? 'Missed' : '';
+            const isClosed = matchClosed(match);
+            const isWon = isClosed && tick === 'won';
+            const isLost = isClosed && tick === 'lost';
+
             return (
-              <div key={match.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#1a2e45] bg-[#0b1624] px-3 py-2">
-                <span className="min-w-0 truncate text-xs font-bold">{formatTeamName(match.homeTeam.name)} vs {formatTeamName(match.awayTeam.name)}</span>
-                <span className="shrink-0 text-[10px] font-black uppercase text-white">{mark ? `${mark} · ` : ''}{label}</span>
+              <div key={match.id} className="flex items-center justify-between gap-2 rounded-lg border border-[#1a2e45] bg-[#0b1624] px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center -space-x-1 shrink-0">
+                    {match.homeTeam.logoUrl ? (
+                      <img src={match.homeTeam.logoUrl} alt={home} className="h-4.5 w-4.5 rounded-full object-cover border border-slate-700 bg-[#081018]" loading="lazy" />
+                    ) : (
+                      <span className="h-4.5 w-4.5 rounded-full bg-slate-700 flex items-center justify-center text-[8px]">H</span>
+                    )}
+                    {match.awayTeam.logoUrl ? (
+                      <img src={match.awayTeam.logoUrl} alt={away} className="h-4.5 w-4.5 rounded-full object-cover border border-slate-700 bg-[#081018]" loading="lazy" />
+                    ) : (
+                      <span className="h-4.5 w-4.5 rounded-full bg-slate-700 flex items-center justify-center text-[8px]">A</span>
+                    )}
+                  </div>
+                  <span className="min-w-0 truncate text-[11px] sm:text-xs font-bold text-white">{home} vs {away}</span>
+                </div>
+                <div className="shrink-0 flex items-center gap-1">
+                  {isWon ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-[#00b04f]/20 border border-[#00b04f]/50 px-1.5 py-0.5 text-[9px] font-black text-[#00b04f]">✓</span>
+                  ) : isLost ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-[#ff0046]/20 border border-[#ff0046]/50 px-1.5 py-0.5 text-[9px] font-black text-[#ff0046]">✗</span>
+                  ) : null}
+                  <span className="rounded bg-[#ff0046] px-1.5 py-0.5 text-[9px] font-black text-white">{pickLabel}</span>
+                </div>
               </div>
             );
           })}
         </div>
-        <div className="flex flex-col gap-2 border-t border-[#1a2e45] px-4 py-3">
-          <button type="button" onClick={onShare} className="min-h-[44px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
+        <div className="flex flex-col gap-1.5 border-t border-[#1a2e45] px-3.5 py-2.5 bg-[#0a1624]">
+          <button type="button" onClick={onShare} className="min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#009b45]">
             Share slip
           </button>
           {!inviteOnly && isFirst && onSeeNext && (
-            <button type="button" onClick={onSeeNext} className="min-h-[44px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
-              See matchday {matchday + 1}
+            <button
+              type="button"
+              onClick={onSeeNext}
+              data-testid="go-to-next-matchday"
+              className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#e0003c]"
+            >
+              Go to matchday {nextMatchday ?? (matchday + 1)}
             </button>
           )}
           {!inviteOnly && isFirst && onSeeArticles && (
-            <button type="button" onClick={onSeeArticles} className="min-h-[44px] rounded-full border border-[#29435d] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
+            <button type="button" onClick={onSeeArticles} className="min-h-[36px] rounded-full border border-[#29435d] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
               See match articles
             </button>
           )}
           {!inviteOnly && !isFirst && onSeeBanter && (
-            <button type="button" onClick={onSeeBanter} className="min-h-[44px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
+            <button type="button" onClick={onSeeBanter} className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
               See the banter
             </button>
           )}
           {!inviteOnly && (
-          <button type="button" onClick={onClose} className="min-h-[40px] text-xs font-bold text-slate-400 cursor-pointer">
-            Close
-          </button>
+            <button type="button" onClick={onClose} className="min-h-[32px] text-xs font-bold text-slate-400 cursor-pointer hover:text-white">
+              Close
+            </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function FreshPerspectiveModal({
+  remainingMs,
+  onClose,
+}: {
+  remainingMs: number;
+  onClose: () => void;
+}) {
+  const [timeLeft, setTimeLeft] = React.useState(remainingMs);
+
+  React.useEffect(() => {
+    setTimeLeft(remainingMs);
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [remainingMs]);
+
+  const formatCountdown = (ms: number) => {
+    const totalSecs = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    return `${hours.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="fresh-perspective-popup">
+      <div className="relative w-full max-w-[340px] rounded-2xl border border-[#ff0046]/40 bg-[#0e1c2b] p-4 sm:p-5 text-center text-white shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-slate-400 hover:text-white hover:bg-[#14263b] cursor-pointer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#ff0046]/20 text-xl shadow-inner">
+          ☺️
+        </div>
+        <h2 className="text-xs sm:text-sm font-black text-white">Fresh Perspective Needed</h2>
+        <p className="mt-1 text-xs text-slate-300 leading-snug">
+          you need a fresh perspective, you have to wait just a little☺️. come again and make your prediction in:
+        </p>
+        <div className="my-3 rounded-lg border border-slate-700/80 bg-[#070e18] py-2 px-3 font-mono text-base sm:text-lg font-black text-[#ff0046] tracking-wider shadow-inner" data-testid="cooldown-timer">
+          {formatCountdown(timeLeft)}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white hover:bg-[#e0003c] transition-colors cursor-pointer"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function MatchdayAdvancePopup({
+  nextMatchdayNumber,
+  nextSlipNumber = 2,
+  onGoToNext,
+  onClose,
+}: {
+  nextMatchdayNumber: number;
+  nextSlipNumber?: number;
+  onGoToNext: () => void;
+  onClose: () => void;
+}) {
+  const slipName = nextSlipNumber === 2 ? 'second' : nextSlipNumber === 3 ? 'third' : `${nextSlipNumber}th`;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="matchday-advance-popup">
+      <div className="relative w-full max-w-[340px] rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] p-4 sm:p-5 text-white shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-slate-400 hover:text-white hover:bg-[#14263b] cursor-pointer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <h2 className="pr-6 text-xs sm:text-sm font-black">Matchday 1 Complete</h2>
+        <p className="mt-1 text-xs text-slate-300 leading-snug">
+          You will be able to create a {slipName} slip once both matchdays are complete. Complete matchday {nextMatchdayNumber} to finish your slip.
+        </p>
+        <button
+          type="button"
+          onClick={onGoToNext}
+          data-testid="advance-to-matchday-10"
+          className="mt-4 min-h-[38px] w-full rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white hover:bg-[#e0003c] transition-colors cursor-pointer"
+        >
+          Go to matchday {nextMatchdayNumber}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-1.5 min-h-[32px] w-full text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+        >
+          Close
+        </button>
       </div>
     </div>
   );
