@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Match } from '../../types';
 import { TeamLogo } from '../common/TeamLogo';
 import { ApiService } from '../../services/api';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 
 interface FormTabProps {
     match: Match;
@@ -229,28 +230,37 @@ export const FormTab: React.FC<FormTabProps> = ({ match }) => {
                         </div>
                     ) : (
                         <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                            {h2hList.map((m) => {
+                            {h2hList.map((m, idx) => {
                                 let resChar: 'W' | 'D' | 'L' = 'D';
                                 if (m.scoreA > m.scoreB) resChar = 'W';
                                 else if (m.scoreB > m.scoreA) resChar = 'L';
 
                                 return (
-                                    <div key={m.id} className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp || 'EPL'}</span>
-                                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
-                                                {m.homeName || teamA.name} - {m.awayName || teamB.name}
-                                            </span>
-                                        </div>
+                                    <React.Fragment key={m.id}>
+                                        <div className="flex items-center justify-between px-3 py-2 text-xs hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <span className="font-mono text-[11px] text-slate-400">{m.date}</span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">{m.comp || 'EPL'}</span>
+                                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                                                    {m.homeName || teamA.name} - {m.awayName || teamB.name}
+                                                </span>
+                                            </div>
 
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-mono font-black text-slate-900 dark:text-white">
-                                                {m.scoreA} - {m.scoreB}
-                                            </span>
-                                            {renderBadge(resChar)}
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-mono font-black text-slate-900 dark:text-white">
+                                                    {m.scoreA} - {m.scoreB}
+                                                </span>
+                                                {renderBadge(resChar)}
+                                            </div>
                                         </div>
-                                    </div>
+                                        {(idx + 1) % 10 === 0 && (
+                                            <CompactDirectBanner
+                                                label="H2H Streak Multiplier"
+                                                tagline="Exclusive Head-to-Head Derby Odds"
+                                                variant="amber"
+                                            />
+                                        )}
+                                    </React.Fragment>
                                 );
                             })}
                         </div>

@@ -5,6 +5,7 @@ import { formatTeamName } from '../../../lib/predictions/utils';
 import { matchClosed, slipResult, slipTick } from '../../../lib/predictions/votingWindow';
 import { matchDayKey } from '../../../lib/predictions/weekendSlate';
 import { shareService } from '../../../services/predictions/shareService';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface PredictionSlipsModalProps {
@@ -261,6 +262,12 @@ export function ShareSlipPopup({
               Close
             </button>
           )}
+          <CompactDirectBanner
+            label="Verified Slip Bonus"
+            tagline="Lock Your Prediction on External Sportsbook"
+            variant="emerald"
+            className="my-1"
+          />
         </div>
       </div>
     </div>

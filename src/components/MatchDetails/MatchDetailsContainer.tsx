@@ -16,6 +16,8 @@ import { MatchDetailsCard } from './MatchDetailsCard';
 import { CaptainsNotes } from './CaptainsNotes';
 import { FormTab } from './FormTab';
 import { PlayerRatings } from './PlayerRatings';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
+import { StickyMatchFooterBanner } from '../ads/StickyMatchFooterBanner';
 
 interface MatchDetailsContainerProps {
     match: Match;
@@ -231,7 +233,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-16 transition-colors relative">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-24 transition-colors relative">
             <MatchHeader
                 match={currentMatch}
                 onBack={onBack}
@@ -246,6 +248,12 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
             />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 relative z-10">
+                <CompactDirectBanner
+                    label="Matchday Head-to-Head"
+                    tagline="Claim Welcome Match Bonus"
+                    variant="purple"
+                    className="mb-4"
+                />
                 {sectionLoading ? (
                     <div className="space-y-3" role="status" aria-label="Loading match section">
                         <div className="h-8 w-44 rounded bg-slate-200 dark:bg-slate-800 animate-pulse" />
@@ -256,6 +264,8 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
                     renderTabContent()
                 )}
             </main>
+
+            <StickyMatchFooterBanner activeTab={activeTab} />
         </div>
     );
 };

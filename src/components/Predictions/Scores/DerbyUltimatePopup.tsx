@@ -4,6 +4,7 @@ import { VoteRangeBar } from './VoteRangeBar';
 import { shareService } from '../../../services/predictions/shareService';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface DerbyUltimatePopupProps {
@@ -152,6 +153,13 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
               />
             </div>
           </div>
+
+          <CompactDirectBanner
+            label="Derby Superboost"
+            tagline="Exclusive Odds on Today's Derby"
+            variant="purple"
+            className="my-1.5"
+          />
         </div>
 
         {/* ========================================================================= */}

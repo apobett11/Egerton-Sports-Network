@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { X, MessageCircle } from 'lucide-react';
 import { formatTeamName } from '../../../lib/predictions/utils';
 import { shareService } from '../../../services/predictions/shareService';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import type { ConsensusIQResult, Match, UserPrediction, ConsensusData, PredictionOption } from '../../../types/predictions';
 
 interface MatchdayCompletionModalProps {
@@ -130,6 +131,13 @@ export const MatchdayCompletionModal: React.FC<MatchdayCompletionModalProps> = (
             );
           })}
         </div>
+
+        <CompactDirectBanner
+          label="Consensus Multiplier"
+          tagline="Back Campus Consensus with Real Odds"
+          variant="amber"
+          className="my-1.5"
+        />
 
         <div className="pt-3 border-t border-slate-800 flex flex-col items-start gap-2.5">
           <button

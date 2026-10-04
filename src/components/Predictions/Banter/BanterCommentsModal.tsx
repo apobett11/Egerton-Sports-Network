@@ -3,6 +3,7 @@ import { X, MessageSquare, AlertCircle, User, ArrowLeft, BarChart2, ShieldCheck,
 import { formatRelativeTime } from '../../../lib/predictions/utils';
 import { banterService } from '../../../services/predictions/banterService';
 import { BANTER_CONFIG } from '../../../lib/predictions/constants';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import type { BanterPost, BanterComment, ReactionType } from '../../../types/predictions';
 
 interface BanterCommentsModalProps {
@@ -178,6 +179,13 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
                 </div>
               ))
             )}
+            <div className="pt-2">
+              <CompactDirectBanner
+                label="Banter Pundit Special"
+                tagline="Turn Your Prediction Into Winnings"
+                variant="purple"
+              />
+            </div>
           </div>
         </div>
 

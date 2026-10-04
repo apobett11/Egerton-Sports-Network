@@ -3,6 +3,7 @@ import { Star, Pin, ChevronUp, ChevronDown, Table, Volume2, VolumeX, Radio } fro
 import type { Match } from '../../types';
 import { TeamLogo } from '../common/TeamLogo';
 import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 
 interface FixturesListProps {
     matches: Match[];
@@ -88,11 +89,12 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                 const isCollapsed = !!collapsedLeagues[leagueName];
                 const isPinned = !!pinnedLeagues[leagueName];
                 const isFriendly = (leagueName || '').toLowerCase().includes('friend');
+                const isEpl = (leagueName || '').toLowerCase().includes('premier') || (leagueName || '').toLowerCase().includes('epl');
 
                 return (
-                    <div
-                        key={leagueName}
-                        className={`w-full bg-white dark:bg-[#0e1c2b] border ${
+                    <React.Fragment key={leagueName}>
+                        <div
+                            className={`w-full bg-white dark:bg-[#0e1c2b] border ${
                             isFriendly
                                 ? 'border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-500/20'
                                 : 'border-[#e6e8ec] dark:border-[#1a2e45]'
@@ -339,8 +341,16 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                             </div>
                         )}
                     </div>
-                );
-            })}
+                    {isEpl && (
+                        <CompactDirectBanner
+                            label="EPL Campus Boost"
+                            tagline="Enhanced Odds on Egerton Premier League"
+                            variant="purple"
+                        />
+                    )}
+                </React.Fragment>
+            );
+        })}
         </div>
     );
 };

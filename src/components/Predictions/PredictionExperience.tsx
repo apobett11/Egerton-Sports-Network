@@ -20,6 +20,7 @@ import { shareService } from '../../services/predictions/shareService';
 import { StandingsPreviewModal } from './Standings/StandingsPreviewModal';
 import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
 import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
+import { MonetagPushNotifications, MonetagInPagePush, MonetagVignette } from '../ads/MonetagEngines';
 
 import { eplFixtureService } from '../../services/predictions/eplFixtureService';
 import { predictionService } from '../../services/predictions/predictionService';
@@ -814,6 +815,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       data-favorite-team={favouriteTeam || ''}
       data-fixtures-loaded={fixturesLoaded ? 'true' : 'false'}
     >
+      <MonetagPushNotifications />
+      {activeTab === 'banter' && <MonetagInPagePush />}
+      {Boolean(showCompletionModal || derbyPopupData) && <MonetagVignette />}
+
       {/* Main Content Area */}
       <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 flex-1 py-4">
         {/* ================================================================ */}

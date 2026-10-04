@@ -9,6 +9,7 @@ import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { guestCache } from '../../lib/guestCache';
 import { readCachedLeagueTable } from '../../services/guestSportsService';
 import { TeamLogo } from '../../components/common/TeamLogo';
+import { CompactDirectBanner } from '../../components/ads/CompactDirectBanner';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -419,6 +420,12 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       <EplCleanSheetList rows={standingsState.epl} loading={standingsState.loading} onOpenTable={() => onNavigate('/table')} />
 
+      <CompactDirectBanner
+        label="Clean Sheet Special"
+        tagline="Bet Under 2.5 Goals on Next Fixture"
+        variant="emerald"
+      />
+
       {/* 2. PLAYER PERFORMANCE & INDIVIDUAL STATS - SEPARATE CARDS FOR EPL & CHAMPIONSHIPS */}
       <div ref={perfSectionRef}>
         {!perfHasLoaded ? (
@@ -809,6 +816,11 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 4. STANDINGS SNAPSHOT SECTION */}
+      <CompactDirectBanner
+        label="Table Climbers"
+        tagline="Predict Division 1 Winner & Win"
+        variant="amber"
+      />
       <section 
         ref={standingsSectionRef}
         aria-label="Standings Snapshot Section" 
@@ -1007,6 +1019,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
+      {/* 5.5 BANNER ABOVE GOVERNANCE */}
+      <CompactDirectBanner variant="purple" />
+
       {/* 6. PARTNERS & GOVERNANCE */}
       <section 
         aria-label="Official League Partners & Governance"
@@ -1043,6 +1058,11 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
+      <CompactDirectBanner
+        label="Live Matchday Multi-Bet"
+        tagline="Combine Campus Matches for Max Payout"
+        variant="emerald"
+      />
     </div>
   );
 };

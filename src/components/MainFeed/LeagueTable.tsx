@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { shareSnapshot } from '../../lib/shareSnapshot';
 import { PlayerOfTheWeekSpotlight } from '../POTW/PlayerOfTheWeekSpotlight';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 
 interface LeagueTableProps {
   tableData: LeagueTableEntry[];
@@ -819,6 +820,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           tablesPending.epl
         )}
 
+        <CompactDirectBanner
+          label="Championship Derby"
+          tagline="Division 2 Odds & Multi-bets"
+          variant="purple"
+        />
+
         {/* Championships Standings Table (Below EPL) */}
         {renderStandingsTable(
           'Egerton Championships',
@@ -872,6 +879,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           eplFormRef,
           tablesPending.epl
         )}
+
+        <CompactDirectBanner
+          label="Form Analyzer"
+          tagline="Streak Multipliers on 3+ Win Teams"
+          variant="emerald"
+        />
 
         {/* Championships Form Table (Below EPL Form) */}
         {renderFormTable(
@@ -932,6 +945,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           onNavigateToVoting={onNavigateToVoting}
           onScrollToStandings={() => scrollToTarget(standingsRef, 'standings')}
           showVoteSection={false}
+        />
+
+        <CompactDirectBanner
+          label="MVP Superboost"
+          tagline="Back This Week's Campus Star"
+          variant="amber"
         />
 
         <div className="flex items-center justify-between px-1">
@@ -1033,6 +1052,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           </div>
         </div>
         )}
+
+        <CompactDirectBanner
+          label="Historical POTW Multiplier"
+          tagline="Enhanced Payout on Weekly Winners"
+          variant="amber"
+        />
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}
@@ -1120,6 +1145,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
         )}
       </div>
+
+      <CompactDirectBanner
+        label="Season Outrights"
+        tagline="Title Race & Relegation Multipliers"
+        variant="purple"
+      />
 
       {/* ======================================================== */}
       {/* POPUP MODALS: SEE ALL SCORERS & SEE ALL ASSISTS         */}

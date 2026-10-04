@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Match, MatchEvent } from '../../types';
 import { TeamLogo } from '../common/TeamLogo';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 
 interface SummaryProps {
     match: Match;
@@ -224,7 +225,7 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                     </div>
                 ) : (
                     <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                        {filteredEvents.map((ev) => {
+                        {filteredEvents.map((ev, index) => {
                             const isHome = ev.teamId === teamA.id || ev.eventTarget === 'home';
                             const eventTeam = isHome ? teamA : teamB;
                             const badge = getActionBadge(ev.type);
@@ -234,10 +235,10 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                 (!ev.isOfficial && !(ev as any).is_official && (ev as any).created_by_role !== 'REFEREE');
 
                             return (
-                                <div
-                                    key={ev.id}
-                                    className="p-3.5 sm:p-4 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors flex items-start gap-3 text-xs"
-                                >
+                                <React.Fragment key={ev.id}>
+                                    <div
+                                        className="p-3.5 sm:p-4 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors flex items-start gap-3 text-xs"
+                                    >
                                     {/* Minute Marker Badge */}
                                     <div className={`font-mono font-black text-xs px-2.5 py-1 ${
                                         isJournalistEvent
@@ -287,7 +288,15 @@ export const Summary: React.FC<SummaryProps> = ({ match }) => {
                                             )}
                                         </p>
                                     </div>
-                                </div>
+                                    </div>
+                                    {(index + 1) % 10 === 0 && (
+                                        <CompactDirectBanner
+                                            label="Live Match Action Boost"
+                                            tagline="Enhanced Odds on Current Match In-Play"
+                                            variant="purple"
+                                        />
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </div>
