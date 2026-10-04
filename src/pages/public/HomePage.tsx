@@ -180,8 +180,8 @@ export const HomePage: React.FC<HomePageProps> = ({
     }));
 
     Promise.all([
-      ApiService.getLeagueTable(EPL_ID),
-      ApiService.getLeagueTable(CHAMP_ID)
+      ApiService.getLeagueTable(EPL_ID, undefined, undefined, true),
+      ApiService.getLeagueTable(CHAMP_ID, undefined, undefined, true)
     ])
       .then(([eplRes, champRes]) => {
         if (!isMounted) return;

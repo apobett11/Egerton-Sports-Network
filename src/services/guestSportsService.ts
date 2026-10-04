@@ -445,7 +445,23 @@ export async function getGuestFixtures(params?: {
   date?: string; // YYYY-MM-DD
   matchday?: number;
 }): Promise<GuestFixture[]> {
-  return getGuestFixturesFast(params);
+  const cacheKey = fixtureCacheKey(params);
+  try {
+    // On page load / call, query the latest fixtures from database/network and update cache
+    const fresh = await fetchGuestFixturesNetwork(params, true);
+    if (fresh && fresh.length > 0) {
+      return fresh;
+    }
+  } catch (err) {
+    console.warn('[guestSportsService] Network fetch failed, falling back to cache:', err);
+  }
+
+  // Fallback to cached fixtures if network failed or empty
+  const cached = readStoredFixtures(cacheKey);
+  if (cached && cached.length > 0) {
+    return cached;
+  }
+  return [];
 }
 
 function rowToGuestFixture(f: any, teamMap: Map<string, any>, compMap: Map<string, string>): GuestFixture {
@@ -1087,7 +1103,7 @@ export async function getGuestLeagueTableEntries(competitionId?: string): Promis
     ? competitionId
     : '11111111-1111-1111-1111-111111111111';
   if (entries.length > 0) {
-    guestCache.set('standings', `standings_${targetCompId}`, entries, 6 * 60 * 60 * 1000);
+    guestCache.set('standings', `standings_${targetCompId}`, entries, 6 * 60 * 60 * 1000, true);
     return entries;
   }
   return readCachedLeagueTable(targetCompId);

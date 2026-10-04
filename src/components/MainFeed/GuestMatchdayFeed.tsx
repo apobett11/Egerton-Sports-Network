@@ -44,6 +44,8 @@ function sameFixtureList(a: Match[], b: Match[]): boolean {
       left.status !== right.status ||
       left.scoreA !== right.scoreA ||
       left.scoreB !== right.scoreB ||
+      left.homePenaltyScore !== right.homePenaltyScore ||
+      left.awayPenaltyScore !== right.awayPenaltyScore ||
       left.scheduledTime !== right.scheduledTime ||
       left.time !== right.time
     ) return false;
@@ -176,8 +178,11 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
 
   const loadFixtures = useCallback(() => {
     let isMounted = true;
+    let hasReceivedNetworkData = false;
     const key = `${selectedCompetitionId}|${formattedDateStr}`;
     const compId = selectedCompetitionId === 'all' ? undefined : selectedCompetitionId;
+
+    // 1. Instant paint from cache on page load (zero blank state)
     const remembered = recallDay(selectedCompetitionId, formattedDateStr);
     if (remembered) {
       setFixtureBundle((prev) => (
@@ -187,7 +192,7 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
     }
 
     const applyStored = () => {
-      if (!isMounted) return;
+      if (!isMounted || hasReceivedNetworkData) return;
       const cached = readStoredDay(selectedCompetitionId, formattedDateStr, dbFixturesRef.current);
       if (!cached) return;
       setFixtureBundle((prev) => (
@@ -199,9 +204,11 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
     const storageIdle = window.requestIdleCallback?.(applyStored, { timeout: 700 });
     const storageTimer = window.setTimeout(applyStored, 40);
 
+    // 2. Fetch fresh fixtures from DB on page load, update cache difference, and query standings
     ApiService.getFixtures(compId, formattedDateStr)
       .then((res) => {
         if (!isMounted) return;
+        hasReceivedNetworkData = true;
         const incoming = Array.isArray(res.data) ? res.data : [];
         if (res.success && incoming.length > 0) {
           rememberDay(selectedCompetitionId, formattedDateStr, incoming);
@@ -219,6 +226,19 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
           }
         }
         setFixturesLoading(false);
+
+        // 3. Immediately query for the standings to check for any changes and update cache on each page load
+        void (async () => {
+          try {
+            ApiService.invalidateStandingsCache();
+            await Promise.all([
+              ApiService.getLeagueTable('11111111-1111-1111-1111-111111111111', undefined, undefined, true),
+              ApiService.getLeagueTable('22222222-2222-2222-2222-222222222222', undefined, undefined, true),
+            ]);
+          } catch {
+            // background standings query
+          }
+        })();
       })
       .catch(() => {
         if (!isMounted) return;

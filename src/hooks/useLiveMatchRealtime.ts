@@ -43,39 +43,29 @@ export const useLiveMatchRealtime = (
       return;
     }
 
-    // If autoFetchAll is explicitly false, do NOT perform a full DB scan
-    if (options?.autoFetchAll === false) {
-      // Check if we have cached fixtures in guestCache
-      const exactKey = options.selectedDate
-        ? `${options.competitionId || 'all'}_${options.selectedDate}_pall_sall`
-        : 'all_all_pall_sall';
-      const cached = guestCache.peek<Match[]>('fixtures', exactKey);
-      if (cached && cached.length > 0) {
-        setMatches(cached);
-        matchesRef.current = cached;
-      }
-      return;
+    // 1. Seed immediately from cache so initial paint is instant (zero delay)
+    const exactKey = options?.selectedDate
+      ? `${options?.competitionId || 'all'}_${options.selectedDate}_pall_sall`
+      : 'all_all_pall_sall';
+    const cached = guestCache.peek<Match[]>('fixtures', exactKey) || guestCache.getStale<Match[]>('fixtures', exactKey);
+    if (cached && cached.length > 0) {
+      setMatches(cached);
+      matchesRef.current = cached;
     }
 
-    if (!hasFetchedInitialRef.current) {
-      hasFetchedInitialRef.current = true;
-      if (options?.selectedDate) {
-        ApiService.getFixtures(options.competitionId, options.selectedDate).then((res) => {
-          if (res.data) {
-            setMatches(res.data);
-            matchesRef.current = res.data;
-          }
-        }).catch(() => {});
-      } else {
-        ApiService.getFixtures().then((res) => {
-          if (res.data) {
-            setMatches(res.data);
-            matchesRef.current = res.data;
-          }
-        }).catch(() => {});
+    // 2. Always fetch latest fixtures from DB on page load and update cache / matches
+    const fetchCall = options?.selectedDate
+      ? ApiService.getFixtures(options.competitionId, options.selectedDate)
+      : ApiService.getFixtures();
+
+    fetchCall.then((res) => {
+      if (res.data && res.data.length > 0) {
+        setMatches(res.data);
+        matchesRef.current = res.data;
+        if (onMatchUpdated) onMatchUpdated(res.data);
       }
-    }
-  }, [options?.autoFetchAll, options?.selectedDate, options?.competitionId]);
+    }).catch(() => {});
+  }, [options?.autoFetchAll, options?.selectedDate, options?.competitionId, onMatchUpdated]);
 
   const addToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;

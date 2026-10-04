@@ -3,6 +3,7 @@ import type { LeagueTableEntry } from '../../types';
 import { ApiService } from '../../services/api';
 import { supabase } from '../../lib/supabase';
 import { readCachedLeagueTable } from '../../services/guestSportsService';
+import { useCacheSubscription } from '../../hooks/useCacheSubscription';
 import { TeamLogo } from '../common/TeamLogo';
 import { 
   Trophy, Award, Star, Flame, Zap, Target, Users, X, 
@@ -143,8 +144,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   // 1. Unified Standings Tables Fetcher ("Call the tables as a whole")
   const loadStandingsTables = useCallback(() => {
     Promise.all([
-      ApiService.getLeagueTable(EPL_COMP_ID),
-      ApiService.getLeagueTable(CHAMP_COMP_ID)
+      ApiService.getLeagueTable(EPL_COMP_ID, undefined, undefined, true),
+      ApiService.getLeagueTable(CHAMP_COMP_ID, undefined, undefined, true)
     ]).then(([eplRes, champRes]) => {
       if (eplRes.data && eplRes.data.length > 0) {
         setEplStandings(eplRes.data);
@@ -157,6 +158,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
       setTablesPending({ epl: false, champ: false });
     });
   }, []);
+
+  useCacheSubscription('standings', loadStandingsTables);
 
   // 2. On-Demand / Lazy Scorers Fetcher
   const loadScorers = useCallback(() => {

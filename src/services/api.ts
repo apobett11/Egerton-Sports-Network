@@ -86,9 +86,9 @@ export const ApiService = {
       const guestFixtures = await getGuestFixtures({ competitionId, date: selectedDate });
       const formattedMatches: Match[] = (guestFixtures || []).map(guestFixtureToMatch).filter(Boolean);
       if (formattedMatches.length > 0 && !hasPlaceholderTeamData(formattedMatches)) {
-        guestCache.set('fixtures', cacheKey, formattedMatches);
+        guestCache.set('fixtures', cacheKey, formattedMatches, undefined, true);
         if ((!competitionId || competitionId === 'all') && (!selectedDate || selectedDate === 'all') && !page && !pageSize) {
-          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches);
+          guestCache.set('fixtures', 'all_all_pall_sall', formattedMatches, undefined, true);
         }
         return { success: true, data: formattedMatches, total: formattedMatches.length };
       }
@@ -1412,14 +1412,15 @@ export const ApiService = {
   async getLeagueTable(
     competitionId?: string,
     fixturesOverride?: Match[],
-    previousStandings?: LeagueTableEntry[]
+    previousStandings?: LeagueTableEntry[],
+    forceFresh?: boolean
   ): Promise<ApiResponse<LeagueTableEntry[]>> {
     try {
       const targetCompId = competitionId && competitionId !== 'all' ? competitionId : undefined;
       const cacheKey = targetCompId || 'all';
 
-      // 0. Use rapid-access in-memory cache for standard reads (30-second TTL)
-      if (!fixturesOverride && !previousStandings) {
+      // 0. Use rapid-access in-memory cache for standard reads (30-second TTL) unless forceFresh requested
+      if (!fixturesOverride && !previousStandings && !forceFresh) {
         const cached = leagueTableCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < 30_000) {
           return { success: true, data: cached.data };
