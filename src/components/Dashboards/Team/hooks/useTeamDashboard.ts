@@ -231,7 +231,7 @@ export const useTeamDashboard = () => {
 
       if (team) {
         const cachedLogo = peekTeamLogo(resolvedTeamId) || publicTeamLogo(resolvedTeamId);
-        if (cachedLogo && !cachedLogo.startsWith('data:')) {
+        if (cachedLogo) {
           team = { ...team, logo_url: cachedLogo, crest_url: cachedLogo };
         }
         prioritizeTeamLogo(resolvedTeamId);
@@ -351,7 +351,7 @@ export const useTeamDashboard = () => {
       setTeamInfo((prev: any) => {
         if (!prev?.id) return prev;
         const next = peekTeamLogo(prev.id);
-        if (!next || next.startsWith('data:') || next === prev.logo_url) return prev;
+        if (!next || next === prev.logo_url) return prev;
         return { ...prev, logo_url: next, crest_url: next };
       });
     });

@@ -16,8 +16,11 @@ export function readCachedAsset(teamId?: string | null): string | null {
   if (mem) return mem;
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(PREFIX + teamId);
-    if (!raw || raw.startsWith('data:')) return null;
+    const raw =
+      localStorage.getItem(PREFIX + teamId) ||
+      localStorage.getItem(`team_logo_${teamId}`) ||
+      localStorage.getItem(`team_logo_${teamId.toLowerCase()}`);
+    if (!raw) return null;
     memory.set(teamId, raw);
     return raw;
   } catch {
@@ -26,7 +29,7 @@ export function readCachedAsset(teamId?: string | null): string | null {
 }
 
 export function writeCachedAsset(teamId: string, url: string, version?: string): void {
-  if (!teamId || !url || url.startsWith('data:')) return;
+  if (!teamId || !url) return;
   memory.set(teamId, url);
   if (typeof localStorage === 'undefined') return;
   try {

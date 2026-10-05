@@ -18,8 +18,8 @@ interface TeamCrestProps {
 
 function resolveCrest(teamId?: string | null, src?: string | null): string {
   const cached = (teamId && readCachedAsset(teamId)) || peekTeamLogo(teamId);
-  if (cached && !cached.startsWith('data:')) return cached;
-  if (src && !src.startsWith('data:')) return src;
+  if (cached) return cached;
+  if (src) return src;
   return DEFAULT_TEAM_LOGO;
 }
 
@@ -28,7 +28,7 @@ export const TeamCrest: React.FC<TeamCrestProps> = ({ teamId, src, alt = '', cla
   const [logo, setLogo] = useState(() => resolveCrest(teamId, src));
 
   useEffect(() => {
-    if (teamId && src && !src.startsWith('data:')) {
+    if (teamId && src) {
       writeCachedAsset(teamId, src, version);
     }
     setLogo(resolveCrest(teamId, src));
@@ -41,5 +41,18 @@ export const TeamCrest: React.FC<TeamCrestProps> = ({ teamId, src, alt = '', cla
     });
   }, [teamId, src, version]);
 
-  return <img src={logo} alt={alt} className={className} loading="lazy" decoding="async" />;
+  return (
+    <img
+      src={logo}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      decoding="async"
+      onError={(e) => {
+        if (e.currentTarget.src !== DEFAULT_TEAM_LOGO) {
+          e.currentTarget.src = DEFAULT_TEAM_LOGO;
+        }
+      }}
+    />
+  );
 };

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import type { UserProfile, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import { updateActivity } from '../lib/inactivityManager';
+import { resetSessionBudget } from '../lib/sessionBudgetManager';
 
 export const normalizeRole = (rawRole?: string): UserRole => {
   const r = (rawRole || '').toLowerCase().trim();
@@ -131,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Track user activity timestamp (throttled)
   const lastRecordedActivityRef = React.useRef<number>(Date.now());
   const recordActivity = useCallback(() => {
+    updateActivity();
     const now = Date.now();
     if (now - lastRecordedActivityRef.current > 15000) { // Throttle writes to every 15s
       lastRecordedActivityRef.current = now;
@@ -559,6 +562,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRole(fetchedProf.role);
       localStorage.setItem(STORAGE_KEY_CACHED_PROFILE, JSON.stringify(fetchedProf));
       localStorage.setItem(STORAGE_KEY_CACHED_ROLE, fetchedProf.role);
+
+      resetSessionBudget();
+      updateActivity();
 
       setIsLoading(false);
       return { error: null, role: fetchedProf.role, profile: fetchedProf };

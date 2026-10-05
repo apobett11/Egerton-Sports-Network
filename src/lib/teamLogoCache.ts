@@ -1,4 +1,4 @@
-import { needsAssetFetch, writeCachedAsset } from './cache/assetCache';
+import { needsAssetFetch, readCachedAsset, writeCachedAsset } from './cache/assetCache';
 import { supabase } from './supabase';
 
 export const DEFAULT_TEAM_LOGO =
@@ -34,7 +34,9 @@ export function subscribeTeamLogos(fn: (teamId?: string) => void): () => void {
 
 export function peekTeamLogo(teamId?: string | null): string | null {
   if (!teamId) return null;
-  return memory.get(teamId)?.src || null;
+  const mem = memory.get(teamId)?.src;
+  if (mem) return mem;
+  return readCachedAsset(teamId);
 }
 
 export function peekLogoStamp(teamId?: string | null): string | null {
@@ -58,6 +60,30 @@ function openDb(): Promise<IDBDatabase> {
 
 export function hydrateTeamLogos(): Promise<void> {
   if (hydrated) return hydrated;
+
+  // Immediately populate memory from localStorage so synchronous calls can find existing cached logos
+  if (typeof localStorage !== 'undefined') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key.startsWith('team_logo_') && !key.startsWith('team_logo_timestamp_')) {
+          const id = key.replace('team_logo_', '');
+          const val = localStorage.getItem(key);
+          if (val && !memory.has(id)) {
+            memory.set(id, { src: val, stamp: 'legacy' });
+          }
+        } else if (key.startsWith('esn_asset_v1_') && !key.endsWith(':v')) {
+          const id = key.replace('esn_asset_v1_', '');
+          const val = localStorage.getItem(key);
+          if (val && !memory.has(id)) {
+            memory.set(id, { src: val, stamp: 'legacy' });
+          }
+        }
+      }
+    } catch {}
+  }
+
   if (typeof indexedDB === 'undefined') {
     hydrated = Promise.resolve();
     return hydrated;
@@ -76,7 +102,12 @@ export function hydrateTeamLogos(): Promise<void> {
               resolve();
               return;
             }
-            memory.set(String(cursor.key), cursor.value as LogoRecord);
+            const val = cursor.value;
+            const record: LogoRecord =
+              typeof val === 'string' ? { src: val, stamp: 'legacy' } : (val as LogoRecord);
+            if (record && record.src) {
+              memory.set(String(cursor.key), record);
+            }
             cursor.continue();
           };
           req.onerror = () => resolve();
@@ -107,7 +138,7 @@ async function persist(teamId: string, record: LogoRecord): Promise<void> {
 }
 
 export async function rememberTeamLogo(teamId: string, src: string, stamp: string): Promise<void> {
-  if (!teamId || !src || src.startsWith('data:')) return;
+  if (!teamId || !src) return;
   writeCachedAsset(teamId, src, stamp && stamp !== 'legacy' ? stamp : undefined);
   const prev = memory.get(teamId);
   if (prev && prev.src === src && prev.stamp === stamp) return;
@@ -122,17 +153,15 @@ export async function rememberTeamLogo(teamId: string, src: string, stamp: strin
  * Embedded images stay in the logo cache and are never copied into those payloads.
  */
 export function publicTeamLogo(teamId?: string | null, raw?: string | null): string {
-  if (raw && raw.startsWith('data:') && teamId) {
-    void rememberTeamLogo(teamId, raw, peekLogoStamp(teamId) || 'legacy');
-  } else if (raw && /^https?:\/\//.test(raw)) {
-    if (teamId && !memory.has(teamId)) {
-      void rememberTeamLogo(teamId, raw, raw);
+  if (raw && teamId) {
+    if (!memory.has(teamId)) {
+      void rememberTeamLogo(teamId, raw, peekLogoStamp(teamId) || 'legacy');
     }
     return raw;
   }
 
   const cached = peekTeamLogo(teamId);
-  if (cached && !cached.startsWith('data:')) return cached;
+  if (cached) return cached;
   return DEFAULT_TEAM_LOGO;
 }
 

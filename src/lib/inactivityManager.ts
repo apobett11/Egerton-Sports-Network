@@ -12,7 +12,7 @@ let lastActivityTime = Date.now();
 let isListening = false;
 const listeners = new Set<(isActive: boolean) => void>();
 
-function updateActivity() {
+export function updateActivity(): void {
   lastActivityTime = Date.now();
   notifyListeners(true);
 }
@@ -87,4 +87,8 @@ export function useInactivityStatus(timeoutMs = INACTIVITY_TIMEOUT_MS): boolean 
   }, [timeoutMs]);
 
   return isActive;
+}
+
+if (typeof window !== 'undefined') {
+  initActivityListeners();
 }
