@@ -11,6 +11,7 @@ import {
   Hash,
 } from 'lucide-react';
 import type { Player, PlayerPosition } from '../../Dashboards/Team/types';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 
 interface TeamPlayersTabProps {
   roster: Player[];
@@ -115,6 +116,12 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full select-none pb-20 animate-in fade-in duration-150">
+      <CompactDirectBanner
+        label={`${teamName} Roster Specials`}
+        tagline="Top Scorer & Player Multipliers"
+        variant="purple"
+      />
+
       {/* 1. Sub-Main Segmented Tabs */}
       <div className="flex items-center justify-between border-b border-[#e6e8ec] dark:border-[#1a2e45] pb-4">
         <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] shadow-xs">
@@ -378,6 +385,12 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
               })}
             </div>
           )}
+
+          <CompactDirectBanner
+            label="Player Performance Boost"
+            tagline="Exclusive Odds on Team Lineups & Goals"
+            variant="emerald"
+          />
         </div>
       )}
 
@@ -434,6 +447,12 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
               </div>
             ))}
           </div>
+
+          <CompactDirectBanner
+            label="Official Club Merchandise"
+            tagline="Exclusive Team Discounts & Fan Offers"
+            variant="amber"
+          />
         </div>
       )}
     </div>

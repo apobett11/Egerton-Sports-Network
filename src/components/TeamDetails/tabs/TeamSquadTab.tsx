@@ -13,6 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 import type { Player, DBTeam } from '../../Dashboards/Team/types';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 
 interface TeamSquadTabProps {
   teamId: string;
@@ -236,6 +237,12 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 select-none animate-in fade-in duration-150">
+      <CompactDirectBanner
+        label={`${teamName} Tactical Masterclass`}
+        tagline="Back This Formation with Instant Odds"
+        variant="purple"
+      />
+
       {/* 1. TOP TACTICAL CONTROL BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] p-3.5 sm:p-4 rounded-none sm:rounded-sm shadow-xs">
         <div className="flex items-center gap-3">
@@ -503,6 +510,12 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
           </div>
         </div>
 
+        <CompactDirectBanner
+          label="Starting XI Match Boost"
+          tagline="Enhanced Odds on First Goalscorer"
+          variant="emerald"
+        />
+
         {/* SUBSTITUTES & BENCH */}
         {substitutes.length > 0 && (
           <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
@@ -623,6 +636,12 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
             </div>
           </div>
         )}
+
+        <CompactDirectBanner
+          label="Super Sub Multipliers"
+          tagline="In-Play Betting on Next Substitution"
+          variant="amber"
+        />
       </div>
 
       {/* 4. IN-MATCH ROLES POPUP MODAL (OPENED BY IN-MATCH ROLES BUTTON, CLOSABLE VIA X OR CLOSE BUTTON) */}
@@ -707,6 +726,15 @@ export const TeamSquadTab: React.FC<TeamSquadTabProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            <div className="px-3">
+              <CompactDirectBanner
+                label="Set-Piece Multipliers"
+                tagline="Free Kick & Penalty Specials"
+                variant="emerald"
+                className="my-1.5"
+              />
             </div>
 
             {/* Modal Footer with Close Button */}

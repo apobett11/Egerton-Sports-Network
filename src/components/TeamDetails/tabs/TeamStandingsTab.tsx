@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Trophy, Activity, ChevronDown, ChevronUp } from 'lucide-react';
 import type { StandingEntry, Match } from '../../Dashboards/Team/types';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 
 interface TeamStandingsTabProps {
   standings: StandingEntry[];
@@ -74,6 +75,12 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full select-none pb-20 animate-in fade-in duration-150">
+      <CompactDirectBanner
+        label={`${currentTeamName} League Odds`}
+        tagline="Predict League Finish & Title Multipliers"
+        variant="purple"
+      />
+
       {/* 1. STANDINGS TABLE CARD */}
       <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         <div className="px-4 py-3 bg-slate-50 dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
@@ -189,6 +196,12 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
         </div>
       </div>
 
+      <CompactDirectBanner
+        label="Table Position Multipliers"
+        tagline="Live Table Climb & Top 4 Outrights"
+        variant="amber"
+      />
+
       {/* 2. RECENT FORM TABLE CARD */}
       <div className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
         <div className="px-4 py-3 bg-slate-50 dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
@@ -286,6 +299,12 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
           </table>
         </div>
       </div>
+
+      <CompactDirectBanner
+        label="Streak Multiplier"
+        tagline="Back In-Form Teams With Instant Payouts"
+        variant="emerald"
+      />
     </div>
   );
 };

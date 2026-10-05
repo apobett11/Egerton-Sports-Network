@@ -727,6 +727,12 @@ export const HomePage: React.FC<HomePageProps> = ({
       )}
       </div>
 
+      <CompactDirectBanner
+        label="Top Performer Outrights"
+        tagline="Back Campus Top Scorers & Playmakers"
+        variant="purple"
+      />
+
       {/* 3. LEAGUE MILESTONES SECTION */}
       <section 
         ref={milestonesSectionRef}
@@ -916,6 +922,12 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         )}
       </section>
+
+      <CompactDirectBanner
+        label="Promotion Outrights"
+        tagline="Back Top 4 Contenders to Clinch the Title"
+        variant="amber"
+      />
 
       {/* 5. FEATURED NEWS SECTION */}
       <section 

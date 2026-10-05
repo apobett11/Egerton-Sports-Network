@@ -852,6 +852,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             <span>Promotion to Premier League (Top 2 - Champ)</span>
           </div>
         </div>
+
+        <CompactDirectBanner
+          label="Promotion Battle"
+          tagline="Odds on Top 2 Championship Promoted"
+          variant="amber"
+        />
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}
@@ -894,6 +900,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
           champFormRef,
           tablesPending.champ
         )}
+
+        <CompactDirectBanner
+          label="Championship Streak"
+          tagline="Back In-Form Division 2 Contenders"
+          variant="purple"
+        />
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}
@@ -931,6 +943,12 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
             {renderTopScorersTable('All-Time Top 10 Scorers', 'ALL-TIME', allTimeScorers, 'alltime')}
           </div>
         )}
+
+        <CompactDirectBanner
+          label="Golden Boot Race"
+          tagline="Top Goalscorer Outrights & Live Odds"
+          variant="emerald"
+        />
       </div>
 
       {/* DISTINCT INTER-SECTION SPACE */}

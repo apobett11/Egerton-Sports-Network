@@ -3,6 +3,7 @@ import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp } from 'lucide-re
 import type { Match } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
@@ -123,6 +124,12 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 select-none animate-in fade-in duration-150">
+      <CompactDirectBanner
+        label={`${currentTeamName} Live Odds`}
+        tagline="Campus Derby & Matchday Multipliers"
+        variant="purple"
+      />
+
       {/* 1. Header Filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] p-3 sm:p-4 rounded-none sm:rounded-sm shadow-xs">
         <div className="flex items-center gap-2.5">
@@ -192,10 +199,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
           const isCollapsed = !!collapsedLeagues[leagueName];
 
           return (
-            <div
-              key={leagueName}
-              className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
-            >
+            <React.Fragment key={leagueName}>
+              <div
+                className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+              >
               <div
                 onClick={(e) => toggleCollapse(leagueName, e)}
                 className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] cursor-pointer hover:bg-slate-100 dark:hover:bg-[#152940] transition-colors"
@@ -233,7 +240,7 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
               {/* MATCH ROWS CONTAINER (EXACT HOMEPAGE CARD STYLE) */}
               {!isCollapsed && (
                 <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                  {leagueMatches.map((match) => {
+                  {leagueMatches.map((match, idx) => {
                     const isMatchLive = match.status === 'LIVE';
                     const isFT = match.status === 'FINISHED';
                     const isFav = favorites.includes(match.id);
@@ -252,11 +259,11 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                     }
 
                     return (
-                      <div
-                        key={match.id}
-                        onClick={() => handleMatchClick(match)}
-                        className="flex items-center justify-between px-3 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
-                      >
+                      <React.Fragment key={match.id}>
+                        <div
+                          onClick={() => handleMatchClick(match)}
+                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
+                        >
                         {/* Left Column: Star & Match Status / Time */}
                         <div className="flex items-center gap-2 shrink-0">
                           <button
@@ -410,13 +417,28 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                           ) : null}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })
+                      {(idx + 1) % 10 === 0 && (
+                        <CompactDirectBanner
+                          label={`${currentTeamName} Match Boost`}
+                          tagline="Enhanced In-Play Derby Odds"
+                          variant="amber"
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <CompactDirectBanner
+            label="Matchday Head-to-Head"
+            tagline="Claim Welcome Match Bonus"
+            variant="emerald"
+          />
+        </React.Fragment>
+      );
+    })
       )}
     </div>
   );

@@ -15,6 +15,8 @@ import { TeamFixturesTab } from './tabs/TeamFixturesTab';
 import { TeamSquadTab } from './tabs/TeamSquadTab';
 import { TeamPlayersTab } from './tabs/TeamPlayersTab';
 import { TeamStandingsTab } from './tabs/TeamStandingsTab';
+import { CompactDirectBanner } from '../ads/CompactDirectBanner';
+import { StickyMatchFooterBanner } from '../ads/StickyMatchFooterBanner';
 
 interface TeamDetailsContainerProps {
   teamId: string;
@@ -237,7 +239,7 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-16 transition-colors relative">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-24 transition-colors relative">
       {/* 1. MATCH DETAILS-STYLE HEADER */}
       <TeamDetailsHeader
         team={team}
@@ -255,6 +257,12 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
 
       {/* 3. ACTIVE TAB CONTENT WORKSPACE */}
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 relative z-10">
+        <CompactDirectBanner
+          label={`${team.name} Matchday Specials`}
+          tagline="Enhanced Odds & Live In-Play Payouts"
+          variant="purple"
+          className="mb-4"
+        />
         {activeTab === 'fixtures' && (
           <TeamFixturesTab
             fixtures={fixtures}
@@ -316,6 +324,8 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
           )
         )}
       </main>
+
+      <StickyMatchFooterBanner activeTab={activeTab} />
     </div>
   );
 };
