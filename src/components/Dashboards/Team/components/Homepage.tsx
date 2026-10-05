@@ -445,6 +445,7 @@ export const Homepage: React.FC<HomepageProps> = ({
 
                 <button
                   type="button"
+                  aria-label="Record Match Events"
                   onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
                 >
@@ -524,6 +525,7 @@ export const Homepage: React.FC<HomepageProps> = ({
 
             <button
               type="button"
+              aria-label="Record Match Events"
               onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
               className={`relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'events', 'hover:border-amber-500/50 dark:hover:border-amber-500/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >

@@ -1803,6 +1803,7 @@ export interface CoachMatchEventsPayload {
     goals: CoachGoalEvent[];
     yellowCardPlayerIds: string[];
     redCardPlayerIds: string[];
+    isConfirmed?: boolean;
 }
 
 /**
@@ -1831,7 +1832,7 @@ export async function fetchRecordedFixtureIds(fixtureIds: string[], teamId: stri
  * Fetches existing match events recorded for a specific team in a fixture.
  */
 export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): Promise<CoachMatchEventsPayload> {
-    const fallback: CoachMatchEventsPayload = { goals: [], yellowCardPlayerIds: [], redCardPlayerIds: [] };
+    const fallback: CoachMatchEventsPayload = { goals: [], yellowCardPlayerIds: [], redCardPlayerIds: [], isConfirmed: false };
     if (!fixtureId || !teamId) return fallback;
 
     try {
@@ -1850,9 +1851,12 @@ export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): 
         const goals: CoachGoalEvent[] = [];
         const yellowCardPlayerIds: string[] = [];
         const redCardPlayerIds: string[] = [];
+        let isConfirmed = false;
 
         data.forEach((evt: any) => {
-            if ((evt.type === 'goal' || evt.type === 'penalty') && evt.player_id) {
+            if (evt.type === 'ft') {
+                isConfirmed = true;
+            } else if ((evt.type === 'goal' || evt.type === 'penalty') && evt.player_id) {
                 let detectedGoalType: 'regular' | 'solo' | 'freekick' | 'penalty' = 'regular';
                 const detailLower = (evt.detail_text || '').toLowerCase();
                 if (evt.type === 'penalty' || detailLower.includes('penalty')) {
@@ -1880,7 +1884,11 @@ export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): 
             }
         });
 
-        return { goals, yellowCardPlayerIds, redCardPlayerIds };
+        if (goals.length > 0 || yellowCardPlayerIds.length > 0 || redCardPlayerIds.length > 0) {
+            isConfirmed = true;
+        }
+
+        return { goals, yellowCardPlayerIds, redCardPlayerIds, isConfirmed };
     } catch (err) {
         console.warn('[Supabase Client] Failed to fetch coach match events:', err);
         return fallback;
@@ -1904,7 +1912,28 @@ export async function saveCoachMatchEvents(
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
 
-        // 1. Purge this team's prior events for this fixture so updates seamlessly replace previous submissions
+        // Retrieve current authenticated coach user id (Coach UID strictly required)
+        const { data: authData } = await supabase.auth.getUser();
+        const currentUserId = authData?.user?.id || null;
+        if (!currentUserId) {
+            return { success: false, error: 'Authentication required. Only the team coach can record match events.' };
+        }
+
+        // Verify this match has not already been finalized: coach updates match details only once
+        const existingEvents = await fetchCoachMatchEvents(fixtureId, actualTeamId);
+        if (
+            Boolean(existingEvents.isConfirmed) ||
+            (existingEvents.goals && existingEvents.goals.length > 0) ||
+            (existingEvents.yellowCardPlayerIds && existingEvents.yellowCardPlayerIds.length > 0) ||
+            (existingEvents.redCardPlayerIds && existingEvents.redCardPlayerIds.length > 0)
+        ) {
+            return {
+                success: false,
+                error: 'Match details have already been finalized and locked for this match. Updates are not permitted.',
+            };
+        }
+
+        // 1. Purge this team's prior events for this fixture if any partial drafts exist
         const { error: purgeError } = await supabase
             .from('match_events')
             .delete()
@@ -1918,9 +1947,10 @@ export async function saveCoachMatchEvents(
         // 2. Prepare new rows strictly for this team (only player events, NEVER the score itself)
         const rowsToInsert: any[] = [];
         const targetSide = isHome ? 'home' : 'away';
+        const nowIso = new Date().toISOString();
 
         // Goals
-        payload.goals.forEach((g, idx) => {
+        payload.goals.forEach((g) => {
             if (!g.playerId) return;
 
             const isPenalty = g.goalType === 'penalty';
@@ -1939,6 +1969,8 @@ export async function saveCoachMatchEvents(
                 event_target: targetSide,
                 detail_text: detail,
                 is_official: true,
+                created_by: currentUserId,
+                created_at: nowIso,
             });
         });
 
@@ -1955,6 +1987,8 @@ export async function saveCoachMatchEvents(
                 event_target: targetSide,
                 detail_text: null,
                 is_official: true,
+                created_by: currentUserId,
+                created_at: nowIso,
             });
         });
 
@@ -1971,6 +2005,8 @@ export async function saveCoachMatchEvents(
                 event_target: targetSide,
                 detail_text: null,
                 is_official: true,
+                created_by: currentUserId,
+                created_at: nowIso,
             });
         });
 
@@ -1984,6 +2020,8 @@ export async function saveCoachMatchEvents(
                 event_target: targetSide,
                 detail_text: 'Match details confirmed by coach',
                 is_official: true,
+                created_by: currentUserId,
+                created_at: nowIso,
             });
         }
 
@@ -1994,6 +2032,13 @@ export async function saveCoachMatchEvents(
         if (insError) {
             console.error('[Supabase Client] Failed to insert match events:', insError.message);
             return { success: false, error: insError.message };
+        }
+
+        // Touch fixture updated_at timestamp to record match modification
+        try {
+            await supabase.from('fixtures').update({ updated_at: nowIso }).eq('id', fixtureId);
+        } catch {
+            // Non-fatal timestamp touch
         }
 
         // Rebuild goals, assists, and clean sheets from the full event log (best effort, non-destructive).
