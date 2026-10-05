@@ -217,19 +217,18 @@ test.describe('COACH MATCH EVENTS & ADMIN PREPAREDNESS VERIFICATION SUITE', () =
     await page.goto('/#/coach');
     await page.waitForLoadState('networkidle');
 
-    // Open Match Events modal
+    // Open Match Events modal - opens match selection list directly (no guidance popup)
     const recordBtn = page.getByRole('button', { name: /Record Match Events|Update Match Events|Match Details/i }).first();
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
 
-    // Click Proceed from the Guidance screen
-    const proceedBtn = page.getByRole('button', { name: /Proceed/i });
-    await expect(proceedBtn).toBeVisible();
-    await proceedBtn.click();
-
-    // Verify played matches ARE visible
+    // Verify played matches ARE visible directly
     const matchCards = page.locator('button').filter({ hasText: /vs Tatton fc/i });
     await expect(matchCards.first()).toBeVisible();
+
+    // Verify status badges UPDATED and NOT UPDATED are present
+    await expect(page.getByText('NOT UPDATED').first()).toBeVisible();
+    await expect(page.getByText('UPDATED').first()).toBeVisible();
 
     // Count: only 2 completed matches should appear (FINISHED and FT), NOT the SCHEDULED match
     const count = await matchCards.count();
@@ -275,9 +274,8 @@ test.describe('COACH MATCH EVENTS & ADMIN PREPAREDNESS VERIFICATION SUITE', () =
     const recordBtn = page.getByRole('button', { name: /Record Match Events|Update Match Events|Match Details/i }).first();
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
-    await page.getByRole('button', { name: /Proceed/i }).click();
 
-    // Select the played match
+    // Select the played match directly
     await page.getByRole('button', { name: /vs Tatton fc/i }).first().click();
 
     // Verify match score is locked and goal slots match
@@ -361,11 +359,10 @@ test.describe('COACH MATCH EVENTS & ADMIN PREPAREDNESS VERIFICATION SUITE', () =
     const recordBtn = page.getByRole('button', { name: /Record Match Events|Update Match Events|Match Details/i }).first();
     await expect(recordBtn).toBeVisible({ timeout: 10000 });
     await recordBtn.click();
-    await page.getByRole('button', { name: /Proceed/i }).click();
 
-    // Match card displays UPDATED & LOCKED
+    // Match card displays UPDATED
     const recordedCard = page.getByRole('button', { name: /vs Tatton fc/i }).first();
-    await expect(recordedCard).toContainText(/UPDATED & LOCKED/i);
+    await expect(recordedCard).toContainText(/UPDATED/i);
     await recordedCard.click();
 
     // Verify Lock banner is displayed

@@ -21,11 +21,11 @@ import {
   fetchCoachMatchEvents,
   saveCoachMatchEvents,
   fetchRecordedFixtureIds,
+  fetchTeamFixtures,
   CoachGoalEvent,
 } from '../../lib/supabaseClient';
 
 export type CoachModalStep =
-  | 'GUIDE'
   | 'SELECT_MATCH'
   | 'RECORD_EVENTS'
   | 'CONFIRM_SUBMIT'
@@ -65,14 +65,71 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     }
   }, [isOpen]);
 
-  // 1. Filter all completed matches (including the latest game, ordered latest first)
+  // Fetch authentic match history directly from database using team UID
+  const [historyMatches, setHistoryMatches] = useState<Match[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOpen || !teamId) return;
+    let isMounted = true;
+    setIsLoadingHistory(true);
+    fetchTeamFixtures(teamId)
+      .then((data) => {
+        if (isMounted && data && data.length > 0) {
+          setHistoryMatches(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[CoachMatchEventsModal] Error loading team fixtures history:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingHistory(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, teamId]);
+
+  // Combine matches from history and props with deduplication by ID
+  const allCandidateMatches = useMemo(() => {
+    const map = new Map<string, Match>();
+    (historyMatches || []).forEach((m) => {
+      if (m?.id) map.set(m.id, m);
+    });
+    (fixtures || []).forEach((m) => {
+      if (m?.id && !map.has(m.id)) {
+        map.set(m.id, m);
+      }
+    });
+    return Array.from(map.values());
+  }, [fixtures, historyMatches]);
+
+  // Filter ONLY matches that have ACTUALLY been played BY THIS TEAM
   const pastMatches = useMemo(() => {
-    return (fixtures || [])
+    const cleanTeamId = (teamId || '').toLowerCase().trim();
+    const cleanTeamName = (teamName || '').toLowerCase().trim();
+
+    return allCandidateMatches
       .filter((f) => {
+        // 1. Strict Team Match Guard: Must be played by THIS team (using team or match UID)
+        const homeId = String(f.homeTeamId || (f as any).home_team_id || (f as any).home_team?.id || '').toLowerCase().trim();
+        const awayId = String(f.awayTeamId || (f as any).away_team_id || (f as any).away_team?.id || '').toLowerCase().trim();
+        const homeName = (f.homeTeamName || '').toLowerCase().trim();
+        const awayName = (f.awayTeamName || '').toLowerCase().trim();
+
+        const isOurMatch =
+          (cleanTeamId && (homeId === cleanTeamId || awayId === cleanTeamId)) ||
+          (cleanTeamName && (homeName.includes(cleanTeamName) || awayName.includes(cleanTeamName)));
+
+        if (!isOurMatch) return false;
+
+        // 2. Strict Played History Guard: Only matches that have actually been played
         const s = (f.status || '').toUpperCase();
         const isStatusPlayed = s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
-        const hasScore = (typeof f.score === 'string' && f.score.trim() !== '' && f.score.includes('-')) ||
+        const hasScore =
+          (typeof f.score === 'string' && f.score.trim() !== '' && f.score.includes('-')) ||
           (f.scoreHome !== undefined && f.scoreHome !== null && f.scoreAway !== undefined && f.scoreAway !== null);
+
         return isStatusPlayed || hasScore;
       })
       .sort((a, b) => {
@@ -83,14 +140,30 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         const timeB = new Date(b.scheduled_time || b.date || 0).getTime();
         return timeB - timeA;
       });
-  }, [fixtures]);
+  }, [allCandidateMatches, teamId, teamName]);
 
   const playedMatchesList = useMemo(() => {
     return pastMatches;
   }, [pastMatches]);
 
-  // Modal Step State
-  const [step, setStep] = useState<CoachModalStep>('GUIDE');
+  // Modal Step State: immediately open to SELECT_MATCH (no guidance popup)
+  const [step, setStep] = useState<CoachModalStep>(() => {
+    if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
+      return 'RECORD_EVENTS';
+    }
+    return 'SELECT_MATCH';
+  });
+
+  // Keep step synchronized
+  useEffect(() => {
+    if (isOpen) {
+      if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
+        setStep('RECORD_EVENTS');
+      } else {
+        setStep('SELECT_MATCH');
+      }
+    }
+  }, [isOpen, selectedMatchId, pastMatches]);
 
   // Selected match state
   const [currentMatchId, setCurrentMatchId] = useState<string>(() => {
@@ -394,9 +467,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-amber-500 to-[#00b04f]" />
 
         {/* ------------------------------------------------------------------- */}
-        {/* VIEW 1: COACH INSTRUCTION & GUIDANCE POPUP                          */}
+        {/* VIEW 1: MATCH SELECTION VIEW (DIRECT ACCESS - NO GUIDANCE POPUP)   */}
         {/* ------------------------------------------------------------------- */}
-        {step === 'GUIDE' && (
+        {step === 'SELECT_MATCH' && (
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -405,140 +478,10 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 </div>
                 <div>
                   <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Record Past Match Events
+                    Select Match to Update Details
                   </h2>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Official Coach Match Events &amp; Player Analytics Logging
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
-                aria-label="Close modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4 flex-1 text-slate-900 dark:text-slate-100 overscroll-contain">
-              {/* Guidance Hero Card */}
-              <div className="bg-gradient-to-br from-emerald-500/10 via-slate-50 dark:via-[#112236] to-transparent border border-emerald-500/25 rounded-2xl p-5 space-y-3.5">
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-wider">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Coach Action Required: Update Player Match Data</span>
-                </div>
-
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-                  Welcome Coach! You are required to update the{' '}
-                  <strong className="text-slate-900 dark:text-white font-bold">
-                    goal scorers and assist players
-                  </strong>{' '}
-                  for your team in all recently played matches (strictly your own team&apos;s players
-                  data).
-                </p>
-
-                {/* Consequence Alert */}
-                <div className="p-4 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-xs font-black uppercase tracking-wider">
-                    <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
-                    <span>Crucial: Player Analytics &amp; Rewards Impact</span>
-                  </div>
-                  <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
-                    If you don&apos;t record your scorers and assists,{' '}
-                    <strong className="font-black text-amber-950 dark:text-white underline decoration-amber-400 underline-offset-2">
-                      your players will not be included in the player analytics, leaderboards, and
-                      potential rewards
-                    </strong>{' '}
-                    (such as the Golden Boot, Top Playmaker, Team of the Season, and performance
-                    bonuses).
-                  </p>
-                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                    Logging your squad&apos;s events ensures every goal, assist, and card is
-                    officially recognized across the entire Egerton Sports Network.
-                  </p>
-                </div>
-
-                {/* Quick Step Overview */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
-                      1
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                      Select played match from your list of 4
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
-                      2
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                      Log each goal scorer, assist, or solo/free kick/penalty
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
-                      3
-                    </span>
-                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
-                      Confirm cards, review popup, and submit
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Guidance Footer */}
-            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
-                    setStep('RECORD_EVENTS');
-                  } else {
-                    setStep('SELECT_MATCH');
-                  }
-                }}
-                className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-              >
-                <span>Proceed</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------------- */}
-        {/* VIEW 2: 4-MATCH SELECTION VIEW                                      */}
-        {/* ------------------------------------------------------------------- */}
-        {step === 'SELECT_MATCH' && (
-          <div className="flex flex-col flex-1 overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setStep('GUIDE')}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
-                  title="Back to Guide"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div>
-                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Select the match to update the details
-                  </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    You will be updating the details of your team.
+                    Played matches for your team • Select a match to update scorers &amp; assists
                   </p>
                 </div>
               </div>
@@ -633,12 +576,12 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                           {isRecorded ? (
                             <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black tracking-wider flex items-center gap-1 uppercase">
                               <Lock className="w-3.5 h-3.5" />
-                              <span>UPDATED &amp; LOCKED</span>
+                              <span>UPDATED</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-lg bg-[#ff0046]/10 border border-[#ff0046]/30 text-[#ff0046] text-xs font-bold flex items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-black tracking-wider flex items-center gap-1 uppercase">
                               <Sparkles className="w-3 h-3" />
-                              <span>Needs Events</span>
+                              <span>NOT UPDATED</span>
                             </span>
                           )}
 
@@ -651,16 +594,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
               )}
             </div>
 
-            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => setStep('GUIDE')}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Guide</span>
-              </button>
-
+            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-end shrink-0">
               <button
                 type="button"
                 onClick={onClose}

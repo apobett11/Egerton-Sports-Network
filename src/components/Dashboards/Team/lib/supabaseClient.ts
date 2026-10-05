@@ -281,9 +281,11 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, updated_at),
-                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, updated_at),
-                competition:competitions!fixtures_competition_id_fkey (name)
+                home_team_id,
+                away_team_id,
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url, crest_url, updated_at),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url, crest_url, updated_at),
+                competition:competitions!fixtures_competition_id_fkey (id, name)
             `)
             .or(`home_team_id.eq.${actualTeamId},away_team_id.eq.${actualTeamId}`)
             .order('scheduled_time', { ascending: true });
@@ -298,17 +300,22 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
         let resultList: Match[] = [];
         if (data && data.length > 0) {
             resultList = data.map((f: any) => {
-                const isHome = f.home_team?.id === actualTeamId;
+                const rawHomeId = String(f.home_team_id || f.home_team?.id || '').toLowerCase();
+                const rawAwayId = String(f.away_team_id || f.away_team?.id || '').toLowerCase();
+                const targetId = String(actualTeamId).toLowerCase();
+                const isHome = rawHomeId === targetId;
                 const opponent = isHome ? f.away_team : f.home_team;
                 const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
                 const oppScore = isHome ? (f.score_away ?? 0) : (f.score_home ?? 0);
 
                 const rawStatus = (f.status || '').toUpperCase();
                 let uiStatus: 'FINISHED' | 'LIVE' | 'UPCOMING' = 'UPCOMING';
-                if (rawStatus === 'FT' || rawStatus === 'FINISHED') {
+                if (rawStatus === 'FT' || rawStatus === 'FINISHED' || rawStatus === 'COMPLETED' || rawStatus === 'AET' || rawStatus === 'PEN') {
                     uiStatus = 'FINISHED';
                 } else if (rawStatus === 'LIVE' || rawStatus === '1H' || rawStatus === '2H' || rawStatus === 'HT') {
                     uiStatus = 'LIVE';
+                } else if (f.score_home !== null && f.score_away !== null && f.score_home !== undefined && f.score_away !== undefined) {
+                    uiStatus = 'FINISHED';
                 } else {
                     uiStatus = 'UPCOMING';
                 }
@@ -321,23 +328,29 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 }
 
                 const d = new Date(f.scheduled_time || Date.now());
+                const homeLogoUrl = f.home_team?.logo_url || f.home_team?.crest_url;
+                const awayLogoUrl = f.away_team?.logo_url || f.away_team?.crest_url;
+                const oppLogoUrl = opponent?.logo_url || opponent?.crest_url;
+
                 return {
                     id: f.id,
                     opponentName: opponent?.name || 'Opponent Team',
-                    opponentLogo: publicTeamLogo(opponent?.id, opponent?.logo_url),
-                    homeTeamId: f.home_team?.id,
+                    opponentLogo: publicTeamLogo(opponent?.id, oppLogoUrl),
+                    homeTeamId: f.home_team_id || f.home_team?.id,
                     homeTeamName: f.home_team?.name || 'Home Team',
-                    homeTeamLogo: publicTeamLogo(f.home_team?.id, f.home_team?.logo_url),
-                    awayTeamId: f.away_team?.id,
+                    homeTeamLogo: publicTeamLogo(f.home_team_id || f.home_team?.id, homeLogoUrl),
+                    awayTeamId: f.away_team_id || f.away_team?.id,
                     awayTeamName: f.away_team?.name || 'Away Team',
-                    awayTeamLogo: publicTeamLogo(f.away_team?.id, f.away_team?.logo_url),
+                    awayTeamLogo: publicTeamLogo(f.away_team_id || f.away_team?.id, awayLogoUrl),
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
                     time: formatMatchTime(f.scheduled_time),
                     location: f.venue || '',
                     venue: f.venue || '',
                     league: f.competition?.name || 'Egerton Premier League',
                     status: uiStatus,
-                    score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
+                    score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' || (f.score_home !== null && f.score_away !== null && f.score_home !== undefined && f.score_away !== undefined)
+                        ? `${f.score_home ?? 0} - ${f.score_away ?? 0}`
+                        : undefined,
                     scoreHome: f.score_home,
                     scoreAway: f.score_away,
                     isHome,
@@ -353,6 +366,21 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
         console.warn('[Supabase Client] Failed to fetch fixtures from DB:', err);
         return [];
     }
+}
+
+/**
+ * Fetches all official matches that have actually been played by this team.
+ * Strictly queries the fixtures history where home_team_id = teamId OR away_team_id = teamId.
+ */
+export async function fetchTeamPlayedMatches(teamId: string): Promise<Match[]> {
+    const all = await fetchTeamFixtures(teamId);
+    return all.filter((m) => {
+        const s = (m.status || '').toUpperCase();
+        const isPlayed = s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
+        const hasScore = (typeof m.score === 'string' && m.score.trim() !== '' && m.score.includes('-')) ||
+            (m.scoreHome !== undefined && m.scoreHome !== null && m.scoreAway !== undefined && m.scoreAway !== null);
+        return isPlayed || hasScore;
+    });
 }
 
 /**
