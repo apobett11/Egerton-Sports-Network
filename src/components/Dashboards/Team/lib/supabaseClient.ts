@@ -281,11 +281,9 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 score_away,
                 venue,
                 matchday,
-                home_team_id,
-                away_team_id,
-                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, logo_url, crest_url, updated_at),
-                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, logo_url, crest_url, updated_at),
-                competition:competitions!fixtures_competition_id_fkey (id, name)
+                home_team:teams!fixtures_home_team_id_fkey (id, name, short_name, updated_at),
+                away_team:teams!fixtures_away_team_id_fkey (id, name, short_name, updated_at),
+                competition:competitions!fixtures_competition_id_fkey (name)
             `)
             .or(`home_team_id.eq.${actualTeamId},away_team_id.eq.${actualTeamId}`)
             .order('scheduled_time', { ascending: true });
@@ -300,22 +298,17 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
         let resultList: Match[] = [];
         if (data && data.length > 0) {
             resultList = data.map((f: any) => {
-                const rawHomeId = String(f.home_team_id || f.home_team?.id || '').toLowerCase();
-                const rawAwayId = String(f.away_team_id || f.away_team?.id || '').toLowerCase();
-                const targetId = String(actualTeamId).toLowerCase();
-                const isHome = rawHomeId === targetId;
+                const isHome = f.home_team?.id === actualTeamId;
                 const opponent = isHome ? f.away_team : f.home_team;
                 const ourScore = isHome ? (f.score_home ?? 0) : (f.score_away ?? 0);
                 const oppScore = isHome ? (f.score_away ?? 0) : (f.score_home ?? 0);
 
                 const rawStatus = (f.status || '').toUpperCase();
                 let uiStatus: 'FINISHED' | 'LIVE' | 'UPCOMING' = 'UPCOMING';
-                if (rawStatus === 'FT' || rawStatus === 'FINISHED' || rawStatus === 'COMPLETED' || rawStatus === 'AET' || rawStatus === 'PEN') {
+                if (rawStatus === 'FT' || rawStatus === 'FINISHED') {
                     uiStatus = 'FINISHED';
                 } else if (rawStatus === 'LIVE' || rawStatus === '1H' || rawStatus === '2H' || rawStatus === 'HT') {
                     uiStatus = 'LIVE';
-                } else if (f.score_home !== null && f.score_away !== null && f.score_home !== undefined && f.score_away !== undefined) {
-                    uiStatus = 'FINISHED';
                 } else {
                     uiStatus = 'UPCOMING';
                 }
@@ -328,29 +321,23 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
                 }
 
                 const d = new Date(f.scheduled_time || Date.now());
-                const homeLogoUrl = f.home_team?.logo_url || f.home_team?.crest_url;
-                const awayLogoUrl = f.away_team?.logo_url || f.away_team?.crest_url;
-                const oppLogoUrl = opponent?.logo_url || opponent?.crest_url;
-
                 return {
                     id: f.id,
                     opponentName: opponent?.name || 'Opponent Team',
-                    opponentLogo: publicTeamLogo(opponent?.id, oppLogoUrl),
-                    homeTeamId: f.home_team_id || f.home_team?.id,
+                    opponentLogo: publicTeamLogo(opponent?.id, opponent?.logo_url),
+                    homeTeamId: f.home_team?.id,
                     homeTeamName: f.home_team?.name || 'Home Team',
-                    homeTeamLogo: publicTeamLogo(f.home_team_id || f.home_team?.id, homeLogoUrl),
-                    awayTeamId: f.away_team_id || f.away_team?.id,
+                    homeTeamLogo: publicTeamLogo(f.home_team?.id, f.home_team?.logo_url),
+                    awayTeamId: f.away_team?.id,
                     awayTeamName: f.away_team?.name || 'Away Team',
-                    awayTeamLogo: publicTeamLogo(f.away_team_id || f.away_team?.id, awayLogoUrl),
+                    awayTeamLogo: publicTeamLogo(f.away_team?.id, f.away_team?.logo_url),
                     date: d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }),
                     time: formatMatchTime(f.scheduled_time),
                     location: f.venue || '',
                     venue: f.venue || '',
                     league: f.competition?.name || 'Egerton Premier League',
                     status: uiStatus,
-                    score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' || (f.score_home !== null && f.score_away !== null && f.score_home !== undefined && f.score_away !== undefined)
-                        ? `${f.score_home ?? 0} - ${f.score_away ?? 0}`
-                        : undefined,
+                    score: uiStatus === 'FINISHED' || uiStatus === 'LIVE' ? `${f.score_home ?? 0} - ${f.score_away ?? 0}` : undefined,
                     scoreHome: f.score_home,
                     scoreAway: f.score_away,
                     isHome,
@@ -366,21 +353,6 @@ export async function fetchTeamFixtures(teamId: string): Promise<Match[]> {
         console.warn('[Supabase Client] Failed to fetch fixtures from DB:', err);
         return [];
     }
-}
-
-/**
- * Fetches all official matches that have actually been played by this team.
- * Strictly queries the fixtures history where home_team_id = teamId OR away_team_id = teamId.
- */
-export async function fetchTeamPlayedMatches(teamId: string): Promise<Match[]> {
-    const all = await fetchTeamFixtures(teamId);
-    return all.filter((m) => {
-        const s = (m.status || '').toUpperCase();
-        const isPlayed = s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
-        const hasScore = (typeof m.score === 'string' && m.score.trim() !== '' && m.score.includes('-')) ||
-            (m.scoreHome !== undefined && m.scoreHome !== null && m.scoreAway !== undefined && m.scoreAway !== null);
-        return isPlayed || hasScore;
-    });
 }
 
 /**
@@ -1940,42 +1912,29 @@ export async function saveCoachMatchEvents(
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
 
-        // Retrieve current authenticated coach user id (Coach UID strictly required)
+        // Retrieve current authenticated coach user id
         const { data: authData } = await supabase.auth.getUser();
         const currentUserId = authData?.user?.id || null;
-        if (!currentUserId) {
-            return { success: false, error: 'Authentication required. Only the team coach can record match events.' };
-        }
 
-        // Verify this match has not already been finalized: coach updates match details only once
-        const existingEvents = await fetchCoachMatchEvents(fixtureId, actualTeamId);
-        if (
-            Boolean(existingEvents.isConfirmed) ||
-            (existingEvents.goals && existingEvents.goals.length > 0) ||
-            (existingEvents.yellowCardPlayerIds && existingEvents.yellowCardPlayerIds.length > 0) ||
-            (existingEvents.redCardPlayerIds && existingEvents.redCardPlayerIds.length > 0)
-        ) {
+        // 1. Check if events have already been recorded for this fixture and team (enforce single-submission immutability)
+        const { data: existingEvents } = await supabase
+            .from('match_events')
+            .select('id')
+            .eq('fixture_id', fixtureId)
+            .eq('team_id', actualTeamId)
+            .limit(1);
+
+        if (existingEvents && existingEvents.length > 0) {
             return {
                 success: false,
-                error: 'Match details have already been finalized and locked for this match. Updates are not permitted.',
+                error: 'Match events have already been submitted and permanently locked for this match.',
             };
         }
 
-        // 1. Purge this team's prior events for this fixture if any partial drafts exist
-        const { error: purgeError } = await supabase
-            .from('match_events')
-            .delete()
-            .eq('fixture_id', fixtureId)
-            .eq('team_id', actualTeamId);
-
-        if (purgeError) {
-            console.warn('[Supabase Client] Non-fatal purge notice for fixture events:', purgeError.message);
-        }
-
         // 2. Prepare new rows strictly for this team (only player events, NEVER the score itself)
+        const submissionTimestamp = new Date().toISOString();
         const rowsToInsert: any[] = [];
         const targetSide = isHome ? 'home' : 'away';
-        const nowIso = new Date().toISOString();
 
         // Goals
         payload.goals.forEach((g) => {
@@ -1998,7 +1957,7 @@ export async function saveCoachMatchEvents(
                 detail_text: detail,
                 is_official: true,
                 created_by: currentUserId,
-                created_at: nowIso,
+                created_at: submissionTimestamp,
             });
         });
 
@@ -2016,7 +1975,7 @@ export async function saveCoachMatchEvents(
                 detail_text: null,
                 is_official: true,
                 created_by: currentUserId,
-                created_at: nowIso,
+                created_at: submissionTimestamp,
             });
         });
 
@@ -2034,7 +1993,7 @@ export async function saveCoachMatchEvents(
                 detail_text: null,
                 is_official: true,
                 created_by: currentUserId,
-                created_at: nowIso,
+                created_at: submissionTimestamp,
             });
         });
 
@@ -2049,7 +2008,7 @@ export async function saveCoachMatchEvents(
                 detail_text: 'Match details confirmed by coach',
                 is_official: true,
                 created_by: currentUserId,
-                created_at: nowIso,
+                created_at: submissionTimestamp,
             });
         }
 
@@ -2062,11 +2021,11 @@ export async function saveCoachMatchEvents(
             return { success: false, error: insError.message };
         }
 
-        // Touch fixture updated_at timestamp to record match modification
+        // Best-effort touch fixture timestamp
         try {
-            await supabase.from('fixtures').update({ updated_at: nowIso }).eq('id', fixtureId);
+            await supabase.from('fixtures').update({ updated_at: submissionTimestamp }).eq('id', fixtureId);
         } catch {
-            // Non-fatal timestamp touch
+            // Non-fatal if RLS restricts fixture direct update
         }
 
         // Rebuild goals, assists, and clean sheets from the full event log (best effort, non-destructive).

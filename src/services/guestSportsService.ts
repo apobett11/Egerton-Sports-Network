@@ -806,6 +806,7 @@ async function getTopScorersFromEvents(limitCount: number, competitionId?: strin
       .from('match_events')
       .select('player_id, fixture_id')
       .in('type', ['goal', 'penalty'])
+      .eq('is_official', true)
       .limit(500);
 
     const [evRes, teamMap] = await Promise.all([
@@ -856,6 +857,64 @@ async function getTopScorersFromEvents(limitCount: number, competitionId?: strin
   }
 }
 
+async function getAssistsFromEvents(limitCount: number, competitionId?: string): Promise<GuestAssistLeader[]> {
+  try {
+    let evQuery = supabase
+      .from('match_events')
+      .select('assist_player_id, fixture_id')
+      .not('assist_player_id', 'is', null)
+      .in('type', ['goal', 'penalty'])
+      .eq('is_official', true)
+      .limit(500);
+
+    const [evRes, teamMap] = await Promise.all([
+      evQuery,
+      getTeamsMap()
+    ]);
+
+    const evRows = evRes.data;
+    if (evRes.error || !evRows || evRows.length === 0) return [];
+
+    const assistCount = new Map<string, number>();
+    evRows.forEach((e: any) => {
+      if (!e.assist_player_id) return;
+      assistCount.set(e.assist_player_id, (assistCount.get(e.assist_player_id) || 0) + 1);
+    });
+
+    if (assistCount.size === 0) return [];
+
+    const topPlayerIds = [...assistCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limitCount * 2)
+      .map(([pid]) => pid);
+
+    const { data: playerRows } = await supabase
+      .from('players')
+      .select('id, first_name, last_name, team_id, profile_id')
+      .in('id', topPlayerIds);
+
+    const playerMap = new Map<string, any>((playerRows || []).map((p: any) => [p.id, p]));
+
+    return [...assistCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limitCount)
+      .map(([pid, assists]) => {
+        const player = playerMap.get(pid);
+        const team = player ? teamMap.get(player.team_id) : null;
+        const name = player ? `${player.first_name || ''} ${player.last_name || ''}`.trim() : 'Player';
+        return {
+          player_id: pid,
+          player_name: name || 'Player',
+          team_name: team?.name || 'Campus Team',
+          logo_url: team?.logo_url || DEFAULT_LOGO,
+          assists,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
 // ============================================================================
 // SECTION 4: ASSIST LEADERS
 // ============================================================================
@@ -881,7 +940,14 @@ export async function getGuestAssists(limitCount = 10, competitionId?: string): 
     ]);
 
     const psRows = psRes.data;
-    if (psRes.error || !psRows || psRows.length === 0) return [];
+    if (psRes.error || !psRows || psRows.length === 0) {
+      const fallbackResults = await getAssistsFromEvents(limitCount, competitionId);
+      if (fallbackResults && fallbackResults.length > 0) {
+        guestCache.set('players', cacheKey, fallbackResults, 2 * 60 * 1000);
+        return fallbackResults;
+      }
+      return [];
+    }
 
     const playerIds = psRows.map((r: any) => r.player_id).filter(Boolean);
     const { data: playerRows } = await supabase

@@ -30,7 +30,6 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 import type { DBTeam } from '../types';
-import { initialFixtures } from '../mockData';
 
 interface HomepageProps {
   currentRole: UserRole;
@@ -156,9 +155,8 @@ export const Homepage: React.FC<HomepageProps> = ({
   const ourTeamShort = teamInfo?.short_name || teamInfo?.name?.slice(0, 3)?.toUpperCase() || 'EFC';
   const ourTeamLogo = teamInfo?.logo_url || teamInfo?.crest_url || '';
 
-  // Next fixture data: prioritize upcoming match from matches or fallback fixtures
-  const matchSource = (matches && matches.length > 0) ? matches : initialFixtures;
-  const upcomingMatches = matchSource
+  // Next fixture data: Strictly prioritize the chronologically earliest upcoming match from the database
+  const upcomingMatches = (matches || [])
     .filter((m) => m.status === 'UPCOMING' || m.status === 'LIVE')
     .sort((a, b) => {
       const ta = a.scheduled_time ? new Date(a.scheduled_time).getTime() : Infinity;
@@ -166,7 +164,7 @@ export const Homepage: React.FC<HomepageProps> = ({
       return ta - tb;
     });
 
-  const nextMatch: Match | undefined = upcomingMatches[0] || (matchSource.length > 0 ? matchSource[0] : undefined);
+  const nextMatch: Match | undefined = upcomingMatches[0] || (matches && matches.length > 0 ? matches[0] : undefined);
 
   // State for adding practice day
   const [showAddPracticeModal, setShowAddPracticeModal] = useState<boolean>(false);
@@ -447,7 +445,6 @@ export const Homepage: React.FC<HomepageProps> = ({
 
                 <button
                   type="button"
-                  aria-label="Record Match Events"
                   onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
                 >
@@ -527,7 +524,6 @@ export const Homepage: React.FC<HomepageProps> = ({
 
             <button
               type="button"
-              aria-label="Record Match Events"
               onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
               className={`relative group p-4 bg-slate-50/70 dark:bg-[#112236]/60 ${commandBorder(emergencyTarget === 'events', 'hover:border-amber-500/50 dark:hover:border-amber-500/50')} rounded-2xl transition-all cursor-pointer shadow-2xs flex items-center gap-3 text-left active:scale-[0.98]`}
             >

@@ -4,6 +4,7 @@ import {
   Trophy,
   AlertCircle,
   Loader2,
+  Calendar,
   MapPin,
   CheckCircle2,
   Lock,
@@ -17,7 +18,6 @@ import {
   Flame,
 } from 'lucide-react';
 import type { Match, Player } from '../../types';
-import { initialFixtures } from '../../mockData';
 import {
   fetchCoachMatchEvents,
   saveCoachMatchEvents,
@@ -26,6 +26,7 @@ import {
 } from '../../lib/supabaseClient';
 
 export type CoachModalStep =
+  | 'GUIDE'
   | 'SELECT_MATCH'
   | 'RECORD_EVENTS'
   | 'CONFIRM_SUBMIT'
@@ -65,22 +66,17 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     }
   }, [isOpen]);
 
-  // Source candidate matches from fixtures prop with initialFixtures fallback
-  const candidateMatches = useMemo(() => {
-    return fixtures && fixtures.length > 0 ? fixtures : initialFixtures;
-  }, [fixtures]);
-
-  // Filter played matches according to previous (played status or valid scores)
+  // 1. Filter all completed matches (including the latest game, ordered latest first)
   const pastMatches = useMemo(() => {
-    return (candidateMatches || [])
+    return (fixtures || [])
       .filter((f) => {
         const s = (f.status || '').toUpperCase();
-        const isStatusPlayed = s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
         const hasScore =
           (typeof f.score === 'string' && f.score.trim() !== '' && f.score.includes('-')) ||
-          (f.scoreHome !== undefined && f.scoreHome !== null && f.scoreAway !== undefined && f.scoreAway !== null);
-
-        return isStatusPlayed || hasScore;
+          (typeof f.scoreHome === 'number' && typeof f.scoreAway === 'number');
+        const isCompletedStatus =
+          s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
+        return isCompletedStatus || (hasScore && s !== 'SCHEDULED' && s !== 'TIMED' && s !== 'POSTPONED');
       })
       .sort((a, b) => {
         const mdA = a.matchday || 0;
@@ -90,30 +86,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         const timeB = new Date(b.scheduled_time || b.date || 0).getTime();
         return timeB - timeA;
       });
-  }, [candidateMatches]);
+  }, [fixtures]);
 
   const playedMatchesList = useMemo(() => {
     return pastMatches;
   }, [pastMatches]);
 
-  // Modal Step State: immediately open to SELECT_MATCH (no guidance popup)
-  const [step, setStep] = useState<CoachModalStep>(() => {
-    if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
-      return 'RECORD_EVENTS';
-    }
-    return 'SELECT_MATCH';
-  });
-
-  // Keep step synchronized
-  useEffect(() => {
-    if (isOpen) {
-      if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
-        setStep('RECORD_EVENTS');
-      } else {
-        setStep('SELECT_MATCH');
-      }
-    }
-  }, [isOpen, selectedMatchId, pastMatches]);
+  // Modal Step State
+  const [step, setStep] = useState<CoachModalStep>('GUIDE');
 
   // Selected match state
   const [currentMatchId, setCurrentMatchId] = useState<string>(() => {
@@ -249,6 +229,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     };
   }, [isOpen, activeMatch?.id, teamId, matchGoalsCount]);
 
+  if (!isOpen) return null;
+
   // Sorted roster for dropdowns
   const sortedRoster = [...roster].sort((a, b) => {
     const ja = Number(a.number || 999);
@@ -310,12 +292,11 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
   // Validation before confirmation
   const handleProceedToConfirmation = () => {
-    setValidationError(null);
-
     if (isAlreadyRecorded) {
-      setValidationError('This match has already been finalized and locked. Match details cannot be modified.');
       return;
     }
+
+    setValidationError(null);
 
     // Validate that all recorded goals have a scorer selected
     for (let i = 0; i < goals.length; i++) {
@@ -337,9 +318,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   // Final submission execution
   const handleConfirmSave = async () => {
     if (!activeMatch?.id || !teamId) return;
-
     if (isAlreadyRecorded) {
-      setValidationError('This match has already been finalized and locked.');
+      setValidationError('This match has already been submitted and permanently locked.');
       return;
     }
 
@@ -405,8 +385,6 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     );
   }, [playedMatchesList, activeMatch?.id, recordedFixtureIds]);
 
-  if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm overflow-hidden select-none animate-fade-in">
       <div
@@ -417,9 +395,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff0046] via-amber-500 to-[#00b04f]" />
 
         {/* ------------------------------------------------------------------- */}
-        {/* VIEW 1: MATCH SELECTION VIEW (DIRECT ACCESS - NO GUIDANCE POPUP)   */}
+        {/* VIEW 1: COACH INSTRUCTION & GUIDANCE POPUP                          */}
         {/* ------------------------------------------------------------------- */}
-        {step === 'SELECT_MATCH' && (
+        {step === 'GUIDE' && (
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -428,10 +406,140 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 </div>
                 <div>
                   <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Select Match to Update Details
+                    Record Past Match Events
                   </h2>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Played matches for your team • Select a match to update scorers &amp; assists
+                    Official Coach Match Events &amp; Player Analytics Logging
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 flex-1 text-slate-900 dark:text-slate-100 overscroll-contain">
+              {/* Guidance Hero Card */}
+              <div className="bg-gradient-to-br from-emerald-500/10 via-slate-50 dark:via-[#112236] to-transparent border border-emerald-500/25 rounded-2xl p-5 space-y-3.5">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Coach Action Required: Update Player Match Data</span>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                  Welcome Coach! You are required to update the{' '}
+                  <strong className="text-slate-900 dark:text-white font-bold">
+                    goal scorers and assist players
+                  </strong>{' '}
+                  for your team in all recently played matches (strictly your own team&apos;s players
+                  data).
+                </p>
+
+                {/* Consequence Alert */}
+                <div className="p-4 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-xs font-black uppercase tracking-wider">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span>Crucial: Player Analytics &amp; Rewards Impact</span>
+                  </div>
+                  <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+                    If you don&apos;t record your scorers and assists,{' '}
+                    <strong className="font-black text-amber-950 dark:text-white underline decoration-amber-400 underline-offset-2">
+                      your players will not be included in the player analytics, leaderboards, and
+                      potential rewards
+                    </strong>{' '}
+                    (such as the Golden Boot, Top Playmaker, Team of the Season, and performance
+                    bonuses).
+                  </p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    Logging your squad&apos;s events ensures every goal, assist, and card is
+                    officially recognized across the entire Egerton Sports Network.
+                  </p>
+                </div>
+
+                {/* Quick Step Overview */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
+                      1
+                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Select played match from your list of 4
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
+                      2
+                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Log each goal scorer, assist, or solo/free kick/penalty
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/70 dark:bg-[#0e1c2b]/70 border border-slate-200/60 dark:border-white/5 flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-black flex items-center justify-center shrink-0">
+                      3
+                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Confirm cards, review popup, and submit
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Guidance Footer */}
+            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedMatchId && pastMatches.some((m) => m.id === selectedMatchId)) {
+                    setStep('RECORD_EVENTS');
+                  } else {
+                    setStep('SELECT_MATCH');
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <span>Proceed</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------- */}
+        {/* VIEW 2: 4-MATCH SELECTION VIEW                                      */}
+        {/* ------------------------------------------------------------------- */}
+        {step === 'SELECT_MATCH' && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-b border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setStep('GUIDE')}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#14263b] transition-colors cursor-pointer"
+                  title="Back to Guide"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Select the match to update the details
+                  </h2>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    You will be updating the details of your team.
                   </p>
                 </div>
               </div>
@@ -525,13 +633,13 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
 
                           {isRecorded ? (
                             <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black tracking-wider flex items-center gap-1 uppercase">
-                              <Lock className="w-3.5 h-3.5" />
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>UPDATED</span>
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-black tracking-wider flex items-center gap-1 uppercase">
+                            <span className="px-2.5 py-1 rounded-lg bg-[#ff0046]/10 border border-[#ff0046]/30 text-[#ff0046] text-xs font-bold flex items-center gap-1">
                               <Sparkles className="w-3 h-3" />
-                              <span>NOT UPDATED</span>
+                              <span>Needs Events</span>
                             </span>
                           )}
 
@@ -544,7 +652,16 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
               )}
             </div>
 
-            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-end shrink-0">
+            <div className="px-6 py-4 bg-slate-50/50 dark:bg-[#0b1623]/50 border-t border-slate-100 dark:border-[#14263b] flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                onClick={() => setStep('GUIDE')}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Guide</span>
+              </button>
+
               <button
                 type="button"
                 onClick={onClose}
@@ -579,8 +696,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     </h2>
                     {isAlreadyRecorded && (
                       <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <Lock className="w-2.5 h-2.5" />
-                        <span>LOCKED</span>
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        <span>UPDATED</span>
                       </span>
                     )}
                   </div>
@@ -639,9 +756,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
               {/* Status Banner */}
               {isAlreadyRecorded && (
                 <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <Lock className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <span>
-                    <strong>Match Finalized &amp; Locked:</strong> Scorers, assists, and disciplinary cards have been permanently recorded for this match and cannot be modified.
+                    <strong>Official Match Record Locked:</strong> Match scorers, assists, and disciplinary cards have been permanently recorded. Submitted match details cannot be modified or re-submitted.
                   </span>
                 </div>
               )}
@@ -938,17 +1055,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 >
                                   <span className="w-2 h-2.5 rounded-[1px] bg-amber-400 shrink-0"></span>
                                   <span>{pName}</span>
-                                  {!isAlreadyRecorded && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveYellowCard(pid)}
-                                      disabled={isSaving || isAlreadyRecorded}
-                                      className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1"
-                                      title="Remove card"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveYellowCard(pid)}
+                                    disabled={isSaving || isAlreadyRecorded}
+                                    className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title="Remove card"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </span>
                               );
                             })}
@@ -1001,17 +1116,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 >
                                   <span className="w-2 h-2.5 rounded-[1px] bg-rose-600 shrink-0"></span>
                                   <span>{pName}</span>
-                                  {!isAlreadyRecorded && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveRedCard(pid)}
-                                      disabled={isSaving || isAlreadyRecorded}
-                                      className="text-rose-500 hover:text-rose-700 dark:hover:text-white cursor-pointer ml-1"
-                                      title="Remove card"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRedCard(pid)}
+                                    disabled={isSaving || isAlreadyRecorded}
+                                    className="text-rose-500 hover:text-rose-700 dark:hover:text-white cursor-pointer ml-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title="Remove card"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
                                 </span>
                               );
                             })}
@@ -1053,36 +1166,34 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                   disabled={isSaving}
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
                 >
-                  Cancel
+                  Close
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleProceedToConfirmation}
-                  disabled={isSaving || isLoadingExisting || !activeMatch || isAlreadyRecorded}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 shadow-xs transition-all ${
-                    isAlreadyRecorded
-                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300 dark:border-slate-700'
-                      : 'bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
-                  }`}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Saving Events...</span>
-                    </>
-                  ) : isAlreadyRecorded ? (
-                    <>
-                      <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                      <span>Match Details Locked (Already Recorded)</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Save Match Events</span>
-                    </>
-                  )}
-                </button>
+                {isAlreadyRecorded ? (
+                  <div className="px-4 py-2.5 rounded-xl text-xs font-black bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Match Events Locked (Immutable)</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleProceedToConfirmation}
+                    disabled={isSaving || isLoadingExisting || !activeMatch}
+                    className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#ff0046] hover:bg-[#e0003c] active:scale-[0.98] text-white flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Saving Events...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Save Match Events</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -214,8 +214,8 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
       const prof = profileById.get(String(player.profile_id));
       if (prof) name = `${prof.first_name || ''} ${prof.last_name || ''}`.trim();
     }
-    if (player?.id && name) playerById.set(String(player.id), name);
-    if (player?.profile_id && name) playerById.set(String(player.profile_id), name);
+    if (player?.id && name) playerById.set(String(player.id).toLowerCase(), name);
+    if (player?.profile_id && name) playerById.set(String(player.profile_id).toLowerCase(), name);
   });
 
   const lineupMap = new Map<string, string[]>();
@@ -224,12 +224,12 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
     const names = asList(row.starting_xi)
       .map((entry: any) => {
         if (entry && typeof entry === 'object' && entry.name) return String(entry.name).trim();
-        return playerById.get(entryId(entry)) || '';
+        const id = entryId(entry).toLowerCase();
+        return playerById.get(id) || '';
       })
       .filter(Boolean);
     if (names.length === 0) return;
-    const key = `${String(row.fixture_id).toLowerCase()}__${String(row.team_id).toLowerCase()}`;
-    lineupMap.set(key, names);
+    lineupMap.set(`${String(row.fixture_id).toLowerCase()}__${String(row.team_id).toLowerCase()}`, names);
   });
 
   const eventLines = new Map<string, string[]>();
@@ -238,18 +238,19 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
     if (!row?.fixture_id || !row?.team_id) return;
     if (row.is_official !== true) return;
     const key = `${String(row.fixture_id).toLowerCase()}__${String(row.team_id).toLowerCase()}`;
-    const type = String(row.type || '').toLowerCase();
-    const scorer = playerById.get(String(row.player_id || '')) || (row.detail_text ? String(row.detail_text) : '');
-    const assist = playerById.get(String(row.assist_player_id || ''));
-    if ((type === 'goal' || type === 'penalty') && (scorer || row.player_id)) {
-      const displayScorer = scorer || 'Goal';
+    const type = String(row.type || row.event_type || '').toLowerCase();
+    const scorerId = String(row.player_id || '').toLowerCase();
+    const assistId = String(row.assist_player_id || '').toLowerCase();
+    const scorer = playerById.get(scorerId) || (row.detail_text ? String(row.detail_text) : 'Goal');
+    const assist = playerById.get(assistId);
+    if (type === 'goal' || type === 'penalty') {
       const lines = eventLines.get(key) || [];
-      lines.push(assist ? `${displayScorer}, assist ${assist}` : displayScorer);
+      lines.push(assist ? `${scorer}, assist ${assist}` : scorer);
       eventLines.set(key, lines);
-    } else if ((type === 'yellow' || type === 'red') && (scorer || row.player_id)) {
-      const displayCarded = scorer || 'Player';
+    } else if (type === 'yellow' || type === 'red') {
+      const carded = playerById.get(scorerId) || 'Player';
       const lines = eventLines.get(key) || [];
-      lines.push(`${type === 'red' ? 'Red' : 'Yellow'}: ${displayCarded}`);
+      lines.push(`${type === 'red' ? 'Red' : 'Yellow'}: ${carded}`);
       eventLines.set(key, lines);
     } else if (type === 'ft') {
       confirmedKeys.add(key);
@@ -294,11 +295,13 @@ export function buildPreparednessLeagues(raw: RawBundle): PreparednessLeague[] {
         const cells: Record<number, MatchCell> = {};
 
         leagueFixtures.forEach((fixture) => {
-          const involved = fixture.home_team_id === team.id || fixture.away_team_id === team.id;
+          const involved =
+            String(fixture.home_team_id).toLowerCase() === String(team.id).toLowerCase() ||
+            String(fixture.away_team_id).toLowerCase() === String(team.id).toLowerCase();
           if (!involved) return;
           const matchday = Number(fixture.matchday) || 0;
           if (!matchday) return;
-          const isHome = fixture.home_team_id === team.id;
+          const isHome = String(fixture.home_team_id).toLowerCase() === String(team.id).toLowerCase();
           const opponentId = isHome ? fixture.away_team_id : fixture.home_team_id;
           const key = `${String(fixture.id).toLowerCase()}__${String(team.id).toLowerCase()}`;
           const squadNames = lineupMap.get(key) || [];
@@ -470,7 +473,7 @@ export function useCacheAnalysisData(enabled: boolean) {
         fetchAll((from, to) =>
           supabase
             .from('match_events')
-            .select('fixture_id, team_id, player_id, assist_player_id, type, is_official, detail_text')
+            .select('fixture_id, team_id, player_id, assist_player_id, type, is_official, detail_text, created_at')
             .range(from, to),
         ),
         fetchAll((from, to) =>
