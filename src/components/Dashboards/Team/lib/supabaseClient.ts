@@ -1813,10 +1813,11 @@ export async function fetchRecordedFixtureIds(fixtureIds: string[], teamId: stri
     if (!fixtureIds || fixtureIds.length === 0 || !teamId) return [];
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
+        const teamIds = Array.from(new Set([teamId, actualTeamId].filter(Boolean)));
         const { data, error } = await supabase
             .from('match_events')
             .select('fixture_id')
-            .eq('team_id', actualTeamId)
+            .in('team_id', teamIds)
             .in('fixture_id', fixtureIds);
 
         if (error || !data) return [];
@@ -1837,11 +1838,12 @@ export async function fetchCoachMatchEvents(fixtureId: string, teamId: string): 
 
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
+        const teamIds = Array.from(new Set([teamId, actualTeamId].filter(Boolean)));
         const { data, error } = await supabase
             .from('match_events')
             .select('id, fixture_id, minute, type, team_id, player_id, assist_player_id, detail_text')
             .eq('fixture_id', fixtureId)
-            .eq('team_id', actualTeamId)
+            .in('team_id', teamIds)
             .order('minute', { ascending: true });
 
         if (error || !data) {
@@ -1911,6 +1913,7 @@ export async function saveCoachMatchEvents(
 
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
+        const teamIds = Array.from(new Set([teamId, actualTeamId].filter(Boolean)));
 
         // Retrieve current authenticated coach user id
         const { data: authData } = await supabase.auth.getUser();
@@ -1921,7 +1924,7 @@ export async function saveCoachMatchEvents(
             .from('match_events')
             .select('id')
             .eq('fixture_id', fixtureId)
-            .eq('team_id', actualTeamId)
+            .in('team_id', teamIds)
             .limit(1);
 
         if (existingEvents && existingEvents.length > 0) {
@@ -1946,11 +1949,15 @@ export async function saveCoachMatchEvents(
             else if (g.goalType === 'freekick') detail = 'Free Kick';
             else if (g.goalType === 'penalty') detail = 'Penalty Kick';
 
+            // Ensure assist player is not the scorer themselves and not solo/penalty
+            const hasAssist = g.assistPlayerId && g.assistPlayerId !== g.playerId && g.goalType !== 'solo' && g.goalType !== 'penalty';
+            const assistId = hasAssist ? g.assistPlayerId : null;
+
             rowsToInsert.push({
                 fixture_id: fixtureId,
                 team_id: actualTeamId,
                 player_id: g.playerId,
-                assist_player_id: g.assistPlayerId || null,
+                assist_player_id: assistId,
                 type: isPenalty ? 'penalty' : 'goal',
                 minute: typeof g.minute === 'number' && g.minute > 0 ? g.minute : 0,
                 event_target: targetSide,

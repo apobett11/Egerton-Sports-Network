@@ -42,12 +42,10 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
   const refreshRecordedFixtures = useCallback(() => {
     const targetTeamId = teamId || fixtures[0]?.homeTeamId || fixtures[0]?.awayTeamId;
     if (!targetTeamId || !fixtures || fixtures.length === 0) return;
-    const pastIds = fixtures
-      .filter((f) => f.status === 'FINISHED' || f.score !== undefined)
-      .map((f) => f.id);
-    if (pastIds.length === 0) return;
+    const allIds = fixtures.map((f) => f.id);
+    if (allIds.length === 0) return;
 
-    fetchRecordedFixtureIds(pastIds, targetTeamId).then((ids) => {
+    fetchRecordedFixtureIds(allIds, targetTeamId).then((ids) => {
       setRecordedFixtureIds(ids);
     });
   }, [teamId, fixtures]);
@@ -658,26 +656,25 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
                         </span>
                       </span>
                     )}
-                    {isFinished && onOpenMatchEventsModal && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenMatchEventsModal(fixture.id)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          recordedFixtureIds.includes(fixture.id)
-                            ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black'
-                            : 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400'
-                        }`}
-                        title="Record scorers, assists and cards for this match"
-                      >
-                        {recordedFixtureIds.includes(fixture.id) ? (
-                          <>
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                            <span>UPDATED</span>
-                          </>
-                        ) : (
+                    {isFinished && (
+                      recordedFixtureIds.includes(fixture.id) ? (
+                        <div
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 cursor-default select-none"
+                          title="Match details recorded and permanently locked"
+                        >
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span>UPDATED</span>
+                        </div>
+                      ) : onOpenMatchEventsModal ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenMatchEventsModal(fixture.id)}
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 transition-all cursor-pointer flex items-center gap-1"
+                          title="Record scorers, assists and cards for this match"
+                        >
                           <span>Input Events</span>
-                        )}
-                      </button>
+                        </button>
+                      ) : null
                     )}
                   </div>
                 </div>

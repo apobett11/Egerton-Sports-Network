@@ -255,12 +255,7 @@ test.describe('E2E COACH & ADMIN MATCH EVENTS - STRICT VERIFICATION SUITE', () =
     await expect(matchDetailsBtn).toBeVisible({ timeout: 15000 });
     await matchDetailsBtn.click();
 
-    // Verify Guidance screen and proceed
-    const proceedBtn = page.getByRole('button', { name: /Proceed/i });
-    await expect(proceedBtn).toBeVisible();
-    await proceedBtn.click();
-
-    // Modal is now in SELECT_MATCH view
+    // Modal opens directly into SELECT_MATCH view (no guidance banner)
     const modalScope = page.locator('div.fixed.inset-0').first();
 
     // Verify that ONLY played matches are shown inside modal, NOT Matchday 3 (Upcoming)
@@ -314,22 +309,12 @@ test.describe('E2E COACH & ADMIN MATCH EVENTS - STRICT VERIFICATION SUITE', () =
 
     // Re-open modal to inspect recorded match
     await matchDetailsBtn.click();
-    await proceedBtn.click();
 
-    // Verify Matchday 1 is marked as UPDATED
-    const updatedMatch1 = modalScope.locator('button').filter({ hasText: /2 Goals Scored/i }).first();
-    await expect(updatedMatch1.getByText(/UPDATED/i)).toBeVisible();
-
-    // Click into the updated match
-    await updatedMatch1.click();
-
-    // Verify IMMUTABILITY: all inputs are disabled, status shows locked, and submit button shows Locked
-    await expect(page.getByText(/Official Match Record Locked/i)).toBeVisible();
-    await expect(page.getByText(/Match Events Locked \(Immutable\)/i)).toBeVisible();
-
-    // Attempting to select scorer must be disabled
-    const disabledScorerSelect = page.locator('select').filter({ hasText: /Victor Odhiambo/ }).first();
-    await expect(disabledScorerSelect).toBeDisabled();
+    // Verify Matchday 1 is marked as UPDATED (CLOSED) and is closed/non-clickable
+    const updatedMatch1 = modalScope.locator('div').filter({ hasText: /2 Goals Scored/i }).first();
+    await expect(updatedMatch1.getByText(/UPDATED \(CLOSED\)/i)).toBeVisible();
+    // It is no longer an interactive button
+    await expect(modalScope.locator('button').filter({ hasText: /2 Goals Scored/i })).toHaveCount(0);
   });
 
   test('2. Table & Fixtures desk displays UPDATED status, allows recording from fixtures page, and locks submitted matches', async ({ page }) => {
@@ -461,21 +446,16 @@ test.describe('E2E COACH & ADMIN MATCH EVENTS - STRICT VERIFICATION SUITE', () =
     // Verify Table & Fixtures page header is loaded
     await expect(page.getByRole('heading', { name: /Table & Fixtures Desk/i })).toBeVisible();
 
-    // Verify UPDATED badge appears on Matchday 1
+    // Verify UPDATED badge appears on Matchday 1 and is strictly closed (not a clickable button)
     await expect(page.getByText(/UPDATED/i).first()).toBeVisible();
+    await expect(page.locator('button').filter({ hasText: /UPDATED/i })).toHaveCount(0);
 
     // Click "Input Events" for Matchday 2 (the 0-0 match)
     const recordEventsBtn = page.getByRole('button', { name: /Input Events/i }).first();
     await expect(recordEventsBtn).toBeVisible();
     await recordEventsBtn.click();
 
-    // Modal opens. Proceed past guidance screen if present
-    const proceedBtn = page.getByRole('button', { name: /Proceed/i });
-    if (await proceedBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await proceedBtn.click();
-    }
-
-    // Modal is in RECORD_EVENTS view for Matchday 2, verify 0-0 notice
+    // Modal opens directly in RECORD_EVENTS view for Matchday 2 (no guidance banner)
     await expect(page.getByText(/0 goals scored/i).first()).toBeVisible();
     const saveEventsBtn = page.getByRole('button', { name: /Save Match Events/i });
     await expect(saveEventsBtn).toBeVisible();
