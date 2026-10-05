@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { formatMatchTime, formatMatchPitch } from '../../../../lib/matchdayHelper';
 import { StandingEntry, Match, TeamFormEntry } from '../types';
+import { initialFixtures } from '../mockData';
 import { fetchRecordedFixtureIds } from '../lib/supabaseClient';
 import {
   Trophy,
@@ -40,9 +41,10 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
   // Load recorded fixture IDs to accurately badge matches with UPDATED
   const refreshRecordedFixtures = useCallback(() => {
-    const targetTeamId = teamId || fixtures[0]?.homeTeamId || fixtures[0]?.awayTeamId;
-    if (!targetTeamId || !fixtures || fixtures.length === 0) return;
-    const pastIds = fixtures
+    const matchSource = fixtures && fixtures.length > 0 ? fixtures : initialFixtures;
+    const targetTeamId = teamId || matchSource[0]?.homeTeamId || matchSource[0]?.awayTeamId;
+    if (!targetTeamId || matchSource.length === 0) return;
+    const pastIds = matchSource
       .filter((f) => f.status === 'FINISHED' || f.score !== undefined)
       .map((f) => f.id);
     if (pastIds.length === 0) return;
@@ -92,13 +94,14 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
 
   // Filter fixtures
   const filteredFixtures = useMemo(() => {
+    const matchSource = fixtures && fixtures.length > 0 ? fixtures : initialFixtures;
     if (activeFixtureFilter === 'UPCOMING') {
-      return fixtures.filter((f) => f.status === 'UPCOMING');
+      return matchSource.filter((f) => f.status === 'UPCOMING');
     }
     if (activeFixtureFilter === 'FINISHED') {
-      return fixtures.filter((f) => f.status === 'FINISHED');
+      return matchSource.filter((f) => f.status === 'FINISHED');
     }
-    return fixtures;
+    return matchSource;
   }, [fixtures, activeFixtureFilter]);
 
   // Form Badges: render all form results, max 6 shown with horizontal scroll past 6

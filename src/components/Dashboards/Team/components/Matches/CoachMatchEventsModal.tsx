@@ -17,11 +17,11 @@ import {
   Flame,
 } from 'lucide-react';
 import type { Match, Player } from '../../types';
+import { initialFixtures } from '../../mockData';
 import {
   fetchCoachMatchEvents,
   saveCoachMatchEvents,
   fetchRecordedFixtureIds,
-  fetchTeamFixtures,
   CoachGoalEvent,
 } from '../../lib/supabaseClient';
 
@@ -65,65 +65,15 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
     }
   }, [isOpen]);
 
-  // Fetch authentic match history directly from database using team UID
-  const [historyMatches, setHistoryMatches] = useState<Match[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  // Source candidate matches from fixtures prop with initialFixtures fallback
+  const candidateMatches = useMemo(() => {
+    return fixtures && fixtures.length > 0 ? fixtures : initialFixtures;
+  }, [fixtures]);
 
-  useEffect(() => {
-    if (!isOpen || !teamId) return;
-    let isMounted = true;
-    setIsLoadingHistory(true);
-    fetchTeamFixtures(teamId)
-      .then((data) => {
-        if (isMounted && data && data.length > 0) {
-          setHistoryMatches(data);
-        }
-      })
-      .catch((err) => {
-        console.warn('[CoachMatchEventsModal] Error loading team fixtures history:', err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingHistory(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, teamId]);
-
-  // Combine matches from history and props with deduplication by ID
-  const allCandidateMatches = useMemo(() => {
-    const map = new Map<string, Match>();
-    (historyMatches || []).forEach((m) => {
-      if (m?.id) map.set(m.id, m);
-    });
-    (fixtures || []).forEach((m) => {
-      if (m?.id && !map.has(m.id)) {
-        map.set(m.id, m);
-      }
-    });
-    return Array.from(map.values());
-  }, [fixtures, historyMatches]);
-
-  // Filter ONLY matches that have ACTUALLY been played BY THIS TEAM
+  // Filter played matches according to previous (played status or valid scores)
   const pastMatches = useMemo(() => {
-    const cleanTeamId = (teamId || '').toLowerCase().trim();
-    const cleanTeamName = (teamName || '').toLowerCase().trim();
-
-    return allCandidateMatches
+    return (candidateMatches || [])
       .filter((f) => {
-        // 1. Strict Team Match Guard: Must be played by THIS team (using team or match UID)
-        const homeId = String(f.homeTeamId || (f as any).home_team_id || (f as any).home_team?.id || '').toLowerCase().trim();
-        const awayId = String(f.awayTeamId || (f as any).away_team_id || (f as any).away_team?.id || '').toLowerCase().trim();
-        const homeName = (f.homeTeamName || '').toLowerCase().trim();
-        const awayName = (f.awayTeamName || '').toLowerCase().trim();
-
-        const isOurMatch =
-          (cleanTeamId && (homeId === cleanTeamId || awayId === cleanTeamId)) ||
-          (cleanTeamName && (homeName.includes(cleanTeamName) || awayName.includes(cleanTeamName)));
-
-        if (!isOurMatch) return false;
-
-        // 2. Strict Played History Guard: Only matches that have actually been played
         const s = (f.status || '').toUpperCase();
         const isStatusPlayed = s === 'FINISHED' || s === 'FT' || s === 'COMPLETED' || s === 'AET' || s === 'PEN';
         const hasScore =
@@ -140,7 +90,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
         const timeB = new Date(b.scheduled_time || b.date || 0).getTime();
         return timeB - timeA;
       });
-  }, [allCandidateMatches, teamId, teamName]);
+  }, [candidateMatches]);
 
   const playedMatchesList = useMemo(() => {
     return pastMatches;

@@ -30,6 +30,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 import type { DBTeam } from '../types';
+import { initialFixtures } from '../mockData';
 
 interface HomepageProps {
   currentRole: UserRole;
@@ -155,8 +156,9 @@ export const Homepage: React.FC<HomepageProps> = ({
   const ourTeamShort = teamInfo?.short_name || teamInfo?.name?.slice(0, 3)?.toUpperCase() || 'EFC';
   const ourTeamLogo = teamInfo?.logo_url || teamInfo?.crest_url || '';
 
-  // Next fixture data: Strictly prioritize the chronologically earliest upcoming match from the database
-  const upcomingMatches = (matches || [])
+  // Next fixture data: prioritize upcoming match from matches or fallback fixtures
+  const matchSource = (matches && matches.length > 0) ? matches : initialFixtures;
+  const upcomingMatches = matchSource
     .filter((m) => m.status === 'UPCOMING' || m.status === 'LIVE')
     .sort((a, b) => {
       const ta = a.scheduled_time ? new Date(a.scheduled_time).getTime() : Infinity;
@@ -164,7 +166,7 @@ export const Homepage: React.FC<HomepageProps> = ({
       return ta - tb;
     });
 
-  const nextMatch: Match | undefined = upcomingMatches[0] || (matches && matches.length > 0 ? matches[0] : undefined);
+  const nextMatch: Match | undefined = upcomingMatches[0] || (matchSource.length > 0 ? matchSource[0] : undefined);
 
   // State for adding practice day
   const [showAddPracticeModal, setShowAddPracticeModal] = useState<boolean>(false);

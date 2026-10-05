@@ -296,7 +296,7 @@ export const initialFixtures: Match[] = [
     {
         id: 'f1',
         opponentName: 'Engineering XI',
-        opponentLogo: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&auto=format&fit=crop&q=80',
+        opponentLogo: '',
         date: 'Saturday, Aug 16',
         time: '16:00',
         location: 'Pavilion Main Stadium',
@@ -308,7 +308,7 @@ export const initialFixtures: Match[] = [
     {
         id: 'f2',
         opponentName: 'Agriculture FC',
-        opponentLogo: 'https://images.unsplash.com/photo-1517649763962-0c623266010b?w=100&auto=format&fit=crop&q=80',
+        opponentLogo: '',
         date: 'Saturday, Aug 23',
         time: '14:30',
         location: 'Kilimo Grounds',
@@ -320,7 +320,7 @@ export const initialFixtures: Match[] = [
     {
         id: 'f3',
         opponentName: 'Maragoli Strikers',
-        opponentLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+        opponentLogo: '',
         date: 'Tuesday, Aug 26',
         time: '18:00',
         location: 'Pavilion Turf B',
@@ -332,7 +332,7 @@ export const initialFixtures: Match[] = [
     {
         id: 'f_past_1',
         opponentName: 'Tatton FC',
-        opponentLogo: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+        opponentLogo: '',
         date: 'Sunday, Aug 10',
         time: '16:00',
         location: 'Pavilion Main Stadium',
@@ -346,7 +346,7 @@ export const initialFixtures: Match[] = [
     {
         id: 'f_past_2',
         opponentName: 'Njoro City FC',
-        opponentLogo: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+        opponentLogo: '',
         date: 'Saturday, Aug 03',
         time: '15:00',
         location: 'Njoro Turf',
