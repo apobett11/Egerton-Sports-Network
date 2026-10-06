@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { formatRelativeTime } from '../../../lib/predictions/utils';
 import { shareService } from '../../../services/predictions/shareService';
+import { banterService } from '../../../services/predictions/banterService';
 import type { BanterPost, ReactionType } from '../../../types/predictions';
 
 interface BanterPostCardProps {
@@ -43,8 +44,13 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const [repostCount, setRepostCount] = useState(post.repostCount || Math.floor((post.reactionFireCount + 5) * 1.4));
   const [hasReposted, setHasReposted] = useState(false);
 
-  // Impressions simulation
-  const impressions = post.impressionsCount || (post.reactionFireCount + post.reactionClownCount + post.commentCount + 8) * 64;
+  // Record impression for viewing this post
+  React.useEffect(() => {
+    banterService.recordImpression(post.id);
+  }, [post.id]);
+
+  // Impressions simulation strictly between 10 and 100
+  const impressions = post.impressionsCount ?? Math.min(99, Math.max(12, (post.reactionFireCount + post.reactionClownCount + post.commentCount) * 2 + 15));
 
   const cleanHandle = post.authorHandle.toLowerCase().replace(/[^a-z0-9]/g, '_');
 

@@ -149,7 +149,7 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
         <div key={post.id} data-post-id={post.id}>
           <BanterPostCard
             post={post}
-            isHot={showHot && index === 0}
+            isHot={(showHot && index < 5) || (post.impressionsCount !== undefined && post.impressionsCount >= 80)}
             onToggleReaction={onToggleReaction}
             onOpenComments={onOpenComments}
             onSelectMatchContext={onSelectMatchContext}

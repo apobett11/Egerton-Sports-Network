@@ -140,7 +140,7 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
               </div>
               <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
                 <BarChart2 className="h-3.5 w-3.5" />
-                <span>{post.impressionsCount || 850} Views</span>
+                <span>{post.impressionsCount || 75} Views</span>
               </div>
             </div>
           </div>
