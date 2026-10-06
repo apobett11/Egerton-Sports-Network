@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Megaphone, Send, Settings, ShieldCheck, Lock, Globe } from 'lucide-react';
+import { Megaphone, Send, Settings, ShieldCheck, Lock, Globe, Radio } from 'lucide-react';
+import { SendBroadcastModal } from '../../../../common/SendBroadcastModal';
 
 interface AdminSettingsAnnouncementsViewProps {
   onPostAnnouncement: (title: string, content: string, targetRole: string) => void;
@@ -13,10 +14,11 @@ export const AdminSettingsAnnouncementsView: React.FC<AdminSettingsAnnouncements
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetRole, setTargetRole] = useState('all');
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-extrabold text-white uppercase tracking-wider">
             Platform Announcements & Operations Control
@@ -25,6 +27,14 @@ export const AdminSettingsAnnouncementsView: React.FC<AdminSettingsAnnouncements
             Broadcast system notices to specific roles or modify system toggles.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsBroadcastModalOpen(true)}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:brightness-110 text-white text-xs font-black transition-all shadow-md shadow-purple-900/30 cursor-pointer self-start sm:self-auto"
+        >
+          <Radio className="w-3.5 h-3.5 animate-pulse" />
+          <span>Real-Time In-App Broadcast</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -130,6 +140,12 @@ export const AdminSettingsAnnouncementsView: React.FC<AdminSettingsAnnouncements
           </div>
         </div>
       </div>
+
+      <SendBroadcastModal
+        isOpen={isBroadcastModalOpen}
+        onClose={() => setIsBroadcastModalOpen(false)}
+        onSuccess={(msg) => showToast(msg)}
+      />
     </div>
   );
 };

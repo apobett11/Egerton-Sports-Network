@@ -13,6 +13,7 @@ import { PredictionExperience } from './components/Predictions/PredictionExperie
 import { PredictionChromeProvider } from './components/Predictions/PredictionChromeContext';
 import { EsnLogo } from './components/common/EsnLogo';
 import { CookieConsentBanner } from './components/common/CookieConsentBanner';
+import { RichNotificationDropdown } from './components/common/RichNotificationDropdown';
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { TeamDetailsContainer } from './components/TeamDetails/TeamDetailsContainer';
@@ -371,7 +372,7 @@ export const AppContent: React.FC = () => {
         }
       }
       const initialRoute = getHashRoute();
-      if (initialRoute === 'news' || initialRoute.startsWith('news')) {
+      if (initialRoute === 'news' || initialRoute.startsWith('news') || initialRoute === 'banter' || initialRoute.startsWith('banter') || initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
         return 'news';
       }
       if (initialRoute === 'potw' || initialRoute.startsWith('potw')) {
@@ -390,9 +391,12 @@ export const AppContent: React.FC = () => {
     } catch {}
     return 'scores';
   });
-  const [predictionView, setPredictionView] = useState<'banter' | 'scores'>(() =>
-    new URLSearchParams(window.location.search).get('view') === 'talk' ? 'banter' : 'scores'
-  );
+  const [predictionView, setPredictionView] = useState<'banter' | 'scores'>(() => {
+    const route = getHashRoute();
+    if (route === 'banter' || route.startsWith('banter')) return 'banter';
+    if (route === 'predictions' || route.startsWith('predictions')) return 'scores';
+    return new URLSearchParams(window.location.search).get('view') === 'talk' ? 'banter' : 'scores';
+  });
   const selectPredictionView = useCallback((view: 'banter' | 'scores') => {
     setPredictionView(view);
     const url = new URL(window.location.href);
@@ -504,6 +508,13 @@ export const AppContent: React.FC = () => {
   // Sync route on hash change
   useEffect(() => {
     const sharePath = window.location.pathname.replace(/\/$/, '');
+    if (sharePath === '/share/predictions' || sharePath === '/predictions') {
+      window.history.replaceState(null, '', '/#/predictions');
+      window.location.hash = '#/predictions';
+      setActiveTab('news');
+      selectPredictionView('scores');
+      return;
+    }
     if (sharePath === '/share/table' || sharePath === '/share/fixtures' || sharePath === '/share/cleansheets') {
       const nextHash = sharePath.endsWith('fixtures')
         ? '#/fixtures'
@@ -552,6 +563,12 @@ export const AppContent: React.FC = () => {
         setActiveTab('potw');
       } else if (isPotwWinner) {
         setActiveTab('table');
+      } else if (initialRoute === 'banter' || initialRoute.startsWith('banter')) {
+        setActiveTab('news');
+        selectPredictionView('banter');
+      } else if (initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
+        setActiveTab('news');
+        selectPredictionView('scores');
       }
     }
 
@@ -566,6 +583,14 @@ export const AppContent: React.FC = () => {
       }
       if (newRoute === 'news' || newRoute.startsWith('news')) {
         setActiveTab('news');
+      }
+      if (newRoute === 'banter' || newRoute.startsWith('banter')) {
+        setActiveTab('news');
+        selectPredictionView('banter');
+      }
+      if (newRoute === 'predictions' || newRoute.startsWith('predictions')) {
+        setActiveTab('news');
+        selectPredictionView('scores');
       }
       if (newRoute === 'potw' || newRoute.startsWith('potw')) {
         setActiveTab('potw');
@@ -758,6 +783,13 @@ export const AppContent: React.FC = () => {
     }
     if (!cleanRoute.startsWith('team/')) {
       setSelectedTeamId(null);
+    }
+    if (cleanRoute === 'banter' || cleanRoute.startsWith('banter')) {
+      setActiveTab('news');
+      selectPredictionView('banter');
+    } else if (cleanRoute === 'predictions' || cleanRoute.startsWith('predictions')) {
+      setActiveTab('news');
+      selectPredictionView('scores');
     }
   };
 
@@ -1327,6 +1359,7 @@ export const App: React.FC = () => (
   <AuthProvider>
     <ToastProvider>
       <ConfirmationProvider>
+        <RichNotificationDropdown />
         <AppContent />
         <Analytics />
         <SpeedInsights />

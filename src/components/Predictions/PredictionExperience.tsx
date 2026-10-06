@@ -76,7 +76,7 @@ import type {
   UserPrediction,
   Team,
 } from '../../types/predictions';
-import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket } from 'lucide-react';
+import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
 
 interface PredictionExperienceProps {
   activeTab: 'banter' | 'scores';
@@ -997,6 +997,33 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     setShowShareModal(false);
   };
 
+  const [copiedPredictionsLink, setCopiedPredictionsLink] = useState(false);
+
+  const handleCopyPredictionsLink = async () => {
+    const link = typeof window !== 'undefined' && window.location.origin && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')
+      ? `${window.location.origin}/#/predictions`
+      : 'https://egerscore.com/#/predictions';
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = link;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedPredictionsLink(true);
+      setTimeout(() => setCopiedPredictionsLink(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
   return (
     <div
       className="prediction-feature min-h-screen bg-[#081018] text-white flex flex-col font-sans overflow-hidden"
@@ -1004,8 +1031,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       data-favorite-team={favouriteTeam || ''}
       data-fixtures-loaded={fixturesLoaded ? 'true' : 'false'}
     >
-      <MonetagPushNotifications />
-      {activeTab === 'banter' && <MonetagInPagePush />}
       {Boolean(showCompletionModal || derbyPopupData) && <MonetagVignette />}
 
       {/* Main Content Area */}
@@ -1211,14 +1236,37 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
             {activeTab === 'scores' && (
               <div className="space-y-4 animate-fadeIn">
-                {pairDays.length > 0 && (
-                  <MatchdayPair
-                    days={pairDays}
-                    activeMatchday={activeMatchday}
-                    activeDayKey={activeDayKey}
-                    onSelect={selectNewsMatchday}
-                  />
-                )}
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <div className="flex-1 flex justify-center">
+                    {pairDays.length > 0 && (
+                      <MatchdayPair
+                        days={pairDays}
+                        activeMatchday={activeMatchday}
+                        activeDayKey={activeDayKey}
+                        onSelect={selectNewsMatchday}
+                      />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyPredictionsLink}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#14263b] hover:bg-[#1f3a5a] text-slate-300 hover:text-white border border-slate-700/60 text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Copy link to Predictions page"
+                    aria-label="Copy link to Predictions page"
+                  >
+                    {copiedPredictionsLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] text-emerald-400 font-bold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-300" />
+                        <span className="text-[10px]">Copy Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <PredictionSlipFlow
                   teams={availableTeams}
                   queue={matchdayMatches}

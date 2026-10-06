@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList, Copy, Check } from 'lucide-react';
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
@@ -71,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
     // Calendar Modal State
     const [showCalendarModal, setShowCalendarModal] = useState(false);
     const [showPotwComingSoonModal, setShowPotwComingSoonModal] = useState(false);
+    const [copiedPredictionLink, setCopiedPredictionLink] = useState(false);
     const liveDate = useGuestMatchday();
     const [viewDate, setViewDate] = useState(() => new Date(liveDate));
     const [playdayIndex, setPlaydayIndex] = useState<PlaydayMark[]>(() => readPlaydayIndex());
@@ -412,7 +413,44 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                     )}
                     {predictionView === 'scores' && (
-                        <div className="px-2 sm:px-4 flex h-11 items-center justify-end">
+                        <div className="px-2 sm:px-4 flex h-11 items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const link = typeof window !== 'undefined' && window.location.origin && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')
+                                      ? `${window.location.origin}/#/predictions`
+                                      : 'https://egerscore.com/#/predictions';
+                                    try {
+                                        if (navigator?.clipboard?.writeText) {
+                                            await navigator.clipboard.writeText(link);
+                                        } else {
+                                            const t = document.createElement('textarea');
+                                            t.value = link;
+                                            document.body.appendChild(t);
+                                            t.select();
+                                            document.execCommand('copy');
+                                            document.body.removeChild(t);
+                                        }
+                                        setCopiedPredictionLink(true);
+                                        setTimeout(() => setCopiedPredictionLink(false), 2000);
+                                    } catch {}
+                                }}
+                                className="flex items-center gap-1.5 rounded-full bg-[#14263b] hover:bg-[#1f3a5a] px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-300 hover:text-white border border-slate-700/50 cursor-pointer transition-colors shadow-xs"
+                                title="Copy Predictions Page Link"
+                                aria-label="Copy Predictions Page Link"
+                            >
+                                {copiedPredictionLink ? (
+                                    <>
+                                        <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                        <span className="text-emerald-400">Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="h-3.5 w-3.5" />
+                                        <span>Copy Link</span>
+                                    </>
+                                )}
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => predictionChrome?.chrome.onOpenAllSlips()}
