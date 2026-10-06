@@ -142,17 +142,17 @@ export const MatchdayDerbySharePopup: React.FC<MatchdayDerbySharePopupProps> = (
               <div className="grid grid-cols-3 gap-2.5 text-center my-3">
                 <div className={`p-3 rounded-xl border ${userSelection === '1' ? 'border-[#00b04f] bg-[#00b04f]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">{derbyMatch.homeTeam.shortName}</span>
-                  <span className="text-xl font-black text-[#00b04f]">{showVotes.homePct}%</span>
+                  <span className="text-sm sm:text-base font-black text-[#00b04f]">{showVotes.homeVotes.toLocaleString()} votes</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
                 <div className={`p-3 rounded-xl border ${userSelection === 'X' ? 'border-[#ff9800] bg-[#ff9800]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Draw</span>
-                  <span className="text-xl font-black text-[#ff9800]">{showVotes.drawPct}%</span>
+                  <span className="text-sm sm:text-base font-black text-[#ff9800]">{showVotes.drawVotes.toLocaleString()} votes</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
                 <div className={`p-3 rounded-xl border ${userSelection === '2' ? 'border-[#ff0046] bg-[#ff0046]/20' : 'border-slate-800 bg-[#06101a]'}`}>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">{derbyMatch.awayTeam.shortName}</span>
-                  <span className="text-xl font-black text-[#ff0046]">{showVotes.awayPct}%</span>
+                  <span className="text-sm sm:text-base font-black text-[#ff0046]">{showVotes.awayVotes.toLocaleString()} votes</span>
                   <span className="text-[9px] font-bold text-slate-400 block mt-0.5">Supporters</span>
                 </div>
               </div>

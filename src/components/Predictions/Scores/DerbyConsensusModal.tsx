@@ -16,7 +16,7 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
   onClose,
   onNavigateStandings,
 }) => {
-  const { homePct, drawPct, awayPct, total: totalVotes } =
+  const { homePct, drawPct, awayPct, homeVotes, drawVotes, awayVotes, total: totalVotes } =
     showVotesForConsensus(consensus, derbyMatch.id);
 
   return (
@@ -78,7 +78,7 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
           <div>
             <div className="flex justify-between text-xs font-bold mb-1">
               <span className="text-slate-200">{derbyMatch.homeTeam.name} Win</span>
-              <span className="text-[#00b04f] font-black">{homePct}%</span>
+              <span className="text-[#00b04f] font-black">{homeVotes.toLocaleString()} votes</span>
             </div>
             <div className="h-2.5 w-full bg-[#16283d] rounded-full overflow-hidden">
               <div className="h-full bg-[#00b04f] rounded-full transition-all duration-500" style={{ width: `${homePct}%` }} />
@@ -89,7 +89,7 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
           <div>
             <div className="flex justify-between text-xs font-bold mb-1">
               <span className="text-slate-200">Draw (X)</span>
-              <span className="text-[#ff9800] font-black">{drawPct}%</span>
+              <span className="text-[#ff9800] font-black">{drawVotes.toLocaleString()} votes</span>
             </div>
             <div className="h-2.5 w-full bg-[#16283d] rounded-full overflow-hidden">
               <div className="h-full bg-[#ff9800] rounded-full transition-all duration-500" style={{ width: `${drawPct}%` }} />
@@ -100,7 +100,7 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
           <div>
             <div className="flex justify-between text-xs font-bold mb-1">
               <span className="text-slate-200">{derbyMatch.awayTeam.name} Win</span>
-              <span className="text-[#ff0046] font-black">{awayPct}%</span>
+              <span className="text-[#ff0046] font-black">{awayVotes.toLocaleString()} votes</span>
             </div>
             <div className="h-2.5 w-full bg-[#16283d] rounded-full overflow-hidden">
               <div className="h-full bg-[#ff0046] rounded-full transition-all duration-500" style={{ width: `${awayPct}%` }} />

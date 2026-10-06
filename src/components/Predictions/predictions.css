@@ -196,3 +196,16 @@
   transform: scale(0.97);
 }
 
+/* Push notification banner to the top of the screen */
+.monetag-ipp,
+[class*="asb-"],
+div[id^="asb-"] {
+  top: 10px !important;
+  bottom: auto !important;
+  position: fixed !important;
+  z-index: 99999 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+

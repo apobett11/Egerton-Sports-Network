@@ -47,22 +47,20 @@ export function MatchPickCard({
 }) {
   const home = formatTeamName(match.homeTeam.name);
   const away = formatTeamName(match.awayTeam.name);
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [showDerbyGuessPopup, setShowDerbyGuessPopup] = useState(false);
 
   const stats = showVotesForConsensus(consensus, match.id, userSelection || undefined);
 
   const handlePickAttempt = (option: PredictionOption) => {
-    // Squad inspection gate: Derby match requires viewing squads first
+    // Squad inspection gate: Derby match requires viewing squads first like an analyst
     if (match.isDerby && !isSquadInspected) {
-      setShowTooltip(true);
+      setShowDerbyGuessPopup(true);
       return;
     }
-    setShowTooltip(false);
     onPick(option);
   };
 
   const handleSquadsClick = () => {
-    setShowTooltip(false);
     if (onOpenSquads) {
       onOpenSquads();
     }
@@ -116,17 +114,32 @@ export function MatchPickCard({
               <span>Squads</span>
             </button>
 
-            {/* Contextual Directional Tooltip pointing down at the squads button */}
-            {showTooltip && (
+            {/* Derby Don't Guess Popup with single Okay button opening squads */}
+            {showDerbyGuessPopup && (
               <div
-                data-testid={`squad-tooltip-${match.id}`}
-                className="absolute -top-11 right-0 z-50 flex flex-col items-end pointer-events-none animate-bounce"
-                style={{ minWidth: '220px' }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn"
+                data-testid={`derby-guess-popup-${match.id}`}
               >
-                <div className="bg-[#0e1c2b] text-white border-2 border-[#00b04f] shadow-[0_4px_16px_rgba(0,176,79,0.5)] px-2.5 py-1 rounded-lg text-[11px] font-black tracking-tight whitespace-nowrap">
-                  Don&apos;t guess. Look at the squads.
+                <div className="relative w-full max-w-[340px] rounded-2xl border border-amber-500/50 bg-[#0e1c2b] p-5 text-center text-white shadow-2xl">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20 text-xl shadow-inner">
+                    ⚽
+                  </div>
+                  <h2 className="text-sm font-black text-white">Don&apos;t Guess!</h2>
+                  <p className="mt-2 text-xs text-slate-300 leading-relaxed">
+                    Don&apos;t guess. Look at the squads like a football analyser before making your prediction.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDerbyGuessPopup(false);
+                      if (onOpenSquads) onOpenSquads();
+                    }}
+                    data-testid="derby-open-squads-ok-btn"
+                    className="mt-4 w-full min-h-[40px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white hover:bg-[#009b45] transition-all cursor-pointer shadow-md active:scale-95"
+                  >
+                    Okay
+                  </button>
                 </div>
-                <div className="mr-4 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#00b04f]" />
               </div>
             )}
           </div>
@@ -209,7 +222,7 @@ export function MatchPickCard({
         {PICKS.map((pick) => {
           const isSelected = userSelection === pick.id;
           const hasVoted = Boolean(userSelection);
-          const pct = pick.id === '1' ? stats.homePct : pick.id === 'X' ? stats.drawPct : stats.awayPct;
+          const voteCount = pick.id === '1' ? stats.homeVotes : pick.id === 'X' ? stats.drawVotes : stats.awayVotes;
           return (
             <button
               key={pick.id}
@@ -229,7 +242,7 @@ export function MatchPickCard({
                 {isSelected && <span className="text-[10px]">✓</span>}
                 {hasVoted && (
                   <span className={`text-[10px] font-mono font-normal ${isSelected ? 'text-white/90' : 'text-slate-400'}`}>
-                    • {pct}%
+                    • {voteCount.toLocaleString()} votes
                   </span>
                 )}
               </span>

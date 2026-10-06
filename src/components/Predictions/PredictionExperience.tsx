@@ -111,7 +111,19 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   });
   const [consensusMap, setConsensusMap] = useState<Map<string, ConsensusData>>(() => new Map());
   const [predictions, setPredictions] = useState<UserPrediction[]>(() => {
-    return predictionService.getPredictions();
+    try {
+      const storedUntil = localStorage.getItem('esn_slip_cooldown_until');
+      if (storedUntil && Number(storedUntil) > Date.now()) {
+        return [];
+      }
+      const cached = readDashboardCache();
+      if (cached.slips.some((s) => Boolean(s.completedAt))) {
+        return [];
+      }
+      return predictionService.getPredictions();
+    } catch {
+      return [];
+    }
   });
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [fixturesLoaded, setFixturesLoaded] = useState(() => (eplFixtureService.peek() || []).length > 0);
@@ -203,7 +215,15 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     let mounted = true;
     anonymousIdentityService.loadLockedProfile().then((profile) => {
       if (!mounted) return;
-      if (profile.predictions && profile.predictions.length > 0) {
+      const storedUntil = typeof localStorage !== 'undefined' ? localStorage.getItem('esn_slip_cooldown_until') : null;
+      const isCooldownActive = storedUntil ? Number(storedUntil) > Date.now() : false;
+      const hasSavedSlips = slips.some((s) => Boolean(s.completedAt)) || readDashboardCache().slips.some((s) => Boolean(s.completedAt));
+
+      if (isCooldownActive || hasSavedSlips) {
+        setPredictions([]);
+        predictionService.clearPredictions();
+        patchDashboardCache({ predictions: [] });
+      } else if (profile.predictions && profile.predictions.length > 0) {
         predictionService.hydrate(profile.predictions);
         setPredictions((prev) => (prev.length > 0 ? prev : predictionService.getPredictions()));
       }
@@ -616,6 +636,14 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
   const getCooldownRemainingMs = useCallback((): number => {
     const COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
+    try {
+      const storedUntil = localStorage.getItem('esn_slip_cooldown_until');
+      if (storedUntil) {
+        const rem = Number(storedUntil) - Date.now();
+        if (rem > 0) return rem;
+      }
+    } catch {}
+
     let latestTime: number | null = authoritativeLastSubmittedAt
       ? new Date(authoritativeLastSubmittedAt).getTime()
       : null;
@@ -707,6 +735,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       setActiveSlipId(null);
       setPredictions([]);
       predictionService.clearPredictions();
+      const cooldownUntil = Date.now() + 60 * 60 * 1000;
+      try {
+        localStorage.setItem('esn_slip_cooldown_until', String(cooldownUntil));
+        localStorage.setItem('esn_last_saved_slip_at', nowIso);
+      } catch {}
       patchDashboardCache({
         predictions: [],
         slips: finalSlips,
@@ -760,14 +793,32 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       return;
     }
 
-    // Case 2: Matchday 1 is completed, but Matchday 2 is not
-    const isFirstDay = Boolean(first && (dayKey === first.dayKey || match.matchday === first.matchday));
-    if (isFirstDay && firstDayAllPicked) {
-      setActiveSlipId(slipId);
-      setPredictions(nextPicks);
-      setSlips(updatedSlips);
-      patchDashboardCache({ predictions: nextPicks, slips: updatedSlips, activeSlipId: slipId });
-      setShareSlip({ dayKey, matchday: first.matchday });
+    // Case 2: 6 matches selected or Matchday 1 completed -> Slip saved, selections cleared, 1-hour cooldown
+    if (nextPicks.length >= 6 || (first && (dayKey === first.dayKey || match.matchday === first.matchday) && firstDayAllPicked)) {
+      const nowIso = new Date().toISOString();
+      const completedSlip: DeviceSlip = {
+        ...active,
+        picks: nextPicks,
+        completedAt: nowIso,
+      };
+      const finalSlips = updatedSlips.map((row) => row.id === slipId ? completedSlip : row);
+      setSlips(finalSlips);
+      setActiveSlipId(null);
+      setPredictions([]);
+      predictionService.clearPredictions();
+      const cooldownUntil = Date.now() + 60 * 60 * 1000;
+      try {
+        localStorage.setItem('esn_slip_cooldown_until', String(cooldownUntil));
+        localStorage.setItem('esn_last_saved_slip_at', nowIso);
+      } catch {}
+      patchDashboardCache({
+        predictions: [],
+        slips: finalSlips,
+        activeSlipId: null,
+        lastSlipCompletedAt: nowIso,
+      });
+      setAuthoritativeLastSubmittedAt(nowIso);
+      setShareSlip({ dayKey, matchday: first ? first.matchday : match.matchday });
       return;
     }
 
@@ -1145,6 +1196,16 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       : prev.filter((id) => id !== postId));
                   }}
                 />
+
+                {/* Additional Ad at Bottom of Banter Page */}
+                <div className="pt-2 pb-4">
+                  <CompactDirectBanner
+                    variant="purple"
+                    label="Campus Banter Spotlight"
+                    tagline="Join the football debate and win verified fan rewards"
+                    className="my-2"
+                  />
+                </div>
               </div>
             )}
 
@@ -1295,6 +1356,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         <FreshPerspectiveModal
           remainingMs={freshPerspectiveMs}
           onClose={() => setFreshPerspectiveMs(null)}
+          onSeeBanter={() => {
+            setFreshPerspectiveMs(null);
+            setMainNav('news');
+            setActiveTab('banter');
+            setShowCreatorPartnerModal(true);
+          }}
         />
       )}
 
@@ -1476,6 +1543,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           activeDayKey={activeDayKey}
           fixtures={fixtures}
           slip={pairSlips.find((row) => row.id === activeSlipId) || pairSlips[pairSlips.length - 1] || null}
+          slips={pairSlips.length > 0 ? pairSlips : slips}
           livePicks={userPredMap}
           incomplete={mySlipIncomplete}
           canMakeAnother={pairComplete && pairSlips.length < SLIPS_PER_PAIR}
@@ -1551,10 +1619,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-200">
             Slip
           </span>
-          <span className="flex items-center justify-center min-w-[26px] h-5 px-1.5 rounded-full bg-[#00b04f] text-[10px] sm:text-[11px] font-black text-white shadow-inner">
-            {matchdayMatches.length > 0 && matchdayMatches.every((m) => userPredMap.has(m.id))
-              ? 0
-              : matchdayMatches.filter((m) => userPredMap.has(m.id)).length}/6
+          <span className="flex items-center justify-center min-w-[24px] h-5 px-1.5 rounded-full bg-[#00b04f] text-[10px] sm:text-[11px] font-black text-white shadow-inner">
+            {predictions.length}
           </span>
         </button>
       )}

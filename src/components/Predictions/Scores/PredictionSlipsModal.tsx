@@ -315,9 +315,11 @@ export function ShareSlipPopup({
 export function FreshPerspectiveModal({
   remainingMs,
   onClose,
+  onSeeBanter,
 }: {
   remainingMs: number;
   onClose: () => void;
+  onSeeBanter?: () => void;
 }) {
   const [timeLeft, setTimeLeft] = React.useState(remainingMs);
 
@@ -359,13 +361,28 @@ export function FreshPerspectiveModal({
         <div className="my-3 rounded-lg border border-slate-700/80 bg-[#070e18] py-2 px-3 font-mono text-base sm:text-lg font-black text-[#ff0046] tracking-wider shadow-inner" data-testid="cooldown-timer">
           {formatCountdown(timeLeft)}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white hover:bg-[#e0003c] transition-colors cursor-pointer"
-        >
-          Got it
-        </button>
+        <p className="mb-3 text-[11px] text-slate-300 leading-snug">
+          You can see the teams articles and banters as you get the new view
+        </p>
+        <div className="flex flex-col gap-2">
+          {onSeeBanter && (
+            <button
+              type="button"
+              onClick={onSeeBanter}
+              data-testid="fresh-see-banters-btn"
+              className="w-full min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white hover:bg-[#009b45] transition-colors cursor-pointer shadow-md"
+            >
+              See banters
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[36px] rounded-full bg-[#14263b] text-xs font-black uppercase tracking-wider text-white hover:bg-[#1a334d] transition-colors cursor-pointer"
+          >
+            Got it
+          </button>
+        </div>
 
         {/* Embedded ad extension of popup */}
         <div className="mt-3 pt-3 border-t border-slate-800/80">

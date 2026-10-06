@@ -3,6 +3,16 @@ import React, { useEffect } from 'react';
 // 1. In-Page Push (Zone: 11954976)
 export const MonetagInPagePush: React.FC = () => {
   useEffect(() => {
+    const purgeMpesa = () => {
+      document.querySelectorAll('[class*="asb-"], .monetag-ipp, div[id^="asb-"]').forEach((el) => {
+        if (/m-?pesa/i.test(el.textContent || '')) {
+          el.remove();
+        }
+      });
+    };
+    const observer = new MutationObserver(purgeMpesa);
+    observer.observe(document.body, { childList: true, subtree: true });
+
     if (document.querySelector('script[data-zone="11954976"]')) return;
     const script = document.createElement('script');
     script.dataset.zone = '11954976';
@@ -11,6 +21,7 @@ export const MonetagInPagePush: React.FC = () => {
     document.body.appendChild(script);
 
     return () => {
+      observer.disconnect();
       script.remove();
       document.querySelectorAll('[class*="asb-"], .monetag-ipp').forEach((el) => el.remove());
     };

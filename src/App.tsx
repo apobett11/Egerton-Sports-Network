@@ -321,7 +321,10 @@ export const AppContent: React.FC = () => {
           setDeviceAnnouncements(list);
           const unread = list.find((a) => a.status === 'unread');
           if (unread && !activePopupAnnouncement) {
-            setActivePopupAnnouncement(unread);
+            const isMpesa = /m-?pesa/i.test(`${unread.title || ''} ${unread.content || ''}`);
+            if (!isMpesa) {
+              setActivePopupAnnouncement(unread);
+            }
           }
         }
       } catch (e) {

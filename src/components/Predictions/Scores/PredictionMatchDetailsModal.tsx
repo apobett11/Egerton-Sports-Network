@@ -68,6 +68,7 @@ export const PredictionMatchDetailsModal: React.FC<PredictionMatchDetailsModalPr
   match,
   onClose,
 }) => {
+  const [showFeaturesModal, setShowFeaturesModal] = React.useState(true);
   const livescoreMatch = useMemo(() => convertPredictionMatchToLivescore(match), [match]);
 
   return (
@@ -75,6 +76,56 @@ export const PredictionMatchDetailsModal: React.FC<PredictionMatchDetailsModalPr
       data-testid="prediction-match-details-modal"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-md animate-fadeIn"
     >
+      {/* On-open Guide Popup */}
+      {showFeaturesModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="match-details-guide-popup">
+          <div className="relative w-full max-w-sm rounded-2xl border border-[#00b04f]/50 bg-[#0e1c2b] p-5 text-white shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowFeaturesModal(false)}
+              className="absolute right-3 top-3 rounded-full p-1.5 text-slate-400 hover:text-white hover:bg-[#14263b] cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#00b04f]/20 text-[#00b04f] shadow-inner">
+              <Info className="h-5 w-5" />
+            </div>
+            <h2 className="text-sm sm:text-base font-black text-center text-white">
+              Match Details
+            </h2>
+            <p className="mt-1 text-xs text-slate-300 text-center">
+              This is the match details page, you can view:
+            </p>
+            <div className="my-3.5 space-y-2 rounded-xl bg-[#08121e] border border-slate-800 p-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-200">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00b04f]/20 text-[#00b04f] text-[10px] font-black shrink-0">✓</span>
+                <span className="font-semibold">Team squads</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-200">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00b04f]/20 text-[#00b04f] text-[10px] font-black shrink-0">✓</span>
+                <span className="font-semibold">The teams recent form and H2H</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-200">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00b04f]/20 text-[#00b04f] text-[10px] font-black shrink-0">✓</span>
+                <span className="font-semibold">Man of the match</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-200">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00b04f]/20 text-[#00b04f] text-[10px] font-black shrink-0">✓</span>
+                <span className="font-semibold">The match results</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFeaturesModal(false)}
+              data-testid="match-details-guide-ok-btn"
+              className="w-full min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white hover:bg-[#009b45] transition-all cursor-pointer shadow-md"
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
       {/* Top-Right Monetag Ad (~50% probability) with anti-ban tap spacing */}
       <MonetagTopRightAd />
 

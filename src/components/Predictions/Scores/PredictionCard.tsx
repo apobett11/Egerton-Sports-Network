@@ -182,7 +182,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
             <div className="flex flex-col">
               <span className={userSelection === '1' ? 'text-[#00b04f]' : 'text-slate-300'}>
-                {showVotes.homePct}%
+                {showVotes.homeVotes.toLocaleString()} votes
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
                 <div className="bg-[#00b04f] h-full rounded-full" style={{ width: `${showVotes.homePct}%` }} />
@@ -191,7 +191,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
 
             <div className="flex flex-col">
               <span className={userSelection === 'X' ? 'text-[#ff9800]' : 'text-slate-300'}>
-                {showVotes.drawPct}%
+                {showVotes.drawVotes.toLocaleString()} votes
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
                 <div className="bg-[#ff9800] h-full rounded-full" style={{ width: `${showVotes.drawPct}%` }} />
@@ -200,7 +200,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
 
             <div className="flex flex-col">
               <span className={userSelection === '2' ? 'text-[#ff0046]' : 'text-slate-300'}>
-                {showVotes.awayPct}%
+                {showVotes.awayVotes.toLocaleString()} votes
               </span>
               <div className="w-full bg-[#16283d] h-1 rounded-full mt-1 overflow-hidden">
                 <div className="bg-[#ff0046] h-full rounded-full" style={{ width: `${showVotes.awayPct}%` }} />

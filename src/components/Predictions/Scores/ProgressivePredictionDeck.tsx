@@ -143,17 +143,17 @@ export const ProgressivePredictionDeck: React.FC<ProgressivePredictionDeckProps>
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === '1' ? 'text-[#00b04f]' : 'text-slate-300'}>
-                {showVotes.homePct}% Home
+                {showVotes.homeVotes.toLocaleString()} votes Home
               </span>
             </div>
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === 'X' ? 'text-[#ff9800]' : 'text-slate-300'}>
-                {showVotes.drawPct}% Draw
+                {showVotes.drawVotes.toLocaleString()} votes Draw
               </span>
             </div>
             <div className="p-1 rounded bg-[#0e1c2b]">
               <span className={currentSelection === '2' ? 'text-[#ff0046]' : 'text-slate-300'}>
-                {showVotes.awayPct}% Away
+                {showVotes.awayVotes.toLocaleString()} votes Away
               </span>
             </div>
           </div>
