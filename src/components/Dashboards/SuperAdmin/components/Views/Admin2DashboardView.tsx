@@ -42,11 +42,13 @@ import {
   Cpu,
   Wifi,
   Terminal,
+  Trophy,
 } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabase';
 import { isSessionActive } from '../../../../../lib/inactivityManager';
 import { canMakeDashboardCall, recordSessionCall } from '../../../../../lib/sessionBudgetManager';
 import { AdminPollsView } from './AdminPollsView';
+import { AdminVotesPredictionsView } from './AdminVotesPredictionsView';
 import type {
   HourlyTrafficData,
   PageVisitAnalytics,
@@ -103,8 +105,8 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  // Sub-Page Navigation Tab (Telemetry vs Polls)
-  const [activeSubTab, setActiveSubTab] = useState<'telemetry' | 'polls'>('telemetry');
+  // Sub-Page Navigation Tab (Telemetry vs Polls vs Votes)
+  const [activeSubTab, setActiveSubTab] = useState<'telemetry' | 'polls' | 'votes'>('telemetry');
 
   // Realtime & Loading states
   const [isRealtimeActive, setIsRealtimeActive] = useState(true);
@@ -892,7 +894,7 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
       </div>
 
       {/* 2. Admin 2 Sub-Page Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#262626] pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#262626] pb-3">
         <button
           type="button"
           onClick={() => setActiveSubTab('telemetry')}
@@ -918,10 +920,25 @@ export const Admin2DashboardView: React.FC<Admin2DashboardViewProps> = ({
           <Vote className="w-3.5 h-3.5" />
           <span>Polls & Feature Determinants</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('votes')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+            activeSubTab === 'votes'
+              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+              : 'bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#2a2a2a]'
+          }`}
+        >
+          <Trophy className="w-3.5 h-3.5" />
+          <span>Votes & Predictions</span>
+        </button>
       </div>
 
       {activeSubTab === 'polls' ? (
         <AdminPollsView showToast={showToast} />
+      ) : activeSubTab === 'votes' ? (
+        <AdminVotesPredictionsView />
       ) : (
         <>
           {/* 3. Top Metric Cards: Devices Track & Active Today Real Data */}
