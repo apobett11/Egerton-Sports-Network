@@ -5,6 +5,7 @@ import { shareService } from '../../../services/predictions/shareService';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
+import { MonetagTopRightAd } from '../../ads/MonetagTopRightAd';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface DerbyUltimatePopupProps {
@@ -75,6 +76,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
       data-testid="derby-ultimate-popup"
       className="fixed inset-x-0 bottom-0 top-36 z-40 flex items-center justify-center p-3 sm:p-4 glassmorphic-backdrop"
     >
+      <MonetagTopRightAd forceShow={true} />
       <div className="relative w-full max-w-lg rounded-3xl glassmorphic-derby p-5 sm:p-6 text-white tactical-modal-shadow max-h-full overflow-y-auto font-sans">
         {/* Ambient Lights */}
         <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-[#ff0046]/25 blur-3xl pointer-events-none" />

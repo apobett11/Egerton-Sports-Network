@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Shield, Crown, Flame } from 'lucide-react';
 import { formatTeamName } from '../../../lib/predictions/utils';
+import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import type { Team } from '../../../types/predictions';
 
 interface FavouriteTeamModalProps {
@@ -109,6 +110,17 @@ export const FavouriteTeamModal: React.FC<FavouriteTeamModalProps> = ({
               </button>
             );
           })}
+        </div>
+
+        {/* Styled Advert at bottom of modal */}
+        <div className="mt-4 pt-3 border-t border-slate-800/80">
+          <CompactDirectBanner
+            variant="amber"
+            label="Campus Derby Match"
+            tagline="Claim 100% Free Bet & Live Odds"
+            ctaText="Claim"
+            className="!my-0 !px-0"
+          />
         </div>
       </div>
     </div>

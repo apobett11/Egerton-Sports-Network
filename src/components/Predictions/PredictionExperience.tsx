@@ -29,6 +29,8 @@ import { shareService } from '../../services/predictions/shareService';
 import { StandingsPreviewModal } from './Standings/StandingsPreviewModal';
 import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
 import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
+import { FavouriteTeamModal } from './Scores/FavouriteTeamModal';
+import { CreatorPartnerModal } from './Banter/CreatorPartnerModal';
 import { MonetagPushNotifications, MonetagInPagePush, MonetagVignette } from '../ads/MonetagEngines';
 
 import { eplFixtureService } from '../../services/predictions/eplFixtureService';
@@ -71,9 +73,10 @@ import type {
   BanterPost,
   BanterFilterType,
   ReactionType,
-  UserPrediction
+  UserPrediction,
+  Team,
 } from '../../types/predictions';
-import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users } from 'lucide-react';
+import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket } from 'lucide-react';
 
 interface PredictionExperienceProps {
   activeTab: 'banter' | 'scores';
@@ -158,6 +161,31 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   });
   const [, setUnlockedDerbies] = useState<string[]>(() => derbyService.getUnlockedDerbies());
 
+  // Onboarding Favorite Team Check:
+  // For any oncoming person, check if they have the onboarding record.
+  // If not, onboard them with the selection of the favourite team.
+  const [showOnboardingFavoriteModal, setShowOnboardingFavoriteModal] = useState<boolean>(() => {
+    const cached = readDashboardCache();
+    if (cached.favouriteTeam) return false;
+    try {
+      const stored = localStorage.getItem('esn_favorite_team_label') || localStorage.getItem('esn_favourite_team');
+      return !stored || stored === 'null';
+    } catch {
+      return false;
+    }
+  });
+
+  // Banter Creator/Journalist Partner Modal
+  const [showCreatorPartnerModal, setShowCreatorPartnerModal] = useState(false);
+  const hasShownCreatorModalRef = useRef(false);
+
+  useEffect(() => {
+    if (activeTab === 'banter' && !hasShownCreatorModalRef.current) {
+      hasShownCreatorModalRef.current = true;
+      setShowCreatorPartnerModal(true);
+    }
+  }, [activeTab]);
+
   // Twitter-Style Banter Feed State
   const [banterFilter, setBanterFilter] = useState<BanterFilterType>('trending');
   const [clubBanterOnly, setClubBanterOnly] = useState(false);
@@ -183,6 +211,15 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       if (profile.favouriteTeam) {
         setFavouriteTeam(profile.favouriteTeam);
         derbyService.setFavouriteTeam(profile.favouriteTeam);
+        setShowOnboardingFavoriteModal(false);
+      } else {
+        const cached = readDashboardCache();
+        const stored = typeof localStorage !== 'undefined'
+          ? (localStorage.getItem('esn_favorite_team_label') || localStorage.getItem('esn_favourite_team'))
+          : null;
+        if (!cached.favouriteTeam && !stored) {
+          setShowOnboardingFavoriteModal(true);
+        }
       }
     });
     return () => { mounted = false; };
@@ -844,10 +881,14 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   const handleSelectFavouriteTeam = (teamName: string, team?: { id?: string }) => {
-    if (favouriteTeam) return;
     setFavouriteTeam(teamName);
+    setShowOnboardingFavoriteModal(false);
     setActiveTab('scores');
     derbyService.setFavouriteTeam(teamName);
+    try {
+      localStorage.setItem('esn_favorite_team_label', teamName);
+      localStorage.setItem('esn_favourite_team', teamName);
+    } catch {}
     patchDashboardCache({ favouriteTeam: teamName, favouriteTeamId: team?.id || null, fanaticAnswered: true, step: 'derby' });
     void anonymousIdentityService.saveFavouriteTeam(teamName, team?.id).catch(() => {});
   };
@@ -1473,6 +1514,49 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           derbyMatch={derbyMatch}
           onClose={() => setShowStandingsModal(false)}
         />
+      )}
+
+      {/* Onboarding Favourite Team Modal (Required on initial visit) */}
+      {showOnboardingFavoriteModal && (
+        <FavouriteTeamModal
+          teams={availableTeams}
+          selectedTeam={favouriteTeam}
+          onSelectTeam={(name) => {
+            const matched = availableTeams.find(t => t.name.toLowerCase() === name.toLowerCase());
+            handleSelectFavouriteTeam(name, matched);
+          }}
+          onClose={() => {
+            if (favouriteTeam) setShowOnboardingFavoriteModal(false);
+          }}
+        />
+      )}
+
+      {/* Banter Page Creator & Journalist Partner Popup */}
+      {showCreatorPartnerModal && (
+        <CreatorPartnerModal
+          onClose={() => setShowCreatorPartnerModal(false)}
+        />
+      )}
+
+      {/* Floating Slip Icon & Counter at Bottom Center (constant across matchday pages) */}
+      {activeTab === 'scores' && (
+        <button
+          type="button"
+          onClick={() => setShowSlips(true)}
+          data-testid="floating-slip-counter-btn"
+          className="fixed bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#08121e]/95 border-2 border-[#00b04f] shadow-[0_4px_24px_rgba(0,176,79,0.45)] backdrop-blur-md text-white font-black hover:scale-105 active:scale-95 transition-all cursor-pointer group select-none"
+          aria-label="View prediction slips"
+        >
+          <Ticket className="h-4 w-4 text-[#00b04f] group-hover:rotate-12 transition-transform" />
+          <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-200">
+            Slip
+          </span>
+          <span className="flex items-center justify-center min-w-[26px] h-5 px-1.5 rounded-full bg-[#00b04f] text-[10px] sm:text-[11px] font-black text-white shadow-inner">
+            {matchdayMatches.length > 0 && matchdayMatches.every((m) => userPredMap.has(m.id))
+              ? 0
+              : matchdayMatches.filter((m) => userPredMap.has(m.id)).length}/6
+          </span>
+        </button>
       )}
     </div>
   );

@@ -339,6 +339,7 @@ export function FreshPerspectiveModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="fresh-perspective-popup">
+      <MonetagTopRightAd forceShow={true} />
       <div className="relative w-full max-w-[340px] rounded-2xl border border-[#ff0046]/40 bg-[#0e1c2b] p-4 sm:p-5 text-center text-white shadow-2xl">
         <button
           type="button"
@@ -353,7 +354,7 @@ export function FreshPerspectiveModal({
         </div>
         <h2 className="text-xs sm:text-sm font-black text-white">Fresh Perspective Needed</h2>
         <p className="mt-1 text-xs text-slate-300 leading-snug">
-          you need a fresh perspective, you have to wait just a little☺️. come again and make your prediction in:
+          You need a fresh perspective, you have to wait just a little ☺️. Come again and cast prediction after:
         </p>
         <div className="my-3 rounded-lg border border-slate-700/80 bg-[#070e18] py-2 px-3 font-mono text-base sm:text-lg font-black text-[#ff0046] tracking-wider shadow-inner" data-testid="cooldown-timer">
           {formatCountdown(timeLeft)}
@@ -365,6 +366,17 @@ export function FreshPerspectiveModal({
         >
           Got it
         </button>
+
+        {/* Embedded ad extension of popup */}
+        <div className="mt-3 pt-3 border-t border-slate-800/80">
+          <CompactDirectBanner
+            variant="amber"
+            label="Campus Derby Match"
+            tagline="Claim 100% Free Bet & Live Odds"
+            ctaText="Claim"
+            className="!my-0 !px-0"
+          />
+        </div>
       </div>
     </div>
   );
@@ -457,6 +469,7 @@ export function SelectionLockModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn"
       data-testid="selection-lock-modal"
     >
+      <MonetagTopRightAd forceShow={true} />
       <div className="relative w-full max-w-[340px] rounded-2xl border border-[#00b04f]/40 bg-[#0e1c2b] p-4 sm:p-5 text-center text-white shadow-2xl">
         <button
           type="button"
@@ -480,6 +493,17 @@ export function SelectionLockModal({
         >
           Got it
         </button>
+
+        {/* Embedded ad extension of popup */}
+        <div className="mt-3 pt-3 border-t border-slate-800/80">
+          <CompactDirectBanner
+            variant="emerald"
+            label="Verified Slip Bonus"
+            tagline="Claim 100% Free Bet & Live Odds"
+            ctaText="Claim"
+            className="!my-0 !px-0"
+          />
+        </div>
       </div>
     </div>
   );
