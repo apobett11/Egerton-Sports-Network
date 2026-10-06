@@ -3,7 +3,7 @@ import type { DeviceSlip } from './slipBook';
 import type { PredictionOption, UserPrediction } from '../../types/predictions';
 import { slipsForPair } from './slipBook';
 
-export type PredictionStep = 'fanatic' | 'club' | 'derby' | 'picks' | 'dashboard';
+export type PredictionStep = 'club' | 'derby' | 'picks' | 'dashboard';
 
 export interface PredictionDashboardCache {
   deviceId: string | null;
@@ -30,10 +30,10 @@ const EMPTY: PredictionDashboardCache = {
   deviceId: null,
   favouriteTeam: null,
   favouriteTeamId: null,
-  fanaticAnswered: false,
+  fanaticAnswered: true,
   footballFanatic: null,
   predictions: [],
-  step: 'fanatic',
+  step: 'picks',
   slipListOpen: false,
   activeDayKey: null,
   lockedSaturday: null,
@@ -82,12 +82,12 @@ function parseCache(raw: string | null, deviceId: string | null): PredictionDash
       deviceId: deviceId || (typeof parsed.deviceId === 'string' ? parsed.deviceId : null),
       favouriteTeam,
       favouriteTeamId: typeof parsed.favouriteTeamId === 'string' ? parsed.favouriteTeamId : null,
-      fanaticAnswered: Boolean(parsed.fanaticAnswered || favouriteTeam),
+      fanaticAnswered: true,
       footballFanatic: parsed.footballFanatic === 'yes' || parsed.footballFanatic === 'no' ? parsed.footballFanatic : null,
       predictions: normalizePredictions(parsed.predictions),
-      step: parsed.step === 'club' || parsed.step === 'derby' || parsed.step === 'picks' || parsed.step === 'dashboard' || parsed.step === 'fanatic'
+      step: parsed.step === 'club' || parsed.step === 'derby' || parsed.step === 'picks' || parsed.step === 'dashboard'
         ? parsed.step
-        : favouriteTeam ? 'picks' : 'fanatic',
+        : favouriteTeam ? 'picks' : 'club',
       slipListOpen: Boolean(parsed.slipListOpen),
       activeDayKey: typeof parsed.activeDayKey === 'string' ? parsed.activeDayKey : null,
       lockedSaturday: typeof parsed.lockedSaturday === 'string' ? parsed.lockedSaturday : null,
@@ -169,7 +169,7 @@ export function patchDashboardCache(patch: Partial<PredictionDashboardCache>): P
       : current.favouriteTeam,
     updatedAt: new Date().toISOString(),
   };
-  if (next.favouriteTeam && (next.step === 'fanatic' || next.step === 'club')) {
+  if (next.favouriteTeam && next.step === 'club') {
     next.step = next.slipListOpen ? 'dashboard' : 'picks';
     next.fanaticAnswered = true;
   }
@@ -204,7 +204,7 @@ export function cacheStepFromState(input: {
   slipListOpen: boolean;
 }): PredictionStep {
   if (!input.favouriteTeam) {
-    return readDashboardCache().fanaticAnswered ? 'club' : 'fanatic';
+    return 'club';
   }
   if (input.slipListOpen || input.remainingPicks <= 0) return 'dashboard';
   return 'picks';

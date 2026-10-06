@@ -16,10 +16,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, role, profile, logout, isLoading, hasPermission, saveRedirectRoute } = useAuth();
 
-  const isAuthenticated = Boolean(user && role !== 'guest');
+  // If user is authenticated in Supabase but role state is still transitioning from guest,
+  // check profile and localStorage cache before treating the user as an unauthorized guest.
+  const effectiveRole: UserRole = role !== 'guest'
+    ? role
+    : (profile?.role && profile.role !== 'guest'
+        ? profile.role
+        : (typeof localStorage !== 'undefined'
+            ? ((localStorage.getItem('esn_cached_role') as UserRole) || 'guest')
+            : 'guest'));
+
+  const isRolePending = Boolean(user && effectiveRole === 'guest');
+  const isAuthenticated = Boolean(user && effectiveRole !== 'guest');
 
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isRolePending && !isAuthenticated) {
       saveRedirectRoute(window.location.hash || '/home');
       if (onUnauthorized) {
         onUnauthorized();
@@ -27,9 +38,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         window.location.hash = '/login';
       }
     }
-  }, [isLoading, isAuthenticated, onUnauthorized, saveRedirectRoute]);
+  }, [isLoading, isRolePending, isAuthenticated, onUnauthorized, saveRedirectRoute]);
 
-  if (isLoading) {
+  if (isLoading || isRolePending) {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center p-6 text-gray-400 font-sans">
         <div className="flex items-center gap-3 bg-[#1E1E1E] px-6 py-4 rounded-2xl border border-gray-800 shadow-xl">
@@ -82,7 +93,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  const isAuthorized = allowedRoles.length === 0 || hasPermission(allowedRoles);
+  const isAuthorized = allowedRoles.length === 0 || hasPermission(allowedRoles) || allowedRoles.includes(effectiveRole);
 
   if (!isAuthorized) {
     return (
@@ -95,7 +106,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <div className="space-y-2">
             <h2 className="text-xl font-black text-white tracking-tight">403 Access Forbidden</h2>
             <p className="text-xs text-gray-400">
-              Your verified role ({role.toUpperCase()}) does not possess sufficient clearance to access this module.
+              Your verified role ({effectiveRole.toUpperCase()}) does not possess sufficient clearance to access this module.
             </p>
           </div>
 

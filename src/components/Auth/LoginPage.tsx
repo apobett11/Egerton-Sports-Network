@@ -34,6 +34,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onCancel }
     }
   }, []);
 
+  // If already authenticated, redirect immediately to the authorized dashboard
+  useEffect(() => {
+    if (user && role !== 'guest') {
+      const savedRoute = getRedirectRoute();
+      const targetHash = savedRoute || getRouteForRole(role);
+      clearRedirectRoute();
+      if (onLoginSuccess) {
+        onLoginSuccess(role.toUpperCase() as AllowedRole);
+      } else {
+        window.location.hash = targetHash;
+      }
+    }
+  }, [user, role, onLoginSuccess, getRedirectRoute, clearRedirectRoute]);
+
   const submitAction = async () => {
     if (!email || !password) {
       const err = 'Please fill in both email and password.';

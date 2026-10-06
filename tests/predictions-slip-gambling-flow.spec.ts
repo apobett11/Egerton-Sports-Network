@@ -2,17 +2,65 @@ import { test, expect } from '@playwright/test';
 
 const DEVICE_ID = 'test-device-uuid-1111-2222-3333-4444';
 
+async function completeMatchday1(page: any) {
+  const matchCards = page.locator('[data-testid^="match-card-"]');
+  await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
+  const count = await matchCards.count();
+
+  // Card 0 is the Derby (Super Eagles vs BCOM).
+  // Inspect squads first to satisfy the gate
+  const squadsBtn = matchCards.first().locator('[data-testid^="squads-btn-"]');
+  if (await squadsBtn.isVisible()) {
+    await squadsBtn.click();
+    const detailsModal = page.locator('[data-testid="prediction-match-details-modal"]');
+    await expect(detailsModal).toBeVisible({ timeout: 5000 });
+    await detailsModal.locator('[data-testid="close-match-details-modal"]').click();
+    await expect(detailsModal).not.toBeVisible();
+  }
+
+  // Pick Derby card
+  const derbyPick = matchCards.first().locator('[data-testid^="pick-1-"]');
+  await derbyPick.click();
+
+  // Dismiss Derby popup
+  const derbyPopup = page.locator('[data-testid="derby-ultimate-popup"]');
+  await expect(derbyPopup).toBeVisible({ timeout: 5000 });
+  const continueBtn = derbyPopup.locator('[data-testid="continue-selecting-btn"]');
+  if (await continueBtn.isVisible()) {
+    await continueBtn.click();
+  } else {
+    await derbyPopup.locator('[data-testid="close-derby-popup"]').click();
+  }
+  await expect(derbyPopup).not.toBeVisible();
+
+  // Dismiss Derby advance notice modal ("You can select all the matches for both matchdays" [OK])
+  const advanceOkBtn = page.locator('[data-testid="derby-advance-ok-btn"]');
+  await expect(advanceOkBtn).toBeVisible({ timeout: 5000 });
+  await advanceOkBtn.click();
+  await expect(advanceOkBtn).not.toBeVisible();
+
+  // Pick remaining cards (1 to count - 1)
+  for (let i = 1; i < count; i++) {
+    const card = matchCards.nth(i);
+    const pickBtn = card.locator('[data-testid^="pick-1-"]');
+    await pickBtn.scrollIntoViewIfNeeded();
+    await pickBtn.click();
+    await page.waitForTimeout(100);
+  }
+}
+
 test.describe('Predictions Slip Gambling Platform Experience', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage to test clean state and set active tab to news
+    // Clear localStorage to test clean state, set active tab to news, accept cookies
     await page.addInitScript((deviceId) => {
       localStorage.clear();
       sessionStorage.setItem('esn_guest_active_tab', 'news');
       localStorage.setItem('esn_device_id', deviceId);
+      localStorage.setItem('esn_cookie_consent', 'accepted');
     }, DEVICE_ID);
   });
 
-  test('default view shows unselected match cards with team names and logos, no onboarding blocker', async ({ page }) => {
+  test('default view shows unselected match cards with team names and logos, no onboarding blocker, and logos linking to team pages', async ({ page }) => {
     await page.goto('/#/news');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
@@ -31,6 +79,10 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     const firstCard = matchCards.first();
     await expect(firstCard.getByText('VS')).toBeVisible();
 
+    // Verify team logos link to team profile pages
+    const teamLinks = firstCard.locator('a[href^="#/team/"]');
+    expect(await teamLinks.count()).toBeGreaterThanOrEqual(2);
+
     const pick1 = firstCard.locator('[data-testid^="pick-1-"]');
     const pickX = firstCard.locator('[data-testid^="pick-X-"]');
     const pick2 = firstCard.locator('[data-testid^="pick-2-"]');
@@ -39,10 +91,95 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     await expect(pickX).toBeVisible();
     await expect(pick2).toBeVisible();
 
-    // Verify unselected (not picked)
-    await expect(pick1).not.toHaveClass(/ring-2/);
-    await expect(pickX).not.toHaveClass(/ring-2/);
-    await expect(pick2).not.toHaveClass(/ring-2/);
+    // Verify unselected (no green highlight class)
+    await expect(pick1).not.toHaveClass(/bg-\[#00b04f\]/);
+    await expect(pickX).not.toHaveClass(/bg-\[#00b04f\]/);
+    await expect(pick2).not.toHaveClass(/bg-\[#00b04f\]/);
+  });
+
+  test('Derby squad inspection gate and pointing tooltip on Matchday 1', async ({ page }) => {
+    await page.goto('/#/news');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
+
+    const matchCards = page.locator('[data-testid^="match-card-"]');
+    await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
+
+    const firstCard = matchCards.first();
+    const pick1 = firstCard.locator('[data-testid^="pick-1-"]');
+
+    // Click Derby pick without inspecting squads first -> tooltip appears
+    await pick1.click();
+    const tooltip = firstCard.locator('[data-testid^="squad-tooltip-"]');
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText(/Don't guess\. Look at the squads\./i);
+
+    // Click Squads button -> opens Match Details Modal defaulting to Squads
+    const squadsBtn = firstCard.locator('[data-testid^="squads-btn-"]');
+    await squadsBtn.click();
+
+    const detailsModal = page.locator('[data-testid="prediction-match-details-modal"]');
+    await expect(detailsModal).toBeVisible();
+    await expect(detailsModal).toContainText(/You can view all about the matches/i);
+
+    // Close modal
+    await detailsModal.locator('[data-testid="close-match-details-modal"]').click();
+    await expect(detailsModal).not.toBeVisible();
+
+    // Now clicking pick1 works because squad inspection gate is satisfied
+    await pick1.click();
+    const derbyPopup = page.locator('[data-testid="derby-ultimate-popup"]');
+    await expect(derbyPopup).toBeVisible({ timeout: 5000 });
+
+    // Dismiss Derby popup
+    const continueBtn = derbyPopup.locator('[data-testid="continue-selecting-btn"]');
+    if (await continueBtn.isVisible()) {
+      await continueBtn.click();
+    } else {
+      await derbyPopup.locator('[data-testid="close-derby-popup"]').click();
+    }
+    await expect(derbyPopup).not.toBeVisible();
+
+    // Dismiss Advance Notice Modal
+    const advanceOkBtn = page.locator('[data-testid="derby-advance-ok-btn"]');
+    await expect(advanceOkBtn).toBeVisible({ timeout: 5000 });
+    await advanceOkBtn.click();
+    await expect(advanceOkBtn).not.toBeVisible();
+
+    // Verify pick1 is now highlighted in solid green
+    await expect(pick1).toHaveClass(/bg-\[#00b04f\]/);
+  });
+
+  test('selection locking gate prevents modifying already picked match', async ({ page }) => {
+    await page.goto('/#/news');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
+
+    const matchCards = page.locator('[data-testid^="match-card-"]');
+    await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
+
+    // Pick non-derby card (card index 1)
+    const card1 = matchCards.nth(1);
+    const pick1 = card1.locator('[data-testid^="pick-1-"]');
+    await pick1.click();
+    await expect(pick1).toHaveClass(/bg-\[#00b04f\]/);
+
+    // Attempt to tap another choice on the same match (pick-2)
+    const pick2 = card1.locator('[data-testid^="pick-2-"]');
+    await pick2.click();
+
+    // Selection lock modal must appear
+    const lockModal = page.locator('[data-testid="selection-lock-modal"]');
+    await expect(lockModal).toBeVisible({ timeout: 5000 });
+    await expect(lockModal).toContainText(/You will get a chance to make another prediction slip\. Finish this first slip first\./i);
+
+    // Dismiss lock modal
+    await lockModal.getByRole('button', { name: /Got it/i }).click();
+    await expect(lockModal).not.toBeVisible();
+
+    // Pick remains locked on pick1
+    await expect(pick1).toHaveClass(/bg-\[#00b04f\]/);
+    await expect(pick2).not.toHaveClass(/bg-\[#00b04f\]/);
   });
 
   test('completing Matchday 1 matches immediately and automatically pops up share dialog with button to go to Matchday 10', async ({ page }) => {
@@ -51,19 +188,7 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(300);
 
-    // Select all matches on the first matchday
-    const matchCards = page.locator('[data-testid^="match-card-"]');
-    await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
-    const count = await matchCards.count();
-    expect(count).toBeGreaterThan(0);
-
-    for (let i = 0; i < count; i++) {
-      const card = matchCards.nth(i);
-      const pickBtn = card.locator('[data-testid^="pick-1-"]');
-      await pickBtn.scrollIntoViewIfNeeded();
-      await pickBtn.click();
-      await page.waitForTimeout(100);
-    }
+    await completeMatchday1(page);
 
     // Share popup must appear automatically and immediately
     const sharePopup = page.locator('[data-testid="share-slip-popup"]');
@@ -79,65 +204,13 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     await expect(sharePopup).not.toBeVisible();
   });
 
-  test('selecting first matchday after completing Matchday 1 shows popup that they can create a second slip and button to go to matchday 10', async ({ page }) => {
-    await page.goto('/#/news');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
-
-    const matchCards = page.locator('[data-testid^="match-card-"]');
-    await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
-    const count = await matchCards.count();
-
-    for (let i = 0; i < count; i++) {
-      const btn = matchCards.nth(i).locator('[data-testid^="pick-1-"]');
-      await btn.scrollIntoViewIfNeeded();
-      await btn.click();
-      await page.waitForTimeout(100);
-    }
-
-    // Share popup appears automatically
-    const sharePopup = page.locator('[data-testid="share-slip-popup"]');
-    await expect(sharePopup).toBeVisible({ timeout: 10000 });
-    const closeBtn = sharePopup.getByRole('button', { name: /Close/i }).first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-    }
-    await expect(sharePopup).not.toBeVisible();
-
-    // Click on Matchday 9 (first matchday) button in the matchday pair switcher
-    const firstMatchdayBtn = page.getByRole('button', { name: /Matchday 9|Matchday 1/i }).first();
-    await firstMatchdayBtn.click();
-
-    // Verify Matchday Advance popup appears
-    const advancePopup = page.locator('[data-testid="matchday-advance-popup"]');
-    await expect(advancePopup).toBeVisible({ timeout: 5000 });
-    await expect(advancePopup).toContainText(/create a second slip/i);
-
-    const advanceBtn = advancePopup.locator('[data-testid="advance-to-matchday-10"]');
-    await expect(advanceBtn).toBeVisible();
-    await expect(advanceBtn).toContainText(/Go to matchday/i);
-
-    // Clicking it navigates to the second matchday
-    await advanceBtn.click();
-    await expect(advancePopup).not.toBeVisible();
-  });
-
-  test('completing both matchdays clears selections and 24h cooldown triggers on attempting second slip', async ({ page }) => {
+  test('completing both matchdays shows final slip modal with dual CTAs, second slip resets cards and 60m cooldown triggers', async ({ page }) => {
     await page.goto('/#/news');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('[data-fixtures-loaded="true"]')).toBeVisible({ timeout: 15000 });
 
     // Complete Matchday 1
-    const matchCardsM1 = page.locator('[data-testid^="match-card-"]');
-    await expect(matchCardsM1.first()).toBeVisible({ timeout: 15000 });
-    const countM1 = await matchCardsM1.count();
-
-    for (let i = 0; i < countM1; i++) {
-      const btn = matchCardsM1.nth(i).locator('[data-testid^="pick-1-"]');
-      await btn.scrollIntoViewIfNeeded();
-      await btn.click();
-      await page.waitForTimeout(100);
-    }
+    await completeMatchday1(page);
 
     // Share popup opens automatically -> Click "Go to matchday ..."
     const sharePopup = page.locator('[data-testid="share-slip-popup"]');
@@ -150,29 +223,68 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     await expect(matchCardsM2.first()).toBeVisible({ timeout: 15000 });
     const countM2 = await matchCardsM2.count();
 
-    for (let i = 0; i < countM2; i++) {
+    // If Matchday 2 has derby, inspect squad if needed
+    const m2SquadsBtn = matchCardsM2.first().locator('[data-testid^="squads-btn-"]');
+    if (await m2SquadsBtn.isVisible()) {
+      await m2SquadsBtn.click();
+      const detailsModal = page.locator('[data-testid="prediction-match-details-modal"]');
+      if (await detailsModal.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await detailsModal.locator('[data-testid="close-match-details-modal"]').click();
+      }
+    }
+
+    const m2DerbyPick = matchCardsM2.first().locator('[data-testid^="pick-2-"]');
+    await m2DerbyPick.click();
+
+    // Dismiss Derby popup/notice if any
+    const m2DerbyPopup = page.locator('[data-testid="derby-ultimate-popup"]');
+    if (await m2DerbyPopup.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const continueBtn = m2DerbyPopup.locator('[data-testid="continue-selecting-btn"]');
+      if (await continueBtn.isVisible()) {
+        await continueBtn.click();
+      } else {
+        await m2DerbyPopup.locator('[data-testid="close-derby-popup"]').click();
+      }
+    }
+    const m2AdvanceOk = page.locator('[data-testid="derby-advance-ok-btn"]');
+    if (await m2AdvanceOk.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await m2AdvanceOk.click();
+    }
+
+    // Pick remaining Matchday 2 matches
+    for (let i = 1; i < countM2; i++) {
       const btn = matchCardsM2.nth(i).locator('[data-testid^="pick-2-"]');
       await btn.scrollIntoViewIfNeeded();
       await btn.click();
       await page.waitForTimeout(100);
     }
 
-    // Both matchdays complete:
-    // 1. Slip is saved
-    // 2. Page returns to default view
-    // 3. Match selections are CLEARED (unselected)
-    await page.waitForTimeout(500);
+    // Both matchdays complete: Final Slip 1 Share Betslip modal opens with dual CTAs
+    const finalSlipPopup = page.locator('[data-testid="share-slip-popup"]');
+    await expect(finalSlipPopup).toBeVisible({ timeout: 10000 });
+
+    const shareBtn = finalSlipPopup.locator('[data-testid="share-betslip-btn"]');
+    const secondSlipBtn = finalSlipPopup.locator('[data-testid="select-second-slip-btn"]');
+
+    await expect(shareBtn).toBeVisible();
+    await expect(secondSlipBtn).toBeVisible();
+    await expect(secondSlipBtn).toContainText(/Select a second slip/i);
+
+    // Click "Select a second slip"
+    await secondSlipBtn.click();
+    await expect(finalSlipPopup).not.toBeVisible();
+
+    // Returns to Matchday 1 with clean unselected cards (0/6 picks)
     const defaultCards = page.locator('[data-testid^="match-card-"]');
     await expect(defaultCards.first()).toBeVisible();
 
-    // Verify unselected
     const firstDefaultPick1 = defaultCards.first().locator('[data-testid^="pick-1-"]');
-    await expect(firstDefaultPick1).not.toHaveClass(/ring-2/);
+    await expect(firstDefaultPick1).not.toHaveClass(/bg-\[#00b04f\]/);
 
-    // 4. Try to click ANY game for second slip immediately:
+    // Try to click any game for second slip immediately:
     await firstDefaultPick1.click();
 
-    // 5. Must get the Fresh Perspective 24-hour cooldown popup!
+    // Must trigger the Fresh Perspective 60-minute cooldown popup
     const freshPerspective = page.locator('[data-testid="fresh-perspective-popup"]');
     await expect(freshPerspective).toBeVisible({ timeout: 5000 });
     await expect(freshPerspective).toContainText(/you need a fresh perspective, you have to wait just a little☺️/i);
@@ -181,19 +293,20 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     // Verify live countdown timer is visible
     const timer = freshPerspective.locator('[data-testid="cooldown-timer"]');
     await expect(timer).toBeVisible();
-    await expect(timer).toContainText(/23h|24h/);
+    await expect(timer).toContainText(/59m|00h|01h/);
 
     // Dismiss popup
     await freshPerspective.getByRole('button', { name: /Got it/i }).click();
     await expect(freshPerspective).not.toBeVisible();
   });
 
-  test('when 24 hours have passed, user can make second slip, and third slip also enforces 24h cooldown', async ({ page }) => {
-    // Inject state where Slip 1 was completed 25 hours ago
+  test('when 60 minutes have passed, user can make second slip', async ({ page }) => {
+    // Inject state where Slip 1 was completed 65 minutes ago (past 60m cooldown)
     await page.addInitScript((deviceId) => {
-      const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+      const pastDate = new Date(Date.now() - 65 * 60 * 1000).toISOString();
       sessionStorage.setItem('esn_guest_active_tab', 'news');
       localStorage.setItem('esn_device_id', deviceId);
+      localStorage.setItem('esn_cookie_consent', 'accepted');
       localStorage.setItem('esn_prediction_dash_v1', JSON.stringify({
         deviceId,
         favouriteTeam: null,
@@ -228,14 +341,14 @@ test.describe('Predictions Slip Gambling Platform Experience', () => {
     const matchCards = page.locator('[data-testid^="match-card-"]');
     await expect(matchCards.first()).toBeVisible({ timeout: 15000 });
 
-    // Since 25 hours passed, user CAN make a selection for second slip!
-    const pick1 = matchCards.first().locator('[data-testid^="pick-1-"]');
+    // Pick non-derby card (index 1) to test selection directly without derby squad modal
+    const pick1 = matchCards.nth(1).locator('[data-testid^="pick-1-"]');
     await pick1.click();
 
     // Verify Fresh Perspective popup did NOT show
     await expect(page.locator('[data-testid="fresh-perspective-popup"]')).toHaveCount(0);
 
-    // Verify pick was selected!
-    await expect(pick1).toHaveClass(/ring-2/);
+    // Verify pick was selected in solid green!
+    await expect(pick1).toHaveClass(/bg-\[#00b04f\]/);
   });
 });

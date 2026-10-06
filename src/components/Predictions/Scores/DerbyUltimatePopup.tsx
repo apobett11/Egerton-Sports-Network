@@ -71,7 +71,10 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-36 z-40 flex items-center justify-center p-3 sm:p-4 glassmorphic-backdrop">
+    <div
+      data-testid="derby-ultimate-popup"
+      className="fixed inset-x-0 bottom-0 top-36 z-40 flex items-center justify-center p-3 sm:p-4 glassmorphic-backdrop"
+    >
       <div className="relative w-full max-w-lg rounded-3xl glassmorphic-derby p-5 sm:p-6 text-white tactical-modal-shadow max-h-full overflow-y-auto font-sans">
         {/* Ambient Lights */}
         <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-[#ff0046]/25 blur-3xl pointer-events-none" />
@@ -81,6 +84,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
         <button
           type="button"
           onClick={onClose}
+          data-testid="close-derby-popup"
           className="absolute right-3.5 top-3.5 rounded-full p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer z-10"
           aria-label="Close"
         >
@@ -98,7 +102,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
             </span>
             <div>
               <p className="text-sm font-semibold leading-snug text-white">
-                Thanks fanatic, you chose {selectedTeamName} alongside {otherFans.toLocaleString()} others.
+                You chose {selectedTeamName} alongside {otherFans.toLocaleString()} others.
               </p>
               <span className="text-[11px] text-slate-400 font-mono">
                 {formatKickoffTime(match.scheduledTime)} • {match.venue}
@@ -187,6 +191,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
                 if (onContinueSelecting) onContinueSelecting();
                 else onClose();
               }}
+              data-testid="continue-selecting-btn"
               className="flex-1 min-h-[46px] px-2 rounded-2xl bg-white text-[#081018] font-semibold text-[11px] sm:text-xs leading-tight text-center transition-all cursor-pointer hover:bg-slate-100 active:scale-[0.98] shadow-md"
             >
               Select other games

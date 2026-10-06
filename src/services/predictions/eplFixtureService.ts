@@ -36,20 +36,21 @@ function slateKickoff(weekday: number, hour: number, extraDays = 0): string {
 // Reliable fallback fixtures matching actual EgerScore EPL database teams.
 // Matchday 7 is the next Saturday slate. Matchday 8 is the Sunday after it.
 export const FALLBACK_EPL_FIXTURES: Match[] = [
+  // ================= MATCHDAY 7 (Saturday Slate - Matchday 1) =================
   {
-    id: 'f0000000-0000-4000-8000-000000000002',
+    id: 'f0000000-0000-4000-8000-000000000001',
     competitionId: EPL_COMPETITION_ID,
     league: 'EPL',
     matchday: 7,
-    scheduledTime: slateKickoff(6, 15),
+    scheduledTime: slateKickoff(6, 14),
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
-    venue: 'Pitch A — Main Stadium Pitch',
+    venue: 'Pitch A — Main Stadium Pitch (Super Clash)',
     homeTeam: {
-      id: '10000000-0000-4000-8000-000000000003',
-      name: 'Santos FC',
-      shortName: 'SAN',
+      id: '10000000-0000-4000-8000-000000000011',
+      name: 'Super Eagles',
+      shortName: 'SPE',
       logoUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80',
       colorCode: '#00b04f'
     },
@@ -60,25 +61,52 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       logoUrl: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=120&auto=format&fit=crop&q=80',
       colorCode: '#ff0046'
     },
-    isDerby: false,
+    isDerby: true, // PERMANENT DERBY MATCH FOR MATCHDAY 1
     squads: {
-      homeFormation: '4-3-3 High Press',
+      homeFormation: '4-3-3 High Press Attack',
       awayFormation: '4-2-3-1 Counter Attack',
       homeKeyPlayers: [
-        { name: 'M. Ochieng', position: 'FWD', number: 9, isKeyPlayer: true },
-        { name: 'K. Otieno (C)', position: 'MID', number: 8, isKeyPlayer: true },
+        { name: 'M. Ochieng (C)', position: 'FWD', number: 9, isKeyPlayer: true },
+        { name: 'K. Otieno', position: 'MID', number: 8, isKeyPlayer: true },
         { name: 'B. Kimani', position: 'DEF', number: 4, isKeyPlayer: false },
         { name: 'S. Njoroge', position: 'GK', number: 1, isKeyPlayer: false }
       ],
       awayKeyPlayers: [
         { name: 'D. Kiprono', position: 'FWD', number: 10, isKeyPlayer: true },
-        { name: 'S. Mwangi', position: 'MID', number: 7, isKeyPlayer: true },
+        { name: 'S. Mwangi (C)', position: 'MID', number: 7, isKeyPlayer: true },
         { name: 'J. Kariuki', position: 'DEF', number: 5, isKeyPlayer: false },
         { name: 'P. Mutua', position: 'GK', number: 1, isKeyPlayer: false }
       ],
-      homeInjuries: ['A. Omondi (Ankle - Out)'],
+      homeInjuries: ['None — Full Squad Fit'],
       awayInjuries: ['F. Barasa (Hamstring - 50%)']
     }
+  },
+  {
+    id: 'f0000000-0000-4000-8000-000000000002',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 7,
+    scheduledTime: slateKickoff(6, 15),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch B — Pavilion Grounds',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000003',
+      name: 'Santos FC',
+      shortName: 'SAN',
+      logoUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#00b04f'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000006',
+      name: 'Mighty Blacks',
+      shortName: 'MBL',
+      logoUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#ff9800'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Santos FC', 'Mighty Blacks')
   },
   {
     id: 'f0000000-0000-4000-8000-000000000003',
@@ -89,7 +117,7 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
-    venue: 'Pitch B — Pavilion Grounds',
+    venue: 'Pitch C — Complex Turf',
     homeTeam: {
       id: '10000000-0000-4000-8000-000000000005',
       name: 'Blue Blazers',
@@ -98,24 +126,25 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       colorCode: '#1565c0'
     },
     awayTeam: {
-      id: '10000000-0000-4000-8000-000000000006',
-      name: 'Mighty Blacks',
-      shortName: 'MBL',
-      logoUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=120&auto=format&fit=crop&q=80',
-      colorCode: '#ff9800'
+      id: '10000000-0000-4000-8000-000000000008',
+      name: 'Law FC',
+      shortName: 'LAW',
+      logoUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#d32f2f'
     },
-    isDerby: false
+    isDerby: false,
+    squads: generateSquadInfo('Blue Blazers', 'Law FC')
   },
   {
     id: 'f0000000-0000-4000-8000-000000000004',
     competitionId: EPL_COMPETITION_ID,
     league: 'EPL',
     matchday: 7,
-    scheduledTime: slateKickoff(6, 19),
+    scheduledTime: slateKickoff(6, 18),
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
-    venue: 'Pitch C — Complex Turf',
+    venue: 'Pitch A — Main Stadium Pitch',
     homeTeam: {
       id: '10000000-0000-4000-8000-000000000007',
       name: 'FASS Elites',
@@ -124,24 +153,25 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       colorCode: '#c2185b'
     },
     awayTeam: {
-      id: '10000000-0000-4000-8000-000000000008',
-      name: 'Law FC',
-      shortName: 'LAW',
-      logoUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=120&auto=format&fit=crop&q=80',
-      colorCode: '#d32f2f'
+      id: '10000000-0000-4000-8000-000000000010',
+      name: 'Spartans United',
+      shortName: 'SPA',
+      logoUrl: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#00b04f'
     },
-    isDerby: false
+    isDerby: false,
+    squads: generateSquadInfo('FASS Elites', 'Spartans United')
   },
   {
     id: 'f0000000-0000-4000-8000-000000000005',
     competitionId: EPL_COMPETITION_ID,
     league: 'EPL',
     matchday: 7,
-    scheduledTime: slateKickoff(6, 20),
+    scheduledTime: slateKickoff(6, 19),
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
-    venue: 'Pitch A — Main Stadium Pitch (Super Clash)',
+    venue: 'Pitch B — Pavilion Grounds',
     homeTeam: {
       id: '10000000-0000-4000-8000-000000000009',
       name: 'Legends FC',
@@ -150,43 +180,54 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       colorCode: '#ff0046'
     },
     awayTeam: {
-      id: '10000000-0000-4000-8000-000000000010',
-      name: 'Spartans United',
-      shortName: 'SPA',
-      logoUrl: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=120&auto=format&fit=crop&q=80',
+      id: '10000000-0000-4000-8000-000000000012',
+      name: 'Celtics FC',
+      shortName: 'CEL',
+      logoUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80',
       colorCode: '#00b04f'
     },
-    isDerby: true, // DESIGNATED MATCHDAY CLIMAX / DERBY
-    squads: {
-      homeFormation: '4-3-3 High Press Attack',
-      awayFormation: '3-4-3 Wide Counter',
-      homeKeyPlayers: [
-        { name: 'J. Maina', position: 'FWD', number: 10, isKeyPlayer: true },
-        { name: 'P. Korir (C)', position: 'MID', number: 8, isKeyPlayer: true },
-        { name: 'S. Ndung\'u', position: 'DEF', number: 4, isKeyPlayer: false },
-        { name: 'K. Chege', position: 'GK', number: 1, isKeyPlayer: false }
-      ],
-      awayKeyPlayers: [
-        { name: 'K. Rotich', position: 'FWD', number: 9, isKeyPlayer: true },
-        { name: 'D. Omondi', position: 'MID', number: 6, isKeyPlayer: true },
-        { name: 'E. Kibet (Wall)', position: 'GK', number: 1, isKeyPlayer: true },
-        { name: 'M. Wambua', position: 'DEF', number: 5, isKeyPlayer: false }
-      ],
-      homeInjuries: ['None — Full Squad Fit'],
-      awayInjuries: ['B. Ngetich (Suspension - 1 Match)']
-    }
+    isDerby: false,
+    squads: generateSquadInfo('Legends FC', 'Celtics FC')
   },
-  // MATCHDAY 8 (Next Matchday preview)
+  {
+    id: 'f0000000-0000-4000-8000-000000000006',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 7,
+    scheduledTime: slateKickoff(6, 20),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch C — Complex Turf',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000013',
+      name: 'Giants FC',
+      shortName: 'GNT',
+      logoUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#ff9800'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000014',
+      name: 'Wazito FC',
+      shortName: 'WAZ',
+      logoUrl: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#1565c0'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Giants FC', 'Wazito FC')
+  },
+
+  // ================= MATCHDAY 8 (Sunday Slate - Matchday 2) =================
   {
     id: 'f0000000-0000-4000-8000-000000000011',
     competitionId: EPL_COMPETITION_ID,
     league: 'EPL',
     matchday: 8,
-    scheduledTime: slateKickoff(6, 15, 1),
+    scheduledTime: slateKickoff(6, 14, 1),
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
-    venue: 'Pitch A — Main Stadium Pitch',
+    venue: 'Pitch A — Main Stadium Pitch (Super Clash)',
     homeTeam: {
       id: '10000000-0000-4000-8000-000000000004',
       name: 'BCOM FC',
@@ -201,14 +242,15 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       logoUrl: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=120&auto=format&fit=crop&q=80',
       colorCode: '#00b04f'
     },
-    isDerby: false
+    isDerby: true, // MARQUEE DERBY FOR MATCHDAY 2
+    squads: generateSquadInfo('BCOM FC', 'Legends FC')
   },
   {
     id: 'f0000000-0000-4000-8000-000000000012',
     competitionId: EPL_COMPETITION_ID,
     league: 'EPL',
     matchday: 8,
-    scheduledTime: slateKickoff(6, 17, 1),
+    scheduledTime: slateKickoff(6, 15, 1),
     status: 'UPCOMING',
     scoreHome: 0,
     scoreAway: 0,
@@ -227,7 +269,116 @@ export const FALLBACK_EPL_FIXTURES: Match[] = [
       logoUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=120&auto=format&fit=crop&q=80',
       colorCode: '#1565c0'
     },
-    isDerby: true
+    isDerby: false,
+    squads: generateSquadInfo('Santos FC', 'Blue Blazers')
+  },
+  {
+    id: 'f0000000-0000-4000-8000-000000000013',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 8,
+    scheduledTime: slateKickoff(6, 17, 1),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch C — Complex Turf',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000011',
+      name: 'Super Eagles',
+      shortName: 'SPE',
+      logoUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#00b04f'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000010',
+      name: 'Spartans United',
+      shortName: 'SPA',
+      logoUrl: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#00b04f'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Super Eagles', 'Spartans United')
+  },
+  {
+    id: 'f0000000-0000-4000-8000-000000000014',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 8,
+    scheduledTime: slateKickoff(6, 18, 1),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch A — Main Stadium Pitch',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000006',
+      name: 'Mighty Blacks',
+      shortName: 'MBL',
+      logoUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#ff9800'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000007',
+      name: 'FASS Elites',
+      shortName: 'FAS',
+      logoUrl: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#c2185b'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Mighty Blacks', 'FASS Elites')
+  },
+  {
+    id: 'f0000000-0000-4000-8000-000000000015',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 8,
+    scheduledTime: slateKickoff(6, 19, 1),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch B — Pavilion Grounds',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000008',
+      name: 'Law FC',
+      shortName: 'LAW',
+      logoUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#d32f2f'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000013',
+      name: 'Giants FC',
+      shortName: 'GNT',
+      logoUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#ff9800'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Law FC', 'Giants FC')
+  },
+  {
+    id: 'f0000000-0000-4000-8000-000000000016',
+    competitionId: EPL_COMPETITION_ID,
+    league: 'EPL',
+    matchday: 8,
+    scheduledTime: slateKickoff(6, 20, 1),
+    status: 'UPCOMING',
+    scoreHome: 0,
+    scoreAway: 0,
+    venue: 'Pitch C — Complex Turf',
+    homeTeam: {
+      id: '10000000-0000-4000-8000-000000000012',
+      name: 'Celtics FC',
+      shortName: 'CEL',
+      logoUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#00b04f'
+    },
+    awayTeam: {
+      id: '10000000-0000-4000-8000-000000000014',
+      name: 'Wazito FC',
+      shortName: 'WAZ',
+      logoUrl: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=120&auto=format&fit=crop&q=80',
+      colorCode: '#1565c0'
+    },
+    isDerby: false,
+    squads: generateSquadInfo('Celtics FC', 'Wazito FC')
   }
 ];
 

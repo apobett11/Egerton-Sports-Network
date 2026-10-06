@@ -1,17 +1,24 @@
-import React from 'react';
-import { Shield, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Clock, Users } from 'lucide-react';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { dayLabel } from '../../../lib/predictions/weekendSlate';
-import type { Match, PredictionOption, Team } from '../../../types/predictions';
+import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
+import type { Match, PredictionOption, Team, ConsensusData } from '../../../types/predictions';
+
+export const nameToSlug = (name: string): string =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
 interface PredictionSlipFlowProps {
   teams?: Team[];
   queue: Match[];
   favouriteTeam?: string | null;
   userPredictions?: Map<string, PredictionOption>;
+  consensusMap?: Map<string, ConsensusData>;
   pickedIds?: Set<string>;
+  inspectedSquadIds?: Set<string>;
   onSelectTeam?: (teamName: string, team?: Team) => void;
   onPick: (match: Match, option: PredictionOption) => void;
+  onOpenSquads?: (match: Match) => void;
 }
 
 type PickChoice = { id: PredictionOption; label: string };
@@ -25,51 +32,113 @@ const PICKS: PickChoice[] = [
 export function MatchPickCard({
   match,
   userSelection,
+  consensus,
+  isSquadInspected,
+  onOpenSquads,
   onPick,
 }: {
   match: Match;
   userSelection?: PredictionOption | null;
+  consensus?: ConsensusData;
+  isSquadInspected?: boolean;
+  onOpenSquads?: () => void;
   onPick: (option: PredictionOption) => void;
 }) {
   const home = formatTeamName(match.homeTeam.name);
   const away = formatTeamName(match.awayTeam.name);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const stats = showVotesForConsensus(consensus, match.id, userSelection || undefined);
+
+  const handlePickAttempt = (option: PredictionOption) => {
+    // Squad inspection gate: Derby match requires viewing squads first
+    if (match.isDerby && !isSquadInspected) {
+      setShowTooltip(true);
+      return;
+    }
+    setShowTooltip(false);
+    onPick(option);
+  };
+
+  const handleSquadsClick = () => {
+    setShowTooltip(false);
+    if (onOpenSquads) {
+      onOpenSquads();
+    }
+  };
 
   return (
     <div
-      className="rounded-xl border border-[#1a2e45] bg-[#0e1c2b] p-2.5 sm:p-3 font-sans shadow-md transition-all hover:border-[#2a4565] max-w-full"
+      className="relative rounded-xl border border-[#1a2e45] bg-[#0e1c2b] p-2.5 sm:p-3 font-sans shadow-md transition-all hover:border-[#2a4565] max-w-full"
       data-testid={`match-card-${match.id}`}
     >
-      {/* Header: Day/Derby Badge & Kickoff */}
+      {/* Header: Day/Derby Badge, Squads Button, & Kickoff */}
       <div className="flex items-center justify-between border-b border-[#14263b] pb-1.5 text-[10px] sm:text-[11px] font-medium text-slate-400">
         <span className="flex items-center gap-1.5 uppercase tracking-wider font-bold text-slate-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#ff0046]" />
+          <span className={`h-1.5 w-1.5 rounded-full ${match.isDerby ? 'bg-[#00b04f]' : 'bg-[#ff0046]'}`} />
           {match.isDerby ? 'DERBY MATCH' : dayLabel(match)}
         </span>
-        <span className="font-mono text-slate-300 flex items-center gap-1">
-          <Clock className="h-3 w-3 text-slate-400" />
-          {formatKickoffTime(match.scheduledTime)}
-        </span>
+
+        <div className="flex items-center gap-2">
+          {/* Squads Button with Directional Tooltip */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleSquadsClick}
+              data-testid={`squads-btn-${match.id}`}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#14263b] hover:bg-[#1f3856] text-white text-[10px] font-bold border border-[#223b56] transition-colors cursor-pointer"
+            >
+              <Users className="w-3 h-3 text-[#00b04f]" />
+              <span>Squads</span>
+            </button>
+
+            {/* Contextual Directional Tooltip pointing down at the squads button */}
+            {showTooltip && (
+              <div
+                data-testid={`squad-tooltip-${match.id}`}
+                className="absolute -top-11 right-0 z-50 flex flex-col items-end pointer-events-none animate-bounce"
+                style={{ minWidth: '220px' }}
+              >
+                <div className="bg-[#0e1c2b] text-white border-2 border-[#00b04f] shadow-[0_4px_16px_rgba(0,176,79,0.5)] px-2.5 py-1 rounded-lg text-[11px] font-black tracking-tight whitespace-nowrap">
+                  Don&apos;t guess. Look at the squads.
+                </div>
+                <div className="mr-4 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-[#00b04f]" />
+              </div>
+            )}
+          </div>
+
+          <span className="font-mono text-slate-300 flex items-center gap-1">
+            <Clock className="h-3 w-3 text-slate-400" />
+            {formatKickoffTime(match.scheduledTime)}
+          </span>
+        </div>
       </div>
 
-      {/* Teams Display with Logos and Names */}
+      {/* Teams Display with Logos Linking to Team Profiles */}
       <div className="my-2 grid grid-cols-7 items-center gap-1.5 sm:gap-2">
         {/* Home Team */}
         <div className="col-span-3 flex flex-col items-center text-center min-w-0">
-          <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
-            {match.homeTeam.logoUrl ? (
-              <img
-                src={match.homeTeam.logoUrl}
-                alt={home}
-                className="h-full w-full object-cover rounded-full"
-                loading="lazy"
-              />
-            ) : (
-              <Shield className="h-full w-full text-slate-500" />
-            )}
-          </div>
-          <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight" title={home}>
-            {home}
-          </span>
+          <a
+            href={`#/team/${nameToSlug(match.homeTeam.name)}`}
+            className="cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center text-center min-w-0"
+            title={`View ${home} profile`}
+          >
+            <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
+              {match.homeTeam.logoUrl ? (
+                <img
+                  src={match.homeTeam.logoUrl}
+                  alt={home}
+                  className="h-full w-full object-cover rounded-full"
+                  loading="lazy"
+                />
+              ) : (
+                <Shield className="h-full w-full text-slate-500" />
+              )}
+            </div>
+            <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight hover:text-[#00b04f] transition-colors" title={home}>
+              {home}
+            </span>
+          </a>
           <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
             Home
           </span>
@@ -77,51 +146,61 @@ export function MatchPickCard({
 
         {/* Center VS */}
         <div className="col-span-1 flex flex-col items-center justify-center">
-          <span className="text-[11px] font-black tracking-widest text-[#ff0046]">VS</span>
+          <span className="text-[11px] font-black tracking-widest text-[#00b04f]">VS</span>
         </div>
 
         {/* Away Team */}
         <div className="col-span-3 flex flex-col items-center text-center min-w-0">
-          <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
-            {match.awayTeam.logoUrl ? (
-              <img
-                src={match.awayTeam.logoUrl}
-                alt={away}
-                className="h-full w-full object-cover rounded-full"
-                loading="lazy"
-              />
-            ) : (
-              <Shield className="h-full w-full text-slate-500" />
-            )}
-          </div>
-          <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight" title={away}>
-            {away}
-          </span>
+          <a
+            href={`#/team/${nameToSlug(match.awayTeam.name)}`}
+            className="cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center text-center min-w-0"
+            title={`View ${away} profile`}
+          >
+            <div className="relative mb-1 h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-slate-700/60 bg-[#081018] p-0.5 shadow-sm">
+              {match.awayTeam.logoUrl ? (
+                <img
+                  src={match.awayTeam.logoUrl}
+                  alt={away}
+                  className="h-full w-full object-cover rounded-full"
+                  loading="lazy"
+                />
+              ) : (
+                <Shield className="h-full w-full text-slate-500" />
+              )}
+            </div>
+            <span className="text-[11px] sm:text-xs font-black tracking-tight text-white truncate max-w-[110px] sm:max-w-none leading-tight hover:text-[#00b04f] transition-colors" title={away}>
+              {away}
+            </span>
+          </a>
           <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
             Away
           </span>
         </div>
       </div>
 
-      {/* 1 / X / 2 Betting Odds / Pick Buttons */}
+      {/* 1 / X / 2 Betting Odds / Pick Buttons: Solid Green (#00b04f) & Community %s */}
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5">
         {PICKS.map((pick) => {
           const isSelected = userSelection === pick.id;
+          const pct = pick.id === '1' ? stats.homePct : pick.id === 'X' ? stats.drawPct : stats.awayPct;
           return (
             <button
               key={pick.id}
               type="button"
-              onClick={() => onPick(pick.id)}
+              onClick={() => handlePickAttempt(pick.id)}
               data-testid={`pick-${pick.id}-${match.id}`}
               className={`flex min-h-[38px] sm:min-h-[42px] min-w-0 flex-col items-center justify-center rounded-lg border py-1 px-1 text-xs font-bold transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-[#ff0046] border-[#ff0046] text-white shadow-[0_0_12px_rgba(255,0,70,0.35)] ring-2 ring-[#ff0046]/40'
-                  : 'bg-[#0a1624] border-slate-700/80 text-slate-200 hover:border-[#ff0046]/60 hover:bg-[#122236]'
+                  ? 'bg-[#00b04f] border-[#00b04f] text-white shadow-[0_0_12px_rgba(0,176,79,0.35)] ring-2 ring-[#00b04f]/40'
+                  : 'bg-[#0a1624] border-slate-700/80 text-slate-200 hover:border-[#00b04f]/60 hover:bg-[#122236]'
               }`}
             >
               <span className="text-xs sm:text-sm font-black leading-tight flex items-center gap-1">
                 {pick.id}
-                {isSelected && <span className="text-[9px]">✓</span>}
+                {isSelected && <span className="text-[10px]">✓</span>}
+                <span className={`text-[10px] font-mono font-normal ${isSelected ? 'text-white/90' : 'text-slate-400'}`}>
+                  • {pct}%
+                </span>
               </span>
               <span className={`text-[9px] uppercase font-semibold tracking-wider ${isSelected ? 'text-white' : 'text-slate-400'}`}>
                 {pick.label}
@@ -137,14 +216,26 @@ export function MatchPickCard({
 export function DerbyPickPopup({
   match,
   onPick,
+  onOpenSquads,
+  isSquadInspected,
+  consensus,
 }: {
   match: Match;
   onPick: (option: PredictionOption) => void;
+  onOpenSquads?: () => void;
+  isSquadInspected?: boolean;
+  consensus?: ConsensusData;
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 top-36 z-30 flex items-start justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
-        <MatchPickCard match={{ ...match, isDerby: true }} onPick={onPick} />
+        <MatchPickCard
+          match={{ ...match, isDerby: true }}
+          onPick={onPick}
+          onOpenSquads={onOpenSquads}
+          isSquadInspected={isSquadInspected}
+          consensus={consensus}
+        />
       </div>
     </div>
   );
@@ -153,7 +244,10 @@ export function DerbyPickPopup({
 export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
   queue,
   userPredictions,
+  consensusMap,
+  inspectedSquadIds = new Set(),
   onPick,
+  onOpenSquads,
 }) => {
   if (queue.length === 0) {
     return (
@@ -171,6 +265,9 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
           key={match.id}
           match={match}
           userSelection={userPredictions?.get(match.id) ?? null}
+          consensus={consensusMap?.get(match.id)}
+          isSquadInspected={inspectedSquadIds.has(match.id)}
+          onOpenSquads={onOpenSquads ? () => onOpenSquads(match) : undefined}
           onPick={(option) => onPick(match, option)}
         />
       ))}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Shield, Activity, AlertTriangle, Users, Star } from 'lucide-react';
 import type { Match, PredictionOption } from '../../../types/predictions';
+import { MonetagTopRightAd } from '../../ads/MonetagTopRightAd';
 
 interface GameSquadsModalProps {
   match: Match;
@@ -17,6 +18,7 @@ export const GameSquadsModal: React.FC<GameSquadsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-sm animate-fadeIn">
+      <MonetagTopRightAd />
       <div className="relative w-full max-w-lg rounded-2xl border border-slate-700/80 bg-[#0b1622] p-5 text-white tactical-modal-shadow max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button

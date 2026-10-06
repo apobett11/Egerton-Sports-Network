@@ -13,7 +13,7 @@ export interface DeviceSlip {
   completedAt?: string | null;
 }
 
-export const SLIP_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const SLIP_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes (1 hour)
 
 export interface PickStats {
   selected: number;

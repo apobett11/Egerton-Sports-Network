@@ -437,9 +437,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(Date.now()));
         } catch {}
 
+        const cachedRole = localStorage.getItem(STORAGE_KEY_CACHED_ROLE) as UserRole | null;
+        if (cachedRole && cachedRole !== 'guest') {
+          setRole(cachedRole);
+        }
+
         // Only re-fetch profile if we don't already have it for this user
         setProfile((prevProfile) => {
           if (!prevProfile || prevProfile.id !== currentSession.user.id) {
+            const cachedProfStr = localStorage.getItem(STORAGE_KEY_CACHED_PROFILE);
+            if (cachedProfStr) {
+              try {
+                const cachedProf = JSON.parse(cachedProfStr);
+                if (cachedProf && cachedProf.id === currentSession.user.id) {
+                  if (cachedProf.role && cachedProf.role !== 'guest') {
+                    setRole(cachedProf.role);
+                  }
+                  return cachedProf;
+                }
+              } catch {}
+            }
             fetchProfile(currentSession.user.id).then((p) => {
               if (p?.bio?.includes('[SUSPENDED]')) {
                 supabase.auth.signOut();

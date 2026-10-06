@@ -3,6 +3,7 @@ import { X, MessageCircle } from 'lucide-react';
 import { formatTeamName } from '../../../lib/predictions/utils';
 import { shareService } from '../../../services/predictions/shareService';
 import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
+import { MonetagTopRightAd } from '../../ads/MonetagTopRightAd';
 import type { ConsensusIQResult, Match, UserPrediction, ConsensusData, PredictionOption } from '../../../types/predictions';
 
 interface MatchdayCompletionModalProps {
@@ -67,6 +68,7 @@ export const MatchdayCompletionModal: React.FC<MatchdayCompletionModalProps> = (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md">
+      <MonetagTopRightAd />
       <div className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-gradient-to-b from-[#0e1d2e] via-[#091420] to-[#07101a] p-4 sm:p-5 text-white tactical-modal-shadow max-h-[90vh] flex flex-col overflow-hidden">
         {/* Ambient Lights */}
         <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-[#00b04f]/15 blur-3xl pointer-events-none" />

@@ -24,13 +24,15 @@ interface MatchDetailsContainerProps {
     onBack: () => void;
     favorites: string[];
     toggleFavorite: (matchId: string) => void;
+    initialTab?: MatchDetailTabType;
 }
 
 export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     match,
     onBack,
     favorites,
-    toggleFavorite
+    toggleFavorite,
+    initialTab
 }) => {
     const isBegunOrPlayed = (status?: string) => {
         if (!status) return false;
@@ -57,6 +59,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
     });
     const [sectionLoading, setSectionLoading] = useState(() => !guestCache.getStale<Match>('match_details', match.id));
     const [activeTab, setActiveTab] = useState<MatchDetailTabType>(() => {
+        if (initialTab) return initialTab;
         return isBegunOrPlayed(match.status) ? 'timeline' : 'details';
     });
 

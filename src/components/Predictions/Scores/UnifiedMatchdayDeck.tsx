@@ -105,13 +105,9 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
       <div className="rounded-xl sm:rounded-2xl border border-slate-700/80 bg-[#070e18] p-3 sm:p-3.5 space-y-3 shadow-xl">
         <div ref={matchListRef} className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800/80 text-xs font-bold text-slate-400">
           <div className="min-w-0">
-            <h1 className="text-white text-sm font-black">
-              Hello fanatic, how much do you know your teams?
-            </h1>
-            <p className="mt-1 text-[11px] font-normal leading-snug text-orange-400">
-              NB: the votes are based on fans of the displayed teams. This is meant for fun, and football fanatics to show how much they love football, how much they know their clubs😉.
-              No currency is involved. No hate. just football⚽🔥
-            </p>
+            <h2 className="text-white text-sm font-black uppercase tracking-wider">
+              Matchday Predictions
+            </h2>
           </div>
           <button
             type="button"

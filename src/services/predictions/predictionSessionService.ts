@@ -28,11 +28,11 @@ class PredictionSessionService {
       const next = patchDashboardCache({
         favouriteTeam,
         favouriteTeamId: typeof row.favorite_team_id === 'string' ? row.favorite_team_id : null,
-        fanaticAnswered: Boolean(row.fanatic_answered || favouriteTeam),
-        footballFanatic: row.football_fanatic === 'yes' || row.football_fanatic === 'no' ? row.football_fanatic : null,
-        step: row.step === 'club' || row.step === 'derby' || row.step === 'picks' || row.step === 'dashboard' || row.step === 'fanatic'
+        fanaticAnswered: true,
+        footballFanatic: null,
+        step: row.step === 'club' || row.step === 'derby' || row.step === 'picks' || row.step === 'dashboard'
           ? row.step
-          : favouriteTeam ? 'picks' : 'fanatic',
+          : favouriteTeam ? 'picks' : 'club',
         slipListOpen: Boolean(row.slip_list_open),
         activeDayKey: asDate(row.active_day_key),
         lockedSaturday: asDate(row.locked_saturday),
@@ -61,8 +61,8 @@ class PredictionSessionService {
         p_secret: creds.secret,
         p_favorite_team_id: cached.favouriteTeamId,
         p_favorite_team_label: cached.favouriteTeam,
-        p_fanatic_answered: cached.fanaticAnswered,
-        p_football_fanatic: cached.footballFanatic,
+        p_fanatic_answered: true,
+        p_football_fanatic: null,
         p_step: cached.step,
         p_slip_list_open: cached.slipListOpen,
         p_active_day_key: cached.activeDayKey,

@@ -6,6 +6,7 @@ import { matchClosed, slipResult, slipTick } from '../../../lib/predictions/voti
 import { matchDayKey } from '../../../lib/predictions/weekendSlate';
 import { shareService } from '../../../services/predictions/shareService';
 import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
+import { MonetagTopRightAd } from '../../ads/MonetagTopRightAd';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface PredictionSlipsModalProps {
@@ -158,11 +159,13 @@ export function ShareSlipPopup({
   isFirst,
   inviteOnly = false,
   nextMatchday,
+  isFinalSlip = false,
   onClose,
   onShare,
   onSeeNext,
   onSeeArticles,
   onSeeBanter,
+  onSelectSecondSlip,
 }: {
   matchday: number;
   matches: Match[];
@@ -170,20 +173,25 @@ export function ShareSlipPopup({
   isFirst: boolean;
   inviteOnly?: boolean;
   nextMatchday?: number;
+  isFinalSlip?: boolean;
   onClose: () => void;
   onShare: () => void;
   onSeeNext?: () => void;
   onSeeArticles?: () => void;
   onSeeBanter?: () => void;
+  onSelectSecondSlip?: () => void;
 }) {
   const result = slipResult(matches, (id) => picks.get(id));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2.5 sm:p-4 backdrop-blur-md animate-fadeIn" data-testid="share-slip-popup">
+      <MonetagTopRightAd />
       <div className="relative flex max-h-[85dvh] w-full max-w-sm sm:max-w-md flex-col overflow-hidden rounded-2xl border border-[#1a2e45] bg-[#0e1c2b] text-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#1a2e45] px-3.5 py-2.5 bg-[#0a1624]">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-[#00b04f]">Share slip</p>
-            <h2 className="text-xs sm:text-sm font-black">{inviteOnly ? 'Invite others' : `Matchday ${matchday}`}</h2>
+            <p className="text-[9px] font-black uppercase tracking-widest text-[#00b04f]">
+              {isFinalSlip ? 'Betslip Completed' : 'Share slip'}
+            </p>
+            <h2 className="text-xs sm:text-sm font-black">{inviteOnly ? 'Invite others' : isFinalSlip ? 'Full Weekend Slip' : `Matchday ${matchday}`}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-slate-400 hover:bg-[#14263b] hover:text-white cursor-pointer">
             <X className="h-4 w-4" />
@@ -227,35 +235,65 @@ export function ShareSlipPopup({
                   ) : isLost ? (
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-[#ff0046]/20 border border-[#ff0046]/50 px-1.5 py-0.5 text-[9px] font-black text-[#ff0046]">✗</span>
                   ) : null}
-                  <span className="rounded bg-[#ff0046] px-1.5 py-0.5 text-[9px] font-black text-white">{pickLabel}</span>
+                  <span className="rounded bg-[#00b04f] px-1.5 py-0.5 text-[9px] font-black text-white">{pickLabel}</span>
                 </div>
               </div>
             );
           })}
         </div>
         <div className="flex flex-col gap-1.5 border-t border-[#1a2e45] px-3.5 py-2.5 bg-[#0a1624]">
-          <button type="button" onClick={onShare} className="min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#009b45]">
-            Share slip
-          </button>
-          {!inviteOnly && isFirst && onSeeNext && (
-            <button
-              type="button"
-              onClick={onSeeNext}
-              data-testid="go-to-next-matchday"
-              className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#e0003c]"
-            >
-              Go to matchday {nextMatchday ?? (matchday + 1)}
-            </button>
-          )}
-          {!inviteOnly && isFirst && onSeeArticles && (
-            <button type="button" onClick={onSeeArticles} className="min-h-[36px] rounded-full border border-[#29435d] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
-              See match articles
-            </button>
-          )}
-          {!inviteOnly && !isFirst && onSeeBanter && (
-            <button type="button" onClick={onSeeBanter} className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
-              See the banter
-            </button>
+          {isFinalSlip ? (
+            <>
+              <button
+                type="button"
+                onClick={onShare}
+                data-testid="share-betslip-btn"
+                className="min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#009b45] shadow-lg shadow-[#00b04f]/20"
+              >
+                Share Betslip
+              </button>
+              {onSelectSecondSlip && (
+                <button
+                  type="button"
+                  onClick={onSelectSecondSlip}
+                  data-testid="select-second-slip-btn"
+                  className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#e0003c] shadow-lg shadow-[#ff0046]/20"
+                >
+                  Select a second slip
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onShare}
+                data-testid="share-betslip-btn"
+                className="min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#009b45]"
+              >
+                Share Betslip
+              </button>
+              {!inviteOnly && isFirst && onSeeNext && (
+                <button
+                  type="button"
+                  onClick={onSeeNext}
+                  data-testid="go-to-next-matchday"
+                  className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer hover:bg-[#e0003c]"
+                >
+                  Go to matchday {nextMatchday ?? (matchday + 1)}
+                </button>
+              )}
+              {!inviteOnly && isFirst && onSeeArticles && (
+                <button type="button" onClick={onSeeArticles} className="min-h-[36px] rounded-full border border-[#29435d] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
+                  See match articles
+                </button>
+              )}
+              {!inviteOnly && !isFirst && onSeeBanter && (
+                <button type="button" onClick={onSeeBanter} className="min-h-[38px] rounded-full bg-[#ff0046] text-xs font-black uppercase tracking-wider text-white cursor-pointer">
+                  See the banter
+                </button>
+              )}
+            </>
           )}
           {!inviteOnly && (
             <button type="button" onClick={onClose} className="min-h-[32px] text-xs font-bold text-slate-400 cursor-pointer hover:text-white">
@@ -408,3 +446,73 @@ export function PeekMatchdayPopup({
     </div>
   );
 }
+
+export function SelectionLockModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn"
+      data-testid="selection-lock-modal"
+    >
+      <div className="relative w-full max-w-[340px] rounded-2xl border border-[#00b04f]/40 bg-[#0e1c2b] p-4 sm:p-5 text-center text-white shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-slate-400 hover:text-white hover:bg-[#14263b] cursor-pointer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#00b04f]/20 text-xl shadow-inner text-[#00b04f]">
+          🔒
+        </div>
+        <h2 className="text-xs sm:text-sm font-black text-white">Selection Locked</h2>
+        <p className="mt-2 text-xs text-slate-300 leading-snug">
+          You will get a chance to make another prediction slip. Finish this first slip first.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white hover:bg-[#009b45] transition-colors cursor-pointer"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function DerbyAdvanceNoticeModal({
+  onConfirm,
+}: {
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-fadeIn"
+      data-testid="derby-advance-notice-modal"
+    >
+      <div className="relative w-full max-w-[340px] rounded-2xl border border-[#00b04f]/50 bg-[#0e1c2b] p-4 sm:p-5 text-center text-white shadow-2xl">
+        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#00b04f]/20 text-xl shadow-inner text-[#00b04f]">
+          ⚽
+        </div>
+        <h2 className="text-xs sm:text-sm font-black text-white">Derby Selection Confirmed</h2>
+        <p className="mt-2 text-xs text-slate-300 leading-snug">
+          You can select all the matches for both matchdays
+        </p>
+        <button
+          type="button"
+          onClick={onConfirm}
+          data-testid="derby-advance-ok-btn"
+          className="mt-4 w-full min-h-[38px] rounded-full bg-[#00b04f] text-xs font-black uppercase tracking-wider text-white hover:bg-[#009b45] transition-colors cursor-pointer"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
