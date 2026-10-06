@@ -29,7 +29,7 @@ export const MatchdayDerbySharePopup: React.FC<MatchdayDerbySharePopupProps> = (
 }) => {
   const [copied, setCopied] = useState(false);
   const [unlockedState, setUnlockedState] = useState(isUnlocked);
-  const showVotes = showVotesForConsensus(consensus, derbyMatch.id, userSelection);
+  const showVotes = showVotesForConsensus(consensus, derbyMatch.id, userSelection, true);
 
   const selectedTeamName =
     userSelection === '1'

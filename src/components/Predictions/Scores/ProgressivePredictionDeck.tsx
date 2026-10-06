@@ -29,7 +29,7 @@ export const ProgressivePredictionDeck: React.FC<ProgressivePredictionDeckProps>
 
   const currentSelection = userPredictions.get(currentMatch.id) || null;
   const currentConsensus = consensusMap.get(currentMatch.id);
-  const showVotes = showVotesForConsensus(currentConsensus, currentMatch.id, currentSelection);
+  const showVotes = showVotesForConsensus(currentConsensus, currentMatch.id, currentSelection, Boolean(currentMatch.isDerby));
   const isLast = currentIndex === regularMatches.length - 1;
 
   const handleSelect = (option: PredictionOption) => {

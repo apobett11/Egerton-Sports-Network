@@ -24,7 +24,7 @@ export const FirstMatchPopup: React.FC<FirstMatchPopupProps> = ({
   const [selectedOption, setSelectedOption] = useState<PredictionOption | null>(null);
 
   const { homePct, drawPct, awayPct, homeVotes, drawVotes, awayVotes } =
-    showVotesForConsensus(consensus, match.id, selectedOption);
+    showVotesForConsensus(consensus, match.id, selectedOption, Boolean(match.isDerby));
 
   const homeDisplayName = formatTeamName(match.homeTeam.name);
   const awayDisplayName = formatTeamName(match.awayTeam.name);

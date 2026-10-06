@@ -14,5 +14,5 @@ export interface ShowVotes extends VoteCounts {
 }
 
 export function actualVoteSplit(consensus?: ConsensusData | null): VoteCounts;
-export function deriveShowVotes(actual?: Partial<VoteCounts> | null, seedKey?: string, preferredOption?: PredictionOption | null): ShowVotes;
-export function showVotesForConsensus(consensus?: ConsensusData | null, seedKey?: string, preferredOption?: PredictionOption | null): ShowVotes;
+export function deriveShowVotes(actual?: Partial<VoteCounts> | null, seedKey?: string, preferredOption?: PredictionOption | null, isDerby?: boolean): ShowVotes;
+export function showVotesForConsensus(consensus?: ConsensusData | null, seedKey?: string, preferredOption?: PredictionOption | null, isDerby?: boolean): ShowVotes;

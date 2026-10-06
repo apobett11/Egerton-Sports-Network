@@ -17,7 +17,7 @@ export const DerbyConsensusModal: React.FC<DerbyConsensusModalProps> = ({
   onNavigateStandings,
 }) => {
   const { homePct, drawPct, awayPct, homeVotes, drawVotes, awayVotes, total: totalVotes } =
-    showVotesForConsensus(consensus, derbyMatch.id);
+    showVotesForConsensus(consensus, derbyMatch.id, null, true);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fadeIn">

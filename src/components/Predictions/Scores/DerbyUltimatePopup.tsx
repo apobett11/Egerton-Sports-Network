@@ -44,7 +44,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
       : 'Draw';
 
   const { homePct, drawPct, awayPct, homeVotes, drawVotes, awayVotes } =
-    showVotesForConsensus(consensus, match.id, selection);
+    showVotesForConsensus(consensus, match.id, selection, true);
 
   const selectedVotes = selection === '1' ? homeVotes : selection === 'X' ? drawVotes : awayVotes;
   const otherFans = Math.max(0, selectedVotes - 1);

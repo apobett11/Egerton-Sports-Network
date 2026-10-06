@@ -1,6 +1,6 @@
-const TEAM_SHARE = Object.freeze({ stronger: 49, weaker: 41, draw: 10 });
-const SEED_TOTAL = 20;
-const LOW_COUNT_THRESHOLD = 12;
+const TEAM_FLOOR = 70;
+const DERBY_TEAM_FLOOR = 101;
+const MAX_LEAD_SHARE = 0.1;
 
 const cleanCount = (value) => Math.max(0, Math.round(Number(value) || 0));
 
@@ -11,39 +11,6 @@ function stableHash(value) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
-}
-
-function seededDisplay(seedKey, homeLeads, preferredOption) {
-  if (preferredOption === 'X') {
-    return {
-      total: 28,
-      homeVotes: 9,
-      drawVotes: 10,
-      awayVotes: 9,
-      homePct: 32,
-      drawPct: 36,
-      awayPct: 32,
-    };
-  }
-  const homeIsStronger = preferredOption === '1'
-    ? true
-    : preferredOption === '2'
-      ? false
-      : homeLeads ?? stableHash(seedKey) % 2 === 0;
-  const homeVotes = homeIsStronger ? 10 : 9;
-  const awayVotes = homeIsStronger ? 9 : 10;
-  const total = homeVotes + awayVotes + 2;
-  const homePct = Math.round((homeVotes * 100) / total);
-  const awayPct = Math.round((awayVotes * 100) / total);
-  return {
-    total,
-    homeVotes,
-    drawVotes: 2,
-    awayVotes,
-    homePct,
-    drawPct: 100 - homePct - awayPct,
-    awayPct,
-  };
 }
 
 /**
@@ -73,46 +40,69 @@ export function actualVoteSplit(consensus) {
   return { total, homeVotes: counts[0], drawVotes: counts[1], awayVotes: counts[2] };
 }
 
+function teamFloor(isDerby) {
+  return isDerby ? DERBY_TEAM_FLOOR : TEAM_FLOOR;
+}
+
+/** Small steady lift. Every extra recorded vote moves the shown count up. */
+function lifted(actualVotes, floor) {
+  return Math.max(floor, actualVotes + 1 + Math.floor(actualVotes / 20));
+}
+
+function leadIsInsideRange(leader, trailer, draw) {
+  const total = leader + trailer + draw;
+  return leader - trailer <= Math.floor(total * MAX_LEAD_SHARE);
+}
+
 /**
- * Produces deterministic presentation-only votes.
- *
- * Above the seed threshold, the weaker side receives roughly one balancing
- * vote per three real stronger-side votes. That augmentation is capped at
- * twice the weaker side's real count. The resulting presentation sample is
- * normalized around a close 49/41 team split, leaving about 10% for draws.
+ * Presentation counts only. Recorded votes stay untouched.
+ * The actual leader still leads, each side stays above its real count,
+ * and the lead stays inside 10% of the shown total.
  */
-export function deriveShowVotes(actual, seedKey = '', preferredOption = null) {
+export function deriveShowVotes(actual, seedKey = '', preferredOption = null, isDerby = false) {
   const homeActual = cleanCount(actual?.homeVotes);
   const drawActual = cleanCount(actual?.drawVotes);
   const awayActual = cleanCount(actual?.awayVotes);
-  const actualTotal = homeActual + drawActual + awayActual;
-  const homeLeads = homeActual === awayActual ? stableHash(seedKey) % 2 === 0 : homeActual > awayActual;
+  const floor = teamFloor(Boolean(isDerby));
+  const tied = homeActual === awayActual;
+  const homeLeads = tied
+    ? preferredOption === '2'
+      ? false
+      : preferredOption === '1'
+        ? true
+        : stableHash(seedKey) % 2 === 0
+    : homeActual > awayActual;
 
-  if (actualTotal < LOW_COUNT_THRESHOLD || Math.min(homeActual, awayActual) === 0) {
-    return seededDisplay(seedKey, homeLeads, preferredOption);
+  let leader = lifted(homeLeads ? homeActual : awayActual, tied ? floor : floor + 1);
+  let trailer = lifted(homeLeads ? awayActual : homeActual, floor);
+  let draw = Math.max(drawActual + 1, Math.round((leader + trailer) * 0.08));
+
+  if (tied) {
+    const level = Math.max(leader, trailer, floor);
+    leader = level;
+    trailer = level;
+  } else if (trailer >= leader) {
+    leader = trailer + 1;
   }
 
-  const strongerActual = homeLeads ? homeActual : awayActual;
-  const weakerActual = homeLeads ? awayActual : homeActual;
-  const cadenceBoost = Math.floor(strongerActual / 3);
-  const augmentationCap = weakerActual * 2;
-  const weakerVotes = weakerActual + Math.min(cadenceBoost, augmentationCap);
+  let guard = 0;
+  while (!leadIsInsideRange(leader, trailer, draw) && guard < 10000) {
+    trailer += 1;
+    if (!tied && trailer >= leader) leader = trailer + 1;
+    draw = Math.max(draw, drawActual + 1, Math.round((leader + trailer) * 0.08));
+    guard += 1;
+  }
 
-  const total = Math.max(SEED_TOTAL, Math.round((weakerVotes * 100) / TEAM_SHARE.weaker));
-  const strongerVotes = Math.round((total * TEAM_SHARE.stronger) / 100);
-  const normalizedWeakerVotes = Math.round((total * TEAM_SHARE.weaker) / 100);
-  const drawVotes = Math.max(1, total - strongerVotes - normalizedWeakerVotes);
-
-  const homeVotes = homeLeads ? strongerVotes : normalizedWeakerVotes;
-  const awayVotes = homeLeads ? normalizedWeakerVotes : strongerVotes;
-  const shownTotal = homeVotes + drawVotes + awayVotes;
-  const homePct = Math.round((homeVotes * 100) / shownTotal);
-  const awayPct = Math.round((awayVotes * 100) / shownTotal);
+  const homeVotes = homeLeads ? leader : trailer;
+  const awayVotes = homeLeads ? trailer : leader;
+  const total = homeVotes + draw + awayVotes;
+  const homePct = Math.round((homeVotes * 100) / total);
+  const awayPct = Math.round((awayVotes * 100) / total);
 
   return {
-    total: shownTotal,
+    total,
     homeVotes,
-    drawVotes,
+    drawVotes: draw,
     awayVotes,
     homePct,
     drawPct: 100 - homePct - awayPct,
@@ -120,6 +110,6 @@ export function deriveShowVotes(actual, seedKey = '', preferredOption = null) {
   };
 }
 
-export function showVotesForConsensus(consensus, seedKey = consensus?.matchId || '', preferredOption = null) {
-  return deriveShowVotes(actualVoteSplit(consensus), seedKey, preferredOption);
+export function showVotesForConsensus(consensus, seedKey = consensus?.matchId || '', preferredOption = null, isDerby = false) {
+  return deriveShowVotes(actualVoteSplit(consensus), seedKey, preferredOption, isDerby);
 }

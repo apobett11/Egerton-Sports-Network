@@ -49,7 +49,7 @@ export function MatchPickCard({
   const away = formatTeamName(match.awayTeam.name);
   const [showDerbyGuessPopup, setShowDerbyGuessPopup] = useState(false);
 
-  const stats = showVotesForConsensus(consensus, match.id, userSelection || undefined);
+  const stats = showVotesForConsensus(consensus, match.id, userSelection || undefined, Boolean(match.isDerby));
 
   const handlePickAttempt = (option: PredictionOption) => {
     // Squad inspection gate: Derby match requires viewing squads first like an analyst

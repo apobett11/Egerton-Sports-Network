@@ -6,64 +6,65 @@ import {
   showVotesForConsensus,
 } from '../src/lib/predictions/voteDisplay.mjs';
 
-function assertCloseDerbyRange(result) {
-  const teamShares = [result.homePct, result.awayPct].sort((a, b) => a - b);
-  assert.ok(teamShares[0] >= 41 && teamShares[0] <= 43, `weaker share was ${teamShares[0]}%`);
-  assert.ok(teamShares[1] >= 48 && teamShares[1] <= 49, `stronger share was ${teamShares[1]}%`);
-  assert.ok(result.homeVotes > 0);
-  assert.ok(result.awayVotes > 0);
-  assert.equal(result.total, result.homeVotes + result.drawVotes + result.awayVotes);
+function assertShownRange(actual, result, isDerby = false) {
+  const floor = isDerby ? 101 : 70;
+  const total = result.homeVotes + result.drawVotes + result.awayVotes;
+  assert.equal(result.total, total);
   assert.equal(result.homePct + result.drawPct + result.awayPct, 100);
+  assert.ok(result.homeVotes >= floor, `home ${result.homeVotes} below ${floor}`);
+  assert.ok(result.awayVotes >= floor, `away ${result.awayVotes} below ${floor}`);
+  assert.ok(result.homeVotes > actual.homeVotes);
+  assert.ok(result.awayVotes > actual.awayVotes);
+  assert.ok(result.drawVotes > actual.drawVotes);
+  assert.ok(result.total > actual.homeVotes + actual.drawVotes + actual.awayVotes);
+  const margin = Math.abs(result.homeVotes - result.awayVotes);
+  assert.ok(margin <= Math.floor(total * 0.1), `margin ${margin} of total ${total}`);
+  if (actual.homeVotes > actual.awayVotes) assert.ok(result.homeVotes > result.awayVotes);
+  if (actual.awayVotes > actual.homeVotes) assert.ok(result.awayVotes > result.homeVotes);
 }
 
-test('zero votes receive a deterministic non-zero seed', () => {
-  const first = deriveShowVotes({ homeVotes: 0, drawVotes: 0, awayVotes: 0 }, 'derby-1');
-  const second = deriveShowVotes({ homeVotes: 0, drawVotes: 0, awayVotes: 0 }, 'derby-1');
-
-  assert.deepEqual(first, second);
-  assert.equal(first.total, 21);
-  assert.ok(first.homeVotes > 0 && first.drawVotes > 0 && first.awayVotes > 0);
+test('shown votes stay above the recorded counts inside a 10% lead', () => {
+  const samples = [
+    { homeVotes: 0, drawVotes: 0, awayVotes: 0 },
+    { homeVotes: 52, drawVotes: 0, awayVotes: 3 },
+    { homeVotes: 4, drawVotes: 0, awayVotes: 0 },
+    { homeVotes: 90, drawVotes: 5, awayVotes: 5 },
+    { homeVotes: 45, drawVotes: 10, awayVotes: 45 },
+    { homeVotes: 200, drawVotes: 20, awayVotes: 180 },
+  ];
+  samples.forEach((actual) => {
+    assertShownRange(actual, deriveShowVotes(actual, 'match-a'));
+  });
 });
 
-test('very low counts use the fun-game baseline without a first-voter state', () => {
-  const result = deriveShowVotes({ homeVotes: 2, drawVotes: 1, awayVotes: 0 }, 'low');
-  assert.equal(result.total, 21);
-  assert.ok(Math.min(result.homeVotes, result.awayVotes) >= 9);
+test('the same recorded tally always shows the same counts', () => {
+  const actual = { homeVotes: 52, drawVotes: 0, awayVotes: 3 };
+  assert.deepEqual(deriveShowVotes(actual, 'stable'), deriveShowVotes(actual, 'stable'));
 });
 
-test('the first displayed range favors the option the fanatic selected', () => {
-  const home = deriveShowVotes({ homeVotes: 1, drawVotes: 0, awayVotes: 0 }, 'first', '1');
-  const away = deriveShowVotes({ homeVotes: 0, drawVotes: 0, awayVotes: 1 }, 'first', '2');
-  assert.equal(home.homeVotes, 10);
-  assert.equal(home.awayVotes, 9);
-  assert.equal(away.awayVotes, 10);
-  assert.equal(away.homeVotes, 9);
+test('an actual lead is not handed to the other side', () => {
+  const home = deriveShowVotes({ homeVotes: 8, drawVotes: 0, awayVotes: 1 }, 'lead', '2');
+  const away = deriveShowVotes({ homeVotes: 1, drawVotes: 0, awayVotes: 8 }, 'lead', '1');
+  assert.ok(home.homeVotes > home.awayVotes);
+  assert.ok(away.awayVotes > away.homeVotes);
 });
 
-test('lopsided totals are projected to a close range and cap weaker augmentation', () => {
-  const actual = { homeVotes: 90, drawVotes: 5, awayVotes: 5 };
-  const result = deriveShowVotes(actual, 'lopsided');
-
-  assertCloseDerbyRange(result);
-  assert.ok(result.awayVotes - actual.awayVotes <= actual.awayVotes * 2);
-  assert.equal(result.awayVotes - actual.awayVotes, 10);
+test('shown team counts rise as recorded votes rise', () => {
+  let previous = deriveShowVotes({ homeVotes: 10, drawVotes: 0, awayVotes: 4 }, 'climb');
+  for (let home = 11; home <= 80; home += 1) {
+    const next = deriveShowVotes({ homeVotes: home, drawVotes: 0, awayVotes: 4 }, 'climb');
+    assert.ok(next.homeVotes >= previous.homeVotes);
+    assert.ok(next.total >= previous.total);
+    previous = next;
+  }
 });
 
-test('balanced totals retain a modest deterministic stronger side', () => {
-  const actual = { homeVotes: 45, drawVotes: 10, awayVotes: 45 };
-  const result = deriveShowVotes(actual, 'balanced');
-
-  assertCloseDerbyRange(result);
-  assert.deepEqual(result, deriveShowVotes(actual, 'balanced'));
-});
-
-test('large totals follow one weaker display vote per three stronger real votes', () => {
-  const actual = { homeVotes: 6000, drawVotes: 1000, awayVotes: 3000 };
-  const result = deriveShowVotes(actual, 'large');
-
-  assertCloseDerbyRange(result);
-  assert.equal(result.awayVotes - actual.awayVotes, Math.floor(actual.homeVotes / 3));
-  assert.ok(result.awayVotes - actual.awayVotes <= actual.awayVotes * 2);
+test('derby sides show more than a hundred votes', () => {
+  const actual = { homeVotes: 12, drawVotes: 1, awayVotes: 3 };
+  const result = deriveShowVotes(actual, 'derby', null, true);
+  assertShownRange(actual, result, true);
+  assert.ok(result.homeVotes > 100);
+  assert.ok(result.awayVotes > 100);
 });
 
 test('consensus adaptation preserves actual totals and never mutates input', () => {
@@ -80,6 +81,7 @@ test('consensus adaptation preserves actual totals and never mutates input', () 
 
   assert.equal(actual.total, 101);
   assert.equal(actual.homeVotes + actual.drawVotes + actual.awayVotes, 101);
-  assert.notEqual(shown.total, consensus.totalVotes);
+  assert.ok(shown.total > consensus.totalVotes);
   assert.equal(consensus.totalVotes, 101);
+  assertShownRange(actual, shown);
 });

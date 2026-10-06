@@ -197,6 +197,22 @@ test.describe('Admin 2 votes and predictions', () => {
       await expect(card.getByTestId(`actual-${fixture.id}-1`)).toHaveText(String(Number(cache?.votes_home) || 0));
       await expect(card.getByTestId(`actual-${fixture.id}-X`)).toHaveText(String(Number(cache?.votes_draw) || 0));
       await expect(card.getByTestId(`actual-${fixture.id}-2`)).toHaveText(String(Number(cache?.votes_away) || 0));
+
+      const shownHome = shown.homeVotes;
+      const shownDraw = shown.drawVotes;
+      const shownAway = shown.awayVotes;
+      const actualHome = Number(cache?.votes_home) || 0;
+      const actualDraw = Number(cache?.votes_draw) || 0;
+      const actualAway = Number(cache?.votes_away) || 0;
+      const shownTotal = shownHome + shownDraw + shownAway;
+      expect(shownHome).toBeGreaterThan(actualHome);
+      expect(shownAway).toBeGreaterThan(actualAway);
+      expect(shownDraw).toBeGreaterThan(actualDraw);
+      expect(shownHome).toBeGreaterThanOrEqual(70);
+      expect(shownAway).toBeGreaterThanOrEqual(70);
+      expect(Math.abs(shownHome - shownAway)).toBeLessThanOrEqual(Math.floor(shownTotal * 0.1));
+      if (actualHome > actualAway) expect(shownHome).toBeGreaterThan(shownAway);
+      if (actualAway > actualHome) expect(shownAway).toBeGreaterThan(shownHome);
     }
 
     const devicesBefore = deviceReads;
