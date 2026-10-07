@@ -21,15 +21,13 @@ export const SendBroadcastModal: React.FC<SendBroadcastModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [title, setTitle] = useState<string>('Egerton Premier League Derby Satoo! ⚽🔥🔥');
-  const [category, setCategory] = useState<string>('DERBY');
-  const [message, setMessage] = useState<string>(
-    'kuma derby ya Egerton Premier Leage satoo⚽🔥🔥 \n you can now predict who you think will win teh match😎.'
-  );
-  const [imageUrl, setImageUrl] = useState<string>('/derby-notification.png');
+  const [title, setTitle] = useState<string>('');
+  const [category, setCategory] = useState<string>('GENERAL');
+  const [message, setMessage] = useState<string>('');
+  const [imageUrl, setImageUrl] = useState<string>('');
   const [actionUrl, setActionUrl] = useState<string>('#/banter');
   const [scheduledFor, setScheduledFor] = useState<string>(() => getToday820PMString());
-  const [isScheduled, setIsScheduled] = useState<boolean>(true);
+  const [isScheduled, setIsScheduled] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -47,13 +45,13 @@ export const SendBroadcastModal: React.FC<SendBroadcastModalProps> = ({
   };
 
   const handleApplyDerbyPreset = () => {
-    setTitle('Egerton Premier League Derby Satoo! ⚽🔥🔥');
+    setTitle('Matchday Announcement ⚽');
     setCategory('DERBY');
-    setMessage('kuma derby ya Egerton Premier Leage satoo⚽🔥🔥 \n you can now predict who you think will win teh match😎.');
-    setImageUrl('/derby-notification.png');
-    setActionUrl('#/banter');
+    setMessage('Upcoming matchday fixtures are live. Predict who you think will win the match!');
+    setImageUrl('');
+    setActionUrl('#/predictions');
     setScheduledFor(getToday820PMString());
-    setIsScheduled(true);
+    setIsScheduled(false);
   };
 
   const handleClear = () => {

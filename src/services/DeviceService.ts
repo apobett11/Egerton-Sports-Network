@@ -256,19 +256,17 @@ export const DeviceService = {
         }
       });
 
-      // Include any device-recorded announcements that were not in DB list
-      recordedMap.forEach((item) => {
-        if (!seenIds.has(item.id)) {
-          mergedList.push(item);
-        }
-      });
+      // Filter out any revoked satoo items and ensure only active announcements are kept
+      const activeList = mergedList.filter(
+        (a) => !/satoo/i.test(`${a.title || ''} ${a.content || ''}`)
+      );
 
-      // Update local storage
+      // Update local storage with active announcements only
       try {
-        localStorage.setItem(`esn_device_announcements_${deviceId}`, JSON.stringify(mergedList));
+        localStorage.setItem(`esn_device_announcements_${deviceId}`, JSON.stringify(activeList));
       } catch {}
 
-      return mergedList;
+      return activeList;
     } catch (err) {
       console.error('Failed to get device announcements:', err);
       return [];

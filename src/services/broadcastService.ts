@@ -345,11 +345,13 @@ export class BroadcastService {
       const data = localStorage.getItem(BROADCAST_STORAGE_KEY);
       if (data) {
         const list = JSON.parse(data);
-        return list.map((item: any) => ({
-          ...item,
-          reactions: parseReactions(item.reactions),
-          scheduled_for: item.scheduled_for ? String(item.scheduled_for) : null,
-        }));
+        return list
+          .filter((item: any) => !/satoo/i.test(`${item.title || ''} ${item.message || ''}`))
+          .map((item: any) => ({
+            ...item,
+            reactions: parseReactions(item.reactions),
+            scheduled_for: item.scheduled_for ? String(item.scheduled_for) : null,
+          }));
       }
     } catch {}
     return [];
