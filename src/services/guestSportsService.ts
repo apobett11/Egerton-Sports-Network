@@ -636,9 +636,8 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
       const results = [...acc.entries()].map(([teamId, row]): GuestStanding => {
         matchFormByTeam.set(teamId, row.form);
         const team = teamById.get(teamId) || {};
-        const points = teamId === LEGENDS_FC_ID
-          ? Math.max(0, row.points - LEGENDS_POINTS_DEDUCTION)
-          : row.points;
+        const deduction = POINTS_DEDUCTIONS[teamId] || (teamId === LEGENDS_FC_ID ? 4 : 0);
+        const points = Math.max(0, row.points - deduction);
         return {
           team_id: teamId,
           team_name: team.name || 'Campus Team',
