@@ -86,25 +86,10 @@ export const MonetagInPagePush: React.FC = () => {
   return null;
 };
 
-// 2. SESSION VIGNETTE: Zone 11954979 (n6wxm.com)
-export const MonetagVignette: React.FC = () => {
-  useEffect(() => {
-    const VIGNETTE_SHOWN_KEY = 'esn_vignette_shown_session';
-    if (sessionStorage.getItem(VIGNETTE_SHOWN_KEY)) return;
+// 2. CENTRALIZED ROUTE-TRANSITION VIGNETTE: Zone 11954979 (n6wxm.com)
+// Single source of truth for paced route-transition vignettes
+export { TransitionVignetteManager, TransitionVignetteManager as MonetagVignette } from './TransitionVignetteManager';
 
-    if (document.querySelector('script[data-zone="11954979"]')) return;
-
-    const script = document.createElement('script');
-    script.dataset.zone = '11954979';
-    script.src = 'https://n6wxm.com/vignette.min.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    sessionStorage.setItem(VIGNETTE_SHOWN_KEY, 'true');
-  }, []);
-
-  return null;
-};
 
 // 3. CONTROLLED 10-CLICK POPUNDER
 export const StealthCappedPopunder: React.FC = () => {

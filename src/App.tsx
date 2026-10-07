@@ -38,7 +38,8 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { MonetagInPagePush, StealthCappedPopunder, MonetagVignette } from './components/ads/MonetagEngines';
+import { MonetagInPagePush, StealthCappedPopunder } from './components/ads/MonetagEngines';
+import { TransitionVignetteManager } from './components/ads/TransitionVignetteManager';
 import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
@@ -508,6 +509,20 @@ export const AppContent: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (scrollTimeout) clearTimeout(scrollTimeout);
     };
+  }, [route, activeTab]);
+
+  // Emit route and main tab transition events across the application
+  const isInitialTransitionRef = useRef(true);
+  useEffect(() => {
+    if (isInitialTransitionRef.current) {
+      isInitialTransitionRef.current = false;
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent('esn_route_transition', {
+        detail: { route, activeTab }
+      })
+    );
   }, [route, activeTab]);
 
   // Sync route on hash change
@@ -1407,7 +1422,7 @@ export const App: React.FC = () => (
         {/* Monetization Engines (Invisible, 0 CLS, 100% Monetag tracking) */}
         <MonetagInPagePush />
         <StealthCappedPopunder />
-        <MonetagVignette />
+        <TransitionVignetteManager />
         <RichNotificationDropdown />
         <AppContent />
         <Analytics />
