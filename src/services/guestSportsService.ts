@@ -213,8 +213,14 @@ export interface MatchFormMark {
 }
 
 const LEGENDS_FC_ID = '10000000-0000-4000-8000-000000000007';
-// Disciplinary sanction: 2 points (past) + 2 points (fresh deduction, separate from past) = 4 points total
-const LEGENDS_POINTS_DEDUCTION = 4;
+// Disciplinary sanctions: points deductions mapped by team UID
+const POINTS_DEDUCTIONS: Record<string, number> = {
+  '10000000-0000-4000-8000-000000000007': 4, // Legends FC (EPL): 2 past + 2 fresh = 4 pts
+  '20000000-0000-4000-8000-000000000008': 2, // Young stars (Championship): 2 pts deduction
+  '20000000-0000-4000-8000-000000000007': 2, // Young legends (Championship): 2 pts deduction
+  '20000000-0000-4000-8000-000000000005': 2, // Tatton fc (Championship): 2 pts deduction
+  '20000000-0000-4000-8000-00000000000a': 2, // Law fc (Championship): 2 pts deduction
+};
 const matchFormByTeam = new Map<string, MatchFormMark[]>();
 
 export function getCachedMatchForm(teamId: string): MatchFormMark[] {

@@ -6,7 +6,6 @@ import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/util
 import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
 import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
 import { MonetagTopRightAd } from '../../ads/MonetagTopRightAd';
-import { useNewsTacticalPopunder } from '../../../hooks/useNewsTacticalPopunder';
 import type { Match, PredictionOption, ConsensusData } from '../../../types/predictions';
 
 interface DerbyUltimatePopupProps {
@@ -32,12 +31,7 @@ export const DerbyUltimatePopup: React.FC<DerbyUltimatePopupProps> = ({
   onContinueSelecting,
   onSeeBanter,
 }) => {
-  const { triggerTacticalPause } = useNewsTacticalPopunder();
   const [didShare, setDidShare] = useState(false);
-
-  React.useEffect(() => {
-    triggerTacticalPause('unlock_derby');
-  }, [triggerTacticalPause]);
 
   const homeDisplayName = formatTeamName(match.homeTeam.name);
   const awayDisplayName = formatTeamName(match.awayTeam.name);

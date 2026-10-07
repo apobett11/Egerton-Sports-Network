@@ -118,6 +118,10 @@ export function calculateLeagueStandings(
   // Official League Points Deductions (Disciplinary/Sanctions)
   const OFFICIAL_POINTS_DEDUCTIONS: Record<string, number> = {
     '10000000-0000-4000-8000-000000000007': 4, // Legends FC: 2 past + 2 fresh deduction (separate from past) = 4 pts
+    '20000000-0000-4000-8000-000000000008': 2, // Young stars (Championship): 2 pts deduction
+    '20000000-0000-4000-8000-000000000007': 2, // Young legends (Championship): 2 pts deduction
+    '20000000-0000-4000-8000-000000000005': 2, // Tatton fc (Championship): 2 pts deduction
+    '20000000-0000-4000-8000-00000000000a': 2, // Law fc (Championship): 2 pts deduction
   };
 
   // Map to array and compute goal difference & point deductions
