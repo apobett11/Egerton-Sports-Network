@@ -213,7 +213,8 @@ export interface MatchFormMark {
 }
 
 const LEGENDS_FC_ID = '10000000-0000-4000-8000-000000000007';
-const LEGENDS_POINTS_DEDUCTION = 2;
+// Disciplinary sanction: 2 points (past) + 2 points (fresh deduction, separate from past) = 4 points total
+const LEGENDS_POINTS_DEDUCTION = 4;
 const matchFormByTeam = new Map<string, MatchFormMark[]>();
 
 export function getCachedMatchForm(teamId: string): MatchFormMark[] {

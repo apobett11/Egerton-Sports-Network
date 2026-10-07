@@ -49,26 +49,24 @@ export const TeamStandingsTab: React.FC<TeamStandingsTabProps> = ({
     }
 
     return (
-      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
-        <div className="flex items-center gap-1 justify-start w-max">
-          {formList.map((res, i) => (
-            <span
-              key={i}
-              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white select-none ${
-                res === 'W'
-                  ? 'bg-[#00b04f]'
-                  : res === 'D'
-                  ? 'bg-[#ff9800]'
-                  : res === 'L'
-                  ? 'bg-[#d63031]'
-                  : 'bg-[#8fa1b4]'
-              }`}
-              title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
-            >
-              {res}
-            </span>
-          ))}
-        </div>
+      <div className="flex items-center gap-1 justify-center whitespace-nowrap py-0.5">
+        {formList.map((res, i) => (
+          <span
+            key={i}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white select-none ${
+              res === 'W'
+                ? 'bg-[#00b04f]'
+                : res === 'D'
+                ? 'bg-[#ff9800]'
+                : res === 'L'
+                ? 'bg-[#d63031]'
+                : 'bg-[#8fa1b4]'
+            }`}
+            title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
+          >
+            {res}
+          </span>
+        ))}
       </div>
     );
   };

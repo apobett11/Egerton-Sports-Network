@@ -99,16 +99,15 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
     return fixtures;
   }, [fixtures, activeFixtureFilter]);
 
-  // Form Badges: render all form results, max 6 shown with horizontal scroll past 6
+  // Form Badges: render all form results
   const render6FormBadges = (formList: ('W' | 'D' | 'L')[]) => {
     if (!formList || formList.length === 0) {
       return <span className="text-[10px] text-slate-400 font-medium">—</span>;
     }
 
     return (
-      <div className="max-w-[114px] sm:max-w-[124px] overflow-x-auto no-scrollbar mx-auto py-0.5">
-        <div className="flex items-center gap-1 justify-start w-max">
-          {formList.map((res, i) => (
+      <div className="flex items-center gap-1 justify-center whitespace-nowrap py-0.5">
+        {formList.map((res, i) => (
             <span
               key={i}
               className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] shrink-0 flex items-center justify-center font-bold text-[8px] sm:text-[9px] text-white shadow-xs transition-transform hover:scale-105 select-none ${
@@ -125,7 +124,6 @@ export const StandingsPage: React.FC<StandingsPageProps> = ({
               {res}
             </span>
           ))}
-        </div>
       </div>
     );
   };

@@ -333,27 +333,25 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     }
 
     return (
-      <div className="max-w-[34vw] sm:max-w-[220px] overflow-x-auto no-scrollbar mx-auto py-0.5">
-        <div className="flex items-end gap-1 justify-start w-max">
-          {rawForm.map((mark, i) => (
-            <span
-              key={`${mark.matchday}-${i}`}
-              title={`Matchday ${mark.matchday}`}
-              className={`standings-form-pip w-5 h-6 sm:w-6 sm:h-7 rounded-[2px] shrink-0 flex flex-col items-center justify-center font-bold text-white select-none leading-none ${
-                mark.result === 'W'
-                  ? 'bg-[#00b04f]'
-                  : mark.result === 'D'
-                  ? 'bg-[#ff9800]'
-                  : mark.result === 'L'
-                  ? 'bg-[#d63031]'
-                  : 'bg-[#8fa1b4]'
-              }`}
-            >
-              <span className="text-[8px] sm:text-[9px]">{mark.result}</span>
-              <span className="text-[7px] sm:text-[8px] opacity-90">{mark.matchday}</span>
-            </span>
-          ))}
-        </div>
+      <div className="flex items-end gap-1 justify-center whitespace-nowrap py-0.5">
+        {rawForm.map((mark, i) => (
+          <span
+            key={`${mark.matchday}-${i}`}
+            title={`Matchday ${mark.matchday}`}
+            className={`standings-form-pip w-5 h-6 sm:w-6 sm:h-7 rounded-[2px] shrink-0 flex flex-col items-center justify-center font-bold text-white select-none leading-none ${
+              mark.result === 'W'
+                ? 'bg-[#00b04f]'
+                : mark.result === 'D'
+                ? 'bg-[#ff9800]'
+                : mark.result === 'L'
+                ? 'bg-[#d63031]'
+                : 'bg-[#8fa1b4]'
+            }`}
+          >
+            <span className="text-[8px] sm:text-[9px]">{mark.result}</span>
+            <span className="text-[7px] sm:text-[8px] opacity-90">{mark.matchday}</span>
+          </span>
+        ))}
       </div>
     );
   };
@@ -378,7 +376,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
     return 'border-l-[3px] border-l-transparent';
   };
 
-  // Reusable Standard Standings Table Component (FORM REMOVED)
+  // Reusable Standard Standings Table Component (Clean Redesign matching WhatsApp Reference)
   const renderStandingsTable = (
     title: string,
     divisionLabel: string,
@@ -390,21 +388,28 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
   ) => {
     const list = data || [];
     return (
-      <div ref={refTarget} className="bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs">
-        {/* Table Header Banner */}
-        <div className="px-4 py-2.5 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className={`w-4 h-4 ${accentColor}`} />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-              {title}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
-              divisionLabel === 'DIVISION 1'
-                ? 'bg-rose-500/10 text-[#ff0046] border-rose-500/20'
-                : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-            }`}>
+      <div
+        ref={refTarget}
+        className="w-full bg-white dark:bg-[#0e1c2b] border border-slate-300 dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
+      >
+        {/* Top green accent strip matching reference image */}
+        <div className="h-1 bg-[#1b6b37] w-full" />
+
+        {/* Title Header: Centered League Title */}
+        <div className="relative py-2.5 px-3 bg-white dark:bg-[#0e1c2b] text-center border-b border-slate-300 dark:border-[#1a2e45]">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-[#0c324c] dark:text-sky-100 tracking-tight">
+            {title}
+          </h2>
+
+          {/* Right badge & share action */}
+          <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <span
+              className={`text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                divisionLabel === 'DIVISION 1'
+                  ? 'bg-rose-500/10 text-[#ff0046] border-rose-500/20'
+                  : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+              }`}
+            >
               {divisionLabel}
             </span>
             {!isChamp && (
@@ -428,64 +433,70 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                     })),
                   });
                 }}
-                className="p-1.5 rounded-md bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-500 hover:text-[#ff0046] cursor-pointer"
+                className="p-1 rounded bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-500 hover:text-[#ff0046] cursor-pointer"
                 aria-label="Share the EPL table"
                 title="Share the EPL table"
               >
-                <Share2 className="w-3.5 h-3.5" />
+                <Share2 className="w-3 h-3" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Table Content: Sticky Rank and Team Name with scrolling data */}
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-left text-xs border-separate border-spacing-0 table-fixed" style={{ minWidth: '428px' }}>
+        {/* Subtitle: "League Table" in deep green */}
+        <div className="py-1.5 px-3 bg-white dark:bg-[#0e1c2b] text-center border-b border-slate-300 dark:border-[#1a2e45]">
+          <h3 className="text-sm sm:text-base font-bold text-[#1b6b37] dark:text-emerald-400">
+            League Table
+          </h3>
+        </div>
+
+        {/* Table Content: Exact width fit on mobile (no zoom, no lateral scroll), expandable on PC */}
+        <div className="w-full overflow-hidden">
+          <table className="w-full text-left border-collapse table-fixed">
             <colgroup>
-              <col className="w-9" />
-              <col />
-              <col className="w-8" />
-              <col className="w-8" />
-              <col className="w-8" />
-              <col className="w-8" />
-              <col className="w-20" />
-              <col className="w-12" />
+              <col className="w-[36%] sm:w-auto" />
+              <col className="w-[7%] sm:w-11" />
+              <col className="w-[7%] sm:w-10" />
+              <col className="w-[7%] sm:w-10" />
+              <col className="w-[7%] sm:w-10" />
+              <col className="w-[7.5%] sm:w-11" />
+              <col className="w-[7.5%] sm:w-11" />
+              <col className="w-[11%] sm:w-14" />
+              <col className="w-[10%] sm:w-12" />
             </colgroup>
             <thead>
-              <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[10px] font-black text-slate-400 uppercase">
-                <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45]"># ▲</th>
-                <th className="standings-team-cell sticky left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
-                <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">MP</th>
-                <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">W</th>
-                <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">D</th>
-                <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">L</th>
-                <th className="py-2 px-2 text-center whitespace-nowrap border-b border-[#e6e8ec] dark:border-[#1a2e45]">GD</th>
-                <th className="py-2 px-3 text-center whitespace-nowrap font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
+              <tr className="bg-white dark:bg-[#0e1c2b] border-t-2 border-b-2 border-[#cca01a] text-[#1b6b37] dark:text-emerald-400 font-bold text-[11px] sm:text-xs md:text-sm">
+                <th className="py-1.5 px-1.5 sm:px-3 text-left border-r border-[#cca01a]">Teams</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">P</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">W</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">D</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">L</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">F</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">A</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">GD</th>
+                <th className="py-1.5 px-0.5 sm:px-1 text-center border-r border-[#cca01a]">Pts</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
+            <tbody className="bg-white dark:bg-[#0e1c2b]">
               {list.length === 0 && pending ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={`standings-sk-${i}`} className="animate-pulse">
-                    <td className="sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
-                      <div className="mx-auto h-3 w-4 rounded bg-slate-200 dark:bg-slate-700" />
-                    </td>
-                    <td className="sticky left-9 sm:left-10 z-10 bg-white dark:bg-[#0e1c2b] py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45]">
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-4 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
-                        <div className="h-3 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                  <tr key={`standings-sk-${i}`} className="border-b border-slate-200 dark:border-slate-800 animate-pulse">
+                    <td className="py-2 px-1.5 sm:px-3 border-r border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-3 w-3 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0" />
+                        <div className="h-3 w-20 sm:w-28 rounded bg-slate-200 dark:bg-slate-700" />
                       </div>
                     </td>
-                    {Array.from({ length: 6 }).map((__, cell) => (
-                      <td key={cell} className="py-2.5 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
-                        <div className="mx-auto h-3 w-5 rounded bg-slate-200 dark:bg-slate-700" />
+                    {Array.from({ length: 8 }).map((__, cell) => (
+                      <td key={cell} className="py-2 px-0.5 text-center border-r border-slate-200 dark:border-slate-800">
+                        <div className="mx-auto h-3 w-3 sm:w-4 rounded bg-slate-200 dark:bg-slate-700" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : list.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <td colSpan={9} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <Trophy className="w-5 h-5 text-slate-300 dark:text-slate-600" />
                       <span className="font-bold">No standings recorded yet for this division.</span>
@@ -496,52 +507,63 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                list.map((row) => {
-                  const totalTeams = list.length;
-                  const zoneBorder = getPositionBorderColor(row.position, totalTeams, isChamp);
-
-                  return (
-                    <tr
-                      key={row.teamId || row.position}
-                      className="group hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors"
+                list.map((row) => (
+                  <tr
+                    key={row.teamId || row.position}
+                    className="border-b border-slate-200 dark:border-slate-800/80 hover:bg-[#f8fafc] dark:hover:bg-[#13263b] transition-colors"
+                  >
+                    <td
+                      className={`py-1.5 sm:py-2 px-1.5 sm:px-3 border-r border-slate-200 dark:border-slate-800/80 min-w-0 ${
+                        row.teamId && onSelectTeam ? 'cursor-pointer' : ''
+                      }`}
+                      onClick={() => {
+                        if (row.teamId && onSelectTeam) {
+                          onSelectTeam(row.teamId, row.teamName);
+                        }
+                      }}
+                      title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
                     >
-                      <td className={`sticky left-0 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-2 text-center font-bold text-slate-500 dark:text-slate-400 border-b border-[#f0f2f5] dark:border-[#14263b] ${zoneBorder}`}>
-                        {row.position}.
-                      </td>
-                      <td
-                        className={`standings-team-cell sticky left-9 z-10 bg-white dark:bg-[#0e1c2b] group-hover:bg-[#f5f8fc] dark:group-hover:bg-[#13263b] py-2.5 px-2 min-w-0 border-b border-[#f0f2f5] dark:border-[#14263b] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)] ${row.teamId && onSelectTeam ? 'cursor-pointer' : ''}`}
-                        onClick={() => {
-                          if (row.teamId && onSelectTeam) {
-                            onSelectTeam(row.teamId, row.teamName);
-                          }
-                        }}
-                        title={row.teamId && onSelectTeam ? `View ${row.teamName} details` : undefined}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <TeamLogo
-                            teamId={row.teamId}
-                            src={row.teamLogo}
-                            alt={row.teamName}
-                            className="standings-crest w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 group-hover:scale-110 transition-transform"
-                          />
-                          <span className="standings-name font-extrabold text-slate-900 dark:text-white truncate whitespace-nowrap group-hover:text-[#ff0046] transition-colors">
-                            {row.teamName}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-medium whitespace-nowrap text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.played}</td>
-                      <td className="py-2.5 px-2 text-center font-medium whitespace-nowrap text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.won}</td>
-                      <td className="py-2.5 px-2 text-center font-medium whitespace-nowrap text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.drawn}</td>
-                      <td className="py-2.5 px-2 text-center font-medium whitespace-nowrap text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.lost}</td>
-                      <td className="py-2.5 px-2 text-center font-mono font-medium whitespace-nowrap text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">
-                        {row.goalsFor}:{row.goalsAgainst} {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-black font-mono text-sm whitespace-nowrap text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">
-                        {row.points}
-                      </td>
-                    </tr>
-                  );
-                })
+                      <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                        <span className="font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm shrink-0">
+                          {row.position}.
+                        </span>
+                        <TeamLogo
+                          teamId={row.teamId}
+                          src={row.teamLogo}
+                          alt={row.teamName}
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full object-cover shrink-0"
+                        />
+                        <span className="font-bold text-slate-900 dark:text-slate-100 truncate text-[11px] sm:text-xs md:text-sm">
+                          {row.teamName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.played}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.won}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.drawn}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.lost}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.goalsFor}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.goalsAgainst}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.goalDifference}
+                    </td>
+                    <td className="py-1.5 sm:py-2 px-0.5 sm:px-1 text-center font-black text-slate-900 dark:text-white text-[11px] sm:text-xs md:text-sm border-r border-slate-200 dark:border-slate-800/80">
+                      {row.points}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -572,13 +594,13 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
 
         <div className="w-full overflow-x-auto no-scrollbar">
-          <table className="w-full text-left text-xs border-separate border-spacing-0">
+          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[440px] sm:min-w-full">
             <thead>
               <tr className="bg-[#f8f9fa] dark:bg-[#112236] text-[9px] sm:text-[10px] font-black text-slate-400 uppercase">
                 <th className="sticky left-0 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 text-center w-8 sm:w-9 border-b border-[#e6e8ec] dark:border-[#1a2e45]">#</th>
                 <th className="standings-team-cell sticky left-8 sm:left-9 z-20 bg-[#f8f9fa] dark:bg-[#112236] py-2 px-2.5 border-b border-[#e6e8ec] dark:border-[#1a2e45] border-r border-[#e6e8ec] dark:border-[#1a2e45] shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[3px_0_6px_-2px_rgba(0,0,0,0.4)]">TEAM</th>
                 <th className="py-2 px-2 text-center w-11 sm:w-12 border-b border-[#e6e8ec] dark:border-[#1a2e45]">PLAYED</th>
-                <th className="py-2 px-2 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45]">FORM</th>
+                <th className="py-2 px-3 text-center border-b border-[#e6e8ec] dark:border-[#1a2e45] min-w-[170px] sm:min-w-[210px] whitespace-nowrap">FORM</th>
                 <th className="py-2 px-3 text-center w-12 sm:w-14 font-black text-slate-900 dark:text-white border-b border-[#e6e8ec] dark:border-[#1a2e45]">PTS</th>
               </tr>
             </thead>
@@ -595,7 +617,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                     <td className="py-2 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
                       <div className="mx-auto h-3 w-5 rounded bg-slate-200 dark:bg-slate-700" />
                     </td>
-                    <td className="py-2 px-2 border-b border-[#f0f2f5] dark:border-[#14263b]">
+                    <td className="py-2 px-3 border-b border-[#f0f2f5] dark:border-[#14263b] min-w-[170px] sm:min-w-[210px]">
                       <div className="mx-auto h-6 w-28 rounded bg-slate-200 dark:bg-slate-700" />
                     </td>
                     <td className="py-2 px-3 border-b border-[#f0f2f5] dark:border-[#14263b]">
@@ -641,7 +663,9 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
                       </div>
                     </td>
                     <td className="py-2 px-2 text-center font-bold font-mono text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 border-b border-[#f0f2f5] dark:border-[#14263b]">{row.played}</td>
-                    <td className="py-2 px-2 text-center border-b border-[#f0f2f5] dark:border-[#14263b]">{render6FormBadges(row.teamId, row.position)}</td>
+                    <td className="py-2 px-3 text-center border-b border-[#f0f2f5] dark:border-[#14263b] min-w-[170px] sm:min-w-[210px] whitespace-nowrap">
+                      {render6FormBadges(row.teamId, row.position)}
+                    </td>
                     <td className="py-2 px-3 text-center font-black font-mono text-xs sm:text-sm text-slate-900 dark:text-white border-b border-[#f0f2f5] dark:border-[#14263b]">{row.points}</td>
                   </tr>
                 ))
@@ -811,7 +835,7 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
 
         {/* EPL Standings Table */}
         {renderStandingsTable(
-          'Egerton Premier League',
+          'Egerton Premier league',
           'DIVISION 1',
           eplStandings,
           'text-[#ff0046]',
