@@ -1,17 +1,22 @@
 import React, { useEffect } from 'react';
 
 export const DIRECT_LINK_URL = 'https://omg10.com/4/11954980';
-const STORAGE_CLICK_COUNT = 'esn_popunder_clicks';
-const STORAGE_LAST_FIRED_CLICK = 'esn_popunder_last_fired_click';
-const STORAGE_LAST_FIRED_TIME = 'esn_popunder_last_fired_time';
-const CLICKS_PER_POPUNDER = 10; // Exactly 1 popunder per 10 clicks
-const MIN_COOLDOWN_MS = 45 * 1000; // 45-second spacing minimum
+
+// Per page-load tracking (resets on page open or reload)
+let pageLoadClicks = 0;
+let lastFiredClick = 0;
+let lastFiredTime = 0;
+
+const FIRST_POPUNDER_CLICKS = 5; // 5 clicks after opening / reloading the page
+const SUBSEQUENT_INTERVAL_CLICKS = 15; // Then every 15 clicks thereafter (optimal UX & monetization balance)
+const MIN_COOLDOWN_MS = 25 * 1000; // 25-second spacing minimum to prevent rapid clicks in same second
 
 /**
  * Centrally manages popunder ads strictly adhering to:
- * 1. 1 popunder every 10 clicks.
- * 2. Minimum 45-second cooldown (no firing each second).
- * 3. Never interrupts typing in inputs, textareas, auth gates, or clicking close buttons.
+ * 1. 1st popunder fires on the 5th click after page open/reload.
+ * 2. Subsequent popunders fire every 15 clicks thereafter (e.g. click 5, 20, 35, 50...).
+ * 3. Minimum 25-second cooldown (no firing each second).
+ * 4. Never interrupts typing in inputs, textareas, auth gates, or clicking close buttons.
  */
 export function registerUserClickAndTriggerPopunder(event?: MouseEvent): boolean {
   if (typeof window === 'undefined') return false;
@@ -28,28 +33,30 @@ export function registerUserClickAndTriggerPopunder(event?: MouseEvent): boolean
     }
   }
 
-  const rawClicks = parseInt(sessionStorage.getItem(STORAGE_CLICK_COUNT) || '0', 10);
-  const currentClicks = rawClicks + 1;
-  sessionStorage.setItem(STORAGE_CLICK_COUNT, currentClicks.toString());
-
-  const lastFiredClick = parseInt(sessionStorage.getItem(STORAGE_LAST_FIRED_CLICK) || '0', 10);
-  const lastFiredTime = parseInt(sessionStorage.getItem(STORAGE_LAST_FIRED_TIME) || '0', 10);
+  pageLoadClicks += 1;
   const now = Date.now();
 
-  // Rule 1: Exactly 1 per 10 clicks
-  const clicksSinceLast = currentClicks - lastFiredClick;
-  if (clicksSinceLast < CLICKS_PER_POPUNDER) {
-    return false;
+  // Rule 1: First popunder at 5 clicks after page open/reload
+  if (lastFiredClick === 0) {
+    if (pageLoadClicks < FIRST_POPUNDER_CLICKS) {
+      return false;
+    }
+  } else {
+    // Rule 2: Subsequent popunders every 15 clicks (e.g. 5 + 15 = 20, 20 + 15 = 35...)
+    const clicksSinceLast = pageLoadClicks - lastFiredClick;
+    if (clicksSinceLast < SUBSEQUENT_INTERVAL_CLICKS) {
+      return false;
+    }
   }
 
-  // Rule 2: Cooldown check to prevent rapid firing in the same second/minute
+  // Rule 3: Cooldown check to prevent rapid firing in the same second/minute
   if (lastFiredTime > 0 && now - lastFiredTime < MIN_COOLDOWN_MS) {
     return false;
   }
 
   // Record fired markers
-  sessionStorage.setItem(STORAGE_LAST_FIRED_CLICK, currentClicks.toString());
-  sessionStorage.setItem(STORAGE_LAST_FIRED_TIME, now.toString());
+  lastFiredClick = pageLoadClicks;
+  lastFiredTime = now;
 
   // Execute popunder cleanly in a background tab
   try {
