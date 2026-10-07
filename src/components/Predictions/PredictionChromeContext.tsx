@@ -31,8 +31,8 @@ const EMPTY_CHROME: PredictionChromeState = {
 };
 
 interface PredictionChromeContextValue {
-  view: 'banter' | 'scores';
-  setView: (view: 'banter' | 'scores') => void;
+  view: 'banter' | 'scores' | 'analytics';
+  setView: (view: 'banter' | 'scores' | 'analytics') => void;
   chrome: PredictionChromeState;
   setChrome: (next: PredictionChromeState) => void;
 }
@@ -44,8 +44,8 @@ export function PredictionChromeProvider({
   setView,
   children,
 }: {
-  view: 'banter' | 'scores';
-  setView: (view: 'banter' | 'scores') => void;
+  view: 'banter' | 'scores' | 'analytics';
+  setView: (view: 'banter' | 'scores' | 'analytics') => void;
   children: React.ReactNode;
 }) {
   const [chrome, setChrome] = useState<PredictionChromeState>(EMPTY_CHROME);

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList, Copy, Check } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList, Copy, Check, BarChart2 } from 'lucide-react';
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
@@ -26,8 +26,8 @@ interface HeaderProps {
     onCloseCalendar?: () => void;
     unreadAnnouncementsCount?: number;
     onOpenNotifications?: () => void;
-    predictionView?: 'banter' | 'scores';
-    onSelectPredictionView?: (view: 'banter' | 'scores') => void;
+    predictionView?: 'banter' | 'scores' | 'analytics';
+    onSelectPredictionView?: (view: 'banter' | 'scores' | 'analytics') => void;
 }
 
 const SPORTS_LIST = [
@@ -376,6 +376,21 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                             <ClipboardList className="h-3.5 w-3.5" />
                             <span>Predictions</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onSelectPredictionView?.('analytics');
+                                predictionChrome?.setView('analytics');
+                            }}
+                            className={`flex h-full items-center gap-1.5 border-b-2 px-2 text-xs sm:text-sm font-black uppercase tracking-wider cursor-pointer transition-colors ${
+                                predictionView === 'analytics'
+                                    ? 'border-[#ff0046] text-[#ff0046]'
+                                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <BarChart2 className="h-3.5 w-3.5" />
+                            <span>Analytics</span>
                         </button>
                     </div>
                     {predictionView === 'banter' && (

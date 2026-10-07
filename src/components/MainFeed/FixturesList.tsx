@@ -3,7 +3,6 @@ import { Star, Pin, ChevronUp, ChevronDown, Table, Volume2, VolumeX, Radio } fro
 import type { Match } from '../../types';
 import { TeamLogo } from '../common/TeamLogo';
 import { formatMatchTime, formatMatchPitch } from '../../lib/matchdayHelper';
-import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 
 interface FixturesListProps {
     matches: Match[];
@@ -342,11 +341,29 @@ export const FixturesList: React.FC<FixturesListProps> = ({
                         )}
                     </div>
                     {isEpl && (
-                        <CompactDirectBanner
-                            label="EPL Campus Boost"
-                            tagline="Enhanced Odds on Egerton Premier League"
-                            variant="purple"
-                        />
+                        <a
+                            href="https://omg10.com/4/11954980"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-between bg-zinc-900/90 border border-purple-500/30 hover:border-purple-500/70 p-3 rounded-2xl my-2.5 transition group shadow-md"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center shrink-0 text-sm">
+                                    📊
+                                </div>
+                                <div className="min-w-0 text-left">
+                                    <p className="text-[11px] font-black uppercase text-purple-300 truncate">
+                                        Verified Campus Match Consensus
+                                    </p>
+                                    <p className="text-[9px] text-zinc-400 font-medium truncate">
+                                        View Pitchside Pundit Odds & Head-to-Head Multipliers
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="shrink-0 bg-purple-600 group-hover:bg-purple-500 text-white text-[9px] font-black uppercase px-2.5 py-1.5 rounded-lg transition ml-2">
+                                View Odds →
+                            </span>
+                        </a>
                     )}
                 </React.Fragment>
             );

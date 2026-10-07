@@ -335,15 +335,16 @@ export const PredictionSlipFlow: React.FC<PredictionSlipFlowProps> = ({
         </React.Fragment>
       ))}
 
-      {/* Kept at the bottom */}
-      <div className="pt-2">
-        <CompactDirectBanner
-          variant="purple"
-          label="Verified Slip Bonus"
-          tagline="Lock Your Prediction on External Sportsbook"
-          className="my-1.5"
-        />
-      </div>
+      {/* Double Odds Sponsor Trigger directly below slip picks */}
+      <a
+        href="https://omg10.com/4/11954980"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-black font-black text-xs py-3 rounded-xl uppercase tracking-wider my-3 shadow-xl transition"
+      >
+        <span>⚡</span>
+        <span>Double Odds: Match Slip on Official Sponsor →</span>
+      </a>
     </div>
   );
 };

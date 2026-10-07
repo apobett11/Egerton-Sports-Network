@@ -727,11 +727,6 @@ export const HomePage: React.FC<HomePageProps> = ({
       )}
       </div>
 
-      <CompactDirectBanner
-        label="Top Performer Outrights"
-        tagline="Back Campus Top Scorers & Playmakers"
-        variant="purple"
-      />
 
       {/* 3. LEAGUE MILESTONES SECTION */}
       <section 
@@ -822,11 +817,6 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 4. STANDINGS SNAPSHOT SECTION */}
-      <CompactDirectBanner
-        label="Table Climbers"
-        tagline="Predict Division 1 Winner & Win"
-        variant="amber"
-      />
       <section 
         ref={standingsSectionRef}
         aria-label="Standings Snapshot Section" 
@@ -923,11 +913,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         )}
       </section>
 
-      <CompactDirectBanner
-        label="Promotion Outrights"
-        tagline="Back Top 4 Contenders to Clinch the Title"
-        variant="amber"
-      />
 
       {/* 5. FEATURED NEWS SECTION */}
       <section 

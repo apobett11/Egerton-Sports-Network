@@ -1,7 +1,3 @@
-const TEAM_FLOOR = 70;
-const DERBY_TEAM_FLOOR = 101;
-const MAX_LEAD_SHARE = 0.1;
-
 const cleanCount = (value) => Math.max(0, Math.round(Number(value) || 0));
 
 function stableHash(value) {
@@ -40,72 +36,97 @@ export function actualVoteSplit(consensus) {
   return { total, homeVotes: counts[0], drawVotes: counts[1], awayVotes: counts[2] };
 }
 
-function teamFloor(isDerby) {
-  return isDerby ? DERBY_TEAM_FLOOR : TEAM_FLOOR;
-}
-
-/** Small steady lift. Every extra recorded vote moves the shown count up. */
-function lifted(actualVotes, floor) {
-  return Math.max(floor, actualVotes + 1 + Math.floor(actualVotes / 20));
-}
-
-function leadIsInsideRange(leader, trailer, draw) {
-  const total = leader + trailer + draw;
-  return leader - trailer <= Math.floor(total * MAX_LEAD_SHARE);
-}
-
 /**
  * Presentation counts only. Recorded votes stay untouched.
- * The actual leader still leads, each side stays above its real count,
- * and the lead stays inside 10% of the shown total.
+ * Formula:
+ * 1. Total show votes = actual total * 10 (with baseline for zero-vote slates).
+ * 2. Calculate actual lead percentage between the two teams.
+ * 3. Leading team leads by at most 30% of total votes. If actual range is less than 30%,
+ *    lead by that exact percentage. If draw/tie, then draw.
+ * 4. The actual leading team strictly leads in shown votes.
  */
 export function deriveShowVotes(actual, seedKey = '', preferredOption = null, isDerby = false) {
-  const homeActual = cleanCount(actual?.homeVotes);
-  const drawActual = cleanCount(actual?.drawVotes);
-  const awayActual = cleanCount(actual?.awayVotes);
-  const floor = teamFloor(Boolean(isDerby));
-  const tied = homeActual === awayActual;
-  const homeLeads = tied
-    ? preferredOption === '2'
-      ? false
-      : preferredOption === '1'
-        ? true
-        : stableHash(seedKey) % 2 === 0
-    : homeActual > awayActual;
+  let homeActual = cleanCount(actual?.homeVotes);
+  let drawActual = cleanCount(actual?.drawVotes);
+  let awayActual = cleanCount(actual?.awayVotes);
 
-  let leader = lifted(homeLeads ? homeActual : awayActual, tied ? floor : floor + 1);
-  let trailer = lifted(homeLeads ? awayActual : homeActual, floor);
-  let draw = Math.max(drawActual + 1, Math.round((leader + trailer) * 0.08));
+  if (preferredOption === '1') homeActual += 1;
+  else if (preferredOption === 'X') drawActual += 1;
+  else if (preferredOption === '2') awayActual += 1;
 
-  if (tied) {
-    const level = Math.max(leader, trailer, floor);
-    leader = level;
-    trailer = level;
-  } else if (trailer >= leader) {
-    leader = trailer + 1;
+  let actualTotal = homeActual + drawActual + awayActual;
+
+  // Baseline fallback when actual votes are zero
+  if (actualTotal === 0) {
+    const hash = stableHash(seedKey);
+    const baseTotal = isDerby ? 15 : 10;
+    const drawBase = Math.max(1, Math.floor(baseTotal * 0.2));
+    const remain = baseTotal - drawBase;
+    const splitOffset = (hash % 3); // 0, 1, or 2
+    const homeBase = Math.floor(remain / 2) + splitOffset;
+    const awayBase = Math.max(1, remain - homeBase);
+    homeActual = homeBase;
+    drawActual = drawBase;
+    awayActual = awayBase;
+    actualTotal = homeActual + drawActual + awayActual;
   }
 
-  let guard = 0;
-  while (!leadIsInsideRange(leader, trailer, draw) && guard < 10000) {
-    trailer += 1;
-    if (!tied && trailer >= leader) leader = trailer + 1;
-    draw = Math.max(draw, drawActual + 1, Math.round((leader + trailer) * 0.08));
-    guard += 1;
+  // Boost total votes by *10 for show votes
+  const total = actualTotal * 10;
+
+  // Calculate draw portion
+  const drawShare = actualTotal > 0 ? drawActual / actualTotal : 0.15;
+  let drawVotes = Math.round(drawShare * total);
+  let teamsTotal = Math.max(0, total - drawVotes);
+
+  const homeLeads = homeActual > awayActual;
+  const awayLeads = awayActual > homeActual;
+  const isTied = homeActual === awayActual;
+
+  let homeVotes = 0;
+  let awayVotes = 0;
+
+  if (isTied) {
+    homeVotes = Math.floor(teamsTotal / 2);
+    awayVotes = homeVotes;
+    drawVotes = total - homeVotes - awayVotes;
+  } else {
+    // Lead percentage in actual votes
+    const actualDiff = Math.abs(homeActual - awayActual);
+    const actualLeadPct = actualTotal > 0 ? actualDiff / actualTotal : 0;
+    // Leading team will lead by at most 30% of votes
+    const showLeadPct = Math.min(0.30, actualLeadPct);
+    const leadVotes = Math.round(showLeadPct * total);
+
+    let leaderVotes = Math.round((teamsTotal + leadVotes) / 2);
+    let trailerVotes = teamsTotal - leaderVotes;
+
+    if (leaderVotes <= trailerVotes) {
+      leaderVotes = trailerVotes + 1;
+      teamsTotal = leaderVotes + trailerVotes;
+    }
+
+    if (homeLeads) {
+      homeVotes = leaderVotes;
+      awayVotes = trailerVotes;
+    } else {
+      awayVotes = leaderVotes;
+      homeVotes = trailerVotes;
+    }
   }
 
-  const homeVotes = homeLeads ? leader : trailer;
-  const awayVotes = homeLeads ? trailer : leader;
-  const total = homeVotes + draw + awayVotes;
-  const homePct = Math.round((homeVotes * 100) / total);
-  const awayPct = Math.round((awayVotes * 100) / total);
+  const finalTotal = homeVotes + drawVotes + awayVotes;
+  const homePct = Math.round((homeVotes * 100) / finalTotal);
+  const awayPct = Math.round((awayVotes * 100) / finalTotal);
+  const drawPct = 100 - homePct - awayPct;
 
   return {
-    total,
+    total: finalTotal,
     homeVotes,
-    drawVotes: draw,
+    drawVotes,
     awayVotes,
     homePct,
-    drawPct: 100 - homePct - awayPct,
+    drawPct,
     awayPct,
   };
 }
@@ -113,3 +134,4 @@ export function deriveShowVotes(actual, seedKey = '', preferredOption = null, is
 export function showVotesForConsensus(consensus, seedKey = consensus?.matchId || '', preferredOption = null, isDerby = false) {
   return deriveShowVotes(actualVoteSplit(consensus), seedKey, preferredOption, isDerby);
 }
+

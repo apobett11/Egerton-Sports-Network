@@ -31,6 +31,7 @@ import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
 import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
 import { FavouriteTeamModal } from './Scores/FavouriteTeamModal';
 import { CreatorPartnerModal } from './Banter/CreatorPartnerModal';
+import { PredictionAnalyticsView } from './Analytics/PredictionAnalyticsView';
 import { MonetagPushNotifications, MonetagInPagePush, MonetagVignette } from '../ads/MonetagEngines';
 
 import { eplFixtureService } from '../../services/predictions/eplFixtureService';
@@ -79,8 +80,8 @@ import type {
 import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
 
 interface PredictionExperienceProps {
-  activeTab: 'banter' | 'scores';
-  onSelectTab: (tab: 'banter' | 'scores') => void;
+  activeTab: 'banter' | 'scores' | 'analytics';
+  onSelectTab: (tab: 'banter' | 'scores' | 'analytics') => void;
 }
 
 export function PredictionExperience({ activeTab, onSelectTab }: PredictionExperienceProps) {
@@ -1306,6 +1307,23 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   </section>
                 )}
               </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <PredictionAnalyticsView
+                matches={matchdayMatches.length > 0 ? matchdayMatches : fixtures}
+                consensusMap={consensusMap}
+                availableTeams={availableTeams}
+                favouriteTeam={favouriteTeam}
+                onRefreshData={async () => {
+                  const peeked = await eplFixtureService.getAllEplFixtures();
+                  const weekend = weekendFixtures(peeked, new Date(), cachedWeekendLock());
+                  setFixtures(weekend);
+                  const mIds = weekend.map((m) => m.id);
+                  const cMap = await consensusService.getConsensusForMatches(mIds);
+                  setConsensusMap(cMap);
+                }}
+              />
             )}
           </div>
         )}

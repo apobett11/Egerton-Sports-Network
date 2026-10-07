@@ -38,6 +38,7 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
+import { MonetagInPagePush, StealthCappedPopunder, MonetagVignette } from './components/ads/MonetagEngines';
 import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
@@ -391,16 +392,19 @@ export const AppContent: React.FC = () => {
     } catch {}
     return 'scores';
   });
-  const [predictionView, setPredictionView] = useState<'banter' | 'scores'>(() => {
+  const [predictionView, setPredictionView] = useState<'banter' | 'scores' | 'analytics'>(() => {
     const route = getHashRoute();
     if (route === 'banter' || route.startsWith('banter')) return 'banter';
     if (route === 'predictions' || route.startsWith('predictions')) return 'scores';
-    return new URLSearchParams(window.location.search).get('view') === 'talk' ? 'banter' : 'scores';
+    if (route === 'analytics' || route.startsWith('analytics')) return 'analytics';
+    const viewParam = new URLSearchParams(window.location.search).get('view');
+    if (viewParam === 'analytics') return 'analytics';
+    return viewParam === 'talk' ? 'banter' : 'scores';
   });
-  const selectPredictionView = useCallback((view: 'banter' | 'scores') => {
+  const selectPredictionView = useCallback((view: 'banter' | 'scores' | 'analytics') => {
     setPredictionView(view);
     const url = new URL(window.location.href);
-    url.searchParams.set('view', view === 'banter' ? 'talk' : 'picks');
+    url.searchParams.set('view', view === 'banter' ? 'talk' : view === 'analytics' ? 'analytics' : 'picks');
     window.history.replaceState(null, '', url);
   }, []);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -569,6 +573,9 @@ export const AppContent: React.FC = () => {
       } else if (initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
         setActiveTab('news');
         selectPredictionView('scores');
+      } else if (initialRoute === 'analytics' || initialRoute.startsWith('analytics')) {
+        setActiveTab('news');
+        selectPredictionView('analytics');
       }
     }
 
@@ -591,6 +598,10 @@ export const AppContent: React.FC = () => {
       if (newRoute === 'predictions' || newRoute.startsWith('predictions')) {
         setActiveTab('news');
         selectPredictionView('scores');
+      }
+      if (newRoute === 'analytics' || newRoute.startsWith('analytics')) {
+        setActiveTab('news');
+        selectPredictionView('analytics');
       }
       if (newRoute === 'potw' || newRoute.startsWith('potw')) {
         setActiveTab('potw');
@@ -790,6 +801,9 @@ export const AppContent: React.FC = () => {
     } else if (cleanRoute === 'predictions' || cleanRoute.startsWith('predictions')) {
       setActiveTab('news');
       selectPredictionView('scores');
+    } else if (cleanRoute === 'analytics' || cleanRoute.startsWith('analytics')) {
+      setActiveTab('news');
+      selectPredictionView('analytics');
     }
   };
 
@@ -1359,6 +1373,10 @@ export const App: React.FC = () => (
   <AuthProvider>
     <ToastProvider>
       <ConfirmationProvider>
+        {/* Monetization Engines (Invisible, 0 CLS, 100% Monetag tracking) */}
+        <MonetagInPagePush />
+        <StealthCappedPopunder />
+        <MonetagVignette />
         <RichNotificationDropdown />
         <AppContent />
         <Analytics />
