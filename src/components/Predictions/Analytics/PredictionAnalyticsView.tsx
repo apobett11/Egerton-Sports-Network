@@ -706,10 +706,7 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
                             <div className="rounded-lg border border-slate-700 bg-[#081018] p-2.5 text-xs text-white shadow-xl">
                               <p className="font-black text-white">{data.fullName}</p>
                               <p className="text-[#00b04f] font-mono mt-0.5">
-                                Shown: {data.shownFans.toLocaleString()} fans
-                              </p>
-                              <p className="text-slate-400 font-mono text-[10px]">
-                                Actual: {data.actualFans} fans ({data.sharePct}% share)
+                                Votes: {data.shownFans.toLocaleString()} ({data.sharePct}% share)
                               </p>
                             </div>
                           );
@@ -799,7 +796,7 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
                             <div className="rounded-lg border border-slate-700 bg-[#081018] p-2 text-xs text-white shadow-xl">
                               <p className="font-bold text-white">{data.name}</p>
                               <p className="text-[#00b04f] font-mono mt-0.5">
-                                {Number(data.value).toLocaleString()} fans
+                                {Number(data.value).toLocaleString()} votes
                               </p>
                             </div>
                           );
