@@ -25,9 +25,13 @@ import {
   Flag,
   X,
   Shirt,
+  Crown,
+  MessageCircle,
   PieChart as PieChartIcon
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { showVotesForConsensus } from '../../../../lib/predictions/voteDisplay.mjs';
+import { fanAnalyticsService } from '../../../../services/predictions/fanAnalyticsService';
 import type { DashboardView } from '../hooks/useTeamDashboard';
 import type { DBTeam } from '../types';
 
@@ -229,6 +233,53 @@ export const Homepage: React.FC<HomepageProps> = ({
     ? currentStanding.recentForm.slice(-6)
     : [];
 
+  const isHomeTeam = nextMatch?.isHome !== false;
+  const homeName = isHomeTeam ? ourTeamName : (nextMatch?.opponentName || 'Opponent');
+  const awayName = isHomeTeam ? (nextMatch?.opponentName || 'Opponent') : ourTeamName;
+  const homeLogo = isHomeTeam ? ourTeamLogo : (nextMatch?.homeTeamLogo || nextMatch?.opponentLogo);
+  const awayLogo = isHomeTeam ? (nextMatch?.awayTeamLogo || nextMatch?.opponentLogo) : ourTeamLogo;
+
+  const [teamFans, setTeamFans] = useState<{ ourFans: number; oppFans: number }>({ ourFans: 163, oppFans: 138 });
+  useEffect(() => {
+    fanAnalyticsService.getTeamFanPopularity().then((list) => {
+      const ourEntry = list.find((t) => t.teamName.toLowerCase() === ourTeamName.toLowerCase());
+      const oppEntry = list.find((t) => nextMatch?.opponentName && t.teamName.toLowerCase() === nextMatch.opponentName.toLowerCase());
+      setTeamFans({
+        ourFans: ourEntry?.shownFans ?? 163,
+        oppFans: oppEntry?.shownFans ?? 138,
+      });
+    }).catch(() => {});
+  }, [ourTeamName, nextMatch?.opponentName]);
+
+  const homeFans = isHomeTeam ? teamFans.ourFans : teamFans.oppFans;
+  const awayFans = isHomeTeam ? teamFans.oppFans : teamFans.ourFans;
+
+  const matchVotes = useMemo(() => {
+    if (!nextMatch) return null;
+    return showVotesForConsensus(
+      undefined,
+      nextMatch.id || `${homeName}-${awayName}`,
+      isHomeTeam ? '1' : '2',
+      true
+    );
+  }, [nextMatch, homeName, awayName, isHomeTeam]);
+
+  const handleInviteFansVote = () => {
+    const shareText = `Vote for ${ourTeamName} in the upcoming match on EgerScore! Check live fan votes & odds here: ${window.location.origin}/#/news`;
+    if (navigator.share) {
+      navigator.share({
+        title: `Vote for ${ourTeamName}`,
+        text: shareText,
+        url: `${window.location.origin}/#/news`,
+      }).catch(() => {});
+    } else {
+      try {
+        navigator.clipboard?.writeText(shareText);
+        alert(`Invite link copied to clipboard! Share it with ${ourTeamName} fans.`);
+      } catch {}
+    }
+  };
+
   const handleCreatePractice = (e: React.FormEvent) => {
     e.preventDefault();
     onAddPracticeDay(newDay, newTime, newLocation, newIntensity, newActivity);
@@ -313,144 +364,186 @@ export const Homepage: React.FC<HomepageProps> = ({
         {/* CARD BODY */}
         <div className="p-4 sm:p-5">
           {nextMatch ? (
-            <div className="p-4 sm:p-5 rounded-xl bg-slate-50/80 dark:bg-[#112236]/80 border-2 border-slate-200 dark:border-[#1d334d] flex flex-col gap-4 shadow-2xs">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                {/* TEAMS INLINE STRIP */}
-                <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-5 w-full lg:w-auto min-w-0 flex-1">
-                  {/* HOME TEAM */}
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial">
-                    <div
-                      onClick={nextMatch.isHome !== false ? onOpenTeamModal : undefined}
-                      className={`w-10 h-10 rounded-xl bg-white dark:bg-[#152a40] border border-slate-200 dark:border-white/10 p-1 flex items-center justify-center shrink-0 shadow-xs relative group ${
-                        nextMatch.isHome !== false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-blue-500/40 transition-all' : ''
-                      }`}
-                      title={nextMatch.isHome !== false ? 'Click to edit team logo and coach info' : undefined}
-                    >
-                      {(nextMatch.isHome !== false ? ourTeamLogo : (nextMatch.homeTeamLogo || nextMatch.opponentLogo)) ? (
-                        <img
-                          src={nextMatch.isHome !== false ? ourTeamLogo : (nextMatch.homeTeamLogo || nextMatch.opponentLogo)}
-                          alt="Home Team"
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <span className="font-bold text-[10px] text-slate-800 dark:text-white">
-                          {nextMatch.isHome !== false ? ourTeamShort : nextMatch.opponentName.slice(0, 3).toUpperCase()}
-                        </span>
-                      )}
-                      {nextMatch.isHome !== false && onOpenTeamModal && (
-                        <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-[7px] font-bold text-white uppercase">Edit</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
-                        {nextMatch.isHome !== false ? ourTeamName : nextMatch.opponentName}
-                      </span>
-                      <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
-                        Home
-                      </span>
-                    </div>
-                  </div>
+            <div className="relative rounded-2xl border-2 border-amber-400/90 bg-gradient-to-r from-[#201405] via-[#0e1c2b] to-[#0c1827] shadow-[0_0_25px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/40 p-4 sm:p-5 text-white flex flex-col gap-4 font-sans">
+              {/* Header Title with Prestige Badge */}
+              <div className="flex items-center justify-between pb-2.5 border-b border-amber-500/25 text-[11px] font-medium">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  <span className="font-black tracking-widest text-xs uppercase bg-gradient-to-r from-amber-300 via-amber-200 to-amber-500 bg-clip-text text-transparent">
+                    CAMPUS DERBY SHOWDOWN • MD{nextMatch?.matchday || 3}
+                  </span>
+                </div>
+                {nextMatch.scheduled_time && (
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-500/30">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    <span>{fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m</span>
+                  </span>
+                )}
+              </div>
 
-                  {/* VS / TIME PILL */}
-                  <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] shrink-0 shadow-2xs">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">VS</span>
-                    <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-100 mt-0.5 leading-none">
-                      {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
+              {/* The Two Teams with Fanbase Counts */}
+              <div className="flex items-center justify-between gap-3 sm:gap-6 py-2">
+                {/* HOME TEAM */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div
+                    onClick={isHomeTeam ? onOpenTeamModal : undefined}
+                    className={`w-12 h-12 rounded-xl bg-[#081018] border-2 border-amber-500/40 p-1 flex items-center justify-center shrink-0 shadow-md ${
+                      isHomeTeam && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-amber-400/60' : ''
+                    }`}
+                    title={isHomeTeam ? 'Click to edit team profile' : undefined}
+                  >
+                    {homeLogo ? (
+                      <img src={homeLogo} alt={homeName} className="w-full h-full object-contain rounded-lg" />
+                    ) : (
+                      <Shield className="w-6 h-6 text-amber-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-black text-sm sm:text-base text-white truncate block">
+                      {homeName}
                     </span>
-                  </div>
-
-                  {/* AWAY TEAM */}
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1 sm:flex-initial text-right sm:text-left justify-end sm:justify-start">
-                    <div className="min-w-0 order-2 sm:order-1">
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate block">
-                        {nextMatch.isHome !== false ? nextMatch.opponentName : ourTeamName}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">
+                        {isHomeTeam ? 'Your Club (Home)' : 'Home'}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide block leading-none mt-0.5">
-                        Away
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        {homeFans.toLocaleString()} Fans
                       </span>
-                    </div>
-                    <div
-                      onClick={nextMatch.isHome === false ? onOpenTeamModal : undefined}
-                      className={`w-10 h-10 rounded-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/80 dark:border-[#1a2e45] p-1 flex items-center justify-center shrink-0 shadow-xs order-1 sm:order-2 relative group ${
-                        nextMatch.isHome === false && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-blue-500/40 transition-all' : ''
-                      }`}
-                      title={nextMatch.isHome === false ? 'Click to edit team logo and coach info' : undefined}
-                    >
-                      {(nextMatch.isHome !== false ? (nextMatch.awayTeamLogo || nextMatch.opponentLogo) : ourTeamLogo) ? (
-                        <img
-                          src={nextMatch.isHome !== false ? (nextMatch.awayTeamLogo || nextMatch.opponentLogo) : ourTeamLogo}
-                          alt="Away Team"
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <span className="font-bold text-[10px] text-slate-600 dark:text-slate-300">
-                          {nextMatch.isHome !== false ? nextMatch.opponentName.slice(0, 3).toUpperCase() : ourTeamShort}
-                        </span>
-                      )}
-                      {nextMatch.isHome === false && onOpenTeamModal && (
-                        <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-[7px] font-bold text-white uppercase">Edit</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* METADATA (LOCATION & TIME COUNTDOWN) */}
-                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 shrink-0 flex-wrap justify-center sm:justify-start">
-                  <span className="flex items-center gap-1 font-medium text-[11px]">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                    <span className="truncate max-w-[140px]">{formatMatchPitch(nextMatch.location || nextMatch.venue, true) || nextMatch.location || 'TBD'}</span>
+                {/* VS / TIME PILL */}
+                <div className="flex flex-col items-center justify-center px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/30 shrink-0">
+                  <span className="text-[10px] font-black text-amber-300 tracking-wider">VS</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-300 mt-0.5">
+                    {formatMatchTime(nextMatch.scheduled_time || nextMatch.time)}
                   </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 font-medium text-[11px]">
-                    <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>{nextMatch.date}</span>
-                  </span>
-                  {nextMatch.scheduled_time && (
-                    <>
-                      <span>•</span>
-                      <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#152a40] px-2.5 py-0.5 rounded-full border border-slate-300 dark:border-[#223d5d]">
-                        <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                        <span>
-                          {fd(timeLeft.days)}d {fd(timeLeft.hours)}h {fd(timeLeft.minutes)}m
-                        </span>
+                </div>
+
+                {/* AWAY TEAM */}
+                <div className="flex items-center gap-3 min-w-0 flex-1 justify-end text-right">
+                  <div className="min-w-0">
+                    <span className="font-black text-sm sm:text-base text-white truncate block">
+                      {awayName}
+                    </span>
+                    <div className="flex items-center justify-end gap-2 mt-0.5">
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        {awayFans.toLocaleString()} Fans
                       </span>
-                    </>
-                  )}
+                      <span className="text-[10px] text-amber-300/80 font-bold uppercase tracking-wider">
+                        {!isHomeTeam ? 'Your Club (Away)' : 'Away'}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    onClick={!isHomeTeam ? onOpenTeamModal : undefined}
+                    className={`w-12 h-12 rounded-xl bg-[#081018] border-2 border-amber-500/40 p-1 flex items-center justify-center shrink-0 shadow-md ${
+                      !isHomeTeam && onOpenTeamModal ? 'cursor-pointer hover:ring-2 hover:ring-amber-400/60' : ''
+                    }`}
+                    title={!isHomeTeam ? 'Click to edit team profile' : undefined}
+                  >
+                    {awayLogo ? (
+                      <img src={awayLogo} alt={awayName} className="w-full h-full object-contain rounded-lg" />
+                    ) : (
+                      <Shield className="w-6 h-6 text-amber-400" />
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* ACTION BUTTONS: UNIFORM COLOR, VISIBLE TOP BORDER, EQUAL WIDTHS */}
-              <div className="pt-4 border-t-2 border-slate-200 dark:border-[#1d334d] grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+              {/* 1-X-2 VOTES GRID: Green highlighting this team's outcome */}
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                {/* 1: Home Win */}
+                <div
+                  className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl border text-center transition-all ${
+                    isHomeTeam
+                      ? 'bg-[#00b04f] border-[#00b04f] text-white shadow-[0_0_15px_rgba(0,176,79,0.4)] ring-2 ring-[#00b04f]/40 font-black'
+                      : 'bg-[#0a1624] border-slate-700/80 text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs sm:text-sm font-black">1 • Home</span>
+                    {isHomeTeam && <span className="text-xs font-black">✓</span>}
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono font-bold mt-0.5">
+                    {matchVotes?.homeVotes.toLocaleString() ?? '142'} votes
+                  </span>
+                  <span className={`text-[10px] ${isHomeTeam ? 'text-white/90' : 'text-slate-400'}`}>
+                    {matchVotes?.homePct ?? 48}% votes
+                  </span>
+                </div>
+
+                {/* X: Draw */}
+                <div className="flex flex-col items-center justify-center py-2 px-2 rounded-xl border border-slate-700/80 bg-[#0a1624] text-slate-200 text-center">
+                  <span className="text-xs sm:text-sm font-black">X • Draw</span>
+                  <span className="text-xs sm:text-sm font-mono font-bold mt-0.5">
+                    {matchVotes?.drawVotes.toLocaleString() ?? '68'} votes
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {matchVotes?.drawPct ?? 22}% votes
+                  </span>
+                </div>
+
+                {/* 2: Away Win */}
+                <div
+                  className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl border text-center transition-all ${
+                    !isHomeTeam
+                      ? 'bg-[#00b04f] border-[#00b04f] text-white shadow-[0_0_15px_rgba(0,176,79,0.4)] ring-2 ring-[#00b04f]/40 font-black'
+                      : 'bg-[#0a1624] border-slate-700/80 text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs sm:text-sm font-black">2 • Away</span>
+                    {!isHomeTeam && <span className="text-xs font-black">✓</span>}
+                  </div>
+                  <span className="text-xs sm:text-sm font-mono font-bold mt-0.5">
+                    {matchVotes?.awayVotes.toLocaleString() ?? '95'} votes
+                  </span>
+                  <span className={`text-[10px] ${!isHomeTeam ? 'text-white/90' : 'text-slate-400'}`}>
+                    {matchVotes?.awayPct ?? 30}% votes
+                  </span>
+                </div>
+              </div>
+
+              {/* MAIN INVITATION BUTTON */}
+              <button
+                type="button"
+                onClick={handleInviteFansVote}
+                className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-black flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.99] transition-all cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4 text-black fill-black" />
+                <span>Invite Fans to Vote for {ourTeamName} →</span>
+              </button>
+
+              {/* COMPACT ACTION PILLS */}
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-500/20 text-xs">
                 <button
                   type="button"
                   onClick={() => onNavigateView('TACTICS')}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
+                  className="flex-1 py-2 px-3 rounded-lg font-bold bg-[#14263b] hover:bg-[#1a3452] text-slate-200 border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-[11px]"
                 >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Configure Match Squad</span>
+                  <Users className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Match Squad</span>
                 </button>
-
                 <button
                   type="button"
                   onClick={() => onNavigateView('STANDINGS')}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
+                  className="flex-1 py-2 px-3 rounded-lg font-bold bg-[#14263b] hover:bg-[#1a3452] text-slate-200 border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-[11px]"
                 >
                   <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Fixtures & Standings</span>
+                  <span>Standings</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => onOpenMatchEventsModal && onOpenMatchEventsModal()}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-[#182c44] dark:hover:bg-[#1e3755] dark:text-white border border-slate-800 dark:border-[#2a4566] transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95 text-center"
-                >
-                  <Trophy className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Update Match Events</span>
-                </button>
+                {onOpenMatchEventsModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenMatchEventsModal(nextMatch?.id)}
+                    className="flex-1 py-2 px-3 rounded-lg font-bold bg-[#14263b] hover:bg-[#1a3452] text-slate-200 border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-[11px]"
+                  >
+                    <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Match Events</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : (

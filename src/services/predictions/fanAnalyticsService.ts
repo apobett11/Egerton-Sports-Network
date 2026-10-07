@@ -88,11 +88,18 @@ export class FanAnalyticsService {
       }
     } catch {}
 
-    // 4. Map into TeamFanAnalytics with show *10 of actual fans
+    // 4. Calculate total actual fans across all teams
+    const totalActualFans = availableTeams.reduce((sum, team) => {
+      const key = team.name.toLowerCase();
+      const actual = countsMap.get(key) || BASELINE_ACTUAL_FANS[team.name] || 10;
+      return sum + actual;
+    }, 0) || 1;
+
+    // 5. Map into TeamFanAnalytics: percentage * 10 without decimals to produce realistic numbers (e.g. 163 instead of 160)
     const list: Omit<TeamFanAnalytics, 'rank' | 'sharePct'>[] = availableTeams.map((team) => {
       const key = team.name.toLowerCase();
       const actualFans = countsMap.get(key) || BASELINE_ACTUAL_FANS[team.name] || 10;
-      const shownFans = actualFans * 10;
+      const shownFans = Math.round((actualFans / totalActualFans) * 1000);
       return {
         teamId: team.id,
         teamName: team.name,
@@ -106,12 +113,10 @@ export class FanAnalyticsService {
     // Sort descending by popularity
     list.sort((a, b) => b.shownFans - a.shownFans);
 
-    const totalShownFans = list.reduce((sum, item) => sum + item.shownFans, 0) || 1;
-
     return list.map((item, index) => ({
       ...item,
       rank: index + 1,
-      sharePct: Math.max(1, Math.round((item.shownFans * 100) / totalShownFans)),
+      sharePct: Math.max(1, Math.round((item.actualFans * 100) / totalActualFans)),
     }));
   }
 }

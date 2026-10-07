@@ -18,6 +18,7 @@ import { FormTab } from './FormTab';
 import { PlayerRatings } from './PlayerRatings';
 import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 import { StickyMatchFooterBanner } from '../ads/StickyMatchFooterBanner';
+import { CompactTopRightPill } from '../ads/CompactTopRightPill';
 
 interface MatchDetailsContainerProps {
     match: Match;
@@ -237,6 +238,7 @@ export const MatchDetailsContainer: React.FC<MatchDetailsContainerProps> = ({
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 pb-24 transition-colors relative">
+            <CompactTopRightPill label="Live Slip Boost" badge="LIVE" variant="emerald" />
             <MatchHeader
                 match={currentMatch}
                 onBack={onBack}

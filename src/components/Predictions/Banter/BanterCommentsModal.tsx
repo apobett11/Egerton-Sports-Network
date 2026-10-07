@@ -4,6 +4,7 @@ import { formatRelativeTime } from '../../../lib/predictions/utils';
 import { banterService } from '../../../services/predictions/banterService';
 import { BANTER_CONFIG } from '../../../lib/predictions/constants';
 import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
+import { useNewsTacticalPopunder } from '../../../hooks/useNewsTacticalPopunder';
 import type { BanterPost, BanterComment, ReactionType } from '../../../types/predictions';
 
 interface BanterCommentsModalProps {
@@ -19,7 +20,12 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
   onCommentAdded,
   onToggleReaction,
 }) => {
+  const { triggerTacticalPause } = useNewsTacticalPopunder();
   const [comments, setComments] = useState<BanterComment[]>([]);
+
+  useEffect(() => {
+    triggerTacticalPause('open_comments');
+  }, [triggerTacticalPause]);
   const [isLoading, setIsLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

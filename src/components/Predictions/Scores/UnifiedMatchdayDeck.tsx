@@ -7,6 +7,7 @@ import { VoteRangeBar } from './VoteRangeBar';
 import { formatKickoffTime, formatTeamName } from '../../../lib/predictions/utils';
 import { describeVotingWindow, slipTick } from '../../../lib/predictions/votingWindow';
 import { showVotesForConsensus } from '../../../lib/predictions/voteDisplay.mjs';
+import { useNewsTacticalPopunder } from '../../../hooks/useNewsTacticalPopunder';
 import type { Match, PredictionOption, ConsensusData, UserPrediction } from '../../../types/predictions';
 import type { SlipTick } from '../../../lib/predictions/votingWindow';
 
@@ -56,6 +57,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
   picksFrozen = false,
   onLockedPick,
 }) => {
+  const { triggerTacticalPause } = useNewsTacticalPopunder();
   const [inspectSquadMatch, setInspectSquadMatch] = useState<Match | null>(null);
   const [derbyPopupData, setDerbyPopupData] = useState<{ match: Match; option: PredictionOption } | null>(null);
   const [showMyVotesModal, setShowMyVotesModal] = useState(false);
@@ -85,6 +87,7 @@ export const UnifiedMatchdayDeck: React.FC<UnifiedMatchdayDeckProps> = ({
     const completing = matches.length > 0 && matches.every((row) => row.id === match.id || userPredictions.has(row.id));
     onMakePrediction(match, option);
     if (completing) {
+      triggerTacticalPause('complete_ticket');
       onOpenCompletionModal?.();
       return;
     }

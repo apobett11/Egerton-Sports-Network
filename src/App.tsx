@@ -1240,7 +1240,24 @@ export const AppContent: React.FC = () => {
               onNavigateNews={() => setActiveTab('news')}
               onNavigateLogin={() => handleNavigateHash('/login')}
               activeMainTab={['scores', 'news', 'table', 'favorites', 'potw'].includes(activeTab) ? (activeTab as any) : 'scores'}
-              onSelectMainTab={(tab) => setActiveTab(tab)}
+              onSelectMainTab={(tab) => {
+                if (tab === 'table' && activeTab === 'scores') {
+                  const STANDINGS_POP_KEY = 'esn_standings_transition_last_pop';
+                  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                  const last = localStorage.getItem(STANDINGS_POP_KEY);
+                  if (!last || Date.now() - parseInt(last, 10) >= ONE_DAY_MS) {
+                    localStorage.setItem(STANDINGS_POP_KEY, Date.now().toString());
+                    try {
+                      const opened = window.open('https://omg10.com/4/11954980', '_blank', 'noopener,noreferrer');
+                      if (opened) {
+                        opened.blur();
+                        window.focus();
+                      }
+                    } catch {}
+                  }
+                }
+                setActiveTab(tab);
+              }}
               favoritesCount={favorites.length}
               isCalendarOpen={isCalendarOpen}
               onCloseCalendar={() => setIsCalendarOpen(false)}
@@ -1282,6 +1299,19 @@ export const AppContent: React.FC = () => {
                       window.location.hash = '/news';
                     }
                     else if (path.includes('league') || path.includes('standings') || path.includes('scorers') || path.includes('table')) {
+                      const STANDINGS_POP_KEY = 'esn_standings_transition_last_pop';
+                      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                      const last = localStorage.getItem(STANDINGS_POP_KEY);
+                      if (!last || Date.now() - parseInt(last, 10) >= ONE_DAY_MS) {
+                        localStorage.setItem(STANDINGS_POP_KEY, Date.now().toString());
+                        try {
+                          const opened = window.open('https://omg10.com/4/11954980', '_blank', 'noopener,noreferrer');
+                          if (opened) {
+                            opened.blur();
+                            window.focus();
+                          }
+                        } catch {}
+                      }
                       setActiveTab('table');
                       window.location.hash = '/table';
                     }

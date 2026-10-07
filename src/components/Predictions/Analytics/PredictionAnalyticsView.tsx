@@ -11,6 +11,8 @@ import {
   PieChart as PieIcon,
   Flame,
   CheckCircle2,
+  Share2,
+  Check,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -103,6 +105,27 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
     }
   };
 
+  const [copiedShare, setCopiedShare] = useState(false);
+  const handleSharePage = async () => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/analytics`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'EgerScore — Predictions & Fan Analytics',
+          text: 'Check out the live match popularity index and campus club fan standings!',
+          url: shareUrl,
+        });
+        return;
+      } catch {}
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2500);
+    } catch {}
+  };
+
   // Selected team object
   const currentSelectedTeam = useMemo(() => {
     if (!selectedTeamName && teamAnalytics.length > 0) return teamAnalytics[0];
@@ -173,11 +196,29 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
           </p>
         </div>
 
-        {/* Local Page Refresh Button */}
+        {/* Local Page Refresh and Share Toolbar */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <span className="text-[10px] text-slate-400 hidden sm:inline">
             Updated {lastRefreshedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
+          <button
+            type="button"
+            onClick={handleSharePage}
+            className="flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-[#14263b] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-slate-200 hover:border-[#ff0046] hover:bg-[#1a3452] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Share this analytics page"
+          >
+            {copiedShare ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-emerald-400">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="h-3.5 w-3.5 text-[#ff0046]" />
+                <span>Share</span>
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={handleRefresh}
@@ -338,10 +379,10 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
                     </div>
                   </div>
 
-                  {/* Show Votes Popularity Breakdown (Cards have only the show votes) */}
+                  {/* Votes Popularity Breakdown */}
                   <div className="mt-2 rounded-lg bg-[#081018]/90 p-2.5 border border-[#16283d]">
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                      <span className="text-slate-300">Show Votes</span>
+                      <span className="text-slate-300">Votes</span>
                       <span className="text-slate-400 font-normal">
                         {showVotes.total.toLocaleString()} total votes
                       </span>
@@ -414,7 +455,7 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
             </h2>
           </div>
           <span className="text-[11px] font-bold text-slate-400">
-            Showing *10 of Actual Fans
+            Verified Campus Fanbase
           </span>
         </div>
 
@@ -424,9 +465,8 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
               <tr>
                 <th className="px-3 py-2.5">Rank</th>
                 <th className="px-3 py-2.5">Team</th>
-                <th className="px-3 py-2.5 text-right">Shown Fans (*10)</th>
-                <th className="px-3 py-2.5 text-right">Actual Fans</th>
-                <th className="px-3 py-2.5 text-right">Popularity Share</th>
+                <th className="px-3 py-2.5 text-right">Club Fans</th>
+                <th className="px-3 py-2.5 text-right">Fan Share (%)</th>
                 <th className="px-3 py-2.5 text-center">Action</th>
               </tr>
             </thead>
@@ -499,11 +539,7 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-mono font-black text-[#00b04f]">
-                        {team.shownFans.toLocaleString()} fans
-                      </td>
-
-                      <td className="px-3 py-2.5 text-right font-mono text-slate-400">
-                        {team.actualFans.toLocaleString()}
+                        {team.shownFans.toLocaleString()}
                       </td>
 
                       <td className="px-3 py-2.5 text-right">
@@ -592,7 +628,7 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="rounded-lg bg-[#081018] border border-[#16283d] p-2 text-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                    Shown Fans (*10)
+                    Total Fans
                   </span>
                   <span className="text-sm sm:text-base font-black text-[#00b04f]">
                     {currentSelectedTeam.shownFans.toLocaleString()}
@@ -600,10 +636,10 @@ export const PredictionAnalyticsView: React.FC<PredictionAnalyticsViewProps> = (
                 </div>
                 <div className="rounded-lg bg-[#081018] border border-[#16283d] p-2 text-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                    Actual Fans
+                    Campus Fan Share
                   </span>
                   <span className="text-sm sm:text-base font-black text-white">
-                    {currentSelectedTeam.actualFans.toLocaleString()}
+                    {currentSelectedTeam.sharePct}%
                   </span>
                 </div>
               </div>

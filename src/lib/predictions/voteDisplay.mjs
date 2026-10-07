@@ -94,8 +94,9 @@ export function deriveShowVotes(actual, seedKey = '', preferredOption = null, is
     // Lead percentage in actual votes
     const actualDiff = Math.abs(homeActual - awayActual);
     const actualLeadPct = actualTotal > 0 ? actualDiff / actualTotal : 0;
-    // Leading team will lead by at most 30% of votes
-    const showLeadPct = Math.min(0.30, actualLeadPct);
+    // Leading team will lead by at most 30% of votes (20% for derby matches)
+    const maxLead = isDerby ? 0.20 : 0.30;
+    const showLeadPct = Math.min(maxLead, actualLeadPct);
     const leadVotes = Math.round(showLeadPct * total);
 
     let leaderVotes = Math.round((teamsTotal + leadVotes) / 2);

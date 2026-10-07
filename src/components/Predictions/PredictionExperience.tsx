@@ -20,6 +20,7 @@ import { MatchdayCompletionModal } from './Scores/MatchdayCompletionModal';
 import { GameSquadsModal } from './Scores/GameSquadsModal';
 import { PredictionMatchDetailsModal } from './Scores/PredictionMatchDetailsModal';
 import { CompactDirectBanner } from '../ads/CompactDirectBanner';
+import { CompactTopRightPill } from '../ads/CompactTopRightPill';
 import { BanterComposer } from './Banter/BanterComposer';
 import { BanterFeed } from './Banter/BanterFeed';
 import { TalkDashboard } from './Banter/TalkDashboard';
@@ -1126,6 +1127,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
           <div className={activeTab === 'scores' && !favouriteTeam ? 'flex min-h-0 flex-1 flex-col gap-1.5' : 'space-y-4'}>
             {activeTab === 'banter' && (
               <div className="space-y-4 animate-fadeIn">
+                <CompactTopRightPill label="Consensus IQ" badge="TOP" variant="amber" />
                 <div className="flex items-end justify-between gap-3 px-0.5">
                   <div>
                     <h1 className="text-lg font-black text-white tracking-tight">What's happening</h1>

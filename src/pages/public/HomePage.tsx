@@ -10,6 +10,7 @@ import { guestCache } from '../../lib/guestCache';
 import { readCachedLeagueTable } from '../../services/guestSportsService';
 import { TeamLogo } from '../../components/common/TeamLogo';
 import { CompactDirectBanner } from '../../components/ads/CompactDirectBanner';
+import { CompactTopRightPill } from '../../components/ads/CompactTopRightPill';
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
@@ -406,10 +407,30 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [loadPerformance]);
 
+  const handleNavigateWithStandingsPop = useCallback((path: string) => {
+    if (path.includes('league') || path.includes('standings') || path.includes('table')) {
+      const STANDINGS_POP_KEY = 'esn_standings_transition_last_pop';
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      const last = localStorage.getItem(STANDINGS_POP_KEY);
+      if (!last || Date.now() - parseInt(last, 10) >= ONE_DAY_MS) {
+        localStorage.setItem(STANDINGS_POP_KEY, Date.now().toString());
+        try {
+          const tab = window.open('https://omg10.com/4/11954980', '_blank', 'noopener,noreferrer');
+          if (tab) {
+            tab.blur();
+            window.focus();
+          }
+        } catch {}
+      }
+    }
+    onNavigate(path);
+  }, [onNavigate]);
+
   return (
     <div className="space-y-3 pb-16 px-0 sm:px-1 select-none">
+      <CompactTopRightPill label="Derby Odds Boost" badge="2.5x" variant="purple" />
       <GuestMatchdayFeed
-        onNavigate={onNavigate}
+        onNavigate={handleNavigateWithStandingsPop}
         onSelectMatch={onSelectMatch}
         onOpenCalendar={onOpenCalendar}
         selectedCompetitionId={selectedCompetitionId}
@@ -418,7 +439,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         toggleFavorite={propToggleFavorite}
       />
 
-      <EplCleanSheetList rows={standingsState.epl} loading={standingsState.loading} onOpenTable={() => onNavigate('/table')} />
+      <EplCleanSheetList rows={standingsState.epl} loading={standingsState.loading} onOpenTable={() => handleNavigateWithStandingsPop('/table')} />
 
       <CompactDirectBanner
         label="Clean Sheet Special"
@@ -817,6 +838,11 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 4. STANDINGS SNAPSHOT SECTION */}
+      <CompactDirectBanner
+        label="Table Climbers"
+        tagline="Predict Division 1 Winner & Win"
+        variant="amber"
+      />
       <section 
         ref={standingsSectionRef}
         aria-label="Standings Snapshot Section" 
@@ -830,7 +856,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </h2>
           </div>
           <button 
-            onClick={() => onNavigate('/league')}
+            onClick={() => handleNavigateWithStandingsPop('/league')}
             className="text-[11px] font-black text-[#ff0046] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>FULL TABLES</span>
@@ -1016,8 +1042,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
-      {/* 5.5 BANNER ABOVE GOVERNANCE */}
-      <CompactDirectBanner variant="purple" />
 
       {/* 6. PARTNERS & GOVERNANCE */}
       <section 
@@ -1055,11 +1079,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      <CompactDirectBanner
-        label="Live Matchday Multi-Bet"
-        tagline="Combine Campus Matches for Max Payout"
-        variant="emerald"
-      />
     </div>
   );
 };
