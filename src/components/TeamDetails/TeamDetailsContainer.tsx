@@ -15,8 +15,6 @@ import { TeamFixturesTab } from './tabs/TeamFixturesTab';
 import { TeamSquadTab } from './tabs/TeamSquadTab';
 import { TeamPlayersTab } from './tabs/TeamPlayersTab';
 import { TeamStandingsTab } from './tabs/TeamStandingsTab';
-import { CompactDirectBanner } from '../ads/CompactDirectBanner';
-import { StickyMatchFooterBanner } from '../ads/StickyMatchFooterBanner';
 
 interface TeamDetailsContainerProps {
   teamId: string;
@@ -42,14 +40,15 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   const playersLoadedRef = useRef<boolean>(false);
   const standingsLoadedRef = useRef<boolean>(false);
 
-  // Phase 1 (Instant First Paint): Fetch team metadata and fixtures immediately (<300ms)
+  // Phase 1 (Instant First Paint): Fetch team metadata, fixtures, and standings immediately (<300ms)
   const loadPrimaryData = useCallback(async () => {
     if (!teamId) return;
     try {
       setError(null);
-      const [teamData, fixturesData] = await Promise.all([
+      const [teamData, fixturesData, standingsData] = await Promise.all([
         fetchTeamById(teamId),
         fetchTeamFixtures(teamId),
+        fetchTeamStandings(teamId).catch(() => []),
       ]);
 
       if (!teamData) {
@@ -59,6 +58,10 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
       }
 
       setFixtures(fixturesData || []);
+      if (standingsData && standingsData.length > 0) {
+        setStandings(standingsData);
+        standingsLoadedRef.current = true;
+      }
     } catch (err: any) {
       console.error('[TeamDetailsContainer] Error fetching primary team data:', err);
       setError('Unable to load team records from database. Please check connection.');
@@ -257,18 +260,14 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
 
       {/* 3. ACTIVE TAB CONTENT WORKSPACE */}
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 relative z-10">
-        <CompactDirectBanner
-          label={`${team.name} Matchday Specials`}
-          tagline="Enhanced Odds & Live In-Play Payouts"
-          variant="purple"
-          className="mb-4"
-        />
         {activeTab === 'fixtures' && (
           <TeamFixturesTab
             fixtures={fixtures}
             currentTeamName={team.name}
             currentTeamLogo={team.logo_url}
             teamId={team.id}
+            standing={currentStanding}
+            standings={standings}
             onSelectMatch={onSelectMatch}
           />
         )}
@@ -324,8 +323,6 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
           )
         )}
       </main>
-
-      <StickyMatchFooterBanner activeTab={activeTab} />
     </div>
   );
 };

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Match } from '../../Dashboards/Team/types';
+import type { Match, StandingEntry } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
-import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
+import { Leg1TeamAnalytics } from '../Leg1TeamAnalytics';
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
   currentTeamName?: string;
   currentTeamLogo?: string;
   teamId?: string;
+  standing?: StandingEntry;
+  standings?: StandingEntry[];
   onSelectMatch?: (match: any) => void;
 }
 
@@ -18,6 +20,8 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
   currentTeamName = 'Team',
   currentTeamLogo = '',
   teamId = '',
+  standing,
+  standings = [],
   onSelectMatch,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'ALL' | 'UPCOMING' | 'FINISHED'>('ALL');
@@ -124,10 +128,14 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 select-none animate-in fade-in duration-150">
-      <CompactDirectBanner
-        label={`${currentTeamName} Live Odds`}
-        tagline="Campus Derby & Matchday Multipliers"
-        variant="purple"
+      {/* LEG 1 TEAM ANALYTICS DOSSIER */}
+      <Leg1TeamAnalytics
+        teamName={currentTeamName}
+        teamLogo={currentTeamLogo}
+        teamId={teamId}
+        standing={standing}
+        standings={standings}
+        fixtures={fixtures}
       />
 
       {/* 1. Header Filter Controls */}
@@ -417,25 +425,12 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                           ) : null}
                         </div>
                       </div>
-                      {(idx + 1) % 10 === 0 && (
-                        <CompactDirectBanner
-                          label={`${currentTeamName} Match Boost`}
-                          tagline="Enhanced In-Play Derby Odds"
-                          variant="amber"
-                        />
-                      )}
                     </React.Fragment>
                   );
                 })}
               </div>
             )}
           </div>
-
-          <CompactDirectBanner
-            label="Matchday Head-to-Head"
-            tagline="Claim Welcome Match Bonus"
-            variant="emerald"
-          />
         </React.Fragment>
       );
     })
