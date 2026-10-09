@@ -71,51 +71,18 @@ export function registerUserClickAndTriggerPopunder(event?: MouseEvent): boolean
   }
 }
 
+// 1. IN-PAGE PUSH: Completely disabled to permanently eliminate top-blocking notification popups
 export const loadFreshInPagePush = () => {
   if (typeof document === 'undefined') return;
-
-  // Cleanly remove any old script tag
   const existingScripts = document.querySelectorAll('script[data-zone="11954976"], script[src*="nap5k.com"]');
   existingScripts.forEach((s) => {
     try { s.remove(); } catch {}
   });
-
-  // Inject fresh tag to trigger fresh push ad for the new route
-  const script = document.createElement('script');
-  script.dataset.zone = '11954976';
-  script.src = `https://nap5k.com/tag.min.js?_r=${Date.now()}`;
-  script.async = true;
-  document.body.appendChild(script);
 };
 
-// 1. IN-PAGE PUSH: Zone 11954976 (nap5k.com) - Refreshes on every route transition after vignette
 export const MonetagInPagePush: React.FC = () => {
   useEffect(() => {
-    // Initial page load push ad
     loadFreshInPagePush();
-
-    // Listen for vignette completion to trigger fresh in-page push for the new route
-    const handleRefreshPush = () => {
-      loadFreshInPagePush();
-    };
-
-    window.addEventListener('esn_refresh_inpage_push', handleRefreshPush);
-
-    // Fallback sync after route transitions (2.6s - right after the 2.5s vignette window)
-    const handleRouteTransition = () => {
-      setTimeout(() => {
-        loadFreshInPagePush();
-      }, 2600);
-    };
-
-    window.addEventListener('esn_route_transition', handleRouteTransition);
-    window.addEventListener('hashchange', handleRouteTransition);
-
-    return () => {
-      window.removeEventListener('esn_refresh_inpage_push', handleRefreshPush);
-      window.removeEventListener('esn_route_transition', handleRouteTransition);
-      window.removeEventListener('hashchange', handleRouteTransition);
-    };
   }, []);
 
   return null;

@@ -38,7 +38,7 @@ import { DeviceNotificationsModal } from './components/DeviceNotificationsModal'
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
-import { MonetagInPagePush, StealthCappedPopunder } from './components/ads/MonetagEngines';
+import { StealthCappedPopunder } from './components/ads/MonetagEngines';
 import { TransitionVignetteManager } from './components/ads/TransitionVignetteManager';
 import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -1420,7 +1420,6 @@ export const App: React.FC = () => (
     <ToastProvider>
       <ConfirmationProvider>
         {/* Monetization Engines (Invisible, 0 CLS, 100% Monetag tracking) */}
-        <MonetagInPagePush />
         <StealthCappedPopunder />
         <TransitionVignetteManager />
         <RichNotificationDropdown />
