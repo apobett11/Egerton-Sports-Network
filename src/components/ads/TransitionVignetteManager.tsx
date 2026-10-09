@@ -6,9 +6,9 @@ const DWELL_TIME_MS = 2500;       // 2.5 seconds auto-dismissal after new page l
 const MAX_FALLBACK_MS = 5200;     // 5.2 seconds hard safety timeout
 const COUNTER_KEY = 'esn_vignette_nav_count';
 
-// Pacing: 2nd transition, then every 4th transition after that (2, 6, 10, 14, ...)
-export const isPacedVignetteTarget = (count: number): boolean => {
-  return count >= 2 && (count - 2) % 4 === 0;
+// Pacing: Active on all route transitions as requested by user
+export const isPacedVignetteTarget = (_count: number): boolean => {
+  return true;
 };
 
 export const TransitionVignetteManager: React.FC = () => {
@@ -85,6 +85,9 @@ export const TransitionVignetteManager: React.FC = () => {
       document.documentElement.style.overflow = '';
 
       setIsActive(false);
+
+      // Trigger fresh In-Page Push for the new route
+      window.dispatchEvent(new CustomEvent('esn_refresh_inpage_push'));
     };
 
     const firePacedVignette = () => {

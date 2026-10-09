@@ -33,7 +33,7 @@ export const StickyMatchFooterBanner: React.FC<{ activeTab?: string }> = ({ acti
         href={DIRECT_LINK}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full max-w-md h-[42px] max-h-[44px] flex items-center justify-between px-3 bg-gradient-to-r from-purple-900/40 via-zinc-900 to-purple-900/40 border border-purple-500/40 rounded-xl active:scale-[0.99] transition-all"
+        className="w-full max-w-md h-[42px] max-h-[44px] flex items-center justify-between px-3 bg-gradient-to-r from-purple-900/40 via-zinc-900 to-purple-900/40 border border-purple-500/40 rounded-xl active:scale-[0.99] transition-all [text-size-adjust:100%] [-webkit-text-size-adjust:100%]"
       >
         <div className="flex items-center gap-2 min-w-0 pr-2">
           <span className="text-sm shrink-0 leading-none">🔥</span>

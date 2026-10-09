@@ -83,25 +83,25 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
     <div
       aria-live="polite"
       aria-atomic="true"
-      className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none select-none"
+      className="fixed bottom-20 sm:bottom-6 right-3 sm:right-6 left-3 sm:left-auto z-[9999] flex flex-col gap-2 max-w-[330px] w-full pointer-events-none select-none [text-size-adjust:100%] [-webkit-text-size-adjust:100%]"
     >
       {toasts.map((toast) => (
         <div
           key={toast.id}
           role="status"
-          className={`pointer-events-auto p-4 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-start justify-between gap-3 transition-all ${getTypeStyle(
+          className={`pointer-events-auto p-3 rounded-xl border shadow-xl backdrop-blur-xl flex items-start justify-between gap-2.5 transition-all max-h-24 overflow-hidden ${getTypeStyle(
             toast.type
           )}`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {renderIcon(toast)}
             <div className="space-y-0.5 min-w-0">
               {toast.title && (
-                <h4 className="font-bold text-xs uppercase tracking-wider leading-none">
+                <h4 className="font-bold text-[10.5px] uppercase tracking-wider leading-none truncate">
                   {toast.title}
                 </h4>
               )}
-              <p className="text-xs font-semibold leading-snug opacity-95">
+              <p className="text-[11px] font-semibold leading-tight opacity-95 line-clamp-2">
                 {toast.message}
               </p>
             </div>
@@ -109,7 +109,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
           {toast.type !== 'loading' && (
             <button
               onClick={() => onDismiss(toast.id)}
-              className="p-1 rounded-full hover:bg-black/20 text-current opacity-70 hover:opacity-100 transition-opacity focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none min-h-[32px] min-w-[32px] flex items-center justify-center cursor-pointer"
+              className="p-1 rounded-full hover:bg-black/20 text-current opacity-70 hover:opacity-100 transition-opacity focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none min-h-[28px] min-w-[28px] flex items-center justify-center cursor-pointer shrink-0"
               title="Dismiss notification"
               aria-label="Dismiss notification"
             >

@@ -310,8 +310,8 @@ body {
 
 /* ========================================================================= */
 /* NOTIFICATION ADS (IN-PAGE PUSH) STYLING & CONSTRAINT                      */
-/* Keep notification ads compact, styled into the page, and never filling    */
-/* the screen or blocking the entire viewport.                              */
+/* Keep notification ads compact, styled into the page, placed at the bottom,*/
+/* and never blocking the top navigation or spanning full screen.           */
 /* ========================================================================= */
 
 .monetag-ipp,
@@ -330,17 +330,20 @@ div[class*="_ipp"],
 div[id*="_ipp"],
 div[class*="push-notification"] {
   position: fixed !important;
-  top: 12px !important;
-  right: 12px !important;
-  bottom: auto !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  top: auto !important;
   left: auto !important;
   z-index: 99999 !important;
 
   width: auto !important;
-  max-width: 310px !important;
-  min-width: 240px !important;
-  max-height: 110px !important;
+  max-width: min(300px, calc(100vw - 32px)) !important;
+  min-width: 220px !important;
+  max-height: 86px !important;
   box-sizing: border-box !important;
+
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
 
   background: rgba(14, 28, 43, 0.96) !important;
   color: #f8fafc !important;
@@ -350,7 +353,7 @@ div[class*="push-notification"] {
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
 
-  padding: 8px 12px !important;
+  padding: 6px 10px !important;
   overflow: hidden !important;
   transition: transform 0.2s ease, opacity 0.2s ease !important;
 }
@@ -371,24 +374,28 @@ div[class*="push-notification"] {
   div[class*="_ipp"],
   div[id*="_ipp"],
   div[class*="push-notification"] {
-    top: 8px !important;
-    right: 8px !important;
-    left: 8px !important;
-    max-width: min(310px, calc(100vw - 16px)) !important;
-    margin: 0 auto !important;
+    bottom: 76px !important;
+    top: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    max-width: min(290px, calc(100vw - 24px)) !important;
+    max-height: 82px !important;
+    padding: 6px 8px !important;
+    margin: 0 !important;
   }
 }
 
-/* Inner elements of in-page notification ads */
+/* Inner elements of in-page notification ads - strictly bounded */
 .monetag-ipp img,
 [class*="asb-"] img,
 div[id^="asb-"] img,
 div[class*="in-page-push"] img {
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
-  max-width: 34px !important;
-  border-radius: 8px !important;
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  border-radius: 7px !important;
   object-fit: cover !important;
   flex-shrink: 0 !important;
 }
@@ -398,13 +405,13 @@ div[class*="in-page-push"] img {
 [class*="asb-"] [class*="title"],
 div[id^="asb-"] [class*="title"],
 div[class*="in-page-push"] [class*="title"] {
-  font-size: 11.5px !important;
+  font-size: min(11px, 3.2vw) !important;
   font-weight: 800 !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
   color: #ffffff !important;
   letter-spacing: -0.01em !important;
-  margin: 0 0 2px 0 !important;
-  max-height: 26px !important;
+  margin: 0 0 1px 0 !important;
+  max-height: 24px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
@@ -415,11 +422,11 @@ div[class*="in-page-push"] [class*="title"] {
 div[id^="asb-"] [class*="desc"],
 div[class*="in-page-push"] [class*="desc"],
 div[class*="in-page-push"] p {
-  font-size: 10px !important;
+  font-size: min(9.5px, 2.8vw) !important;
   color: #94a3b8 !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
   margin: 0 !important;
-  max-height: 26px !important;
+  max-height: 22px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
 }
@@ -428,8 +435,8 @@ div[class*="in-page-push"] p {
 [class*="asb-"] [class*="close"],
 div[id^="asb-"] [class*="close"],
 div[class*="in-page-push"] [class*="close"] {
-  width: 18px !important;
-  height: 18px !important;
+  width: 16px !important;
+  height: 16px !important;
   opacity: 0.8 !important;
   cursor: pointer !important;
   transition: opacity 0.15s ease !important;
@@ -440,4 +447,44 @@ div[class*="in-page-push"] [class*="close"] {
 div[id^="asb-"] [class*="close"]:hover,
 div[class*="in-page-push"] [class*="close"]:hover {
   opacity: 1 !important;
+}
+
+/* ========================================================================= */
+/* IN-PAGE PUSH INTERSECTION CONTAINER BLEND                                 */
+/* Allows Monetag In-Page Push elements embedded within feed intersections   */
+/* to blend in identically like native banner ads within the given container */
+/* ========================================================================= */
+
+.monetag-intersection-slot {
+  width: 100% !important;
+  max-width: 28rem !important;
+  height: 44px !important;
+  max-height: 48px !important;
+  box-sizing: border-box !important;
+}
+
+.monetag-intersection-slot .monetag-ipp,
+.monetag-intersection-slot [class*="asb-"],
+.monetag-intersection-slot div[id^="asb-"],
+.monetag-intersection-slot div[id*="zone_11954976"],
+.monetag-intersection-slot [data-zone="11954976"] {
+  position: relative !important;
+  bottom: auto !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 48px !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+  border-radius: 0.75rem !important;
+  background: linear-gradient(to right, #18181b, rgba(59, 7, 100, 0.3), #18181b) !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
 }

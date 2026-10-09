@@ -241,7 +241,7 @@ export const RichNotificationDropdown: React.FC<RichNotificationDropdownProps> =
 
   return (
     <div
-      className="fixed top-2 sm:top-3 left-3 right-3 sm:left-auto sm:right-4 z-[9999] flex justify-end pointer-events-none select-none"
+      className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 z-[9999] flex justify-end pointer-events-none select-none [text-size-adjust:100%] [-webkit-text-size-adjust:100%]"
       role="alert"
       aria-live="assertive"
     >
@@ -249,8 +249,8 @@ export const RichNotificationDropdown: React.FC<RichNotificationDropdownProps> =
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleCardClick}
-        className={`max-w-[340px] sm:max-w-[360px] w-full bg-[#09111c]/95 border border-purple-500/35 backdrop-blur-xl rounded-xl shadow-xl shadow-black/70 p-2.5 sm:p-3 transition-all duration-300 pointer-events-auto cursor-pointer relative overflow-hidden group hover:border-purple-400/60 ${
-          isVisible ? 'animate-in slide-in-from-top-4 duration-300 opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95'
+        className={`max-w-[320px] sm:max-w-[340px] w-full bg-[#09111c]/95 border border-purple-500/35 backdrop-blur-xl rounded-xl shadow-xl shadow-black/70 p-2.5 transition-all duration-300 pointer-events-auto cursor-pointer relative overflow-hidden group hover:border-purple-400/60 ${
+          isVisible ? 'animate-in slide-in-from-bottom-4 duration-300 opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'
         }`}
       >
         {/* Top Bar: Official Branding + Category Badge + Just Now + Close */}
