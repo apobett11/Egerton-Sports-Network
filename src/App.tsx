@@ -518,12 +518,13 @@ export const AppContent: React.FC = () => {
       isInitialTransitionRef.current = false;
       return;
     }
+    const subRouteKey = selectedMatch ? `match-${selectedMatch.id}` : `${route}:${activeTab}`;
     window.dispatchEvent(
       new CustomEvent('esn_route_transition', {
-        detail: { route, activeTab }
+        detail: { route, activeTab, subRouteKey }
       })
     );
-  }, [route, activeTab]);
+  }, [route, activeTab, selectedMatch]);
 
   // Sync route on hash change
   useEffect(() => {

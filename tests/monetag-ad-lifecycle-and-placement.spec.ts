@@ -28,18 +28,24 @@ test.describe('Monetag Ads Lifecycle, Bottom Placement & Intersection Blending',
     expect(topBlocked).toBe(false);
   });
 
-  test('2. Vignette ad triggers on route change, stays for 2.5s, then disappears', async ({ page }) => {
+  test('2. Vignette ad triggers on 2nd route transition, displays for 2.5s, then disappears', async ({ page }) => {
     await page.goto('/#/home', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
 
-    // Route switch to Table/Standings
+    // 1st transition: Table/Standings (clean transition)
     await page.evaluate(() => {
       window.location.hash = '#/table';
     });
+    await page.waitForTimeout(600);
 
-    // Verify vignette progress bar / overlay is active during route transition
+    // 2nd transition: Predictions (Pacing target: triggers vignette!)
+    await page.evaluate(() => {
+      window.location.hash = '#/predictions';
+    });
+
+    // Verify vignette progress bar / sync indicator is active during 2nd route transition
     const vignetteBar = page.locator('div[style*="vignetteProgressBar"]');
-    await expect(vignetteBar).toBeVisible({ timeout: 2000 });
+    await expect(vignetteBar).toBeVisible({ timeout: 2500 });
 
     // Wait past the 2.5s auto-dwell window
     await page.waitForTimeout(2800);

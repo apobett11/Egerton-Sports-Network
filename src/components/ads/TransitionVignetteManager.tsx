@@ -6,9 +6,10 @@ const DWELL_TIME_MS = 2500;       // 2.5 seconds auto-dismissal after new page l
 const MAX_FALLBACK_MS = 5200;     // 5.2 seconds hard safety timeout
 const COUNTER_KEY = 'esn_vignette_nav_count';
 
-// Pacing: Active on all route transitions as requested by user
-export const isPacedVignetteTarget = (_count: number): boolean => {
-  return true;
+// Psychological Pacing: 2nd transition, then every 4th transition thereafter (2, 6, 10, 14, ...)
+// Balances user comfort with monetization, engaging the viewer at the optimal psychological moment.
+export const isPacedVignetteTarget = (count: number): boolean => {
+  return count >= 2 && (count - 2) % 4 === 0;
 };
 
 export const TransitionVignetteManager: React.FC = () => {
@@ -154,7 +155,7 @@ export const TransitionVignetteManager: React.FC = () => {
 
     const handleCustomRouteTransition = (e: Event) => {
       const detail = (e as CustomEvent)?.detail;
-      const key = detail?.route || detail?.activeTab || window.location.hash;
+      const key = detail?.subRouteKey || detail?.route || detail?.activeTab || window.location.hash;
       handleTransition(key);
     };
 
@@ -177,15 +178,26 @@ export const TransitionVignetteManager: React.FC = () => {
   return (
     <div
       aria-hidden="true"
-      className="fixed top-0 left-0 right-0 z-[2147483647] pointer-events-none h-1 overflow-hidden"
+      className="fixed top-0 left-0 right-0 z-[2147483647] pointer-events-none flex flex-col items-center select-none"
     >
-      <div
-        className="h-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
-        style={{
-          width: '100%',
-          animation: `vignetteProgressBar ${DWELL_TIME_MS}ms linear forwards`,
-        }}
-      />
+      <div className="w-full h-1 overflow-hidden bg-slate-900/40">
+        <div
+          className="h-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500"
+          style={{
+            width: '100%',
+            animation: `vignetteProgressBar ${DWELL_TIME_MS}ms linear forwards`,
+          }}
+        />
+      </div>
+      <div className="mt-2 animate-fadeIn pointer-events-none">
+        <div className="bg-[#09111c]/90 border border-emerald-500/35 backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-xl shadow-black/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
+            Syncing Live Matchday Feed
+          </span>
+          <span className="text-[9px] text-slate-400 font-mono">2.5s</span>
+        </div>
+      </div>
       <style>{`
         @keyframes vignetteProgressBar {
           0% { width: 0%; opacity: 1; }
