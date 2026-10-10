@@ -487,6 +487,45 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
     }
   };
 
+  // 4b. Form Change & Performance Amplitude Text Graph (Unbreakable Unicode Monospace Graph for WhatsApp/Clipboard)
+  const amplitudeTextGraph = useMemo(() => {
+    const matchMap = new Map<number, MatchdayDataPoint>();
+    timeSeries.forEach((m) => matchMap.set(m.matchday, m));
+
+    let rowW = '';
+    let rowD = '';
+    let rowL = '';
+    let axis = '';
+    let mds = '';
+    let res = '';
+
+    for (let md = 1; md <= 11; md++) {
+      const m = matchMap.get(md);
+      if (m) {
+        rowW += m.amplitude === 1.0 ? '─●─' : '───';
+        rowD += m.amplitude === 0.0 ? '─●─' : '───';
+        rowL += m.amplitude === -1.0 ? '─●─' : '───';
+        res += '  ' + m.result;
+      } else {
+        rowW += '───';
+        rowD += '───';
+        rowL += '───';
+        res += '  -';
+      }
+      axis += '─┴─';
+      mds += ' ' + String(md).padStart(2, '0');
+    }
+
+    return [
+      '+1.0 WIN │' + rowW,
+      ' 0.0 DRAW┼' + rowD,
+      '-1.0 LOSS│' + rowL,
+      '    AXIS ┴' + axis,
+      '      MD: ' + mds,
+      '     RES: ' + res,
+    ].join('\n');
+  }, [timeSeries]);
+
   const coachShareTemplateText = useMemo(() => {
     const gdSign = stats.gd > 0 ? `+${stats.gd}` : `${stats.gd}`;
     const sanctionLine = stats.deductionPts > 0
@@ -510,6 +549,11 @@ ${sanctionLine}🎯 *GOALS & DEFENSE*
 • *Home Record:* ${stats.homeWon}W - ${stats.homeDrawn}D - ${stats.homeLost}L (${stats.homeGF} GF : ${stats.homeGA} GA)
 • *Away Record:* ${stats.awayWon}W - ${stats.awayDrawn}D - ${stats.awayLost}L (${stats.awayGF} GF : ${stats.awayGA} GA)
 
+📈 *FORM CHANGE & PERFORMANCE AMPLITUDE GRAPH (±1.0 to -1.0)*
+\`\`\`
+${amplitudeTextGraph}
+\`\`\`
+
 🧠 *TACTICAL PROFILE*
 • *Tactical Identity:* ${primaryTagline}
 • *Attack Directive:* ${coachAdvice.checklist[0]}
@@ -526,6 +570,7 @@ ${specificTeamLink}
     teamName,
     teamPosition,
     stats,
+    amplitudeTextGraph,
     primaryTagline,
     coachAdvice,
     tomorrowOpponent,
@@ -2004,6 +2049,80 @@ ${specificTeamLink}
       </div>
 
       {/* ========================================================================= */}
+      {/* WHAT SHOULD THE TEAM DO? (GOLDEN DERBY CARD)                              */}
+      {/* ========================================================================= */}
+      <div className="relative overflow-hidden rounded-2xl border-2 border-[#ff9800]/60 bg-gradient-to-b from-[#191508] via-[#0e1c2b] to-[#0A1322] p-4 sm:p-5 tactical-card-shadow glow-derby shadow-2xl">
+        {/* Ambient Golden Glows */}
+        <div className="absolute top-0 right-0 w-80 h-36 bg-[#ff9800]/15 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-28 bg-[#ff9800]/10 blur-2xl pointer-events-none" />
+
+        {/* Header: What should the team do? */}
+        <div className="relative z-10 flex items-center gap-2.5 pb-3 border-b border-[#ff9800]/30 mb-4">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff9800] text-black font-black shadow-xs shrink-0">
+            <Flame className="h-4 w-4 fill-black" />
+          </span>
+          <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider">
+            What should the team do?
+          </h2>
+        </div>
+
+        {/* 3 Points in Real English Coach Voice */}
+        <div className="relative z-10 space-y-3 sm:space-y-3.5">
+          {/* Point 1: Checklist of 3 short sentences */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                01
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                What we must do on the pitch
+              </h3>
+            </div>
+            <div className="pl-8 space-y-1.5">
+              {coachAdvice.checklist.map((item, idx) => (
+                <div key={`chk-${idx}`} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#ff9800] shrink-0 mt-0.5" />
+                  <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed">
+                    {item}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Point 2: Leg 2 Game Breakdown with Beaten / Drawn Teams & Tomorrow */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                02
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                Taking care of business in the second leg
+              </h3>
+            </div>
+            <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed pl-8">
+              {coachAdvice.leg2Comparison}
+            </p>
+          </div>
+
+          {/* Point 3: General Advice & War Cry */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                03
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                Our standard & battle cry
+              </h3>
+            </div>
+            <p className="text-xs sm:text-[13px] text-amber-100 font-semibold leading-relaxed pl-8">
+              {coachAdvice.generalAdvice}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
       {/* SHARE ANALYTICS MODAL & TEMPLATE SNIPPET (POPUP ISOLATION)                */}
       {/* ========================================================================= */}
       {isShareModalOpen && (
@@ -2141,6 +2260,99 @@ ${specificTeamLink}
                   <p className="text-[9px] text-slate-300 leading-tight">
                     🛡️ <span className="text-slate-200 font-medium">{coachAdvice.checklist[1]}</span>
                   </p>
+                </div>
+
+                {/* Form Change & Performance Amplitude Graph Preview */}
+                <div className="p-3 rounded-xl bg-black/50 border border-emerald-500/30 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                      Form Change & Amplitude Graph
+                    </span>
+                    <span className="text-[8.5px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                      ±1.0 to -1.0 Scale
+                    </span>
+                  </div>
+
+                  {/* Visual SVG Mini Amplitude Graph */}
+                  <div className="w-full h-32 relative bg-[#070D18] rounded-lg p-2 border border-white/5">
+                    <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
+                      <defs>
+                        <linearGradient id="amplitudeGradientModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="45%" stopColor="#10b981" />
+                          <stop offset="50%" stopColor="#f59e0b" />
+                          <stop offset="55%" stopColor="#f43f5e" />
+                          <stop offset="100%" stopColor="#f43f5e" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Guide Lines */}
+                      <line x1={leftMargin} y1="30" x2={chartWidth - rightMargin} y2="30" stroke="#10b981" strokeOpacity="0.4" strokeDasharray="3 3" />
+                      <text x={leftMargin - 8} y="33" fill="#10b981" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="end">+1.0 WIN</text>
+
+                      <line x1={leftMargin} y1="75" x2={chartWidth - rightMargin} y2="75" stroke="#64748b" strokeOpacity="0.6" strokeWidth="1.2" />
+                      <text x={leftMargin - 8} y="78" fill="#94a3b8" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="end">0.0 DRAW</text>
+
+                      <line x1={leftMargin} y1="120" x2={chartWidth - rightMargin} y2="120" stroke="#f43f5e" strokeOpacity="0.4" strokeDasharray="3 3" />
+                      <text x={leftMargin - 8} y="123" fill="#f43f5e" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="end">-1.0 LOSS</text>
+
+                      {/* Matchday Vertical Lines (M1 to M11) */}
+                      {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
+                        const x = getXCoordinate(mDay);
+                        return (
+                          <g key={`modal-amp-tick-${mDay}`}>
+                            <line x1={x} y1="25" x2={x} y2="125" stroke="#ffffff" strokeOpacity="0.06" />
+                            <text x={x} y="142" fill="#64748b" fontSize="8" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
+                              M{mDay}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Continuous Amplitude Polyline */}
+                      {timeSeries.length > 1 && (
+                        <polyline
+                          fill="none"
+                          stroke="url(#amplitudeGradientModal)"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={timeSeries
+                            .map((pt) => {
+                              const y = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
+                              return `${getXCoordinate(pt.matchday)},${y}`;
+                            })
+                            .join(' ')}
+                        />
+                      )}
+
+                      {/* Amplitude Data Nodes */}
+                      {timeSeries.map((pt, idx) => {
+                        const cx = getXCoordinate(pt.matchday);
+                        const cy = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
+                        const dotColor = pt.amplitude === 1 ? '#10b981' : pt.amplitude === 0 ? '#f59e0b' : '#f43f5e';
+                        return (
+                          <g key={`modal-amp-dot-${idx}`}>
+                            <circle cx={cx} cy={cy} r="4.5" fill={dotColor} stroke="#070D18" strokeWidth="2" />
+                            <text x={cx} y={cy - 8} fill="#ffffff" fontSize="7.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
+                              {pt.scoreText}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  {/* Formatted Text Monospace Graph (WhatsApp Unbreakable Payload) */}
+                  <div className="p-2.5 rounded-lg bg-black/80 border border-white/10 space-y-1">
+                    <span className="text-[8px] font-mono uppercase text-slate-400 block tracking-wider">
+                      Fixed Monospace Payload (Quality-Preserving Text Graph):
+                    </span>
+                    <pre className="font-mono text-[8.5px] leading-tight text-emerald-300 overflow-x-auto whitespace-pre select-all p-1 bg-black/40 rounded border border-white/5">
+                      {amplitudeTextGraph}
+                    </pre>
+                  </div>
                 </div>
 
                 {/* Specific Direct Link */}
