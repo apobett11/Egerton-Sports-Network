@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type TeamDetailTabType = 'fixtures' | 'squad' | 'players' | 'standings';
+export type TeamDetailTabType = 'fixtures' | 'analytics' | 'players' | 'squad' | 'standings';
 
 interface TeamDetailsTabBarProps {
   activeTab: TeamDetailTabType;
@@ -16,9 +16,10 @@ export const TeamDetailsTabBar: React.FC<TeamDetailsTabBarProps> = ({
   fixturesCount,
 }) => {
   const tabs: { id: TeamDetailTabType; label: string; count?: number }[] = [
-    { id: 'fixtures', label: 'FIXTURES & RESULTS', count: fixturesCount },
-    { id: 'squad', label: 'TACTICAL SQUAD' },
+    { id: 'fixtures', label: 'MATCHES', count: fixturesCount },
+    { id: 'analytics', label: 'ANALYTICS' },
     { id: 'players', label: 'PLAYERS DIRECTORY', count: playersCount },
+    { id: 'squad', label: 'TACTICAL SQUAD' },
     { id: 'standings', label: 'STANDINGS & FORM' },
   ];
 

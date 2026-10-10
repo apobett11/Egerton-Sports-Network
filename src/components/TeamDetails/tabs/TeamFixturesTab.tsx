@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import type { Match, StandingEntry } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
-import { Leg1TeamAnalytics } from '../Leg1TeamAnalytics';
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
@@ -128,15 +127,20 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 select-none animate-in fade-in duration-150">
-      {/* LEG 1 TEAM ANALYTICS DOSSIER */}
-      <Leg1TeamAnalytics
-        teamName={currentTeamName}
-        teamLogo={currentTeamLogo}
-        teamId={teamId}
-        standing={standing}
-        standings={standings}
-        fixtures={fixtures}
-      />
+      {/* MATCH DETAILS CLICK GUIDE BANNER */}
+      <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-950/40 via-[#0e1f33] to-[#0A1322] border border-blue-500/30 text-xs shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+            <Info className="w-3.5 h-3.5" />
+          </div>
+          <p className="text-[11px] text-slate-200 font-medium">
+            <strong className="text-white font-extrabold uppercase tracking-wide">Interactive Matches:</strong> Click any match card below to open full match details, team lineups, and head-to-head stats.
+          </p>
+        </div>
+        <span className="text-[9px] font-mono text-blue-300 font-black px-2 py-0.5 rounded bg-blue-500/15 border border-blue-500/30 shrink-0 uppercase hidden sm:inline-block">
+          Tap Card to View
+        </span>
+      </div>
 
       {/* 1. Header Filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] p-3 sm:p-4 rounded-none sm:rounded-sm shadow-xs">
@@ -335,14 +339,14 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                                 teamId={match.homeTeamId || (match.isHome ? teamId : undefined)}
                                 src={homeLogo}
                                 alt={homeName}
-                                className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                                className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                               />
                               <span
-                                className={`text-xs truncate ${
-                                  isMatchLive
-                                    ? 'font-black text-slate-900 dark:text-white'
-                                    : 'font-bold text-slate-800 dark:text-slate-100'
-                                } ${homeName === currentTeamName ? 'text-[#ff0046] dark:text-[#ff0046]' : ''}`}
+                                className={`text-xs sm:text-[13px] truncate ${
+                                  homeName === currentTeamName
+                                    ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
+                                    : 'font-extrabold text-slate-900 dark:text-white'
+                                }`}
                               >
                                 {homeName}
                               </span>
@@ -351,8 +355,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                             {/* Home Score */}
                             {match.status !== 'UPCOMING' && (
                               <span
-                                className={`text-xs font-mono font-extrabold pl-2 ${
-                                  isMatchLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'
+                                className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-md min-w-[24px] text-center ${
+                                  isMatchLive
+                                    ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
+                                    : 'bg-slate-200/80 dark:bg-black/70 text-slate-900 dark:text-white border border-slate-300 dark:border-white/15'
                                 }`}
                               >
                                 {scoreHomeDisplay}
@@ -367,14 +373,14 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                                 teamId={match.awayTeamId || (!match.isHome ? teamId : undefined)}
                                 src={awayLogo}
                                 alt={awayName}
-                                className="w-4 h-4 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                                className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
                               />
                               <span
-                                className={`text-xs truncate ${
-                                  isMatchLive
-                                    ? 'font-black text-slate-900 dark:text-white'
-                                    : 'font-bold text-slate-800 dark:text-slate-100'
-                                } ${awayName === currentTeamName ? 'text-[#ff0046] dark:text-[#ff0046]' : ''}`}
+                                className={`text-xs sm:text-[13px] truncate ${
+                                  awayName === currentTeamName
+                                    ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
+                                    : 'font-extrabold text-slate-900 dark:text-white'
+                                }`}
                               >
                                 {awayName}
                               </span>
@@ -383,8 +389,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                             {/* Away Score */}
                             {match.status !== 'UPCOMING' && (
                               <span
-                                className={`text-xs font-mono font-extrabold pl-2 ${
-                                  isMatchLive ? 'text-[#ff0046]' : 'text-slate-900 dark:text-white'
+                                className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-md min-w-[24px] text-center ${
+                                  isMatchLive
+                                    ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
+                                    : 'bg-slate-200/80 dark:bg-black/70 text-slate-900 dark:text-white border border-slate-300 dark:border-white/15'
                                 }`}
                               >
                                 {scoreAwayDisplay}

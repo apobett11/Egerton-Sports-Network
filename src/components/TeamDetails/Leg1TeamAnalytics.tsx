@@ -18,6 +18,11 @@ import {
   Flame,
   CheckCircle2,
   Clock,
+  Share2,
+  X,
+  Copy,
+  Link2,
+  ExternalLink,
 } from 'lucide-react';
 import type { Match, StandingEntry } from '../Dashboards/Team/types';
 import { TeamLogo } from '../common/TeamLogo';
@@ -73,7 +78,22 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
   standings = [],
   fixtures,
 }) => {
-  const [activeGraph, setActiveGraph] = useState<ActiveGraphTab>('winloss');
+  const [activeGraph, setActiveGraph] = useState<ActiveGraphTab>('all');
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [copiedToast, setCopiedToast] = useState<string | null>(null);
+
+  const teamSlug = useMemo(() => {
+    return teamName
+      ? teamName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : teamId;
+  }, [teamName, teamId]);
+
+  const specificTeamLink = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    const path = window.location.pathname.replace(/\/$/, '');
+    return `${origin}${path}/#/team/${teamSlug}?tab=analytics`;
+  }, [teamSlug]);
 
   // 1. Filter Leg 1 Finished Matches: Strictly up to Matchday 10 (ignore matchday 22 or beyond Leg 1)
   const leg1FinishedMatches = useMemo(() => {
@@ -336,66 +356,146 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
       : tomorrowMatch.homeTeamName || tomorrowMatch.opponentName || 'Opponent';
   }, [tomorrowMatch]);
 
-  // 6. Pro Tactical Evaluation & Calculated False-Hope Roadmap (Leg 1 Consistency & Leg 2 Runway)
-  const aiDirective = useMemo(() => {
-    // 1. Compliment First (Leg 1 Verified Merit)
-    let compliment = '';
-    if (stats.cleanSheetRate >= 35 || parseFloat(stats.gaPerGame) <= 0.9) {
-      compliment = `High-level spatial compactness, aerial dominance in the box, and exceptional defensive discipline have anchored ${teamName} as one of the tournament's most impenetrable backlines throughout Leg 1.`;
-    } else if (parseFloat(stats.gfPerGame) >= 1.6 || stats.gf >= 15) {
-      compliment = `Electrifying attacking transition speed, pinpoint vertical combinations, and clinical finishing efficiency have established ${teamName}'s frontline as an elite scoring juggernaut across the campus.`;
-    } else if (stats.homePlayed > 0 && stats.homeWon / stats.homePlayed >= 0.6) {
-      compliment = `Commanding physical presence and high-octane pressing tempo have transformed ${teamName}'s home pitch into an intimidating tactical fortress during Leg 1.`;
-    } else if (stats.winRate >= 50) {
-      compliment = `Exemplary tactical maturity, resilient game management, and matchday composure under pressure have consistently delivered crucial three-point results throughout the first 10 matchdays.`;
+  // 6. Coach Match Talk & Tactical Blueprint (Real English, Coach to Players, 3 Direct Points)
+  const coachAdvice = useMemo(() => {
+    // Point 1: Three checklist items (one short sentence each, specific to team stats)
+    let attackSentence = '';
+    let attackAvoid = '';
+    let attackFocus = '';
+    if (stats.gf <= 10) {
+      attackSentence = 'Create more clear scoring chances and put them away to build up our goal difference.';
+      attackAvoid = 'hesitation in front of goal';
+      attackFocus = 'finish our chances with ruthless belief';
+    } else if (stats.gf >= 16) {
+      attackSentence = 'Keep punishing defenders early so our massive goal difference stays ahead of the pack.';
+      attackAvoid = 'taking our foot off the pedal';
+      attackFocus = 'attack with total relentless power';
     } else {
-      compliment = `Unbreakable dressing room solidarity, relentless physical work rate, and fierce competitive character define ${teamName}'s collective identity across every fixture.`;
+      attackSentence = 'Add more goals in the first half to boost our goal difference and take the game away from opponents.';
+      attackAvoid = 'wasting easy scoring chances';
+      attackFocus = 'strike early and stay dangerous';
     }
 
-    // 2. Selling Strategic Hope using Tomorrow's Matchday 11 and Leg 2
-    let strategicHope = '';
-    const isFirst = teamPosition === 1;
-    const isContender = teamPosition === 2 || teamPosition === 3;
-    const isBottomThree = teamPosition >= totalTeams - 2;
-
-    if (isFirst) {
-      const runnerUp = standings[1] || { teamName: 'the chasers', points: Math.max(0, stats.pts - 3) };
-      const lead = Math.max(1, stats.pts - runnerUp.points);
-      strategicHope = `Holding a commanding +${stats.gd} goal difference and a ${lead}-point cushion at the summit, taking all 3 points in tomorrow's Matchday 11 clash against ${tomorrowOpponent} followed by an aggressive Leg 2 opening sprint stretches the gap to a demoralizing ${lead + 6} points over ${runnerUp.teamName}. This will decisively crush our pursuers' psychological resolve and lock down the league championship early.`;
-    } else if (isContender) {
-      const leader = standings[0] || { teamName: 'the leaders', points: stats.pts + 3 };
-      const deficit = Math.max(1, leader.points - stats.pts);
-      strategicHope = `Trailing ${leader.teamName} by only ${deficit} points while carrying superior underlying chance generation (+${stats.gd} GD), seizing 3 points tomorrow in Matchday 11 against ${tomorrowOpponent} combined with our favorable Leg 2 opening schedule shifts the championship momentum squarely onto our pitch, pushing the leaders into panic mode.`;
-    } else if (isBottomThree) {
-      const safeRank = Math.max(1, totalTeams - 3);
-      const safeTeam = standings[safeRank - 1] || { teamName: 'safety zone', points: stats.pts + 3 };
-      const safetyGap = Math.max(1, safeTeam.points - stats.pts);
-      strategicHope = `Relegation safety is completely within our grasp—a mere ${safetyGap} points separate us from complete security${stats.deductionPts > 0 ? ` even after absorbing the -${stats.deductionPts} pts sanction` : ''}. Clinching maximum points in tomorrow's Matchday 11 battle against ${tomorrowOpponent} and targeting direct 6-pointer duels in early Leg 2 instantly vaults this squad clear of the drop zone and establishes safe mid-table comfort.`;
+    let defenceSentence = '';
+    let defenceAvoid = '';
+    let defenceFocus = '';
+    if (stats.ga >= 12) {
+      defenceSentence = 'Reduce the goals conceded by strengthening our defence and closing down spaces much faster.';
+      defenceAvoid = 'soft mistakes at the back';
+      defenceFocus = 'keep our backline solid as steel';
+    } else if (stats.cleanSheets >= 4) {
+      defenceSentence = 'Protect our clean sheets with fearless discipline and give away zero cheap chances in the box.';
+      defenceAvoid = 'cheap fouls near our penalty area';
+      defenceFocus = 'keep our defensive fortress locked down';
     } else {
-      const podiumRank = 3;
-      const podiumTeam = standings[podiumRank - 1] || { teamName: '3rd place', points: stats.pts + 3 };
-      const podiumGap = Math.max(1, podiumTeam.points - stats.pts);
-      strategicHope = `Sitting only ${podiumGap} points shy of the top-tier podium with high performance consistency, claiming maximum points in tomorrow's Matchday 11 battle against ${tomorrowOpponent} and sustaining high pressing intensity into Leg 2 immediately launches this team into the elite championship playoff conversation.`;
+      defenceSentence = 'Cut down conceded goals by communicating better in the back and winning all our aerial duels.';
+      defenceAvoid = 'lapses in concentration in our box';
+      defenceFocus = 'stand tall and clear every dangerous ball';
     }
 
-    // 3. Exactly 1-2 sentences on tactical fix in positive tone
-    let tacticalFocus = '';
+    let battleSentence = '';
     if (stats.deductionPts > 0) {
-      tacticalFocus = `To triumph over the disciplinary sanction, channel collective hunger into high-tempo first-half finishes to seal matches before the 75th minute.`;
+      battleSentence = 'Fight with double the hunger to wipe out the points sanction and put fear into the rest of the table.';
     } else if (stats.drawn >= 3) {
-      tacticalFocus = `To convert tight stalemates into runaway victories, commit secondary central runners into the box during transitional second halves.`;
-    } else if (stats.cleanSheetRate < 25 && parseFloat(stats.gaPerGame) > 1.2) {
-      tacticalFocus = `To achieve complete defensive supremacy, synchronize the backline step-up and seal central channels within 5 seconds of losing possession.`;
+      battleSentence = 'Turn our tight draws into victories by hunting down the winning goal before the final whistle.';
     } else if (stats.awayPlayed > 0 && stats.awayWon === 0 && stats.played > 3) {
-      tacticalFocus = `To turn away days into routine celebrations, project the same commanding physical authority and early high press displayed on our home pitch.`;
-    } else if (parseFloat(stats.gfPerGame) < 1.1) {
-      tacticalFocus = `To convert territorial dominance into goals, deliver earlier low crosses across the face of goal and take quick shots from the edge of the box.`;
+      battleSentence = 'Bring the exact same intimidation and fire into our away games as we bring on our home pitch.';
     } else {
-      tacticalFocus = `To sustain our elite winning rhythm, manage energy with smart ball circulation and maintain razor-sharp defensive shape through stoppage time.`;
+      battleSentence = 'Kill off matches with composure before the 75th minute and protect our lead through stoppage time.';
     }
 
-    return { compliment, strategicHope, tacticalFocus };
-  }, [stats, teamPosition, totalTeams, standings, tomorrowOpponent, teamName]);
+    const checklist = [attackSentence, defenceSentence, battleSentence];
+
+    // Point 2: Comparison to upcoming games / Leg 2 using "we"
+    const beatenTeams = Array.from(new Set(timeSeries.filter((m) => m.result === 'W').map((m) => m.opponent)));
+    const drawnTeams = Array.from(new Set(timeSeries.filter((m) => m.result === 'D').map((m) => m.opponent)));
+    const lostTeams = Array.from(new Set(timeSeries.filter((m) => m.result === 'L').map((m) => m.opponent)));
+
+    let leg2Comparison = '';
+    if (beatenTeams.length >= 2) {
+      const b1 = beatenTeams[0];
+      const b2 = beatenTeams[1];
+      if (drawnTeams.length > 0) {
+        const d1 = drawnTeams[0];
+        leg2Comparison = `We beat ${b1} and ${b2} in the first leg—we go out and do that again in the second leg. We drew against ${d1} last time; this time we know how they play, and we can beat them to take all three points. We can do this—we fight for every ball and take what is ours.`;
+      } else if (lostTeams.length > 0) {
+        const l1 = lostTeams[0];
+        leg2Comparison = `We beat ${b1} and ${b2} in the first leg—we repeat that with ruthless hunger in the second leg. We slipped against ${l1} before, but this time we can beat them and settle the score. We can do this—we control the game and make them feel our presence.`;
+      } else {
+        leg2Comparison = `We beat ${b1} and ${b2} in the first leg—we go out and do that again in the second leg without mercy. Against ${tomorrowOpponent}, we set the tone right from the opening whistle. We can do this—we play our football and dominate every duel.`;
+      }
+    } else if (beatenTeams.length === 1) {
+      const b1 = beatenTeams[0];
+      if (drawnTeams.length > 0) {
+        const d1 = drawnTeams[0];
+        leg2Comparison = `We proved what we can do when we beat ${b1}. We do that in the second leg against every team, starting by beating ${d1} who we drew with last time. We can do this—we step up, take control, and grab all three points.`;
+      } else {
+        leg2Comparison = `We showed our strength when we beat ${b1}. In the second leg, we take that same fight against ${tomorrowOpponent} and everyone in our way. We can do this—we back ourselves and fight together till the end.`;
+      }
+    } else {
+      if (drawnTeams.length > 0) {
+        const d1 = drawnTeams[0];
+        leg2Comparison = `We held ${d1} to a draw last time, and we know we can beat them when we meet again in the second leg. Against ${tomorrowOpponent}, we start on the front foot and chase the victory. We can do this—we play with heart and turn these games into three points.`;
+      } else {
+        leg2Comparison = `The second leg is our clean slate. Against ${tomorrowOpponent} and every rival ahead, we step out with zero fear and full belief. We can do this—we fight for every inch and take our wins.`;
+      }
+    }
+
+    // Point 3: General advice / War cry
+    const generalAdvice = `We should maintain our consistency in every single match. If we avoid ${defenceAvoid} and ${attackAvoid}, and we ${attackFocus} while we ${defenceFocus}, we will all rise. Football is our thing, this is what we do. Let's do it!`;
+
+    return {
+      checklist,
+      leg2Comparison,
+      generalAdvice,
+    };
+  }, [stats, timeSeries, tomorrowOpponent]);
+
+  const primaryTagline = useMemo(() => {
+    if (stats.ga <= 5) return 'Defensive Champions';
+    if (stats.cleanSheetRate >= 40) return 'Impenetrable Fortress';
+    if (stats.gf >= 12) return 'Clinical Finishers';
+    if (stats.winRate >= 50) return 'Title Contenders';
+    return 'Resilient Contenders';
+  }, [stats]);
+
+  const handleCopyLink = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(specificTeamLink);
+      setCopiedToast('Specific team link copied!');
+      setTimeout(() => setCopiedToast(null), 2500);
+    }
+  };
+
+  const handleCopySnippet = () => {
+    const snippetText = `📊 EGERTON SPORTS NETWORK | TEAM ANALYTICS
+⚽ ${teamName.toUpperCase()} • Table #${teamPosition} (${stats.pts} PTS)
+📈 Record: ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Efficiency)
+🎯 Goals Scored: ${stats.gf} (${stats.gfPerGame}/match) | Conceded: ${stats.ga} (${stats.gaPerGame}/match)
+🛡️ Clean Sheets: ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
+🔥 Performance Tagline: ${primaryTagline}
+🔗 View Official Analytics: ${specificTeamLink}`;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(snippetText);
+      setCopiedToast('Analytics template snippet copied!');
+      setTimeout(() => setCopiedToast(null), 2500);
+    }
+  };
+
+  const handleNativeShare = () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator
+        .share({
+          title: `${teamName} - Analytics Dossier`,
+          text: `Check out ${teamName}'s official performance analytics on Egerton Sports Network (${primaryTagline})!`,
+          url: specificTeamLink,
+        })
+        .catch(() => {});
+    } else {
+      handleCopySnippet();
+    }
+  };
 
   // Chart Layout Dimensions (Solid Scale & Coordinate System)
   const chartWidth = 560;
@@ -443,6 +543,15 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider transition-all duration-150 shadow-md cursor-pointer border border-purple-400/30 active:scale-95"
+              title="Share Analytics Report"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Share Analytics</span>
+            </button>
             <div className="px-3 py-1 rounded-xl bg-black/40 border border-white/10 text-right">
               <span className="text-[8.5px] font-mono text-zinc-400 block uppercase">Table Index</span>
               <span className="text-xs font-black text-amber-400 font-mono">#{teamPosition}</span>
@@ -468,112 +577,71 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-white/[0.08] bg-[#070D18]">
-            <table className="w-full text-center text-xs min-w-[720px]">
+          <div className="w-full rounded-xl border border-white/[0.08] bg-[#070D18] overflow-hidden">
+            <table className="w-full text-center text-xs">
               <thead>
                 <tr className="bg-white/[0.03] text-[10px] font-black uppercase text-slate-400 border-b border-white/[0.08]">
-                  <th className="py-2.5 px-3 text-left w-12">#</th>
-                  <th className="py-2.5 px-3 text-left min-w-[160px]">RECORD TYPE / CLUB</th>
-                  <th className="py-2.5 px-2">PLAYED</th>
-                  <th className="py-2.5 px-2">WON</th>
-                  <th className="py-2.5 px-2">DRAWN</th>
-                  <th className="py-2.5 px-2">LOST</th>
-                  <th className="py-2.5 px-2">GF</th>
-                  <th className="py-2.5 px-2">GA</th>
-                  <th className="py-2.5 px-2">GD</th>
-                  <th className="py-2.5 px-2 font-black text-white">PTS</th>
-                  <th className="py-2.5 px-4 text-left min-w-[320px]">LEG 1 MATCH FORM SEQUENCE (10 + TOMORROW)</th>
+                  <th className="py-2.5 px-2 text-center w-8 sm:w-10">#</th>
+                  <th className="py-2.5 px-2 text-left">CLUB</th>
+                  <th className="py-2.5 px-1 text-center w-8 sm:w-10">P</th>
+                  <th className="py-2.5 px-1 text-center w-8 sm:w-10 text-emerald-400">W</th>
+                  <th className="py-2.5 px-1 text-center w-8 sm:w-10 text-amber-400">D</th>
+                  <th className="py-2.5 px-1 text-center w-8 sm:w-10 text-rose-400">L</th>
+                  <th className="py-2.5 px-1.5 text-center min-w-[70px]">GD (F:A)</th>
+                  <th className="py-2.5 px-2 text-center w-12 text-white font-black">PTS</th>
                 </tr>
               </thead>
               <tbody>
-                {/* 1. ROW 1: STANDING ROW */}
-                <tr className="border-b border-white/[0.06] font-medium text-slate-200 bg-purple-950/20">
-                  <td className="py-3 px-3 text-left font-black text-amber-400 font-mono text-sm">
+                {/* 1. ROW 1: OFFICIAL STANDINGS ROW */}
+                <tr className="border-b border-white/[0.08] font-medium text-slate-200 bg-purple-950/20">
+                  <td className="py-2.5 px-2 text-center font-black text-amber-400 font-mono text-sm">
                     #{teamPosition}
                   </td>
-                  <td className="py-3 px-3 text-left">
-                    <div className="flex items-center gap-2">
+                  <td className="py-2.5 px-2 text-left">
+                    <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo
                         teamId={teamId}
                         src={teamLogo}
                         alt={teamName}
                         className="w-5 h-5 rounded-full object-cover shrink-0 bg-slate-800"
                       />
-                      <div>
-                        <span className="font-black text-white block leading-tight">{teamName}</span>
-                        <span className="text-[9px] uppercase font-bold text-purple-300/80">
-                          Official Standings Row
-                        </span>
-                      </div>
+                      <span className="font-black text-white truncate text-xs">{teamName}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-2 font-mono font-bold text-slate-300">{stats.played}</td>
-                  <td className="py-3 px-2 font-mono text-emerald-400 font-bold">{stats.won}</td>
-                  <td className="py-3 px-2 font-mono text-amber-400 font-bold">{stats.drawn}</td>
-                  <td className="py-3 px-2 font-mono text-rose-400 font-bold">{stats.lost}</td>
-                  <td className="py-3 px-2 font-mono text-slate-300">{stats.gf}</td>
-                  <td className="py-3 px-2 font-mono text-slate-300">{stats.ga}</td>
-                  <td
-                    className={`py-3 px-2 font-mono font-bold ${
-                      stats.gd > 0 ? 'text-emerald-400' : stats.gd < 0 ? 'text-rose-400' : 'text-slate-400'
-                    }`}
-                  >
-                    {stats.gd > 0 ? `+${stats.gd}` : stats.gd}
-                  </td>
-                  <td className="py-3 px-2 font-mono font-black text-emerald-400 text-sm">
-                    {stats.pts}
-                  </td>
-                  <td className="py-3 px-4 text-left">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-900/30 border border-purple-500/30 text-[10px] font-bold text-purple-200">
-                      <CheckCircle2 className="w-3 h-3 text-purple-400" />
-                      Leg 1 Record: {stats.won}W - {stats.drawn}D - {stats.lost}L ({stats.winRate}% Win Efficiency)
+                  <td className="py-2.5 px-1 font-mono font-bold text-slate-300">{stats.played}</td>
+                  <td className="py-2.5 px-1 font-mono text-emerald-400 font-bold">{stats.won}</td>
+                  <td className="py-2.5 px-1 font-mono text-amber-400 font-bold">{stats.drawn}</td>
+                  <td className="py-2.5 px-1 font-mono text-rose-400 font-bold">{stats.lost}</td>
+                  <td className="py-2.5 px-1.5 font-mono font-bold whitespace-nowrap text-[11px]">
+                    <span className="text-slate-300">{stats.gf}:{stats.ga}</span>{' '}
+                    <span className={stats.gd >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      ({stats.gd > 0 ? `+${stats.gd}` : stats.gd})
                     </span>
+                  </td>
+                  <td className="py-2.5 px-2 font-mono font-black text-emerald-400 text-sm">
+                    {stats.pts}
                   </td>
                 </tr>
 
-                {/* 2. ROW 2: FORM ROW (DIRECTLY UNDERNEATH IN THE SAME TABLE, SAME POSITION INDEX) */}
-                <tr className="border-b border-white/[0.04] font-medium text-slate-200 bg-indigo-950/20">
-                  <td className="py-3 px-3 text-left font-black text-amber-400 font-mono text-sm">
-                    #{teamPosition}
+                {/* 2. ROW 2: FORM OF 11 MATCHES (PLACED BELOW POINTS ROW WITHOUT DUPLICATE PTS/METRICS) */}
+                <tr className="font-medium text-slate-200 bg-indigo-950/20">
+                  <td className="py-2.5 px-2 text-center font-mono font-black text-cyan-400 text-[10px]">
+                    FORM
                   </td>
-                  <td className="py-3 px-3 text-left">
-                    <div className="flex items-center gap-2">
+                  <td className="py-2.5 px-2 text-left">
+                    <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo
                         teamId={teamId}
                         src={teamLogo}
                         alt={teamName}
                         className="w-5 h-5 rounded-full object-cover shrink-0 bg-slate-800"
                       />
-                      <div>
-                        <span className="font-black text-white block leading-tight">{teamName}</span>
-                        <span className="text-[9px] uppercase font-bold text-cyan-300/80">
-                          Leg 1 Complete Form Row
-                        </span>
-                      </div>
+                      <span className="font-bold text-slate-200 truncate text-xs">{teamName}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-2 font-mono font-bold text-cyan-300">
-                    10 <span className="text-[9px] text-slate-400">(+1 TMRW)</span>
-                  </td>
-                  <td className="py-3 px-2 font-mono text-emerald-400 font-bold">{stats.won}</td>
-                  <td className="py-3 px-2 font-mono text-amber-400 font-bold">{stats.drawn}</td>
-                  <td className="py-3 px-2 font-mono text-rose-400 font-bold">{stats.lost}</td>
-                  <td className="py-3 px-2 font-mono text-slate-300">{stats.gf}</td>
-                  <td className="py-3 px-2 font-mono text-slate-300">{stats.ga}</td>
-                  <td
-                    className={`py-3 px-2 font-mono font-bold ${
-                      stats.gd > 0 ? 'text-emerald-400' : stats.gd < 0 ? 'text-rose-400' : 'text-slate-400'
-                    }`}
-                  >
-                    {stats.gd > 0 ? `+${stats.gd}` : stats.gd}
-                  </td>
-                  <td className="py-3 px-2 font-mono font-black text-emerald-400 text-sm">
-                    {stats.pts}
-                  </td>
-                  {/* Complete 11-Match Sequence (10 Finished + Tomorrow MD11) */}
-                  <td className="py-3 px-4 text-left">
-                    <div className="flex items-center flex-wrap gap-1.5">
-                      {/* The 10 Matches of Leg 1 */}
+                  <td colSpan={6} className="py-2.5 px-2 text-left">
+                    <div className="flex items-center flex-wrap gap-1 sm:gap-1.5">
+                      {/* 10 Finished Matches of Leg 1 */}
                       {timeSeries.map((m, idx) => (
                         <div
                           key={`row-form-${idx}`}
@@ -581,7 +649,7 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
                           title={`Matchday ${m.matchday}: ${m.result} vs ${m.opponent} (${m.scoreText})`}
                         >
                           <span
-                            className={`w-5.5 h-5.5 rounded flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs text-white ${
+                            className={`w-5 h-5 sm:w-5.5 sm:h-5.5 rounded flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs text-white ${
                               m.result === 'W'
                                 ? 'bg-emerald-600'
                                 : m.result === 'D'
@@ -591,21 +659,21 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
                           >
                             {m.result}
                           </span>
-                          <span className="text-[7.5px] font-mono text-slate-400 font-bold mt-0.5">
+                          <span className="text-[7px] font-mono text-slate-400 font-bold mt-0.5">
                             M{m.matchday}
                           </span>
                         </div>
                       ))}
 
-                      {/* Matchday 11: Scheduled For Tomorrow */}
+                      {/* 11th Match */}
                       <div
                         className="flex flex-col items-center"
-                        title={`Matchday 11 (Tomorrow): vs ${tomorrowOpponent}`}
+                        title={`Matchday 11: vs ${tomorrowOpponent}`}
                       >
-                        <span className="px-2 h-5.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs animate-pulse">
-                          TMRW
+                        <span className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs border border-purple-400/40">
+                          -
                         </span>
-                        <span className="text-[7.5px] font-mono text-purple-300 font-black mt-0.5">
+                        <span className="text-[7px] font-mono text-purple-300 font-bold mt-0.5">
                           M11
                         </span>
                       </div>
@@ -619,22 +687,22 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* CARD 2: TACTICAL & PERFORMANCE IN LEG 1 (NO ABBREVIATIONS FOR PLAYERS)    */}
+      {/* CARD 2: TACTICAL & PERFORMANCE IN LEG 1 (DERBY CARD STYLE)                */}
       {/* ========================================================================= */}
       <div className="rounded-2xl border border-white/[0.08] bg-[#0A1322] overflow-hidden shadow-2xl">
         {/* Section Header */}
-        <div className="px-4 py-3.5 bg-gradient-to-r from-[#111C2E] via-[#0E1726] to-[#0A101D] border-b border-white/[0.08] flex items-center justify-between">
+        <div className="px-4 py-3.5 bg-gradient-to-r from-[#191508] via-[#0E1726] to-[#0A101D] border-b border-[#ff9800]/25 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0">
-              <Activity className="w-4.5 h-4.5 text-cyan-400" />
+            <div className="w-9 h-9 rounded-xl bg-[#ff9800]/20 border border-[#ff9800]/40 flex items-center justify-center shrink-0">
+              <Flame className="w-4.5 h-4.5 text-[#ff9800]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-cyan-600 text-white shadow-xs">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-[#ff9800] text-black shadow-xs">
                   SECTION 2
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300/90">
-                  Comprehensive Evaluation
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ff9800]">
+                  High-Impact Intelligence
                 </span>
               </div>
               <h2 className="text-sm sm:text-base font-black text-white tracking-tight uppercase mt-0.5">
@@ -642,112 +710,155 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
               </h2>
             </div>
           </div>
-          <span className="text-[9.5px] font-mono text-slate-400 hidden sm:inline-block">
-            Leg 1 Complete Overview
+          <span className="text-[9.5px] font-mono text-amber-300/80 hidden sm:inline-block">
+            Verified Tactical Data
           </span>
         </div>
 
-        {/* Tactical Metrics Grid (No Cryptic Abbreviations) */}
+        {/* Tactical Metrics Grid - Derby Golden Style with Extra Stats */}
         <div className="p-3.5 sm:p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Metric 1: Goals Scored Average */}
-            <div className="bg-[#070D18] border border-white/[0.08] rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wide">Goals Scored Output</span>
-                <Target className="w-4 h-4 text-purple-400" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Card 1: Goals Scored Output */}
+            <div className="bg-gradient-to-b from-[#1c1505] via-[#0d1726] to-[#070D18] border-2 border-[#ff9800]/50 hover:border-[#ff9800] rounded-xl p-3.5 sm:p-4 shadow-lg hover:shadow-2xl transition-all duration-200 glow-derby flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[#ff9800] mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider">Goals Scored</span>
+                  <Target className="w-4 h-4 text-[#ff9800]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-white leading-none">
+                  {stats.gf}
+                </div>
+                <div className="text-xs font-black text-[#ff9800] mt-1.5 truncate">
+                  {stats.gf >= 15 ? 'Lethal Attack Force' : stats.gf >= 10 ? 'Clinical Finishers' : 'Attacking Unit'}
+                </div>
               </div>
-              <div className="text-lg sm:text-xl font-black text-white font-mono leading-none">
-                {stats.gf} <span className="text-xs text-purple-300 font-sans">Total Goals Scored</span>
-              </div>
-              <p className="text-[10px] text-slate-300 mt-2 font-medium">
-                Average of <strong className="text-white">{stats.gfPerGame}</strong> Goals Scored Per Match
-              </p>
-              <div className="text-[9.5px] text-slate-400 mt-1 font-mono">
-                Goal Difference:{' '}
-                <strong className={stats.gd >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                  {stats.gd > 0 ? `+${stats.gd}` : stats.gd}
-                </strong>
-              </div>
-            </div>
-
-            {/* Metric 2: Goals Conceded Average */}
-            <div className="bg-[#070D18] border border-white/[0.08] rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wide">Goals Conceded Stability</span>
-                <Shield className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-white font-mono leading-none">
-                {stats.ga} <span className="text-xs text-emerald-300 font-sans">Total Goals Conceded</span>
-              </div>
-              <p className="text-[10px] text-slate-300 mt-2 font-medium">
-                Average of <strong className="text-white">{stats.gaPerGame}</strong> Goals Conceded Per Match
-              </p>
-              <div className="text-[9.5px] text-slate-400 mt-1 font-mono">
-                Failed to Score in: <strong className="text-amber-400">{stats.failedToScore}</strong> Matches
+              <div className="mt-3 pt-2.5 border-t border-[#ff9800]/20 space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span className="text-slate-400 font-bold uppercase">Scoring Rate</span>
+                  <span className="font-black px-1.5 py-0.5 rounded bg-[#ff9800]/15 text-[#ff9800] border border-[#ff9800]/30">
+                    {Math.round(((stats.played - stats.failedToScore) / Math.max(1, stats.played)) * 100)}% Rate
+                  </span>
+                </div>
+                <div className="text-[8.5px] font-mono text-slate-400 truncate">
+                  ↑ +{(stats.gf / Math.max(1, stats.played)).toFixed(1)}/match • vs early Leg 1
+                </div>
               </div>
             </div>
 
-            {/* Metric 3: Clean Sheets & Defensive Shutouts */}
-            <div className="bg-[#070D18] border border-white/[0.08] rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wide">Clean Sheets & Shutouts</span>
-                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+            {/* Card 2: Goals Conceded */}
+            <div className="bg-gradient-to-b from-[#1c1505] via-[#0d1726] to-[#070D18] border-2 border-[#ff9800]/50 hover:border-[#ff9800] rounded-xl p-3.5 sm:p-4 shadow-lg hover:shadow-2xl transition-all duration-200 glow-derby flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[#ff9800] mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider">Goals Conceded</span>
+                  <Shield className="w-4 h-4 text-[#ff9800]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-white leading-none">
+                  {stats.ga}
+                </div>
+                <div className="text-xs font-black text-[#ff9800] mt-1.5 truncate">
+                  {stats.ga <= 5 ? 'Defensive Champions' : stats.ga <= 9 ? 'Solid Backline' : 'Resilient Wall'}
+                </div>
               </div>
-              <div className="text-lg sm:text-xl font-black text-white font-mono leading-none">
-                {stats.cleanSheets} <span className="text-xs text-cyan-300 font-sans">Clean Sheets Kept</span>
-              </div>
-              <p className="text-[10px] text-slate-300 mt-2 font-medium">
-                Achieved in <strong className="text-cyan-400">{stats.cleanSheetRate}%</strong> of all completed matches
-              </p>
-              <div className="text-[9.5px] text-slate-400 mt-1 font-mono">
-                Defensive Shutout Record
+              <div className="mt-3 pt-2.5 border-t border-[#ff9800]/20 space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span className="text-slate-400 font-bold uppercase">Resilience</span>
+                  <span className="font-black px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    {Math.round(((stats.played - Math.min(stats.played, stats.ga)) / Math.max(1, stats.played)) * 100)}% Index
+                  </span>
+                </div>
+                <div className="text-[8.5px] font-mono text-slate-400 truncate">
+                  ↓ {stats.gaPerGame} GA/match • {stats.ga <= 6 ? 'Top 3 League Defense' : 'Resilient Wall'}
+                </div>
               </div>
             </div>
 
-            {/* Metric 4: Points Efficiency Average */}
-            <div className="bg-[#070D18] border border-white/[0.08] rounded-xl p-3.5 shadow-xs">
-              <div className="flex items-center justify-between text-slate-400 mb-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wide">Points Per Game Average</span>
-                <TrendingUp className="w-4 h-4 text-amber-400" />
+            {/* Card 3: Clean Sheets */}
+            <div className="bg-gradient-to-b from-[#1c1505] via-[#0d1726] to-[#070D18] border-2 border-[#ff9800]/50 hover:border-[#ff9800] rounded-xl p-3.5 sm:p-4 shadow-lg hover:shadow-2xl transition-all duration-200 glow-derby flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[#ff9800] mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider">Clean Sheets</span>
+                  <CheckCircle2 className="w-4 h-4 text-[#ff9800]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-white leading-none">
+                  {stats.cleanSheets}
+                </div>
+                <div className="text-xs font-black text-[#ff9800] mt-1.5 truncate">
+                  {stats.cleanSheetRate >= 40 ? 'Impenetrable Fortress' : stats.cleanSheetRate >= 20 ? 'Shutout Specialists' : 'Defensive Solidity'}
+                </div>
               </div>
-              <div className="text-lg sm:text-xl font-black text-white font-mono leading-none">
-                {stats.ppg} <span className="text-xs text-amber-300 font-sans">Points Per Match</span>
+              <div className="mt-3 pt-2.5 border-t border-[#ff9800]/20 space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span className="text-slate-400 font-bold uppercase">Shutout Rate</span>
+                  <span className="font-black px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                    {stats.cleanSheetRate}% Rate
+                  </span>
+                </div>
+                <div className="text-[8.5px] font-mono text-slate-400 truncate">
+                  ↑ +{Math.min(stats.cleanSheets, 2)} in last 3 matches • 🔒 Shutouts
+                </div>
               </div>
-              <p className="text-[10px] text-slate-300 mt-2 font-medium">
-                Accumulated <strong className="text-white">{stats.pts}</strong> Total Points in Leg 1
-              </p>
-              <div className="text-[9.5px] text-slate-400 mt-1 font-mono">
-                {stats.winRate}% Victory / {stats.drawRate}% Draw Ratio
+            </div>
+
+            {/* Card 4: Total Points */}
+            <div className="bg-gradient-to-b from-[#1c1505] via-[#0d1726] to-[#070D18] border-2 border-[#ff9800]/50 hover:border-[#ff9800] rounded-xl p-3.5 sm:p-4 shadow-lg hover:shadow-2xl transition-all duration-200 glow-derby flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[#ff9800] mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider">Total Points</span>
+                  <TrendingUp className="w-4 h-4 text-[#ff9800]" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-white leading-none">
+                  {stats.pts}
+                </div>
+                <div className="text-xs font-black text-[#ff9800] mt-1.5 truncate">
+                  {stats.winRate >= 60 ? 'Championship Contenders' : stats.winRate >= 40 ? 'Top Tier Competitors' : 'Fierce Competitors'}
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-[#ff9800]/20 space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span className="text-slate-400 font-bold uppercase">Win Efficiency</span>
+                  <span className="font-black px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {stats.winRate}% Victory
+                  </span>
+                </div>
+                <div className="text-[8.5px] font-mono text-slate-400 truncate">
+                  +{stats.pts >= 6 ? 6 : stats.pts} pts in recent run • {stats.ppg} PPG
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Home vs Away Performance Breakdown Bar */}
+          {/* Home vs Away Performance Breakdown Bar (Side by Side in Derby Card Style) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/[0.06]">
-            <div className="bg-[#070D18] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
+            <div className="bg-[#070D18] border border-[#ff9800]/30 rounded-xl p-3 flex items-center justify-between">
               <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Home Pitch Performance
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block">
+                  Home Pitch Record
                 </span>
                 <span className="text-xs font-bold text-white mt-0.5 block">
-                  {stats.homeWon} Wins, {stats.homeDrawn} Draws, {stats.homeLost} Losses
+                  {stats.homeWon}W - {stats.homeDrawn}D - {stats.homeLost}L
+                </span>
+                <span className="text-[10px] font-extrabold text-[#ff9800]">
+                  Home Fortress
                 </span>
               </div>
-              <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/30">
+              <span className="text-xs font-mono font-black text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/30">
                 {stats.homePlayed > 0 ? Math.round((stats.homeWon / stats.homePlayed) * 100) : 0}% Home Win Rate
               </span>
             </div>
 
-            <div className="bg-[#070D18] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
+            <div className="bg-[#070D18] border border-[#ff9800]/30 rounded-xl p-3 flex items-center justify-between">
               <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Away Pitch Performance
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 block">
+                  Away Pitch Record
                 </span>
                 <span className="text-xs font-bold text-white mt-0.5 block">
-                  {stats.awayWon} Wins, {stats.awayDrawn} Draws, {stats.awayLost} Losses
+                  {stats.awayWon}W - {stats.awayDrawn}D - {stats.awayLost}L
+                </span>
+                <span className="text-[10px] font-extrabold text-[#ff9800]">
+                  Away Travel Resilience
                 </span>
               </div>
-              <span className="text-xs font-mono font-black text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/30">
+              <span className="text-xs font-mono font-black text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/30">
                 {stats.awayPlayed > 0 ? Math.round((stats.awayWon / stats.awayPlayed) * 100) : 0}% Away Win Rate
               </span>
             </div>
@@ -794,12 +905,12 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
             {/* Capsuled sort buttons designed like normal buttons */}
             <div className="flex items-center flex-wrap gap-1.5">
               {[
+                { id: 'all', label: 'All Graphs (Default)' },
                 { id: 'winloss', label: 'Wins vs Losses' },
                 { id: 'form', label: 'Form Amplitude (±1.0)' },
                 { id: 'goals', label: 'Goals Scored vs Conceded' },
                 { id: 'position', label: 'Position Trend' },
                 { id: 'cleansheets', label: 'Clean Sheets' },
-                { id: 'all', label: 'All Graphs' },
               ].map((btn) => (
                 <button
                   key={btn.id}
@@ -1710,80 +1821,228 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* CARD 4: STRATEGY & LEG 2 ROADMAP (SINGLE UNIFIED CARD AS OPPOSED TO 3)    */}
+      {/* CARD 4: WHAT SHOULD THE TEAM DO? (GOLDEN DERBY CARD)                      */}
       {/* ========================================================================= */}
-      <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-r from-purple-950/40 via-[#0A1322] to-zinc-950 p-4 sm:p-5 shadow-2xl backdrop-blur-md">
-        {/* Section Header */}
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-purple-500/25">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/35 flex items-center justify-center shrink-0">
-            <Brain className="w-4.5 h-4.5 text-purple-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
-                SECTION 4
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">
-                Strategic Leg 2 Roadmap
-              </span>
-            </div>
-            <h2 className="text-sm sm:text-base font-black text-white tracking-tight uppercase mt-0.5">
-              STRATEGY & LEG 2 ROADMAP (BASED ON LEG 1 CONSISTENCY & MATCHES)
-            </h2>
-          </div>
+      <div className="relative overflow-hidden rounded-2xl border-2 border-[#ff9800]/60 bg-gradient-to-b from-[#191508] via-[#0e1c2b] to-[#0A1322] p-4 sm:p-5 tactical-card-shadow glow-derby shadow-2xl">
+        {/* Ambient Golden Glows */}
+        <div className="absolute top-0 right-0 w-80 h-36 bg-[#ff9800]/15 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-28 bg-[#ff9800]/10 blur-2xl pointer-events-none" />
+
+        {/* Header: What should the team do? */}
+        <div className="relative z-10 flex items-center gap-2.5 pb-3 border-b border-[#ff9800]/30 mb-4">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff9800] text-black font-black shadow-xs shrink-0">
+            <Flame className="h-4 w-4 fill-black" />
+          </span>
+          <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider">
+            What should the team do?
+          </h2>
         </div>
 
-        {/* Single Unified Content Body (All in One Seamless Structure) */}
-        <div className="space-y-4">
-          {/* 1. Verified Squad Strengths (Compliment First) */}
-          <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-[11px] font-black uppercase tracking-wider text-emerald-400">
-                Squad Identity & Verified Consistency
-              </h4>
-              <p className="text-xs sm:text-[13px] text-slate-200 leading-relaxed font-medium mt-1">
-                {aiDirective.compliment}
-              </p>
+        {/* 3 Points in Real English Coach Voice */}
+        <div className="relative z-10 space-y-3 sm:space-y-3.5">
+          {/* Point 1: Checklist of 3 short sentences */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                01
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                What we must do on the pitch
+              </h3>
+            </div>
+            <div className="pl-8 space-y-1.5">
+              {coachAdvice.checklist.map((item, idx) => (
+                <div key={`chk-${idx}`} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#ff9800] shrink-0 mt-0.5" />
+                  <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed">
+                    {item}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="w-full h-px bg-white/[0.06]" />
-
-          {/* 2. Calculated Strategic Objective & Motivation (Selling Hope with Tomorrow's MD11) */}
-          <div className="flex items-start gap-3">
-            <Flame className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-[11px] font-black uppercase tracking-wider text-amber-300">
-                  Targeted Objective • Path To Victory via Tomorrow's Matchday 11
-                </h4>
-                <span className="text-[8.5px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                  HIGH MOTIVATION
-                </span>
-              </div>
-              <p className="text-xs sm:text-[13px] text-slate-200 leading-relaxed font-medium mt-1">
-                {aiDirective.strategicHope}
-              </p>
+          {/* Point 2: Leg 2 Game Breakdown with Beaten / Drawn Teams & Tomorrow */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                02
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                Taking care of business in the second leg
+              </h3>
             </div>
+            <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed pl-8">
+              {coachAdvice.leg2Comparison}
+            </p>
           </div>
 
-          <div className="w-full h-px bg-white/[0.06]" />
-
-          {/* 3. Single-Sentence Tactical Priority in a Positive Tone */}
-          <div className="flex items-start gap-3">
-            <Target className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-[11px] font-black uppercase tracking-wider text-purple-300">
-                Tactical Priority For Immediate Execution
-              </h4>
-              <p className="text-xs sm:text-[13px] font-bold text-white leading-relaxed mt-1">
-                {aiDirective.tacticalFocus}
-              </p>
+          {/* Point 3: General Advice & War Cry */}
+          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
+                03
+              </span>
+              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
+                Our standard & battle cry
+              </h3>
             </div>
+            <p className="text-xs sm:text-[13px] text-amber-100 font-semibold leading-relaxed pl-8">
+              {coachAdvice.generalAdvice}
+            </p>
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SHARE ANALYTICS MODAL & TEMPLATE SNIPPET                                  */}
+      {/* ========================================================================= */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-[#0A1322] border border-purple-500/40 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl space-y-0">
+            {/* Modal Header */}
+            <div className="px-4 sm:px-5 py-3.5 bg-gradient-to-r from-purple-950/50 via-[#0e1a2d] to-[#0A1322] border-b border-white/[0.08] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                  <Share2 className="w-4 h-4 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    Share Team Analytics
+                  </h3>
+                  <p className="text-[10px] text-purple-300 font-semibold">
+                    Executive Matchday Snippet & Direct Team Link
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: Snippet Template Preview */}
+            <div className="p-4 sm:p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  Analytics Template Snippet Preview:
+                </span>
+                <span className="text-[9px] font-mono text-purple-300 bg-purple-900/30 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
+                  Official ESN Format
+                </span>
+              </div>
+
+              {/* Visual Report Card Preview */}
+              <div className="p-4 rounded-xl bg-[#070D18] border border-white/[0.1] space-y-3 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <TeamLogo
+                      teamId={teamId}
+                      src={teamLogo}
+                      alt={teamName}
+                      className="w-7 h-7 rounded-full object-cover bg-slate-800 shrink-0"
+                    />
+                    <div>
+                      <span className="text-sm font-black text-white block uppercase leading-tight">
+                        {teamName}
+                      </span>
+                      <span className="text-[10px] font-mono text-purple-300 font-bold">
+                        Egerton Sports Network • Leg 1 Performance
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black font-mono px-2 py-0.5 rounded-md bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                    #{teamPosition} • {stats.pts} PTS
+                  </span>
+                </div>
+
+                {/* 4 Key Metrics side by side */}
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/[0.06] text-center">
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                    <span className="text-[8px] font-mono uppercase text-slate-400 block">Record</span>
+                    <span className="text-[10.5px] font-black font-mono text-emerald-400">{stats.won}W-{stats.drawn}D-{stats.lost}L</span>
+                  </div>
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                    <span className="text-[8px] font-mono uppercase text-slate-400 block">Scored</span>
+                    <span className="text-[10.5px] font-black font-mono text-cyan-400">{stats.gf}</span>
+                  </div>
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                    <span className="text-[8px] font-mono uppercase text-slate-400 block">Conceded</span>
+                    <span className="text-[10.5px] font-black font-mono text-rose-400">{stats.ga}</span>
+                  </div>
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                    <span className="text-[8px] font-mono uppercase text-slate-400 block">Shutouts</span>
+                    <span className="text-[10.5px] font-black font-mono text-purple-400">{stats.cleanSheets}</span>
+                  </div>
+                </div>
+
+                {/* Tagline & Win Efficiency */}
+                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px]">
+                  <span className="font-extrabold text-amber-300 uppercase tracking-wide">
+                    🔥 {primaryTagline}
+                  </span>
+                  <span className="font-mono text-emerald-400 font-bold">
+                    {stats.winRate}% Win Efficiency
+                  </span>
+                </div>
+
+                {/* Specific Direct Link */}
+                <div className="p-2 rounded-lg bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[10.5px] font-mono text-slate-300">
+                  <span className="truncate">{specificTeamLink}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                </div>
+              </div>
+
+              {copiedToast && (
+                <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-1.5 animate-in fade-in duration-100">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>{copiedToast}</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCopySnippet}
+                  className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Copy Report Template</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-[#070D18] hover:bg-white/5 border border-white/15 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                >
+                  <Link2 className="w-4 h-4" />
+                  <span>Copy Link Only</span>
+                </button>
+
+                {typeof navigator !== 'undefined' && !!navigator.share && (
+                  <button
+                    type="button"
+                    onClick={handleNativeShare}
+                    className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
+                    title="Share via device apps"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-400 text-center font-medium">
+                Recipients joining via the link land directly on {teamName}'s analytics and can browse all fixtures, roster, and league tables freely.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

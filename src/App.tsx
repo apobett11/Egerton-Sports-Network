@@ -75,7 +75,12 @@ const teamSlugCache = new Map<string, string>();
 
 /** Resolve a team slug → UUID by fetching the team from Supabase by name with in-memory caching */
 const resolveTeamSlug = async (slug: string): Promise<string | null> => {
-  if (teamSlugCache.has(slug)) return teamSlugCache.get(slug)!;
+  if (!slug) return null;
+  const cleanSlug = slug.split('?')[0].trim().toLowerCase();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanSlug)) {
+    return cleanSlug;
+  }
+  if (teamSlugCache.has(cleanSlug)) return teamSlugCache.get(cleanSlug)!;
   try {
     const { data } = await supabase
       .from('teams')
@@ -83,10 +88,11 @@ const resolveTeamSlug = async (slug: string): Promise<string | null> => {
     if (!data) return null;
     data.forEach((t: any) => {
       if (t.name) teamSlugCache.set(nameToSlug(t.name), t.id);
+      teamSlugCache.set(t.id, t.id);
     });
-    const match = data.find((t: any) => nameToSlug(t.name) === slug);
+    const match = data.find((t: any) => nameToSlug(t.name) === cleanSlug || t.id === cleanSlug);
     if (match) {
-      teamSlugCache.set(slug, match.id);
+      teamSlugCache.set(cleanSlug, match.id);
       return match.id;
     }
     return null;
@@ -555,7 +561,7 @@ export const AppContent: React.FC = () => {
     // On initial load, resolve current hash immediately and check deep links
     const initialRoute = getHashRoute();
     if (initialRoute.startsWith('team/')) {
-      const slug = initialRoute.replace(/^team\/?/, '').split('/')[0];
+      const slug = initialRoute.replace(/^team\/?/, '').split('/')[0].split('?')[0];
       resolveTeamSlug(slug).then((id) => {
         if (id) setSelectedTeamId(id);
       });
@@ -638,7 +644,7 @@ export const AppContent: React.FC = () => {
         });
       }
       if (newRoute.startsWith('team/')) {
-        const slug = newRoute.replace(/^team\/?/, '').split('/')[0];
+        const slug = newRoute.replace(/^team\/?/, '').split('/')[0].split('?')[0];
         resolveTeamSlug(slug).then((id) => {
           if (id) setSelectedTeamId(id);
         });
@@ -1222,7 +1228,7 @@ export const AppContent: React.FC = () => {
         {/* Main Switch Router */}
         {selectedTeamId || route.startsWith('team/') ? (
           <TeamDetailsContainer
-            teamId={selectedTeamId || route.replace(/^team\/?/, '').split('/')[0]}
+            teamId={selectedTeamId || route.replace(/^team\/?/, '').split('/')[0].split('?')[0]}
             onBack={handleBackFromTeam}
             onSelectMatch={handleMatchClick}
           />

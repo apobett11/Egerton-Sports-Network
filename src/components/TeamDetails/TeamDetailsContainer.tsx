@@ -15,6 +15,7 @@ import { TeamFixturesTab } from './tabs/TeamFixturesTab';
 import { TeamSquadTab } from './tabs/TeamSquadTab';
 import { TeamPlayersTab } from './tabs/TeamPlayersTab';
 import { TeamStandingsTab } from './tabs/TeamStandingsTab';
+import { Leg1TeamAnalytics } from './Leg1TeamAnalytics';
 
 interface TeamDetailsContainerProps {
   teamId: string;
@@ -27,7 +28,23 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   onBack,
   onSelectMatch,
 }) => {
-  const [activeTab, setActiveTab] = useState<TeamDetailTabType>('fixtures');
+  const [activeTab, setActiveTab] = useState<TeamDetailTabType>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      if (hash.includes('tab=')) {
+        const match = hash.match(/tab=([a-z0-9_-]+)/i);
+        if (match && ['fixtures', 'analytics', 'players', 'squad', 'standings'].includes(match[1])) {
+          return match[1] as TeamDetailTabType;
+        }
+      }
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get('tab');
+      if (tabParam && ['fixtures', 'analytics', 'players', 'squad', 'standings'].includes(tabParam)) {
+        return tabParam as TeamDetailTabType;
+      }
+    }
+    return 'analytics';
+  });
   const [team, setTeam] = useState<FullTeamRecord | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [fixtures, setFixtures] = useState<Match[]>([]);
@@ -260,6 +277,17 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
 
       {/* 3. ACTIVE TAB CONTENT WORKSPACE */}
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-6 sm:py-8 relative z-10">
+        {activeTab === 'analytics' && (
+          <Leg1TeamAnalytics
+            teamName={team.name}
+            teamLogo={team.logo_url}
+            teamId={team.id}
+            standing={currentStanding}
+            standings={standings}
+            fixtures={fixtures}
+          />
+        )}
+
         {activeTab === 'fixtures' && (
           <TeamFixturesTab
             fixtures={fixtures}
@@ -302,6 +330,8 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
               roster={players}
               teamName={team.name}
               teamId={team.id}
+              coachName={team.coach_name}
+              coachAvatar={team.coach_avatar}
               startingXIIds={startingXIIds}
             />
           )

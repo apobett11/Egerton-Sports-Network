@@ -9,6 +9,7 @@ import {
   ArrowDown,
   SlidersHorizontal,
   Hash,
+  UserCheck,
 } from 'lucide-react';
 import type { Player, PlayerPosition } from '../../Dashboards/Team/types';
 
@@ -16,6 +17,8 @@ interface TeamPlayersTabProps {
   roster: Player[];
   teamName?: string;
   teamId?: string;
+  coachName?: string;
+  coachAvatar?: string;
   startingXIIds?: string[];
 }
 
@@ -39,6 +42,8 @@ const STATUS_WEIGHT: Record<string, number> = {
 export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
   roster,
   teamName = 'Team',
+  coachName,
+  coachAvatar,
   startingXIIds = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -171,6 +176,65 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
       {/* 2. PLAYERS DIRECTORY SUB-VIEW */}
       {activeSubMenu === 'players' && (
         <div className="space-y-6">
+          {/* FEATURED HEAD COACH AT TOP OF PLAYERS DIRECTORY */}
+          <div className="bg-gradient-to-r from-[#0c1827] via-[#0f2136] to-[#0c1827] border border-blue-500/20 hover:border-blue-500/35 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden transition-all duration-200">
+            <div className="absolute top-0 right-0 w-64 h-32 bg-blue-500/5 blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-4">
+                {/* Coach Image / Avatar */}
+                <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl overflow-hidden bg-slate-800 border-2 border-blue-400/40 p-0.5 shadow-md shrink-0">
+                  {coachAvatar ? (
+                    <img
+                      src={coachAvatar}
+                      alt={coachName || 'Head Coach'}
+                      className="w-full h-full rounded-xl object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-xl bg-blue-950/60 flex items-center justify-center text-blue-400">
+                      <UserCheck className="w-8 h-8" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0c1827]" title="Active Bench" />
+                </div>
+
+                {/* Coach Identity & Credentials */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-xs">
+                      HEAD COACH
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                      Technical Bench
+                    </span>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                    {coachName || 'Head Coach'}
+                  </h3>
+
+                  <p className="text-xs text-slate-300 font-medium">
+                    {teamName} First Team Manager • Official League Certified
+                  </p>
+                </div>
+              </div>
+
+              {/* Technical Badges */}
+              <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.08]">
+                <div className="px-3 py-1 rounded-xl bg-black/40 border border-white/10 text-left sm:text-right">
+                  <span className="text-[8.5px] font-mono text-slate-400 uppercase block">Registered Squad</span>
+                  <span className="text-xs font-mono font-black text-emerald-400">{roster.length} Athletes</span>
+                </div>
+                <span className="text-[9.5px] font-mono font-bold text-slate-400 uppercase tracking-wide">
+                  Tactical Director
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Main Heading & Search Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
