@@ -42,6 +42,7 @@ const STATUS_WEIGHT: Record<string, number> = {
 export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
   roster,
   teamName = 'Team',
+  teamId,
   coachName,
   coachAvatar,
   startingXIIds = [],
@@ -54,10 +55,12 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
 
   const filteredRoster = useMemo(() => {
     return roster.filter((p) => {
+      const term = searchTerm.toLowerCase().trim();
       const matchesSearch =
-        !searchTerm ||
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(p.number).includes(searchTerm);
+        !term ||
+        p.name.toLowerCase().includes(term) ||
+        String(p.number).includes(term) ||
+        (p.id && p.id.toLowerCase().includes(term));
 
       const matchesPos =
         positionFilter === 'ALL' ||
@@ -238,7 +241,7 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
           {/* Main Heading & Search Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <Shield className="w-5 h-5 text-blue-500" />
                 <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
                   Official Squad Roster
@@ -246,6 +249,14 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   {roster.length} Athletes
                 </span>
+                {teamId && (
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10"
+                    title={`Team UID: ${teamId}`}
+                  >
+                    UID: {teamId.length > 18 ? `${teamId.slice(0, 8)}...${teamId.slice(-4)}` : teamId}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Verified player profiles and squad registrations from the database
@@ -257,7 +268,7 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search athlete or #..."
+                placeholder="Search athlete, #, or UID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#ff0046]"
@@ -352,10 +363,14 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
             <div className="bg-white dark:bg-[#0e1c2b] p-12 text-center rounded-xl border border-[#e6e8ec] dark:border-[#1a2e45] text-slate-400">
               <Users className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                No players match the current filter.
+                {roster.length === 0
+                  ? `No athletes found under Team UID: ${teamId || 'N/A'}`
+                  : `No players match "${searchTerm}".`}
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Try searching with another name or resetting position filters.
+                {roster.length === 0
+                  ? 'Official squad registrations from the database will list here.'
+                  : 'Try searching with another name, jersey #, or player UID.'}
               </p>
             </div>
           ) : (
@@ -392,8 +407,8 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
                       </span>
                     </div>
 
-                    {/* Player Image & Name */}
-                    <div className="flex flex-col items-center text-center space-y-1.5 py-1">
+                    {/* Player Image & Name & Player UID */}
+                    <div className="flex flex-col items-center text-center space-y-1 py-1">
                       <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-[#e6e8ec] dark:border-[#1a2e45] shrink-0 group-hover:border-[#00b04f] transition-colors">
                         <img
                           src={
@@ -411,6 +426,11 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
                         <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
                           {player.name}
                         </h4>
+                        <div className="flex items-center justify-center gap-1 mt-0.5" title={`Player UID: ${player.id}`}>
+                          <span className="text-[8.5px] font-mono uppercase text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/[0.04] px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5 truncate max-w-full">
+                            UID: {player.id && player.id.length > 10 ? `${player.id.slice(0, 8)}...` : (player.id || 'N/A')}
+                          </span>
+                        </div>
                         {isStarting && (
                           <span className="text-[9px] font-black uppercase text-[#00b04f] block mt-0.5">
                             Starting XI

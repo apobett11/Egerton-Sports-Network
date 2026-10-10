@@ -72,6 +72,10 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
         setError('Team not found in the official league database.');
       } else {
         setTeam(teamData);
+        if (teamData.id) {
+          // Immediately list all squad athletes using the official team UID
+          loadPlayersData(teamData.id);
+        }
       }
 
       setFixtures(fixturesData || []);
@@ -87,20 +91,23 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
     }
   }, [teamId]);
 
-  // Phase 2 (Progressive / On-demand): Fetch squad players
-  const loadPlayersData = useCallback(async () => {
-    if (!teamId || playersLoadedRef.current) return;
+  // Phase 2 (Progressive / On-demand): Fetch squad players using Team UID
+  const loadPlayersData = useCallback(async (explicitUid?: string) => {
+    const targetUid = explicitUid || team?.id || teamId;
+    if (!targetUid || (playersLoadedRef.current && players.length > 0)) return;
     setIsPlayersLoading(true);
     try {
-      const playersData = await fetchTeamPlayers(teamId);
+      const playersData = await fetchTeamPlayers(targetUid);
       setPlayers(playersData || []);
-      playersLoadedRef.current = true;
+      if (playersData && playersData.length > 0) {
+        playersLoadedRef.current = true;
+      }
     } catch (err: any) {
       console.warn('[TeamDetailsContainer] Error fetching players:', err);
     } finally {
       setIsPlayersLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, team?.id, players.length]);
 
   // Phase 2 (Progressive / On-demand): Fetch league standings
   const loadStandingsData = useCallback(async () => {
@@ -126,21 +133,28 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
 
     // Defer background fetch of squad and standings so primary paint is sub-second
     const prefetchTimer = setTimeout(() => {
-      loadPlayersData();
+      loadPlayersData(team?.id || teamId);
       loadStandingsData();
     }, 200);
 
     return () => clearTimeout(prefetchTimer);
   }, [teamId, loadPrimaryData, loadPlayersData, loadStandingsData]);
 
+  // Ensure players list updates whenever team UID resolves
+  useEffect(() => {
+    if (team?.id && players.length === 0 && !isPlayersLoading && !playersLoadedRef.current) {
+      loadPlayersData(team.id);
+    }
+  }, [team?.id, players.length, isPlayersLoading, loadPlayersData]);
+
   // On-demand fetch when user switches tabs before background prefetch finishes
   useEffect(() => {
-    if ((activeTab === 'squad' || activeTab === 'players') && !playersLoadedRef.current) {
-      loadPlayersData();
+    if ((activeTab === 'squad' || activeTab === 'players') && (!playersLoadedRef.current || players.length === 0)) {
+      loadPlayersData(team?.id || teamId);
     } else if (activeTab === 'standings' && !standingsLoadedRef.current) {
       loadStandingsData();
     }
-  }, [activeTab, loadPlayersData, loadStandingsData]);
+  }, [activeTab, team?.id, teamId, players.length, loadPlayersData, loadStandingsData]);
 
   // Realtime updates
   useEffect(() => {

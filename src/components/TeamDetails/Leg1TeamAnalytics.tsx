@@ -467,18 +467,54 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
     }
   };
 
-  const handleCopySnippet = () => {
-    const snippetText = `📊 EGERTON SPORTS NETWORK | TEAM ANALYTICS
-⚽ ${teamName.toUpperCase()} • Table #${teamPosition} (${stats.pts} PTS)
-📈 Record: ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Efficiency)
-🎯 Goals Scored: ${stats.gf} (${stats.gfPerGame}/match) | Conceded: ${stats.ga} (${stats.gaPerGame}/match)
-🛡️ Clean Sheets: ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
-🔥 Performance Tagline: ${primaryTagline}
-🔗 View Official Analytics: ${specificTeamLink}`;
+  const coachShareTemplateText = useMemo(() => {
+    const gdSign = stats.gd > 0 ? `+${stats.gd}` : `${stats.gd}`;
+    const sanctionLine = stats.deductionPts > 0
+      ? `⚠️ Points Sanction: -${stats.deductionPts} PTS (${stats.sanctionReason || 'League Sanction'})\n`
+      : '';
 
+    return `🏆 EGERTON SPORTS NETWORK | OFFICIAL COACH DOSSIER
+⚽ ${teamName.toUpperCase()} — TABLE #${teamPosition} (${stats.pts} PTS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 OFFICIAL MATCH RECORD & EFFICIENCY
+• Matches Played: ${stats.played}
+• Record: ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Efficiency)
+• Points: ${stats.pts} PTS (PPG: ${stats.ppg} pts/match)
+${sanctionLine}🎯 OFFENSIVE & DEFENSIVE KPIS
+• Goals Scored: ${stats.gf} (${stats.gfPerGame}/match)
+• Goals Conceded: ${stats.ga} (${stats.gaPerGame}/match)
+• Goal Difference: ${gdSign}
+• Clean Sheets: ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
+• Scoring Consistency: ${Math.round(((stats.played - stats.failedToScore) / Math.max(1, stats.played)) * 100)}% Matches Scored
+
+📍 VENUE SPLIT (HOME vs AWAY)
+• Home Record: ${stats.homeWon}W - ${stats.homeDrawn}D - ${stats.homeLost}L (${stats.homeGF} GF : ${stats.homeGA} GA)
+• Away Record: ${stats.awayWon}W - ${stats.awayDrawn}D - ${stats.awayLost}L (${stats.awayGF} GF : ${stats.awayGA} GA)
+
+🧠 COACH TACTICAL DIRECTIVES
+• Tactical Identity: ${primaryTagline}
+1. Attack: ${coachAdvice.checklist[0]}
+2. Defense: ${coachAdvice.checklist[1]}
+3. Game Control: ${coachAdvice.checklist[2]}
+
+🔥 UPCOMING MATCHDAY 11: vs ${tomorrowOpponent}
+🔗 Live Squad Roster & Full Analytics:
+${specificTeamLink}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+  }, [
+    teamName,
+    teamPosition,
+    stats,
+    primaryTagline,
+    coachAdvice,
+    tomorrowOpponent,
+    specificTeamLink,
+  ]);
+
+  const handleCopySnippet = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(snippetText);
-      setCopiedToast('Analytics template snippet copied!');
+      navigator.clipboard.writeText(coachShareTemplateText);
+      setCopiedToast('Coach analytics template copied!');
       setTimeout(() => setCopiedToast(null), 2500);
     }
   };
@@ -487,8 +523,8 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator
         .share({
-          title: `${teamName} - Analytics Dossier`,
-          text: `Check out ${teamName}'s official performance analytics on Egerton Sports Network (${primaryTagline})!`,
+          title: `${teamName} - Coach Analytics Dossier`,
+          text: coachShareTemplateText,
           url: specificTeamLink,
         })
         .catch(() => {});
@@ -1944,50 +1980,88 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
                       teamId={teamId}
                       src={teamLogo}
                       alt={teamName}
-                      className="w-7 h-7 rounded-full object-cover bg-slate-800 shrink-0"
+                      className="w-8 h-8 rounded-full object-cover bg-slate-800 shrink-0"
                     />
                     <div>
                       <span className="text-sm font-black text-white block uppercase leading-tight">
                         {teamName}
                       </span>
                       <span className="text-[10px] font-mono text-purple-300 font-bold">
-                        Egerton Sports Network • Leg 1 Performance
+                        Coach Analytics Dossier • Leg 1 Performance
                       </span>
                     </div>
                   </div>
-                  <span className="text-xs font-black font-mono px-2 py-0.5 rounded-md bg-purple-600/30 text-purple-300 border border-purple-500/40">
-                    #{teamPosition} • {stats.pts} PTS
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded-md bg-purple-600/30 text-purple-300 border border-purple-500/40 inline-block">
+                      #{teamPosition} • {stats.pts} PTS
+                    </span>
+                    <span className="text-[9px] font-mono text-emerald-400 block mt-0.5 font-bold">
+                      {stats.ppg} PPG
+                    </span>
+                  </div>
                 </div>
 
                 {/* 4 Key Metrics side by side */}
                 <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/[0.06] text-center">
-                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg border border-white/5">
                     <span className="text-[8px] font-mono uppercase text-slate-400 block">Record</span>
-                    <span className="text-[10.5px] font-black font-mono text-emerald-400">{stats.won}W-{stats.drawn}D-{stats.lost}L</span>
+                    <span className="text-[10.5px] font-black font-mono text-emerald-400">
+                      {stats.won}W-{stats.drawn}D-{stats.lost}L
+                    </span>
+                    <span className="text-[7.5px] font-mono text-slate-400 block">{stats.winRate}% Win</span>
                   </div>
-                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg border border-white/5">
                     <span className="text-[8px] font-mono uppercase text-slate-400 block">Scored</span>
                     <span className="text-[10.5px] font-black font-mono text-cyan-400">{stats.gf}</span>
+                    <span className="text-[7.5px] font-mono text-slate-400 block">{stats.gfPerGame}/m</span>
                   </div>
-                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg border border-white/5">
                     <span className="text-[8px] font-mono uppercase text-slate-400 block">Conceded</span>
                     <span className="text-[10.5px] font-black font-mono text-rose-400">{stats.ga}</span>
+                    <span className="text-[7.5px] font-mono text-slate-400 block">{stats.gaPerGame}/m</span>
                   </div>
-                  <div className="bg-white/[0.03] p-1.5 rounded-lg">
+                  <div className="bg-white/[0.03] p-1.5 rounded-lg border border-white/5">
                     <span className="text-[8px] font-mono uppercase text-slate-400 block">Shutouts</span>
                     <span className="text-[10.5px] font-black font-mono text-purple-400">{stats.cleanSheets}</span>
+                    <span className="text-[7.5px] font-mono text-slate-400 block">{stats.cleanSheetRate}% CS</span>
                   </div>
                 </div>
 
-                {/* Tagline & Win Efficiency */}
-                <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px]">
-                  <span className="font-extrabold text-amber-300 uppercase tracking-wide">
-                    🔥 {primaryTagline}
-                  </span>
-                  <span className="font-mono text-emerald-400 font-bold">
-                    {stats.winRate}% Win Efficiency
-                  </span>
+                {/* Venue Split & Goal Difference */}
+                <div className="p-2 rounded-lg bg-black/40 border border-white/[0.06] grid grid-cols-3 gap-2 text-[9.5px] font-mono text-center">
+                  <div>
+                    <span className="text-slate-400 text-[8px] uppercase block">Home</span>
+                    <span className="text-slate-200 font-bold">{stats.homeWon}W-{stats.homeDrawn}D-{stats.homeLost}L</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[8px] uppercase block">Away</span>
+                    <span className="text-slate-200 font-bold">{stats.awayWon}W-{stats.awayDrawn}D-{stats.awayLost}L</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[8px] uppercase block">Diff (GD)</span>
+                    <span className={stats.gd >= 0 ? 'text-emerald-400 font-black' : 'text-rose-400 font-black'}>
+                      {stats.gd > 0 ? `+${stats.gd}` : stats.gd}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tactical Directives Box */}
+                <div className="p-2.5 rounded-lg bg-purple-950/20 border border-purple-500/20 space-y-1">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-extrabold text-amber-300 uppercase tracking-wide flex items-center gap-1">
+                      <Flame className="w-3 h-3 text-amber-400" />
+                      {primaryTagline}
+                    </span>
+                    <span className="text-[9px] font-mono text-purple-300">
+                      M11: vs {tomorrowOpponent}
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-slate-300 leading-tight">
+                    🎯 <span className="text-slate-200 font-medium">{coachAdvice.checklist[0]}</span>
+                  </p>
+                  <p className="text-[9px] text-slate-300 leading-tight">
+                    🛡️ <span className="text-slate-200 font-medium">{coachAdvice.checklist[1]}</span>
+                  </p>
                 </div>
 
                 {/* Specific Direct Link */}
@@ -2012,7 +2086,7 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
                   className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
                 >
                   <Copy className="w-4 h-4" />
-                  <span>Copy Report Template</span>
+                  <span>Copy Coach Template</span>
                 </button>
 
                 <button
