@@ -19,6 +19,10 @@
     {
       "source": "/share/cleansheets",
       "destination": "/api/share?view=cleansheets"
+    },
+    {
+      "source": "/share/team/:team",
+      "destination": "/api/share?team=:team"
     }
   ]
 }

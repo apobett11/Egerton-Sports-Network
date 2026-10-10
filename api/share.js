@@ -67,7 +67,59 @@ function boardPage({ origin, view, requestUrl }) {
 </html>`;
 }
 
+function teamAnalyticsPage({ origin, team, requestUrl }) {
+  const teamSlug = String(team || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const destination = `${origin}/#/team/${teamSlug}?tab=analytics`;
+  const image = `${origin}/api/og?team=${encodeURIComponent(teamSlug)}&v=202610`;
+  const formattedName = teamSlug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+  const title = `${formattedName} · Coach Analytics & Form Amplitude`;
+  const description = `${formattedName} Official Performance Analytics, Form Amplitude Wave & Matchday Sequence`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EgerScore">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(`${origin}${requestUrl}`)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
+  <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
+    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
+  </a>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
+}
+
 export default async function handler(req, res) {
+  const team = typeof req.query?.team === 'string' ? req.query.team : '';
+  if (team) {
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const origin = `${protocol}://${req.headers.host}`;
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(teamAnalyticsPage({ origin, team, requestUrl: req.url || `/share/team/${team}` }));
+    return;
+  }
+
   const view = typeof req.query?.view === 'string' ? req.query.view : '';
   if (view === 'table' || view === 'fixtures' || view === 'cleansheets') {
     const protocol = req.headers['x-forwarded-proto'] || 'https';

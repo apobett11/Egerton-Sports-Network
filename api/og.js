@@ -886,10 +886,480 @@ function boardCard(kind, rows) {
   );
 }
 
+function renderGraphSvg(amplitudeSeries) {
+  const chartWidth = 1120;
+  const chartHeight = 160;
+  const leftMargin = 90;
+  const rightMargin = 30;
+  const plotWidth = chartWidth - leftMargin - rightMargin;
+
+  const getX = (md) => leftMargin + ((md - 1) / 10) * plotWidth;
+  const getY = (amp) => (amp === 1 ? 28 : amp === 0 ? 80 : 132);
+
+  const points = (amplitudeSeries || [])
+    .map((pt, i) => `${getX(pt.matchday || i + 1)},${getY(pt.amp)}`)
+    .join(' ');
+
+  const children = [
+    h('line', { key: 'l-w', x1: leftMargin, y1: 28, x2: chartWidth - rightMargin, y2: 28, stroke: '#10b981', strokeOpacity: 0.35, strokeDasharray: '4 4' }),
+    h('text', { key: 't-w', x: leftMargin - 10, y: 32, fill: '#10b981', fontSize: 13, textAnchor: 'end', fontWeight: 800 }, '+1.0 WIN'),
+
+    h('line', { key: 'l-d', x1: leftMargin, y1: 80, x2: chartWidth - rightMargin, y2: 80, stroke: '#64748b', strokeOpacity: 0.5, strokeWidth: 1.5 }),
+    h('text', { key: 't-d', x: leftMargin - 10, y: 84, fill: '#94a3b8', fontSize: 13, textAnchor: 'end', fontWeight: 800 }, '0.0 DRAW'),
+
+    h('line', { key: 'l-l', x1: leftMargin, y1: 132, x2: chartWidth - rightMargin, y2: 132, stroke: '#f43f5e', strokeOpacity: 0.35, strokeDasharray: '4 4' }),
+    h('text', { key: 't-l', x: leftMargin - 10, y: 136, fill: '#f43f5e', fontSize: 13, textAnchor: 'end', fontWeight: 800 }, '-1.0 LOSS'),
+  ];
+
+  for (let md = 1; md <= 11; md++) {
+    const x = getX(md);
+    children.push(
+      h('line', { key: `tick-${md}`, x1: x, y1: 18, x2: x, y2: 142, stroke: '#ffffff', strokeOpacity: 0.08 }),
+      h('text', { key: `lbl-${md}`, x, y: 154, fill: '#64748b', fontSize: 11, textAnchor: 'middle', fontWeight: 800 }, `M${md}`)
+    );
+  }
+
+  if (points) {
+    children.push(
+      h('polyline', { key: 'poly', fill: 'none', stroke: '#10b981', strokeWidth: 4, strokeLinecap: 'round', strokeLinejoin: 'round', points })
+    );
+  }
+
+  (amplitudeSeries || []).forEach((pt, i) => {
+    const cx = getX(pt.matchday || i + 1);
+    const cy = getY(pt.amp);
+    const color = pt.amp === 1 ? '#10b981' : pt.amp === 0 ? '#f59e0b' : '#f43f5e';
+    children.push(
+      h('circle', { key: `c-${i}`, cx, cy, r: 6.5, fill: color, stroke: '#070d18', strokeWidth: 2.5 }),
+      h('text', { key: `txt-${i}`, x: cx, y: cy - 9, fill: '#ffffff', fontSize: 10.5, textAnchor: 'middle', fontWeight: 800 }, pt.score || '')
+    );
+  });
+
+  return h('svg', { width: chartWidth, height: chartHeight, viewBox: `0 0 ${chartWidth} ${chartHeight}` }, ...children);
+}
+
+function teamAnalyticsCard(team) {
+  return h(
+    'div',
+    {
+      style: {
+        width: 1200,
+        height: 630,
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#070d18',
+        color: '#f8fafc',
+        fontFamily: 'Arial, sans-serif',
+      },
+    },
+    h('div', { style: { width: '100%', height: 6, background: '#a855f7', flexShrink: 0 } }),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 48,
+          background: '#0a1624',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 40px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center' } },
+        h('span', { style: { color: '#a855f7', fontSize: 20, fontWeight: 900, letterSpacing: '0.08em' } }, 'EGERSCORE'),
+        h('span', { style: { color: '#64748b', fontSize: 13, fontWeight: 700, marginLeft: 14 } }, '·  OFFICIAL EGERTON SPORTS NETWORK'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: 14,
+            background: 'rgba(168, 85, 247, 0.15)',
+            border: '1.5px solid rgba(168, 85, 247, 0.4)',
+            padding: '4px 14px',
+            color: '#c084fc',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+          },
+        },
+        'COACH ANALYTICS DOSSIER',
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 72,
+          background: '#0e1c2b',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 40px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 16 } },
+        renderCrest(team.logo, team.name, 52),
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column' } },
+          h('span', { style: { color: '#f8fafc', fontSize: 26, fontWeight: 900, letterSpacing: '-0.02em' } }, team.name.toUpperCase()),
+          h('span', { style: { color: '#a855f7', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', marginTop: 2 } }, 'LEG 1 PERFORMANCE DOSSIER · OFFICIAL LEAGUE PROFILE'),
+        ),
+      ),
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 14 } },
+        h(
+          'div',
+          {
+            style: {
+              borderRadius: 16,
+              background: 'rgba(168, 85, 247, 0.2)',
+              border: '1.5px solid rgba(168, 85, 247, 0.5)',
+              padding: '6px 16px',
+              color: '#c084fc',
+              fontSize: 14,
+              fontWeight: 900,
+            },
+          },
+          `TABLE #${team.position} · ${team.pts} PTS`,
+        ),
+        h(
+          'div',
+          {
+            style: {
+              borderRadius: 16,
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1.5px solid rgba(16, 185, 129, 0.4)',
+              padding: '6px 14px',
+              color: '#10b981',
+              fontSize: 13,
+              fontWeight: 800,
+            },
+          },
+          `${team.ppg} PPG`,
+        ),
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 72,
+          background: '#0a1322',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '0 40px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { flex: 1, height: 54, background: '#070d18', borderRadius: 12, border: '1px solid #1a2e45', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        h('span', { style: { color: '#94a3b8', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em' } }, 'RECORD'),
+        h('span', { style: { color: '#10b981', fontSize: 14, fontWeight: 900, marginTop: 1 } }, `${team.won}W-${team.drawn}D-${team.lost}L`),
+        h('span', { style: { color: '#64748b', fontSize: 9 } }, `${team.winRate}% WIN`),
+      ),
+      h(
+        'div',
+        { style: { flex: 1, height: 54, background: '#070d18', borderRadius: 12, border: '1px solid #1a2e45', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        h('span', { style: { color: '#94a3b8', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em' } }, 'SCORED'),
+        h('span', { style: { color: '#38bdf8', fontSize: 14, fontWeight: 900, marginTop: 1 } }, String(team.gf)),
+        h('span', { style: { color: '#64748b', fontSize: 9 } }, `${team.gfPerGame}/m`),
+      ),
+      h(
+        'div',
+        { style: { flex: 1, height: 54, background: '#070d18', borderRadius: 12, border: '1px solid #1a2e45', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        h('span', { style: { color: '#94a3b8', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em' } }, 'CONCEDED'),
+        h('span', { style: { color: '#f43f5e', fontSize: 14, fontWeight: 900, marginTop: 1 } }, String(team.ga)),
+        h('span', { style: { color: '#64748b', fontSize: 9 } }, `${team.gaPerGame}/m`),
+      ),
+      h(
+        'div',
+        { style: { flex: 1, height: 54, background: '#070d18', borderRadius: 12, border: '1px solid #1a2e45', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        h('span', { style: { color: '#94a3b8', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em' } }, 'SHUTOUTS'),
+        h('span', { style: { color: '#c084fc', fontSize: 14, fontWeight: 900, marginTop: 1 } }, String(team.cleanSheets)),
+        h('span', { style: { color: '#64748b', fontSize: 9 } }, `${team.cleanSheetRate}% CS`),
+      ),
+      h(
+        'div',
+        { style: { flex: 1.3, height: 54, background: '#070d18', borderRadius: 12, border: '1px solid #1a2e45', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        h('span', { style: { color: '#94a3b8', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em' } }, 'HOME · AWAY · DIFF'),
+        h('span', { style: { color: '#f8fafc', fontSize: 13, fontWeight: 900, marginTop: 1 } }, `H: ${team.homeWon}-${team.homeDrawn}-${team.homeLost} · A: ${team.awayWon}-${team.awayDrawn}-${team.awayLost}`),
+        h('span', { style: { color: team.gd.startsWith('+') ? '#10b981' : '#f43f5e', fontSize: 9, fontWeight: 800 } }, `GD: ${team.gd}`),
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 38,
+          background: '#0d1b2a',
+          borderBottom: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 40px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+        h(
+          'span',
+          {
+            style: {
+              borderRadius: 12,
+              background: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              padding: '2px 10px',
+              color: '#f59e0b',
+              fontSize: 10.5,
+              fontWeight: 900,
+            },
+          },
+          `🔥 ${team.tagline.toUpperCase()}`,
+        ),
+        h('span', { style: { color: '#94a3b8', fontSize: 11.5, fontWeight: 600 } }, 'Official match tactics & consistency directives locked'),
+      ),
+      h('span', { style: { color: '#64748b', fontSize: 11, fontWeight: 700 } }, 'MATCHDAYS 1 - 11 SEQUENCE'),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          flex: 1,
+          background: '#070d18',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '8px 40px',
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 } },
+        h('span', { style: { color: '#10b981', fontSize: 12, fontWeight: 900, letterSpacing: '0.04em' } }, 'FORM CHANGE & PERFORMANCE AMPLITUDE GRAPH (±1.0 to -1.0)'),
+        h(
+          'div',
+          { style: { display: 'flex', alignItems: 'center', gap: 12, fontSize: 10.5, fontWeight: 800 } },
+          h('span', { style: { color: '#10b981' } }, '● +1.0 Win'),
+          h('span', { style: { color: '#94a3b8' } }, '● 0.0 Draw'),
+          h('span', { style: { color: '#f43f5e' } }, '● -1.0 Loss'),
+        ),
+      ),
+      renderGraphSvg(team.amplitudeSeries),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: 52,
+          background: '#0a1624',
+          borderTop: '1px solid #1a2e45',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 40px',
+          flexShrink: 0,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', flexDirection: 'column' } },
+        h('span', { style: { color: '#64748b', fontSize: 13, fontWeight: 700 } }, 'EGERSCORE.COM · TAP TO VIEW FULL TEAM ANALYTICS, SQUAD & ROSTER'),
+        h('span', { style: { color: '#475569', fontSize: 10.5, fontWeight: 600, marginTop: 1 } }, 'REAL-TIME MATCH RECORDS & PERFORMANCE TRAJECTORY'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            borderRadius: 20,
+            background: '#a855f7',
+            padding: '7px 20px',
+            color: '#ffffff',
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+          },
+        },
+        'OPEN TEAM ANALYTICS →',
+      ),
+    ),
+  );
+}
+
+async function fetchTeamAnalyticsData(teamSlug) {
+  const teams = await supabaseRows('teams?select=id,name,logo_url&competition_id=eq.11111111-1111-1111-1111-111111111111');
+  const cleanSlug = String(teamSlug || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+
+  const targetTeam = (teams || []).find((t) => {
+    const s = String(t.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+    return s === cleanSlug || s.includes(cleanSlug) || cleanSlug.includes(s);
+  }) || { name: 'Egerton FC', id: 'default', logo_url: '' };
+
+  const allFixtures = await supabaseRows(
+    'fixtures?select=home_team_id,away_team_id,score_home,score_away,status,matchday,scheduled_time&competition_id=eq.11111111-1111-1111-1111-111111111111&status=in.(FT,FINISHED,ft,finished)&order=scheduled_time.asc'
+  );
+
+  const tableMap = new Map();
+  (teams || []).forEach((t) => {
+    tableMap.set(t.id, { id: t.id, name: t.name, pts: 0, gd: 0, won: 0 });
+  });
+  (allFixtures || []).forEach((f) => {
+    const sh = Number(f.score_home) || 0;
+    const sa = Number(f.score_away) || 0;
+    const hTeam = tableMap.get(f.home_team_id);
+    const aTeam = tableMap.get(f.away_team_id);
+    if (hTeam) {
+      hTeam.gd += sh - sa;
+      if (sh > sa) { hTeam.pts += 3; hTeam.won += 1; }
+      else if (sh === sa) { hTeam.pts += 1; }
+    }
+    if (aTeam) {
+      aTeam.gd += sa - sh;
+      if (sa > sh) { aTeam.pts += 3; aTeam.won += 1; }
+      else if (sa === sh) { aTeam.pts += 1; }
+    }
+  });
+
+  const sortedTable = [...tableMap.values()].sort((a, b) => b.pts - a.pts || b.gd - a.gd);
+  const position = Math.max(1, sortedTable.findIndex((t) => t.id === targetTeam.id) + 1);
+
+  const teamMatches = (allFixtures || [])
+    .filter((f) => (f.home_team_id === targetTeam.id || f.away_team_id === targetTeam.id) && f.matchday <= 11)
+    .slice(0, 11);
+
+  let played = teamMatches.length;
+  let won = 0, drawn = 0, lost = 0;
+  let gf = 0, ga = 0;
+  let homeWon = 0, homeDrawn = 0, homeLost = 0;
+  let awayWon = 0, awayDrawn = 0, awayLost = 0;
+  let cleanSheets = 0;
+
+  const amplitudeSeries = teamMatches.map((m, i) => {
+    const isHome = m.home_team_id === targetTeam.id;
+    const sh = Number(m.score_home) || 0;
+    const sa = Number(m.score_away) || 0;
+    const teamGoals = isHome ? sh : sa;
+    const oppGoals = isHome ? sa : sh;
+
+    let res = 'D';
+    let amp = 0;
+    if (teamGoals > oppGoals) {
+      res = 'W';
+      amp = 1;
+      won += 1;
+      if (isHome) homeWon += 1; else awayWon += 1;
+    } else if (teamGoals < oppGoals) {
+      res = 'L';
+      amp = -1;
+      lost += 1;
+      if (isHome) homeLost += 1; else awayLost += 1;
+    } else {
+      drawn += 1;
+      if (isHome) homeDrawn += 1; else awayDrawn += 1;
+    }
+
+    gf += teamGoals;
+    ga += oppGoals;
+    if (oppGoals === 0) cleanSheets += 1;
+
+    return {
+      matchday: m.matchday || i + 1,
+      amp,
+      score: `${teamGoals}-${oppGoals}`,
+      res,
+    };
+  });
+
+  const pts = won * 3 + drawn;
+  const ppg = played > 0 ? (pts / played).toFixed(2) : '0.00';
+  const winRate = played > 0 ? Math.round((won / played) * 100) : 0;
+  const cleanSheetRate = played > 0 ? Math.round((cleanSheets / played) * 100) : 0;
+  const gfPerGame = played > 0 ? (gf / played).toFixed(2) : '0.00';
+  const gaPerGame = played > 0 ? (ga / played).toFixed(2) : '0.00';
+  const gd = gf - ga;
+
+  let tagline = 'Resilient Contenders';
+  if (ga <= 5) tagline = 'Defensive Champions';
+  else if (cleanSheetRate >= 40) tagline = 'Impenetrable Fortress';
+  else if (gf >= 12) tagline = 'Clinical Finishers';
+  else if (winRate >= 50) tagline = 'Title Contenders';
+
+  return {
+    name: targetTeam.name || 'Egerton FC',
+    logo: targetTeam.logo_url || '',
+    position,
+    pts,
+    ppg,
+    played,
+    won,
+    drawn,
+    lost,
+    winRate,
+    gf,
+    gfPerGame,
+    ga,
+    gaPerGame,
+    gd: gd > 0 ? `+${gd}` : String(gd),
+    cleanSheets,
+    cleanSheetRate,
+    homeWon,
+    homeDrawn,
+    homeLost,
+    awayWon,
+    awayDrawn,
+    awayLost,
+    tagline,
+    amplitudeSeries,
+  };
+}
+
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
   const url = new URL(request.url);
+  const team = url.searchParams.get('team');
+  if (team) {
+    try {
+      const teamData = await fetchTeamAnalyticsData(team);
+      return new ImageResponse(teamAnalyticsCard(teamData), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
+      });
+    } catch {
+      const defaultData = await fetchTeamAnalyticsData(team);
+      return new ImageResponse(teamAnalyticsCard(defaultData), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400' },
+      });
+    }
+  }
+
   const view = url.searchParams.get('view');
   if (view === 'table' || view === 'fixtures' || view === 'cleansheets') {
     try {

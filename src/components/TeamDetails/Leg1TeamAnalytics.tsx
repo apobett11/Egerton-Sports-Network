@@ -561,15 +561,20 @@ ${amplitudeTextGraph}
     specificTeamLink,
   ]);
 
+  const shareImageUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}/share/team/${teamSlug}`;
+  }, [teamSlug]);
+
   const handleShareToWhatsApp = () => {
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(coachShareTemplateText)}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareImageUrl)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleCopySnippet = () => {
+  const handleCopyLink = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(coachShareTemplateText);
-      setCopiedToast('Coach analytics template copied!');
+      navigator.clipboard.writeText(shareImageUrl);
+      setCopiedToast('Clickable image link copied!');
       setTimeout(() => setCopiedToast(null), 2500);
     }
   };
@@ -578,11 +583,11 @@ ${amplitudeTextGraph}
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator
         .share({
-          text: coachShareTemplateText,
+          text: shareImageUrl,
         })
         .catch(() => {});
     } else {
-      handleCopySnippet();
+      handleCopyLink();
     }
   };
 
@@ -2143,10 +2148,10 @@ ${amplitudeTextGraph}
             <div className="p-4 sm:p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Analytics Template Snippet Preview:
+                  Clickable Share Card Image Preview:
                 </span>
-                <span className="text-[9px] font-mono text-purple-300 bg-purple-900/30 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
-                  Official ESN Format
+                <span className="text-[9px] font-mono text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                  Official WhatsApp Image Card
                 </span>
               </div>
 
@@ -2323,39 +2328,13 @@ ${amplitudeTextGraph}
                       })}
                     </svg>
                   </div>
-
-                  {/* Formatted Text Monospace Graph (WhatsApp Unbreakable Payload) */}
-                  <div className="p-2.5 rounded-lg bg-black/80 border border-white/10 space-y-1">
-                    <span className="text-[8px] font-mono uppercase text-slate-400 block tracking-wider">
-                      Fixed Monospace Payload (Quality-Preserving Text Graph):
-                    </span>
-                    <pre className="font-mono text-[8.5px] leading-tight text-emerald-300 overflow-x-auto whitespace-pre select-all p-1 bg-black/40 rounded border border-white/5">
-                      {amplitudeTextGraph}
-                    </pre>
-                  </div>
                 </div>
 
                 {/* Specific Direct Link */}
                 <div className="p-2 rounded-lg bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[10.5px] font-mono text-slate-300">
-                  <span className="truncate">{specificTeamLink}</span>
+                  <span className="truncate">{shareImageUrl}</span>
                   <ExternalLink className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                 </div>
-              </div>
-
-              {/* Exact WhatsApp Message Payload Preview (As Is) */}
-              <div className="p-3 rounded-xl bg-black/60 border border-purple-500/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                    <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                    WhatsApp Template (Sent As Is):
-                  </span>
-                  <span className="text-[8.5px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
-                    Exact Template
-                  </span>
-                </div>
-                <pre className="font-mono text-[9px] leading-relaxed text-slate-200 overflow-x-auto whitespace-pre select-all p-2.5 bg-black/80 rounded-lg border border-white/10">
-                  {coachShareTemplateText}
-                </pre>
               </div>
 
               {copiedToast && (
@@ -2365,7 +2344,7 @@ ${amplitudeTextGraph}
                 </div>
               )}
 
-              {/* Action Buttons: Direct WhatsApp Share Primary */}
+              {/* Action Buttons: Direct WhatsApp Clickable Image Share Primary */}
               <div className="space-y-2 pt-1">
                 <button
                   type="button"
@@ -2373,26 +2352,17 @@ ${amplitudeTextGraph}
                   className="w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95"
                 >
                   <MessageCircle className="w-4 h-4 fill-black text-black" />
-                  <span>Share Directly on WhatsApp</span>
+                  <span>Share Clickable Picture on WhatsApp</span>
                 </button>
 
                 <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopySnippet}
-                    className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Coach Template</span>
-                  </button>
-
                   <button
                     type="button"
                     onClick={handleCopyLink}
                     className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-[#070D18] hover:bg-white/5 border border-white/15 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
                   >
                     <Link2 className="w-4 h-4" />
-                    <span>Copy Link Only</span>
+                    <span>Copy Clickable Card Link</span>
                   </button>
 
                   {typeof navigator !== 'undefined' && !!navigator.share && (
