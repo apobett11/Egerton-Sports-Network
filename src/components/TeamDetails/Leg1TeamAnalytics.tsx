@@ -528,44 +528,29 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
 
   const coachShareTemplateText = useMemo(() => {
     const gdSign = stats.gd > 0 ? `+${stats.gd}` : `${stats.gd}`;
-    const sanctionLine = stats.deductionPts > 0
-      ? `⚠️ *POINTS SANCTION:* -${stats.deductionPts} PTS (${stats.sanctionReason || 'Official League Sanction'})\n`
-      : '';
+    const sanctionText = stats.deductionPts > 0 ? ` [⚠️ -${stats.deductionPts} PTS Sanction]` : '';
 
-    return `🏆 *EGERTON SPORTS NETWORK | COACH DOSSIER*
-⚽ *${teamName.toUpperCase()} — TABLE #${teamPosition} (${stats.pts} PTS)*
+    return `🏆 *${teamName.toUpperCase()}* | *#${teamPosition} (${stats.pts} PTS${sanctionText} • ${stats.ppg} PPG)*
+📋 *Coach Analytics Dossier • Leg 1 Performance*
 ━━━━━━━━━━━━━━━━━━━━━
-📊 *OFFICIAL MATCH RECORD*
-• *Matches Played:* ${stats.played}
-• *Record:* ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Rate)
-• *Points:* ${stats.pts} PTS (PPG: ${stats.ppg} pts/match)
-${sanctionLine}🎯 *GOALS & DEFENSE*
-• *Goals Scored:* ${stats.gf} (${stats.gfPerGame}/match)
-• *Goals Conceded:* ${stats.ga} (${stats.gaPerGame}/match)
-• *Goal Difference:* ${gdSign}
-• *Clean Sheets:* ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
-
-📍 *VENUE RECORD (HOME vs AWAY)*
-• *Home Record:* ${stats.homeWon}W - ${stats.homeDrawn}D - ${stats.homeLost}L (${stats.homeGF} GF : ${stats.homeGA} GA)
-• *Away Record:* ${stats.awayWon}W - ${stats.awayDrawn}D - ${stats.awayLost}L (${stats.awayGF} GF : ${stats.awayGA} GA)
-
+📊 *RECORD:* ${stats.won}W-${stats.drawn}D-${stats.lost}L (${stats.winRate}% Win)
+⚽ *SCORED:* ${stats.gf} (${stats.gfPerGame}/m)
+🛡️ *CONCEDED:* ${stats.ga} (${stats.gaPerGame}/m)
+🧤 *SHUTOUTS:* ${stats.cleanSheets} (${stats.cleanSheetRate}% CS)
+🏠 *HOME:* ${stats.homeWon}W-${stats.homeDrawn}D-${stats.homeLost}L
+✈️ *AWAY:* ${stats.awayWon}W-${stats.awayDrawn}D-${stats.awayLost}L
+📈 *DIFF (GD):* ${gdSign}
+━━━━━━━━━━━━━━━━━━━━━
+🔥 *${primaryTagline.toUpperCase()}*
+🎯 ${coachAdvice.checklist[0]}
+🛡️ ${coachAdvice.checklist[1]}
+━━━━━━━━━━━━━━━━━━━━━
 📈 *FORM CHANGE & PERFORMANCE AMPLITUDE GRAPH (±1.0 to -1.0)*
 \`\`\`
 ${amplitudeTextGraph}
 \`\`\`
-
-🧠 *TACTICAL PROFILE*
-• *Tactical Identity:* ${primaryTagline}
-• *Attack Directive:* ${coachAdvice.checklist[0]}
-• *Defense Directive:* ${coachAdvice.checklist[1]}
-• *Match Control:* ${coachAdvice.checklist[2]}
-
-${hasPlayedMatchday11
-  ? (tomorrowMatch ? `🔥 *UPCOMING FIXTURE:* vs ${tomorrowOpponent} (MD${tomorrowMatch.matchday || 12})\n` : `🔥 *LEG 1 COMPLETED (11/11 MATCHES PLAYED)*\n`)
-  : `🔥 *MATCHDAY 11 (PENDING):* vs ${tomorrowOpponent}\n`}
-🔗 *LIVE SQUAD & ANALYTICS:*
-${specificTeamLink}
-━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━
+🔗 ${specificTeamLink}`;
   }, [
     teamName,
     teamPosition,
@@ -573,9 +558,6 @@ ${specificTeamLink}
     amplitudeTextGraph,
     primaryTagline,
     coachAdvice,
-    tomorrowOpponent,
-    tomorrowMatch,
-    hasPlayedMatchday11,
     specificTeamLink,
   ]);
 
@@ -596,9 +578,7 @@ ${specificTeamLink}
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator
         .share({
-          title: `${teamName} - Coach Analytics Dossier`,
           text: coachShareTemplateText,
-          url: specificTeamLink,
         })
         .catch(() => {});
     } else {
@@ -2360,6 +2340,22 @@ ${specificTeamLink}
                   <span className="truncate">{specificTeamLink}</span>
                   <ExternalLink className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                 </div>
+              </div>
+
+              {/* Exact WhatsApp Message Payload Preview (As Is) */}
+              <div className="p-3 rounded-xl bg-black/60 border border-purple-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                    WhatsApp Template (Sent As Is):
+                  </span>
+                  <span className="text-[8.5px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                    Exact Template
+                  </span>
+                </div>
+                <pre className="font-mono text-[9px] leading-relaxed text-slate-200 overflow-x-auto whitespace-pre select-all p-2.5 bg-black/80 rounded-lg border border-white/10">
+                  {coachShareTemplateText}
+                </pre>
               </div>
 
               {copiedToast && (
