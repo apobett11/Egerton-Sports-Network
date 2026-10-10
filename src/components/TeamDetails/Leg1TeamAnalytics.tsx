@@ -555,7 +555,10 @@ ${amplitudeTextGraph}
 
   const shareImageUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/share/team/${teamSlug}`;
+    const origin = window.location.origin;
+    const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('http://');
+    const baseOrigin = isLocal ? 'https://egerscore.com' : origin;
+    return `${baseOrigin}/share/team/${teamSlug}`;
   }, [teamSlug]);
 
   const handleShareToWhatsApp = () => {

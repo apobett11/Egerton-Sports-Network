@@ -19,7 +19,24 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function boardPage({ origin, view, requestUrl }) {
+function isCrawler(req) {
+  const ua = String(req.headers['user-agent'] || '');
+  return /facebookexternalhit|Facebot|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|meta-externalagent|Googlebot|bingbot|Baiduspider|yandex/i.test(ua);
+}
+
+function getOrigin(req) {
+  const protocol = req.headers['x-forwarded-proto'] || (req.headers.host?.includes('localhost') ? 'http' : 'https');
+  const host = req.headers.host || 'egerscore.com';
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return 'https://egerscore.com';
+  }
+  if (protocol === 'https' || host.includes('vercel.app') || host.includes('egerscore.com')) {
+    return `https://${host}`;
+  }
+  return `${protocol}://${host}`;
+}
+
+function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
   const destination = view === 'fixtures'
     ? `${origin}/#/fixtures`
     : view === 'cleansheets'
@@ -33,6 +50,10 @@ function boardPage({ origin, view, requestUrl }) {
     : view === 'cleansheets'
       ? 'Official EPL Clean Sheets Leaderboard · Defensive Wall Rankings'
       : 'Official EPL League Table & Standings · Tap to view full rankings';
+  const redirectTags = isBot
+    ? ''
+    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -56,18 +77,17 @@ function boardPage({ origin, view, requestUrl }) {
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
   <link rel="canonical" href="${escapeHtml(destination)}">
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">
+${redirectTags}
 </head>
 <body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
   <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
     <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
   </a>
-  <script>location.replace(${JSON.stringify(destination)})</script>
 </body>
 </html>`;
 }
 
-function teamAnalyticsPage({ origin, team, requestUrl }) {
+function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   const teamSlug = String(team || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const destination = `${origin}/#/team/${teamSlug}?tab=analytics`;
   const image = `${origin}/api/og?team=${encodeURIComponent(teamSlug)}&v=202610`;
@@ -75,6 +95,10 @@ function teamAnalyticsPage({ origin, team, requestUrl }) {
   const title = `${formattedName} · Coach Analytics & Form Amplitude`;
   const description = `${formattedName} Official Performance Analytics, Form Amplitude Wave & Matchday Sequence`;
 
+  const redirectTags = isBot
+    ? ''
+    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -94,39 +118,41 @@ function teamAnalyticsPage({ origin, team, requestUrl }) {
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@EgerScore">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
   <link rel="canonical" href="${escapeHtml(destination)}">
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">
+${redirectTags}
 </head>
-<body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
-  <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
-    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
+<body style="margin:0;padding:24px;background:#081018;color:white;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;box-sizing:border-box;">
+  <a href="${escapeHtml(destination)}" style="display:block;max-width:680px;width:100%;text-decoration:none;color:white;text-align:center;">
+    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;height:auto;border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,0.6);border:1px solid #1a2e45;display:block;margin:0 auto 20px;">
+    <div style="display:inline-block;background:#a855f7;color:white;font-weight:900;font-size:15px;padding:12px 32px;border-radius:999px;letter-spacing:0.04em;">
+      OPEN TEAM ANALYTICS →
+    </div>
   </a>
-  <script>location.replace(${JSON.stringify(destination)})</script>
 </body>
 </html>`;
 }
 
 export default async function handler(req, res) {
+  const isBot = isCrawler(req);
+  const origin = getOrigin(req);
+
   const team = typeof req.query?.team === 'string' ? req.query.team : '';
   if (team) {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const origin = `${protocol}://${req.headers.host}`;
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(teamAnalyticsPage({ origin, team, requestUrl: req.url || `/share/team/${team}` }));
+    res.status(200).send(teamAnalyticsPage({ origin, team, requestUrl: req.url || `/share/team/${team}`, isCrawler: isBot }));
     return;
   }
 
   const view = typeof req.query?.view === 'string' ? req.query.view : '';
   if (view === 'table' || view === 'fixtures' || view === 'cleansheets') {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const origin = `${protocol}://${req.headers.host}`;
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(boardPage({ origin, view, requestUrl: req.url || `/share/${view}` }));
+    res.status(200).send(boardPage({ origin, view, requestUrl: req.url || `/share/${view}`, isCrawler: isBot }));
     return;
   }
 
@@ -137,8 +163,6 @@ export default async function handler(req, res) {
     ? await loadPredictionShare(req.query.m, req.query.p)
     : null;
   const card = stored?.card || shared?.card || decodeShareCard(code.length > 12 ? code : token);
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const origin = `${protocol}://${req.headers.host}`;
   const title = cardTitle(card);
   const description = cardDescription(card);
   const image = stored
@@ -150,6 +174,10 @@ export default async function handler(req, res) {
   const destination = linkedMatch
     ? predictionDestination(origin, linkedMatch)
     : `${origin}/?view=picks#/news`;
+
+  const redirectTags = isBot
+    ? ''
+    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
 
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -175,8 +203,7 @@ export default async function handler(req, res) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">
-  <script>location.replace(${JSON.stringify(destination)})</script>
+${redirectTags}
 </head>
 <body style="background:#081018;color:white;font-family:system-ui;padding:2rem">
   <p>Opening this prediction… <a style="color:#ff4b77" href="${escapeHtml(destination)}">Continue to EgerScore</a></p>
