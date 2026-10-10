@@ -57,31 +57,36 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   const playersLoadedRef = useRef<boolean>(false);
   const standingsLoadedRef = useRef<boolean>(false);
 
-  // Phase 1 (Instant First Paint): Fetch team metadata, fixtures, and standings immediately (<300ms)
+  // Phase 1 (Instant First Paint): Fetch team metadata, fixtures, standings, and squad roster
   const loadPrimaryData = useCallback(async () => {
     if (!teamId) return;
     try {
       setError(null);
-      const [teamData, fixturesData, standingsData] = await Promise.all([
-        fetchTeamById(teamId),
-        fetchTeamFixtures(teamId),
-        fetchTeamStandings(teamId).catch(() => []),
-      ]);
+      const teamData = await fetchTeamById(teamId);
 
       if (!teamData) {
         setError('Team not found in the official league database.');
-      } else {
-        setTeam(teamData);
-        if (teamData.id) {
-          // Immediately list all squad athletes using the official team UID
-          loadPlayersData(teamData.id);
-        }
+        setIsLoading(false);
+        return;
       }
+
+      setTeam(teamData);
+      const targetUid = teamData.id || teamId;
+
+      const [fixturesData, standingsData, playersData] = await Promise.all([
+        fetchTeamFixtures(targetUid),
+        fetchTeamStandings(targetUid).catch(() => []),
+        fetchTeamPlayers(targetUid).catch(() => []),
+      ]);
 
       setFixtures(fixturesData || []);
       if (standingsData && standingsData.length > 0) {
         setStandings(standingsData);
         standingsLoadedRef.current = true;
+      }
+      if (playersData && playersData.length > 0) {
+        setPlayers(playersData);
+        playersLoadedRef.current = true;
       }
     } catch (err: any) {
       console.error('[TeamDetailsContainer] Error fetching primary team data:', err);
@@ -94,20 +99,18 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
   // Phase 2 (Progressive / On-demand): Fetch squad players using Team UID
   const loadPlayersData = useCallback(async (explicitUid?: string) => {
     const targetUid = explicitUid || team?.id || teamId;
-    if (!targetUid || (playersLoadedRef.current && players.length > 0)) return;
+    if (!targetUid) return;
     setIsPlayersLoading(true);
     try {
       const playersData = await fetchTeamPlayers(targetUid);
       setPlayers(playersData || []);
-      if (playersData && playersData.length > 0) {
-        playersLoadedRef.current = true;
-      }
+      playersLoadedRef.current = true;
     } catch (err: any) {
       console.warn('[TeamDetailsContainer] Error fetching players:', err);
     } finally {
       setIsPlayersLoading(false);
     }
-  }, [teamId, team?.id, players.length]);
+  }, [teamId, team?.id]);
 
   // Phase 2 (Progressive / On-demand): Fetch league standings
   const loadStandingsData = useCallback(async () => {

@@ -215,7 +215,7 @@ export interface MatchFormMark {
 const LEGENDS_FC_ID = '10000000-0000-4000-8000-000000000007';
 // Disciplinary sanctions: points deductions mapped by team UID
 const POINTS_DEDUCTIONS: Record<string, number> = {
-  '10000000-0000-4000-8000-000000000007': 4, // Legends FC (EPL): 2 past + 2 fresh = 4 pts
+  '10000000-0000-4000-8000-000000000007': 2, // Legends FC (EPL): 2 pts deduction
   '20000000-0000-4000-8000-000000000008': 2, // Young stars (Championship): 2 pts deduction
   '20000000-0000-4000-8000-000000000007': 2, // Young legends (Championship): 2 pts deduction
   '20000000-0000-4000-8000-000000000005': 2, // Tatton fc (Championship): 2 pts deduction
@@ -636,7 +636,7 @@ async function fetchGuestStandingsNetwork(competitionId?: string): Promise<Guest
       const results = [...acc.entries()].map(([teamId, row]): GuestStanding => {
         matchFormByTeam.set(teamId, row.form);
         const team = teamById.get(teamId) || {};
-        const deduction = POINTS_DEDUCTIONS[teamId] || (teamId === LEGENDS_FC_ID ? 4 : 0);
+        const deduction = POINTS_DEDUCTIONS[teamId] || (teamId === LEGENDS_FC_ID ? 2 : 0);
         const points = Math.max(0, row.points - deduction);
         return {
           team_id: teamId,

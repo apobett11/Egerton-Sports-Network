@@ -62,11 +62,14 @@ export const TeamPlayersTab: React.FC<TeamPlayersTabProps> = ({
         String(p.number).includes(term) ||
         (p.id && p.id.toLowerCase().includes(term));
 
+      const pPos = (p.position || '').toUpperCase();
       const matchesPos =
         positionFilter === 'ALL' ||
-        p.position === positionFilter ||
-        (positionFilter === 'DF' && (p.position as any) === 'DEF') ||
-        (positionFilter === 'FW' && (p.position as any) === 'FWD');
+        pPos === positionFilter ||
+        (positionFilter === 'GK' && (pPos === 'GK' || pPos === 'GOALKEEPER')) ||
+        (positionFilter === 'DF' && (pPos === 'DF' || pPos === 'DEF' || pPos === 'DEFENDER')) ||
+        (positionFilter === 'MD' && (pPos === 'MD' || pPos === 'MID' || pPos === 'MIDFIELDER')) ||
+        (positionFilter === 'FW' && (pPos === 'FW' || pPos === 'FWD' || pPos === 'FORWARD'));
 
       return matchesSearch && matchesPos;
     });

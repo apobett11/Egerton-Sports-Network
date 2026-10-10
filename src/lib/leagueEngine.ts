@@ -117,7 +117,7 @@ export function calculateLeagueStandings(
 
   // Official League Points Deductions (Disciplinary/Sanctions)
   const OFFICIAL_POINTS_DEDUCTIONS: Record<string, number> = {
-    '10000000-0000-4000-8000-000000000007': 4, // Legends FC: 2 past + 2 fresh deduction (separate from past) = 4 pts
+    '10000000-0000-4000-8000-000000000007': 2, // Legends FC: 2 pts deduction
     '20000000-0000-4000-8000-000000000008': 2, // Young stars (Championship): 2 pts deduction
     '20000000-0000-4000-8000-000000000007': 2, // Young legends (Championship): 2 pts deduction
     '20000000-0000-4000-8000-000000000005': 2, // Tatton fc (Championship): 2 pts deduction
@@ -128,7 +128,7 @@ export function calculateLeagueStandings(
   const standingsList = Array.from(statsMap.values()).map((s) => {
     const isLegends = s.teamId === '10000000-0000-4000-8000-000000000007' || 
       (s.teamName.toLowerCase().includes('legends') && !s.teamName.toLowerCase().includes('young'));
-    const deduction = OFFICIAL_POINTS_DEDUCTIONS[s.teamId] || (isLegends ? 4 : 0) || 0;
+    const deduction = OFFICIAL_POINTS_DEDUCTIONS[s.teamId] || (isLegends ? 2 : 0) || 0;
     const points = Math.max(0, s.points - deduction);
 
     return {

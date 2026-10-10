@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -23,6 +23,7 @@ import {
   Copy,
   Link2,
   ExternalLink,
+  MessageCircle,
 } from 'lucide-react';
 import type { Match, StandingEntry } from '../Dashboards/Team/types';
 import { TeamLogo } from '../common/TeamLogo';
@@ -38,14 +39,14 @@ interface Leg1TeamAnalyticsProps {
 
 // Official Points deductions map
 const OFFICIAL_SANCTIONS: Record<string, { pts: number; reason: string }> = {
-  '10000000-0000-4000-8000-000000000007': { pts: 4, reason: 'Disciplinary sanction (4 pts deducted)' },
+  '10000000-0000-4000-8000-000000000007': { pts: 2, reason: 'Disciplinary sanction (2 pts deducted)' },
   '20000000-0000-4000-8000-000000000008': { pts: 2, reason: 'Championship sanction (2 pts deducted)' },
   '20000000-0000-4000-8000-000000000007': { pts: 2, reason: 'Championship sanction (2 pts deducted)' },
   '20000000-0000-4000-8000-000000000005': { pts: 2, reason: 'Championship sanction (2 pts deducted)' },
   '20000000-0000-4000-8000-00000000000a': { pts: 2, reason: 'Championship sanction (2 pts deducted)' },
 };
 
-type ActiveGraphTab = 'winloss' | 'form' | 'goals' | 'position' | 'cleansheets' | 'all';
+type ActiveGraphTab = 'winloss' | 'goals' | 'position' | 'cleansheets' | 'all';
 
 interface MatchdayDataPoint {
   index: number;
@@ -82,11 +83,26 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [copiedToast, setCopiedToast] = useState<string | null>(null);
 
+  // Lock body scroll when share modal is open so no background bars/navigation bleed through
+  useEffect(() => {
+    if (isShareModalOpen) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [isShareModalOpen]);
+
+  // Strictly use team name slug — never use team UID as specifier
   const teamSlug = useMemo(() => {
-    return teamName
-      ? teamName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      : teamId;
-  }, [teamName, teamId]);
+    const raw = teamName || 'team';
+    return raw
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }, [teamName]);
 
   const specificTeamLink = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -470,37 +486,37 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
   const coachShareTemplateText = useMemo(() => {
     const gdSign = stats.gd > 0 ? `+${stats.gd}` : `${stats.gd}`;
     const sanctionLine = stats.deductionPts > 0
-      ? `⚠️ Points Sanction: -${stats.deductionPts} PTS (${stats.sanctionReason || 'League Sanction'})\n`
+      ? `⚠️ *POINTS SANCTION:* -${stats.deductionPts} PTS (${stats.sanctionReason || 'Official League Sanction'})\n`
       : '';
 
-    return `🏆 EGERTON SPORTS NETWORK | OFFICIAL COACH DOSSIER
-⚽ ${teamName.toUpperCase()} — TABLE #${teamPosition} (${stats.pts} PTS)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 OFFICIAL MATCH RECORD & EFFICIENCY
-• Matches Played: ${stats.played}
-• Record: ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Efficiency)
-• Points: ${stats.pts} PTS (PPG: ${stats.ppg} pts/match)
-${sanctionLine}🎯 OFFENSIVE & DEFENSIVE KPIS
-• Goals Scored: ${stats.gf} (${stats.gfPerGame}/match)
-• Goals Conceded: ${stats.ga} (${stats.gaPerGame}/match)
-• Goal Difference: ${gdSign}
-• Clean Sheets: ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
-• Scoring Consistency: ${Math.round(((stats.played - stats.failedToScore) / Math.max(1, stats.played)) * 100)}% Matches Scored
+    return `🏆 *EGERTON SPORTS NETWORK | COACH DOSSIER*
+⚽ *${teamName.toUpperCase()} — TABLE #${teamPosition} (${stats.pts} PTS)*
+━━━━━━━━━━━━━━━━━━━━━
+📊 *OFFICIAL MATCH RECORD*
+• *Matches Played:* ${stats.played}
+• *Record:* ${stats.won}W - ${stats.drawn}D - ${stats.lost}L (${stats.winRate}% Win Rate)
+• *Points:* ${stats.pts} PTS (PPG: ${stats.ppg} pts/match)
+${sanctionLine}🎯 *GOALS & DEFENSE*
+• *Goals Scored:* ${stats.gf} (${stats.gfPerGame}/match)
+• *Goals Conceded:* ${stats.ga} (${stats.gaPerGame}/match)
+• *Goal Difference:* ${gdSign}
+• *Clean Sheets:* ${stats.cleanSheets} (${stats.cleanSheetRate}% Shutout Rate)
 
-📍 VENUE SPLIT (HOME vs AWAY)
-• Home Record: ${stats.homeWon}W - ${stats.homeDrawn}D - ${stats.homeLost}L (${stats.homeGF} GF : ${stats.homeGA} GA)
-• Away Record: ${stats.awayWon}W - ${stats.awayDrawn}D - ${stats.awayLost}L (${stats.awayGF} GF : ${stats.awayGA} GA)
+📍 *VENUE RECORD (HOME vs AWAY)*
+• *Home Record:* ${stats.homeWon}W - ${stats.homeDrawn}D - ${stats.homeLost}L (${stats.homeGF} GF : ${stats.homeGA} GA)
+• *Away Record:* ${stats.awayWon}W - ${stats.awayDrawn}D - ${stats.awayLost}L (${stats.awayGF} GF : ${stats.awayGA} GA)
 
-🧠 COACH TACTICAL DIRECTIVES
-• Tactical Identity: ${primaryTagline}
-1. Attack: ${coachAdvice.checklist[0]}
-2. Defense: ${coachAdvice.checklist[1]}
-3. Game Control: ${coachAdvice.checklist[2]}
+🧠 *TACTICAL PROFILE*
+• *Tactical Identity:* ${primaryTagline}
+• *Attack Directive:* ${coachAdvice.checklist[0]}
+• *Defense Directive:* ${coachAdvice.checklist[1]}
+• *Match Control:* ${coachAdvice.checklist[2]}
 
-🔥 UPCOMING MATCHDAY 11: vs ${tomorrowOpponent}
-🔗 Live Squad Roster & Full Analytics:
+🔥 *MATCHDAY 11:* vs ${tomorrowOpponent}
+
+🔗 *LIVE SQUAD & ANALYTICS:*
 ${specificTeamLink}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━`;
   }, [
     teamName,
     teamPosition,
@@ -510,6 +526,11 @@ ${specificTeamLink}
     tomorrowOpponent,
     specificTeamLink,
   ]);
+
+  const handleShareToWhatsApp = () => {
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(coachShareTemplateText)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const handleCopySnippet = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -943,7 +964,6 @@ ${specificTeamLink}
               {[
                 { id: 'all', label: 'All Graphs (Default)' },
                 { id: 'winloss', label: 'Wins vs Losses' },
-                { id: 'form', label: 'Form Amplitude (±1.0)' },
                 { id: 'goals', label: 'Goals Scored vs Conceded' },
                 { id: 'position', label: 'Position Trend' },
                 { id: 'cleansheets', label: 'Clean Sheets' },
@@ -1143,189 +1163,6 @@ ${specificTeamLink}
             </div>
           )}
 
-          {/* --------------------------------------------------------------------- */}
-          {/* GRAPH B: FORM AMPLITUDE OSCILLATION (+1.0 to -1.0 CONTINUOUS LINE)     */}
-          {/* --------------------------------------------------------------------- */}
-          {(activeGraph === 'form' || activeGraph === 'all') && (
-            <div className="rounded-xl border border-white/[0.08] bg-[#070D18] p-3.5 sm:p-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-white/[0.06]">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    Form Change & Performance Amplitude (±1.0 to -1.0)
-                  </h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Continuous line (+1.0 Green for Win, 0.0 for Draw, -1.0 Red for Loss)
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 text-[9.5px] font-mono">
-                  <span className="flex items-center gap-1.5 text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> +1.0 Win (Positive)
-                  </span>
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <span className="w-2 h-2 rounded-full bg-slate-500 inline-block" /> 0.0 Draw
-                  </span>
-                  <span className="flex items-center gap-1.5 text-rose-400">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> -1.0 Loss (Negative)
-                  </span>
-                </div>
-              </div>
-
-              <div className="w-full h-48 relative">
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
-                  <defs>
-                    <linearGradient id="amplitudeGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="45%" stopColor="#10b981" />
-                      <stop offset="50%" stopColor="#f59e0b" />
-                      <stop offset="55%" stopColor="#f43f5e" />
-                      <stop offset="100%" stopColor="#f43f5e" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Horizontal Guide Lines */}
-                  {/* +1.0 WIN (Y=30) */}
-                  <line
-                    x1={leftMargin}
-                    y1="30"
-                    x2={chartWidth - rightMargin}
-                    y2="30"
-                    stroke="#10b981"
-                    strokeOpacity="0.25"
-                    strokeDasharray="3 3"
-                  />
-                  <text
-                    x={leftMargin - 10}
-                    y="34"
-                    fill="#10b981"
-                    fontSize="9"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                    textAnchor="end"
-                  >
-                    +1.0 WIN
-                  </text>
-
-                  {/* 0.0 DRAW BASELINE (Y=75) */}
-                  <line
-                    x1={leftMargin}
-                    y1="75"
-                    x2={chartWidth - rightMargin}
-                    y2="75"
-                    stroke="#64748b"
-                    strokeOpacity="0.5"
-                    strokeWidth="1.2"
-                  />
-                  <text
-                    x={leftMargin - 10}
-                    y="79"
-                    fill="#94a3b8"
-                    fontSize="9"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                    textAnchor="end"
-                  >
-                    0.0 DRAW
-                  </text>
-
-                  {/* -1.0 LOSS (Y=120) */}
-                  <line
-                    x1={leftMargin}
-                    y1="120"
-                    x2={chartWidth - rightMargin}
-                    y2="120"
-                    stroke="#f43f5e"
-                    strokeOpacity="0.25"
-                    strokeDasharray="3 3"
-                  />
-                  <text
-                    x={leftMargin - 10}
-                    y="124"
-                    fill="#f43f5e"
-                    fontSize="9"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                    textAnchor="end"
-                  >
-                    -1.0 LOSS
-                  </text>
-
-                  {/* Matchday Vertical Lines */}
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
-                    const x = getXCoordinate(mDay);
-                    return (
-                      <g key={`amp-tick-${mDay}`}>
-                        <line
-                          x1={x}
-                          y1="25"
-                          x2={x}
-                          y2="125"
-                          stroke="#ffffff"
-                          strokeOpacity="0.04"
-                        />
-                        <text
-                          x={x}
-                          y="142"
-                          fill="#64748b"
-                          fontSize="8"
-                          fontFamily="monospace"
-                          textAnchor="middle"
-                        >
-                          M{mDay}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Single Continuous Amplitude Polyline */}
-                  {timeSeries.length > 1 && (
-                    <polyline
-                      fill="none"
-                      stroke="url(#amplitudeGradient)"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={timeSeries
-                        .map((pt) => {
-                          const y = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
-                          return `${getXCoordinate(pt.matchday)},${y}`;
-                        })
-                        .join(' ')}
-                    />
-                  )}
-
-                  {/* Amplitude Data Nodes */}
-                  {timeSeries.map((pt, idx) => {
-                    const cx = getXCoordinate(pt.matchday);
-                    const cy = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
-                    const dotColor = pt.amplitude === 1 ? '#10b981' : pt.amplitude === 0 ? '#f59e0b' : '#f43f5e';
-                    return (
-                      <g key={`amp-dot-${idx}`}>
-                        <circle cx={cx} cy={cy} r="4" fill={dotColor} stroke="#070D18" strokeWidth="2" />
-                        <text
-                          x={cx}
-                          y={cy - 7}
-                          fill="#ffffff"
-                          fontSize="7.5"
-                          fontFamily="monospace"
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {pt.scoreText}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-
-              <div className="flex items-center justify-between text-[8.5px] text-slate-500 font-mono pt-2 border-t border-white/[0.05] mt-1">
-                <span>Amplitude Range: +1.0 (Win) to -1.0 (Loss)</span>
-                <span>Current Sequence Record</span>
-                <span>Matchday 10 End of Completed Series</span>
-              </div>
-            </div>
-          )}
 
           {/* --------------------------------------------------------------------- */}
           {/* GRAPH C: SCORED VS CONCEDED GOALS (WITH AMBER DEDUCTED POINTS)        */}
@@ -1857,87 +1694,318 @@ ${specificTeamLink}
       </div>
 
       {/* ========================================================================= */}
-      {/* CARD 4: WHAT SHOULD THE TEAM DO? (GOLDEN DERBY CARD)                      */}
+      {/* CARD 4: FORM CHANGE & PERFORMANCE AMPLITUDE GRAPH (±1.0 to -1.0)           */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-2xl border-2 border-[#ff9800]/60 bg-gradient-to-b from-[#191508] via-[#0e1c2b] to-[#0A1322] p-4 sm:p-5 tactical-card-shadow glow-derby shadow-2xl">
-        {/* Ambient Golden Glows */}
-        <div className="absolute top-0 right-0 w-80 h-36 bg-[#ff9800]/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-28 bg-[#ff9800]/10 blur-2xl pointer-events-none" />
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0A1322] overflow-hidden shadow-2xl">
+        {/* Section Header */}
+        <div className="px-4 py-3.5 bg-gradient-to-r from-[#0d2218] via-[#0E1726] to-[#0A101D] border-b border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <Activity className="w-4.5 h-4.5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white shadow-xs">
+                  SECTION 4
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                  Momentum & Result Oscillation
+                </span>
+              </div>
+              <h2 className="text-sm sm:text-base font-black text-white tracking-tight uppercase mt-0.5">
+                FORM CHANGE & PERFORMANCE AMPLITUDE GRAPH (±1.0 to -1.0)
+              </h2>
+            </div>
+          </div>
 
-        {/* Header: What should the team do? */}
-        <div className="relative z-10 flex items-center gap-2.5 pb-3 border-b border-[#ff9800]/30 mb-4">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ff9800] text-black font-black shadow-xs shrink-0">
-            <Flame className="h-4 w-4 fill-black" />
-          </span>
-          <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider">
-            What should the team do?
-          </h2>
+          <div className="flex items-center gap-2 sm:gap-3 text-[9.5px] font-mono">
+            <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30 font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> +1.0 Win
+            </span>
+            <span className="flex items-center gap-1.5 text-slate-300 bg-slate-500/10 px-2 py-0.5 rounded-md border border-slate-500/30 font-bold">
+              <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" /> 0.0 Draw
+            </span>
+            <span className="flex items-center gap-1.5 text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/30 font-bold">
+              <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> -1.0 Loss
+            </span>
+          </div>
         </div>
 
-        {/* 3 Points in Real English Coach Voice */}
-        <div className="relative z-10 space-y-3 sm:space-y-3.5">
-          {/* Point 1: Checklist of 3 short sentences */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
-                01
+        {/* Section Body: Graph & Matchday Sequence */}
+        <div className="p-3.5 sm:p-5 space-y-5">
+          {/* Main SVG Graph */}
+          <div className="rounded-xl border border-white/[0.08] bg-[#070D18] p-3.5 sm:p-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-white/[0.06]">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  Continuous Performance Wave Across Leg 1 Matches
+                </h4>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Visualizes match-by-match trajectory: victory peaks at +1.0, parity at 0.0, and setbacks at -1.0
+                </p>
+              </div>
+              <span className="text-[9.5px] font-mono text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto">
+                {stats.won}W - {stats.drawn}D - {stats.lost}L Completed
               </span>
-              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
-                What we must do on the pitch
-              </h3>
             </div>
-            <div className="pl-8 space-y-1.5">
-              {coachAdvice.checklist.map((item, idx) => (
-                <div key={`chk-${idx}`} className="flex items-start gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#ff9800] shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed">
-                    {item}
-                  </p>
+
+            <div className="w-full h-52 sm:h-56 relative">
+              <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="amplitudeGradientSection4" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="45%" stopColor="#10b981" />
+                    <stop offset="50%" stopColor="#f59e0b" />
+                    <stop offset="55%" stopColor="#f43f5e" />
+                    <stop offset="100%" stopColor="#f43f5e" />
+                  </linearGradient>
+                </defs>
+
+                {/* Horizontal Guide Lines */}
+                {/* +1.0 WIN (Y=30) */}
+                <line
+                  x1={leftMargin}
+                  y1="30"
+                  x2={chartWidth - rightMargin}
+                  y2="30"
+                  stroke="#10b981"
+                  strokeOpacity="0.3"
+                  strokeDasharray="3 3"
+                />
+                <text
+                  x={leftMargin - 10}
+                  y="34"
+                  fill="#10b981"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
+                  +1.0 WIN
+                </text>
+
+                {/* 0.0 DRAW BASELINE (Y=75) */}
+                <line
+                  x1={leftMargin}
+                  y1="75"
+                  x2={chartWidth - rightMargin}
+                  y2="75"
+                  stroke="#64748b"
+                  strokeOpacity="0.5"
+                  strokeWidth="1.2"
+                />
+                <text
+                  x={leftMargin - 10}
+                  y="79"
+                  fill="#94a3b8"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
+                  0.0 DRAW
+                </text>
+
+                {/* -1.0 LOSS (Y=120) */}
+                <line
+                  x1={leftMargin}
+                  y1="120"
+                  x2={chartWidth - rightMargin}
+                  y2="120"
+                  stroke="#f43f5e"
+                  strokeOpacity="0.3"
+                  strokeDasharray="3 3"
+                />
+                <text
+                  x={leftMargin - 10}
+                  y="124"
+                  fill="#f43f5e"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  textAnchor="end"
+                >
+                  -1.0 LOSS
+                </text>
+
+                {/* Matchday Vertical Lines */}
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                  const x = getXCoordinate(mDay);
+                  return (
+                    <g key={`sec4-amp-tick-${mDay}`}>
+                      <line
+                        x1={x}
+                        y1="25"
+                        x2={x}
+                        y2="125"
+                        stroke="#ffffff"
+                        strokeOpacity="0.05"
+                      />
+                      <text
+                        x={x}
+                        y="142"
+                        fill="#64748b"
+                        fontSize="8"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        M{mDay}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Single Continuous Amplitude Polyline */}
+                {timeSeries.length > 1 && (
+                  <polyline
+                    fill="none"
+                    stroke="url(#amplitudeGradientSection4)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={timeSeries
+                      .map((pt) => {
+                        const y = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
+                        return `${getXCoordinate(pt.matchday)},${y}`;
+                      })
+                      .join(' ')}
+                  />
+                )}
+
+                {/* Amplitude Data Nodes */}
+                {timeSeries.map((pt, idx) => {
+                  const cx = getXCoordinate(pt.matchday);
+                  const cy = pt.amplitude === 1 ? 30 : pt.amplitude === 0 ? 75 : 120;
+                  const dotColor = pt.amplitude === 1 ? '#10b981' : pt.amplitude === 0 ? '#f59e0b' : '#f43f5e';
+                  return (
+                    <g key={`sec4-amp-dot-${idx}`}>
+                      <circle cx={cx} cy={cy} r="4.5" fill={dotColor} stroke="#070D18" strokeWidth="2" />
+                      <text
+                        x={cx}
+                        y={cy - 8}
+                        fill="#ffffff"
+                        fontSize="7.5"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {pt.scoreText}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            <div className="flex items-center justify-between text-[8.5px] text-slate-500 font-mono pt-2 border-t border-white/[0.05] mt-1">
+              <span>Start: Matchday 1</span>
+              <span>Sequence: 10 Completed Matches</span>
+              <span>Cutoff: Tomorrow's Matchday 11</span>
+            </div>
+          </div>
+
+          {/* Match-by-Match Sequence Breakdown Cards */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                Match-by-Match Performance Amplitude Breakdown:
+              </span>
+              <span className="text-[9px] font-mono text-slate-400">
+                Full 11-Match Sequence
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5">
+              {timeSeries.map((m, idx) => {
+                const ampColor =
+                  m.amplitude === 1
+                    ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                    : m.amplitude === 0
+                    ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                    : 'text-rose-400 border-rose-500/30 bg-rose-500/10';
+                const ampBadge =
+                  m.amplitude === 1
+                    ? '+1.0 WIN'
+                    : m.amplitude === 0
+                    ? '0.0 DRAW'
+                    : '-1.0 LOSS';
+
+                return (
+                  <div
+                    key={`sec4-card-${idx}`}
+                    className="p-2.5 rounded-xl bg-[#070D18] border border-white/[0.08] flex flex-col justify-between gap-1.5 hover:border-white/20 transition-colors"
+                  >
+                    <div className="flex items-center justify-between text-[9px] font-mono">
+                      <span className="font-bold text-slate-400">M{m.matchday}</span>
+                      <span className={`px-1.5 py-0.2 rounded text-[8px] font-black border ${ampColor}`}>
+                        {ampBadge}
+                      </span>
+                    </div>
+
+                    <div className="truncate">
+                      <span className="text-[11px] font-bold text-white block truncate" title={m.opponent}>
+                        {m.isHome ? 'vs ' : '@ '}
+                        {m.opponent}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-400">
+                        {m.isHome ? 'Home' : 'Away'}
+                      </span>
+                    </div>
+
+                    <div className="pt-1.5 border-t border-white/[0.05] flex items-center justify-between text-[10px] font-mono font-bold">
+                      <span className="text-slate-300">{m.scoreText}</span>
+                      <span className={m.amplitude === 1 ? 'text-emerald-400' : m.amplitude === 0 ? 'text-amber-400' : 'text-rose-400'}>
+                        {m.result}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* 11th Match: Tomorrow's Decisive Round */}
+              <div className="p-2.5 rounded-xl bg-gradient-to-b from-purple-950/30 to-[#070D18] border border-purple-500/40 flex flex-col justify-between gap-1.5">
+                <div className="flex items-center justify-between text-[9px] font-mono">
+                  <span className="font-bold text-purple-300">M11</span>
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black border border-purple-400/40 bg-purple-500/20 text-purple-300">
+                    TOMORROW
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Point 2: Leg 2 Game Breakdown with Beaten / Drawn Teams & Tomorrow */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
-                02
-              </span>
-              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
-                Taking care of business in the second leg
-              </h3>
-            </div>
-            <p className="text-xs sm:text-[13px] text-slate-200 font-medium leading-relaxed pl-8">
-              {coachAdvice.leg2Comparison}
-            </p>
-          </div>
+                <div className="truncate">
+                  <span className="text-[11px] font-black text-purple-200 block truncate" title={tomorrowOpponent}>
+                    vs {tomorrowOpponent}
+                  </span>
+                  <span className="text-[9px] font-mono text-purple-300/80">
+                    Final Round
+                  </span>
+                </div>
 
-          {/* Point 3: General Advice & War Cry */}
-          <div className="p-3 sm:p-3.5 rounded-xl border border-[#ff9800]/30 bg-black/40 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#ff9800] text-black font-black text-xs font-mono shrink-0 shadow-xs">
-                03
-              </span>
-              <h3 className="text-xs sm:text-[13px] font-black text-amber-300 uppercase tracking-wide">
-                Our standard & battle cry
-              </h3>
+                <div className="pt-1.5 border-t border-purple-500/20 flex items-center justify-between text-[9.5px] font-mono font-black text-purple-300">
+                  <span>Matchday 11</span>
+                  <span>DECIDER</span>
+                </div>
+              </div>
             </div>
-            <p className="text-xs sm:text-[13px] text-amber-100 font-semibold leading-relaxed pl-8">
-              {coachAdvice.generalAdvice}
-            </p>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* SHARE ANALYTICS MODAL & TEMPLATE SNIPPET                                  */}
+      {/* SHARE ANALYTICS MODAL & TEMPLATE SNIPPET (POPUP ISOLATION)                */}
       {/* ========================================================================= */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-[#0A1322] border border-purple-500/40 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl space-y-0">
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setIsShareModalOpen(false)}
+        >
+          <div 
+            className="bg-[#0A1322] border border-purple-500/40 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto no-scrollbar shadow-2xl space-y-0 relative z-[100000]"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="px-4 sm:px-5 py-3.5 bg-gradient-to-r from-purple-950/50 via-[#0e1a2d] to-[#0A1322] border-b border-white/[0.08] flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-3.5 bg-gradient-to-r from-purple-950/50 via-[#0e1a2d] to-[#0A1322] border-b border-white/[0.08] flex items-center justify-between sticky top-0 z-10 bg-[#0A1322]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
                   <Share2 className="w-4 h-4 text-purple-400" />
@@ -2078,36 +2146,47 @@ ${specificTeamLink}
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+              {/* Action Buttons: Direct WhatsApp Share Primary */}
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
-                  onClick={handleCopySnippet}
-                  className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
+                  onClick={handleShareToWhatsApp}
+                  className="w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95"
                 >
-                  <Copy className="w-4 h-4" />
-                  <span>Copy Coach Template</span>
+                  <MessageCircle className="w-4 h-4 fill-black text-black" />
+                  <span>Share Directly on WhatsApp</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-[#070D18] hover:bg-white/5 border border-white/15 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
-                >
-                  <Link2 className="w-4 h-4" />
-                  <span>Copy Link Only</span>
-                </button>
-
-                {typeof navigator !== 'undefined' && !!navigator.share && (
+                <div className="flex flex-col sm:flex-row items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleNativeShare}
-                    className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
-                    title="Share via device apps"
+                    onClick={handleCopySnippet}
+                    className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
                   >
-                    <Share2 className="w-4 h-4" />
+                    <Copy className="w-4 h-4" />
+                    <span>Copy Coach Template</span>
                   </button>
-                )}
+
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="w-full sm:flex-1 py-2.5 px-4 rounded-xl bg-[#070D18] hover:bg-white/5 border border-white/15 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                  >
+                    <Link2 className="w-4 h-4" />
+                    <span>Copy Link Only</span>
+                  </button>
+
+                  {typeof navigator !== 'undefined' && !!navigator.share && (
+                    <button
+                      type="button"
+                      onClick={handleNativeShare}
+                      className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-95"
+                      title="Share via device apps"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p className="text-[10px] text-slate-400 text-center font-medium">
