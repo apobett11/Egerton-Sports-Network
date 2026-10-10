@@ -479,14 +479,6 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
     return 'Resilient Contenders';
   }, [stats]);
 
-  const handleCopyLink = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(specificTeamLink);
-      setCopiedToast('Specific team link copied!');
-      setTimeout(() => setCopiedToast(null), 2500);
-    }
-  };
-
   // 4b. Form Change & Performance Amplitude Text Graph (Unbreakable Unicode Monospace Graph for WhatsApp/Clipboard)
   const amplitudeTextGraph = useMemo(() => {
     const matchMap = new Map<number, MatchdayDataPoint>();
