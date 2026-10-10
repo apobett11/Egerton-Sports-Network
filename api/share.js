@@ -21,7 +21,7 @@ function escapeHtml(value) {
 
 function isCrawler(req) {
   const ua = String(req.headers['user-agent'] || '');
-  return /facebookexternalhit|Facebot|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|meta-externalagent|Googlebot|bingbot|Baiduspider|yandex/i.test(ua);
+  return /facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|meta-externalagent|Googlebot|bingbot|Baiduspider|yandex/i.test(ua);
 }
 
 function getOrigin(req) {
@@ -50,9 +50,7 @@ function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
     : view === 'cleansheets'
       ? 'Official EPL Clean Sheets Leaderboard · Defensive Wall Rankings'
       : 'Official EPL League Table & Standings · Tap to view full rankings';
-  const redirectTags = isBot
-    ? ''
-    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
+  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
   return `<!doctype html>
 <html lang="en">
@@ -77,12 +75,12 @@ function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
   <link rel="canonical" href="${escapeHtml(destination)}">
-${redirectTags}
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </head>
-<body style="margin:0;background:#081018;color:white;font-family:Arial,sans-serif;">
-  <a href="${escapeHtml(destination)}" style="display:block;color:white;text-decoration:none;">
-    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;max-width:640px;display:block;margin:0 auto;pointer-events:none;">
-  </a>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Loading ${escapeHtml(title)}… <a href="${escapeHtml(destination)}" style="color:#a855f7;font-weight:bold;text-decoration:none;">Click here</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </body>
 </html>`;
 }
@@ -94,10 +92,7 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   const formattedName = teamSlug.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
   const title = `${formattedName} · Coach Analytics & Form Amplitude`;
   const description = `${formattedName} Official Performance Analytics, Form Amplitude Wave & Matchday Sequence`;
-
-  const redirectTags = isBot
-    ? ''
-    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
+  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
   return `<!doctype html>
 <html lang="en">
@@ -123,15 +118,12 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
   <link rel="canonical" href="${escapeHtml(destination)}">
-${redirectTags}
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </head>
-<body style="margin:0;padding:24px;background:#081018;color:white;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;box-sizing:border-box;">
-  <a href="${escapeHtml(destination)}" style="display:block;max-width:680px;width:100%;text-decoration:none;color:white;text-align:center;">
-    <img alt="${escapeHtml(title)}" draggable="false" src="${escapeHtml(image)}" style="width:100%;height:auto;border-radius:16px;box-shadow:0 12px 36px rgba(0,0,0,0.6);border:1px solid #1a2e45;display:block;margin:0 auto 20px;">
-    <div style="display:inline-block;background:#a855f7;color:white;font-weight:900;font-size:15px;padding:12px 32px;border-radius:999px;letter-spacing:0.04em;">
-      OPEN TEAM ANALYTICS →
-    </div>
-  </a>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Loading ${escapeHtml(formattedName)} Analytics… <a href="${escapeHtml(destination)}" style="color:#a855f7;font-weight:bold;text-decoration:none;">Click here</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </body>
 </html>`;
 }
@@ -175,9 +167,7 @@ export default async function handler(req, res) {
     ? predictionDestination(origin, linkedMatch)
     : `${origin}/?view=picks#/news`;
 
-  const redirectTags = isBot
-    ? ''
-    : `  <meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">\n  <script>location.replace(${JSON.stringify(destination)})</script>`;
+  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -203,10 +193,12 @@ export default async function handler(req, res) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-${redirectTags}
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </head>
 <body style="background:#081018;color:white;font-family:system-ui;padding:2rem">
   <p>Opening this prediction… <a style="color:#ff4b77" href="${escapeHtml(destination)}">Continue to EgerScore</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
 </body>
 </html>`);
 }
