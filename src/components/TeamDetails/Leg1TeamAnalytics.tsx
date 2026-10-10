@@ -111,20 +111,24 @@ export const Leg1TeamAnalytics: React.FC<Leg1TeamAnalyticsProps> = ({
     return `${origin}${path}/#/team/${teamSlug}?tab=analytics`;
   }, [teamSlug]);
 
-  // 1. Filter Leg 1 Finished Matches: Strictly up to Matchday 10 (ignore matchday 22 or beyond Leg 1)
+  // 1. Filter Leg 1 Finished Matches: Matchdays 1 to 11 (ignore matchday 22 or beyond Leg 1)
   const leg1FinishedMatches = useMemo(() => {
     return fixtures
       .filter((f) => {
         if (f.status !== 'FINISHED') return false;
         if (f.matchday === 22) return false;
-        if (typeof f.matchday === 'number' && f.matchday > 10) return false;
+        if (typeof f.matchday === 'number' && f.matchday > 11) return false;
         return true;
       })
       .sort((a, b) => (a.scheduled_time || a.date || '').localeCompare(b.scheduled_time || b.date || ''))
-      .slice(0, 10); // Strictly max 10 completed matches for Leg 1 historical analysis
+      .slice(0, 11); // Completed matches for Leg 1 (up to 11 matches)
   }, [fixtures]);
 
-  // 2. Identify Upcoming Tomorrow's Match (Matchday 11 - Final game of Leg 1)
+  const hasPlayedMatchday11 = useMemo(() => {
+    return leg1FinishedMatches.some((m) => m.matchday === 11);
+  }, [leg1FinishedMatches]);
+
+  // 2. Identify Next/Upcoming Match
   const upcomingMatches = useMemo(() => {
     return fixtures
       .filter((f) => f.status !== 'FINISHED' && f.matchday !== 22)
@@ -512,8 +516,9 @@ ${sanctionLine}🎯 *GOALS & DEFENSE*
 • *Defense Directive:* ${coachAdvice.checklist[1]}
 • *Match Control:* ${coachAdvice.checklist[2]}
 
-🔥 *MATCHDAY 11:* vs ${tomorrowOpponent}
-
+${hasPlayedMatchday11
+  ? (tomorrowMatch ? `🔥 *UPCOMING FIXTURE:* vs ${tomorrowOpponent} (MD${tomorrowMatch.matchday || 12})\n` : `🔥 *LEG 1 COMPLETED (11/11 MATCHES PLAYED)*\n`)
+  : `🔥 *MATCHDAY 11 (PENDING):* vs ${tomorrowOpponent}\n`}
 🔗 *LIVE SQUAD & ANALYTICS:*
 ${specificTeamLink}
 ━━━━━━━━━━━━━━━━━━━━━`;
@@ -524,6 +529,8 @@ ${specificTeamLink}
     primaryTagline,
     coachAdvice,
     tomorrowOpponent,
+    tomorrowMatch,
+    hasPlayedMatchday11,
     specificTeamLink,
   ]);
 
@@ -564,8 +571,8 @@ ${specificTeamLink}
   const plotWidth = chartWidth - leftMargin - rightMargin;
   const plotHeight = bottomMargin - topMargin;
 
-  // Maximum matchdays shown in graphs is strictly Matchday 10
-  const maxMatchdayInGraph = 10;
+  // Maximum matchdays shown in graphs is Leg 1 (Matchdays 1 to 11)
+  const maxMatchdayInGraph = 11;
 
   const getXCoordinate = (matchdayNum: number) => {
     if (maxMatchdayInGraph <= 1) return leftMargin + plotWidth / 2;
@@ -722,18 +729,20 @@ ${specificTeamLink}
                         </div>
                       ))}
 
-                      {/* 11th Match */}
-                      <div
-                        className="flex flex-col items-center"
-                        title={`Matchday 11: vs ${tomorrowOpponent}`}
-                      >
-                        <span className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs border border-purple-400/40">
-                          -
-                        </span>
-                        <span className="text-[7px] font-mono text-purple-300 font-bold mt-0.5">
-                          M11
-                        </span>
-                      </div>
+                      {/* If team did not play Matchday 11, show the pending 11th match box */}
+                      {!hasPlayedMatchday11 && (
+                        <div
+                          className="flex flex-col items-center"
+                          title={`Matchday 11 (Pending): vs ${tomorrowOpponent}`}
+                        >
+                          <span className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black uppercase font-mono shadow-xs border border-purple-400/40">
+                            -
+                          </span>
+                          <span className="text-[7px] font-mono text-purple-300 font-bold mt-0.5">
+                            M11
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1086,8 +1095,8 @@ ${specificTeamLink}
                         );
                       })}
 
-                      {/* X-Axis Solid Scale Labels (M1 to M10) */}
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                      {/* X-Axis Solid Scale Labels (M1 to M11) */}
+                      {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
                         const x = getXCoordinate(mDay);
                         return (
                           <g key={`x-tick-${mDay}`}>
@@ -1158,7 +1167,7 @@ ${specificTeamLink}
               <div className="flex items-center justify-between text-[8.5px] text-slate-500 font-mono pt-2 border-t border-white/[0.05] mt-1">
                 <span>Start: Matchday 1</span>
                 <span>Cumulative: {stats.won} Wins vs {stats.lost} Defeats</span>
-                <span>Cutoff: Matchday 10 (Matchday 11 updates tomorrow)</span>
+                <span>{hasPlayedMatchday11 ? 'Cutoff: Matchday 11 (Completed)' : 'Cutoff: Matchday 10 (Matchday 11 Pending)'}</span>
               </div>
             </div>
           )}
@@ -1290,8 +1299,8 @@ ${specificTeamLink}
                         </g>
                       )}
 
-                      {/* X-Axis Solid Scale Labels (M1 to M10) */}
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                      {/* X-Axis Solid Scale Labels (M1 to M11) */}
+                      {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
                         const x = getXCoordinate(mDay);
                         return (
                           <g key={`goals-xtick-${mDay}`}>
@@ -1449,8 +1458,8 @@ ${specificTeamLink}
                         );
                       })}
 
-                      {/* X-Axis Solid Scale Labels (M1 to M10) */}
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                      {/* X-Axis Solid Scale Labels (M1 to M11) */}
+                      {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
                         const x = getXCoordinate(mDay);
                         return (
                           <g key={`pos-xtick-${mDay}`}>
@@ -1524,7 +1533,7 @@ ${specificTeamLink}
                     ? '📈 Climbing Upward'
                     : '⚖️ Table Position Stable'}
                 </span>
-                <span>Latest Matchday 10: #{teamPosition}</span>
+                <span>{hasPlayedMatchday11 ? `Leg 1 Position: #${teamPosition}` : `Latest Position: #${teamPosition} (MD10)`}</span>
               </div>
             </div>
           )}
@@ -1608,8 +1617,8 @@ ${specificTeamLink}
                         );
                       })}
 
-                      {/* X-Axis Solid Scale Labels (M1 to M10) */}
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                      {/* X-Axis Solid Scale Labels (M1 to M11) */}
+                      {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
                         const x = getXCoordinate(mDay);
                         return (
                           <g key={`cs-xtick-${mDay}`}>
@@ -1684,7 +1693,7 @@ ${specificTeamLink}
               </div>
 
               <div className="flex items-center justify-between text-[8.5px] text-slate-500 font-mono pt-2 border-t border-white/[0.05] mt-1">
-                <span>Total Clean Sheets: {stats.cleanSheets} / 10 Matches</span>
+                <span>Total Clean Sheets: {stats.cleanSheets} / {leg1FinishedMatches.length} Matches</span>
                 <span>Shutout Efficiency: {stats.cleanSheetRate}%</span>
                 <span>Average Conceded: {stats.gaPerGame} Goals/Match</span>
               </div>
@@ -1829,8 +1838,8 @@ ${specificTeamLink}
                   -1.0 LOSS
                 </text>
 
-                {/* Matchday Vertical Lines */}
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((mDay) => {
+                {/* Matchday Vertical Lines (M1 to M11) */}
+                {Array.from({ length: 11 }, (_, i) => i + 1).map((mDay) => {
                   const x = getXCoordinate(mDay);
                   return (
                     <g key={`sec4-amp-tick-${mDay}`}>
@@ -1901,8 +1910,8 @@ ${specificTeamLink}
 
             <div className="flex items-center justify-between text-[8.5px] text-slate-500 font-mono pt-2 border-t border-white/[0.05] mt-1">
               <span>Start: Matchday 1</span>
-              <span>Sequence: 10 Completed Matches</span>
-              <span>Cutoff: Tomorrow's Matchday 11</span>
+              <span>Sequence: {leg1FinishedMatches.length} Completed Matches</span>
+              <span>{hasPlayedMatchday11 ? 'Leg 1 Complete (MD11 Finished)' : `Pending: Matchday 11 vs ${tomorrowOpponent}`}</span>
             </div>
           </div>
 
@@ -1913,7 +1922,7 @@ ${specificTeamLink}
                 Match-by-Match Performance Amplitude Breakdown:
               </span>
               <span className="text-[9px] font-mono text-slate-400">
-                Full 11-Match Sequence
+                {hasPlayedMatchday11 ? 'Full 11-Match Sequence (Completed)' : '10 Completed + 1 Pending Decider'}
               </span>
             </div>
 
@@ -1964,29 +1973,31 @@ ${specificTeamLink}
                 );
               })}
 
-              {/* 11th Match: Tomorrow's Decisive Round */}
-              <div className="p-2.5 rounded-xl bg-gradient-to-b from-purple-950/30 to-[#070D18] border border-purple-500/40 flex flex-col justify-between gap-1.5">
-                <div className="flex items-center justify-between text-[9px] font-mono">
-                  <span className="font-bold text-purple-300">M11</span>
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black border border-purple-400/40 bg-purple-500/20 text-purple-300">
-                    TOMORROW
-                  </span>
-                </div>
+              {/* 11th Match: Only show as PENDING if the team did NOT play Matchday 11 yet! */}
+              {!hasPlayedMatchday11 && (
+                <div className="p-2.5 rounded-xl bg-gradient-to-b from-purple-950/30 to-[#070D18] border border-purple-500/40 flex flex-col justify-between gap-1.5">
+                  <div className="flex items-center justify-between text-[9px] font-mono">
+                    <span className="font-bold text-purple-300">M11</span>
+                    <span className="px-1.5 py-0.2 rounded text-[8px] font-black border border-purple-400/40 bg-purple-500/20 text-purple-300">
+                      PENDING
+                    </span>
+                  </div>
 
-                <div className="truncate">
-                  <span className="text-[11px] font-black text-purple-200 block truncate" title={tomorrowOpponent}>
-                    vs {tomorrowOpponent}
-                  </span>
-                  <span className="text-[9px] font-mono text-purple-300/80">
-                    Final Round
-                  </span>
-                </div>
+                  <div className="truncate">
+                    <span className="text-[11px] font-black text-purple-200 block truncate" title={tomorrowOpponent}>
+                      vs {tomorrowOpponent}
+                    </span>
+                    <span className="text-[9px] font-mono text-purple-300/80">
+                      Leg 1 Decider
+                    </span>
+                  </div>
 
-                <div className="pt-1.5 border-t border-purple-500/20 flex items-center justify-between text-[9.5px] font-mono font-black text-purple-300">
-                  <span>Matchday 11</span>
-                  <span>DECIDER</span>
+                  <div className="pt-1.5 border-t border-purple-500/20 flex items-center justify-between text-[9.5px] font-mono font-black text-purple-300">
+                    <span>Matchday 11</span>
+                    <span>DECIDER</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -2121,7 +2132,7 @@ ${specificTeamLink}
                       {primaryTagline}
                     </span>
                     <span className="text-[9px] font-mono text-purple-300">
-                      M11: vs {tomorrowOpponent}
+                      {hasPlayedMatchday11 ? (tomorrowMatch ? `Next: vs ${tomorrowOpponent}` : 'Leg 1 Complete') : `M11: vs ${tomorrowOpponent}`}
                     </span>
                   </div>
                   <p className="text-[9px] text-slate-300 leading-tight">
