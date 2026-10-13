@@ -1,0 +1,58 @@
+import { Category } from '../types';
+
+export const CATEGORIES: Category[] = [
+  {
+    id: 'fitness-and-training',
+    name: 'Fitness and Training',
+    slug: 'fitness-and-training',
+    iconName: 'Dumbbell',
+    count: 0,
+    description: 'Weights, stretching and gym equipment',
+    imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=70',
+  },
+  {
+    id: 'pitch-training',
+    name: 'Pitch Training',
+    slug: 'pitch-training',
+    iconName: 'Wind',
+    count: 0,
+    description: 'Training bibs/shirts, agility cones, and field training equipment',
+    imageUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=300&q=70',
+  },
+  {
+    id: 'kit',
+    name: 'Kit',
+    slug: 'kit',
+    iconName: 'Shirt',
+    count: 0,
+    description: 'Jerseys, shorts, socks, and all player wear',
+    imageUrl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=300&q=70',
+  },
+  {
+    id: 'goalkeepers',
+    name: "Goalkeeper's",
+    slug: 'goalkeepers',
+    iconName: 'Shield',
+    count: 0,
+    description: "Goalkeeper's gloves, padded jerseys, and protective accessories",
+    imageUrl: 'https://images.unsplash.com/photo-1606925797300-0b35e9d1794e?auto=format&fit=crop&w=300&q=70',
+  },
+  {
+    id: 'boots-and-balls',
+    name: 'Boots and Balls',
+    slug: 'boots-and-balls',
+    iconName: 'Footprints',
+    count: 0,
+    description: 'Cleats, studded boots, and official FIFA certified match/training balls',
+    imageUrl: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?auto=format&fit=crop&w=300&q=70',
+  },
+  {
+    id: 'officiating',
+    name: 'Officiating',
+    slug: 'officiating',
+    iconName: 'Flag',
+    count: 0,
+    description: 'Referee cards, corner flags, whistles, banners, goal nets, and pitch planning',
+    imageUrl: 'https://images.unsplash.com/photo-1526676037777-05a232554f77?auto=format&fit=crop&w=300&q=70',
+  },
+];

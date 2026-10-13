@@ -40,7 +40,7 @@ import { supabase } from './lib/supabase';
 import { ApiService } from './services/api';
 import { StealthCappedPopunder } from './components/ads/MonetagEngines';
 import { TransitionVignetteManager } from './components/ads/TransitionVignetteManager';
-import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, Mail, ChevronDown, ChevronRight, Store } from 'lucide-react';
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
@@ -51,6 +51,7 @@ const DoctorDashboard = lazy(() => import('./components/Dashboards/Doctor/Doctor
 const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/pages/PresidentSeasonModeApp"));
 const PasswordResetOnboarding = lazy(() => import('./components/Auth/PasswordResetOnboarding').then(m => ({ default: m.PasswordResetOnboarding })));
 const PlayerRegistrationPage = lazy(() => import('./pages/public/PlayerRegistrationPage'));
+const JoseCommerceApp = lazy(() => import('./JoseCommerce/App'));
 
 const DashboardLoader: React.FC = () => (
   <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center gap-4 text-emerald-500">
@@ -442,6 +443,43 @@ export const AppContent: React.FC = () => {
   });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [legalMenuOpen, setLegalMenuOpen] = useState<boolean>(false);
+  const [isStorePasscodeModalOpen, setIsStorePasscodeModalOpen] = useState<boolean>(false);
+  const [storePasscodeInput, setStorePasscodeInput] = useState<string>('');
+  const [storePasscodeError, setStorePasscodeError] = useState<string>('');
+  const [isStoreUnlocked, setIsStoreUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('esn_store_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleOpenStore = () => {
+    setSidebarOpen(false);
+    if (isStoreUnlocked || sessionStorage.getItem('esn_store_unlocked') === 'true') {
+      handleNavigateHash('/store');
+    } else {
+      setStorePasscodeInput('');
+      setStorePasscodeError('');
+      setIsStorePasscodeModalOpen(true);
+    }
+  };
+
+  const handleVerifyStorePasscode = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (storePasscodeInput.trim() === '1574') {
+      setIsStoreUnlocked(true);
+      try {
+        sessionStorage.setItem('esn_store_unlocked', 'true');
+      } catch {}
+      setIsStorePasscodeModalOpen(false);
+      setStorePasscodeInput('');
+      setStorePasscodeError('');
+      handleNavigateHash('/store');
+    } else {
+      setStorePasscodeError('Incorrect passcode. Access denied.');
+    }
+  };
 
   // Competition Switcher State with Session Persistence
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<string>(() => {
@@ -1033,6 +1071,64 @@ export const AppContent: React.FC = () => {
     );
   }
 
+  if (route === 'store') {
+    if (!isStoreUnlocked && sessionStorage.getItem('esn_store_unlocked') !== 'true') {
+      return (
+        <div className={`min-h-screen ${darkMode ? 'dark bg-[#081018]' : 'bg-[#f4f6f8]'} flex flex-col items-center justify-center p-4 font-sans`}>
+          <div className="w-full max-w-sm bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-2xl p-6 shadow-xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+              <Store className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Store Access</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Jose Commerce is currently in testing mode. Please enter the passcode to access.
+              </p>
+            </div>
+            <form onSubmit={handleVerifyStorePasscode} className="space-y-3">
+              <input
+                type="password"
+                inputMode="numeric"
+                autoFocus
+                value={storePasscodeInput}
+                onChange={(e) => {
+                  setStorePasscodeInput(e.target.value);
+                  if (storePasscodeError) setStorePasscodeError('');
+                }}
+                placeholder="Enter passcode"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#1a2e45] bg-slate-50 dark:bg-[#14263b] text-slate-900 dark:text-white text-center text-base tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              {storePasscodeError && (
+                <p className="text-xs text-rose-500 font-bold">{storePasscodeError}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleNavigateHash('/home')}
+                  className="flex-1 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#14263b] hover:bg-slate-200 dark:hover:bg-[#1c3552] transition-colors cursor-pointer"
+                >
+                  Back to Home
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-md shadow-emerald-900/20 cursor-pointer"
+                >
+                  Enter Store
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Suspense fallback={<DashboardLoader />}>
+        <JoseCommerceApp onBackToLiveScore={() => handleNavigateHash('/home')} />
+      </Suspense>
+    );
+  }
+
   if (route === 'login') {
     return (
       <LoginPage
@@ -1215,6 +1311,23 @@ export const AppContent: React.FC = () => {
                       </li>
                     </ul>
                   )}
+                </div>
+
+                {/* Store button at the bottom of the sidebar */}
+                <div className="pt-2 border-t border-slate-100 dark:border-[#1a2e45]">
+                  <button
+                    type="button"
+                    onClick={handleOpenStore}
+                    className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-900/20 text-xs font-black cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Store className="w-4 h-4 text-white" />
+                      <span className="text-sm font-black tracking-wide">Store</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-black/25 text-emerald-100 border border-white/20">
+                      Testing
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -1415,6 +1528,59 @@ export const AppContent: React.FC = () => {
           onMarkRead={handleMarkAnnouncementRead}
           isDark={darkMode}
         />
+
+        {/* Store Passcode Modal */}
+        {isStorePasscodeModalOpen && (
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-white dark:bg-[#0e1c2b] border border-slate-200 dark:border-[#1a2e45] rounded-2xl p-6 shadow-2xl text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+                <Store className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">Store Access</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Jose Commerce is currently in testing mode. Enter the passcode to continue.
+                </p>
+              </div>
+              <form onSubmit={handleVerifyStorePasscode} className="space-y-3">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  value={storePasscodeInput}
+                  onChange={(e) => {
+                    setStorePasscodeInput(e.target.value);
+                    if (storePasscodeError) setStorePasscodeError('');
+                  }}
+                  placeholder="Enter passcode"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#1a2e45] bg-slate-50 dark:bg-[#14263b] text-slate-900 dark:text-white text-center text-base tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {storePasscodeError && (
+                  <p className="text-xs text-rose-500 font-bold">{storePasscodeError}</p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStorePasscodeModalOpen(false);
+                      setStorePasscodeInput('');
+                      setStorePasscodeError('');
+                    }}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#14263b] hover:bg-slate-200 dark:hover:bg-[#1c3552] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition-colors shadow-md shadow-emerald-900/20 cursor-pointer"
+                  >
+                    Unlock Store
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         <CookieConsentBanner />
       </div>

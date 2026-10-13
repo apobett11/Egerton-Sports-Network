@@ -3,6 +3,7 @@
 @theme {
   --color-brand-red: #ff0046;
   --color-brand-red-hover: #e0003c;
+  --color-brand-red-light: #fff0f3;
   --color-brand-green: #00b04f;
   --color-brand-amber: #ff9800;
   --color-brand-dark-navy: #0e1e2d;
@@ -10,6 +11,9 @@
   --color-brand-bg-dark: #081018;
   --color-brand-border-dark: #16283d;
   --color-brand-text-muted: #8fa1b4;
+  --color-brand-deep-blue: #152a40;
+  --color-brand-header-bg: #0b1522;
+  --color-brand-border: #e2e8f0;
 }
 
 :root {

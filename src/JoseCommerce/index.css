@@ -1,0 +1,80 @@
+
+/* Custom compact scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Sports score / number font */
+.font-sports-number {
+  font-family: 'Teko', sans-serif;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* Micro interaction card animations */
+.product-card-hover {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.04);
+}
+
+/* Pill category scroll snap */
+.category-snap {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-snap-item {
+  scroll-snap-align: start;
+}
+
+/* Sleek, Non-Distracting Sports Pattern Backgrounds */
+.store-pattern-dark {
+  background-color: #09131f;
+  background-image: 
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20, 68, 122, 0.28), transparent 75%),
+    radial-gradient(circle at 100% 100%, rgba(255, 0, 70, 0.04), transparent 40%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px, 24px 24px;
+  background-attachment: fixed;
+}
+
+.store-pattern-light {
+  background-color: #f3f6fa;
+  background-image: 
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(219, 234, 254, 0.65), transparent 75%),
+    radial-gradient(circle at 100% 100%, rgba(255, 0, 70, 0.03), transparent 35%),
+    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px, 24px 24px;
+  background-attachment: fixed;
+}

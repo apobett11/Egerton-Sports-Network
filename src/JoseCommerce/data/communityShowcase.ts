@@ -1,0 +1,40 @@
+import { CommunityShowcaseItem } from '../types';
+
+export const COMMUNITY_SHOWCASE_ITEMS: CommunityShowcaseItem[] = [
+  {
+    id: 'showcase-1',
+    title: 'Ward Cup Championship Outfitting',
+    teamName: 'Eldoret Blue Eagles FC',
+    location: 'Sirikwa Grounds',
+    image: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80',
+    badge: 'MCA SPONSORED SQUAD',
+    date: 'Oct 2026',
+    kitDetails: 'Apex Pro 16-Player Matchday Full Kit (Royal Navy / Gold)',
+    quote: 'Hon. MCA supported our boys with complete sets and balls. Morale went through the roof and we lifted the grassroots trophy!',
+    verifiedOrder: true,
+  },
+  {
+    id: 'showcase-2',
+    title: 'Pre-Season Breakers & Raincoats Handover',
+    teamName: 'Huruma Youth Academy',
+    location: 'Huruma Complex',
+    image: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=800&q=80',
+    badge: 'YOUTH EMPOWERMENT',
+    date: 'Sep 2026',
+    kitDetails: '22 StormShield Squad Wind Breakers + Pro Bib Packs',
+    quote: 'Cold morning and evening sessions are no longer an issue. Our squad looks sharp and fully unified.',
+    verifiedOrder: true,
+  },
+  {
+    id: 'showcase-3',
+    title: 'Sub-County League Kickoff Sets',
+    teamName: 'Nakuru Red Hawks',
+    location: 'Afraha Stadium B',
+    image: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=800&q=80',
+    badge: 'DELIVERED & VERIFIED',
+    date: 'Sep 2026',
+    kitDetails: 'Vanguard Clash Away Full Kits with Custom Numbers 1-18',
+    quote: 'The sublimation print quality is professional grade. The fabric stays light even in heavy 90-minute heat.',
+    verifiedOrder: true,
+  },
+];
