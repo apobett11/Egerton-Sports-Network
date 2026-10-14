@@ -5,28 +5,108 @@ import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
 import { supabase } from '../../../lib/supabase';
 
-export const AssistIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
+export const RealisticCleatIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
+    viewBox="0 0 36 36"
     className={className}
     xmlns="http://www.w3.org/2000/svg"
-    aria-label="Assist"
+    aria-label="Assist (Soccer Cleat)"
+    role="img"
   >
-    {/* Leg up to the shin wearing sock and football soccer boot */}
+    <defs>
+      {/* Upper Boot Gradient: Sporty Neon Volt / Emerald to Cyan */}
+      <linearGradient id="cleatUpperGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#22c55e" />
+        <stop offset="45%" stopColor="#10b981" />
+        <stop offset="85%" stopColor="#06b6d4" />
+        <stop offset="100%" stopColor="#0284c7" />
+      </linearGradient>
+
+      {/* Outsole Chassis Gradient */}
+      <linearGradient id="cleatSoleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#0f172a" />
+        <stop offset="50%" stopColor="#1e293b" />
+        <stop offset="100%" stopColor="#0f172a" />
+      </linearGradient>
+
+      {/* Cleat Studs Gradient (Gold/Chrome) */}
+      <linearGradient id="cleatStudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#fbbf24" />
+        <stop offset="60%" stopColor="#f59e0b" />
+        <stop offset="100%" stopColor="#b45309" />
+      </linearGradient>
+
+      {/* Drop Shadow for 3D Emoji Depth */}
+      <filter id="cleatShadow" x="-10%" y="-10%" width="125%" height="130%">
+        <feDropShadow dx="0" dy="1" stdDeviation="0.8" floodOpacity="0.35" />
+      </filter>
+    </defs>
+
+    {/* Firm Ground Cleat Studs (Protruding from sole) */}
+    <g fill="url(#cleatStudGrad)">
+      {/* Rear Heel Stud 1 */}
+      <polygon points="8,26 10.5,26 9.8,30.5 8.6,30.5" />
+      {/* Rear Heel Stud 2 */}
+      <polygon points="12,26 14.5,26 13.8,30.5 12.6,30.5" />
+      {/* Midfoot Stud */}
+      <polygon points="19.5,26 22,26 21.3,30.5 20.2,30.5" />
+      {/* Forefoot Stud */}
+      <polygon points="24,26 26.5,26 25.8,30 24.7,30" />
+      {/* Toe Stud */}
+      <polygon points="28,25.5 30,25.5 29.5,28.5 28.5,28.5" />
+    </g>
+
+    {/* Outsole Plate */}
     <path
-      d="M5 2h4v8l4.8 3.6c.7.5 1.2 1.3 1.2 2.2 0 .8-.4 1.4-1.1 1.6H4.3c-.9 0-1.6-.7-1.6-1.6 0-.8.4-1.8 1-2.8L5 9.8V2z"
+      d="M7 24.5 L30 24.5 C31.5 24.5 32.5 23.8 33 22.5 C32 25.5 29.5 26.5 27 26.5 L9 26.5 C7.5 26.5 6.5 25.8 7 24.5 Z"
+      fill="url(#cleatSoleGrad)"
     />
-    {/* Cleats / Studs on boot sole */}
-    <rect x="4.8" y="17.4" width="1.6" height="2" rx="0.4" />
-    <rect x="7.4" y="17.4" width="1.6" height="2" rx="0.4" />
-    <rect x="11.2" y="17.4" width="1.6" height="2" rx="0.4" />
-    <rect x="13.2" y="17.4" width="1.6" height="2" rx="0.4" />
-    {/* Mini Soccer ball being kicked */}
-    <circle cx="19.2" cy="14.2" r="3" fill="none" stroke="currentColor" strokeWidth="1.2" />
-    <circle cx="19.2" cy="14.2" r="1.1" />
+
+    {/* Main Boot Upper */}
+    <path
+      d="M6 14 C5.2 18 5.8 22 7 24.5 C8 25.5 9.5 25.8 11.5 25.8 L27 25.8 C30.5 25.8 33 24.5 33.5 21.5 C34 18.5 31.5 17.5 28 17 L21.5 14 C18.5 12.5 16 9.5 14 8.5 C10.5 8.5 7.5 10.8 6 14 Z"
+      fill="url(#cleatUpperGrad)"
+      filter="url(#cleatShadow)"
+    />
+
+    {/* Padded Sockliner / Ankle Collar */}
+    <path
+      d="M7 13.5 C7 10 9.5 7.5 14 7.5 C16 7.5 17.5 8.5 17.5 11 L15 14 C12.5 14 9.5 14 7 13.5 Z"
+      fill="#0f172a"
+    />
+
+    {/* Dynamic Athletic Swoop Stripes (Contrast Sport Accent) */}
+    <path
+      d="M12 18.5 Q18.5 17.5 27 23 Q18.5 20 12 18.5 Z"
+      fill="#ffffff"
+      opacity="0.9"
+    />
+    <path
+      d="M14 16.5 Q19.5 15.5 26 20.5 Q19.5 18 14 16.5 Z"
+      fill="#38bdf8"
+      opacity="0.75"
+    />
+
+    {/* White Laces */}
+    <g stroke="#ffffff" strokeWidth="1.3" strokeLinecap="round">
+      <line x1="15" y1="11.5" x2="17.5" y2="13" />
+      <line x1="17" y1="13" x2="20" y2="15" />
+      <line x1="19.5" y1="15" x2="22.5" y2="17" />
+    </g>
+
+    {/* Specular 3D Highlight along upper ridge */}
+    <path
+      d="M9 13.5 C11 11.5 14.5 10 18 12 C22.5 14.5 27 17 31 18.5"
+      stroke="#ffffff"
+      strokeWidth="1"
+      strokeLinecap="round"
+      fill="none"
+      opacity="0.45"
+    />
   </svg>
 );
+
+export const AssistIcon = RealisticCleatIcon;
 
 interface MatchGoalItem {
   id: string;
@@ -360,13 +440,11 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
           const isCollapsed = !!collapsedLeagues[leagueName];
 
           return (
-            <React.Fragment key={leagueName}>
-              <div
-                className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-none sm:rounded-sm overflow-hidden shadow-xs"
-              >
+            <div key={leagueName} className="space-y-3">
+              {/* League Header */}
               <div
                 onClick={(e) => toggleCollapse(leagueName, e)}
-                className="flex items-center justify-between px-3 py-2 bg-[#f8f9fa] dark:bg-[#112236] border-b border-[#e6e8ec] dark:border-[#1a2e45] cursor-pointer hover:bg-slate-100 dark:hover:bg-[#152940] transition-colors"
+                className="flex items-center justify-between px-3.5 py-2.5 bg-white dark:bg-[#112236] border border-[#e6e8ec] dark:border-[#1a2e45] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-[#152940] transition-colors shadow-2xs"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {/* Flag / Crest */}
@@ -376,11 +454,9 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
                   {/* League Info */}
                   <div className="flex flex-col leading-tight min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                        {leagueName}
-                      </span>
-                    </div>
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                      {leagueName}
+                    </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold">
                       KENYA
                     </span>
@@ -398,10 +474,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                 </div>
               </div>
 
-              {/* MATCH ROWS CONTAINER (EXACT HOMEPAGE CARD STYLE) */}
+              {/* Match Cards List (with borders and space between cards) */}
               {!isCollapsed && (
-                <div className="divide-y divide-[#f0f2f5] dark:divide-[#14263b]">
-                  {leagueMatches.map((match, idx) => {
+                <div className="space-y-3">
+                  {leagueMatches.map((match) => {
                     const isMatchLive = match.status === 'LIVE';
                     const isFT = match.status === 'FINISHED';
                     const isFav = favorites.includes(match.id);
@@ -425,201 +501,193 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                       <div
                         key={match.id}
                         onClick={() => handleMatchClick(match)}
-                        className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
+                        className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e2e8f0] dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#2b4c73] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all cursor-pointer group"
                       >
-                        <div className="flex items-center justify-between px-3 py-2.5">
-                        {/* Left Column: Star & Match Status / Time */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(match.id);
-                            }}
-                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                              isFav
-                                ? 'bg-amber-500 text-white shadow-xs'
-                                : 'text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:bg-amber-500/10'
-                            }`}
-                            aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
-                            title={isFav ? 'Remove from favourites' : 'Add to favourites'}
-                          >
-                            <Star
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                isFav ? 'fill-white text-white' : 'hover:fill-amber-400'
-                              }`}
-                            />
-                          </button>
-
-                          {/* Status indicator / Time */}
-                          <div className="w-14 text-center flex flex-col items-center justify-center">
-                            {isMatchLive ? (
-                              <span className="text-[11px] font-extrabold text-[#ff0046] flex items-center gap-0.5">
-                                <Radio className="w-3 h-3 animate-pulse" />
-                                LIVE
-                              </span>
-                            ) : isFT ? (
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                Finished
-                              </span>
-                            ) : (
-                              <div className="flex flex-col items-center leading-tight">
-                                <span className="text-[11px] font-extrabold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                                  {formatMatchTime(match.scheduled_time || match.time)}
-                                </span>
-                                {match.date && (
-                                  <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                                    {match.date.split(',')[0]}
-                                  </span>
-                                )}
-                                {(match.location || (match as any).venue) && (
-                                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap mt-0.5">
-                                    {formatMatchPitch(match.location || (match as any).venue, true)}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Middle Column: 2 Stacked Team Rows */}
-                        <div className="flex-1 px-3 flex flex-col justify-center gap-1 min-w-0">
-                          {/* Home Team */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <TeamLogo
-                                teamId={match.homeTeamId || (match.isHome ? teamId : undefined)}
-                                src={homeLogo}
-                                alt={homeName}
-                                className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                              />
-                              <span
-                                className={`text-xs sm:text-[13px] truncate ${
-                                  homeName === currentTeamName
-                                    ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
-                                    : 'font-extrabold text-slate-900 dark:text-white'
-                                }`}
-                              >
-                                {homeName}
-                              </span>
-                            </div>
-
-                            {/* Home Score */}
-                            {match.status !== 'UPCOMING' && (
-                              <span
-                                className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-md min-w-[24px] text-center ${
-                                  isMatchLive
-                                    ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
-                                    : 'bg-slate-200/80 dark:bg-black/70 text-slate-900 dark:text-white border border-slate-300 dark:border-white/15'
-                                }`}
-                              >
-                                {scoreHomeDisplay}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Away Team */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <TeamLogo
-                                teamId={match.awayTeamId || (!match.isHome ? teamId : undefined)}
-                                src={awayLogo}
-                                alt={awayName}
-                                className="w-4.5 h-4.5 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                              />
-                              <span
-                                className={`text-xs sm:text-[13px] truncate ${
-                                  awayName === currentTeamName
-                                    ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
-                                    : 'font-extrabold text-slate-900 dark:text-white'
-                                }`}
-                              >
-                                {awayName}
-                              </span>
-                            </div>
-
-                            {/* Away Score */}
-                            {match.status !== 'UPCOMING' && (
-                              <span
-                                className={`text-xs sm:text-sm font-mono font-black px-2 py-0.5 rounded-md min-w-[24px] text-center ${
-                                  isMatchLive
-                                    ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
-                                    : 'bg-slate-200/80 dark:bg-black/70 text-slate-900 dark:text-white border border-slate-300 dark:border-white/15'
-                                }`}
-                              >
-                                {scoreAwayDisplay}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Right Column: Live Badge, Preview Badge, or Result Badge */}
-                        <div className="shrink-0 pl-2">
-                          {isMatchLive ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#ff0046] text-white flex items-center gap-1">
-                              LIVE
-                            </span>
-                          ) : match.status === 'UPCOMING' ? (
+                        {/* Card Header Strip: Favorite, Date, Venue, Result/Live/Preview Badge */}
+                        <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#f8fafc]/90 dark:bg-[#112236]/90 border-b border-[#edf2f7] dark:border-[#162a42] text-[10px] text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-2 min-w-0">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleMatchClick(match);
+                                toggleFavorite(match.id);
                               }}
-                              className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 shadow-2xs hover:bg-[#1f426d] transition-colors cursor-pointer"
+                              className={`w-5 h-5 rounded flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                                isFav
+                                  ? 'text-amber-500'
+                                  : 'text-slate-300 dark:text-slate-600 hover:text-amber-400'
+                              }`}
+                              aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+                              title={isFav ? 'Remove from favourites' : 'Add to favourites'}
                             >
-                              PREVIEW
+                              <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-500 text-amber-500' : ''}`} />
                             </button>
-                          ) : match.result ? (
+                            {match.date && (
+                              <span className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                                {match.date}
+                              </span>
+                            )}
+                            {(match.location || (match as any).venue) && (
+                              <span className="font-medium text-slate-400 dark:text-slate-500 uppercase truncate">
+                                • {formatMatchPitch(match.location || (match as any).venue, true)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="shrink-0 pl-2">
+                            {isMatchLive ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#ff0046] text-white flex items-center gap-1 animate-pulse">
+                                <Radio className="w-2.5 h-2.5" />
+                                LIVE
+                              </span>
+                            ) : match.status === 'UPCOMING' ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMatchClick(match);
+                                }}
+                                className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-[#152e4d] text-[#4ea8de] dark:bg-[#152e4d] dark:text-[#56b4ea] border border-[#4ea8de]/35 hover:bg-[#1f426d] transition-colors cursor-pointer"
+                              >
+                                PREVIEW
+                              </button>
+                            ) : match.result ? (
+                              <span
+                                className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-black uppercase tracking-tight text-white ${
+                                  match.result === 'W'
+                                    ? 'bg-[#00b04f]'
+                                    : match.result === 'D'
+                                    ? 'bg-amber-500'
+                                    : 'bg-[#ff0046]'
+                                }`}
+                              >
+                                {match.result}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                FT
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Match Row Configuration: team, logo, scores, logo, team */}
+                        <div className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-3.5">
+                          {/* 1. Home Team Name + Logo */}
+                          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-3 min-w-0">
                             <span
-                              className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black uppercase tracking-tight text-white ${
-                                match.result === 'W'
-                                  ? 'bg-[#00b04f]'
-                                  : match.result === 'D'
-                                  ? 'bg-amber-500'
-                                  : 'bg-[#ff0046]'
+                              className={`text-xs sm:text-[13px] text-right truncate ${
+                                homeName === currentTeamName
+                                  ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
+                                  : 'font-extrabold text-slate-900 dark:text-white'
                               }`}
                             >
-                              {match.result}
+                              {homeName}
                             </span>
-                          ) : null}
-                        </div>
-                      </div>
+                            <TeamLogo
+                              teamId={match.homeTeamId || (match.isHome ? teamId : undefined)}
+                              src={homeLogo}
+                              alt={homeName}
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 shadow-2xs"
+                            />
+                          </div>
 
-                      {/* Scorers and Assisters below the match for played matches */}
-                      {matchGoals.length > 0 && (
-                        <div className="pt-1.5 pb-2.5 px-3 sm:px-4 pl-3 sm:pl-[84px] border-t border-slate-100 dark:border-[#162a42] bg-slate-50/50 dark:bg-[#0c1827]/40 flex flex-col gap-1 text-[11px] sm:text-xs">
-                          {matchGoals.map((goal, gIdx) => (
-                            <div
-                              key={goal.id || gIdx}
-                              className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0"
+                          {/* 2. Scores / Scheduled Time (Centered) */}
+                          <div className="shrink-0 flex flex-col items-center justify-center px-1 sm:px-2 min-w-[70px] sm:min-w-[88px]">
+                            {match.status === 'UPCOMING' ? (
+                              <div className="flex flex-col items-center leading-tight">
+                                <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-[#14263b] border border-slate-200 dark:border-[#1a2e45] whitespace-nowrap">
+                                  {formatMatchTime(match.scheduled_time || match.time)}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-wider">
+                                  VS
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <div className="flex items-center gap-1 sm:gap-1.5">
+                                  <span
+                                    className={`text-sm sm:text-base font-mono font-black px-2 py-0.5 rounded-md min-w-[26px] text-center ${
+                                      isMatchLive
+                                        ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
+                                        : 'bg-slate-100 dark:bg-black/60 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10'
+                                    }`}
+                                  >
+                                    {scoreHomeDisplay}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500 select-none">
+                                    -
+                                  </span>
+                                  <span
+                                    className={`text-sm sm:text-base font-mono font-black px-2 py-0.5 rounded-md min-w-[26px] text-center ${
+                                      isMatchLive
+                                        ? 'bg-[#ff0046] text-white shadow-xs animate-pulse'
+                                        : 'bg-slate-100 dark:bg-black/60 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10'
+                                    }`}
+                                  >
+                                    {scoreAwayDisplay}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5 tracking-tight">
+                                  {isMatchLive ? 'LIVE' : 'FINISHED'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. Away Team Logo + Name */}
+                          <div className="flex-1 flex items-center justify-start gap-2 sm:gap-3 min-w-0">
+                            <TeamLogo
+                              teamId={match.awayTeamId || (!match.isHome ? teamId : undefined)}
+                              src={awayLogo}
+                              alt={awayName}
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 shadow-2xs"
+                            />
+                            <span
+                              className={`text-xs sm:text-[13px] text-left truncate ${
+                                awayName === currentTeamName
+                                  ? 'font-black text-[#ff0046] dark:text-[#ff0046]'
+                                  : 'font-extrabold text-slate-900 dark:text-white'
+                              }`}
                             >
-                              <span className="font-extrabold text-slate-900 dark:text-white truncate">
-                                {goal.scorerName}
-                              </span>
-                              <span className="select-none text-xs shrink-0">⚽</span>
-                              <span className="w-1 shrink-0" />
-                              {goal.assisterName ? (
-                                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-medium truncate">
-                                  <AssistIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 inline-block" />
-                                  <span className="truncate">{goal.assisterName}</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
-                                  {goal.goalType}
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                              {awayName}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </React.Fragment>
+
+                        {/* Scorers and Assisters in the SAME card */}
+                        {matchGoals.length > 0 && (
+                          <div className="pt-2 pb-2.5 px-3 sm:px-6 border-t border-slate-100 dark:border-[#14263b] bg-slate-50/60 dark:bg-[#09131f]/50 flex flex-col items-center gap-1.5 text-xs">
+                            {matchGoals.map((goal, gIdx) => (
+                              <div
+                                key={goal.id || gIdx}
+                                className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0 flex-wrap justify-center text-[11px] sm:text-xs"
+                              >
+                                <span className="font-extrabold text-slate-900 dark:text-white">
+                                  {goal.scorerName}
+                                </span>
+                                <span className="select-none text-xs">⚽</span>
+                                <span className="w-1" />
+                                {goal.assisterName ? (
+                                  <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold">
+                                    <RealisticCleatIcon className="w-4 h-4 shrink-0 inline-block align-middle" />
+                                    <span>{goal.assisterName}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize">
+                                    {goal.goalType}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
       );
     })
       )}
