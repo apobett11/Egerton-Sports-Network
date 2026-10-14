@@ -74,6 +74,7 @@ export interface CartItem {
   color: string;
   quantity: number;
   customization?: CartCustomization;
+  variantImage?: string;
 }
 
 export type SortOption = 'latest' | 'price-asc' | 'price-desc' | 'rating' | 'popular';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, ShoppingCart, Check, ShieldCheck, Sparkles, Plus, Minus } from 'lucide-react';
 import { Product } from '../types';
 import { OptimizedImage } from './OptimizedImage';
@@ -7,7 +7,7 @@ interface ProductSpecsModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product | null;
-  onConfirm: (product: Product, size: string, color: string, quantity: number) => void;
+  onConfirm: (product: Product, size: string, color: string, quantity: number, variantImage?: string) => void;
   theme?: 'dark' | 'light';
 }
 
@@ -41,8 +41,22 @@ export const ProductSpecsModal: React.FC<ProductSpecsModalProps> = ({
     }
   }, [product]);
 
+  // Dynamically resolve matching photo for selected variant
+  const currentVariantImage = useMemo(() => {
+    if (!product) return '';
+    const colorObj = product.colors?.find(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+    if (colorObj?.image) return colorObj.image;
+    if (product.colors && product.colors.length > 0 && product.images && product.images.length > 0) {
+      const idx = product.colors.findIndex(c => c.name.toLowerCase() === selectedColor.toLowerCase());
+      if (idx !== -1 && product.images[idx % product.images.length]) {
+        return product.images[idx % product.images.length];
+      }
+    }
+    return product.images?.[0] || '';
+  }, [product, selectedColor]);
+
   const handleConfirm = () => {
-    onConfirm(product, selectedSize, selectedColor, quantity);
+    onConfirm(product, selectedSize, selectedColor, quantity, currentVariantImage);
     onClose();
   };
 
@@ -80,13 +94,12 @@ export const ProductSpecsModal: React.FC<ProductSpecsModalProps> = ({
           isDark ? 'border-[#1f3c5b]' : 'border-slate-100'
         }`}>
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200/60">
-              <OptimizedImage 
-                src={product.images[0]} 
-                alt={product.name}
-                priority={true}
-                width={120}
-                height={120}
+            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200/60 relative shadow-inner">
+              <img 
+                key={currentVariantImage}
+                src={currentVariantImage} 
+                alt={`${product.name} - ${selectedColor}`}
+                className="w-full h-full object-cover transition-all duration-300 animate-spring-pop"
               />
             </div>
             <div>

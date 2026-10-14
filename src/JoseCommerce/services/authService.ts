@@ -15,6 +15,8 @@ export interface UserAccount {
   rememberLogin: boolean;
   dailyUsageCount: number;
   dailyUsageDate: string; // YYYY-MM-DD
+  pickupStation?: string;
+  deliveryAddress?: string;
 }
 
 export interface UserPersonalData {

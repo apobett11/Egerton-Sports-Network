@@ -15,6 +15,7 @@ export interface CachedCartItemEntry {
   color: string;
   quantity: number;
   customization?: any;
+  variantImage?: string;
 }
 
 const STORAGE_KEY_CART_CACHE = 'egerscore_session_cart_cache_items';

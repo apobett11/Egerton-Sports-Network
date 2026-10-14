@@ -86,10 +86,11 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2 shrink-0">
               <button 
                 onClick={onBackToLiveScore}
-                title="Return to match scores"
-                className="flex sm:hidden p-1.5 -ml-1 text-slate-300 hover:text-white rounded-md hover:bg-white/10"
+                title="Go back"
+                className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-all touch-spring cursor-pointer"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span className="hidden md:inline text-xs font-bold">Back</span>
               </button>
 
               <a href="#top" className="flex items-center group" title="Store Home">

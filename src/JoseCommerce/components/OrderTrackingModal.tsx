@@ -510,7 +510,7 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
                     >
                       {/* Product Thumbnail */}
                       <img
-                        src={item.product.images[0]}
+                        src={item.variantImage || item.product.images[0]}
                         alt={item.product.name}
                         className="w-14 h-14 rounded-lg object-cover bg-slate-800 border border-slate-700 shrink-0"
                       />

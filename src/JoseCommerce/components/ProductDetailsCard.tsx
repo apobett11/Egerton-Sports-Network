@@ -17,7 +17,7 @@ export interface ProductDetailsCardProps {
   product?: Product;
   onBack?: () => void;
   onSelectProduct?: (product: Product) => void;
-  onAddToCart?: (product: Product, size: string, color: string, quantity: number) => void;
+  onAddToCart?: (product: Product, size: string, color: string, quantity: number, variantImage?: string) => void;
   theme?: 'dark' | 'light';
 }
 
@@ -260,7 +260,24 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => setSelectedColor(color.name)}
+                      onClick={() => {
+                        setSelectedColor(color.name);
+                        if (color.image) {
+                          const imgIdx = product.images.indexOf(color.image);
+                          if (imgIdx !== -1) {
+                            setCurrentImageIndex(imgIdx);
+                            if (galleryRef.current) {
+                              galleryRef.current.scrollTo({ left: imgIdx * galleryRef.current.offsetWidth, behavior: 'smooth' });
+                            }
+                          }
+                        } else if (product.images.length > 0) {
+                          const imgIdx = idx % product.images.length;
+                          setCurrentImageIndex(imgIdx);
+                          if (galleryRef.current) {
+                            galleryRef.current.scrollTo({ left: imgIdx * galleryRef.current.offsetWidth, behavior: 'smooth' });
+                          }
+                        }
+                      }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 cursor-pointer ${
                         selectedColor === color.name
                           ? 'border-[#ff0046] bg-[#ff0046]/15 text-[#ff0046] ring-1 ring-[#ff0046]'
@@ -512,8 +529,8 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
         isOpen={isSpecsOpen}
         onClose={() => setIsSpecsOpen(false)}
         product={product}
-        onConfirm={(prod, size, color, qty) => {
-          onAddToCart?.(prod, size, color, qty);
+        onConfirm={(prod, size, color, qty, variantImage) => {
+          onAddToCart?.(prod, size, color, qty, variantImage);
           setIsSpecsOpen(false);
         }}
         theme={theme}

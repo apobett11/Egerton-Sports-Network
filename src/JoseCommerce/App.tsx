@@ -16,6 +16,10 @@ import { MobileBottomNav, StorefrontNavTab } from './components/MobileBottomNav'
 import { DepotGuidanceSection } from './components/DepotGuidanceSection';
 import { AuthModal } from './components/AuthModal';
 import { UserDashboardModal } from './components/UserDashboardModal';
+import { ExitStoreModal } from './components/ExitStoreModal';
+import { ContactBottomModal } from './components/ContactBottomModal';
+import { OrdersModal } from './components/OrdersModal';
+import { ProfileBottomModal } from './components/ProfileBottomModal';
 import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCache } from './services/cartCacheService';
 
 import { CATEGORIES } from './data/categories';
@@ -193,6 +197,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscountRate, setAppliedDiscountRate] = useState(0);
   const [activeNav, setActiveNav] = useState<StorefrontNavTab>('home');
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Synchronize cart with current user changes & pull from session cache
   useEffect(() => {
@@ -307,8 +315,120 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       return;
     }
     setTrackingOrderId(orderId);
-    setIsOrderTrackingOpen(true);
+    setIsOrdersModalOpen(true);
   };
+
+  // Comprehensive Back Button Handler:
+  // Goes to previous page/route, removes any open popups/modals, never exits store until at homepage.
+  // At homepage: triggers exit confirmation popup with Cart Peep from bottom of the page.
+  const handleBack = () => {
+    // 1. If Exit modal itself is open -> close it and stay in store
+    if (isExitModalOpen) {
+      setIsExitModalOpen(false);
+      return;
+    }
+
+    // 2. Remove any active popups / modals
+    if (specsModalProduct) {
+      setSpecsModalProduct(null);
+      return;
+    }
+    if (isCheckoutOpen) {
+      setIsCheckoutOpen(false);
+      return;
+    }
+    if (isCartOpen) {
+      setIsCartOpen(false);
+      setActiveNav(currentView === 'category' ? 'categories' : 'home');
+      return;
+    }
+    if (isOrdersModalOpen || isOrderTrackingOpen) {
+      setIsOrdersModalOpen(false);
+      setIsOrderTrackingOpen(false);
+      setActiveNav(currentView === 'category' ? 'categories' : 'home');
+      return;
+    }
+    if (isContactModalOpen) {
+      setIsContactModalOpen(false);
+      setActiveNav(currentView === 'category' ? 'categories' : 'home');
+      return;
+    }
+    if (isProfileModalOpen || isUserDashboardOpen) {
+      setIsProfileModalOpen(false);
+      setIsUserDashboardOpen(false);
+      setActiveNav(currentView === 'category' ? 'categories' : 'home');
+      return;
+    }
+    if (isAuthModalOpen) {
+      setIsAuthModalOpen(false);
+      return;
+    }
+    if (isMobileSearchActive) {
+      setIsMobileSearchActive(false);
+      return;
+    }
+
+    // 3. If in full product details mode:
+    if (selectedProduct) {
+      setSelectedProduct(null);
+      setCurrentView(previousView);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 4. If in category view:
+    if (currentView === 'category') {
+      setCurrentView('store');
+      setActiveNav('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 5. If in admin operations view:
+    if (currentView === 'admin') {
+      setCurrentView('store');
+      setActiveNav('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 6. We are at the store homepage!
+    // "when one is at homepage, the back button will popup an exit. you will exit. and teh cart peep: products needing checkout. in a popup from the bottom of teh page."
+    setIsExitModalOpen(true);
+  };
+
+  // Browser History & Popstate integration:
+  // Every time a modal or view changes, we push state to browser history
+  // When user clicks the browser Back button or device back gesture:
+  useEffect(() => {
+    window.history.pushState({ joseCommerce: true, root: true }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState({ joseCommerce: true }, '');
+      handleBack();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [
+    isExitModalOpen,
+    specsModalProduct,
+    isCheckoutOpen,
+    isCartOpen,
+    isOrdersModalOpen,
+    isOrderTrackingOpen,
+    isContactModalOpen,
+    isProfileModalOpen,
+    isUserDashboardOpen,
+    isAuthModalOpen,
+    isMobileSearchActive,
+    selectedProduct,
+    currentView,
+    previousView
+  ]);
 
   const handleOneTapLogin = () => {
     const rem = getRememberedAccount();
@@ -430,8 +550,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     size: string,
     color: string,
     quantity: number = 1,
-    customization?: CartCustomization
+    customization?: CartCustomization,
+    variantImage?: string
   ) => {
+    // Resolve matching variant image if not explicitly provided
+    const resolvedVariantImage = variantImage || (() => {
+      const colorObj = product.colors?.find(c => c.name.toLowerCase() === color.toLowerCase());
+      if (colorObj?.image) return colorObj.image;
+      if (product.colors && product.colors.length > 0 && product.images && product.images.length > 0) {
+        const idx = product.colors.findIndex(c => c.name.toLowerCase() === color.toLowerCase());
+        if (idx !== -1 && product.images[idx % product.images.length]) {
+          return product.images[idx % product.images.length];
+        }
+      }
+      return product.images?.[0] || '';
+    })();
+
     // Once added to the cart, one never adds a product twice (persists green tick)
     if (cartedProductIds.has(product.id)) {
       return;
@@ -447,6 +581,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         color,
         quantity,
         customization,
+        variantImage: resolvedVariantImage,
       });
     }
     const itemKey = `${product.id}-${size}-${color}`;
@@ -465,6 +600,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           color,
           quantity,
           customization,
+          variantImage: resolvedVariantImage,
         },
       ];
     });
@@ -494,9 +630,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     product: Product,
     size: string,
     color: string,
-    quantity: number = 1
+    quantity: number = 1,
+    variantImage?: string
   ) => {
-    handleAddToCart(product, size, color, quantity);
+    handleAddToCart(product, size, color, quantity, undefined, variantImage);
     setIsCartBouncing(true);
     setTimeout(() => {
       setIsCartBouncing(false);
@@ -645,10 +782,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           }}
           isSearchActive={false}
           onCloseSearch={() => {}}
-          onBackToLiveScore={() => {
-            setSelectedProduct(null);
-            setCurrentView(previousView);
-          }}
+          onBackToLiveScore={handleBack}
           onSelectAudience={(aud) => {
             setSelectedProduct(null);
             handleFilterChange({ audience: aud });
@@ -682,17 +816,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         <ProductDetailsCard
           product={selectedProduct}
           theme={theme}
-          onBack={() => {
-            setSelectedProduct(null);
-            setCurrentView(previousView);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onBack={handleBack}
           onSelectProduct={(newProd) => {
             setSelectedProduct(newProd);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          onAddToCart={(prod, size, color, qty) => {
-            handleConfirmSpecsAddToCart(prod, size, color, qty);
+          onAddToCart={(prod, size, color, qty, variantImg) => {
+            handleConfirmSpecsAddToCart(prod, size, color, qty, variantImg);
           }}
         />
 
@@ -746,10 +876,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           businessContact={businessContact}
         />
 
-        {/* Order Tracking Modal */}
-        <OrderTrackingModal
-          isOpen={isOrderTrackingOpen}
-          onClose={() => setIsOrderTrackingOpen(false)}
+        {/* Orders List & Tracking Large Popup */}
+        <OrdersModal
+          isOpen={isOrdersModalOpen || isOrderTrackingOpen}
+          onClose={() => {
+            setIsOrdersModalOpen(false);
+            setIsOrderTrackingOpen(false);
+          }}
           initialOrderId={trackingOrderId}
           theme={theme}
         />
@@ -770,13 +903,19 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           theme={theme}
         />
 
-        {/* User Dashboard Modal for logged in clients */}
-        <UserDashboardModal
-          isOpen={isUserDashboardOpen}
-          onClose={() => setIsUserDashboardOpen(false)}
+        {/* Minimalistic Profile Modal */}
+        <ProfileBottomModal
+          isOpen={isProfileModalOpen || isUserDashboardOpen}
+          onClose={() => {
+            setIsProfileModalOpen(false);
+            setIsUserDashboardOpen(false);
+          }}
           currentUser={currentUser}
+          onUserUpdate={(updated) => {
+            setCurrentUser(updated);
+            setRememberedAccountState(updated);
+          }}
           onLogout={handleEndSession}
-          onOpenOrderTracking={handleOpenOrderTracking}
           theme={theme}
           onThemeChange={(newTheme) => {
             setTheme(newTheme);
@@ -784,6 +923,43 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
               updateUserThemePreference(currentUser.id, newTheme);
             }
           }}
+        />
+
+        {/* Contact Bottom Popup */}
+        <ContactBottomModal
+          isOpen={isContactModalOpen}
+          onClose={() => setIsContactModalOpen(false)}
+          onBrowseCatalog={() => {
+            setSelectedProduct(null);
+            setCurrentView('store');
+          }}
+          theme={theme}
+        />
+
+        {/* Exit Confirmation Bottom Modal with Cart Peep */}
+        <ExitStoreModal
+          isOpen={isExitModalOpen}
+          onClose={() => setIsExitModalOpen(false)}
+          onConfirmExit={() => {
+            setIsExitModalOpen(false);
+            if (onBackToLiveScore) {
+              onBackToLiveScore();
+            } else {
+              window.location.hash = '/home';
+            }
+          }}
+          onOpenCheckout={() => {
+            setIsExitModalOpen(false);
+            if (!currentUser) {
+              setPendingCheckoutAfterLogin(true);
+              setAuthModalMode('login');
+              setIsAuthModalOpen(true);
+            } else {
+              setIsCheckoutOpen(true);
+            }
+          }}
+          cartItems={cartItems}
+          theme={theme}
         />
       </div>
     );
@@ -801,17 +977,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onOpenSearch={() => setIsMobileSearchActive(true)}
         isSearchActive={isMobileSearchActive}
         onCloseSearch={() => setIsMobileSearchActive(false)}
-        onBackToLiveScore={() => {
-          if (currentView === 'category') {
-            setCurrentView('store');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } else if (onBackToLiveScore) {
-            onBackToLiveScore();
-          } else {
-            handleResetFilters();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        }}
+        onBackToLiveScore={handleBack}
         onSelectAudience={(aud) => handleFilterChange({ audience: aud })}
         currentAudience={filters.audience}
         theme={theme}
@@ -856,10 +1022,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
               setSpecsModalProduct(product);
             }}
             addedProductIds={cartedProductIds}
-            onBack={() => {
-              setCurrentView('store');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onBack={handleBack}
             theme={theme}
           />
         </main>
@@ -933,15 +1096,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       {/* Reduced small minimal footer with sidebar offset */}
       <div className="sm:pl-16 xl:pl-52 transition-all">
         <Footer 
-          onBackToLiveScore={() => {
-            if (onBackToLiveScore) {
-              onBackToLiveScore();
-            } else {
-              setActiveNav('home');
-              handleResetFilters();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }}
+          onBackToLiveScore={handleBack}
           onSelectCategory={(slug) => {
             setActiveNav('categories');
             setSelectedCategorySlug(slug);
@@ -971,25 +1126,26 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         activeNav={activeNav}
         onSelectNav={setActiveNav}
         theme={theme}
+        categoriesWithCounts={categoriesWithCounts}
         onOpenCart={() => {
           setActiveNav('cart');
           setIsCartOpen(true);
         }}
-        onOpenTrackOrders={() => handleOpenOrderTracking()}
-        onOpenSearch={() => {
-          setActiveNav('search');
-          setIsMobileSearchActive(true);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        onOpenOrders={() => {
+          setActiveNav('orders');
+          setIsOrdersModalOpen(true);
         }}
-        onOpenCategories={() => {
-          setActiveNav('categories');
-          setPreviousView(currentView === 'category' ? 'store' : currentView);
-          setCurrentView('category');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        onOpenContact={() => {
+          setActiveNav('contact');
+          setIsContactModalOpen(true);
         }}
-        onOpenFilters={() => {
-          setActiveNav('filter');
-          document.getElementById('all-products-catalog')?.scrollIntoView({ behavior: 'smooth' });
+        onOpenProfile={() => {
+          setActiveNav('profile');
+          setIsProfileModalOpen(true);
+        }}
+        onOpenAuth={() => {
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
         }}
         onGoHome={() => {
           setActiveNav('home');
@@ -998,11 +1154,14 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           handleResetFilters();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        isLoggedIn={Boolean(currentUser)}
-        onOpenAdmin={() => {
-          setCurrentView('admin');
-          setAdminTab('home');
+        onSelectCategory={(slug) => {
+          setActiveNav('categories');
+          setSelectedCategorySlug(slug);
+          setPreviousView(currentView === 'category' ? 'store' : currentView);
+          setCurrentView('category');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        isLoggedIn={Boolean(currentUser)}
       />
 
       {/* Cart Drawer */}
@@ -1011,7 +1170,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onClose={() => {
           setIsCartOpen(false);
           if (activeNav === 'cart') {
-            setActiveNav('home');
+            setActiveNav(currentView === 'category' ? 'categories' : 'home');
           }
         }}
         items={cartItems}
@@ -1029,6 +1188,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
               color: item.color,
               quantity: item.quantity,
               customization: item.customization,
+              variantImage: item.variantImage,
             }));
             setCachedCartItems(entries);
             setPendingCheckoutAfterLogin(true);
@@ -1060,10 +1220,16 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         businessContact={businessContact}
       />
 
-      {/* Order Tracking Modal */}
-      <OrderTrackingModal
-        isOpen={isOrderTrackingOpen}
-        onClose={() => setIsOrderTrackingOpen(false)}
+      {/* Orders List & Tracking Large Popup for logged in clients */}
+      <OrdersModal
+        isOpen={isOrdersModalOpen || isOrderTrackingOpen}
+        onClose={() => {
+          setIsOrdersModalOpen(false);
+          setIsOrderTrackingOpen(false);
+          if (activeNav === 'orders') {
+            setActiveNav(currentView === 'category' ? 'categories' : 'home');
+          }
+        }}
         initialOrderId={trackingOrderId}
         theme={theme}
       />
@@ -1084,13 +1250,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         theme={theme}
       />
 
-      {/* User Dashboard Modal for logged in clients */}
-      <UserDashboardModal
-        isOpen={isUserDashboardOpen}
-        onClose={() => setIsUserDashboardOpen(false)}
+      {/* Minimalistic Profile Modal with Pencil Edit Option */}
+      <ProfileBottomModal
+        isOpen={isProfileModalOpen || isUserDashboardOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setIsUserDashboardOpen(false);
+          if (activeNav === 'profile') {
+            setActiveNav(currentView === 'category' ? 'categories' : 'home');
+          }
+        }}
         currentUser={currentUser}
+        onUserUpdate={(updated) => {
+          setCurrentUser(updated);
+          setRememberedAccountState(updated);
+        }}
         onLogout={handleEndSession}
-        onOpenOrderTracking={handleOpenOrderTracking}
         theme={theme}
         onThemeChange={(newTheme) => {
           setTheme(newTheme);
@@ -1098,6 +1273,48 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             updateUserThemePreference(currentUser.id, newTheme);
           }
         }}
+      />
+
+      {/* Contact Bottom Popup (Slides up from bottom with spring animation) */}
+      <ContactBottomModal
+        isOpen={isContactModalOpen}
+        onClose={() => {
+          setIsContactModalOpen(false);
+          if (activeNav === 'contact') {
+            setActiveNav(currentView === 'category' ? 'categories' : 'home');
+          }
+        }}
+        onBrowseCatalog={() => {
+          const el = document.getElementById('all-products-catalog') || document.querySelector('main');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        theme={theme}
+      />
+
+      {/* Exit Confirmation Bottom Modal with Cart Peep */}
+      <ExitStoreModal
+        isOpen={isExitModalOpen}
+        onClose={() => setIsExitModalOpen(false)}
+        onConfirmExit={() => {
+          setIsExitModalOpen(false);
+          if (onBackToLiveScore) {
+            onBackToLiveScore();
+          } else {
+            window.location.hash = '/home';
+          }
+        }}
+        onOpenCheckout={() => {
+          setIsExitModalOpen(false);
+          if (!currentUser) {
+            setPendingCheckoutAfterLogin(true);
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+          } else {
+            setIsCheckoutOpen(true);
+          }
+        }}
+        cartItems={cartItems}
+        theme={theme}
       />
     </div>
   );

@@ -167,9 +167,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                     {/* Thumbnail */}
                     <img
-                      src={item.product.images[0]}
+                      src={item.variantImage || item.product.images[0]}
                       alt={item.product.name}
-                      className="w-14 h-14 rounded-lg object-cover bg-slate-50 border border-slate-200 shrink-0"
+                      className="w-14 h-14 rounded-lg object-cover bg-slate-50 border border-slate-200 shrink-0 transition-transform duration-200"
                     />
 
                     {/* Details */}
