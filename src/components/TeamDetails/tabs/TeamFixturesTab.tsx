@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Star, Radio, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Match, StandingEntry } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
@@ -141,6 +141,14 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
   const [favorites, setFavorites] = useState<string[]>([]);
   const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
   const [goalsByFixture, setGoalsByFixture] = useState<Record<string, MatchGoalItem[]>>({});
+  const [expandedOpponentFixtures, setExpandedOpponentFixtures] = useState<Record<string, boolean>>({});
+
+  const toggleOpponentScorers = (fixtureId: string) => {
+    setExpandedOpponentFixtures((prev) => ({
+      ...prev,
+      [fixtureId]: !prev[fixtureId],
+    }));
+  };
 
   useEffect(() => {
     const playedMatchIds = fixtures
@@ -169,8 +177,8 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
             type,
             detail_text,
             is_cancelled,
-            player:players!player_id (id, first_name, last_name),
-            assist_player:players!assist_player_id (id, first_name, last_name)
+            player:players!player_id (id, first_name, last_name, team_id),
+            assist_player:players!assist_player_id (id, first_name, last_name, team_id)
           `)
           .in('fixture_id', playedMatchIds)
           .in('type', ['goal', 'penalty', 'GOAL', 'PENALTY'])
@@ -201,6 +209,8 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
               ? `${ap.first_name || ''} ${ap.last_name || ''}`.trim() || null
               : null;
 
+            const effectiveTeamId = evt.team_id || p?.team_id || ap?.team_id;
+
             let goalType = '';
             if (!assisterName) {
               const dt = (evt.detail_text || '').toLowerCase();
@@ -222,7 +232,7 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
             map[fid].push({
               id: evt.id,
               fixtureId: fid,
-              teamId: evt.team_id,
+              teamId: effectiveTeamId,
               minute: evt.minute,
               scorerName,
               assisterName,
@@ -356,44 +366,16 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 select-none animate-in fade-in duration-150">
-      {/* MATCH DETAILS CLICK GUIDE BANNER */}
-      <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-950/40 via-[#0e1f33] to-[#0A1322] border border-blue-500/30 text-xs shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-            <Info className="w-3.5 h-3.5" />
-          </div>
-          <p className="text-[11px] text-slate-200 font-medium">
-            <strong className="text-white font-extrabold uppercase tracking-wide">Interactive Matches:</strong> Click any match card below to open full match details, team lineups, and head-to-head stats.
-          </p>
-        </div>
-        <span className="text-[9px] font-mono text-blue-300 font-black px-2 py-0.5 rounded bg-blue-500/15 border border-blue-500/30 shrink-0 uppercase hidden sm:inline-block">
-          Tap Card to View
-        </span>
-      </div>
-
-      {/* 1. Header Filter Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#0e1c2b] border border-[#e6e8ec] dark:border-[#1a2e45] p-3 sm:p-4 rounded-none sm:rounded-sm shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
-          <div className="leading-tight">
-            <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              {currentTeamName} Fixtures & Results
-            </h2>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Official schedule from league database
-            </span>
-          </div>
-        </div>
-
-        {/* Sub-Tabs Pills */}
-        <div className="flex items-center bg-slate-100 dark:bg-[#14263b] p-0.5 rounded-lg border border-slate-200 dark:border-[#1a2e45] self-start sm:self-auto">
+      {/* Top Filter Controls: Sorts Only (Headings & interactive matches banner removed) */}
+      <div className="flex items-center justify-start">
+        <div className="flex items-center bg-slate-100 dark:bg-[#112236] p-1 rounded-xl border border-slate-200 dark:border-[#1a2e45]">
           <button
             type="button"
             onClick={() => setActiveSubTab('ALL')}
-            className={`px-3 py-1 rounded-md text-xs font-black uppercase transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               activeSubTab === 'ALL'
-                ? 'bg-white dark:bg-[#1f3a5a] text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#ff0046] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             All ({fixtures.length})
@@ -401,10 +383,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('UPCOMING')}
-            className={`px-3 py-1 rounded-md text-xs font-black uppercase transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               activeSubTab === 'UPCOMING'
                 ? 'bg-[#ff0046] text-white shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Upcoming ({upcomingFixtures.length})
@@ -412,10 +394,10 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('FINISHED')}
-            className={`px-3 py-1 rounded-md text-xs font-black uppercase transition-colors cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
               activeSubTab === 'FINISHED'
-                ? 'bg-[#00b04f] text-white shadow-xs'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#ff0046] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Results ({pastResults.length})
@@ -474,9 +456,9 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                 </div>
               </div>
 
-              {/* Match Cards List (with borders and space between cards) */}
+              {/* Match Cards List (housed in ONE card with space and borders between cards) */}
               {!isCollapsed && (
-                <div className="space-y-3">
+                <div className="w-full bg-white dark:bg-[#0c1827] border border-[#e2e8f0] dark:border-[#1a2e45] rounded-2xl p-3 sm:p-4 shadow-xs space-y-3">
                   {leagueMatches.map((match) => {
                     const isMatchLive = match.status === 'LIVE';
                     const isFT = match.status === 'FINISHED';
@@ -497,11 +479,34 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
 
                     const matchGoals = goalsByFixture[match.id] || [];
 
+                    const isActualTeamHome =
+                      match.isHome !== undefined
+                        ? match.isHome
+                        : teamId
+                        ? match.homeTeamId === teamId
+                        : homeName === currentTeamName;
+
+                    const actualTeamId = teamId || (isActualTeamHome ? match.homeTeamId : match.awayTeamId);
+                    const opponentTeamId = isActualTeamHome ? match.awayTeamId : match.homeTeamId;
+
+                    const isTeamGoal = (goal: MatchGoalItem) => {
+                      if (goal.teamId) {
+                        if (actualTeamId && String(goal.teamId).toLowerCase() === String(actualTeamId).toLowerCase()) return true;
+                        if (opponentTeamId && String(goal.teamId).toLowerCase() === String(opponentTeamId).toLowerCase()) return false;
+                        if (teamId && String(goal.teamId).toLowerCase() === String(teamId).toLowerCase()) return true;
+                      }
+                      return isActualTeamHome;
+                    };
+
+                    const teamGoals = match.status === 'UPCOMING' ? [] : matchGoals.filter(isTeamGoal);
+                    const opponentGoals = match.status === 'UPCOMING' ? [] : matchGoals.filter((g) => !isTeamGoal(g));
+                    const isOpponentExpanded = !!expandedOpponentFixtures[match.id];
+
                     return (
                       <div
                         key={match.id}
                         onClick={() => handleMatchClick(match)}
-                        className="w-full bg-white dark:bg-[#0e1c2b] border border-[#e2e8f0] dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#2b4c73] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all cursor-pointer group"
+                        className="w-full bg-[#f8fafc]/60 dark:bg-[#0e1c2b] border border-[#e2e8f0] dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#2b4c73] rounded-xl overflow-hidden shadow-xs hover:shadow-sm transition-all cursor-pointer group"
                       >
                         {/* Card Header Strip: Favorite, Date, Venue, Result/Live/Preview Badge */}
                         <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#f8fafc]/90 dark:bg-[#112236]/90 border-b border-[#edf2f7] dark:border-[#162a42] text-[10px] text-slate-500 dark:text-slate-400">
@@ -656,30 +661,164 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                         </div>
 
                         {/* Scorers and Assisters in the SAME card */}
-                        {matchGoals.length > 0 && (
-                          <div className="pt-2 pb-2.5 px-3 sm:px-6 border-t border-slate-100 dark:border-[#14263b] bg-slate-50/60 dark:bg-[#09131f]/50 flex flex-col items-center gap-1.5 text-xs">
-                            {matchGoals.map((goal, gIdx) => (
-                              <div
-                                key={goal.id || gIdx}
-                                className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0 flex-wrap justify-center text-[11px] sm:text-xs"
-                              >
-                                <span className="font-extrabold text-slate-900 dark:text-white">
-                                  {goal.scorerName}
-                                </span>
-                                <span className="select-none text-xs">⚽</span>
-                                <span className="w-1" />
-                                {goal.assisterName ? (
-                                  <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold">
-                                    <RealisticCleatIcon className="w-4 h-4 shrink-0 inline-block align-middle" />
-                                    <span>{goal.assisterName}</span>
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize">
-                                    {goal.goalType}
-                                  </span>
-                                )}
-                              </div>
-                            ))}
+                        {match.status !== 'UPCOMING' && (teamGoals.length > 0 || opponentGoals.length > 0) && (
+                          <div className="pt-2 pb-2.5 px-3 sm:px-6 border-t border-slate-100 dark:border-[#14263b] bg-slate-50/60 dark:bg-[#09131f]/50 flex items-start justify-between gap-2 sm:gap-4 text-xs">
+                            {/* HOME SIDE (LEFT) */}
+                            <div className="flex-1 flex flex-col items-start min-w-0">
+                              {isActualTeamHome ? (
+                                /* Team is Home: Show actual team scorers directly on left */
+                                <div className="flex flex-col items-start gap-1 w-full">
+                                  {teamGoals.map((goal, gIdx) => (
+                                    <div
+                                      key={goal.id || gIdx}
+                                      className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0 text-[11px] sm:text-xs"
+                                    >
+                                      <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                        {goal.scorerName}
+                                      </span>
+                                      <span className="select-none text-xs shrink-0">⚽</span>
+                                      {goal.assisterName ? (
+                                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold truncate">
+                                          <RealisticCleatIcon className="w-3.5 h-3.5 shrink-0 inline-block align-middle" />
+                                          <span className="truncate">{goal.assisterName}</span>
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
+                                          {goal.goalType}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                /* Opponent is Home: Show dropdown button on left */
+                                opponentGoals.length > 0 && (
+                                  <div className="flex flex-col items-start gap-1 w-full">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleOpponentScorers(match.id);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-[#14263b] border border-slate-200 dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#2b4c73] transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <span>Scorers ({opponentGoals.length})</span>
+                                      {isOpponentExpanded ? (
+                                        <ChevronUp className="w-3 h-3 text-slate-400 shrink-0" />
+                                      ) : (
+                                        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                                      )}
+                                    </button>
+
+                                    {isOpponentExpanded && (
+                                      <div className="flex flex-col items-start gap-1 mt-1 pt-1 border-t border-slate-200/60 dark:border-[#1a2e45]/60 w-full animate-in fade-in duration-100">
+                                        {opponentGoals.map((goal, gIdx) => (
+                                          <div
+                                            key={goal.id || gIdx}
+                                            className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 min-w-0 text-[11px] sm:text-xs"
+                                          >
+                                            <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                              {goal.scorerName}
+                                            </span>
+                                            <span className="select-none text-xs shrink-0">⚽</span>
+                                            {goal.assisterName ? (
+                                              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold truncate">
+                                                <RealisticCleatIcon className="w-3.5 h-3.5 shrink-0 inline-block align-middle" />
+                                                <span className="truncate">{goal.assisterName}</span>
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
+                                                {goal.goalType}
+                                              </span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
+
+                            {/* CENTER SPACER: Aligns with the scores block above */}
+                            <div className="shrink-0 min-w-[70px] sm:min-w-[88px]" />
+
+                            {/* AWAY SIDE (RIGHT) */}
+                            <div className="flex-1 flex flex-col items-end min-w-0">
+                              {!isActualTeamHome ? (
+                                /* Team is Away: Show actual team scorers directly on right */
+                                <div className="flex flex-col items-end gap-1 w-full">
+                                  {teamGoals.map((goal, gIdx) => (
+                                    <div
+                                      key={goal.id || gIdx}
+                                      className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0 text-[11px] sm:text-xs"
+                                    >
+                                      {goal.assisterName ? (
+                                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold truncate">
+                                          <span className="truncate">{goal.assisterName}</span>
+                                          <RealisticCleatIcon className="w-3.5 h-3.5 shrink-0 inline-block align-middle" />
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
+                                          {goal.goalType}
+                                        </span>
+                                      )}
+                                      <span className="select-none text-xs shrink-0">⚽</span>
+                                      <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                        {goal.scorerName}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                /* Opponent is Away: Show dropdown button on right */
+                                opponentGoals.length > 0 && (
+                                  <div className="flex flex-col items-end gap-1 w-full">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleOpponentScorers(match.id);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-[#14263b] border border-slate-200 dark:border-[#1a2e45] hover:border-slate-300 dark:hover:border-[#2b4c73] transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <span>Scorers ({opponentGoals.length})</span>
+                                      {isOpponentExpanded ? (
+                                        <ChevronUp className="w-3 h-3 text-slate-400 shrink-0" />
+                                      ) : (
+                                        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                                      )}
+                                    </button>
+
+                                    {isOpponentExpanded && (
+                                      <div className="flex flex-col items-end gap-1 mt-1 pt-1 border-t border-slate-200/60 dark:border-[#1a2e45]/60 w-full animate-in fade-in duration-100">
+                                        {opponentGoals.map((goal, gIdx) => (
+                                          <div
+                                            key={goal.id || gIdx}
+                                            className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 min-w-0 text-[11px] sm:text-xs"
+                                          >
+                                            {goal.assisterName ? (
+                                              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold truncate">
+                                                <span className="truncate">{goal.assisterName}</span>
+                                                <RealisticCleatIcon className="w-3.5 h-3.5 shrink-0 inline-block align-middle" />
+                                              </span>
+                                            ) : (
+                                              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
+                                                {goal.goalType}
+                                              </span>
+                                            )}
+                                            <span className="select-none text-xs shrink-0">⚽</span>
+                                            <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                              {goal.scorerName}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
