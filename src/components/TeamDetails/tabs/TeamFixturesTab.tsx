@@ -1,8 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Radio, Trophy, Calendar, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import type { Match, StandingEntry } from '../../Dashboards/Team/types';
 import { formatMatchTime, formatMatchPitch } from '../../../lib/matchdayHelper';
 import { TeamLogo } from '../../common/TeamLogo';
+import { supabase } from '../../../lib/supabase';
+
+export const AssistIcon: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    aria-label="Assist"
+  >
+    {/* Leg up to the shin wearing sock and football soccer boot */}
+    <path
+      d="M5 2h4v8l4.8 3.6c.7.5 1.2 1.3 1.2 2.2 0 .8-.4 1.4-1.1 1.6H4.3c-.9 0-1.6-.7-1.6-1.6 0-.8.4-1.8 1-2.8L5 9.8V2z"
+    />
+    {/* Cleats / Studs on boot sole */}
+    <rect x="4.8" y="17.4" width="1.6" height="2" rx="0.4" />
+    <rect x="7.4" y="17.4" width="1.6" height="2" rx="0.4" />
+    <rect x="11.2" y="17.4" width="1.6" height="2" rx="0.4" />
+    <rect x="13.2" y="17.4" width="1.6" height="2" rx="0.4" />
+    {/* Mini Soccer ball being kicked */}
+    <circle cx="19.2" cy="14.2" r="3" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="19.2" cy="14.2" r="1.1" />
+  </svg>
+);
+
+interface MatchGoalItem {
+  id: string;
+  fixtureId: string;
+  teamId?: string;
+  minute?: number;
+  scorerName: string;
+  assisterName: string | null;
+  goalType: string;
+}
 
 interface TeamFixturesTabProps {
   fixtures: Match[];
@@ -26,6 +60,121 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'ALL' | 'UPCOMING' | 'FINISHED'>('ALL');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
+  const [goalsByFixture, setGoalsByFixture] = useState<Record<string, MatchGoalItem[]>>({});
+
+  useEffect(() => {
+    const playedMatchIds = fixtures
+      .filter(
+        (f) =>
+          f.status === 'FINISHED' ||
+          f.status === 'LIVE' ||
+          (f.scoreHome !== undefined && f.scoreHome !== null && (f.scoreHome > 0 || (f.scoreAway ?? 0) > 0))
+      )
+      .map((f) => f.id)
+      .filter(Boolean);
+
+    if (playedMatchIds.length === 0) return;
+
+    let isMounted = true;
+
+    const loadGoals = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('match_events')
+          .select(`
+            id,
+            fixture_id,
+            team_id,
+            minute,
+            type,
+            detail_text,
+            is_cancelled,
+            player:players!player_id (id, first_name, last_name),
+            assist_player:players!assist_player_id (id, first_name, last_name)
+          `)
+          .in('fixture_id', playedMatchIds)
+          .in('type', ['goal', 'penalty', 'GOAL', 'PENALTY'])
+          .order('minute', { ascending: true });
+
+        if (error) {
+          console.warn('[TeamFixturesTab] Error fetching match goal events:', error);
+          return;
+        }
+
+        if (isMounted && data) {
+          const map: Record<string, MatchGoalItem[]> = {};
+          const unwrap = (obj: any) => (Array.isArray(obj) ? obj[0] : obj);
+
+          data.forEach((evt: any) => {
+            if (evt.is_cancelled) return;
+            const fid = evt.fixture_id;
+            if (!fid) return;
+            if (!map[fid]) map[fid] = [];
+
+            const p = unwrap(evt.player);
+            const scorerName = p
+              ? `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Player'
+              : 'Player';
+
+            const ap = unwrap(evt.assist_player);
+            const assisterName = ap
+              ? `${ap.first_name || ''} ${ap.last_name || ''}`.trim() || null
+              : null;
+
+            let goalType = '';
+            if (!assisterName) {
+              const dt = (evt.detail_text || '').toLowerCase();
+              if (evt.type?.toLowerCase() === 'penalty' || dt.includes('penalty')) {
+                goalType = 'Penalty Kick';
+              } else if (dt.includes('free kick')) {
+                goalType = 'Free Kick';
+              } else if (dt.includes('header')) {
+                goalType = 'Header';
+              } else if (dt.includes('solo')) {
+                goalType = 'Solo Goal';
+              } else if (evt.detail_text) {
+                goalType = evt.detail_text.replace(/^GOAL:\s*/i, '').trim();
+              } else {
+                goalType = 'Solo Goal';
+              }
+            }
+
+            map[fid].push({
+              id: evt.id,
+              fixtureId: fid,
+              teamId: evt.team_id,
+              minute: evt.minute,
+              scorerName,
+              assisterName,
+              goalType,
+            });
+          });
+
+          setGoalsByFixture(map);
+        }
+      } catch (err) {
+        console.warn('[TeamFixturesTab] Failed to load match goals:', err);
+      }
+    };
+
+    loadGoals();
+
+    const channel = supabase
+      .channel(`team_fixtures_events_${teamId || 'all'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'match_events' },
+        () => {
+          loadGoals();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [fixtures, teamId]);
 
   const toggleFavorite = (matchId: string) => {
     setFavorites((prev) =>
@@ -270,12 +419,15 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                       if (parts[1] !== undefined) scoreAwayDisplay = parts[1];
                     }
 
+                    const matchGoals = goalsByFixture[match.id] || [];
+
                     return (
-                      <React.Fragment key={match.id}>
-                        <div
-                          onClick={() => handleMatchClick(match)}
-                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
-                        >
+                      <div
+                        key={match.id}
+                        onClick={() => handleMatchClick(match)}
+                        className="hover:bg-[#f5f8fc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between px-3 py-2.5">
                         {/* Left Column: Star & Match Status / Time */}
                         <div className="flex items-center gap-2 shrink-0">
                           <button
@@ -433,7 +585,35 @@ export const TeamFixturesTab: React.FC<TeamFixturesTabProps> = ({
                           ) : null}
                         </div>
                       </div>
-                    </React.Fragment>
+
+                      {/* Scorers and Assisters below the match for played matches */}
+                      {matchGoals.length > 0 && (
+                        <div className="pt-1.5 pb-2.5 px-3 sm:px-4 pl-3 sm:pl-[84px] border-t border-slate-100 dark:border-[#162a42] bg-slate-50/50 dark:bg-[#0c1827]/40 flex flex-col gap-1 text-[11px] sm:text-xs">
+                          {matchGoals.map((goal, gIdx) => (
+                            <div
+                              key={goal.id || gIdx}
+                              className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200 min-w-0"
+                            >
+                              <span className="font-extrabold text-slate-900 dark:text-white truncate">
+                                {goal.scorerName}
+                              </span>
+                              <span className="select-none text-xs shrink-0">⚽</span>
+                              <span className="w-1 shrink-0" />
+                              {goal.assisterName ? (
+                                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-medium truncate">
+                                  <AssistIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 inline-block" />
+                                  <span className="truncate">{goal.assisterName}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 capitalize truncate">
+                                  {goal.goalType}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>

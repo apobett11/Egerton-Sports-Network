@@ -43,7 +43,7 @@ export const TeamDetailsContainer: React.FC<TeamDetailsContainerProps> = ({
         return tabParam as TeamDetailTabType;
       }
     }
-    return 'analytics';
+    return 'fixtures';
   });
   const [team, setTeam] = useState<FullTeamRecord | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
