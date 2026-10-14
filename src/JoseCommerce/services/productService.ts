@@ -3,6 +3,7 @@ import { Product, ProductClass, Category, SortOption, ProductImage } from '../ty
 import { MOCK_PRODUCTS } from '../data/mockProducts';
 import { CATEGORIES } from '../data/categories';
 import { PRODUCT_CLASSES } from './productIdService';
+import { getCachedCatalog, getCachedCategories } from './storeCacheService';
 
 export interface FetchProductsParams {
   classCode?: string;       // e.g. 'T', 'P', 'F', 'C', 'E' or 'all'
@@ -15,6 +16,7 @@ export interface FetchProductsParams {
   minRating?: number;
   priceRange?: [number, number];
   inStockOnly?: boolean;
+  forceLive?: boolean;      // Only set to true when fresh database query is mandatory
 }
 
 export interface FetchProductsResult {
@@ -74,8 +76,8 @@ function mapDatabaseProduct(row: any): Product {
 
 /**
  * High-performance, indexed, paginated product retrieval
- * Prevents N+100 queries by fetching product metadata and images in a SINGLE round-trip join
- * Enforces class superiority: classes filter categories and products first
+ * Uses persistent client caching to bring database API calls and egress down to zero.
+ * Enforces class superiority: classes filter categories and products first.
  */
 export async function fetchProducts(params: FetchProductsParams = {}): Promise<FetchProductsResult> {
   const {
@@ -89,10 +91,32 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
     minRating = 0,
     priceRange,
     inStockOnly = false,
+    forceLive = false,
   } = params;
 
   const offset = (page - 1) * pageSize;
 
+  // 1. Check persistent client cache if forceLive is false (reduces DB CPU & egress to zero)
+  if (!forceLive) {
+    const cachedCatalog = getCachedCatalog();
+    if (cachedCatalog && cachedCatalog.length > 0) {
+      return filterAndPaginateProducts(cachedCatalog, {
+        classCode,
+        categorySlug,
+        search,
+        audience,
+        inStockOnly,
+        minRating,
+        priceRange,
+        sortBy,
+        offset,
+        pageSize,
+        page,
+      });
+    }
+  }
+
+  // 2. Query Supabase only when forceLive is requested or cache is unseeded
   if (isSupabaseConfigured) {
     try {
       // Single query with joined image relations (avoids N+100)
@@ -179,7 +203,41 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
   }
 
   // Graceful local fallback respecting Class Superiority & Paginated limits
-  let filtered = MOCK_PRODUCTS.filter((prod) => {
+  const fallbackCatalog = getCachedCatalog() || MOCK_PRODUCTS;
+  return filterAndPaginateProducts(fallbackCatalog, {
+    classCode,
+    categorySlug,
+    search,
+    audience,
+    inStockOnly,
+    minRating,
+    priceRange,
+    sortBy,
+    offset,
+    pageSize,
+    page,
+  });
+}
+
+function filterAndPaginateProducts(
+  sourceCatalog: Product[],
+  options: {
+    classCode: string;
+    categorySlug: string;
+    search: string;
+    audience: string;
+    inStockOnly: boolean;
+    minRating: number;
+    priceRange?: [number, number];
+    sortBy: SortOption;
+    offset: number;
+    pageSize: number;
+    page: number;
+  }
+): FetchProductsResult {
+  const { classCode, categorySlug, search, audience, inStockOnly, minRating, priceRange, sortBy, offset, pageSize, page } = options;
+
+  let filtered = sourceCatalog.filter((prod) => {
     // 1. Superior Class Filter
     if (classCode && classCode !== 'all') {
       const cls = classCode.toUpperCase();
@@ -254,9 +312,15 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
 }
 
 /**
- * Single product fetch by ID to avoid heavy catalog transfers
+ * Single product fetch by ID to avoid heavy catalog transfers.
+ * Checks persistent cache first to reduce Supabase queries and egress to zero.
  */
 export async function fetchProductById(productId: string): Promise<Product | null> {
+  const cachedItem = getCachedCatalog().find((p) => p.id === productId);
+  if (cachedItem) {
+    return cachedItem;
+  }
+
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
@@ -283,13 +347,15 @@ export async function fetchProductById(productId: string): Promise<Product | nul
 }
 
 /**
- * Fetches categories scoped within a superior class
+ * Fetches categories scoped within a superior class.
+ * Uses cached categories to avoid egress/database overhead.
  */
 export function getCategoriesByClass(classCode: string = 'all'): Category[] {
-  if (!classCode || classCode === 'all') return CATEGORIES;
+  const baseCategories = getCachedCategories() || CATEGORIES;
+  if (!classCode || classCode === 'all') return baseCategories;
 
   const cls = classCode.toUpperCase();
-  return CATEGORIES.filter((cat) => {
+  return baseCategories.filter((cat) => {
     switch (cls) {
       case 'T': return cat.slug === 'pitch-training' || cat.slug === 'kit' || cat.slug === 'boots-and-balls' || cat.slug === 'goalkeepers';
       case 'I': return cat.slug === 'fitness-and-training' || cat.slug === 'kit' || cat.slug === 'goalkeepers' || cat.slug === 'boots-and-balls';

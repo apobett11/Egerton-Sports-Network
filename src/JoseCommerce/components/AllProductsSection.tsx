@@ -30,6 +30,7 @@ interface AllProductsSectionProps {
   onSearchChange?: (query: string) => void;
   onClearSearch?: () => void;
   selectedClass?: string;
+  onHasMoreChange?: (hasMore: boolean) => void;
 }
 
 export const AllProductsSection: React.FC<AllProductsSectionProps> = ({
@@ -46,6 +47,7 @@ export const AllProductsSection: React.FC<AllProductsSectionProps> = ({
   onSearchChange,
   onClearSearch,
   selectedClass = 'all',
+  onHasMoreChange,
 }) => {
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
@@ -63,6 +65,12 @@ export const AllProductsSection: React.FC<AllProductsSectionProps> = ({
     setLoadedSectionsCount(1);
     setIsPreloadingNext(false);
   }, [products.length, filters.category, filters.audience, filters.sortBy]);
+
+  // Notify parent whether more products remain to be loaded
+  useEffect(() => {
+    const hasMore = loadedSectionsCount < totalSections && products.length > 0;
+    onHasMoreChange?.(hasMore);
+  }, [loadedSectionsCount, totalSections, products.length, onHasMoreChange]);
 
   // Preload next section when scrolling approaches end of current section
   useEffect(() => {
@@ -349,18 +357,42 @@ export const AllProductsSection: React.FC<AllProductsSectionProps> = ({
                 ))}
               </div>
 
-              {/* Seamless Batch Preloader Sentinel */}
+              {/* Seamless Batch Preloader Buffer (Prevents bottom from flashing or showing prematurely) */}
               {loadedSectionsCount < totalSections ? (
                 <div 
                   ref={sentinelRef}
-                  className="py-4 flex items-center justify-center gap-2 text-xs text-slate-400 font-medium"
+                  className="pt-3 pb-12 space-y-3.5"
                 >
-                  <Loader2 className={`w-4 h-4 text-blue-500 ${isPreloadingNext ? 'animate-spin' : ''}`} />
-                  <span>Loading more equipment...</span>
+                  {/* High-visibility Batch Skeleton Placeholders */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+                    {Array.from({ length: Math.min(SECTION_SIZE, products.length - renderedProducts.length) }).map((_, i) => (
+                      <div
+                        key={`store-batch-skel-${i}`}
+                        className={`h-56 sm:h-64 rounded-2xl border p-3 flex flex-col justify-between animate-pulse ${
+                          isDark ? 'bg-[#102237] border-slate-800' : 'bg-slate-100 border-slate-200'
+                        }`}
+                      >
+                        <div className="w-full h-32 rounded-xl bg-slate-700/20" />
+                        <div className="space-y-2 mt-2">
+                          <div className="h-3 w-3/4 rounded-sm bg-slate-700/20" />
+                          <div className="h-2.5 w-1/2 rounded-sm bg-slate-700/15" />
+                        </div>
+                        <div className="h-6 w-full rounded-lg bg-slate-700/20 mt-2" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Batch Loading Indicator Bar */}
+                  <div className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-semibold shadow-xs transition-colors ${
+                    isDark ? 'bg-[#102237] border-slate-700/60 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                  }`}>
+                    <Loader2 className="w-4 h-4 text-[#ff0046] animate-spin shrink-0" />
+                    <span>Loading next batch ({renderedProducts.length} of {products.length} equipment loaded)...</span>
+                  </div>
                 </div>
               ) : (
-                <div className="py-3 text-center text-[11px] text-slate-400 font-medium border-t border-slate-700/20">
-                  Showing all {products.length} products
+                <div className="py-4 text-center text-xs text-slate-400 font-semibold border-t border-slate-700/20">
+                  Showing all {products.length} products • End of catalog
                 </div>
               )}
             </div>

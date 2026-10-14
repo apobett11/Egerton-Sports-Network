@@ -21,8 +21,8 @@ import { ContactBottomModal } from './components/ContactBottomModal';
 import { CategoriesBottomModal } from './components/CategoriesBottomModal';
 import { OrdersModal } from './components/OrdersModal';
 import { ProfileBottomModal } from './components/ProfileBottomModal';
-import { SectionSkeleton } from './components/StoreSkeletons';
 import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCache } from './services/cartCacheService';
+import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './services/storeCacheService';
 
 import { CATEGORIES } from './data/categories';
 import { MOCK_PRODUCTS } from './data/mockProducts';
@@ -152,22 +152,20 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [businessContact, setBusinessContact] = useState<BusinessContactSettings>(getStoredBusinessContact);
   const [adminProfile, setAdminProfile] = useState<AdminProfile>(getStoredAdminProfile);
   const [productsList, setProductsList] = useState<Product[]>(() => {
-    try {
-      const cached = sessionStorage.getItem('esn_jose_catalog_cache_v1');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return MOCK_PRODUCTS;
+    return getCachedCatalog();
   });
+  const [hasMoreProducts, setHasMoreProducts] = useState<boolean>(true);
 
+  // Sync catalog updates across instances
   useEffect(() => {
-    try {
-      if (!sessionStorage.getItem('esn_jose_catalog_cache_v1')) {
-        sessionStorage.setItem('esn_jose_catalog_cache_v1', JSON.stringify(productsList));
+    const handleCatalogUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Product[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setProductsList(customEvent.detail);
       }
-    } catch {}
+    };
+    window.addEventListener('esn_store_catalog_updated', handleCatalogUpdate);
+    return () => window.removeEventListener('esn_store_catalog_updated', handleCatalogUpdate);
   }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -581,10 +579,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
 
   // Filter updates
   const handleFilterChange = (partial: Partial<FilterState>) => {
+    setHasMoreProducts(true);
     setFilters((prev) => ({ ...prev, ...partial }));
   };
 
   const handleResetFilters = () => {
+    setHasMoreProducts(true);
     setFilters(INITIAL_FILTERS);
   };
 
@@ -792,16 +792,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           saveStoredAdminProfile(newProf);
         }}
         onAddProduct={(newProd) => {
-          setProductsList((prev) => [newProd, ...prev]);
+          setProductsList((prev) => {
+            const next = [newProd, ...prev];
+            setCachedCatalog(next);
+            return next;
+          });
         }}
         onUpdateProductStock={(prodId, newStock) => {
-          setProductsList((prev) =>
-            prev.map((p) =>
+          setProductsList((prev) => {
+            const next = prev.map((p) =>
               p.id === prodId
                 ? { ...p, stockCount: newStock, inStock: newStock > 0 }
                 : p
-            )
-          );
+            );
+            setCachedCatalog(next);
+            return next;
+          });
         }}
         onBackToStore={() => setCurrentView('store')}
         theme={theme}
@@ -1071,6 +1077,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             addedProductIds={cartedProductIds}
             onBack={handleBack}
             theme={theme}
+            onHasMoreChange={setHasMoreProducts}
           />
         </main>
       ) : (
@@ -1133,27 +1140,32 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           onSearchChange={(query) => handleFilterChange({ searchQuery: query })}
           onClearSearch={() => handleFilterChange({ searchQuery: '' })}
           selectedClass={selectedClass}
+          onHasMoreChange={setHasMoreProducts}
         />
 
-        {/* 5. Depot Pickup & Gate Guidance + Contact Store Concierge */}
-        <DepotGuidanceSection theme={theme} />
+        {/* 5. Depot Pickup & Gate Guidance: ONLY shown once all products finish loading */}
+        {!hasMoreProducts && (
+          <DepotGuidanceSection theme={theme} />
+        )}
       </main>
       )}
 
-      {/* Reduced small minimal footer with sidebar offset */}
-      <div className="sm:pl-16 xl:pl-52 transition-all">
-        <Footer 
-          onBackToLiveScore={handleBack}
-          onSelectCategory={(slug) => {
-            setActiveNav('categories');
-            setSelectedCategorySlug(slug);
-            setPreviousView(currentView === 'category' ? 'store' : currentView);
-            setCurrentView('category');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }} 
-          theme={theme}
-        />
-      </div>
+      {/* Reduced small minimal footer with sidebar offset: ONLY shown once all products finish loading */}
+      {!hasMoreProducts && (
+        <div className="sm:pl-16 xl:pl-52 transition-all">
+          <Footer 
+            onBackToLiveScore={handleBack}
+            onSelectCategory={(slug) => {
+              setActiveNav('categories');
+              setSelectedCategorySlug(slug);
+              setPreviousView(currentView === 'category' ? 'store' : currentView);
+              setCurrentView('category');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }} 
+            theme={theme}
+          />
+        </div>
+      )}
 
       {/* Floating Back to Top Button */}
       <BackToTopButton theme={theme} />

@@ -16,7 +16,8 @@ import {
   Search,
   X,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Loader2
 } from 'lucide-react';
 import { Product, Category } from '../types';
 import { ProductCard } from './ProductCard';
@@ -31,6 +32,7 @@ interface CategoryListingsPageProps {
   addedProductIds: Set<string>;
   onBack: () => void;
   theme?: 'dark' | 'light';
+  onHasMoreChange?: (hasMore: boolean) => void;
 }
 
 const PRICE_PRESETS = [
@@ -51,6 +53,7 @@ export const CategoryListingsPage: React.FC<CategoryListingsPageProps> = ({
   addedProductIds,
   onBack,
   theme = 'dark',
+  onHasMoreChange,
 }) => {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -60,6 +63,12 @@ export const CategoryListingsPage: React.FC<CategoryListingsPageProps> = ({
   const [customMaxPrice, setCustomMaxPrice] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Sectional Lazy Loading State (Manageable sections with auto preloading & bottom protection)
+  const SECTION_SIZE = 12;
+  const [loadedSectionsCount, setLoadedSectionsCount] = useState<number>(1);
+  const [isPreloadingNext, setIsPreloadingNext] = useState<boolean>(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -177,6 +186,54 @@ export const CategoryListingsPage: React.FC<CategoryListingsPageProps> = ({
 
     return list;
   }, [categoryBaseProducts, searchQuery, selectedPricePreset, customMinPrice, customMaxPrice, sortOrder]);
+
+  const totalSections = Math.max(1, Math.ceil(filteredProducts.length / SECTION_SIZE));
+
+  // Reset loaded sections when category, search, or filters change
+  useEffect(() => {
+    setLoadedSectionsCount(1);
+    setIsPreloadingNext(false);
+  }, [categorySlug, searchQuery, selectedPricePreset, customMinPrice, customMaxPrice, sortOrder]);
+
+  // Notify parent whether more products remain to be loaded
+  useEffect(() => {
+    const hasMore = loadedSectionsCount < totalSections && filteredProducts.length > 0;
+    onHasMoreChange?.(hasMore);
+  }, [loadedSectionsCount, totalSections, filteredProducts.length, onHasMoreChange]);
+
+  // Preload next section when scrolling approaches end of current section
+  useEffect(() => {
+    if (loadedSectionsCount >= totalSections) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first && first.isIntersecting) {
+          setIsPreloadingNext(true);
+          const timer = setTimeout(() => {
+            setLoadedSectionsCount((prev) => Math.min(prev + 1, totalSections));
+            setIsPreloadingNext(false);
+          }, 300);
+          return () => clearTimeout(timer);
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) observer.unobserve(currentSentinel);
+    };
+  }, [loadedSectionsCount, totalSections]);
+
+  const renderedProducts = useMemo(() => {
+    const countToRender = Math.min(loadedSectionsCount * SECTION_SIZE, filteredProducts.length);
+    return filteredProducts.slice(0, countToRender);
+  }, [filteredProducts, loadedSectionsCount]);
 
   const hasActiveFilters =
     selectedPricePreset !== 0 || Boolean(customMinPrice) || Boolean(customMaxPrice) || sortOrder !== 'default';
@@ -435,16 +492,57 @@ export const CategoryListingsPage: React.FC<CategoryListingsPageProps> = ({
 
         {/* Full Listings Grid (Directly below heading, randomized order) */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5 pt-1">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onOpenDetails={onOpenDetails}
-                onQuickAdd={onQuickAdd}
-                isAdded={addedProductIds.has(product.id)}
-              />
-            ))}
+          <div className="space-y-4 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+              {renderedProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onOpenDetails={onOpenDetails}
+                  onQuickAdd={onQuickAdd}
+                  isAdded={addedProductIds.has(product.id)}
+                />
+              ))}
+            </div>
+
+            {/* Seamless Batch Preloader Buffer (Prevents bottom from flashing or showing prematurely) */}
+            {loadedSectionsCount < totalSections ? (
+              <div 
+                ref={sentinelRef}
+                className="pt-3 pb-12 space-y-3.5"
+              >
+                {/* High-visibility Batch Skeleton Placeholders */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+                  {Array.from({ length: Math.min(SECTION_SIZE, filteredProducts.length - renderedProducts.length) }).map((_, i) => (
+                    <div
+                      key={`cat-batch-skel-${i}`}
+                      className={`h-56 sm:h-64 rounded-2xl border p-3 flex flex-col justify-between animate-pulse ${
+                        isDark ? 'bg-[#102237] border-slate-800' : 'bg-slate-100 border-slate-200'
+                      }`}
+                    >
+                      <div className="w-full h-32 rounded-xl bg-slate-700/20" />
+                      <div className="space-y-2 mt-2">
+                        <div className="h-3 w-3/4 rounded-sm bg-slate-700/20" />
+                        <div className="h-2.5 w-1/2 rounded-sm bg-slate-700/15" />
+                      </div>
+                      <div className="h-6 w-full rounded-lg bg-slate-700/20 mt-2" />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Batch Loading Indicator Bar */}
+                <div className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-center gap-2.5 text-xs font-semibold shadow-xs transition-colors ${
+                  isDark ? 'bg-[#102237] border-slate-700/60 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                }`}>
+                  <Loader2 className="w-4 h-4 text-[#ff0046] animate-spin shrink-0" />
+                  <span>Loading next batch ({renderedProducts.length} of {filteredProducts.length} equipment loaded)...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-slate-400 font-semibold border-t border-slate-700/20">
+                Showing all {filteredProducts.length} products • End of {currentCategory.name} catalog
+              </div>
+            )}
           </div>
         ) : (
           <div className={`rounded-2xl border border-dashed p-12 text-center space-y-3 ${
