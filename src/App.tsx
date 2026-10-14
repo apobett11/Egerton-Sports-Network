@@ -17,6 +17,7 @@ import { RichNotificationDropdown } from './components/common/RichNotificationDr
 import { HomePage } from './pages/public/HomePage';
 import { MatchDetailsContainer } from './components/MatchDetails/MatchDetailsContainer';
 import { TeamDetailsContainer } from './components/TeamDetails/TeamDetailsContainer';
+import { TeamDirectorySelector } from './components/TeamDetails/TeamDirectorySelector';
 import { LoginPage, type AllowedRole } from './components/Auth/LoginPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
@@ -173,6 +174,7 @@ export const AppContent: React.FC = () => {
     } catch {}
     return h;
   });
+  const [hasSeenTeamProfile, setHasSeenTeamProfile] = useState<boolean>(false);
 
   const { role, user, logout } = useAuth();
   const isAuthenticated = Boolean(user && role !== 'guest');
@@ -574,6 +576,12 @@ export const AppContent: React.FC = () => {
   // Sync route on hash change
   useEffect(() => {
     const sharePath = window.location.pathname.replace(/\/$/, '');
+    if (sharePath === '/team-profile' || sharePath === '/teams' || sharePath === '/team-profiles') {
+      window.history.replaceState(null, '', '/#/team-profile');
+      window.location.hash = '#/team-profile';
+      setRoute('team-profile');
+      return;
+    }
     if (sharePath === '/share/predictions' || sharePath === '/predictions') {
       window.history.replaceState(null, '', '/#/predictions');
       window.location.hash = '#/predictions';
@@ -835,9 +843,39 @@ export const AppContent: React.FC = () => {
 
   const handleBackFromTeam = () => {
     setSelectedTeamId(null);
+    if (
+      route === 'team-profile' ||
+      route === 'teams' ||
+      route === 'team-profiles' ||
+      sessionStorage.getItem('esn_current_route') === 'team-profile' ||
+      hasSeenTeamProfile
+    ) {
+      setHasSeenTeamProfile(true);
+      setRoute('team-profile');
+      window.location.hash = '#/team-profile';
+      try {
+        sessionStorage.setItem('esn_current_route', 'team-profile');
+      } catch {}
+    } else {
+      setRoute('home');
+      // Clear hash completely so the URL is just the bare domain
+      history.pushState(null, '', window.location.pathname + window.location.search);
+      try {
+        sessionStorage.setItem('esn_current_route', 'home');
+      } catch {}
+    }
+  };
+
+  const handleSelectTeamFromDirectory = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    setHasSeenTeamProfile(true);
+  };
+
+  const handleCloseTeamDirectory = () => {
+    setSelectedTeamId(null);
     setRoute('home');
-    // Clear hash completely so the URL is just the bare domain
-    history.pushState(null, '', window.location.pathname + window.location.search);
+    setActiveTab('table');
+    window.location.hash = '#/table';
     try {
       sessionStorage.setItem('esn_current_route', 'home');
     } catch {}
@@ -1340,11 +1378,17 @@ export const AppContent: React.FC = () => {
         )}
 
         {/* Main Switch Router */}
-        {selectedTeamId || route.startsWith('team/') ? (
+        {selectedTeamId || (route.startsWith('team/') && !route.startsWith('team-profile')) ? (
           <TeamDetailsContainer
             teamId={selectedTeamId || route.replace(/^team\/?/, '').split('/')[0].split('?')[0]}
             onBack={handleBackFromTeam}
             onSelectMatch={handleMatchClick}
+          />
+        ) : (route === 'team-profile' || route === 'teams' || route === 'team-profiles') ? (
+          <TeamDirectorySelector
+            onSelectTeam={handleSelectTeamFromDirectory}
+            onClose={handleCloseTeamDirectory}
+            hasSeenProfile={hasSeenTeamProfile}
           />
         ) : selectedMatch || route.startsWith('match/') ? (
           selectedMatch ? (
