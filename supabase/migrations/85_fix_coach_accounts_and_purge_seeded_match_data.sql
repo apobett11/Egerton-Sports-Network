@@ -11,11 +11,11 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 DO $$
 DECLARE
-  v_pw_emsa TEXT := extensions.crypt('CoachEmsa2026!#10', extensions.gen_salt('bf'));
-  v_pw_tatton TEXT := extensions.crypt('CoachTatton2026!#20', extensions.gen_salt('bf'));
-  v_pw_talanta TEXT := extensions.crypt('CoachTalanta2026!#30', extensions.gen_salt('bf'));
-  v_pw_youngstars TEXT := extensions.crypt('CoachYoungStars2026!#40', extensions.gen_salt('bf'));
-  v_pw_law TEXT := extensions.crypt('CoachLaw2026!#50', extensions.gen_salt('bf'));
+  v_pw_emsa TEXT := extensions.crypt('EgerCoach2026!#4410', extensions.gen_salt('bf'));
+  v_pw_tatton TEXT := extensions.crypt('EgerCoach2026!#5530', extensions.gen_salt('bf'));
+  v_pw_talanta TEXT := extensions.crypt('EgerCoach2026!#6620', extensions.gen_salt('bf'));
+  v_pw_youngstars TEXT := extensions.crypt('EgerCoach2026!#8840', extensions.gen_salt('bf'));
+  v_pw_law TEXT := extensions.crypt('EgerCoach2026!#3370', extensions.gen_salt('bf'));
 
   v_uid_emsa UUID := 'c0ac0000-0000-4000-8000-000000000004';
   v_uid_tatton UUID := 'c0ac0000-0000-4000-8000-000000000010';
