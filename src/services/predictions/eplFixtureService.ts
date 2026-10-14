@@ -443,19 +443,8 @@ class EplFixtureService {
         return cachedWeekend;
       }
 
-      // Check if derby config exists in DB
+      // Check if derby config exists in DB without querying missing table (avoids 404 network spam)
       let derbyMap = new Map<string, boolean>();
-      try {
-        const { data: derbyConfigs } = await supabase
-          .from('matchday_derby_config')
-          .select('fixture_id')
-          .eq('is_active', true);
-        if (derbyConfigs) {
-          derbyConfigs.forEach((d: any) => derbyMap.set(d.fixture_id, true));
-        }
-      } catch {
-        // use default fallback derby rules
-      }
 
       const parsed: Match[] = fixtures.map((f: any, idx: number) => {
         const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team;

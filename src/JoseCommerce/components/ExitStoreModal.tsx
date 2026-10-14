@@ -32,7 +32,7 @@ export const ExitStoreModal: React.FC<ExitStoreModalProps> = ({
     }).format(amount);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 
@@ -41,7 +41,7 @@ export const ExitStoreModal: React.FC<ExitStoreModalProps> = ({
 
       {/* Bottom Popup Dialog */}
       <div 
-        className={`relative w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl border transition-all duration-300 z-10 animate-bottom-sheet max-h-[88vh] flex flex-col ${
+        className={`relative w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl border transition-all duration-300 z-10 animate-bottom-sheet max-h-[82vh] flex flex-col mb-1 sm:mb-0 ${
           isDark 
             ? 'bg-[#0f1d2e] border-slate-700 text-white shadow-black/80' 
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300'

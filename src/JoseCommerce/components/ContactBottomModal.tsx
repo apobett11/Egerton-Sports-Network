@@ -29,17 +29,19 @@ export const ContactBottomModal: React.FC<ContactBottomModalProps> = ({
 
   const isDark = theme === 'dark';
   const contact = getStoredBusinessContact();
-  const rawPhone = contact.whatsappNumber || contact.callPhoneNumber || '254700000000';
-  const cleanPhone = rawPhone.replace(/\D/g, '') || '254700000000';
+  const rawWa = contact.whatsappNumber || '254700000000';
+  const cleanWaPhone = rawWa.replace(/\D/g, '') || '254700000000';
+  const rawCall = contact.callPhoneNumber || '254700000000';
+  const cleanCallPhone = rawCall.replace(/\D/g, '') || '254700000000';
   const email = contact.businessEmail || 'store@egerscore.co.ke';
 
   const handleWhatsApp = () => {
-    window.open(`https://wa.me/${cleanPhone}?text=Hi%2C%20I%20am%20inquiring%20about%20Jose%20Commerce%20gear`, '_blank');
+    window.open(`https://wa.me/${cleanWaPhone}?text=Hi%2C%20I%20am%20inquiring%20about%20Jose%20Commerce%20gear`, '_blank');
   };
 
   const handleCallDesk = () => {
-    // "if call, open the whatsapp direct to teh number"
-    window.open(`https://wa.me/${cleanPhone}?text=Hello%20Call%20Desk%2C%20I%20am%20calling%20regarding%20my%20order`, '_blank');
+    // "teh call desk should go to call, not whatsapp. it should go to dialpad."
+    window.location.href = `tel:+${cleanCallPhone}`;
   };
 
   const handleEmailDesk = () => {
@@ -53,16 +55,16 @@ export const ContactBottomModal: React.FC<ContactBottomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-40 flex items-end justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop: Clicking outside closes the popup */}
       <div 
         className="fixed inset-0" 
         onClick={onClose} 
       />
 
-      {/* Bottom Popup Dialog: Only the 4 buttons */}
+      {/* Bottom Popup Dialog: Only the 4 buttons, emerges behind menu in full view */}
       <div 
-        className={`relative w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl border transition-all duration-300 z-10 animate-bottom-sheet flex flex-col ${
+        className={`relative w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl border transition-all duration-300 z-10 animate-bottom-sheet flex flex-col mb-1 sm:mb-0 ${
           isDark 
             ? 'bg-[#0f1d2e] border-slate-700 text-white shadow-black/80' 
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300'

@@ -21,6 +21,7 @@ import { ContactBottomModal } from './components/ContactBottomModal';
 import { CategoriesBottomModal } from './components/CategoriesBottomModal';
 import { OrdersModal } from './components/OrdersModal';
 import { ProfileBottomModal } from './components/ProfileBottomModal';
+import { SectionSkeleton } from './components/StoreSkeletons';
 import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCache } from './services/cartCacheService';
 
 import { CATEGORIES } from './data/categories';
@@ -150,7 +151,24 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [checkoutSettings, setCheckoutSettings] = useState<AdminCheckoutSettings>(getStoredCheckoutSettings);
   const [businessContact, setBusinessContact] = useState<BusinessContactSettings>(getStoredBusinessContact);
   const [adminProfile, setAdminProfile] = useState<AdminProfile>(getStoredAdminProfile);
-  const [productsList, setProductsList] = useState<Product[]>(MOCK_PRODUCTS);
+  const [productsList, setProductsList] = useState<Product[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('esn_jose_catalog_cache_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_PRODUCTS;
+  });
+
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem('esn_jose_catalog_cache_v1')) {
+        sessionStorage.setItem('esn_jose_catalog_cache_v1', JSON.stringify(productsList));
+      }
+    } catch {}
+  }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     const user = getCurrentUser();
@@ -405,16 +423,33 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     setIsExitModalOpen(true);
   };
 
-  // Browser History & Popstate integration:
-  // Every time a modal or view changes, we push state to browser history
-  // When user clicks the browser Back button or device back gesture:
   useEffect(() => {
-    window.history.pushState({ joseCommerce: true, root: true }, '');
+    const hasOpenModalOrSubView = 
+      isExitModalOpen ||
+      Boolean(specsModalProduct) ||
+      isCheckoutOpen ||
+      isCartOpen ||
+      isCategoriesModalOpen ||
+      isOrdersModalOpen ||
+      isOrderTrackingOpen ||
+      isContactModalOpen ||
+      isProfileModalOpen ||
+      isUserDashboardOpen ||
+      isAuthModalOpen ||
+      isMobileSearchActive ||
+      Boolean(selectedProduct) ||
+      currentView !== 'store';
+
+    if (hasOpenModalOrSubView) {
+      window.history.pushState({ joseCommerceModal: true }, '', window.location.href);
+    }
 
     const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      window.history.pushState({ joseCommerce: true }, '');
-      handleBack();
+      if (hasOpenModalOrSubView) {
+        e.preventDefault();
+        window.history.pushState({ joseCommerceModal: true }, '', window.location.href);
+        handleBack();
+      }
     };
 
     window.addEventListener('popstate', handlePopState);

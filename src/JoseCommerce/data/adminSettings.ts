@@ -13,11 +13,20 @@ export const DEFAULT_CHECKOUT_SETTINGS: AdminCheckoutSettings = {
 };
 
 export const DEFAULT_BUSINESS_CONTACT: BusinessContactSettings = {
-  businessEmail: '',
-  callPhoneNumber: '',
-  whatsappNumber: '',
-  operatingHours: '',
-  depotLocation: '',
+  businessEmail: 'store@egerscore.co.ke',
+  callPhoneNumber: '+254700000000',
+  whatsappNumber: '+254700000000',
+  operatingHours: 'Mon - Sat: 8:00 AM - 7:00 PM (EAT)',
+  depotLocation: 'Egerton Gate B Sports Pavilion Locker Depot',
+  callCountryCode: '+254',
+  callLocalNumber: '700000000',
+  whatsappCountryCode: '+254',
+  whatsappLocalNumber: '700000000',
+  startDay: 'Monday',
+  startHour: '08:00',
+  endDay: 'Saturday',
+  endHour: '19:00',
+  isOpen24Hours: false,
 };
 
 export const DEFAULT_ADMIN_PROFILE: AdminProfile = {

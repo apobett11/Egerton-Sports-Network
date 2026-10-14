@@ -52,6 +52,7 @@ const PresidentSeasonModeApp = lazy(() => import("./President's Season Mode/page
 const PasswordResetOnboarding = lazy(() => import('./components/Auth/PasswordResetOnboarding').then(m => ({ default: m.PasswordResetOnboarding })));
 const PlayerRegistrationPage = lazy(() => import('./pages/public/PlayerRegistrationPage'));
 const JoseCommerceApp = lazy(() => import('./JoseCommerce/App'));
+import { StorePageSkeleton } from './JoseCommerce/components/StoreSkeletons';
 
 const DashboardLoader: React.FC = () => (
   <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center gap-4 text-emerald-500">
@@ -1123,7 +1124,7 @@ export const AppContent: React.FC = () => {
     }
 
     return (
-      <Suspense fallback={<DashboardLoader />}>
+      <Suspense fallback={<StorePageSkeleton theme={darkMode ? 'dark' : 'light'} />}>
         <JoseCommerceApp onBackToLiveScore={() => handleNavigateHash('/home')} />
       </Suspense>
     );

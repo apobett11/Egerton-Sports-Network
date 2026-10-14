@@ -97,35 +97,39 @@ export function serializeReactions(reactions: BroadcastReactions): string {
   });
 }
 
+let isBroadcastTableAvailable: boolean = false;
+
 export class BroadcastService {
   /**
    * Fetch recent broadcast history (no realtime channel, single fast HTTP query)
    */
   static async getRecentBroadcasts(limit: number = 20): Promise<BroadcastNotification[]> {
-    try {
-      const { data, error } = await supabase
-        .from('broadcast_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+    if (isBroadcastTableAvailable) {
+      try {
+        const { data, error } = await supabase
+          .from('broadcast_notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
 
-      if (!error && data && data.length > 0) {
-        const mapped: BroadcastNotification[] = data.map((row: any) => ({
-          id: String(row.id),
-          title: String(row.title || ''),
-          message: String(row.message || ''),
-          image_url: row.image_url ? String(row.image_url) : null,
-          category: String(row.category || 'ANNOUNCEMENT'),
-          action_url: row.action_url ? String(row.action_url) : null,
-          reactions: parseReactions(row.reactions),
-          scheduled_for: row.scheduled_for ? String(row.scheduled_for) : null,
-          created_at: row.created_at,
-        }));
-        this.saveLocalHistory(mapped);
-        return mapped;
+        if (!error && data && data.length > 0) {
+          const mapped: BroadcastNotification[] = data.map((row: any) => ({
+            id: String(row.id),
+            title: String(row.title || ''),
+            message: String(row.message || ''),
+            image_url: row.image_url ? String(row.image_url) : null,
+            category: String(row.category || 'ANNOUNCEMENT'),
+            action_url: row.action_url ? String(row.action_url) : null,
+            reactions: parseReactions(row.reactions),
+            scheduled_for: row.scheduled_for ? String(row.scheduled_for) : null,
+            created_at: row.created_at,
+          }));
+          this.saveLocalHistory(mapped);
+          return mapped;
+        }
+      } catch {
+        // Fallback to local snapshot
       }
-    } catch {
-      // Fallback to local snapshot
     }
 
     return this.getLocalHistory();
@@ -137,34 +141,36 @@ export class BroadcastService {
   static async getLatestUnseenBroadcast(): Promise<BroadcastNotification | null> {
     const lastSeenId = localStorage.getItem(LAST_SEEN_NOTIFICATION_KEY);
 
-    try {
-      const { data, error } = await supabase
-        .from('broadcast_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    if (isBroadcastTableAvailable) {
+      try {
+        const { data, error } = await supabase
+          .from('broadcast_notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (!error && data) {
-        const notif: BroadcastNotification = {
-          id: String(data.id),
-          title: String(data.title || ''),
-          message: String(data.message || ''),
-          image_url: data.image_url ? String(data.image_url) : null,
-          category: String(data.category || 'DERBY'),
-          action_url: data.action_url ? String(data.action_url) : '#/banter',
-          reactions: parseReactions(data.reactions),
-          scheduled_for: data.scheduled_for ? String(data.scheduled_for) : null,
-          created_at: data.created_at,
-        };
+        if (!error && data) {
+          const notif: BroadcastNotification = {
+            id: String(data.id),
+            title: String(data.title || ''),
+            message: String(data.message || ''),
+            image_url: data.image_url ? String(data.image_url) : null,
+            category: String(data.category || 'DERBY'),
+            action_url: data.action_url ? String(data.action_url) : '#/banter',
+            reactions: parseReactions(data.reactions),
+            scheduled_for: data.scheduled_for ? String(data.scheduled_for) : null,
+            created_at: data.created_at,
+          };
 
-        if (notif.id !== lastSeenId) {
-          return notif;
+          if (notif.id !== lastSeenId) {
+            return notif;
+          }
+          return null;
         }
-        return null;
+      } catch {
+        // Local fallback
       }
-    } catch {
-      // Local fallback
     }
 
     const localHistory = this.getLocalHistory();

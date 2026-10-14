@@ -193,13 +193,13 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
             </div>
           )}
 
-          {/* Mobile-Only Class Selection Bar: Below Categories Header */}
+          {/* Mobile-Only Class Selection Bar: Condensed to width of word with equal spacing */}
           {onSelectClass && (
-            <div className="sm:hidden flex items-center gap-1.5 p-1 mb-3 bg-[#18324f] dark:bg-[#122438] rounded-xl border border-[#264c73] overflow-x-auto no-scrollbar text-xs">
+            <div className="sm:hidden flex items-center justify-center gap-1 p-0.5 mb-2.5 bg-[#18324f] dark:bg-[#122438] rounded-xl border border-[#264c73] overflow-x-auto no-scrollbar text-xs w-fit mx-auto">
               <button
                 type="button"
                 onClick={() => onSelectClass('all')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'all'
                     ? 'bg-[#ff0046] text-white shadow-xs'
                     : 'text-slate-300 hover:text-white'
@@ -211,7 +211,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectClass('team')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'team'
                     ? 'bg-[#ff0046] text-white shadow-xs'
                     : 'text-slate-300 hover:text-white'
@@ -223,7 +223,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectClass('individual')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'individual'
                     ? 'bg-[#ff0046] text-white shadow-xs'
                     : 'text-slate-300 hover:text-white'
@@ -235,7 +235,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectClass('training')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'training'
                     ? 'bg-[#ff0046] text-white shadow-xs'
                     : 'text-slate-300 hover:text-white'

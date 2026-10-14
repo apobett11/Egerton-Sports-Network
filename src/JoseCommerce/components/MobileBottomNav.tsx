@@ -296,7 +296,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* ================= 2. MOBILE BOTTOM NAVIGATION ================= */}
       <nav 
-        className={`fixed bottom-0 inset-x-0 z-40 sm:hidden backdrop-blur-xl border-t shadow-2xl pb-safe transition-colors ${
+        className={`fixed bottom-0 inset-x-0 z-50 sm:hidden backdrop-blur-xl border-t shadow-2xl pb-safe transition-colors ${
           isDark 
             ? 'bg-[#0f1d2d]/95 border-slate-700/80 text-white shadow-[0_-6px_20px_rgba(0,0,0,0.5)]' 
             : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]'

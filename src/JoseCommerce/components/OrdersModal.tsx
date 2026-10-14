@@ -121,7 +121,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     : 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 
@@ -136,7 +136,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
 
       {/* Main Modal Container */}
       <div 
-        className={`relative w-full ${selectedOrder ? 'max-w-3xl' : 'max-w-2xl'} max-h-[92vh] rounded-t-3xl sm:rounded-2xl shadow-2xl border flex flex-col overflow-hidden transition-all duration-300 z-10 animate-bottom-sheet ${
+        className={`relative w-full ${selectedOrder ? 'max-w-3xl' : 'max-w-2xl'} max-h-[82vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden transition-all duration-300 z-10 animate-bottom-sheet mb-1 sm:mb-0 ${
           isDark 
             ? 'bg-[#0f1d2e] border-slate-700 text-slate-100 shadow-black/80' 
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300'

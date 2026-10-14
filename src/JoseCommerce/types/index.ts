@@ -194,6 +194,15 @@ export interface BusinessContactSettings {
   whatsappNumber: string;
   operatingHours: string;
   depotLocation: string;
+  callCountryCode?: string;
+  callLocalNumber?: string;
+  whatsappCountryCode?: string;
+  whatsappLocalNumber?: string;
+  startDay?: string;
+  startHour?: string;
+  endDay?: string;
+  endHour?: string;
+  isOpen24Hours?: boolean;
 }
 
 export interface AdminProfile {
