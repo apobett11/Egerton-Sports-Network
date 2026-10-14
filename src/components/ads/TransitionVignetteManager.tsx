@@ -4,12 +4,12 @@ const VIGNETTE_ZONE = '11954979';
 const VIGNETTE_SCRIPT_URL = 'https://n6wxm.com/vignette.min.js';
 const DWELL_TIME_MS = 2500;       // 2.5 seconds auto-dismissal after new page load
 const MAX_FALLBACK_MS = 5200;     // 5.2 seconds hard safety timeout
-const COUNTER_KEY = 'esn_vignette_nav_count';
+const VIGNETTE_INTERVAL_MS = 90 * 1000; // 1.5 minutes (90 seconds) interval
+const LAST_VIGNETTE_TIME_KEY = 'esn_last_vignette_time';
 
-// Psychological Pacing: 2nd transition, then every 4th transition thereafter (2, 6, 10, 14, ...)
-// Balances user comfort with monetization, engaging the viewer at the optimal psychological moment.
-export const isPacedVignetteTarget = (count: number): boolean => {
-  return count >= 2 && (count - 2) % 4 === 0;
+// Paced Vignette Pacing: Exactly one every 1.5 minutes (90,000 ms)
+export const isPacedVignetteTarget = (lastFiredTime: number, now: number): boolean => {
+  return now - lastFiredTime >= VIGNETTE_INTERVAL_MS;
 };
 
 export const TransitionVignetteManager: React.FC = () => {
@@ -91,7 +91,16 @@ export const TransitionVignetteManager: React.FC = () => {
       window.dispatchEvent(new CustomEvent('esn_refresh_inpage_push'));
     };
 
-    const firePacedVignette = () => {
+    const firePacedVignette = (force: boolean = false) => {
+      const now = Date.now();
+      const lastFired = parseInt(sessionStorage.getItem(LAST_VIGNETTE_TIME_KEY) || '0', 10);
+
+      // Enforce 1.5-minute (90-second) pacing between vignette popups
+      if (!force && lastFired > 0 && !isPacedVignetteTarget(lastFired, now)) {
+        return false;
+      }
+
+      sessionStorage.setItem(LAST_VIGNETTE_TIME_KEY, now.toString());
       setIsActive(true);
 
       // Invoke Monetag vignette ad
@@ -126,7 +135,19 @@ export const TransitionVignetteManager: React.FC = () => {
       fallbackTimerRef.current = setTimeout(() => {
         autoDismissVignette();
       }, MAX_FALLBACK_MS);
+
+      return true;
     };
+
+    // Initialize session timer if not set
+    if (!sessionStorage.getItem(LAST_VIGNETTE_TIME_KEY)) {
+      sessionStorage.setItem(LAST_VIGNETTE_TIME_KEY, Date.now().toString());
+    }
+
+    // Set recurring timer: Exactly one vignette popup every 1.5 minutes (90 seconds)
+    const intervalTimer = setInterval(() => {
+      firePacedVignette(true);
+    }, VIGNETTE_INTERVAL_MS);
 
     const handleTransition = (routeKey?: string) => {
       const now = Date.now();
@@ -139,12 +160,9 @@ export const TransitionVignetteManager: React.FC = () => {
       lastTransitionTimeRef.current = now;
       lastRouteKeyRef.current = currentKey;
 
-      // Read & increment transition counter
-      const currentCount = parseInt(sessionStorage.getItem(COUNTER_KEY) || '0', 10) + 1;
-      sessionStorage.setItem(COUNTER_KEY, currentCount.toString());
-
-      // Pacing check: 2nd transition, then every 4th after that (2, 6, 10, ...)
-      if (isPacedVignetteTarget(currentCount)) {
+      // Check if 1.5 minutes have passed since the last vignette popup
+      const lastFired = parseInt(sessionStorage.getItem(LAST_VIGNETTE_TIME_KEY) || '0', 10);
+      if (isPacedVignetteTarget(lastFired, now)) {
         firePacedVignette();
       }
     };
@@ -164,6 +182,7 @@ export const TransitionVignetteManager: React.FC = () => {
     window.addEventListener('esn_route_transition', handleCustomRouteTransition);
 
     return () => {
+      clearInterval(intervalTimer);
       window.removeEventListener('hashchange', handleHashChange);
       window.removeEventListener('popstate', handleHashChange);
       window.removeEventListener('esn_route_transition', handleCustomRouteTransition);
