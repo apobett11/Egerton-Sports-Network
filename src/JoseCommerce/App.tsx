@@ -18,6 +18,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserDashboardModal } from './components/UserDashboardModal';
 import { ExitStoreModal } from './components/ExitStoreModal';
 import { ContactBottomModal } from './components/ContactBottomModal';
+import { CategoriesBottomModal } from './components/CategoriesBottomModal';
 import { OrdersModal } from './components/OrdersModal';
 import { ProfileBottomModal } from './components/ProfileBottomModal';
 import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCache } from './services/cartCacheService';
@@ -199,6 +200,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [activeNav, setActiveNav] = useState<StorefrontNavTab>('home');
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [cartPresentation, setCartPresentation] = useState<'drawer' | 'bottom-popup'>('drawer');
   const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -342,6 +345,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       setActiveNav(currentView === 'category' ? 'categories' : 'home');
       return;
     }
+    if (isCategoriesModalOpen) {
+      setIsCategoriesModalOpen(false);
+      setActiveNav(currentView === 'category' ? 'categories' : 'home');
+      return;
+    }
     if (isOrdersModalOpen || isOrderTrackingOpen) {
       setIsOrdersModalOpen(false);
       setIsOrderTrackingOpen(false);
@@ -418,6 +426,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     specsModalProduct,
     isCheckoutOpen,
     isCartOpen,
+    isCategoriesModalOpen,
     isOrdersModalOpen,
     isOrderTrackingOpen,
     isContactModalOpen,
@@ -972,7 +981,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       {/* 1. Navy Blue / Light Header at the very top of the page */}
       <Header
         cartCount={totalCartCount}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={() => {
+          setCartPresentation('drawer');
+          setIsCartOpen(true);
+        }}
         onOpenTrackOrders={() => handleOpenOrderTracking()}
         onOpenSearch={() => setIsMobileSearchActive(true)}
         isSearchActive={isMobileSearchActive}
@@ -1129,7 +1141,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         categoriesWithCounts={categoriesWithCounts}
         onOpenCart={() => {
           setActiveNav('cart');
+          setCartPresentation('bottom-popup');
           setIsCartOpen(true);
+        }}
+        onOpenCategories={() => {
+          setActiveNav('categories');
+          setIsCategoriesModalOpen(true);
         }}
         onOpenOrders={() => {
           setActiveNav('orders');
@@ -1164,9 +1181,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         isLoggedIn={Boolean(currentUser)}
       />
 
-      {/* Cart Drawer */}
+      {/* Cart Drawer / Bottom Sheet Popup */}
       <CartDrawer
         isOpen={isCartOpen}
+        presentationMode={cartPresentation}
         onClose={() => {
           setIsCartOpen(false);
           if (activeNav === 'cart') {
@@ -1287,6 +1305,27 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onBrowseCatalog={() => {
           const el = document.getElementById('all-products-catalog') || document.querySelector('main');
           el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        theme={theme}
+      />
+
+      {/* Categories Bottom Sheet Popup (cards with minimal spacing, stems from bottom) */}
+      <CategoriesBottomModal
+        isOpen={isCategoriesModalOpen}
+        onClose={() => {
+          setIsCategoriesModalOpen(false);
+          if (activeNav === 'categories') {
+            setActiveNav(currentView === 'category' ? 'categories' : 'home');
+          }
+        }}
+        categories={categoriesWithCounts}
+        onSelectCategory={(slug) => {
+          setIsCategoriesModalOpen(false);
+          setActiveNav('categories');
+          setSelectedCategorySlug(slug);
+          setPreviousView(currentView === 'category' ? 'store' : currentView);
+          setCurrentView('category');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         theme={theme}
       />

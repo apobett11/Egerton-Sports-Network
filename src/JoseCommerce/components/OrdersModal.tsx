@@ -121,7 +121,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     : 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 
@@ -136,13 +136,15 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
 
       {/* Main Modal Container */}
       <div 
-        className={`relative w-full ${selectedOrder ? 'max-w-3xl' : 'max-w-2xl'} max-h-[92vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden transition-all duration-300 z-10 animate-bottom-sheet ${
+        className={`relative w-full ${selectedOrder ? 'max-w-3xl' : 'max-w-2xl'} max-h-[92vh] rounded-t-3xl sm:rounded-2xl shadow-2xl border flex flex-col overflow-hidden transition-all duration-300 z-10 animate-bottom-sheet ${
           isDark 
             ? 'bg-[#0f1d2e] border-slate-700 text-slate-100 shadow-black/80' 
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile drag handle */}
+        <div className="w-12 h-1.5 rounded-full bg-slate-500/40 mx-auto mt-2.5 -mb-1 sm:hidden" />
         {/* Top Header */}
         <div className={`px-4 sm:px-6 py-3.5 border-b flex items-center justify-between ${
           isDark ? 'bg-[#15273c] border-slate-700' : 'bg-slate-50 border-slate-200'

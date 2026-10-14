@@ -33,6 +33,7 @@ interface MobileBottomNavProps {
   onOpenAuth?: () => void;
   onGoHome: () => void;
   onSelectCategory?: (slug: string) => void;
+  onOpenCategories?: () => void;
   isLoggedIn?: boolean;
   theme?: 'dark' | 'light';
   categoriesWithCounts?: Category[];
@@ -49,6 +50,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenAuth,
   onGoHome,
   onSelectCategory,
+  onOpenCategories,
   isLoggedIn = false,
   theme = 'dark',
   categoriesWithCounts = CATEGORIES,
@@ -91,10 +93,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       label: 'Categories',
       icon: LayoutGrid,
       onClick: () => {
-        setIsCategoryDropdownOpen((prev) => !prev);
         onSelectNav?.('categories');
+        if (onOpenCategories) {
+          setIsCategoryDropdownOpen(false);
+          onOpenCategories();
+        } else {
+          setIsCategoryDropdownOpen((prev) => !prev);
+        }
       },
-      hasDropdown: true,
+      hasDropdown: !onOpenCategories,
     },
     {
       id: 'cart' as StorefrontNavTab,

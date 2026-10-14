@@ -28,6 +28,7 @@ interface CartDrawerProps {
   appliedDiscount: number; // percentage (e.g. 0.1 for 10%)
   onApplyDiscountCode: (code: string) => void;
   checkoutSettings?: AdminCheckoutSettings;
+  presentationMode?: 'drawer' | 'bottom-popup';
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -44,6 +45,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   appliedDiscount,
   onApplyDiscountCode,
   checkoutSettings,
+  presentationMode = 'drawer',
 }) => {
   const [promoInput, setPromoInput] = useState('');
   const [promoError, setPromoError] = useState('');
@@ -78,32 +80,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       maximumFractionDigits: 0,
     }).format(val);
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-      />
+  const isBottomPopup = presentationMode === 'bottom-popup';
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col animate-spring-in">
-          
-          {/* Drawer Header */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between bg-white">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-[#0b1522] text-[#ff0046]">
-                <ShoppingBag className="w-4 h-4" />
-              </span>
-              <div>
-                <h2 className="text-xs sm:text-sm font-black uppercase text-[#0b1522] tracking-wider">
-                  Shopping Cart
-                </h2>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  {checkedItems.length} of {items.length} items checked
-                </span>
-              </div>
-            </div>
+  const cartContent = (
+    <div 
+      className={`${
+        isBottomPopup 
+          ? 'relative w-full max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[88vh] bg-white shadow-2xl flex flex-col animate-bottom-sheet overflow-hidden border border-slate-200 z-10' 
+          : 'w-screen max-w-md bg-white shadow-2xl flex flex-col animate-spring-in'
+      }`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {isBottomPopup && (
+        <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto mt-2.5 -mb-1 sm:hidden" />
+      )}
+
+      {/* Drawer / Popup Header */}
+      <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-lg bg-[#0b1522] text-[#ff0046]">
+            <ShoppingBag className="w-4 h-4" />
+          </span>
+          <div>
+            <h2 className="text-xs sm:text-sm font-black uppercase text-[#0b1522] tracking-wider">
+              Shopping Cart
+            </h2>
+            <span className="text-[10px] text-slate-400 font-semibold">
+              {checkedItems.length} of {items.length} items checked
+            </span>
+          </div>
+        </div>
 
             <div className="flex items-center gap-2">
               {items.length > 0 && (
@@ -335,9 +341,29 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
           )}
+    </div>
+  );
 
-        </div>
+  if (isBottomPopup) {
+    return (
+      <div 
+        className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop"
+        onClick={onClose}
+      >
+        {cartContent}
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs transition-opacity"
+      onClick={onClose}
+    >
+      <div className="absolute inset-y-0 right-0 flex max-w-full pl-10">
+        {cartContent}
       </div>
     </div>
   );
 };
+

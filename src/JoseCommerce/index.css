@@ -88,16 +88,21 @@
 
 @keyframes emilSheetSlideUp {
   0% {
-    opacity: 0;
-    transform: translateY(100%) scale(0.98);
-  }
-  70% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.002);
+    opacity: 0.5;
+    transform: translateY(100%);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+  }
+}
+
+@keyframes emilBackdropFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -132,16 +137,21 @@
 }
 
 .animate-bottom-sheet {
-  animation: emilSheetSlideUp 0.32s var(--spring-smooth) forwards;
+  animation: emilSheetSlideUp 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-bottom-backdrop {
+  animation: emilBackdropFadeIn 0.38s ease-out forwards;
 }
 
 .animate-dropdown-up {
   transform-origin: bottom center;
-  animation: emilDropdownStemUp 0.28s var(--spring-snappy) forwards;
+  animation: emilDropdownStemUp 0.32s var(--spring-snappy) forwards;
 }
 
 .animate-spring-pop {
-  animation: emilPopIn 0.24s var(--spring-bounce) forwards;
+  animation: emilPopIn 0.28s var(--spring-bounce) forwards;
 }
 
 .touch-spring {
