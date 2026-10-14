@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronRight, Trophy, Shield, Loader2 } from 'lucide-react';
+import { X, ChevronRight, Trophy, Loader2 } from 'lucide-react';
 import { TeamLogo } from '../common/TeamLogo';
 import { supabase } from '../../lib/supabase';
 import { readCachedLeagueTable } from '../../services/guestSportsService';
@@ -28,7 +28,7 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
 }) => {
   const [activeLeague, setActiveLeague] = useState<'epl' | 'champ'>('epl');
 
-  // Instant SWR state from cached league tables
+  // Instant SWR state from cached league tables (strictly matching active league IDs)
   const [eplTeams, setEplTeams] = useState<DirectoryTeamItem[]>(() => {
     const cached = readCachedLeagueTable(EPL_COMP_ID);
     if (cached && cached.length > 0) {
@@ -78,10 +78,8 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
 
           data.forEach((t: any) => {
             const compId = t.competition_id || '';
-            const isChamp =
-              compId === CHAMP_COMP_ID ||
-              compId.includes('2222') ||
-              t.name?.toLowerCase().includes('championship');
+            const isChamp = compId === CHAMP_COMP_ID || compId.includes('2222');
+            const isEpl = compId === EPL_COMP_ID || compId.includes('1111');
 
             const item: DirectoryTeamItem = {
               id: t.id,
@@ -91,14 +89,15 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
               competition_id: t.competition_id,
             };
 
+            // Strictly separate by active league; do not leak non-league or friendlies teams
             if (isChamp) {
               champ.push(item);
-            } else {
+            } else if (isEpl) {
               epl.push(item);
             }
           });
 
-          // If cached standings exist, maintain standings order; otherwise sort alphabetically
+          // Order teams by official standings order if cached; otherwise alphabetical
           const eplCached = readCachedLeagueTable(EPL_COMP_ID);
           if (eplCached && eplCached.length > 0) {
             const orderMap = new Map(eplCached.map((item, idx) => [item.teamId, idx]));
@@ -136,44 +135,47 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
     };
   }, []);
 
+  // Show strictly the teams belonging to the selected active league
   const currentTeams = activeLeague === 'epl' ? eplTeams : champTeams;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 py-6 sm:py-10 px-3 sm:px-6 transition-colors select-none">
-      <div className="max-w-2xl mx-auto space-y-5 animate-in fade-in duration-200">
-        {/* Main Header Card */}
-        <div className="bg-white dark:bg-[#0e1c2b] border border-[#e2e8f0] dark:border-[#1a2e45] rounded-2xl p-4 sm:p-6 shadow-xs relative">
-          {/* Close "X" Button in Top Right */}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200 select-none">
+      {/* Premium Popup Card */}
+      <div className="relative w-full max-w-xl bg-white dark:bg-[#0e1c2b] border border-slate-200/90 dark:border-[#1a2e45] rounded-2xl shadow-2xl overflow-hidden my-auto flex flex-col">
+        {/* 1. Modal Top Bar */}
+        <div className="px-4 sm:px-6 pt-5 pb-3 border-b border-slate-100 dark:border-[#16283d] flex items-start justify-between relative bg-white dark:bg-[#0e1c2b]">
+          <div className="pr-8">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#ff0046]/10 text-[#ff0046] text-[10px] font-black uppercase tracking-wider mb-1.5">
+              <Trophy className="w-3 h-3 text-[#ff0046]" />
+              <span>Team Directory</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+              Which team profile do you want to see?
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Select any active team below to open their official team profile.
+            </p>
+          </div>
+
+          {/* Top-Right "X" Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-[#14263b] dark:hover:bg-[#1a3350] border border-slate-200 dark:border-[#1a2e45] transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-[#14263b] dark:hover:bg-[#1a3350] border border-slate-200 dark:border-[#1a2e45] transition-colors cursor-pointer shrink-0"
             aria-label="Close and return to standings"
             title="Close and return to standings"
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
 
-          {/* Heading */}
-          <div className="pr-10">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ff0046]/10 text-[#ff0046] text-[10px] font-black uppercase tracking-wider mb-2">
-              <Shield className="w-3 h-3" />
-              <span>Team Directory</span>
-            </div>
-            <h1 className="text-base sm:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              Which team profile do you want to see?
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Select any team below to view their matches, scorers, assisters, roster, and statistics.
-            </p>
-          </div>
-
-          {/* League Switcher (EPL and Championships Buttons, default EPL) */}
-          <div className="mt-5 flex items-center bg-slate-100 dark:bg-[#14263b] p-1 rounded-xl border border-slate-200 dark:border-[#1a2e45] max-w-sm">
+        {/* 2. League Switcher Buttons: EPL and Championships (Default EPL) */}
+        <div className="px-4 sm:px-6 py-3 bg-[#f8fafc]/50 dark:bg-[#09131f]/50 border-b border-slate-100 dark:border-[#16283d]">
+          <div className="flex items-center bg-slate-100 dark:bg-[#112236] p-1 rounded-xl border border-slate-200 dark:border-[#1a2e45] w-full">
             <button
               type="button"
               onClick={() => setActiveLeague('epl')}
-              className={`flex-1 py-2 px-4 rounded-lg text-xs font-black uppercase transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all cursor-pointer text-center ${
                 activeLeague === 'epl'
                   ? 'bg-[#ff0046] text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -184,7 +186,7 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
             <button
               type="button"
               onClick={() => setActiveLeague('champ')}
-              className={`flex-1 py-2 px-4 rounded-lg text-xs font-black uppercase transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all cursor-pointer text-center ${
                 activeLeague === 'champ'
                   ? 'bg-[#ff0046] text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -195,78 +197,87 @@ export const TeamDirectorySelector: React.FC<TeamDirectorySelectorProps> = ({
           </div>
         </div>
 
-        {/* Team List Container (Like standings table, but no points, no stats—just team names and logos) */}
-        <div className="bg-white dark:bg-[#0c1827] border border-[#e2e8f0] dark:border-[#1a2e45] rounded-2xl overflow-hidden shadow-xs">
-          <div className="px-4 sm:px-5 py-3 bg-slate-50/80 dark:bg-[#112236]/80 border-b border-slate-100 dark:border-[#162a42] flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-3.5 h-3.5 text-amber-500" />
-              <span>
-                {activeLeague === 'epl' ? 'Egerton Premier League' : 'Egerton Championship'} Teams
-              </span>
-            </div>
-            <span className="text-[10px] font-semibold text-slate-400">
-              Tap to View Profile
-            </span>
-          </div>
-
-          {isLoading && currentTeams.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin text-[#ff0046]" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Loading official teams...
-              </span>
-            </div>
-          ) : currentTeams.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs font-semibold">
-              No teams found in this league.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-[#14263b]">
-              {currentTeams.map((team, idx) => (
-                <div
-                  key={team.id}
-                  onClick={() => onSelectTeam(team.id, team.name)}
-                  className="flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-slate-50 dark:hover:bg-[#112236] transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Index like Standings table */}
-                    <span className="w-5 text-center font-mono text-xs font-extrabold text-slate-400 dark:text-slate-500">
-                      {idx + 1}
-                    </span>
-                    <TeamLogo
-                      src={team.logo_url}
-                      teamId={team.id}
-                      alt={team.name}
-                      className="w-8 h-8 rounded-full object-cover bg-slate-100 dark:bg-slate-800 shrink-0 shadow-2xs group-hover:scale-105 transition-transform"
-                    />
-                    <span className="text-xs sm:text-[13px] font-extrabold text-slate-900 dark:text-white truncate group-hover:text-[#ff0046] transition-colors">
-                      {team.name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200">
-                    <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* 3. Subtitle / League Title Banner: Deep green font styling identical to League Table */}
+        <div className="py-1 px-4 sm:px-6 bg-[#f8fafc] dark:bg-[#0c1827] text-center border-b border-slate-200 dark:border-[#16283d]">
+          <span className="text-xs sm:text-[13px] font-bold text-[#1b6b37] dark:text-emerald-400 uppercase tracking-wide">
+            {activeLeague === 'epl' ? 'Egerton Premier League' : 'Egerton Championship'} Teams
+          </span>
         </div>
 
-        {/* Cancel / Close Button below list (especially once one has seen a team profile or wants to return) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        {/* 4. Table-Styled Team List (Exact font, size, color, borders of LeagueTable — without points and stats) */}
+        <div className="w-full overflow-hidden max-h-[52vh] overflow-y-auto">
+          <table className="w-full text-left border-collapse table-fixed">
+            <thead>
+              <tr className="bg-white dark:bg-[#0e1c2b] border-t-2 border-b-2 border-[#cca01a] text-[#1b6b37] dark:text-emerald-400 font-bold text-[11px] sm:text-xs md:text-sm">
+                <th className="py-1.5 px-3 sm:px-4 text-left">Teams</th>
+                <th className="py-1.5 px-3 sm:px-4 text-right w-16">Profile</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-[#0e1c2b]">
+              {isLoading && currentTeams.length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="py-10 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#ff0046]" />
+                      <span>Loading {activeLeague === 'epl' ? 'EPL' : 'Championship'} teams...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : currentTeams.length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="py-8 text-center text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    No teams found in this league.
+                  </td>
+                </tr>
+              ) : (
+                currentTeams.map((team, idx) => (
+                  <tr
+                    key={team.id}
+                    onClick={() => onSelectTeam(team.id, team.name)}
+                    className="border-b border-slate-200 dark:border-slate-800/80 hover:bg-[#f8fafc] dark:hover:bg-[#13263b] transition-colors cursor-pointer group"
+                  >
+                    <td className="py-2 sm:py-2.5 px-3 sm:px-4 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                        {/* Position Number: identical font & styling to LeagueTable (1., 2., etc.) */}
+                        <span className="font-bold text-slate-800 dark:text-slate-100 text-[11px] sm:text-xs md:text-sm shrink-0 w-5 text-right">
+                          {idx + 1}.
+                        </span>
+                        {/* Team Crest Logo */}
+                        <TeamLogo
+                          teamId={team.id}
+                          src={team.logo_url}
+                          alt={team.name}
+                          className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover shrink-0"
+                        />
+                        {/* Team Name: identical font, size, weight and color */}
+                        <span className="font-bold text-slate-900 dark:text-slate-100 truncate text-[11px] sm:text-xs md:text-sm group-hover:text-[#ff0046] transition-colors">
+                          {team.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2 sm:py-2.5 px-3 sm:px-4 text-right">
+                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 group-hover:text-[#ff0046] group-hover:translate-x-0.5 transition-all inline-block align-middle" />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 5. Footer with Cancel / Return to Standings Button */}
+        <div className="px-4 sm:px-6 py-3 bg-[#f8fafc]/90 dark:bg-[#0c1827]/90 border-t border-slate-200 dark:border-[#16283d] flex items-center justify-between">
+          <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+            Official ESN Directory
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-[#0e1c2b] hover:bg-slate-100 dark:hover:bg-[#14263b] border border-slate-200 dark:border-[#1a2e45] text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#14263b] hover:bg-slate-100 dark:hover:bg-[#1c3552] border border-slate-200 dark:border-[#1a2e45] text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs"
           >
             <X className="w-3.5 h-3.5 text-slate-400" />
             <span>{hasSeenProfile ? 'Close & Return to Standings' : 'Cancel & View Standings'}</span>
           </button>
-
-          <span className="text-[11px] text-slate-400 font-medium text-center">
-            Official ESN Team Directory
-          </span>
         </div>
       </div>
     </div>
