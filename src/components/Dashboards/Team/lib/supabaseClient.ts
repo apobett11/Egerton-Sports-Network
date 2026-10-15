@@ -214,7 +214,7 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
                 last_name,
                 student_id,
                 phone,
-                profile:profiles!profile_id(first_name, last_name)
+                profile:profiles!profile_id(first_name, last_name, bio)
             `)
             .eq('team_id', actualTeamId)
             .order('jersey_number', { ascending: true });
@@ -249,17 +249,17 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
             throw error;
         }
 
-        // Query linked profiles for any players where first_name and last_name might be in profiles
+        // Query linked profiles for any players where first_name, last_name or preferred squad name (bio) might be in profiles
         const profileIds = (data || [])
             .map((p: any) => p.profile_id)
             .filter((id: any): id is string => Boolean(id));
 
-        const profileMap = new Map<string, { first_name?: string; last_name?: string }>();
+        const profileMap = new Map<string, { first_name?: string; last_name?: string; bio?: string }>();
         if (profileIds.length > 0) {
             try {
                 const { data: profs } = await supabase
                     .from('profiles')
-                    .select('id, first_name, last_name')
+                    .select('id, first_name, last_name, bio')
                     .in('id', profileIds);
                 if (profs) {
                     profs.forEach((pr: any) => {
@@ -276,12 +276,13 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
                 const separateProf = item.profile_id ? profileMap.get(item.profile_id) : null;
                 const prof = separateProf || joinedProf;
 
-                // Prioritize non-empty first_name and last_name from players, fallback to linked profile
+                // Prioritize preferred squad name (bio) if available, then non-empty first_name and last_name
+                const preferredName = ((item as any).preferred_name || (item as any).nickname || prof?.bio || '').trim();
                 const fName = (item.first_name || prof?.first_name || '').trim();
                 const lName = (item.last_name || prof?.last_name || '').trim();
                 const rawFullName = `${fName} ${lName}`.trim();
 
-                const fullName = rawFullName || `Player #${item.jersey_number || index + 1}`;
+                const fullName = preferredName || rawFullName || `Player #${item.jersey_number || index + 1}`;
 
                 let uiPos: 'GK' | 'DF' | 'MD' | 'FW' = 'MD';
                 const rawPos = (item.position || '').toUpperCase();
@@ -296,7 +297,8 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
                 return {
                     id: item.id,
                     name: fullName,
-                    nickname: item.student_id ? `ID: ${item.student_id}` : undefined,
+                    preferredName: preferredName || undefined,
+                    nickname: preferredName || (item.student_id ? `ID: ${item.student_id}` : undefined),
                     number: item.jersey_number || index + 1,
                     position: uiPos,
                     rating: 75 + ((index * 3) % 15),

@@ -25,6 +25,7 @@ export interface Player {
     physical: number;
     stamina: number;
     // Metadata
+    preferredName?: string;
     nickname?: string;
     nationality?: string;
     preferredFoot?: 'left' | 'right' | 'both';

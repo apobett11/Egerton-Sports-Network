@@ -825,11 +825,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               }`}
                             >
                               <option value="">-- Select Goal Scorer --</option>
-                              {sortedRoster.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  #{p.number || '—'} {p.name} ({p.position})
-                                </option>
-                              ))}
+                              {sortedRoster.map((p) => {
+                                const displayName = p.preferredName || p.nickname || p.name;
+                                return (
+                                  <option key={p.id} value={p.id}>
+                                    #{p.number || '—'} {displayName} ({p.position})
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
 
@@ -934,11 +937,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                 <option value="">None (Solo Goal / Free Kick / Direct)</option>
                                 {sortedRoster
                                   .filter((p) => p.id !== goal.playerId)
-                                  .map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                      #{p.number || '—'} {p.name} ({p.position})
-                                    </option>
-                                  ))}
+                                  .map((p) => {
+                                    const displayName = p.preferredName || p.nickname || p.name;
+                                    return (
+                                      <option key={p.id} value={p.id}>
+                                        #{p.number || '—'} {displayName} ({p.position})
+                                      </option>
+                                    );
+                                  })}
                               </select>
                             </div>
                           </div>
@@ -990,11 +996,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <option value="">+ Add Yellow Card</option>
                               {sortedRoster
                                 .filter((p) => !yellowCards.includes(p.id))
-                                .map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    #{p.number || '—'} {p.name}
-                                  </option>
-                                ))}
+                                .map((p) => {
+                                  const displayName = p.preferredName || p.nickname || p.name;
+                                  return (
+                                    <option key={p.id} value={p.id}>
+                                      #{p.number || '—'} {displayName}
+                                    </option>
+                                  );
+                                })}
                             </select>
                           </div>
                         </div>
@@ -1002,8 +1011,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         {yellowCards.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {yellowCards.map((pid) => {
-                              const player = roster.find((p) => p.id === pid);
-                              const pName = player ? `#${player.number || ''} ${player.name}` : pid;
+                              const player = currentRoster.find((p) => p.id === pid);
+                              const displayName = player?.preferredName || player?.nickname || player?.name;
+                              const pName = player ? `#${player.number || ''} ${displayName}` : pid;
                               return (
                                 <span
                                   key={pid}
@@ -1015,7 +1025,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                                     type="button"
                                     onClick={() => handleRemoveYellowCard(pid)}
                                     disabled={isSaving || isAlreadyRecorded}
-                                    className="text-amber-500 hover:text-amber-700 dark:hover:text-white cursor-pointer ml-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="text-amber-600 hover:text-amber-800 dark:hover:text-white cursor-pointer ml-1 disabled:opacity-40 disabled:cursor-not-allowed"
                                     title="Remove card"
                                   >
                                     <X className="w-3 h-3" />
@@ -1051,11 +1061,14 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                               <option value="">+ Add Red Card</option>
                               {sortedRoster
                                 .filter((p) => !redCards.includes(p.id))
-                                .map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    #{p.number || '—'} {p.name}
-                                  </option>
-                                ))}
+                                .map((p) => {
+                                  const displayName = p.preferredName || p.nickname || p.name;
+                                  return (
+                                    <option key={p.id} value={p.id}>
+                                      #{p.number || '—'} {displayName}
+                                    </option>
+                                  );
+                                })}
                             </select>
                           </div>
                         </div>
@@ -1063,8 +1076,9 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                         {redCards.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {redCards.map((pid) => {
-                              const player = roster.find((p) => p.id === pid);
-                              const pName = player ? `#${player.number || ''} ${player.name}` : pid;
+                              const player = currentRoster.find((p) => p.id === pid);
+                              const displayName = player?.preferredName || player?.nickname || player?.name;
+                              const pName = player ? `#${player.number || ''} ${displayName}` : pid;
                               return (
                                 <span
                                   key={pid}
