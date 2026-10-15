@@ -46,9 +46,16 @@ export function clearSquadUnitCache(teamId?: string): void {
   }
 }
 
-export function invalidateTeamReadCaches(): void {
-  squadUnitCache.clear();
-  teamFixturesUnitCache.clear();
+export function invalidateTeamReadCaches(teamId?: string): void {
+  if (teamId) {
+    squadUnitCache.delete(teamId);
+    teamFixturesUnitCache.delete(teamId);
+    teamRecordCache.delete(teamId);
+  } else {
+    squadUnitCache.clear();
+    teamFixturesUnitCache.clear();
+    teamRecordCache.clear();
+  }
   teamStandingsUnitCache.clear();
 }
 
@@ -198,7 +205,7 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
         }
 
         // Query players directly from public.players joining profile
-        let { data, error } = await supabase
+        let queryRes = await supabase
             .from('players')
             .select(`
                 id,
@@ -218,6 +225,9 @@ export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = f
             `)
             .eq('team_id', actualTeamId)
             .order('jersey_number', { ascending: true });
+
+        let data: any = queryRes.data;
+        let error = queryRes.error;
 
         if (error) {
             // Fallback query without relation if join syntax fails
