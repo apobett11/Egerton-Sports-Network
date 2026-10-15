@@ -12,6 +12,7 @@ import {
   type AdminRawSnapshot,
 } from '../lib/adminSnapshot';
 import { deriveAdminState, type DerivedAdminState } from '../lib/deriveAdminState';
+import { guestCache } from '../../../../lib/guestCache';
 import type {
   AdminTabType,
   SystemHealthMetrics,
@@ -472,6 +473,113 @@ export const useAdminOperationsData = () => {
     }
   }, [derived, patchSnapshot, showToast]);
 
+  const handleUpdatePlayerName = useCallback(async (playerId: string, firstName: string, lastName: string) => {
+    try {
+      await rateLimiter.acquire('admin-operations');
+      const pl = derived?.playersList.find((p) => p.id === playerId);
+      if (!pl) throw new Error('Player not found');
+
+      const trimmedFirst = firstName.trim();
+      const trimmedLast = lastName.trim();
+
+      if (!trimmedFirst) {
+        throw new Error('First name cannot be empty');
+      }
+
+      const fullNewName = `${trimmedFirst} ${trimmedLast}`.trim();
+
+      // 1. Update public.players table in Supabase
+      const { error: playerErr } = await supabase
+        .from('players')
+        .update({
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
+        })
+        .eq('id', playerId);
+
+      if (playerErr) throw playerErr;
+
+      // 2. Update public.profiles table if linked to an authenticated/registered profile
+      const targetProfileId = pl.profileId;
+      if (targetProfileId) {
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .update({
+            first_name: trimmedFirst,
+            last_name: trimmedLast,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetProfileId);
+
+        if (profileErr) {
+          console.warn('Profile name update warning:', profileErr.message);
+        }
+      }
+
+      // 3. Update player_of_the_week_winners table if player is an awarded winner
+      try {
+        await supabase
+          .from('player_of_the_week_winners')
+          .update({ player_name: fullNewName })
+          .eq('player_id', playerId);
+      } catch (potwErr) {
+        // Non-critical if table doesn't have rows or player isn't a winner
+      }
+
+      // 4. Invalidate guest caches so all public guest fixtures/rosters refresh
+      try {
+        guestCache.invalidate('players');
+        guestCache.invalidate('fixtures');
+        guestCache.invalidate('standings');
+      } catch (cacheErr) {
+        console.warn('Guest cache invalidation error:', cacheErr);
+      }
+
+      // 5. Append audit log in database
+      const auditDetails = `Updated player name from "${pl.name}" to "${fullNewName}" (Team: ${pl.teamName})`;
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'PLAYER_NAME_EDITED',
+          resource_type: 'players',
+          resource_id: playerId,
+          details: auditDetails,
+        });
+      } catch (auditErr) {
+        console.warn('Failed to insert audit log for player edit:', auditErr);
+      }
+
+      // 6. Optimistically patch the local cached snapshot
+      patchSnapshot((draft) => {
+        const row = draft.players.find((p) => p.id === playerId);
+        if (row) {
+          row.first_name = trimmedFirst;
+          row.last_name = trimmedLast;
+        }
+        if (targetProfileId) {
+          const prof = draft.profiles.find((p) => p.id === targetProfileId);
+          if (prof) {
+            prof.first_name = trimmedFirst;
+            prof.last_name = trimmedLast;
+            prof.updated_at = new Date().toISOString();
+          }
+        }
+        appendAuditRow(draft, {
+          action: 'PLAYER_NAME_EDITED',
+          resource_type: 'players',
+          resource_id: playerId,
+          details: auditDetails,
+        });
+      });
+
+      showToast(`Player name updated to "${fullNewName}" globally!`);
+      return true;
+    } catch (err: any) {
+      console.error('Failed to update player name:', err);
+      showToast(`Failed to update player name: ${err.message}`);
+      throw err;
+    }
+  }, [derived, patchSnapshot, appendAuditRow, showToast]);
+
   const handleExportAuditLogsCSV = useCallback(() => {
     const auditLogs = derived?.auditLogs || [];
     if (auditLogs.length === 0) {
@@ -857,6 +965,7 @@ export const useAdminOperationsData = () => {
     playersList: derived?.playersList ?? [],
     handleApprovePlayer,
     handleRejectPlayer,
+    handleUpdatePlayerName,
     refreshData,
     failedCalls,
     slowQueries: derived?.slowQueries ?? [],

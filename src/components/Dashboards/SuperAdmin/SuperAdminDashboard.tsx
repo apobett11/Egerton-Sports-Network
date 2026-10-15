@@ -74,6 +74,7 @@ export const SuperAdminDashboard: React.FC = () => {
     playersList,
     handleApprovePlayer,
     handleRejectPlayer,
+    handleUpdatePlayerName,
     refreshData,
     failedCalls,
     slowQueries,
@@ -318,7 +319,9 @@ export const SuperAdminDashboard: React.FC = () => {
               players={playersList}
               onApprovePlayer={handleApprovePlayer}
               onRejectPlayer={handleRejectPlayer}
+              onUpdatePlayerName={handleUpdatePlayerName}
               onRefresh={refreshData}
+              teams={teamOverview?.teamsList}
             />
           )}
 
