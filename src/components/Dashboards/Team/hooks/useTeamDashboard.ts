@@ -264,7 +264,7 @@ export const useTeamDashboard = () => {
 
       // PRIORITY 1 FETCH: Fast Parallel Fetch of Team Roster & Fixtures
       const [dbPlayers, dbFixtures] = await Promise.all([
-        fetchTeamPlayers(resolvedTeamId),
+        fetchTeamPlayers(resolvedTeamId, true),
         fetchTeamFixtures(resolvedTeamId),
       ]);
 
@@ -674,12 +674,40 @@ export const useTeamDashboard = () => {
 
   const refreshRoster = useCallback(async () => {
     if (teamId) {
-      const dbPlayers = await fetchTeamPlayers(teamId);
+      invalidateTeamReadCaches(teamId);
+      const dbPlayers = await fetchTeamPlayers(teamId, true);
       if (dbPlayers && dbPlayers.length > 0) {
         setRoster(dbPlayers);
       }
     }
   }, [teamId]);
+
+  // Real-time synchronization: Auto-refresh roster whenever coach opens Roster/Tactics or when player name updates
+  useEffect(() => {
+    if (activeView === 'ROSTER' || activeView === 'TACTICS') {
+      refreshRoster();
+    }
+  }, [activeView, refreshRoster]);
+
+  useEffect(() => {
+    const handleRosterUpdate = (e: any) => {
+      if (!teamId) return;
+      if (!e?.detail?.teamId || e.detail.teamId === teamId) {
+        refreshRoster();
+      }
+    };
+    const handleStorageUpdate = (e: StorageEvent) => {
+      if (e.key === 'esn_player_updated' && teamId) {
+        refreshRoster();
+      }
+    };
+    window.addEventListener('team_roster_updated', handleRosterUpdate);
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('team_roster_updated', handleRosterUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+    };
+  }, [teamId, refreshRoster]);
 
   return {
     isLoggedIn,

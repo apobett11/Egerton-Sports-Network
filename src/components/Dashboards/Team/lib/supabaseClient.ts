@@ -38,7 +38,16 @@ const teamRecordCache = new Map<string, { timestamp: number; data: any }>();
 const SQUAD_CACHE_TTL_MS = 30000; // 30s cache TTL
 const TEAM_CACHE_TTL_MS = 60000; // 60s cache TTL to deliver sub-second team profile loads
 
+export function clearSquadUnitCache(teamId?: string): void {
+  if (teamId) {
+    squadUnitCache.delete(teamId);
+  } else {
+    squadUnitCache.clear();
+  }
+}
+
 export function invalidateTeamReadCaches(): void {
+  squadUnitCache.clear();
   teamFixturesUnitCache.clear();
   teamStandingsUnitCache.clear();
 }
@@ -175,22 +184,25 @@ export async function fetchAuthenticatedUserTeam(userId?: string): Promise<DBTea
 /**
  * Fetches players belonging to a team from Supabase 'players' table joining 'profiles'.
  */
-export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
+export async function fetchTeamPlayers(teamId: string, forceRefresh: boolean = false): Promise<Player[]> {
     if (!teamId) return [];
     try {
         const actualTeamId = await resolveRealTeamId(teamId);
 
         // Check in-memory squad unit cache to deliver on time without stressing database
-        const cached = squadUnitCache.get(actualTeamId);
-        if (cached && Date.now() - cached.timestamp < SQUAD_CACHE_TTL_MS && cached.data.length > 0) {
-            return cached.data;
+        if (!forceRefresh) {
+            const cached = squadUnitCache.get(actualTeamId);
+            if (cached && Date.now() - cached.timestamp < SQUAD_CACHE_TTL_MS && cached.data.length > 0) {
+                return cached.data;
+            }
         }
 
-        // Query players directly from public.players (accessible to anon & coaches without profiles table permission blocks)
-        const { data, error } = await supabase
+        // Query players directly from public.players joining profile
+        let { data, error } = await supabase
             .from('players')
             .select(`
                 id,
+                profile_id,
                 jersey_number,
                 position,
                 status,
@@ -201,22 +213,75 @@ export async function fetchTeamPlayers(teamId: string): Promise<Player[]> {
                 first_name,
                 last_name,
                 student_id,
-                phone
+                phone,
+                profile:profiles!profile_id(first_name, last_name)
             `)
             .eq('team_id', actualTeamId)
             .order('jersey_number', { ascending: true });
+
+        if (error) {
+            // Fallback query without relation if join syntax fails
+            const fallbackRes = await supabase
+                .from('players')
+                .select(`
+                    id,
+                    profile_id,
+                    jersey_number,
+                    position,
+                    status,
+                    height,
+                    weight,
+                    preferred_foot,
+                    nationality,
+                    first_name,
+                    last_name,
+                    student_id,
+                    phone
+                `)
+                .eq('team_id', actualTeamId)
+                .order('jersey_number', { ascending: true });
+            data = fallbackRes.data;
+            error = fallbackRes.error;
+        }
 
         if (error) {
             console.warn('[Supabase Client] Players query error:', error);
             throw error;
         }
 
+        // Query linked profiles for any players where first_name and last_name might be in profiles
+        const profileIds = (data || [])
+            .map((p: any) => p.profile_id)
+            .filter((id: any): id is string => Boolean(id));
+
+        const profileMap = new Map<string, { first_name?: string; last_name?: string }>();
+        if (profileIds.length > 0) {
+            try {
+                const { data: profs } = await supabase
+                    .from('profiles')
+                    .select('id, first_name, last_name')
+                    .in('id', profileIds);
+                if (profs) {
+                    profs.forEach((pr: any) => {
+                        profileMap.set(pr.id, pr);
+                    });
+                }
+            } catch {}
+        }
+
         let result: Player[] = [];
         if (data && data.length > 0) {
             result = data.map((item: any, index: number) => {
-                const fullName = item.first_name || item.last_name
-                    ? `${item.first_name || ''} ${item.last_name || ''}`.trim()
-                    : `Player #${item.jersey_number || index + 1}`;
+                const joinedProf = item.profile ? (Array.isArray(item.profile) ? item.profile[0] : item.profile) : null;
+                const separateProf = item.profile_id ? profileMap.get(item.profile_id) : null;
+                const prof = separateProf || joinedProf;
+
+                // Prioritize non-empty first_name and last_name from players, fallback to linked profile
+                const fName = (item.first_name || prof?.first_name || '').trim();
+                const lName = (item.last_name || prof?.last_name || '').trim();
+                const rawFullName = `${fName} ${lName}`.trim();
+
+                const fullName = rawFullName || `Player #${item.jersey_number || index + 1}`;
 
                 let uiPos: 'GK' | 'DF' | 'MD' | 'FW' = 'MD';
                 const rawPos = (item.position || '').toUpperCase();

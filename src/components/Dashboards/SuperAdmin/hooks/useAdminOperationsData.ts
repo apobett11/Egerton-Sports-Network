@@ -13,6 +13,7 @@ import {
 } from '../lib/adminSnapshot';
 import { deriveAdminState, type DerivedAdminState } from '../lib/deriveAdminState';
 import { guestCache } from '../../../../lib/guestCache';
+import { invalidateTeamReadCaches } from '../../Team/lib/supabaseClient';
 import type {
   AdminTabType,
   SystemHealthMetrics,
@@ -526,14 +527,65 @@ export const useAdminOperationsData = () => {
         // Non-critical if table doesn't have rows or player isn't a winner
       }
 
-      // 4. Invalidate guest caches so all public guest fixtures/rosters refresh
+      // 4. Invalidate guest & team caches so all public guest & coach fixtures/rosters refresh
       try {
         guestCache.invalidate('players');
         guestCache.invalidate('fixtures');
         guestCache.invalidate('standings');
+        invalidateTeamReadCaches(pl.teamId);
       } catch (cacheErr) {
-        console.warn('Guest cache invalidation error:', cacheErr);
+        console.warn('Cache invalidation error:', cacheErr);
       }
+
+      // 4b. Sync temporary_match_squad embedded player objects if present
+      if (pl.teamId) {
+        try {
+          const { data: teamRow } = await supabase
+            .from('teams')
+            .select('temporary_match_squad')
+            .eq('id', pl.teamId)
+            .maybeSingle();
+
+          if (teamRow?.temporary_match_squad) {
+            let squadChanged = false;
+            const squad = { ...teamRow.temporary_match_squad };
+            if (Array.isArray(squad.startingXI)) {
+              squad.startingXI = squad.startingXI.map((item: any) => {
+                const id = typeof item === 'string' ? item : item?.id;
+                if (id === playerId && typeof item === 'object') {
+                  squadChanged = true;
+                  return { ...item, name: fullNewName, first_name: trimmedFirst, last_name: trimmedLast };
+                }
+                return item;
+              });
+            }
+            if (Array.isArray(squad.substitutes)) {
+              squad.substitutes = squad.substitutes.map((item: any) => {
+                const id = typeof item === 'string' ? item : item?.id;
+                if (id === playerId && typeof item === 'object') {
+                  squadChanged = true;
+                  return { ...item, name: fullNewName, first_name: trimmedFirst, last_name: trimmedLast };
+                }
+                return item;
+              });
+            }
+            if (squadChanged) {
+              await supabase
+                .from('teams')
+                .update({ temporary_match_squad: squad })
+                .eq('id', pl.teamId);
+            }
+          }
+        } catch (squadUpdateErr) {
+          console.warn('Non-critical temporary_match_squad sync error:', squadUpdateErr);
+        }
+      }
+
+      // 4c. Broadcast live notification to open coach & player tabs
+      try {
+        localStorage.setItem('esn_player_updated', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('team_roster_updated', { detail: { teamId: pl.teamId, playerId } }));
+      } catch {}
 
       // 5. Append audit log in database
       const auditDetails = `Updated player name from "${pl.name}" to "${fullNewName}" (Team: ${pl.teamName})`;

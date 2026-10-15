@@ -348,13 +348,12 @@ export const ApiService = {
         formationSlot?: any
       ): Player => {
         const prof = unwrap(p.profile);
-        const pName = p.name 
-          ? p.name 
-          : p.first_name && p.last_name 
-          ? `${p.first_name} ${p.last_name}`.trim()
-          : prof?.first_name 
-          ? `${prof.first_name} ${prof.last_name || ''}`.trim() 
-          : `Player #${p.jersey_number || idx + 1}`;
+        const dbFullName = (p.first_name || p.last_name)
+          ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+          : prof && (prof.first_name || prof.last_name)
+          ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim()
+          : null;
+        const pName = dbFullName || p.name || `Player #${p.jersey_number || idx + 1}`;
 
         // Exactly one captain per team: true if matching designated captain ID, or fallback to first starter if none designated
         const isCap = designatedCapId
@@ -408,17 +407,17 @@ export const ApiService = {
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, home, i, false, designatedCaptainIdA, slotsA[i]);
+          return formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: false, isReserve: false }, home, i, false, designatedCaptainIdA, slotsA[i]);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, home, starters.length + i, true, designatedCaptainIdA);
+          return formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: true, isReserve: false }, home, starters.length + i, true, designatedCaptainIdA);
         });
         const usedIds = new Set([...starters, ...subs].map(p => p.id));
         const rawReserves = rawSubs.slice(6);
         const reserves = rawReserves.map((p: any, i: number) => {
           const matchInDb = rawSquadA.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, home, starters.length + 6 + i, true, designatedCaptainIdA);
+          const rec = formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: true }, home, starters.length + 6 + i, true, designatedCaptainIdA);
           rec.isReserve = true;
           return rec;
         });
@@ -559,17 +558,17 @@ export const ApiService = {
 
         const starters = rawStarters.slice(0, 11).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: false, isReserve: false }, away, i, false, designatedCaptainIdB, slotsB[i]);
+          return formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: false, isReserve: false }, away, i, false, designatedCaptainIdB, slotsB[i]);
         });
         const subs = rawSubs.slice(0, 6).map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          return formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true, isReserve: false }, away, starters.length + i, true, designatedCaptainIdB);
+          return formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: true, isReserve: false }, away, starters.length + i, true, designatedCaptainIdB);
         });
         const usedIdsB = new Set([...starters, ...subs].map(p => p.id));
         const rawReserves = rawSubs.slice(6);
         const reserves = rawReserves.map((p: any, i: number) => {
           const matchInDb = rawSquadB.find((dbP: any) => dbP.id === (p.id || p.player_id || p));
-          const rec = formatPlayerRecord({ ...(matchInDb || {}), ...(typeof p === 'object' ? p : {}), isSub: true }, away, starters.length + 6 + i, true, designatedCaptainIdB);
+          const rec = formatPlayerRecord({ ...(typeof p === 'object' ? p : {}), ...(matchInDb || {}), isSub: true }, away, starters.length + 6 + i, true, designatedCaptainIdB);
           rec.isReserve = true;
           return rec;
         });
