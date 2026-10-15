@@ -115,8 +115,8 @@ export const MatchEventsDetailView: React.FC<MatchEventsDetailViewProps> = ({
         });
       }
 
-      // 1.2 Fetch Squads for Player Selection
-      const loadedSquads = await matchRepository.getSquads(matchId);
+      // 1.2 Fetch Squads for Player Selection (force refresh to ensure live player names)
+      const loadedSquads = await matchRepository.getSquads(matchId, true);
       setSquads(loadedSquads);
 
       // 1.3 Fetch Live Events from Database using Match UID

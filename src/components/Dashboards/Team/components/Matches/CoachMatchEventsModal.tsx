@@ -23,6 +23,7 @@ import {
   saveCoachMatchEvents,
   fetchRecordedFixtureIds,
   CoachGoalEvent,
+  fetchTeamPlayers,
 } from '../../lib/supabaseClient';
 
 export type CoachModalStep =
@@ -54,6 +55,29 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   onShowToast,
   onEventsSaved,
 }) => {
+  // Keep live roster up-to-date with database records whenever modal opens
+  const [liveRoster, setLiveRoster] = useState<Player[]>(roster || []);
+
+  useEffect(() => {
+    if (roster && roster.length > 0) {
+      setLiveRoster(roster);
+    }
+  }, [roster]);
+
+  useEffect(() => {
+    if (isOpen && teamId) {
+      fetchTeamPlayers(teamId, true)
+        .then((fresh) => {
+          if (fresh && fresh.length > 0) {
+            setLiveRoster(fresh);
+          }
+        })
+        .catch((err) => {
+          console.warn('[CoachMatchEventsModal] Error fetching live roster:', err);
+        });
+    }
+  }, [isOpen, teamId]);
+
   // Prevent background body scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -260,7 +284,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
   if (!isOpen) return null;
 
   // Sorted roster for dropdowns
-  const sortedRoster = [...roster].sort((a, b) => {
+  const currentRoster = liveRoster.length > 0 ? liveRoster : roster;
+  const sortedRoster = [...currentRoster].sort((a, b) => {
     const ja = Number(a.number || 999);
     const jb = Number(b.number || 999);
     if (ja !== jb) return ja - jb;
@@ -1185,8 +1210,8 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                 ) : (
                   <div className="space-y-2">
                     {goals.map((g, idx) => {
-                      const scorer = roster.find((p) => p.id === g.playerId);
-                      const assist = roster.find((p) => p.id === g.assistPlayerId);
+                      const scorer = currentRoster.find((p) => p.id === g.playerId);
+                      const assist = currentRoster.find((p) => p.id === g.assistPlayerId);
                       let assistLabel = assist ? `#${assist.number || ''} ${assist.name}` : 'None (Solo Goal)';
                       if (g.goalType === 'penalty') assistLabel = 'Penalty Kick';
                       else if (g.goalType === 'freekick') assistLabel = 'Direct Free Kick';
@@ -1235,7 +1260,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     {yellowCards.length > 0 ? (
                       <div className="space-y-1">
                         {yellowCards.map((pid) => {
-                          const p = roster.find((player) => player.id === pid);
+                          const p = currentRoster.find((player) => player.id === pid);
                           return (
                             <div key={pid} className="text-xs font-medium text-slate-800 dark:text-slate-200">
                               • #{p?.number || '—'} {p?.name || pid}
@@ -1256,7 +1281,7 @@ export const CoachMatchEventsModal: React.FC<CoachMatchEventsModalProps> = ({
                     {redCards.length > 0 ? (
                       <div className="space-y-1">
                         {redCards.map((pid) => {
-                          const p = roster.find((player) => player.id === pid);
+                          const p = currentRoster.find((player) => player.id === pid);
                           return (
                             <div key={pid} className="text-xs font-medium text-slate-800 dark:text-slate-200">
                               • #{p?.number || '—'} {p?.name || pid}

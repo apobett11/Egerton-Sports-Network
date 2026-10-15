@@ -461,8 +461,16 @@ export class SupabaseMatchRepository implements MatchRepository {
     }
   }
 
-  async getSquads(match_uid: UID): Promise<MatchSquad[]> {
-    if (localStore.squads.has(match_uid)) {
+  invalidateSquads(match_uid?: UID): void {
+    if (match_uid) {
+      localStore.squads.delete(match_uid);
+    } else {
+      localStore.squads.clear();
+    }
+  }
+
+  async getSquads(match_uid: UID, forceRefresh: boolean = false): Promise<MatchSquad[]> {
+    if (!forceRefresh && localStore.squads.has(match_uid)) {
       return localStore.squads.get(match_uid)!;
     }
 
@@ -491,6 +499,29 @@ export class SupabaseMatchRepository implements MatchRepository {
 
   async getSquadPlayers(match_uid: UID, team_uid: UID): Promise<SquadPlayer[]> {
     try {
+      // 1. Fetch live player records for the team from database to ensure fresh names
+      const { data: dbPlayers } = await supabase
+        .from('players')
+        .select('id, jersey_number, position, first_name, last_name, profile_id, profiles(first_name, last_name)')
+        .eq('team_id', team_uid);
+
+      const dbMap = new Map<string, { name: string; number: number; position?: string }>();
+      (dbPlayers || []).forEach((pl: any) => {
+        const prof = pl.profiles ? (Array.isArray(pl.profiles) ? pl.profiles[0] : pl.profiles) : null;
+        const fullName = (pl.first_name || pl.last_name)
+          ? `${pl.first_name || ''} ${pl.last_name || ''}`.trim()
+          : (prof?.first_name || prof?.last_name)
+          ? `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim()
+          : null;
+        if (fullName) {
+          dbMap.set(pl.id, {
+            name: fullName,
+            number: Number(pl.jersey_number) || 0,
+            position: pl.position,
+          });
+        }
+      });
+
       const { data: lineupData } = await supabase
         .from('match_lineups')
         .select('*')
@@ -499,46 +530,58 @@ export class SupabaseMatchRepository implements MatchRepository {
         .maybeSingle();
 
       if (lineupData) {
-        const starting: SquadPlayer[] = (lineupData.starting_xi || []).map((p: any) => ({
-          player_uid: p.id || p.player_id || `player_${p.jersey_number || p.number}`,
-          team_uid,
-          jersey_number: Number(p.jersey_number || p.number) || 0,
-          display_name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player #${p.jersey_number || p.number}`,
-          is_starting_xi: true,
-          is_substitute: false,
-          eligible_for_match: true,
-        }));
+        const starting: SquadPlayer[] = (lineupData.starting_xi || []).map((p: any) => {
+          const pid = p.id || p.player_id || `player_${p.jersey_number || p.number}`;
+          const dbItem = dbMap.get(pid);
+          return {
+            player_uid: pid,
+            team_uid,
+            jersey_number: dbItem?.number || Number(p.jersey_number || p.number) || 0,
+            display_name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player #${p.jersey_number || p.number}`,
+            is_starting_xi: true,
+            is_substitute: false,
+            eligible_for_match: true,
+          };
+        });
 
-        const subs: SquadPlayer[] = (lineupData.substitutes || []).map((p: any) => ({
-          player_uid: p.id || p.player_id || `player_${p.jersey_number || p.number}`,
-          team_uid,
-          jersey_number: Number(p.jersey_number || p.number) || 0,
-          display_name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player #${p.jersey_number || p.number}`,
-          is_starting_xi: false,
-          is_substitute: true,
-          eligible_for_match: true,
-        }));
+        const subs: SquadPlayer[] = (lineupData.substitutes || []).map((p: any) => {
+          const pid = p.id || p.player_id || `player_${p.jersey_number || p.number}`;
+          const dbItem = dbMap.get(pid);
+          return {
+            player_uid: pid,
+            team_uid,
+            jersey_number: dbItem?.number || Number(p.jersey_number || p.number) || 0,
+            display_name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player #${p.jersey_number || p.number}`,
+            is_starting_xi: false,
+            is_substitute: true,
+            eligible_for_match: true,
+          };
+        });
 
         if (starting.length > 0 || subs.length > 0) {
           return [...starting, ...subs];
         }
       }
 
-      const { data: playersData } = await supabase
-        .from('players')
-        .select('id, jersey_number, position, profiles(first_name, last_name)')
-        .eq('team_id', team_uid);
+      if (dbPlayers && dbPlayers.length > 0) {
+        return dbPlayers.map((p: any, idx: number) => {
+          const prof = p.profiles ? (Array.isArray(p.profiles) ? p.profiles[0] : p.profiles) : null;
+          const fullName = (p.first_name || p.last_name)
+            ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+            : (prof?.first_name || prof?.last_name)
+            ? `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim()
+            : `Player #${p.jersey_number || idx + 1}`;
 
-      if (playersData && playersData.length > 0) {
-        return playersData.map((p: any, idx: number) => ({
-          player_uid: p.id,
-          team_uid,
-          jersey_number: Number(p.jersey_number) || idx + 1,
-          display_name: p.profiles ? `${p.profiles.first_name} ${p.profiles.last_name}`.trim() : `Player ${p.jersey_number || idx + 1}`,
-          is_starting_xi: idx < 11,
-          is_substitute: idx >= 11,
-          eligible_for_match: true,
-        }));
+          return {
+            player_uid: p.id,
+            team_uid,
+            jersey_number: Number(p.jersey_number) || idx + 1,
+            display_name: fullName,
+            is_starting_xi: idx < 11,
+            is_substitute: idx >= 11,
+            eligible_for_match: true,
+          };
+        });
       }
     } catch {
       // Fallback

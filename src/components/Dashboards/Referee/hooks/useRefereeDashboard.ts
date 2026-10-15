@@ -636,6 +636,29 @@ export const useRefereeDashboard = () => {
           .select('*')
           .eq('fixture_id', selectedFixture.id);
 
+        // 1. Fetch live player records for both teams directly from DB to guarantee freshest names
+        const { data: dbAllPlayers } = await supabase
+          .from('players')
+          .select('id, jersey_number, position, first_name, last_name, profile_id, profiles(first_name, last_name)')
+          .in('team_id', [homeId, awayId].filter(Boolean));
+
+        const dbPlayerMap = new Map<string, { name: string; number: number; position?: string }>();
+        (dbAllPlayers || []).forEach((pl: any) => {
+          const prof = pl.profiles ? (Array.isArray(pl.profiles) ? pl.profiles[0] : pl.profiles) : null;
+          const fullName = (pl.first_name || pl.last_name)
+            ? `${pl.first_name || ''} ${pl.last_name || ''}`.trim()
+            : (prof?.first_name || prof?.last_name)
+            ? `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim()
+            : null;
+          if (fullName) {
+            dbPlayerMap.set(pl.id, {
+              name: fullName,
+              number: Number(pl.jersey_number) || 0,
+              position: pl.position,
+            });
+          }
+        });
+
         let homeSquad: PlayerLookupItem[] = [];
         let awaySquad: PlayerLookupItem[] = [];
 
@@ -644,75 +667,95 @@ export const useRefereeDashboard = () => {
           const awayL = lineups.find((l: any) => l.team_id === awayId);
 
           if (homeL) {
-            const starters = (homeL.starting_xi || []).map((p: any) => ({
-              id: p.id || p.player_id || `h_xi_${p.jersey_number || p.number}`,
-              name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player ${p.jersey_number || p.number}`,
-              jerseyNumber: p.jersey_number || p.number || 0,
-              position: p.position || 'FWD',
-              isSub: false,
-            }));
-            const subs = (homeL.substitutes || []).map((p: any) => ({
-              id: p.id || p.player_id || `h_sub_${p.jersey_number || p.number}`,
-              name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Sub ${p.jersey_number || p.number}`,
-              jerseyNumber: p.jersey_number || p.number || 0,
-              position: p.position || 'SUB',
-              isSub: true,
-            }));
+            const starters = (homeL.starting_xi || []).map((p: any) => {
+              const pid = p.id || p.player_id || `h_xi_${p.jersey_number || p.number}`;
+              const dbItem = dbPlayerMap.get(pid);
+              return {
+                id: pid,
+                name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player ${p.jersey_number || p.number}`,
+                jerseyNumber: dbItem?.number || p.jersey_number || p.number || 0,
+                position: dbItem?.position || p.position || 'FWD',
+                isSub: false,
+              };
+            });
+            const subs = (homeL.substitutes || []).map((p: any) => {
+              const pid = p.id || p.player_id || `h_sub_${p.jersey_number || p.number}`;
+              const dbItem = dbPlayerMap.get(pid);
+              return {
+                id: pid,
+                name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Sub ${p.jersey_number || p.number}`,
+                jerseyNumber: dbItem?.number || p.jersey_number || p.number || 0,
+                position: dbItem?.position || p.position || 'SUB',
+                isSub: true,
+              };
+            });
             homeSquad = [...starters, ...subs];
           }
 
           if (awayL) {
-            const starters = (awayL.starting_xi || []).map((p: any) => ({
-              id: p.id || p.player_id || `a_xi_${p.jersey_number || p.number}`,
-              name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player ${p.jersey_number || p.number}`,
-              jerseyNumber: p.jersey_number || p.number || 0,
-              position: p.position || 'FWD',
-              isSub: false,
-            }));
-            const subs = (awayL.substitutes || []).map((p: any) => ({
-              id: p.id || p.player_id || `a_sub_${p.jersey_number || p.number}`,
-              name: p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Sub ${p.jersey_number || p.number}`,
-              jerseyNumber: p.jersey_number || p.number || 0,
-              position: p.position || 'SUB',
-              isSub: true,
-            }));
+            const starters = (awayL.starting_xi || []).map((p: any) => {
+              const pid = p.id || p.player_id || `a_xi_${p.jersey_number || p.number}`;
+              const dbItem = dbPlayerMap.get(pid);
+              return {
+                id: pid,
+                name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Player ${p.jersey_number || p.number}`,
+                jerseyNumber: dbItem?.number || p.jersey_number || p.number || 0,
+                position: dbItem?.position || p.position || 'FWD',
+                isSub: false,
+              };
+            });
+            const subs = (awayL.substitutes || []).map((p: any) => {
+              const pid = p.id || p.player_id || `a_sub_${p.jersey_number || p.number}`;
+              const dbItem = dbPlayerMap.get(pid);
+              return {
+                id: pid,
+                name: dbItem?.name || p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || `Sub ${p.jersey_number || p.number}`,
+                jerseyNumber: dbItem?.number || p.jersey_number || p.number || 0,
+                position: dbItem?.position || p.position || 'SUB',
+                isSub: true,
+              };
+            });
             awaySquad = [...starters, ...subs];
           }
         }
 
-        // Fallback: fetch directly from players table
+        // Fallback: fetch directly from dbAllPlayers if match_lineups was empty
         if (homeSquad.length === 0 && homeId) {
-          const { data: pHome } = await supabase
-            .from('players')
-            .select('id, jersey_number, position, profiles(first_name, last_name)')
-            .eq('team_id', homeId);
-
-          if (pHome) {
-            homeSquad = pHome.map((p: any, idx: number) => ({
+          const homePlayers = (dbAllPlayers || []).filter((p: any) => p.team_id === homeId);
+          homeSquad = homePlayers.map((p: any, idx: number) => {
+            const prof = p.profiles ? (Array.isArray(p.profiles) ? p.profiles[0] : p.profiles) : null;
+            const fullName = (p.first_name || p.last_name)
+              ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+              : (prof?.first_name || prof?.last_name)
+              ? `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim()
+              : `Player #${p.jersey_number || idx + 1}`;
+            return {
               id: p.id,
-              name: p.profiles ? `${p.profiles.first_name || ''} ${p.profiles.last_name || ''}`.trim() : `Player #${p.jersey_number || idx + 1}`,
+              name: fullName,
               jerseyNumber: p.jersey_number || idx + 1,
               position: p.position || 'MID',
               isSub: idx >= 11,
-            }));
-          }
+            };
+          });
         }
 
         if (awaySquad.length === 0 && awayId) {
-          const { data: pAway } = await supabase
-            .from('players')
-            .select('id, jersey_number, position, profiles(first_name, last_name)')
-            .eq('team_id', awayId);
-
-          if (pAway) {
-            awaySquad = pAway.map((p: any, idx: number) => ({
+          const awayPlayers = (dbAllPlayers || []).filter((p: any) => p.team_id === awayId);
+          awaySquad = awayPlayers.map((p: any, idx: number) => {
+            const prof = p.profiles ? (Array.isArray(p.profiles) ? p.profiles[0] : p.profiles) : null;
+            const fullName = (p.first_name || p.last_name)
+              ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+              : (prof?.first_name || prof?.last_name)
+              ? `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim()
+              : `Player #${p.jersey_number || idx + 1}`;
+            return {
               id: p.id,
-              name: p.profiles ? `${p.profiles.first_name || ''} ${p.profiles.last_name || ''}`.trim() : `Player #${p.jersey_number || idx + 1}`,
+              name: fullName,
               jerseyNumber: p.jersey_number || idx + 1,
               position: p.position || 'MID',
               isSub: idx >= 11,
-            }));
-          }
+            };
+          });
         }
 
         setHomeLineup(homeSquad);

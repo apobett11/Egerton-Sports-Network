@@ -579,9 +579,54 @@ export const useAdminOperationsData = () => {
         } catch (squadUpdateErr) {
           console.warn('Non-critical temporary_match_squad sync error:', squadUpdateErr);
         }
+
+        // 4c. Sync match_lineups embedded player objects
+        try {
+          const { data: lineups } = await supabase
+            .from('match_lineups')
+            .select('id, starting_xi, substitutes')
+            .eq('team_id', pl.teamId);
+
+          if (lineups && lineups.length > 0) {
+            for (const l of lineups) {
+              let lineupChanged = false;
+              let newXi = l.starting_xi;
+              let newSubs = l.substitutes;
+
+              if (Array.isArray(newXi)) {
+                newXi = newXi.map((item: any) => {
+                  const id = typeof item === 'string' ? item : item?.id || item?.player_id;
+                  if (id === playerId && typeof item === 'object') {
+                    lineupChanged = true;
+                    return { ...item, name: fullNewName, first_name: trimmedFirst, last_name: trimmedLast };
+                  }
+                  return item;
+                });
+              }
+              if (Array.isArray(newSubs)) {
+                newSubs = newSubs.map((item: any) => {
+                  const id = typeof item === 'string' ? item : item?.id || item?.player_id;
+                  if (id === playerId && typeof item === 'object') {
+                    lineupChanged = true;
+                    return { ...item, name: fullNewName, first_name: trimmedFirst, last_name: trimmedLast };
+                  }
+                  return item;
+                });
+              }
+              if (lineupChanged) {
+                await supabase
+                  .from('match_lineups')
+                  .update({ starting_xi: newXi, substitutes: newSubs })
+                  .eq('id', l.id);
+              }
+            }
+          }
+        } catch (lineupSyncErr) {
+          console.warn('Non-critical match_lineups sync error:', lineupSyncErr);
+        }
       }
 
-      // 4c. Broadcast live notification to open coach & player tabs
+      // 4d. Broadcast live notification to open coach & player tabs
       try {
         localStorage.setItem('esn_player_updated', Date.now().toString());
         window.dispatchEvent(new CustomEvent('team_roster_updated', { detail: { teamId: pl.teamId, playerId } }));
