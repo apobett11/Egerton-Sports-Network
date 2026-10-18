@@ -14,7 +14,7 @@ import { OrderTrackingModal } from './components/OrderTrackingModal';
 import { Footer } from './components/Footer';
 import { MobileBottomNav, StorefrontNavTab } from './components/MobileBottomNav';
 import { DepotGuidanceSection } from './components/DepotGuidanceSection';
-import { AuthModal } from './components/AuthModal';
+import { AuthModal, AuthModalInitialMode } from './components/AuthModal';
 import { UserDashboardModal } from './components/UserDashboardModal';
 import { ExitStoreModal } from './components/ExitStoreModal';
 import { ContactBottomModal } from './components/ContactBottomModal';
@@ -41,6 +41,8 @@ import {
   getRememberedAccount, 
   oneTapLogin, 
   endUserSession, 
+  endAdminSession,
+  isStoreAdminAuthenticated,
   getUserPersonalData, 
   saveUserPersonalData, 
   getPersistedStorefrontState, 
@@ -113,7 +115,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [rememberedAccount, setRememberedAccountState] = useState<UserAccount | null>(() => getRememberedAccount());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserDashboardOpen, setIsUserDashboardOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authModalMode, setAuthModalMode] = useState<AuthModalInitialMode>('login');
+  const [authModalReason, setAuthModalReason] = useState<string | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingCheckoutAfterLogin, setPendingCheckoutAfterLogin] = useState(false);
 
@@ -329,12 +332,26 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const handleOpenOrderTracking = (orderId?: string) => {
     if (!currentUser) {
       // Guest page is without orders & intimate details - requires login
+      setAuthModalReason('orders');
       setAuthModalMode('login');
       setIsAuthModalOpen(true);
       return;
     }
     setTrackingOrderId(orderId);
     setIsOrdersModalOpen(true);
+  };
+
+  const handleOpenAdmin = () => {
+    if (!isStoreAdminAuthenticated()) {
+      setAuthModalReason('admin');
+      setAuthModalMode('admin_login');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setSelectedProduct(null);
+    setCurrentView('admin');
+    setAdminTab('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Comprehensive Back Button Handler:
@@ -771,6 +788,65 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
 
   // If in Admin Operations Portal mode:
   if (currentView === 'admin') {
+    if (!isStoreAdminAuthenticated()) {
+      return (
+        <div className={`min-h-screen flex flex-col items-center justify-center p-4 font-sans ${theme === 'dark' ? 'bg-[#0a1420] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+          <div className={`max-w-md w-full p-6 sm:p-7 rounded-2xl border text-center space-y-4 shadow-2xl animate-spring-in ${
+            theme === 'dark' ? 'bg-[#122336] border-slate-700' : 'bg-white border-slate-200'
+          }`}>
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+              <span className="text-2xl font-black">🛡️</span>
+            </div>
+            <div>
+              <h2 className="text-base font-black uppercase tracking-wider text-slate-100">
+                Store Administrator Portal
+              </h2>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Management of product ledger, stock inventory, and store orders is strictly restricted to authorized store staff.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentView('store')}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Back to Store
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModalReason('admin');
+                  setAuthModalMode('admin_login');
+                  setIsAuthModalOpen(true);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors cursor-pointer shadow-md"
+              >
+                Store Admin Sign In
+              </button>
+            </div>
+          </div>
+
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            initialMode={authModalMode}
+            reason={authModalReason}
+            onLoginSuccess={(user, isAdmin) => {
+              setCurrentUser(user);
+              setRememberedAccountState(user);
+              if (isAdmin) {
+                setCurrentView('admin');
+              } else {
+                setCurrentView('store');
+              }
+            }}
+            theme={theme}
+          />
+        </div>
+      );
+    }
+
     return (
       <AdminPortal
         products={productsList}
@@ -810,6 +886,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           });
         }}
         onBackToStore={() => setCurrentView('store')}
+        onLogoutAdmin={() => {
+          endAdminSession();
+          setCurrentView('store');
+        }}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         initialTab={adminTab}
@@ -841,14 +921,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           isCartBouncing={isCartBouncing}
-          onOpenAdmin={() => {
-            setSelectedProduct(null);
-            setCurrentView('admin');
-            setAdminTab('home');
-          }}
+          onOpenAdmin={handleOpenAdmin}
           currentUser={currentUser}
           rememberedAccount={rememberedAccount}
           onOpenAuth={(mode) => {
+            setAuthModalReason(undefined);
             setAuthModalMode(mode || 'login');
             setIsAuthModalOpen(true);
           }}
@@ -1036,13 +1113,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         theme={theme}
         onToggleTheme={handleToggleTheme}
         isCartBouncing={isCartBouncing}
-        onOpenAdmin={() => {
-          setCurrentView('admin');
-          setAdminTab('home');
-        }}
+        onOpenAdmin={handleOpenAdmin}
         currentUser={currentUser}
         rememberedAccount={rememberedAccount}
         onOpenAuth={(mode) => {
+          setAuthModalReason(undefined);
           setAuthModalMode(mode || 'login');
           setIsAuthModalOpen(true);
         }}
@@ -1196,6 +1271,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setIsCategoriesModalOpen(true);
         }}
         onOpenOrders={() => {
+          if (!currentUser) {
+            setAuthModalReason('orders');
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+            return;
+          }
           setActiveNav('orders');
           setIsOrdersModalOpen(true);
         }}
@@ -1204,10 +1285,17 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setIsContactModalOpen(true);
         }}
         onOpenProfile={() => {
+          if (!currentUser) {
+            setAuthModalReason(undefined);
+            setAuthModalMode('login');
+            setIsAuthModalOpen(true);
+            return;
+          }
           setActiveNav('profile');
           setIsProfileModalOpen(true);
         }}
         onOpenAuth={() => {
+          setAuthModalReason(undefined);
           setAuthModalMode('login');
           setIsAuthModalOpen(true);
         }}
@@ -1257,6 +1345,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             }));
             setCachedCartItems(entries);
             setPendingCheckoutAfterLogin(true);
+            setAuthModalReason('checkout');
             setAuthModalMode('login');
             setIsAuthModalOpen(true);
             return;
@@ -1273,6 +1362,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
+        onRequireLogin={() => {
+          setAuthModalReason('checkout');
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
         items={cartItems}
         checkedItemIds={checkedCartItemIds}
         subtotal={cartSubtotal}
@@ -1295,6 +1389,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             setActiveNav(currentView === 'category' ? 'categories' : 'home');
           }
         }}
+        onRequireLogin={() => {
+          setAuthModalReason('orders');
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
         initialOrderId={trackingOrderId}
         theme={theme}
       />
@@ -1302,15 +1401,27 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       {/* Auth Modal for Guest -> User Page Login, Registration, Magic Link & 1-Tap */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthModalReason(undefined);
+        }}
         initialMode={authModalMode}
-        onLoginSuccess={(user) => {
+        reason={authModalReason}
+        onLoginSuccess={(user, isAdmin) => {
           setCurrentUser(user);
           setRememberedAccountState(user);
           if (user.themePreference) {
             setTheme(user.themePreference);
             localStorage.setItem('egerscore-theme', user.themePreference);
           }
+          if (isAdmin) {
+            setCurrentView('admin');
+            setAdminTab('home');
+          } else if (pendingCheckoutAfterLogin) {
+            setPendingCheckoutAfterLogin(false);
+            setIsCheckoutOpen(true);
+          }
+          setAuthModalReason(undefined);
         }}
         theme={theme}
       />
@@ -1393,6 +1504,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setIsExitModalOpen(false);
           if (!currentUser) {
             setPendingCheckoutAfterLogin(true);
+            setAuthModalReason('checkout');
             setAuthModalMode('login');
             setIsAuthModalOpen(true);
           } else {

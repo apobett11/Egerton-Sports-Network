@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   X,
   Menu,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { 
   Product, 
@@ -48,6 +49,7 @@ interface AdminPortalProps {
   onAddProduct?: (product: Product) => void;
   onUpdateProductStock?: (productId: string, newStock: number) => void;
   onBackToStore: () => void;
+  onLogoutAdmin?: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
   initialTab?: AdminTab;
@@ -66,6 +68,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onAddProduct,
   onUpdateProductStock,
   onBackToStore,
+  onLogoutAdmin,
   theme,
   onToggleTheme,
   initialTab = 'home',
@@ -202,13 +205,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
                 <div className="hidden sm:flex flex-col">
                   <span className="text-[11px] font-bold text-slate-200 leading-tight">
-                    {adminProfile.fullName}
+                    {adminProfile.fullName || 'Admin'}
                   </span>
                   <span className="text-[9px] text-slate-400 leading-none">
                     Operations
                   </span>
                 </div>
               </button>
+
+              {onLogoutAdmin && (
+                <button
+                  type="button"
+                  onClick={onLogoutAdmin}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Sign out of Store Administrator session"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Log Out Admin</span>
+                </button>
+              )}
             </div>
 
           </div>
@@ -257,7 +272,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </div>
 
           {/* Sidebar Footer Link */}
-          <div className="pt-4 border-t border-slate-800/60">
+          <div className="pt-4 border-t border-slate-800/60 space-y-2">
+            {onLogoutAdmin && (
+              <button
+                type="button"
+                onClick={onLogoutAdmin}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out Admin</span>
+                </div>
+              </button>
+            )}
             <button
               onClick={onBackToStore}
               className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors cursor-pointer"
@@ -325,6 +352,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
               {/* Drawer Bottom */}
               <div className="pt-3 border-t border-slate-800 space-y-2">
+                {onLogoutAdmin && (
+                  <button
+                    onClick={() => {
+                      setIsMobileSidebarOpen(false);
+                      onLogoutAdmin();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-red-600/20 text-red-300 border border-red-500/30 hover:bg-red-600/30 text-xs font-bold cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Log Out Admin</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setIsMobileSidebarOpen(false);

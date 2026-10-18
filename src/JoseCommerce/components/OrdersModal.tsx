@@ -15,7 +15,8 @@ import {
   MessageCircle, 
   Mail,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Lock
 } from 'lucide-react';
 import { Order, CartItem, ORDER_TRACKING_STEPS, OrderTrackingStep } from '../types';
 import { getStoredUserOrders, getOrderTrackingStep } from '../services/checkoutAlgorithm';
@@ -24,6 +25,7 @@ import { getCurrentUser } from '../services/authService';
 interface OrdersModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRequireLogin?: () => void;
   initialOrderId?: string;
   theme?: 'dark' | 'light';
 }
@@ -31,37 +33,36 @@ interface OrdersModalProps {
 export const OrdersModal: React.FC<OrdersModalProps> = ({
   isOpen,
   onClose,
+  onRequireLogin,
   initialOrderId,
   theme = 'dark',
 }) => {
   const activeUser = getCurrentUser();
   const [orders, setOrders] = useState<Order[]>(() => {
+    if (!activeUser) return [];
     const userOrders = getStoredUserOrders();
-    if (activeUser) {
-      return userOrders.filter(
-        (o) =>
-          o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
-          o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
-      );
-    }
-    return userOrders;
+    return userOrders.filter(
+      (o) =>
+        o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
+        o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
+    );
   });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     const refreshOrders = () => {
-      const userOrders = getStoredUserOrders();
-      if (activeUser) {
-        const filtered = userOrders.filter(
-          (o) =>
-            o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
-            o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
-        );
-        setOrders(filtered);
-      } else {
-        setOrders(userOrders);
+      if (!activeUser) {
+        setOrders([]);
+        return;
       }
+      const userOrders = getStoredUserOrders();
+      const filtered = userOrders.filter(
+        (o) =>
+          o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
+          o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
+      );
+      setOrders(filtered);
     };
 
     window.addEventListener('egerscore_user_orders_updated', refreshOrders);
@@ -87,6 +88,47 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   if (!isOpen) return null;
 
   const isDark = theme === 'dark';
+
+  // Strict user login gate: user will never access orders without login
+  if (!activeUser) {
+    return (
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
+        <div className="fixed inset-0" onClick={onClose} />
+        <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl border text-center space-y-4 z-10 animate-spring-in ${
+          isDark ? 'bg-[#0f1d2e] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+        }`}>
+          <div className="w-14 h-14 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/30">
+            <Lock className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-black uppercase tracking-wider text-slate-100">
+              Sign In to View Orders
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Your orders and parcel tracking history are personal to your store account. Please sign in to continue.
+            </p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                onRequireLogin?.();
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-500 transition-colors cursor-pointer shadow-md"
+            >
+              Sign In to Store
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat('en-KE', {

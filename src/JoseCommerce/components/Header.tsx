@@ -168,16 +168,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Login Shortcut Button (Directly opens admin page for now) */}
+            {/* Store Admin Operations Button */}
             {onOpenAdmin && (
               <button
                 type="button"
                 onClick={onOpenAdmin}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-[#00b04f]/40 bg-[#00b04f]/15 hover:bg-[#00b04f]/25 text-[#00b04f] transition-all cursor-pointer shadow-xs active:scale-95 text-xs font-bold"
-                title="Store Operations Login"
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all cursor-pointer shadow-xs active:scale-95 text-xs font-bold ${
+                  currentUser?.role === 'store_admin' || currentUser?.role === 'admin'
+                    ? 'border-emerald-500/50 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                    : 'border-[#00b04f]/40 bg-[#00b04f]/15 hover:bg-[#00b04f]/25 text-[#00b04f]'
+                }`}
+                title={
+                  currentUser?.role === 'store_admin' || currentUser?.role === 'admin'
+                    ? 'Open Store Operations Portal'
+                    : 'Store Admin Operations Login'
+                }
               >
-                <LogIn className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span className="hidden sm:inline">Login</span>
+                <ShieldCheck className="w-3.5 h-3.5 stroke-[2.2]" />
+                <span className="hidden sm:inline">Store Admin</span>
               </button>
             )}
 

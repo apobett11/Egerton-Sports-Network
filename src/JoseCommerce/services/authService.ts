@@ -37,18 +37,46 @@ export interface UsageAlert {
   message: string;
 }
 
-const STORAGE_KEY_CURRENT_USER = 'egerscore_auth_current_user';
-const STORAGE_KEY_USERS = 'egerscore_auth_users';
-const STORAGE_KEY_REMEMBERED = 'egerscore_auth_remembered_account';
+// Store isolated storage keys (NEVER touches livescore profiles or egerscore_auth_token)
+const STORAGE_KEY_CURRENT_USER = 'egerscore_store_current_user';
+const STORAGE_KEY_CURRENT_ADMIN = 'egerscore_store_current_admin';
+const STORAGE_KEY_USERS = 'egerscore_store_users';
+const STORAGE_KEY_REMEMBERED = 'egerscore_store_remembered_account';
 const STORAGE_KEY_PERSISTED_STATE = 'egerscore_storefront_persisted_state';
-const STORAGE_KEY_USAGE_ALERTS = 'egerscore_admin_usage_alerts';
+const STORAGE_KEY_USAGE_ALERTS = 'egerscore_store_admin_usage_alerts';
+
+// Dedicated Official Store Administrator definition
+export const STORE_ADMIN_CREDENTIALS = {
+  id: 'store_admin_root',
+  username: 'store_admin',
+  email: 'admin@store.egerscore.co.ke',
+  phoneNumber: '+254700000001',
+  fullName: 'Store Operations Administrator',
+  password: 'StoreAdmin2026!',
+  pin: '9922',
+  role: 'store_admin',
+  themePreference: 'dark' as const,
+  isConfirmed: true,
+  rememberLogin: true,
+  dailyUsageCount: 1,
+  registeredAt: '2026-01-01T00:00:00.000Z',
+  pickupStation: 'Egerton Gate B Sports Pavilion Locker Depot',
+};
 
 export const MAX_DAILY_ACCOUNT_USAGE = 25; // Daily account action cap to protect database
 
 const safeStorage = {
   getItem: (key: string): string | null => {
     if (typeof localStorage === 'undefined') return null;
-    try { return localStorage.getItem(key); } catch { return null; }
+    try { 
+      const val = localStorage.getItem(key);
+      if (val) return val;
+      // Seamless migration from legacy keys if new key not yet populated
+      if (key === STORAGE_KEY_CURRENT_USER) return localStorage.getItem('egerscore_auth_current_user');
+      if (key === STORAGE_KEY_USERS) return localStorage.getItem('egerscore_auth_users');
+      if (key === STORAGE_KEY_REMEMBERED) return localStorage.getItem('egerscore_auth_remembered_account');
+      return null;
+    } catch { return null; }
   },
   setItem: (key: string, value: string): void => {
     if (typeof localStorage === 'undefined') return;
@@ -65,29 +93,50 @@ function getTodayString(): string {
 }
 
 /**
- * Generates 100 test client accounts with independent logins, passwords, themes, and roles
+ * Generates initial store client accounts with independent store logins, passwords, themes, and roles
  */
 export function generateInitial100Users(): UserAccount[] {
   const users: UserAccount[] = [];
   const today = getTodayString();
 
-  for (let i = 1; i <= 100; i++) {
+  // Root Store Administrator
+  users.push({
+    id: STORE_ADMIN_CREDENTIALS.id,
+    username: STORE_ADMIN_CREDENTIALS.username,
+    email: STORE_ADMIN_CREDENTIALS.email,
+    phoneNumber: STORE_ADMIN_CREDENTIALS.phoneNumber,
+    fullName: STORE_ADMIN_CREDENTIALS.fullName,
+    password: STORE_ADMIN_CREDENTIALS.password,
+    themePreference: 'dark',
+    role: 'store_admin',
+    isConfirmed: true,
+    registeredAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+    lastLoginAt: new Date().toISOString(),
+    rememberLogin: true,
+    dailyUsageCount: 1,
+    dailyUsageDate: today,
+    pickupStation: STORE_ADMIN_CREDENTIALS.pickupStation,
+  });
+
+  // Client shopper accounts (distinct from any livescore accounts)
+  for (let i = 1; i <= 50; i++) {
     const pad = String(i).padStart(3, '0');
     users.push({
-      id: `usr_test_${pad}`,
-      username: `user${i}`,
-      email: `user${i}@egerscore.test`,
+      id: `usr_store_${pad}`,
+      username: `shopper${i}`,
+      email: `shopper${i}@store.egerscore.test`,
       phoneNumber: `+254700${String(i).padStart(6, '0')}`,
-      fullName: `Client Player #${i}`,
-      password: 'TestPass123!',
+      fullName: `Store Shopper #${i}`,
+      password: 'StoreUser123!',
       themePreference: i % 2 === 0 ? 'dark' : 'light',
-      role: i === 1 ? 'admin' : 'customer',
+      role: 'customer',
       isConfirmed: true,
-      registeredAt: new Date(Date.now() - (101 - i) * 86400000).toISOString(),
+      registeredAt: new Date(Date.now() - (51 - i) * 86400000).toISOString(),
       lastLoginAt: new Date(Date.now() - (i * 3600000)).toISOString(),
       rememberLogin: true,
-      dailyUsageCount: (i % 6) + 1,
+      dailyUsageCount: (i % 5) + 1,
       dailyUsageDate: today,
+      pickupStation: 'Egerton Main Campus Gate 3 Sports Hub & Main Pitch Depot',
     });
   }
   return users;
@@ -100,25 +149,26 @@ export function getAllRegisteredUsers(): UserAccount[] {
     const raw = safeStorage.getItem(STORAGE_KEY_USERS);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 100) return parsed;
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Merge existing custom registrations with standard 100 test accounts
-        const seed100 = generateInitial100Users();
-        const merged = [...parsed];
-        seed100.forEach((testUser) => {
-          if (!merged.some((u) => u.username.toLowerCase() === testUser.username.toLowerCase() || u.email.toLowerCase() === testUser.email.toLowerCase())) {
-            merged.push(testUser);
-          }
-        });
-        safeStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(merged));
-        return merged;
+        // Ensure store admin is always present in repository
+        if (!parsed.some((u) => u.username === STORE_ADMIN_CREDENTIALS.username || u.role === 'store_admin')) {
+          parsed.unshift({
+            ...STORE_ADMIN_CREDENTIALS,
+            dailyUsageCount: 1,
+            dailyUsageDate: getTodayString(),
+            registeredAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString(),
+          });
+          saveAllRegisteredUsers(parsed);
+        }
+        return parsed;
       }
     }
   } catch (e) {
     console.error('Failed to load registered users', e);
   }
 
-  // First run: seed 100 test user accounts
+  // First run: seed test user accounts
   const initialUsers = generateInitial100Users();
   saveAllRegisteredUsers(initialUsers);
   return initialUsers;
@@ -138,6 +188,7 @@ export function getRememberedAccount(): UserAccount | null {
   try {
     const raw = safeStorage.getItem(STORAGE_KEY_REMEMBERED);
     if (raw) return JSON.parse(raw);
+
   } catch (e) {
     console.error('Failed to parse remembered account', e);
   }
@@ -261,15 +312,155 @@ export function confirmUserMagicLink(userId: string): { success: boolean; user?:
   return { success: true, user: updatedUser };
 }
 
+// ================= ADMIN SESSION MANAGEMENT =================
+
+export function getCurrentAdmin(): UserAccount | null {
+  try {
+    const raw = safeStorage.getItem(STORAGE_KEY_CURRENT_ADMIN);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to parse admin session', e);
+  }
+  return null;
+}
+
+export function setCurrentAdmin(admin: UserAccount | null): void {
+  try {
+    if (admin) {
+      safeStorage.setItem(STORAGE_KEY_CURRENT_ADMIN, JSON.stringify(admin));
+    } else {
+      safeStorage.removeItem(STORAGE_KEY_CURRENT_ADMIN);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('egerscore_store_admin_auth_changed', { detail: admin }));
+    }
+  } catch (e) {
+    console.error('Failed to update admin session', e);
+  }
+}
+
+export function isStoreAdminAuthenticated(): boolean {
+  const admin = getCurrentAdmin();
+  if (admin && (admin.role === 'store_admin' || admin.role === 'admin')) {
+    return true;
+  }
+  const curr = getCurrentUser();
+  return Boolean(curr && (curr.role === 'store_admin' || curr.role === 'admin'));
+}
+
+export function endAdminSession(): void {
+  setCurrentAdmin(null);
+  const curr = getCurrentUser();
+  if (curr && (curr.role === 'store_admin' || curr.role === 'admin')) {
+    setCurrentUser(null);
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('egerscore_store_admin_auth_changed', { detail: null }));
+  }
+}
+
+// ================= DEDICATED STORE ADMIN LOGIN =================
+
+export function loginStoreAdmin(
+  identifier: string,
+  password: string,
+  pin?: string
+): { success: boolean; admin?: UserAccount; error?: string } {
+  const users = getAllRegisteredUsers();
+  const normalized = identifier.trim().toLowerCase();
+
+  // 1. Check against master root admin
+  const isRootAdmin = 
+    (normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+     normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()) &&
+    password === STORE_ADMIN_CREDENTIALS.password;
+
+  if (isRootAdmin) {
+    if (pin && pin.trim() !== STORE_ADMIN_CREDENTIALS.pin) {
+      return { success: false, error: 'Invalid Store Administrator Security PIN.' };
+    }
+
+    const today = getTodayString();
+    const adminUser: UserAccount = {
+      ...STORE_ADMIN_CREDENTIALS,
+      dailyUsageDate: today,
+      lastLoginAt: new Date().toISOString(),
+    };
+
+    setCurrentAdmin(adminUser);
+    setCurrentUser(adminUser);
+    return { success: true, admin: adminUser };
+  }
+
+  // 2. Check registered users repository for store_admin role
+  const foundUser = users.find(
+    (u) =>
+      (u.email.toLowerCase() === normalized || u.username.toLowerCase() === normalized) &&
+      u.password === password
+  );
+
+  if (!foundUser) {
+    return { success: false, error: 'Invalid administrator credentials.' };
+  }
+
+  if (foundUser.role !== 'store_admin' && foundUser.role !== 'admin') {
+    return {
+      success: false,
+      error: 'Access Denied: This account does not possess Store Administrator privileges.',
+    };
+  }
+
+  const today = getTodayString();
+  const updatedAdmin: UserAccount = {
+    ...foundUser,
+    lastLoginAt: new Date().toISOString(),
+    dailyUsageDate: today,
+  };
+
+  const updatedUsers = users.map((u) => (u.id === foundUser.id ? updatedAdmin : u));
+  saveAllRegisteredUsers(updatedUsers);
+
+  setCurrentAdmin(updatedAdmin);
+  setCurrentUser(updatedAdmin);
+
+  return { success: true, admin: updatedAdmin };
+}
+
 // ================= LOGIN & ONE-TAP LOGIN =================
 
 export function loginWithCredentials(
   identifier: string, // username or email
   password: string,
-  rememberMe: boolean = true
-): { success: boolean; user?: UserAccount; error?: string } {
+  rememberMe: boolean = true,
+  roleTarget?: 'customer' | 'store_admin'
+): { success: boolean; user?: UserAccount; isAdmin?: boolean; error?: string } {
   const users = getAllRegisteredUsers();
   const normalized = identifier.trim().toLowerCase();
+
+  // Check for Store Admin login first if target is store_admin or credentials match
+  if (
+    roleTarget === 'store_admin' ||
+    normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+    normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()
+  ) {
+    if (
+      (normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+       normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()) &&
+      password === STORE_ADMIN_CREDENTIALS.password
+    ) {
+      const today = getTodayString();
+      const adminUser: UserAccount = {
+        ...STORE_ADMIN_CREDENTIALS,
+        rememberLogin: rememberMe,
+        dailyUsageDate: today,
+        lastLoginAt: new Date().toISOString(),
+      };
+      setCurrentAdmin(adminUser);
+      setCurrentUser(adminUser);
+      if (rememberMe) setRememberedAccount(adminUser);
+      return { success: true, user: adminUser, isAdmin: true };
+    }
+  }
 
   const user = users.find(
     (u) => (u.email.toLowerCase() === normalized || u.username.toLowerCase() === normalized) && u.password === password
@@ -277,6 +468,14 @@ export function loginWithCredentials(
 
   if (!user) {
     return { success: false, error: 'Invalid username/email or password.' };
+  }
+
+  // If user requested admin login specifically, verify permission
+  if (roleTarget === 'store_admin' && user.role !== 'store_admin' && user.role !== 'admin') {
+    return {
+      success: false,
+      error: 'Access Denied: Account is not authorized as a Store Administrator. Please sign in via the Store Shopper portal.',
+    };
   }
 
   const today = getTodayString();
@@ -294,13 +493,20 @@ export function loginWithCredentials(
   saveAllRegisteredUsers(updatedUsers);
   setCurrentUser(updatedUser);
 
+  const isUserAdmin = updatedUser.role === 'store_admin' || updatedUser.role === 'admin';
+  if (isUserAdmin) {
+    setCurrentAdmin(updatedUser);
+  } else {
+    setCurrentAdmin(null);
+  }
+
   if (rememberMe) {
     setRememberedAccount(updatedUser);
   }
 
   checkAndRecordUsageAlert(updatedUser);
 
-  return { success: true, user: updatedUser };
+  return { success: true, user: updatedUser, isAdmin: isUserAdmin };
 }
 
 export function oneTapLogin(rememberedUser: UserAccount): { success: boolean; user?: UserAccount; error?: string } {
@@ -326,6 +532,12 @@ export function oneTapLogin(rememberedUser: UserAccount): { success: boolean; us
   setCurrentUser(updated);
   setRememberedAccount(updated);
 
+  if (updated.role === 'store_admin' || updated.role === 'admin') {
+    setCurrentAdmin(updated);
+  } else {
+    setCurrentAdmin(null);
+  }
+
   checkAndRecordUsageAlert(updated);
 
   return { success: true, user: updated };
@@ -333,13 +545,18 @@ export function oneTapLogin(rememberedUser: UserAccount): { success: boolean; us
 
 export function endUserSession(): void {
   setCurrentUser(null);
+  setCurrentAdmin(null);
   // Remove persisted transient page filter/class state so next session reloads fresh
   try {
     sessionStorage.removeItem(STORAGE_KEY_PERSISTED_STATE);
   } catch (e) {
     console.error('Error clearing persisted session', e);
   }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('egerscore_store_user_auth_changed', { detail: null }));
+  }
 }
+
 
 // ================= DAILY USAGE TRACKING & ADMIN ALERTS =================
 

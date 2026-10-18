@@ -18,7 +18,8 @@ import {
   Coins,
   Building2,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from 'lucide-react';
 import { CartItem, Order, AdminCheckoutSettings, BusinessContactSettings } from '../types';
 import { PlaceSelectionModal } from './PlaceSelectionModal';
@@ -28,6 +29,7 @@ import { getCurrentUser } from '../services/authService';
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRequireLogin?: () => void;
   items: CartItem[];
   checkedItemIds: Set<string>;
   subtotal: number;
@@ -43,6 +45,7 @@ interface CheckoutModalProps {
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
+  onRequireLogin,
   items,
   checkedItemIds,
   subtotal,
@@ -83,6 +86,45 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [checkoutError, setCheckoutError] = useState('');
 
   if (!isOpen) return null;
+
+  // Strict user login gate: user will never access checkout without login
+  if (!activeUser) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
+        <div className="fixed inset-0" onClick={onClose} />
+        <div className="relative w-full max-w-md p-6 rounded-2xl shadow-2xl border text-center space-y-4 z-10 animate-spring-in bg-[#0f1d2e] border-slate-700 text-slate-100">
+          <div className="w-14 h-14 mx-auto rounded-full bg-[#ff0046]/20 text-[#ff0046] flex items-center justify-center border border-[#ff0046]/30">
+            <Lock className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-base font-black uppercase tracking-wider text-white">
+              Login Required for Checkout
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              You must sign in to your official store shopper account before placing an order.
+            </p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Continue Shopping
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                onRequireLogin?.();
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-[#ff0046] text-white font-bold text-xs hover:bg-[#e0003c] transition-colors cursor-pointer shadow-md"
+            >
+              Sign In & Checkout
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Process ONLY the checked items
   const checkedItems = items.filter((item) => checkedItemIds.has(item.id));

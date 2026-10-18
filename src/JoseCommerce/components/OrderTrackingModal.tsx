@@ -16,7 +16,8 @@ import {
   Phone,
   MessageCircle,
   Mail,
-  Headphones
+  Headphones,
+  Lock
 } from 'lucide-react';
 import { Order, CartItem, ORDER_TRACKING_STEPS, OrderTrackingStep } from '../types';
 import { getStoredOrders } from '../data/mockOrders';
@@ -26,6 +27,7 @@ import { getCurrentUser } from '../services/authService';
 interface OrderTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRequireLogin?: () => void;
   initialOrderId?: string;
   theme?: 'dark' | 'light';
 }
@@ -33,20 +35,19 @@ interface OrderTrackingModalProps {
 export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   isOpen,
   onClose,
+  onRequireLogin,
   initialOrderId,
   theme = 'dark',
 }) => {
   const activeUser = getCurrentUser();
   const [orders, setOrders] = useState<Order[]>(() => {
+    if (!activeUser) return [];
     const userOrders = getStoredUserOrders();
-    if (activeUser) {
-      return userOrders.filter(
-        (o) =>
-          o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
-          o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
-      );
-    }
-    return userOrders;
+    return userOrders.filter(
+      (o) =>
+        o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
+        o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
+    );
   });
 
   const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrderId || '');
@@ -54,18 +55,18 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   // Synchronize with storage & realtime events
   useEffect(() => {
     const refreshOrders = () => {
-      const userOrders = getStoredUserOrders();
-      if (activeUser) {
-        setOrders(
-          userOrders.filter(
-            (o) =>
-              o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
-              o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
-          )
-        );
-      } else {
-        setOrders(userOrders);
+      if (!activeUser) {
+        setOrders([]);
+        return;
       }
+      const userOrders = getStoredUserOrders();
+      setOrders(
+        userOrders.filter(
+          (o) =>
+            o.customerEmail?.toLowerCase() === activeUser.email.toLowerCase() ||
+            o.customerName?.toLowerCase() === activeUser.username.toLowerCase()
+        )
+      );
     };
 
     window.addEventListener('egerscore_user_orders_updated', refreshOrders);
@@ -91,6 +92,48 @@ export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({
   }, [initialOrderId, orders, selectedOrderId]);
 
   if (!isOpen) return null;
+
+  // Strict user login gate: user will never access order tracking without login
+  if (!activeUser) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-spring-in">
+        <div className={`w-full max-w-md p-6 rounded-2xl border text-center space-y-4 shadow-2xl relative ${
+          theme === 'dark' ? 'bg-[#0f1d2e] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+        }`}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="w-14 h-14 mx-auto rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-black uppercase tracking-wide">Authentication Required</h3>
+          <p className="text-xs text-slate-400">
+            Please log in to your official store account to track active packages and view dispatch delivery status.
+          </p>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                onRequireLogin?.();
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-500 transition-colors cursor-pointer shadow-md"
+            >
+              Sign In to Store
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
