@@ -18,12 +18,29 @@ export interface CachedCartItemEntry {
   variantImage?: string;
 }
 
-const STORAGE_KEY_CART_CACHE = 'egerscore_session_cart_cache_items';
-const STORAGE_KEY_CART_CACHE_LEGACY = 'egerscore_session_cart_cache_ids';
+const STORAGE_KEY_CART_CACHE = 'egerscore_store_local_cart_cache_items';
+const STORAGE_KEY_CART_CACHE_LEGACY = 'egerscore_store_local_cart_cache_ids';
+const SESSION_LEGACY_KEY = 'egerscore_session_cart_cache_items';
+const SESSION_LEGACY_IDS = 'egerscore_session_cart_cache_ids';
 
 export function getCachedCartItems(): CachedCartItemEntry[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY_CART_CACHE);
+    // 1. Primary: read from persistent localStorage
+    let raw = localStorage.getItem(STORAGE_KEY_CART_CACHE);
+
+    // 2. Fallback / Migration: check previous localStorage legacy key or sessionStorage
+    if (!raw) {
+      const sessionRaw = sessionStorage.getItem(SESSION_LEGACY_KEY);
+      if (sessionRaw) {
+        raw = sessionRaw;
+        // Migrate to localStorage immediately
+        try {
+          localStorage.setItem(STORAGE_KEY_CART_CACHE, sessionRaw);
+          sessionStorage.removeItem(SESSION_LEGACY_KEY);
+        } catch (_) {}
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -40,8 +57,9 @@ export function getCachedCartItems(): CachedCartItemEntry[] {
         });
       }
     }
+
     // Check legacy key for backward compatibility
-    const legacyRaw = sessionStorage.getItem(STORAGE_KEY_CART_CACHE_LEGACY);
+    const legacyRaw = localStorage.getItem(STORAGE_KEY_CART_CACHE_LEGACY) || sessionStorage.getItem(SESSION_LEGACY_IDS);
     if (legacyRaw) {
       const parsedLegacy = JSON.parse(legacyRaw);
       if (Array.isArray(parsedLegacy)) {
@@ -61,12 +79,12 @@ export function getCachedCartItems(): CachedCartItemEntry[] {
 
 export function setCachedCartItems(items: CachedCartItemEntry[]): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY_CART_CACHE, JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY_CART_CACHE, JSON.stringify(items));
     // Keep legacy key in sync with product IDs
     const ids = items.map((it) => it.productId);
-    sessionStorage.setItem(STORAGE_KEY_CART_CACHE_LEGACY, JSON.stringify(ids));
+    localStorage.setItem(STORAGE_KEY_CART_CACHE_LEGACY, JSON.stringify(ids));
   } catch (e) {
-    console.error('Failed to save cached cart items', e);
+    console.error('Failed to save cached cart items to localStorage', e);
   }
 }
 
@@ -83,7 +101,7 @@ export function addCachedCartItem(entry: CachedCartItemEntry): void {
     }
     setCachedCartItems(current);
   } catch (e) {
-    console.error('Failed to add item to session cache', e);
+    console.error('Failed to add item to persistent local storage cache', e);
   }
 }
 
@@ -92,16 +110,18 @@ export function removeCachedCartItem(productId: string): void {
     const current = getCachedCartItems().filter((it) => it.productId !== productId);
     setCachedCartItems(current);
   } catch (e) {
-    console.error('Failed to remove item from session cache', e);
+    console.error('Failed to remove item from persistent local storage cache', e);
   }
 }
 
 export function clearCartCache(): void {
   try {
-    sessionStorage.removeItem(STORAGE_KEY_CART_CACHE);
-    sessionStorage.removeItem(STORAGE_KEY_CART_CACHE_LEGACY);
+    localStorage.removeItem(STORAGE_KEY_CART_CACHE);
+    localStorage.removeItem(STORAGE_KEY_CART_CACHE_LEGACY);
+    sessionStorage.removeItem(SESSION_LEGACY_KEY);
+    sessionStorage.removeItem(SESSION_LEGACY_IDS);
   } catch (e) {
-    console.error('Failed to clear cart session cache', e);
+    console.error('Failed to clear cart persistent cache', e);
   }
 }
 

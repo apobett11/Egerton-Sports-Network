@@ -339,8 +339,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {view === 'reset_sent' && 'Sign-In Link Sent'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {view === 'login' && 'Enter your credentials to access your store orders'}
-              {view === 'register' && 'Join to place orders and track your deliveries'}
+              {view === 'login' && (
+                (reason === 'cart_save' || reason === 'cart_limit')
+                  ? 'Please log in to save your cart and products'
+                  : 'Enter your credentials to access your store orders'
+              )}
+              {view === 'register' && (
+                (reason === 'cart_save' || reason === 'cart_limit')
+                  ? 'Create an account to save your cart and products'
+                  : 'Join to place orders and track your deliveries'
+              )}
               {view === 'staff_login' && 'Authorized store staff management'}
               {view === 'forgot_password' && 'Enter your email to receive a sign-in magic link'}
               {view === 'magic_link_pending' && 'Almost done! Verify your account to continue'}
@@ -358,7 +366,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* Context Reason Notice (Only if redirected from checkout or orders) */}
+        {/* Context Reason Notice (Only if redirected from cart, checkout or orders) */}
+        {(reason === 'cart_save' || reason === 'cart_limit') && (
+          <div className="mx-5 mt-3.5 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+            <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-medium">Please log in to save your cart and products.</span>
+          </div>
+        )}
         {reason === 'checkout' && (
           <div className="mx-5 mt-3.5 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
             <ShoppingBag className="w-3.5 h-3.5 shrink-0" />

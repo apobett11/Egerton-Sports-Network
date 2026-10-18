@@ -665,6 +665,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         },
       ];
     });
+
+    // When guest reaches 6 items in cart (or wants to add to 6), prompt them to login to save their cart & products
+    if (!currentUser && cartItems.length + 1 >= 6) {
+      setAuthModalReason('cart_save');
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+    }
   };
 
   const handleToggleCheckCartItem = (id: string) => {
@@ -734,6 +741,30 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     setCheckedCartItemIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
+      return next;
+    });
+  };
+
+  const handleRemoveMultipleCartItems = (ids: string[]) => {
+    const idSet = new Set(ids);
+    setCartItems((prev) => {
+      const updated = prev.filter((item) => !idSet.has(item.id));
+      if (!currentUser) {
+        setCachedCartItems(
+          updated.map((item) => ({
+            productId: item.product.id,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity,
+            customization: item.customization,
+          }))
+        );
+      }
+      return updated;
+    });
+    setCheckedCartItemIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
       return next;
     });
   };
@@ -1344,6 +1375,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onSelectAllItems={handleSelectAllCartItems}
         onUpdateQuantity={handleUpdateCartQuantity}
         onRemoveItem={handleRemoveCartItem}
+        onRemoveMultipleItems={handleRemoveMultipleCartItems}
         onProceedToCheckout={() => {
           setIsCartOpen(false);
           if (!currentUser) {
