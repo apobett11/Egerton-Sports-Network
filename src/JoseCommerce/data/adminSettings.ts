@@ -30,10 +30,10 @@ export const DEFAULT_BUSINESS_CONTACT: BusinessContactSettings = {
 };
 
 export const DEFAULT_ADMIN_PROFILE: AdminProfile = {
-  fullName: '',
-  email: '',
-  phone: '',
-  role: 'Store Administrator',
+  fullName: 'Joseph Kamunyu',
+  email: 'josephkamunyu5@gmail.com',
+  phone: '+254700000001',
+  role: 'admin',
   avatarUrl: '',
 };
 

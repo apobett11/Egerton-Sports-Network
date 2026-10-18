@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.store_users (
   phone_number TEXT,
   full_name TEXT,
   password_hash TEXT,
-  role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'store_admin')),
+  role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'store_admin', 'admin')),
   is_confirmed BOOLEAN NOT NULL DEFAULT true,
   theme_preference TEXT NOT NULL DEFAULT 'dark' CHECK (theme_preference IN ('dark', 'light')),
   pickup_station TEXT,
@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS public.store_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_store_profiles_username ON public.store_profiles (username);
+CREATE INDEX IF NOT EXISTS idx_store_profiles_role ON public.store_profiles (role);
 
 -- 3. Enable RLS
 ALTER TABLE public.store_users ENABLE ROW LEVEL SECURITY;
@@ -75,7 +76,7 @@ CREATE POLICY "Allow update to store_profiles"
   ON public.store_profiles FOR UPDATE 
   USING (true);
 
--- 4. Seed Official Store Administrator
+-- 4. Seed Official Store Administrator (Joseph Kamunyu)
 INSERT INTO public.store_users (
   id,
   username,
@@ -88,17 +89,21 @@ INSERT INTO public.store_users (
   theme_preference,
   pickup_station
 ) VALUES (
-  'store_admin_root',
-  'store_admin',
-  'admin@store.egerscore.co.ke',
+  'c7b94998-8c10-48e7-9d7a-115f5a898b53',
+  'josephkamunyu5',
+  'josephkamunyu5@gmail.com',
   '+254700000001',
-  'Store Operations Administrator',
-  'StoreAdmin2026!',
-  'store_admin',
+  'Joseph Kamunyu',
+  'Joseph5@_Kamunyu',
+  'admin',
   true,
   'dark',
   'Egerton Gate B Sports Pavilion Locker Depot'
-) ON CONFLICT (username) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET
+  username = EXCLUDED.username,
+  password_hash = EXCLUDED.password_hash,
+  role = 'admin',
+  full_name = EXCLUDED.full_name;
 
 INSERT INTO public.store_profiles (
   id,
@@ -109,11 +114,15 @@ INSERT INTO public.store_profiles (
   role,
   default_pickup_station
 ) VALUES (
-  'store_admin_root',
-  'store_admin',
-  'Store Operations Administrator',
-  'admin@store.egerscore.co.ke',
+  'c7b94998-8c10-48e7-9d7a-115f5a898b53',
+  'josephkamunyu5',
+  'Joseph Kamunyu',
+  'josephkamunyu5@gmail.com',
   '+254700000001',
-  'store_admin',
+  'admin',
   'Egerton Gate B Sports Pavilion Locker Depot'
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+  username = EXCLUDED.username,
+  email = EXCLUDED.email,
+  role = 'admin',
+  full_name = EXCLUDED.full_name;

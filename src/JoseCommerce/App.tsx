@@ -929,7 +929,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             setAuthModalMode(mode || 'login');
             setIsAuthModalOpen(true);
           }}
-          onOpenDashboard={() => setIsUserDashboardOpen(true)}
+          onOpenDashboard={() => {
+            if (currentUser?.role === 'admin' || currentUser?.role === 'store_admin') {
+              handleOpenAdmin();
+            } else {
+              setIsUserDashboardOpen(true);
+            }
+          }}
           onOneTapLogin={handleOneTapLogin}
           onEndSession={handleEndSession}
           onRefreshData={handleRefreshData}
@@ -1121,7 +1127,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setAuthModalMode(mode || 'login');
           setIsAuthModalOpen(true);
         }}
-        onOpenDashboard={() => setIsUserDashboardOpen(true)}
+        onOpenDashboard={() => {
+          if (currentUser?.role === 'admin' || currentUser?.role === 'store_admin') {
+            handleOpenAdmin();
+          } else {
+            setIsUserDashboardOpen(true);
+          }
+        }}
         onOneTapLogin={handleOneTapLogin}
         onEndSession={handleEndSession}
         onRefreshData={handleRefreshData}
@@ -1414,7 +1426,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             setTheme(user.themePreference);
             localStorage.setItem('egerscore-theme', user.themePreference);
           }
-          if (isAdmin) {
+          if (isAdmin || user.role === 'admin' || user.role === 'store_admin') {
             setCurrentView('admin');
             setAdminTab('home');
           } else if (pendingCheckoutAfterLogin) {

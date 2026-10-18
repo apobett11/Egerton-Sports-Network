@@ -47,15 +47,16 @@ const STORAGE_KEY_PERSISTED_STATE = 'egerscore_storefront_persisted_state';
 const STORAGE_KEY_USAGE_ALERTS = 'egerscore_store_admin_usage_alerts';
 
 // Dedicated Official Store Administrator definition
+// Dedicated Official Store Administrator definition
 export const STORE_ADMIN_CREDENTIALS = {
-  id: 'store_admin_root',
-  username: 'store_admin',
-  email: 'admin@store.egerscore.co.ke',
+  id: 'c7b94998-8c10-48e7-9d7a-115f5a898b53',
+  username: 'josephkamunyu5',
+  email: 'josephkamunyu5@gmail.com',
   phoneNumber: '+254700000001',
-  fullName: 'Store Operations Administrator',
-  password: 'StoreAdmin2026!',
+  fullName: 'Joseph Kamunyu',
+  password: 'Joseph5@_Kamunyu',
   pin: '9922',
-  role: 'store_admin',
+  role: 'admin',
   themePreference: 'dark' as const,
   isConfirmed: true,
   rememberLogin: true,
@@ -109,7 +110,7 @@ export function generateInitial100Users(): UserAccount[] {
     fullName: STORE_ADMIN_CREDENTIALS.fullName,
     password: STORE_ADMIN_CREDENTIALS.password,
     themePreference: 'dark',
-    role: 'store_admin',
+    role: 'admin',
     isConfirmed: true,
     registeredAt: new Date(Date.now() - 30 * 86400000).toISOString(),
     lastLoginAt: new Date().toISOString(),
@@ -151,15 +152,38 @@ export function getAllRegisteredUsers(): UserAccount[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure store admin is always present in repository
-        if (!parsed.some((u) => u.username === STORE_ADMIN_CREDENTIALS.username || u.role === 'store_admin')) {
-          parsed.unshift({
-            ...STORE_ADMIN_CREDENTIALS,
-            dailyUsageCount: 1,
-            dailyUsageDate: getTodayString(),
-            registeredAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          });
+        // Ensure store admin is always present and updated with role 'admin' in repository
+        const adminIndex = parsed.findIndex((u) => 
+          u.email?.toLowerCase() === STORE_ADMIN_CREDENTIALS.email.toLowerCase() ||
+          u.username?.toLowerCase() === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+          u.id === STORE_ADMIN_CREDENTIALS.id ||
+          u.role === 'store_admin' ||
+          u.role === 'admin'
+        );
+
+        const freshAdmin: UserAccount = {
+          ...STORE_ADMIN_CREDENTIALS,
+          id: STORE_ADMIN_CREDENTIALS.id,
+          username: STORE_ADMIN_CREDENTIALS.username,
+          email: STORE_ADMIN_CREDENTIALS.email,
+          password: STORE_ADMIN_CREDENTIALS.password,
+          fullName: STORE_ADMIN_CREDENTIALS.fullName,
+          role: 'admin',
+          isConfirmed: true,
+          dailyUsageCount: 1,
+          dailyUsageDate: getTodayString(),
+          registeredAt: '2026-01-01T00:00:00.000Z',
+          lastLoginAt: new Date().toISOString(),
+        };
+
+        if (adminIndex === -1) {
+          parsed.unshift(freshAdmin);
+          saveAllRegisteredUsers(parsed);
+        } else {
+          parsed[adminIndex] = {
+            ...parsed[adminIndex],
+            ...freshAdmin,
+          };
           saveAllRegisteredUsers(parsed);
         }
         return parsed;
@@ -350,6 +374,11 @@ export function isStoreAdminAuthenticated(): boolean {
   }
   const curr = getCurrentUser();
   return Boolean(curr && (curr.role === 'store_admin' || curr.role === 'admin'));
+}
+
+export function isStoreAdminUser(user?: UserAccount | null): boolean {
+  if (!user) return false;
+  return user.role === 'admin' || user.role === 'store_admin';
 }
 
 export function endAdminSession(): void {

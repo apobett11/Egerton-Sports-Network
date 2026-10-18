@@ -303,7 +303,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Fill Demo Admin Credentials
   const handleFillDemoAdmin = () => {
-    setStaffIdentifier(STORE_ADMIN_CREDENTIALS.username);
+    setStaffIdentifier(STORE_ADMIN_CREDENTIALS.email);
     setStaffPassword(STORE_ADMIN_CREDENTIALS.password);
     setStaffPin(STORE_ADMIN_CREDENTIALS.pin);
     setErrorMessage('');
