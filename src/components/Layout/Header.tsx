@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList, Copy, Check, BarChart2 } from 'lucide-react';
+import { Menu, Search, Sun, Moon, Calendar, ChevronLeft, ChevronRight, Star, X, LogIn, ChevronDown, Bell, MessageSquare, ClipboardList, Copy, Check, BarChart2, Store } from 'lucide-react';
 import type { Match } from '../../types';
 import { EsnLogo } from '../common/EsnLogo';
 import { dateFromKey, fixtureDateKey, readPlaydayIndex, refreshPlaydayIndex, type PlaydayMark } from '../../lib/matchdayHelper';
@@ -19,6 +19,7 @@ interface HeaderProps {
     onMenuClick?: () => void;
     onNavigateNews?: () => void;
     onNavigateLogin?: () => void;
+    onNavigateStore?: () => void;
     activeMainTab?: 'scores' | 'news' | 'table' | 'favorites' | 'potw';
     onSelectMainTab?: (tab: 'scores' | 'news' | 'table' | 'favorites' | 'potw') => void;
     favoritesCount?: number;
@@ -54,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
     onMenuClick,
     onNavigateNews,
     onNavigateLogin,
+    onNavigateStore,
     activeMainTab = 'scores',
     onSelectMainTab,
     favoritesCount = 0,
@@ -161,8 +163,22 @@ export const Header: React.FC<HeaderProps> = ({
                         <EsnLogo size="md" textColor="text-white" />
                     </div>
 
-                    {/* Right Controls: Search + Hamburger Menu */}
+                    {/* Right Controls: Store + Search + Hamburger Menu */}
                     <div className="flex items-center gap-1 sm:gap-2">
+                        {onNavigateStore && (
+                            <button
+                                type="button"
+                                onClick={onNavigateStore}
+                                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-700/80 bg-[#14263b]/70 hover:bg-[#1a3450] hover:border-emerald-500/40 text-slate-200 hover:text-white transition-all cursor-pointer shadow-xs active:scale-95 text-xs font-black"
+                                title="Open Store"
+                                aria-label="Open Store"
+                            >
+                                <span className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+                                    <Store className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="tracking-wide">Store</span>
+                            </button>
+                        )}
                         {showSearch && (
                             <div className="relative flex items-center">
                                 <input
