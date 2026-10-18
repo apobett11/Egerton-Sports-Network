@@ -60,40 +60,51 @@ export interface SpecColumn {
   values: string[]; // e.g. ["Red", "Green", "Yellow"]
 }
 
+const STORAGE_KEY_ADD_PRODUCT_DRAFT = 'egerscore_admin_add_product_draft';
+
 export const AddProductModal: React.FC<AddProductModalProps> = ({
   isOpen,
   onClose,
   onSaveProduct,
   theme = 'dark',
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Restore draft state on reload
+  const draft = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_ADD_PRODUCT_DRAFT);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return null;
+  }, []);
+
+  const [step, setStep] = useState<1 | 2 | 3>(() => draft?.step || 1);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Step 1: General
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState<string>('');
-  const [initialQuantity, setInitialQuantity] = useState<string>('20');
+  const [name, setName] = useState(() => draft?.name || '');
+  const [description, setDescription] = useState(() => draft?.description || '');
+  const [price, setPrice] = useState<string>(() => draft?.price || '');
+  const [initialQuantity, setInitialQuantity] = useState<string>(() => draft?.initialQuantity || '20');
 
   // Step 2: Categorization & Keywords
-  const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]?.name || 'Team Match Kits');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => draft?.selectedCategory || CATEGORIES[0]?.name || 'Team Match Kits');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
-  const [classification, setClassification] = useState<string>(CLASSIFICATION_OPTIONS[0]);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(['Jersey', 'Team Kit']);
+  const [classification, setClassification] = useState<string>(() => draft?.classification || CLASSIFICATION_OPTIONS[0]);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => draft?.selectedKeywords || ['Jersey', 'Team Kit']);
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
   const [keywordSearch, setKeywordSearch] = useState('');
   const [customKeywordInput, setCustomKeywordInput] = useState('');
 
   // Step 3: Images & Multi-Column Specification Table
-  const [logoImage, setLogoImage] = useState<string>(DEFAULT_PRESET_IMAGES[0]);
-  const [colorPhotos, setColorPhotos] = useState<Record<string, string>>({
+  const [logoImage, setLogoImage] = useState<string>(() => draft?.logoImage || DEFAULT_PRESET_IMAGES[0]);
+  const [colorPhotos, setColorPhotos] = useState<Record<string, string>>(() => draft?.colorPhotos || {
     'Official Navy': DEFAULT_PRESET_IMAGES[1],
     'White Accent': DEFAULT_PRESET_IMAGES[2],
   });
-  const [fallbackAdditionalImage, setFallbackAdditionalImage] = useState<string>(DEFAULT_PRESET_IMAGES[1]);
+  const [fallbackAdditionalImage, setFallbackAdditionalImage] = useState<string>(() => draft?.fallbackAdditionalImage || DEFAULT_PRESET_IMAGES[1]);
   
-  const [specColumns, setSpecColumns] = useState<SpecColumn[]>([
+  const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => draft?.specColumns || [
     { id: 'col-sizes', name: 'Sizes', values: ['S', 'M', 'L', 'XL'] },
     { id: 'col-colors', name: 'Colors', values: ['Official Navy', 'White Accent'] }
   ]);
@@ -101,6 +112,42 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [customColumnName, setCustomColumnName] = useState('');
   const [isAddingCustomCol, setIsAddingCustomCol] = useState(false);
   const [newValInputs, setNewValInputs] = useState<Record<string, string>>({});
+
+  // Automatically persist step and draft inputs to localStorage to survive reloads
+  React.useEffect(() => {
+    if (isOpen) {
+      try {
+        localStorage.setItem(STORAGE_KEY_ADD_PRODUCT_DRAFT, JSON.stringify({
+          step,
+          name,
+          description,
+          price,
+          initialQuantity,
+          selectedCategory,
+          classification,
+          selectedKeywords,
+          logoImage,
+          colorPhotos,
+          fallbackAdditionalImage,
+          specColumns,
+        }));
+      } catch (_) {}
+    }
+  }, [
+    isOpen,
+    step,
+    name,
+    description,
+    price,
+    initialQuantity,
+    selectedCategory,
+    classification,
+    selectedKeywords,
+    logoImage,
+    colorPhotos,
+    fallbackAdditionalImage,
+    specColumns,
+  ]);
 
   if (!isOpen) return null;
 
@@ -348,6 +395,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     };
 
     onSaveProduct(newProduct);
+    try {
+      localStorage.removeItem(STORAGE_KEY_ADD_PRODUCT_DRAFT);
+    } catch (_) {}
     onClose();
   };
 

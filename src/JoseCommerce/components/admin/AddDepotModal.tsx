@@ -20,20 +20,44 @@ interface AddDepotModalProps {
   theme?: 'dark' | 'light';
 }
 
+const STORAGE_KEY_ADD_DEPOT_DRAFT = 'egerscore_admin_add_depot_draft';
+
 export const AddDepotModal: React.FC<AddDepotModalProps> = ({
   isOpen,
   onClose,
   onDepotAdded,
   theme = 'dark',
 }) => {
+  const draft = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_ADD_DEPOT_DRAFT);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return null;
+  }, []);
+
   const [countyData, setCountyData] = useState<CountyPickupInfo[]>(getStoredCountyPickupData);
-  const [selectedCounty, setSelectedCounty] = useState('Nakuru');
-  const [isCustomCounty, setIsCustomCounty] = useState(false);
-  const [customCountyName, setCustomCountyName] = useState('');
-  const [subCounty, setSubCounty] = useState('');
-  const [depotName, setDepotName] = useState('');
+  const [selectedCounty, setSelectedCounty] = useState(() => draft?.selectedCounty || 'Nakuru');
+  const [isCustomCounty, setIsCustomCounty] = useState(() => Boolean(draft?.isCustomCounty));
+  const [customCountyName, setCustomCountyName] = useState(() => draft?.customCountyName || '');
+  const [subCounty, setSubCounty] = useState(() => draft?.subCounty || '');
+  const [depotName, setDepotName] = useState(() => draft?.depotName || '');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      try {
+        localStorage.setItem(STORAGE_KEY_ADD_DEPOT_DRAFT, JSON.stringify({
+          selectedCounty,
+          isCustomCounty,
+          customCountyName,
+          subCounty,
+          depotName,
+        }));
+      } catch (_) {}
+    }
+  }, [isOpen, selectedCounty, isCustomCounty, customCountyName, subCounty, depotName]);
 
   if (!isOpen) return null;
 
@@ -70,6 +94,9 @@ export const AddDepotModal: React.FC<AddDepotModalProps> = ({
       setIsCustomCounty(false);
       setSelectedCounty(targetCounty);
     }
+    try {
+      localStorage.removeItem(STORAGE_KEY_ADD_DEPOT_DRAFT);
+    } catch (_) {}
 
     setTimeout(() => {
       setSuccessMsg('');

@@ -42,6 +42,8 @@ interface CheckoutModalProps {
   businessContact?: BusinessContactSettings;
 }
 
+const STORAGE_KEY_CHECKOUT_DRAFT = 'egerscore_checkout_draft';
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
@@ -57,8 +59,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   checkoutSettings,
   businessContact,
 }) => {
-  const [step, setStep] = useState<'details' | 'confirmation'>('details');
-  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const activeUser = getCurrentUser();
+
+  // Restore draft state on reload
+  const draft = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_CHECKOUT_DRAFT);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return null;
+  }, []);
+
+  const [step, setStep] = useState<'details' | 'confirmation'>(() => draft?.step || 'details');
+  const [completedOrder, setCompletedOrder] = useState<Order | null>(() => draft?.completedOrder || null);
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
 
   // Settings defaults
@@ -67,23 +80,58 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const depositType = checkoutSettings?.depositType ?? 'percentage';
   const depositValue = checkoutSettings?.depositValue ?? 50;
 
-  // Customer Form fields prefilled from active session if logged in
-  const activeUser = getCurrentUser();
-  const [customerName, setCustomerName] = useState(() => activeUser?.username || '');
-  const [customerEmail, setCustomerEmail] = useState(() => activeUser?.email || '');
-  const [phoneNumber, setPhoneNumber] = useState(() => activeUser?.phoneNumber || '');
-  const [teamName, setTeamName] = useState('');
+  // Customer Form fields prefilled from draft or active session
+  const [customerName, setCustomerName] = useState(() => draft?.customerName ?? activeUser?.username ?? '');
+  const [customerEmail, setCustomerEmail] = useState(() => draft?.customerEmail ?? activeUser?.email ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(() => draft?.phoneNumber ?? activeUser?.phoneNumber ?? '');
+  const [teamName, setTeamName] = useState(() => draft?.teamName ?? '');
   
   // Location Selection fields (County, Sub-County, Pickup Station)
-  const [county, setCounty] = useState('Nakuru');
-  const [subCounty, setSubCounty] = useState('Njoro');
-  const [pickupStation, setPickupStation] = useState('Egerton Main Campus Gate 3 Sports Hub & Main Pitch Depot');
+  const [county, setCounty] = useState(() => draft?.county ?? 'Nakuru');
+  const [subCounty, setSubCounty] = useState(() => draft?.subCounty ?? 'Njoro');
+  const [pickupStation, setPickupStation] = useState(() => draft?.pickupStation ?? 'Egerton Main Campus Gate 3 Sports Hub & Main Pitch Depot');
   
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'delivery'>('mpesa');
+  const [deliveryAddress, setDeliveryAddress] = useState(() => draft?.deliveryAddress ?? '');
+  const [notes, setNotes] = useState(() => draft?.notes ?? '');
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'delivery'>(() => draft?.paymentMethod ?? 'mpesa');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+
+  // Automatically persist checkout progress and step across reloads
+  React.useEffect(() => {
+    if (isOpen) {
+      try {
+        localStorage.setItem(STORAGE_KEY_CHECKOUT_DRAFT, JSON.stringify({
+          step,
+          completedOrder,
+          customerName,
+          customerEmail,
+          phoneNumber,
+          teamName,
+          county,
+          subCounty,
+          pickupStation,
+          deliveryAddress,
+          notes,
+          paymentMethod,
+        }));
+      } catch (_) {}
+    }
+  }, [
+    isOpen,
+    step,
+    completedOrder,
+    customerName,
+    customerEmail,
+    phoneNumber,
+    teamName,
+    county,
+    subCounty,
+    pickupStation,
+    deliveryAddress,
+    notes,
+    paymentMethod,
+  ]);
 
   if (!isOpen) return null;
 
@@ -214,12 +262,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    if (step === 'confirmation') {
+      try {
+        localStorage.removeItem(STORAGE_KEY_CHECKOUT_DRAFT);
+      } catch (_) {}
+    }
+    onClose();
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-50 overflow-y-auto">
         {/* Backdrop */}
         <div
-          onClick={onClose}
+          onClick={handleClose}
           className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         />
 
@@ -243,7 +300,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
 
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/50 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -486,7 +543,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      onClose();
+                      handleClose();
                       onOpenOrderTracking?.(completedOrder.id);
                     }}
                     className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
@@ -497,7 +554,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
                   >
                     Continue Shopping

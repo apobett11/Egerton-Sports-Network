@@ -48,11 +48,16 @@ interface AdminPortalProps {
   onUpdateAdminProfile: (profile: AdminProfile) => void;
   onAddProduct?: (product: Product) => void;
   onUpdateProductStock?: (productId: string, newStock: number) => void;
-  onBackToStore: () => void;
+  onBackToStore?: () => void;
   onLogoutAdmin?: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
   initialTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
+  isAddProductOpen?: boolean;
+  onAddProductOpenChange?: (open: boolean) => void;
+  isAddDepotOpen?: boolean;
+  onAddDepotOpenChange?: (open: boolean) => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -72,12 +77,50 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   theme,
   onToggleTheme,
   initialTab = 'home',
+  onTabChange,
+  isAddProductOpen,
+  onAddProductOpenChange,
+  isAddDepotOpen,
+  onAddDepotOpenChange,
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
-  const [isAddDepotModalOpen, setIsAddDepotModalOpen] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(Boolean(isAddProductOpen));
+  const [isAddDepotModalOpen, setIsAddDepotModalOpen] = useState(Boolean(isAddDepotOpen));
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (isAddProductOpen !== undefined) {
+      setIsAddProductModalOpen(isAddProductOpen);
+    }
+  }, [isAddProductOpen]);
+
+  React.useEffect(() => {
+    if (isAddDepotOpen !== undefined) {
+      setIsAddDepotModalOpen(isAddDepotOpen);
+    }
+  }, [isAddDepotOpen]);
+
+  const handleSelectTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
+
+  const handleSetAddProductOpen = (open: boolean) => {
+    setIsAddProductModalOpen(open);
+    if (onAddProductOpenChange) onAddProductOpenChange(open);
+  };
+
+  const handleSetAddDepotOpen = (open: boolean) => {
+    setIsAddDepotModalOpen(open);
+    if (onAddDepotOpenChange) onAddDepotOpenChange(open);
+  };
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -90,6 +133,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     if (onAddProduct) {
       onAddProduct(newProduct);
     }
+    handleSetAddProductOpen(false);
     triggerToast(`Product "${newProduct.name}" successfully added to catalog!`);
   };
 
@@ -153,17 +197,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <Menu className="w-5 h-5" />
               </button>
 
-              <button
-                onClick={onBackToStore}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 transition-colors cursor-pointer border border-slate-700/60"
-                title="Return to Customer Storefront"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Storefront</span>
-              </button>
-
-              <div className="h-5 w-px bg-slate-700 hidden sm:block" />
-
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#224466] text-[#ff0046] border border-[#345880]">
                   <Trophy className="h-4 w-4" />
@@ -196,7 +229,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('profile')}
+                onClick={() => handleSelectTab('profile')}
                 className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-colors cursor-pointer text-left"
                 title="View Admin Profile"
               >
@@ -251,7 +284,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleSelectTab(tab.id)}
                     className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-xs'
@@ -272,8 +305,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </div>
 
           {/* Sidebar Footer Link */}
-          <div className="pt-4 border-t border-slate-800/60 space-y-2">
-            {onLogoutAdmin && (
+          {onLogoutAdmin && (
+            <div className="pt-4 border-t border-slate-800/60">
               <button
                 type="button"
                 onClick={onLogoutAdmin}
@@ -284,18 +317,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <span>Log Out Admin</span>
                 </div>
               </button>
-            )}
-            <button
-              onClick={onBackToStore}
-              className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Storefront Catalog</span>
-              </div>
-              <ExternalLink className="w-3 h-3" />
-            </button>
-          </div>
+            </div>
+          )}
         </aside>
 
         {/* MOBILE COLLAPSIBLE SIDEBAR DRAWER */}
@@ -330,7 +353,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       <button
                         key={tab.id}
                         onClick={() => {
-                          setActiveTab(tab.id);
+                          handleSelectTab(tab.id);
                           setIsMobileSidebarOpen(false);
                         }}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -351,8 +374,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               {/* Drawer Bottom */}
-              <div className="pt-3 border-t border-slate-800 space-y-2">
-                {onLogoutAdmin && (
+              {onLogoutAdmin && (
+                <div className="pt-3 border-t border-slate-800">
                   <button
                     onClick={() => {
                       setIsMobileSidebarOpen(false);
@@ -363,18 +386,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Log Out Admin</span>
                   </button>
-                )}
-                <button
-                  onClick={() => {
-                    setIsMobileSidebarOpen(false);
-                    onBackToStore();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Exit to Storefront Catalog</span>
-                </button>
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Click outside to close */}
@@ -392,9 +405,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <AdminHomeTab
                 orders={orders}
                 cartAnalytics={cartAnalytics}
-                onNavigate={(t) => setActiveTab(t)}
-                onOpenAddProduct={() => setIsAddProductModalOpen(true)}
-                onOpenAddDepot={() => setIsAddDepotModalOpen(true)}
+                onNavigate={(t) => handleSelectTab(t)}
+                onOpenAddProduct={() => handleSetAddProductOpen(true)}
+                onOpenAddDepot={() => handleSetAddDepotOpen(true)}
                 theme={theme}
               />
             )}
@@ -419,7 +432,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     triggerToast('Product inventory stock updated successfully!');
                   }
                 }}
-                onOpenAddProduct={() => setIsAddProductModalOpen(true)}
+                onOpenAddProduct={() => handleSetAddProductOpen(true)}
               />
             )}
 
@@ -465,15 +478,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           <footer className={`py-3 px-4 text-center text-[11px] border-t transition-colors ${
             theme === 'dark' ? 'bg-[#0b1522] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'
           }`}>
-            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="max-w-7xl mx-auto flex items-center justify-center">
               <span>Egerscore Commerce Operations Panel • Version 2.4.0</span>
-              <button
-                onClick={onBackToStore}
-                className="text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
-              >
-                <span>Exit to Storefront Catalog</span>
-                <ExternalLink className="w-3 h-3" />
-              </button>
             </div>
           </footer>
         </div>
@@ -483,7 +489,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* 3-STEP ADD PRODUCT POPUP MODAL */}
       <AddProductModal
         isOpen={isAddProductModalOpen}
-        onClose={() => setIsAddProductModalOpen(false)}
+        onClose={() => handleSetAddProductOpen(false)}
         onSaveProduct={handleSaveProduct}
         theme={theme}
       />
@@ -491,8 +497,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* ADD DEPOT POPUP MODAL */}
       <AddDepotModal
         isOpen={isAddDepotModalOpen}
-        onClose={() => setIsAddDepotModalOpen(false)}
+        onClose={() => handleSetAddDepotOpen(false)}
         onDepotAdded={(county, depot) => {
+          handleSetAddDepotOpen(false);
           triggerToast(`Pickup depot "${depot}" registered for ${county} County!`);
         }}
         theme={theme}

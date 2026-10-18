@@ -1,4 +1,4 @@
-import { Order, CartItem, FilterState } from '../types';
+import { Order, CartItem, FilterState, AdminTab } from '../types';
 
 export interface UserAccount {
   id: string;
@@ -817,7 +817,7 @@ export interface PersistedStorefrontState {
 
 export function getPersistedStorefrontState(): PersistedStorefrontState | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY_PERSISTED_STATE);
+    const raw = localStorage.getItem(STORAGE_KEY_PERSISTED_STATE) || sessionStorage.getItem(STORAGE_KEY_PERSISTED_STATE);
     if (raw) return JSON.parse(raw);
   } catch (e) {
     console.error('Failed to load persisted state', e);
@@ -827,8 +827,64 @@ export function getPersistedStorefrontState(): PersistedStorefrontState | null {
 
 export function savePersistedStorefrontState(state: PersistedStorefrontState): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY_PERSISTED_STATE, JSON.stringify(state));
+    const serialized = JSON.stringify(state);
+    localStorage.setItem(STORAGE_KEY_PERSISTED_STATE, serialized);
+    sessionStorage.setItem(STORAGE_KEY_PERSISTED_STATE, serialized);
   } catch (e) {
     console.error('Failed to save persisted state', e);
   }
+}
+
+// ================= PERSISTED NAVIGATION FLOW (SURVIVES RELOADS) =================
+
+export interface PersistedNavigationFlow {
+  currentView?: 'store' | 'category' | 'admin';
+  previousView?: 'store' | 'category';
+  selectedCategorySlug?: string;
+  adminTab?: AdminTab;
+  selectedProductId?: string | null;
+  specsModalProductId?: string | null;
+  activeNav?: string;
+  isCartOpen?: boolean;
+  isCheckoutOpen?: boolean;
+  isOrdersModalOpen?: boolean;
+  isOrderTrackingOpen?: boolean;
+  trackingOrderId?: string;
+  isCategoriesModalOpen?: boolean;
+  isContactModalOpen?: boolean;
+  isProfileModalOpen?: boolean;
+  isAuthModalOpen?: boolean;
+  authModalMode?: 'login' | 'register' | 'admin_login';
+  authModalReason?: string;
+  isAddProductModalOpen?: boolean;
+  isAddDepotModalOpen?: boolean;
+}
+
+const STORAGE_KEY_NAV_FLOW = 'egerscore_store_nav_flow';
+
+export function getPersistedNavFlow(): PersistedNavigationFlow | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_NAV_FLOW) || sessionStorage.getItem(STORAGE_KEY_NAV_FLOW);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to load persisted nav flow', e);
+  }
+  return null;
+}
+
+export function savePersistedNavFlow(flow: PersistedNavigationFlow): void {
+  try {
+    const serialized = JSON.stringify(flow);
+    localStorage.setItem(STORAGE_KEY_NAV_FLOW, serialized);
+    sessionStorage.setItem(STORAGE_KEY_NAV_FLOW, serialized);
+  } catch (e) {
+    console.error('Failed to save persisted nav flow', e);
+  }
+}
+
+export function clearPersistedNavFlow(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY_NAV_FLOW);
+    sessionStorage.removeItem(STORAGE_KEY_NAV_FLOW);
+  } catch (_) {}
 }

@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { Order, AdminTab } from '../../types';
 import { CartAnalyticsData } from '../../data/mockOrders';
-import { getAdminUsageAlerts, MAX_DAILY_ACCOUNT_USAGE } from '../../services/authService';
 
 interface AdminHomeTabProps {
   orders: Order[];
@@ -77,10 +76,6 @@ export const AdminHomeTab: React.FC<AdminHomeTabProps> = ({
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-100 tracking-tight">
               Store Operations Overview
             </h1>
-            
-            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-              Complete snapshot of sales throughput, active customer basket reservations, fulfillment streams, and fast direct actions.
-            </p>
           </div>
 
           {/* Quick Primary Actions in Header: Add Product, then Add Depot */}
@@ -300,75 +295,6 @@ export const AdminHomeTab: React.FC<AdminHomeTabProps> = ({
           </div>
         </div>
 
-      </div>
-
-      {/* 2.5. DAILY ACCOUNT USAGE CAPS & DATABASE PROTECTION ALERTS */}
-      <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-        getAdminUsageAlerts().length > 0
-          ? theme === 'dark' ? 'bg-amber-950/20 border-amber-500/40' : 'bg-amber-50 border-amber-300'
-          : theme === 'dark' ? 'bg-[#122336] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-700/50">
-          <div className="flex items-center gap-2">
-            <span className={`p-1.5 rounded-lg ${
-              getAdminUsageAlerts().length > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
-            }`}>
-              <ShieldCheck className="w-4 h-4" />
-            </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-100">
-                  Account Daily Usage Caps & Database Protection
-                </h3>
-                {getAdminUsageAlerts().length > 0 && (
-                  <span className="px-2 py-0.2 rounded-full text-[9px] bg-red-600 text-white font-mono font-bold">
-                    {getAdminUsageAlerts().length} Active Alert
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Capped at {MAX_DAILY_ACCOUNT_USAGE} actions/day per user account to prevent database exhaustion. Realtime loops disabled.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-              getAdminUsageAlerts().length > 0 
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-            }`}>
-              {getAdminUsageAlerts().length > 0 ? 'Quota Alerts Triggered' : '✓ All Accounts Within Safe Limits'}
-            </span>
-          </div>
-        </div>
-
-        {/* Alerts List */}
-        {getAdminUsageAlerts().length > 0 ? (
-          <div className="mt-3 space-y-2">
-            {getAdminUsageAlerts().map((al) => (
-              <div 
-                key={al.id}
-                className="p-3 rounded-xl bg-black/20 border border-amber-500/30 flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="font-bold text-slate-200">@{al.username}</span>
-                  <span className="text-slate-400">({al.email})</span>
-                  <span className="font-mono text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded">
-                    {al.usageCount} / {al.maxCap} actions today
-                  </span>
-                </div>
-                <span className="text-[11px] font-semibold text-slate-300">{al.message}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 p-3 rounded-xl bg-black/10 border border-slate-700/30 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span>✓ No accounts exceeding daily quota today. Direct store read/write throughput healthy.</span>
-            <span className="text-[10px] font-mono text-slate-500">Realtime sync disabled • Data placed on load & manual refresh</span>
-          </div>
-        )}
       </div>
 
       {/* 3. QUICK NAVIGATION (Add Product in place of products and catalog action. Quick actions placed as small blue buttons). */}

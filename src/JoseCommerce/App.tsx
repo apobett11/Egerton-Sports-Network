@@ -47,6 +47,9 @@ import {
   saveUserPersonalData, 
   getPersistedStorefrontState, 
   savePersistedStorefrontState, 
+  getPersistedNavFlow,
+  savePersistedNavFlow,
+  clearPersistedNavFlow,
   incrementUserDailyUsage,
   updateUserThemePreference,
   UserAccount 
@@ -110,13 +113,16 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     });
   };
 
+  // Navigation Flow Persistence across reloads (Survives reload: view, tab, category, product, modals)
+  const persistedNav = useMemo(() => getPersistedNavFlow() || {}, []);
+
   // Auth & Session State
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => getCurrentUser());
   const [rememberedAccount, setRememberedAccountState] = useState<UserAccount | null>(() => getRememberedAccount());
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => Boolean(persistedNav.isAuthModalOpen));
   const [isUserDashboardOpen, setIsUserDashboardOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<AuthModalInitialMode>('login');
-  const [authModalReason, setAuthModalReason] = useState<string | undefined>(undefined);
+  const [authModalMode, setAuthModalMode] = useState<AuthModalInitialMode>(() => (persistedNav.authModalMode as AuthModalInitialMode) || 'login');
+  const [authModalReason, setAuthModalReason] = useState<string | undefined>(() => persistedNav.authModalReason);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingCheckoutAfterLogin, setPendingCheckoutAfterLogin] = useState(false);
 
@@ -141,23 +147,48 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     });
   }, [selectedClass, filters]);
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [specsModalProduct, setSpecsModalProduct] = useState<Product | null>(null);
-  const [isCartBouncing, setIsCartBouncing] = useState(false);
-
-  // Admin, Category and Store View State
-  const [currentView, setCurrentView] = useState<'store' | 'category' | 'admin'>('store');
-  const [previousView, setPreviousView] = useState<'store' | 'category'>('store');
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('all');
-  const [adminTab, setAdminTab] = useState<AdminTab>('home');
-  const [orders, setOrders] = useState<Order[]>(getStoredOrders);
-  const [checkoutSettings, setCheckoutSettings] = useState<AdminCheckoutSettings>(getStoredCheckoutSettings);
-  const [businessContact, setBusinessContact] = useState<BusinessContactSettings>(getStoredBusinessContact);
-  const [adminProfile, setAdminProfile] = useState<AdminProfile>(getStoredAdminProfile);
   const [productsList, setProductsList] = useState<Product[]>(() => {
     return getCachedCatalog();
   });
   const [hasMoreProducts, setHasMoreProducts] = useState<boolean>(true);
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(() => {
+    if (persistedNav.selectedProductId) {
+      const catalog = getCachedCatalog();
+      return catalog.find((p) => p.id === persistedNav.selectedProductId) || 
+             MOCK_PRODUCTS.find((p) => p.id === persistedNav.selectedProductId) || null;
+    }
+    return null;
+  });
+  const [specsModalProduct, setSpecsModalProduct] = useState<Product | null>(() => {
+    if (persistedNav.specsModalProductId) {
+      const catalog = getCachedCatalog();
+      return catalog.find((p) => p.id === persistedNav.specsModalProductId) || 
+             MOCK_PRODUCTS.find((p) => p.id === persistedNav.specsModalProductId) || null;
+    }
+    return null;
+  });
+  const [isCartBouncing, setIsCartBouncing] = useState(false);
+
+  // Admin, Category and Store View State (Restored on reload)
+  const [currentView, setCurrentView] = useState<'store' | 'category' | 'admin'>(() => {
+    if (persistedNav.currentView === 'admin' && isStoreAdminAuthenticated()) {
+      return 'admin';
+    }
+    if (persistedNav.currentView === 'category') {
+      return 'category';
+    }
+    return 'store';
+  });
+  const [previousView, setPreviousView] = useState<'store' | 'category'>(() => persistedNav.previousView || 'store');
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>(() => persistedNav.selectedCategorySlug || 'all');
+  const [adminTab, setAdminTab] = useState<AdminTab>(() => persistedNav.adminTab || 'home');
+  const [orders, setOrders] = useState<Order[]>(getStoredOrders);
+  const [checkoutSettings, setCheckoutSettings] = useState<AdminCheckoutSettings>(getStoredCheckoutSettings);
+  const [businessContact, setBusinessContact] = useState<BusinessContactSettings>(getStoredBusinessContact);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile>(getStoredAdminProfile);
+  const [isAdminAddProductOpen, setIsAdminAddProductOpen] = useState(() => Boolean(persistedNav.isAddProductModalOpen));
+  const [isAdminAddDepotOpen, setIsAdminAddDepotOpen] = useState(() => Boolean(persistedNav.isAddDepotModalOpen));
 
   // Sync catalog updates across instances
   useEffect(() => {
@@ -209,20 +240,67 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     return new Set();
   });
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isOrderTrackingOpen, setIsOrderTrackingOpen] = useState(false);
-  const [trackingOrderId, setTrackingOrderId] = useState<string | undefined>();
+  const [isCartOpen, setIsCartOpen] = useState(() => Boolean(persistedNav.isCartOpen));
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(() => Boolean(persistedNav.isCheckoutOpen));
+  const [isOrderTrackingOpen, setIsOrderTrackingOpen] = useState(() => Boolean(persistedNav.isOrderTrackingOpen));
+  const [trackingOrderId, setTrackingOrderId] = useState<string | undefined>(() => persistedNav.trackingOrderId);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscountRate, setAppliedDiscountRate] = useState(0);
-  const [activeNav, setActiveNav] = useState<StorefrontNavTab>('home');
+  const [activeNav, setActiveNav] = useState<StorefrontNavTab>(() => (persistedNav.activeNav as StorefrontNavTab) || 'home');
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(() => Boolean(persistedNav.isContactModalOpen));
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(() => Boolean(persistedNav.isCategoriesModalOpen));
   const [cartPresentation, setCartPresentation] = useState<'drawer' | 'bottom-popup'>('drawer');
-  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(() => Boolean(persistedNav.isOrdersModalOpen));
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => Boolean(persistedNav.isProfileModalOpen));
+
+  // Persist all navigation flow, views, tabs and active steps to survive reloads seamlessly
+  useEffect(() => {
+    savePersistedNavFlow({
+      currentView,
+      previousView,
+      selectedCategorySlug,
+      adminTab,
+      selectedProductId: selectedProduct?.id || null,
+      specsModalProductId: specsModalProduct?.id || null,
+      activeNav,
+      isCartOpen,
+      isCheckoutOpen,
+      isOrdersModalOpen,
+      isOrderTrackingOpen,
+      trackingOrderId,
+      isCategoriesModalOpen,
+      isContactModalOpen,
+      isProfileModalOpen,
+      isAuthModalOpen,
+      authModalMode,
+      authModalReason,
+      isAddProductModalOpen: isAdminAddProductOpen,
+      isAddDepotModalOpen: isAdminAddDepotOpen,
+    });
+  }, [
+    currentView,
+    previousView,
+    selectedCategorySlug,
+    adminTab,
+    selectedProduct?.id,
+    specsModalProduct?.id,
+    activeNav,
+    isCartOpen,
+    isCheckoutOpen,
+    isOrdersModalOpen,
+    isOrderTrackingOpen,
+    trackingOrderId,
+    isCategoriesModalOpen,
+    isContactModalOpen,
+    isProfileModalOpen,
+    isAuthModalOpen,
+    authModalMode,
+    authModalReason,
+    isAdminAddProductOpen,
+    isAdminAddDepotOpen,
+  ]);
 
   // Synchronize cart with current user changes & pull from session cache
   useEffect(() => {
@@ -511,6 +589,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     setFilters(INITIAL_FILTERS);
     setCartItems([]);
     setCheckedCartItemIds(new Set());
+    setCurrentView('store');
+    setAdminTab('home');
+    clearPersistedNavFlow();
   };
 
   // Carted products tracking: stays green with tick until checkout/order confirmation
@@ -920,10 +1001,17 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onLogoutAdmin={() => {
           endAdminSession();
           setCurrentView('store');
+          setAdminTab('home');
+          clearPersistedNavFlow();
         }}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         initialTab={adminTab}
+        onTabChange={(t) => setAdminTab(t)}
+        isAddProductOpen={isAdminAddProductOpen}
+        onAddProductOpenChange={setIsAdminAddProductOpen}
+        isAddDepotOpen={isAdminAddDepotOpen}
+        onAddDepotOpenChange={setIsAdminAddDepotOpen}
       />
     );
   }
