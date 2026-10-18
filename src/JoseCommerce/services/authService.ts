@@ -5,6 +5,7 @@ export interface UserAccount {
   username: string;
   email: string;
   phoneNumber: string;
+  whatsappNumber?: string;
   fullName?: string;
   themePreference?: 'dark' | 'light';
   role?: string;
@@ -237,6 +238,7 @@ export interface RegisterPayload {
   username: string;
   email: string;
   phoneNumber: string;
+  whatsappNumber?: string;
   password: string;
   rememberLogin?: boolean;
 }
@@ -266,7 +268,9 @@ export function registerNewUser(payload: RegisterPayload): { success: boolean; u
     username: payload.username.trim(),
     email: payload.email.trim(),
     phoneNumber: payload.phoneNumber.trim(),
+    whatsappNumber: payload.whatsappNumber?.trim() || payload.phoneNumber.trim(),
     password: payload.password,
+    role: 'customer',
     isConfirmed: false, // Requires magic link confirmation
     registeredAt: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),
@@ -428,26 +432,37 @@ export function loginStoreAdmin(
 
 // ================= LOGIN & ONE-TAP LOGIN =================
 
+export function sendPasswordResetMagicLink(identifier: string): { success: boolean; email?: string; error?: string } {
+  const users = getAllRegisteredUsers();
+  const normalized = identifier.trim().toLowerCase();
+  const found = users.find(
+    (u) => u.email.toLowerCase() === normalized || u.username.toLowerCase() === normalized
+  );
+
+  if (!found) {
+    return { success: false, error: 'No account found matching this email or username.' };
+  }
+
+  return { success: true, email: found.email };
+}
+
 export function loginWithCredentials(
   identifier: string, // username or email
   password: string,
   rememberMe: boolean = true,
-  roleTarget?: 'customer' | 'store_admin'
+  roleTarget: 'customer' | 'store_admin' = 'customer'
 ): { success: boolean; user?: UserAccount; isAdmin?: boolean; error?: string } {
   const users = getAllRegisteredUsers();
   const normalized = identifier.trim().toLowerCase();
 
-  // Check for Store Admin login first if target is store_admin or credentials match
-  if (
-    roleTarget === 'store_admin' ||
-    normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
-    normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()
-  ) {
-    if (
-      (normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
-       normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()) &&
-      password === STORE_ADMIN_CREDENTIALS.password
-    ) {
+  // 1. Staff Login Attempt
+  if (roleTarget === 'store_admin') {
+    const isRoot = (
+      normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+      normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()
+    ) && password === STORE_ADMIN_CREDENTIALS.password;
+
+    if (isRoot) {
       const today = getTodayString();
       const adminUser: UserAccount = {
         ...STORE_ADMIN_CREDENTIALS,
@@ -460,6 +475,49 @@ export function loginWithCredentials(
       if (rememberMe) setRememberedAccount(adminUser);
       return { success: true, user: adminUser, isAdmin: true };
     }
+
+    const user = users.find(
+      (u) => (u.email.toLowerCase() === normalized || u.username.toLowerCase() === normalized) && u.password === password
+    );
+
+    if (!user) {
+      return { success: false, error: 'Invalid staff email or password.' };
+    }
+
+    if (user.role !== 'store_admin' && user.role !== 'admin') {
+      return {
+        success: false,
+        error: 'Access restricted. Customer accounts cannot sign in through Staff Login.',
+      };
+    }
+
+    const today = getTodayString();
+    const updatedUser: UserAccount = {
+      ...user,
+      rememberLogin: rememberMe,
+      lastLoginAt: new Date().toISOString(),
+      dailyUsageDate: today,
+    };
+
+    saveAllRegisteredUsers(users.map((u) => (u.id === user.id ? updatedUser : u)));
+    setCurrentAdmin(updatedUser);
+    setCurrentUser(updatedUser);
+    if (rememberMe) setRememberedAccount(updatedUser);
+    return { success: true, user: updatedUser, isAdmin: true };
+  }
+
+  // 2. Normal Customer Login Attempt
+  // The normal login will NEVER login the admin
+  const isRootAdmin = (
+    normalized === STORE_ADMIN_CREDENTIALS.username.toLowerCase() ||
+    normalized === STORE_ADMIN_CREDENTIALS.email.toLowerCase()
+  ) && password === STORE_ADMIN_CREDENTIALS.password;
+
+  if (isRootAdmin) {
+    return {
+      success: false,
+      error: 'Staff account detected. Please use the "Staff Login" option below.',
+    };
   }
 
   const user = users.find(
@@ -470,11 +528,10 @@ export function loginWithCredentials(
     return { success: false, error: 'Invalid username/email or password.' };
   }
 
-  // If user requested admin login specifically, verify permission
-  if (roleTarget === 'store_admin' && user.role !== 'store_admin' && user.role !== 'admin') {
+  if (user.role === 'store_admin' || user.role === 'admin') {
     return {
       success: false,
-      error: 'Access Denied: Account is not authorized as a Store Administrator. Please sign in via the Store Shopper portal.',
+      error: 'Staff account detected. Please use the "Staff Login" option below.',
     };
   }
 
@@ -492,13 +549,7 @@ export function loginWithCredentials(
   const updatedUsers = users.map((u) => (u.id === user.id ? updatedUser : u));
   saveAllRegisteredUsers(updatedUsers);
   setCurrentUser(updatedUser);
-
-  const isUserAdmin = updatedUser.role === 'store_admin' || updatedUser.role === 'admin';
-  if (isUserAdmin) {
-    setCurrentAdmin(updatedUser);
-  } else {
-    setCurrentAdmin(null);
-  }
+  setCurrentAdmin(null);
 
   if (rememberMe) {
     setRememberedAccount(updatedUser);
@@ -506,7 +557,7 @@ export function loginWithCredentials(
 
   checkAndRecordUsageAlert(updatedUser);
 
-  return { success: true, user: updatedUser, isAdmin: isUserAdmin };
+  return { success: true, user: updatedUser, isAdmin: false };
 }
 
 export function oneTapLogin(rememberedUser: UserAccount): { success: boolean; user?: UserAccount; error?: string } {
