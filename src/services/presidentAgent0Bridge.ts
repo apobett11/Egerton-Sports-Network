@@ -20,6 +20,7 @@ import {
   isEplLeague,
 } from './agent0';
 import { supabase } from '../lib/supabase';
+import { DashboardLogService } from './dashboardLogService';
 import { OFFICIAL_PITCHES } from "../President's Season Mode/constants/seasonConstants";
 import { generateFixtures as invokeAlgorithm1, type Algo1Output, type LeagueInput } from '../algorithms/algorithm1';
 import { createAlgorithmCommand, validateResultEnvelope } from '../shared/algorithmProtocol';
@@ -1198,22 +1199,21 @@ export const PresidentActionBridge = {
       const reReadVerified = totalCount > 0;
 
       try {
-        await supabase.from('audit_logs').insert([
-          {
-            action: 'AGENT0_FIXTURES_CONFIRMED_AND_LOCKED',
-            resource_type: 'fixtures',
-            resource_id: seasonId,
-            details: {
-              execution_id: executionId,
-              total_fixtures_locked: totalCount,
-              epl_count: eplCount,
-              championship_count: champCount,
-              re_read_verified: reReadVerified,
-              season_mode_confirmed: seasonModeConfirmed,
-              timestamp: new Date().toISOString(),
-            },
+        await DashboardLogService.recordAction({
+          user_role: 'president',
+          action: 'AGENT0_FIXTURES_CONFIRMED_AND_LOCKED',
+          resource_type: 'fixtures',
+          resource_id: seasonId,
+          details: {
+            execution_id: executionId,
+            total_fixtures_locked: totalCount,
+            epl_count: eplCount,
+            championship_count: champCount,
+            re_read_verified: reReadVerified,
+            season_mode_confirmed: seasonModeConfirmed,
+            timestamp: new Date().toISOString(),
           },
-        ]);
+        });
       } catch (_e) {}
 
       return {

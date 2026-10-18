@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { DashboardLogService } from '../../services/dashboardLogService';
 import type {
   OperationalMatch,
   SeasonReferee,
@@ -85,14 +86,13 @@ export const seasonOperationsService = {
       });
 
       // Log audit
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'MATCHDAY_CANCELLED',
-          resource_type: 'matchdays',
-          resource_id: `MATCHDAY-${matchdayNumber}`,
-          details: { matchday: matchdayNumber, reason, affected_matches_count: affectedIds.length },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'MATCHDAY_CANCELLED',
+        resource_type: 'matchdays',
+        resource_id: `MATCHDAY-${matchdayNumber}`,
+        details: { matchday: matchdayNumber, reason, affected_matches_count: affectedIds.length },
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -202,14 +202,13 @@ export const seasonOperationsService = {
         return f;
       });
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'REFEREE_SWAPPED',
-          resource_type: 'fixtures',
-          resource_id: matchId,
-          details: { match_id: matchId, previous_referee_id: match.referee_id, new_referee_id: newRefereeId },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'REFEREE_SWAPPED',
+        resource_type: 'fixtures',
+        resource_id: matchId,
+        details: { match_id: matchId, previous_referee_id: match.referee_id, new_referee_id: newRefereeId },
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -246,14 +245,13 @@ export const seasonOperationsService = {
 
       const updatedPitches = pitches.map((p) => (p.id === pitchId ? { ...p, status: dbStatus as any } : p));
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'PITCH_AVAILABILITY_CHANGED',
-          resource_type: 'pitches',
-          resource_id: pitchId,
-          details: { pitch_name: targetPitch.name, new_mode: mode, affected_matches_count: affectedMatches.length },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'PITCH_AVAILABILITY_CHANGED',
+        resource_type: 'pitches',
+        resource_id: pitchId,
+        details: { pitch_name: targetPitch.name, new_mode: mode, affected_matches_count: affectedMatches.length },
+      });
 
       return { success: true, updatedPitches, affectedMatches, error: null };
     } catch (err: any) {
@@ -289,14 +287,13 @@ export const seasonOperationsService = {
 
       const updatedFixtures = fixtures.map((f) => (f.id === matchId ? { ...f, linesmen: updatedLinesmen } : f));
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'LINESMAN_DEFAULT_FLAGGED',
-          resource_type: 'fixtures',
-          resource_id: matchId,
-          details: { match_id: matchId, defaulted_team: linesmanTeam },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'LINESMAN_DEFAULT_FLAGGED',
+        resource_type: 'fixtures',
+        resource_id: matchId,
+        details: { match_id: matchId, defaulted_team: linesmanTeam },
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -348,14 +345,13 @@ export const seasonOperationsService = {
 
       const updatedFixtures = fixtures.map((f) => (f.id === matchId ? { ...f, scheduled_time: newScheduledTime, venue: venueToUse } : f));
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'MATCH_SHIFTED',
-          resource_type: 'fixtures',
-          resource_id: matchId,
-          details: { match_id: matchId, previous_time: match.scheduled_time, new_time: newScheduledTime, venue: venueToUse },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'MATCH_SHIFTED',
+        resource_type: 'fixtures',
+        resource_id: matchId,
+        details: { match_id: matchId, previous_time: match.scheduled_time, new_time: newScheduledTime, venue: venueToUse },
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -385,14 +381,13 @@ export const seasonOperationsService = {
 
       const updatedFixtures = fixtures.map((f) => (f.id === matchId ? { ...f, status: 'CANCELLED' as const, cancellation_reason: reason } : f));
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'MATCH_CANCELLED',
-          resource_type: 'fixtures',
-          resource_id: matchId,
-          details: { match_id: matchId, reason },
-        },
-      ]);
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'MATCH_CANCELLED',
+        resource_type: 'fixtures',
+        resource_id: matchId,
+        details: { match_id: matchId, reason },
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -457,21 +452,20 @@ export const seasonOperationsService = {
       );
 
       // Audit log entry
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'MATCH_RESULT_MODIFIED',
-          resource_type: 'fixtures',
-          resource_id: matchId,
-          details: {
-            match_id: matchId,
-            matchday: matchdayNumber,
-            home_score: homeScore,
-            away_score: awayScore,
-            previous_home_score: match.score_home,
-            previous_away_score: match.score_away,
-          },
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'MATCH_RESULT_MODIFIED',
+        resource_type: 'fixtures',
+        resource_id: matchId,
+        details: {
+          match_id: matchId,
+          matchday: matchdayNumber,
+          home_score: homeScore,
+          away_score: awayScore,
+          previous_home_score: match.score_home,
+          previous_away_score: match.score_away,
         },
-      ]);
+      });
 
       return { success: true, updatedFixtures, error: null };
     } catch (err: any) {
@@ -607,20 +601,19 @@ export const seasonOperationsService = {
         friendly_name: payload.friendly_name,
       };
 
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'CREATE_FRIENDLY_MATCH',
-          resource_type: 'fixtures',
-          resource_id: friendlyMatch.id,
-          details: {
-            friendly_name: payload.friendly_name,
-            home_team: homeTeam.name,
-            away_team: awayTeam.name,
-            scheduled_time,
-            venue,
-          },
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'CREATE_FRIENDLY_MATCH',
+        resource_type: 'fixtures',
+        resource_id: friendlyMatch.id,
+        details: {
+          friendly_name: payload.friendly_name,
+          home_team: homeTeam.name,
+          away_team: awayTeam.name,
+          scheduled_time,
+          venue,
         },
-      ]);
+      });
 
       return { success: true, friendlyMatch, error: null };
     } catch (err: any) {

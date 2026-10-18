@@ -15,6 +15,7 @@ import {
 
 import { supabase } from '../../../../../lib/supabase';
 import { updateAdminPasskey } from '../../services/adminTwoFactorService';
+import { DashboardLogService } from '../../../../../services/dashboardLogService';
 
 interface AdminProfileViewProps {
   onLogout: () => void;
@@ -69,11 +70,12 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
 
       // Record security event in audit logs without triggering broken magic link emails
       try {
-        await supabase.from('audit_logs').insert({
+        await DashboardLogService.recordDirect({
+          user_role: 'admin',
           action: 'ADMIN_PASSWORD_1_UPDATED',
           resource_type: 'auth.users',
           resource_id: email,
-          metadata: { updated_by: email, timestamp: new Date().toISOString() },
+          details: { updated_by: email, timestamp: new Date().toISOString() },
         });
       } catch {}
 
@@ -144,11 +146,12 @@ export const AdminProfileView: React.FC<AdminProfileViewProps> = ({
       }
 
       try {
-        await supabase.from('audit_logs').insert({
+        await DashboardLogService.recordDirect({
+          user_role: 'admin',
           action: 'ADMIN_EMERGENCY_PASSKEY_UPDATED',
           resource_type: 'system_settings.admin_passkey_security',
           resource_id: email,
-          metadata: { updated_by: email, timestamp: new Date().toISOString() },
+          details: { updated_by: email, timestamp: new Date().toISOString() },
         });
       } catch {}
 

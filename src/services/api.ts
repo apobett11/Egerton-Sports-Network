@@ -25,6 +25,7 @@ import { guestCache } from '../lib/guestCache';
 import { publicTeamLogo, reconcileLogoStamps } from '../lib/teamLogoCache';
 import { formatMatchTime } from '../lib/matchdayHelper';
 import { FORMATION_CONFIGS } from '../components/Dashboards/Team/components/Squad/TeamSquadView';
+import { DashboardLogService } from './dashboardLogService';
 
 // Helper for unwrapping Supabase joins (object vs 1-element array)
 const unwrap = (val: any) => (Array.isArray(val) ? val[0] : val);
@@ -2497,28 +2498,16 @@ export const ApiService = {
 
   async logAuditAction(action: string, resourceType: string, resourceId: string, details: any): Promise<void> {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      let userRole = 'guest';
-
-      if (userId) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single();
-        if (profile?.role) {
-          userRole = profile.role;
-        }
-      }
-
-      await supabase.from('audit_logs').insert({
-        user_id: userId || null,
-        user_role: userRole,
+      // Delegate to DashboardLogService which enforces dashboard-only scope, deduplication/aggregation,
+      // and obeys the global IS_LOG_SAVING_ENABLED killswitch.
+      await DashboardLogService.recordAction({
         action,
         resource_type: resourceType,
         resource_id: resourceId,
         details,
-        created_at: new Date().toISOString()
       });
     } catch (e) {
-      logger.warn('Audit logging error:', { error: e });
+      // Silently catch to prevent unhandled rejection during operations
     }
   },
 

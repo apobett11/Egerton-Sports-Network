@@ -16,6 +16,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { DashboardLogService } from '../../../services/dashboardLogService';
 import {
   generateOfficiatingAssignments,
   type Algorithm45Input,
@@ -538,21 +539,20 @@ export const WeekendRefereeAllocationModal: React.FC<WeekendRefereeAllocationMod
 
       // 3. Record audit log
       try {
-        await supabase.from('audit_logs').insert([
-          {
-            action: 'AGENT0_WEEKEND_REFEREE_ALLOCATION_LOCKED',
-            resource_type: 'referees',
-            resource_id: `weekend-${weekendDates.saturday}-${weekendDates.sunday}`,
-            details: {
-              weekend_dates: [weekendDates.saturday, weekendDates.sunday],
-              matchday_saturday: satMatchdayNum,
-              matchday_sunday: sunMatchdayNum,
-              assigned_matches_count: previewAssignments.length,
-              available_referees_count: availableReferees.length,
-              timestamp: new Date().toISOString(),
-            },
+        await DashboardLogService.recordAction({
+          user_role: 'president',
+          action: 'AGENT0_WEEKEND_REFEREE_ALLOCATION_LOCKED',
+          resource_type: 'referees',
+          resource_id: `weekend-${weekendDates.saturday}-${weekendDates.sunday}`,
+          details: {
+            weekend_dates: [weekendDates.saturday, weekendDates.sunday],
+            matchday_saturday: satMatchdayNum,
+            matchday_sunday: sunMatchdayNum,
+            assigned_matches_count: previewAssignments.length,
+            available_referees_count: availableReferees.length,
+            timestamp: new Date().toISOString(),
           },
-        ]);
+        });
       } catch {}
 
       setSuccessResult({

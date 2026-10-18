@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { IS_LOG_SAVING_ENABLED } from './dashboardLogService';
 
 export interface Agent0LogRecord {
   id?: string;
@@ -22,6 +23,9 @@ export const Agent0LogService = {
    * directly to the public.agent0_logs table in Supabase.
    */
   async recordLog(entry: Agent0LogRecord): Promise<void> {
+    if (!IS_LOG_SAVING_ENABLED) {
+      return;
+    }
     try {
       const payload = {
         execution_id: entry.execution_id,

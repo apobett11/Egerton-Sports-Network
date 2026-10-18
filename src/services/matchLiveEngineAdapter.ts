@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { IS_LOG_SAVING_ENABLED } from './dashboardLogService';
 import {
   MatchLiveInputEngine,
   type MatchRepository,
@@ -354,6 +355,7 @@ export class SupabaseMatchStatisticsRepository implements MatchStatisticsReposit
 
   async logAdminError(log: AdminErrorLogRecord): Promise<void> {
     localStore.errorLogs.push({ ...log });
+    if (!IS_LOG_SAVING_ENABLED) return;
     try {
       await supabase.from('admin_error_logs').insert({
         fixture_id: log.fixture_id,
@@ -820,6 +822,7 @@ export class SupabaseMatchRepository implements MatchRepository {
 
   async insertLiveAudit(entry: LiveAuditEntry): Promise<void> {
     localStore.auditLogs.push(entry);
+    if (!IS_LOG_SAVING_ENABLED) return;
 
     try {
       await supabase.from('match_live_audit_logs').insert({

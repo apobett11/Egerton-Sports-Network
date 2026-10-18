@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { DashboardLogService } from '../../services/dashboardLogService';
 import type { SeasonReferee, RefereeIntakePayload } from '../types/seasonMode';
 
 export const refereesService = {
@@ -64,19 +65,18 @@ export const refereesService = {
       }
 
       // Log operational audit
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'REFEREE_INTAKE',
-          resource_type: 'referees',
-          resource_id: newRef.id,
-          details: {
-            referee_name: fullName,
-            email: payload.email,
-            phone: payload.phone_number,
-            badge_level: payload.badge_level,
-          },
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'REFEREE_INTAKE',
+        resource_type: 'referees',
+        resource_id: newRef.id,
+        details: {
+          referee_name: fullName,
+          email: payload.email,
+          phone: payload.phone_number,
+          badge_level: payload.badge_level,
         },
-      ]);
+      });
 
       return { success: true, referee: newRef as SeasonReferee, error: null };
     } catch (err: any) {

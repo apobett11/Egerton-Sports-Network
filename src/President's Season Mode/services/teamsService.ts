@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { DashboardLogService } from '../../services/dashboardLogService';
 import type { SeasonTeam, CoachIntakePayload } from '../types/seasonMode';
 import { normalizeTeamName, checkDuplicateTeamName } from '../lib/normalization';
 
@@ -156,20 +157,19 @@ export const teamsService = {
       }
 
       // 5. Log operational audit
-      await supabase.from('audit_logs').insert([
-        {
-          action: 'COACH_TEAM_INTAKE',
-          resource_type: 'teams',
-          resource_id: newTeam.id,
-          details: {
-            coach_name: `${payload.official_first_name} ${payload.official_last_name}`,
-            coach_email: payload.email,
-            team_name: normalized.canonical_display_name,
-            raw_input: payload.team_name,
-            competition_id: payload.competition_id,
-          },
+      await DashboardLogService.recordAction({
+        user_role: 'president',
+        action: 'COACH_TEAM_INTAKE',
+        resource_type: 'teams',
+        resource_id: newTeam.id,
+        details: {
+          coach_name: `${payload.official_first_name} ${payload.official_last_name}`,
+          coach_email: payload.email,
+          team_name: normalized.canonical_display_name,
+          raw_input: payload.team_name,
+          competition_id: payload.competition_id,
         },
-      ]);
+      });
 
       return { success: true, team: newTeam as SeasonTeam, error: null };
     } catch (err: any) {

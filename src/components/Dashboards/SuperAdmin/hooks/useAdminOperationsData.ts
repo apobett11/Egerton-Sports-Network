@@ -4,6 +4,7 @@ import { supabase } from '../../../../lib/supabase';
 import { rateLimiter } from '../../../../lib/rateLimiter';
 import { isSessionActive } from '../../../../lib/inactivityManager';
 import { canMakeDashboardCall } from '../../../../lib/sessionBudgetManager';
+import { DashboardLogService, IS_LOG_SAVING_ENABLED } from '../../../../services/dashboardLogService';
 import {
   fetchAdminSnapshot,
   readCachedSnapshot,
@@ -58,6 +59,7 @@ function statusFor(ms: number, error: unknown, warnAt: number, offlineAt: number
 
 /** Measures how long the realtime socket takes to acknowledge a subscription. */
 async function measureRealtimeLatency(): Promise<number> {
+  if (!IS_LOG_SAVING_ENABLED) return 0;
   return new Promise<number>((resolve) => {
     const t0 = performance.now();
     let settled = false;
@@ -303,7 +305,7 @@ export const useAdminOperationsData = () => {
         resource_id: userId,
         details: { email: user.email, reason: 'Admin suspended account' },
       };
-      await supabase.from('audit_logs').insert(auditRow);
+      await DashboardLogService.recordDirect(auditRow);
 
       patchSnapshot((draft) => {
         const row = draft.profiles.find((p) => p.id === userId);
@@ -334,7 +336,7 @@ export const useAdminOperationsData = () => {
         resource_id: userId,
         details: { email: user.email, reason: 'Admin restored account access' },
       };
-      await supabase.from('audit_logs').insert(auditRow);
+      await DashboardLogService.recordDirect(auditRow);
 
       patchSnapshot((draft) => {
         const row = draft.profiles.find((p) => p.id === userId);
@@ -366,7 +368,7 @@ export const useAdminOperationsData = () => {
         resource_id: userId,
         details: { oldRole, newRole, updated_by: 'admin' },
       };
-      await supabase.from('audit_logs').insert(auditRow);
+      await DashboardLogService.recordDirect(auditRow);
 
       patchSnapshot((draft) => {
         const row = draft.profiles.find((p) => p.id === userId);
@@ -386,7 +388,8 @@ export const useAdminOperationsData = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
 
-      await supabase.from('audit_logs').insert({
+      await DashboardLogService.recordDirect({
+        user_role: 'admin',
         action: 'PASSWORD_RESET_TRIGGERED',
         resource_type: 'auth.users',
         resource_id: email,
@@ -418,7 +421,7 @@ export const useAdminOperationsData = () => {
         resource_type: 'announcements',
         details: { title, targetRole },
       };
-      await supabase.from('audit_logs').insert(auditRow);
+      await DashboardLogService.recordDirect(auditRow);
 
       patchSnapshot((draft) => {
         draft.announcements.unshift(
@@ -635,11 +638,12 @@ export const useAdminOperationsData = () => {
       // 5. Append audit log in database
       const auditDetails = `Updated player name from "${pl.name}" to "${fullNewName}" (Team: ${pl.teamName})`;
       try {
-        await supabase.from('audit_logs').insert({
+        await DashboardLogService.recordAction({
+          user_role: 'admin',
           action: 'PLAYER_NAME_EDITED',
           resource_type: 'players',
           resource_id: playerId,
-          details: auditDetails,
+          details: { message: auditDetails },
         });
       } catch (auditErr) {
         console.warn('Failed to insert audit log for player edit:', auditErr);
@@ -929,7 +933,8 @@ export const useAdminOperationsData = () => {
         .upsert({ key: 'admin_2_security', value: { password: newPassword, updated_at: new Date().toISOString() } });
       if (error) throw error;
 
-      await supabase.from('audit_logs').insert({
+      await DashboardLogService.recordDirect({
+        user_role: 'admin',
         action: 'UPDATE_ADMIN_2_PASSWORD',
         resource_type: 'system_settings',
         details: { updated_at: new Date().toISOString() },
