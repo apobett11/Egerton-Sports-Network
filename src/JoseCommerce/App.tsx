@@ -209,8 +209,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }
     const cachedEntries = getCachedCartItems();
     if (cachedEntries.length > 0) {
+      const catalog = getCachedCatalog();
       return cachedEntries.map((entry) => {
-        const prod = MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
+        const prod = catalog.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
         return {
           id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
           product: prod,
@@ -232,8 +233,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }
     const cachedEntries = getCachedCartItems();
     if (cachedEntries.length > 0) {
+      const catalog = getCachedCatalog();
       return new Set(cachedEntries.map((entry) => {
-        const prod = MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
+        const prod = catalog.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
         return `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`;
       }));
     }
@@ -380,7 +382,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }
   }, [currentUser?.id]);
 
-  // Persist cart updates to user's personal storage
+  // Persist cart updates to user's personal storage or guest persistent localStorage cache
   useEffect(() => {
     if (currentUser) {
       const currentData = getUserPersonalData(currentUser.id);
@@ -388,6 +390,17 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         ...currentData,
         cartItems,
       });
+    } else {
+      setCachedCartItems(
+        cartItems.map((item) => ({
+          productId: item.product.id,
+          size: item.size,
+          color: item.color,
+          quantity: item.quantity,
+          customization: item.customization,
+          variantImage: item.variantImage,
+        }))
+      );
     }
   }, [cartItems, currentUser?.id]);
 
