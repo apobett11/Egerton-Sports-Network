@@ -526,7 +526,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   if (isBottomPopup) {
     return (
       <div 
-        className="fixed inset-0 z-40 flex items-end justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop"
+        className="fixed inset-0 z-50 flex items-end justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop"
         onClick={onClose}
       >
         {cartContent}

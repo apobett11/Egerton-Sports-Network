@@ -233,7 +233,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* ================= 1. PC SOLID SIDEBAR (Desktop/Tablet) ================= */}
       <aside 
-        className={`hidden sm:flex fixed left-0 top-14 sm:top-16 bottom-0 z-30 w-16 xl:w-52 border-r flex-col justify-between p-2 xl:p-3.5 transition-colors shadow-sm select-none ${
+        className={`hidden sm:flex fixed left-0 top-14 sm:top-16 bottom-0 z-60 w-16 xl:w-52 border-r flex-col justify-between p-2 xl:p-3.5 transition-colors shadow-sm select-none ${
           isDark 
             ? 'bg-[#0e1c2c] border-slate-800 text-slate-100' 
             : 'bg-white border-slate-200 text-slate-900'
@@ -296,7 +296,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
       {/* ================= 2. MOBILE BOTTOM NAVIGATION ================= */}
       <nav 
-        className={`fixed bottom-0 inset-x-0 z-50 sm:hidden backdrop-blur-xl border-t shadow-2xl pb-safe transition-colors ${
+        className={`fixed bottom-0 inset-x-0 z-60 sm:hidden backdrop-blur-xl border-t shadow-2xl pb-safe transition-colors ${
           isDark 
             ? 'bg-[#0f1d2d]/95 border-slate-700/80 text-white shadow-[0_-6px_20px_rgba(0,0,0,0.5)]' 
             : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]'

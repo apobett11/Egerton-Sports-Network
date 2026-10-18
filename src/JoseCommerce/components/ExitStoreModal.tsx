@@ -32,7 +32,7 @@ export const ExitStoreModal: React.FC<ExitStoreModalProps> = ({
     }).format(amount);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 

@@ -138,7 +138,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Strict user login gate: user will never access checkout without login
   if (!activeUser) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
+      <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
         <div className="fixed inset-0" onClick={onClose} />
         <div className="relative w-full max-w-md p-6 rounded-2xl shadow-2xl border text-center space-y-4 z-10 animate-spring-in bg-[#0f1d2e] border-slate-700 text-slate-100">
           <div className="w-14 h-14 mx-auto rounded-full bg-[#ff0046]/20 text-[#ff0046] flex items-center justify-center border border-[#ff0046]/30">
@@ -273,7 +273,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 z-70 overflow-y-auto">
         {/* Backdrop */}
         <div
           onClick={handleClose}

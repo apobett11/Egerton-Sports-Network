@@ -420,7 +420,23 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }, 400);
   };
 
+  // Instantly closes all bottom drawers and overlay modals so one never shows behind another
+  const closeAllNavDrawers = () => {
+    setIsCartOpen(false);
+    setIsCategoriesModalOpen(false);
+    setIsOrdersModalOpen(false);
+    setIsOrderTrackingOpen(false);
+    setIsContactModalOpen(false);
+    setIsProfileModalOpen(false);
+    setIsUserDashboardOpen(false);
+    setIsAuthModalOpen(false);
+    setIsCheckoutOpen(false);
+    setIsExitModalOpen(false);
+    setSpecsModalProduct(null);
+  };
+
   const handleOpenOrderTracking = (orderId?: string) => {
+    closeAllNavDrawers();
     if (!currentUser) {
       // Guest page is without orders & intimate details - requires login
       setAuthModalReason('orders');
@@ -433,6 +449,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   };
 
   const handleOpenAdmin = () => {
+    closeAllNavDrawers();
     if (!isStoreAdminAuthenticated()) {
       setAuthModalReason('admin');
       setAuthModalMode('admin_login');
@@ -1036,7 +1053,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         {/* Navy Header at the very top */}
         <Header
           cartCount={totalCartCount}
-          onOpenCart={() => setIsCartOpen(true)}
+          onOpenCart={() => {
+            closeAllNavDrawers();
+            setIsCartOpen(true);
+          }}
           onOpenTrackOrders={() => handleOpenOrderTracking()}
           onOpenSearch={() => {
             setSelectedProduct(null);
@@ -1238,6 +1258,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       <Header
         cartCount={totalCartCount}
         onOpenCart={() => {
+          closeAllNavDrawers();
           setCartPresentation('drawer');
           setIsCartOpen(true);
         }}
@@ -1406,15 +1427,18 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         theme={theme}
         categoriesWithCounts={categoriesWithCounts}
         onOpenCart={() => {
+          closeAllNavDrawers();
           setActiveNav('cart');
           setCartPresentation('bottom-popup');
           setIsCartOpen(true);
         }}
         onOpenCategories={() => {
+          closeAllNavDrawers();
           setActiveNav('categories');
           setIsCategoriesModalOpen(true);
         }}
         onOpenOrders={() => {
+          closeAllNavDrawers();
           if (!currentUser) {
             setAuthModalReason('orders');
             setAuthModalMode('login');
@@ -1425,10 +1449,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setIsOrdersModalOpen(true);
         }}
         onOpenContact={() => {
+          closeAllNavDrawers();
           setActiveNav('contact');
           setIsContactModalOpen(true);
         }}
         onOpenProfile={() => {
+          closeAllNavDrawers();
           if (!currentUser) {
             setAuthModalReason(undefined);
             setAuthModalMode('login');
@@ -1439,11 +1465,13 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           setIsProfileModalOpen(true);
         }}
         onOpenAuth={() => {
+          closeAllNavDrawers();
           setAuthModalReason(undefined);
           setAuthModalMode('login');
           setIsAuthModalOpen(true);
         }}
         onGoHome={() => {
+          closeAllNavDrawers();
           setActiveNav('home');
           setSelectedProduct(null);
           setCurrentView('store');
@@ -1451,6 +1479,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onSelectCategory={(slug) => {
+          closeAllNavDrawers();
           setActiveNav('categories');
           setSelectedCategorySlug(slug);
           setPreviousView(currentView === 'category' ? 'store' : currentView);

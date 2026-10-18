@@ -92,7 +92,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   // Strict user login gate: user will never access orders without login
   if (!activeUser) {
     return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
         <div className="fixed inset-0" onClick={onClose} />
         <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl border text-center space-y-4 z-10 animate-spring-in ${
           isDark ? 'bg-[#0f1d2e] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
@@ -163,7 +163,7 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
     : 1;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 pb-16 sm:p-4 bg-black/80 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop */}
       <div 
         className="fixed inset-0" 

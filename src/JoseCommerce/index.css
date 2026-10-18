@@ -137,12 +137,12 @@
 }
 
 .animate-bottom-sheet {
-  animation: emilSheetSlideUp 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: emilSheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
 
 .animate-bottom-backdrop {
-  animation: emilBackdropFadeIn 0.38s ease-out forwards;
+  animation: emilBackdropFadeIn 0.16s ease-out forwards;
 }
 
 .animate-dropdown-up {

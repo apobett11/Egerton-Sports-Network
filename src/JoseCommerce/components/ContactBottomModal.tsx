@@ -55,7 +55,7 @@ export const ContactBottomModal: React.FC<ContactBottomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 pb-16 sm:p-4 bg-black/75 backdrop-blur-sm animate-bottom-backdrop">
       {/* Backdrop: Clicking outside closes the popup */}
       <div 
         className="fixed inset-0" 

@@ -75,7 +75,7 @@ export const ProductSpecsModal: React.FC<ProductSpecsModalProps> = ({
   const isDark = theme === 'dark';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
         className="fixed inset-0" 
         onClick={onClose} 

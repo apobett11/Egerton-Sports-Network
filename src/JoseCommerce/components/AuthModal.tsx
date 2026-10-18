@@ -310,7 +310,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div 
         className={`w-full max-w-md rounded-xl border shadow-xl overflow-hidden my-auto transition-all ${
           isDark 
