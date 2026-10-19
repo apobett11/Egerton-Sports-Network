@@ -25,6 +25,7 @@ import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCac
 import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './services/storeCacheService';
 
 import { CATEGORIES } from './data/categories';
+import { normalizeCategorySlug } from './services/productIdService';
 import { MOCK_PRODUCTS } from './data/mockProducts';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { getStoredOrders, addNewStoredOrder, MOCK_CARTS_ANALYTICS } from './data/mockOrders';
@@ -81,17 +82,20 @@ const INITIAL_FILTERS: FilterState = {
 export function matchesProductClass(product: Product, selectedClass: string): boolean {
   if (!selectedClass || selectedClass === 'all') return true;
   const cls = selectedClass.toLowerCase();
+  const firstLetter = (product.id || product.sku || '')[0]?.toUpperCase();
+  const pClass = (product.productClass || product.classLetter || '')?.toUpperCase();
+
   if (cls === 'team' || cls === 't') {
-    return product.productClass === 'T' || product.classId === 'team' || product.audience === 'team';
+    return firstLetter === 'T' || pClass === 'T' || product.classId === 'team' || product.audience === 'team';
   }
-  if (cls === 'individual' || cls === 'i' || cls === 'p') {
-    return product.productClass === 'I' || product.productClass === 'P' || product.classId === 'individual' || product.audience === 'individual';
+  if (cls === 'individual' || cls === 'i' || cls === 'training') {
+    return firstLetter === 'I' || pClass === 'I' || product.classId === 'individual' || product.audience === 'individual';
   }
   if (cls === 'coaching' || cls === 'c') {
-    return product.productClass === 'C' || product.classId === 'coaching';
+    return firstLetter === 'C' || pClass === 'C' || product.classId === 'coaching';
   }
   if (cls === 'officiation' || cls === 'o' || cls === 'officiating') {
-    return product.productClass === 'O' || product.classId === 'officiation' || product.categorySlug === 'officiating';
+    return firstLetter === 'O' || pClass === 'O' || product.classId === 'officiation' || product.categorySlug === 'officiating';
   }
   return true;
 }
@@ -633,9 +637,10 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   // Dynamic category product counts based on selected global class
   const categoriesWithCounts = useMemo(() => {
     return CATEGORIES.map((cat) => {
+      const targetSlug = normalizeCategorySlug(cat.slug);
       const count = productsList.filter((p) => {
         if (!matchesProductClass(p, selectedClass)) return false;
-        return p.categorySlug === cat.slug;
+        return normalizeCategorySlug(p.categorySlug) === targetSlug;
       }).length;
       return { ...cat, count };
     });
@@ -652,17 +657,24 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       if (filters.searchQuery.trim()) {
         const query = filters.searchQuery.toLowerCase();
         const matchesName = product.name.toLowerCase().includes(query);
-        const matchesSubtitle = product.subtitle.toLowerCase().includes(query);
-        const matchesCategory = product.category.toLowerCase().includes(query);
-        const matchesId = product.id.toLowerCase().includes(query);
-        if (!matchesName && !matchesSubtitle && !matchesCategory && !matchesId) {
+        const matchesSubtitle = product.subtitle?.toLowerCase().includes(query);
+        const matchesCategory = product.category?.toLowerCase().includes(query) || normalizeCategorySlug(product.categorySlug).includes(query);
+        const matchesId = product.id.toLowerCase().includes(query) || (product.sku && product.sku.toLowerCase().includes(query));
+        const matchesKw = Array.isArray(product.keywords) && product.keywords.some((k) => k.toLowerCase().includes(query));
+        const isGoalkeeperSearch = query.includes('goalke');
+        const isGoalkeeperProd = normalizeCategorySlug(product.categorySlug) === 'goalkeepers';
+        if (!matchesName && !matchesSubtitle && !matchesCategory && !matchesId && !matchesKw && !(isGoalkeeperSearch && isGoalkeeperProd)) {
           return false;
         }
       }
 
       // 2. Category
-      if (filters.category !== 'all' && product.categorySlug !== filters.category) {
-        return false;
+      if (filters.category !== 'all') {
+        const targetSlug = normalizeCategorySlug(filters.category);
+        const prodSlug = normalizeCategorySlug(product.categorySlug);
+        if (prodSlug !== targetSlug) {
+          return false;
+        }
       }
 
       // 3. Price Range
@@ -1011,7 +1023,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         }}
         onAddProduct={(newProd) => {
           setProductsList((prev) => {
-            const next = [newProd, ...prev];
+            const next = [newProd, ...prev.filter((p) => p.id !== newProd.id && (!newProd.uid || p.uid !== newProd.uid))];
             setCachedCatalog(next);
             return next;
           });

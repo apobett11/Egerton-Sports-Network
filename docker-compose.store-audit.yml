@@ -1,0 +1,13 @@
+services:
+  store-playwright-audit:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    environment:
+      - CI=true
+      - VITE_SUPABASE_URL=http://localhost:54321
+      - VITE_SUPABASE_ANON_KEY=mock-anon-key-placeholder
+    ipc: host
+    ports:
+      - "5173:5173"
+    command: ["npx", "playwright", "test", "tests/store-100-products-audit.spec.ts", "--reporter=list"]

@@ -16,7 +16,8 @@ export interface ProductClass {
 }
 
 export interface Product {
-  id: string;
+  id: string; // Product ID (e.g. IK-10001) used for frontend navigation, sorts, and search
+  uid?: string; // Database UUID (e.g. 1f420a5e-...) used for relational tables and storage
   classId?: string;
   categoryId?: string;
   sku?: string;

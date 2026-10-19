@@ -13,6 +13,9 @@ export const isSupabaseConfigured = Boolean(
   !String(env.VITE_SUPABASE_URL).includes('mock-')
 );
 
+const isBrowser = typeof window !== 'undefined';
+const serviceRoleKey = env.VITE_SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -21,3 +24,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'egerscore_store_auth_token',
   },
 });
+
+export const supabaseAdmin = (!isBrowser && serviceRoleKey)
+  ? createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : supabase;
+

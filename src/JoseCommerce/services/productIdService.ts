@@ -37,13 +37,27 @@ export const CATEGORY_TO_CODES: Record<string, { classCode: string; categoryCode
   'pitch-training': { classCode: 'T', categoryCode: 'P' },
   'kit': { classCode: 'I', categoryCode: 'K' },
   'goalkeepers': { classCode: 'I', categoryCode: 'G' },
+  'goalkeeper': { classCode: 'I', categoryCode: 'G' },
+  'goalkeeper-s': { classCode: 'I', categoryCode: 'G' },
   'boots-and-balls': { classCode: 'I', categoryCode: 'B' },
   'officiating': { classCode: 'O', categoryCode: 'O' },
 };
 
 /**
+ * Normalizes category slugs to prevent mismatches (e.g. goalkeeper, goalkeepers, goalkeeper-s)
+ */
+export function normalizeCategorySlug(slug?: string): string {
+  if (!slug) return '';
+  const clean = slug.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+  if (clean === 'goalkeeper' || clean === 'goalkeepers') {
+    return 'goalkeepers';
+  }
+  return slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+}
+
+/**
  * Generates a valid unique Product ID conforming to TX-00456 format:
- * - 1st letter: Class code (e.g. 'I', 'T', 'C', 'O')
+ * - 1st letter: Class code (strictly 'I', 'T', 'C', 'O')
  * - 2nd letter: Category code (e.g. 'F', 'P', 'K', 'G', 'B', 'O')
  * - Hyphen '-'
  * - 5 random digits (e.g. '00456')
@@ -53,7 +67,9 @@ export function generateProductId(
   categoryCode: string = 'K',
   customRandom?: number
 ): string {
-  const cClass = (classCode.trim()[0] || 'I').toUpperCase();
+  const allowedClasses = ['I', 'T', 'C', 'O'];
+  const rawClass = classCode.trim().toUpperCase()[0] || 'I';
+  const cClass = allowedClasses.includes(rawClass) ? rawClass : 'I';
   const cCat = (categoryCode.trim()[0] || 'K').toUpperCase();
   const num = customRandom ?? Math.floor(10000 + Math.random() * 90000);
   const formattedNum = String(num).padStart(5, '0');
@@ -64,25 +80,33 @@ export function generateProductId(
  * Checks if a string conforms to the product id pattern like IK-00456
  */
 export function isValidProductId(id: string): boolean {
-  return /^[A-Z]{2}-[0-9]{5}$/.test(id);
+  return /^[ITCO][A-Z]-[0-9]{5}$/.test(id);
 }
 
 /**
- * Resolves class letter and category letter from category slug or fallback
+ * Resolves class letter and category letter from category slug or fallback,
+ * strictly restricting class code to I (Individual), T (Team), C (Coaching), O (Officiation).
  */
 export function resolveClassAndCategoryCodes(
   categorySlug: string,
   explicitClass?: string
 ): { classCode: string; categoryCode: string } {
-  const mapped = CATEGORY_TO_CODES[categorySlug];
+  const normSlug = normalizeCategorySlug(categorySlug);
+  const mapped = CATEGORY_TO_CODES[normSlug] || CATEGORY_TO_CODES[categorySlug];
+  
+  const allowedClasses = ['I', 'T', 'C', 'O'];
+  const validExplicitClass = explicitClass && allowedClasses.includes(explicitClass.toUpperCase()[0])
+    ? explicitClass.toUpperCase()[0]
+    : undefined;
+
   if (mapped) {
     return {
-      classCode: explicitClass || mapped.classCode,
+      classCode: validExplicitClass || mapped.classCode,
       categoryCode: mapped.categoryCode,
     };
   }
   return {
-    classCode: explicitClass ? explicitClass.toUpperCase()[0] : 'I',
-    categoryCode: categorySlug.length > 0 ? categorySlug[0].toUpperCase() : 'X',
+    classCode: validExplicitClass || 'I',
+    categoryCode: normSlug.length > 0 ? normSlug[0].toUpperCase() : 'K',
   };
 }

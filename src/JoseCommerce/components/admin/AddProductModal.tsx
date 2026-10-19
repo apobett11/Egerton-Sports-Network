@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { Product } from '../../types';
 import { CATEGORIES } from '../../data/categories';
-import { generateProductId, resolveClassAndCategoryCodes } from '../../services/productIdService';
+import { generateProductId, resolveClassAndCategoryCodes, normalizeCategorySlug } from '../../services/productIdService';
+import { createAndPersistProduct } from '../../services/productService';
 import { compressImageBeforeUpload } from '../../lib/imageService';
 
 interface AddProductModalProps {
@@ -45,13 +46,11 @@ const PRESET_KEYWORDS = [
   'Whistle', 'Bibs', 'Referee Kit', 'Ball', 'Match Ball'
 ];
 
-const CLASSIFICATION_OPTIONS = [
-  'Standard Grade (Set Later)',
-  'Pro Match Grade',
-  'Official Squad Issue',
-  'Elite Performance',
-  'Replica Edition',
-  'Custom / Special Order (Set Later)'
+export const CLASS_OPTIONS: { code: 'I' | 'T' | 'C' | 'O'; label: string; description: string }[] = [
+  { code: 'I', label: 'Individual (I)', description: 'Footwear, shin guards, personal equipment' },
+  { code: 'T', label: 'Team (T)', description: 'Squad match kits, team jerseys, warm-up tracksuits' },
+  { code: 'C', label: 'Coaching (C)', description: 'Tactical boards, whistles, cones, coach equipment' },
+  { code: 'O', label: 'Officiation (O)', description: 'Referee kits, cards, boundary flags, whistles' },
 ];
 
 export interface SpecColumn {
@@ -90,7 +89,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(() => draft?.selectedCategory || CATEGORIES[0]?.name || 'Team Match Kits');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
-  const [classification, setClassification] = useState<string>(() => draft?.classification || CLASSIFICATION_OPTIONS[0]);
+  const [selectedClass, setSelectedClass] = useState<'I' | 'T' | 'C' | 'O'>(() => {
+    if (draft?.selectedClass && ['I', 'T', 'C', 'O'].includes(draft.selectedClass)) {
+      return draft.selectedClass as 'I' | 'T' | 'C' | 'O';
+    }
+    const cat = draft?.selectedCategory || CATEGORIES[0]?.name || 'Team Match Kits';
+    return resolveClassAndCategoryCodes(cat).classCode as 'I' | 'T' | 'C' | 'O';
+  });
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => draft?.selectedKeywords || ['Jersey', 'Team Kit']);
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
   const [keywordSearch, setKeywordSearch] = useState('');
@@ -124,7 +130,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           price,
           initialQuantity,
           selectedCategory,
-          classification,
+          selectedClass,
           selectedKeywords,
           logoImage,
           colorPhotos,
@@ -141,7 +147,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     price,
     initialQuantity,
     selectedCategory,
-    classification,
+    selectedClass,
     selectedKeywords,
     logoImage,
     colorPhotos,
@@ -165,7 +171,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   // Step 2 validation
   const effectiveCategory = isAddingNewCategory ? customCategory.trim() : selectedCategory;
   const isCategoryValid = effectiveCategory.length > 0;
-  const isClassValid = classification.length > 0;
+  const isClassValid = ['I', 'T', 'C', 'O'].includes(selectedClass);
   const isKeywordsValid = selectedKeywords.length >= 1 && selectedKeywords.length <= 6;
   const isStep2Valid = isCategoryValid && isClassValid && isKeywordsValid;
 
@@ -179,7 +185,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       setTouched((prev) => ({ ...prev, name: true, description: true, price: true, initialQuantity: true }));
       if (isStep1Valid) setStep(2);
     } else if (step === 2) {
-      setTouched((prev) => ({ ...prev, category: true, classification: true, keywords: true }));
+      setTouched((prev) => ({ ...prev, category: true, productClass: true, keywords: true }));
       if (isStep2Valid) setStep(3);
     }
   };
@@ -315,90 +321,82 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isStep1Valid || !isStep2Valid || !isStep3Valid) {
       alert('Please correct any validation errors before saving.');
       return;
     }
+    if (isSaving) return;
 
-    const finalStockCount = parseInt(initialQuantity) || 20;
-
-    // Extract sizes and colors from specColumns
-    const sizesCol = specColumns.find((c) => c.name.toLowerCase().includes('size'));
-    const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['S', 'M', 'L', 'XL'];
-
-    const colorsColumn = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
-    const hasColors = Boolean(colorsColumn && colorsColumn.values.length > 0);
-
-    let finalColors: { name: string; hex: string; image?: string }[] = [];
-    let finalImages: string[] = [];
-
-    if (hasColors) {
-      const validColorVals = colorsColumn!.values.slice(0, 4);
-      finalColors = validColorVals.map((v) => ({
-        name: v,
-        hex: '#2563eb',
-        image: colorPhotos[v] || logoImage,
-      }));
-      const variantPhotos = validColorVals.map((v) => colorPhotos[v]).filter(Boolean);
-      finalImages = [logoImage, ...variantPhotos];
-    } else {
-      finalColors = [{ name: 'Standard Edition', hex: '#2563eb' }];
-      finalImages = [logoImage, fallbackAdditionalImage || DEFAULT_PRESET_IMAGES[1]];
-    }
-
-    const specStrings = specColumns.map((c) => `${c.name}: ${c.values.join(', ') || 'Standard'}`);
-
-    const codes = resolveClassAndCategoryCodes(
-      effectiveCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      classification ? classification[0] : 'T'
-    );
-    const assignedProductId = generateProductId(codes.classCode, codes.categoryCode);
-
-    const newProduct: Product = {
-      id: assignedProductId,
-      productClass: codes.classCode,
-      classLetter: codes.classCode,
-      categoryLetter: codes.categoryCode,
-      name: name.trim(),
-      subtitle: `${effectiveCategory} • ${classification}`,
-      category: effectiveCategory,
-      categorySlug: effectiveCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      price: Number(price),
-      rating: 5.0,
-      reviewCount: 0,
-      images: finalImages,
-      keywords: selectedKeywords,
-      audience: 'both',
-      isNew: true,
-      isFeatured: true,
-      inStock: finalStockCount > 0,
-      stockCount: finalStockCount,
-      badge: 'NEW ARRIVAL',
-      sizes: uniqueSizes,
-      colors: finalColors,
-      description: description.trim(),
-      features: [
-        `Category: ${effectiveCategory}`,
-        `Classification: ${classification}`,
-        ...specStrings
-      ],
-      specifications: {
-        'Category': effectiveCategory,
-        'Classification Grade': classification,
-        'Listing Type': 'Store Catalog Verified',
-        ...Object.fromEntries(specColumns.filter(c => c.values.length > 0).map(c => [c.name, c.values.join(', ')])),
-        'Search Keywords': selectedKeywords.join(', ')
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    onSaveProduct(newProduct);
+    setIsSaving(true);
     try {
-      localStorage.removeItem(STORAGE_KEY_ADD_PRODUCT_DRAFT);
-    } catch (_) {}
-    onClose();
+      const finalStockCount = parseInt(initialQuantity) || 20;
+
+      // Extract sizes and colors from specColumns
+      const sizesCol = specColumns.find((c) => c.name.toLowerCase().includes('size'));
+      const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['S', 'M', 'L', 'XL'];
+
+      const colorsColumn = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
+      const hasColors = Boolean(colorsColumn && colorsColumn.values.length > 0);
+
+      let finalColors: { name: string; hex: string; image?: string }[] = [];
+      let finalImages: string[] = [];
+
+      if (hasColors) {
+        const validColorVals = colorsColumn!.values.slice(0, 4);
+        finalColors = validColorVals.map((v) => ({
+          name: v,
+          hex: '#2563eb',
+          image: colorPhotos[v] || logoImage,
+        }));
+        const variantPhotos = validColorVals.map((v) => colorPhotos[v]).filter(Boolean);
+        finalImages = [logoImage, ...variantPhotos];
+      } else {
+        finalColors = [{ name: 'Standard Edition', hex: '#2563eb' }];
+        finalImages = [logoImage, fallbackAdditionalImage || DEFAULT_PRESET_IMAGES[1]];
+      }
+
+      const specStrings = specColumns.map((c) => `${c.name}: ${c.values.join(', ') || 'Standard'}`);
+      const normSlug = normalizeCategorySlug(effectiveCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+
+      const createdProduct = await createAndPersistProduct({
+        name: name.trim(),
+        description: description.trim(),
+        price: Number(price),
+        stockCount: finalStockCount,
+        category: effectiveCategory,
+        categorySlug: normSlug,
+        productClass: selectedClass,
+        keywords: selectedKeywords,
+        sizes: uniqueSizes,
+        colors: finalColors,
+        images: finalImages,
+        features: [
+          `Category: ${effectiveCategory}`,
+          `Class: ${selectedClass}`,
+          ...specStrings,
+        ],
+        specifications: {
+          Category: effectiveCategory,
+          Class: selectedClass === 'I' ? 'Individual (I)' : selectedClass === 'T' ? 'Team (T)' : selectedClass === 'C' ? 'Coaching (C)' : 'Officiation (O)',
+          'Listing Type': 'Store Catalog Verified',
+          ...Object.fromEntries(specColumns.filter((c) => c.values.length > 0).map((c) => [c.name, c.values.join(', ')])),
+          'Search Keywords': selectedKeywords.join(', '),
+        },
+      });
+
+      onSaveProduct(createdProduct);
+      try {
+        localStorage.removeItem(STORAGE_KEY_ADD_PRODUCT_DRAFT);
+      } catch (_) {}
+      onClose();
+    } catch (err) {
+      console.error('Failed to create and persist product:', err);
+      alert('Error creating product. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -676,26 +674,38 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 )}
               </div>
 
-              {/* Class Dropdown (will be set later / options) */}
+              {/* Product Class Selection (Strict 4 classes: I, T, C, O) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-200 flex items-center gap-1">
-                    <span>Product Classification</span>
+                    <span>Product Class</span>
                     <span className="text-red-400">*</span>
                   </label>
-                  <span className="text-[10px] text-slate-400">(Classification grade - can be adjusted later)</span>
+                  <span className="text-[10px] text-slate-400">Strict class (I, T, C, O) sets 1st letter of Product ID</span>
                 </div>
-                <select
-                  value={classification}
-                  onChange={(e) => setClassification(e.target.value)}
-                  className={`w-full px-3.5 py-2.5 text-xs rounded-xl border focus:outline-hidden ${
-                    theme === 'dark' ? 'bg-[#182b42] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                >
-                  {CLASSIFICATION_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {CLASS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => setSelectedClass(opt.code)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        selectedClass === opt.code
+                          ? 'border-blue-500 bg-blue-600/20 text-white ring-1 ring-blue-500'
+                          : theme === 'dark'
+                          ? 'bg-[#182b42] border-slate-700 text-slate-300 hover:border-slate-500'
+                          : 'bg-slate-50 border-slate-300 text-slate-700 hover:border-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black">{opt.code}</span>
+                        {selectedClass === opt.code && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                      </div>
+                      <p className="text-[11px] font-bold mt-0.5">{opt.label}</p>
+                      <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{opt.description}</p>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Keywords Select Trigger & Chips */}
@@ -1106,10 +1116,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 transition-all cursor-pointer flex items-center gap-2 shadow-md active:scale-98"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 shadow-md active:scale-98"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Save Product to Catalog</span>
+                <span>{isSaving ? 'Uploading & Persisting...' : 'Save Product to Catalog'}</span>
               </button>
             )}
           </div>

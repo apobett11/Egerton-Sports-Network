@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, X, Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { Search, X, Sparkles, Clock, ArrowRight, Tag, AlertCircle } from 'lucide-react';
+import { getMatchingKeywordSuggestions, hasMatchingKeywords, getAllCatalogKeywords } from '../services/productService';
 
 interface SearchBarProps {
   searchQuery: string;
@@ -10,50 +11,6 @@ interface SearchBarProps {
   isInline?: boolean;
   theme?: 'dark' | 'light';
 }
-
-// 40+ realistic sports gear terms to draw 20 random / filtered suggestions from
-const SUGGESTION_POOL = [
-  "Full squad match kit with custom numbers",
-  "Predator firm ground football boots size 42",
-  "FIFA Quality Pro thermal match ball size 5",
-  "StormShield squad rain & wind breaker coat",
-  "Pro grip hybrid negative goalkeeper gloves",
-  "Dri-FIT double-sided training bib pack",
-  "Pitchside medical first aid & freeze spray trunk",
-  "Magnetic dry-erase tactic coaching board",
-  "Cushioned anti-slip athletic grip socks",
-  "Inter-hall varsity tournament jersey set",
-  "Impact protective shin guards with sleeves",
-  "Speed agility training ladder and cones set",
-  "Padded goalkeeper diving training trousers",
-  "Official referee whistle & score card booklet",
-  "Ball carrier mesh sack (holds 12 balls)",
-  "Heavy-duty waterproof squad kit equipment bag",
-  "High-visibility captain elastic armband",
-  "Fluorescent flat disc pitch boundary markers",
-  "Thermal compression undershirt base layer",
-  "Low-bounce indoor futsal match ball",
-  "Collegiate league team warm-up tracksuit",
-  "Multi-ground rubber studded training boots",
-  "Custom club crest sublimated jerseys",
-  "Speed hurdles training kit for wingers",
-  "Latex finger-save goalkeeper match gloves",
-  "Elasticated sports strapping tape 3-pack",
-  "Electronic match substitution display board",
-  "Training slalom poles with ground spikes",
-  "Hydration squad water bottle carrier rack",
-  "Pro agility sprint cones with carry strap",
-  "Aero-mesh lightweight squad training shorts",
-  "Reinforced nylon goal net pair (full size)",
-  "High-traction turf shoes for astro pitches",
-  "Reflective coaching track jacket with hood",
-  "Heavy resistance sprint training parachutes",
-  "Cold compression ice packs for sprains",
-  "Weighted medicine ball for goalkeeper power",
-  "Breathable squad jersey shorts and socks bundle",
-  "Dual-action handheld match ball air pump",
-  "Pre-match anthem squad jacket with fleece lining"
-];
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   searchQuery,
@@ -79,27 +36,36 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 20 suggestions: filtered by input query, or 20 random/polite suggestions when empty
+  const cleanQuery = searchQuery.trim().toLowerCase();
+
+  // Dynamic suggestions: when typing half a keyword, list keywords where typed word forms first part or part of keyword
   const suggestions = useMemo(() => {
-    const trimmed = searchQuery.trim().toLowerCase();
-    if (!trimmed) {
-      // Pick 20 items for polite discovery before typing
-      return SUGGESTION_POOL.slice(0, 20);
+    if (!cleanQuery) {
+      // Popular existing catalog keywords when empty
+      return getAllCatalogKeywords().slice(0, 15);
     }
-    // Filter matching suggestions
-    const matched = SUGGESTION_POOL.filter(item => 
-      item.toLowerCase().includes(trimmed)
-    );
-    // If fewer than 20, supplement with related items to always offer up to 20 suggestions
-    if (matched.length < 20) {
-      const rest = SUGGESTION_POOL.filter(item => !item.toLowerCase().includes(trimmed));
-      return [...matched, ...rest].slice(0, 20);
-    }
-    return matched.slice(0, 20);
-  }, [searchQuery]);
+    return getMatchingKeywordSuggestions(cleanQuery);
+  }, [cleanQuery]);
+
+  // Frontend guard: check whether the typed keyword exists in catalog
+  const keywordExists = useMemo(() => {
+    if (!cleanQuery) return true;
+    return hasMatchingKeywords(cleanQuery) || suggestions.length > 0;
+  }, [cleanQuery, suggestions]);
 
   const handleSelectSuggestion = (text: string) => {
     onSearchChange(text);
+    setIsFocused(false);
+  };
+
+  const handleTriggerSearch = () => {
+    if (!cleanQuery) return;
+    if (!keywordExists) {
+      // Frontend guard: Never send request for keywords that do not exist in catalog
+      setIsFocused(true);
+      return;
+    }
+    onSearchChange(searchQuery);
     setIsFocused(false);
   };
 
@@ -122,6 +88,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               value={searchQuery}
               onFocus={() => setIsFocused(true)}
               onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleTriggerSearch();
+                }
+              }}
               placeholder="Search jerseys, boots, FIFA match balls, breakers..."
               className={`w-full h-10 bg-transparent ${isDark ? 'text-white' : 'text-slate-900'} placeholder:text-slate-400 text-xs sm:text-sm font-medium outline-hidden`}
             />
@@ -144,10 +116,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             {/* Circular Capsule Search Trigger Button */}
             <button
               type="button"
-              onClick={() => {
-                setIsFocused(true);
-                inputRef.current?.focus();
-              }}
+              onClick={handleTriggerSearch}
               className="flex items-center justify-center w-9 h-9 rounded-full bg-[#ff0046] hover:bg-[#e0003c] text-white shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
               aria-label="Search"
             >
@@ -155,7 +124,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             </button>
           </div>
 
-          {/* Polite 20 Suggestions Dropdown Popup */}
+          {/* Autocomplete Keyword Suggestions Dropdown Popup */}
           {isFocused && (
             <div className={`absolute left-0 right-0 top-full mt-2 ${
               isDark ? 'bg-[#1a3652] border-[#284d73]' : 'bg-white border-slate-200 shadow-2xl'
@@ -167,34 +136,44 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               }`}>
                 <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3 text-[#ff0046]" />
-                  <span>{searchQuery.trim() ? "Recommended 20 Suggestions" : "Popular Gear Suggestions (20 Suggestions)"}</span>
+                  <span>{cleanQuery ? `Matching Keywords (${suggestions.length})` : "Catalog Gear Keywords"}</span>
                 </span>
                 <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'} font-semibold`}>
-                  20 results
+                  {suggestions.length} keywords
                 </span>
               </div>
 
-              {/* Polite List of 20 Suggestions */}
-              <div className={`divide-y ${isDark ? 'divide-[#284d73]/60' : 'divide-slate-100'}`}>
-                {suggestions.map((item, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSelectSuggestion(item)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
-                      isDark 
-                        ? 'text-slate-200 hover:text-white hover:bg-[#224466]' 
-                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                    } transition-colors flex items-center justify-between group cursor-pointer`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate pr-2">
-                      <Clock className="w-3 h-3 text-slate-500 group-hover:text-[#ff0046] shrink-0" />
-                      <span className="truncate">{item}</span>
-                    </div>
-                    <ArrowRight className={`w-3 h-3 ${isDark ? 'text-slate-600 group-hover:text-white' : 'text-slate-400 group-hover:text-slate-800'} shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  </button>
-                ))}
-              </div>
+              {/* Suggestions List or Empty State */}
+              {suggestions.length > 0 ? (
+                <div className={`divide-y ${isDark ? 'divide-[#284d73]/60' : 'divide-slate-100'}`}>
+                  {suggestions.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(item)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium ${
+                        isDark 
+                          ? 'text-slate-200 hover:text-white hover:bg-[#224466]' 
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                      } transition-colors flex items-center justify-between group cursor-pointer`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate pr-2">
+                        <Tag className="w-3 h-3 text-slate-400 group-hover:text-[#ff0046] shrink-0" />
+                        <span className="truncate">{item}</span>
+                      </div>
+                      <ArrowRight className={`w-3 h-3 ${isDark ? 'text-slate-600 group-hover:text-white' : 'text-slate-400 group-hover:text-slate-800'} shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`} />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6 px-4 text-center space-y-1.5">
+                  <AlertCircle className="w-6 h-6 text-amber-400 mx-auto" />
+                  <p className="text-xs font-bold text-slate-200">No matching keyword found</p>
+                  <p className="text-[11px] text-slate-400">
+                    Keyword &ldquo;{searchQuery}&rdquo; does not exist in catalog. Requests are only sent for existing gear keywords.
+                  </p>
+                </div>
+              )}
 
             </div>
           )}
