@@ -192,8 +192,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [checkoutSettings, setCheckoutSettings] = useState<AdminCheckoutSettings>(getStoredCheckoutSettings);
   const [businessContact, setBusinessContact] = useState<BusinessContactSettings>(getStoredBusinessContact);
   const [adminProfile, setAdminProfile] = useState<AdminProfile>(getStoredAdminProfile);
-  const [isAdminAddProductOpen, setIsAdminAddProductOpen] = useState(() => Boolean(persistedNav.isAddProductModalOpen));
-  const [isAdminAddDepotOpen, setIsAdminAddDepotOpen] = useState(() => Boolean(persistedNav.isAddDepotModalOpen));
+  const [isAdminAddProductOpen, setIsAdminAddProductOpen] = useState(false);
+  const [isAdminAddDepotOpen, setIsAdminAddDepotOpen] = useState(false);
 
   // Sync catalog updates across instances and fetch live from Supabase on mount
   useEffect(() => {

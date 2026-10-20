@@ -70,39 +70,42 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     return null;
   }, []);
 
-  const [step, setStep] = useState<1 | 2 | 3>(() => draft?.step || 1);
+  const [step, setStep] = useState<1 | 2 | 3>(() => {
+    if (draft?.step === 1 || draft?.step === 2 || draft?.step === 3) return draft.step;
+    return 1;
+  });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Step 1: General
-  const [name, setName] = useState(() => draft?.name || '');
-  const [description, setDescription] = useState(() => draft?.description || '');
-  const [price, setPrice] = useState<string>(() => draft?.price || '');
-  const [initialQuantity, setInitialQuantity] = useState<string>(() => draft?.initialQuantity || '20');
+  const [name, setName] = useState<string>(() => (typeof draft?.name === 'string' ? draft.name : ''));
+  const [description, setDescription] = useState<string>(() => (typeof draft?.description === 'string' ? draft.description : ''));
+  const [price, setPrice] = useState<string>(() => (typeof draft?.price === 'string' || typeof draft?.price === 'number' ? String(draft.price) : ''));
+  const [initialQuantity, setInitialQuantity] = useState<string>(() => (typeof draft?.initialQuantity === 'string' || typeof draft?.initialQuantity === 'number' ? String(draft.initialQuantity) : '20'));
 
   // Step 2: Categorization & Keywords
-  const [selectedCategory, setSelectedCategory] = useState<string>(() => draft?.selectedCategory || CATEGORIES[0]?.name || 'Team Match Kits');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : CATEGORIES[0]?.name || 'Team Match Kits'));
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
   const [selectedClass, setSelectedClass] = useState<'I' | 'T' | 'C' | 'O'>(() => {
     if (draft?.selectedClass && ['I', 'T', 'C', 'O'].includes(draft.selectedClass)) {
       return draft.selectedClass as 'I' | 'T' | 'C' | 'O';
     }
-    const cat = draft?.selectedCategory || CATEGORIES[0]?.name || 'Team Match Kits';
+    const cat = (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : CATEGORIES[0]?.name) || 'Team Match Kits';
     return resolveClassAndCategoryCodes(cat).classCode as 'I' | 'T' | 'C' | 'O';
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => draft?.selectedKeywords || []);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => (Array.isArray(draft?.selectedKeywords) ? draft.selectedKeywords : []));
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
   const [keywordSearch, setKeywordSearch] = useState('');
   const [customKeywordInput, setCustomKeywordInput] = useState('');
 
   // Step 3: Images & Multi-Column Specification Table (Clean slate: NO mock preset defaults)
   const [logoImage, setLogoImage] = useState<string>(() => {
-    if (draft?.logoImage && !draft.logoImage.includes('unsplash.com')) return draft.logoImage;
+    if (typeof draft?.logoImage === 'string' && !draft.logoImage.includes('unsplash.com')) return draft.logoImage;
     return '';
   });
   const [colorPhotos, setColorPhotos] = useState<Record<string, string>>(() => {
-    if (draft?.colorPhotos) {
+    if (draft?.colorPhotos && typeof draft.colorPhotos === 'object') {
       const clean: Record<string, string> = {};
       Object.entries(draft.colorPhotos).forEach(([k, v]) => {
         if (typeof v === 'string' && !v.includes('unsplash.com')) clean[k] = v;
@@ -115,7 +118,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   
   const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => {
     if (draft?.specColumns && Array.isArray(draft.specColumns)) {
-      const isOldPreset = draft.specColumns.some((c: any) => c.values?.includes('Official Navy'));
+      const isOldPreset = draft.specColumns.some((c: any) => Array.isArray(c?.values) && c.values.includes('Official Navy'));
       if (!isOldPreset) return draft.specColumns;
     }
     return [];
@@ -131,20 +134,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       document.body.setAttribute('data-admin-product-active', 'true');
       document.body.setAttribute('data-prevent-popunder', 'true');
 
-      // Purge any existing Monetag overlays, backdrop cards, and iframes immediately
+      // Purge only third-party Monetag script overlays, NEVER modal or app elements
       const overlays = document.querySelectorAll(
-        'div[id*="vignette"], [class*="vignette-overlay"], [class*="vignette-container"], iframe[src*="n6wxm"], div[class*="backdrop"]'
+        'div[id*="vignette"], [class*="vignette-overlay"], [class*="vignette-container"], iframe[src*="n6wxm"]'
       );
       overlays.forEach((el) => {
-        try { el.remove(); } catch {}
+        if (!el.closest('[data-admin-modal]') && !el.closest('#root')) {
+          try { el.remove(); } catch {}
+        }
       });
-
-      // Restore document scroll cleanly
-      document.body.style.removeProperty('overflow');
-      document.body.style.removeProperty('position');
-      document.body.style.removeProperty('pointer-events');
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
 
       return () => {
         document.body.removeAttribute('data-admin-product-active');
