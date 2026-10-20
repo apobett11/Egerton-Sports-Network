@@ -86,12 +86,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(() => (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : CATEGORIES[0]?.name || 'Team Match Kits'));
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
-  const [selectedClass, setSelectedClass] = useState<'I' | 'T' | 'C' | 'O'>(() => {
+  const [selectedClass, setSelectedClass] = useState<'I' | 'T' | 'C' | 'O' | ''>(() => {
     if (draft?.selectedClass && ['I', 'T', 'C', 'O'].includes(draft.selectedClass)) {
       return draft.selectedClass as 'I' | 'T' | 'C' | 'O';
     }
-    const cat = (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : CATEGORIES[0]?.name) || 'Team Match Kits';
-    return resolveClassAndCategoryCodes(cat).classCode as 'I' | 'T' | 'C' | 'O';
+    return '';
   });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => (Array.isArray(draft?.selectedKeywords) ? draft.selectedKeywords : []));
@@ -99,7 +98,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [keywordSearch, setKeywordSearch] = useState('');
   const [customKeywordInput, setCustomKeywordInput] = useState('');
 
-  // Step 3: Images & Multi-Column Specification Table (Clean slate: NO mock preset defaults)
+  // Step 3: Images & Multi-Column Specification Table (Clean slate: Size, Color, Material only in dropdown)
   const [logoImage, setLogoImage] = useState<string>(() => {
     if (typeof draft?.logoImage === 'string' && !draft.logoImage.includes('unsplash.com')) return draft.logoImage;
     return '';
@@ -114,7 +113,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     }
     return {};
   });
-  const [fallbackAdditionalImage, setFallbackAdditionalImage] = useState<string>('');
   
   const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => {
     if (draft?.specColumns && Array.isArray(draft.specColumns)) {
@@ -123,7 +121,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     }
     return [];
   });
-  const [selectedColumnToAdd, setSelectedColumnToAdd] = useState('Colors');
+  const [availableSpecTypes, setAvailableSpecTypes] = useState<string[]>(() => {
+    if (draft?.availableSpecTypes && Array.isArray(draft.availableSpecTypes) && draft.availableSpecTypes.length > 0) {
+      return draft.availableSpecTypes;
+    }
+    return ['Size', 'Color', 'Material'];
+  });
+  const [selectedColumnToAdd, setSelectedColumnToAdd] = useState('Size');
   const [customColumnName, setCustomColumnName] = useState('');
   const [isAddingCustomCol, setIsAddingCustomCol] = useState(false);
   const [newValInputs, setNewValInputs] = useState<Record<string, string>>({});
@@ -178,8 +182,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           selectedKeywords,
           logoImage,
           colorPhotos,
-          fallbackAdditionalImage,
           specColumns,
+          availableSpecTypes,
         }));
       } catch (_) {}
     }
@@ -195,8 +199,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     selectedKeywords,
     logoImage,
     colorPhotos,
-    fallbackAdditionalImage,
     specColumns,
+    availableSpecTypes,
   ]);
 
   if (!isOpen) return null;
@@ -212,15 +216,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const isInitQtyValid = Number(initialQuantity) >= 0 && initialQuantity !== '';
   const isStep1Valid = isNameValid && isDescValid && isPriceValid && isInitQtyValid;
 
-  // Step 2 validation
+  // Step 2 validation (Product class is strictly chosen by user, never preselected)
   const effectiveCategory = isAddingNewCategory ? customCategory.trim() : selectedCategory;
   const isCategoryValid = effectiveCategory.length > 0;
-  const isClassValid = ['I', 'T', 'C', 'O'].includes(selectedClass);
+  const isClassValid = Boolean(selectedClass) && ['I', 'T', 'C', 'O'].includes(selectedClass);
   const isKeywordsValid = selectedKeywords.length <= 6;
   const isStep2Valid = isCategoryValid && isClassValid && isKeywordsValid;
 
   // Step 3 validation: Logo required. If color variants present, 4 other colors must each upload their photo.
-  const colorsCol = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
+  const colorsCol = specColumns.find((c) => c.name.toLowerCase().startsWith('color'));
   const hasColorVariants = Boolean(colorsCol && colorsCol.values.length > 0);
   const otherColors = hasColorVariants ? colorsCol!.values.filter((v) => v !== 'Default') : [];
   const areAllOtherColorsUploaded = otherColors.length === 0 || otherColors.every((v) => Boolean(colorPhotos[v]) && colorPhotos[v].trim().length > 0);
@@ -243,13 +247,28 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   };
 
   const handleAddColumn = (columnName?: string) => {
-    const nameToAdd = (columnName || (isAddingCustomCol ? customColumnName : selectedColumnToAdd)).trim();
-    if (!nameToAdd) return;
+    const rawName = (columnName || (isAddingCustomCol ? customColumnName : selectedColumnToAdd)).trim();
+    if (!rawName) return;
+
+    const nameToAdd = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+    // Keep newly added specification type in the dropdown options
+    setAvailableSpecTypes((prev) => {
+      if (!prev.some((t) => t.toLowerCase() === nameToAdd.toLowerCase())) {
+        return [...prev, nameToAdd];
+      }
+      return prev;
+    });
+    setSelectedColumnToAdd(nameToAdd);
+
     if (specColumns.some((col) => col.name.toLowerCase() === nameToAdd.toLowerCase())) {
       alert(`The specification column "${nameToAdd}" is already added.`);
+      setIsAddingCustomCol(false);
+      setCustomColumnName('');
       return;
     }
-    const isColor = nameToAdd.toLowerCase() === 'colors' || nameToAdd.toLowerCase() === 'color';
+
+    const isColor = nameToAdd.toLowerCase().startsWith('color');
     const newCol: SpecColumn = {
       id: `col-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: nameToAdd,
@@ -270,7 +289,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const handleAddValueToColumn = (colId: string) => {
     const col = specColumns.find((c) => c.id === colId);
     if (!col) return;
-    const isColorCol = col.name.toLowerCase() === 'colors' || col.name.toLowerCase() === 'color';
+    const isColorCol = col.name.toLowerCase().startsWith('color');
     if (isColorCol && col.values.length >= 5) {
       alert('A maximum of 5 color specifications (Default + 4 others) will be accepted for the products.');
       return;
@@ -297,9 +316,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
   const handleRemoveValueFromColumn = (colId: string, valueToRemove: string) => {
     const col = specColumns.find((c) => c.id === colId);
-    const isColorCol = col && (col.name.toLowerCase() === 'colors' || col.name.toLowerCase() === 'color');
+    const isColorCol = col && col.name.toLowerCase().startsWith('color');
     if (isColorCol && valueToRemove === 'Default') {
-      alert('The "Default" color uses the product logo photo and cannot be removed while the Colors column is active. You can delete the entire Colors column if no color variants are needed.');
+      alert('The "Default" color uses the product logo photo and cannot be removed while the Color column is active. You can delete the entire Color column if no color variants are needed.');
       return;
     }
     setSpecColumns((prev) =>
@@ -360,7 +379,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     setCustomKeywordInput('');
   };
 
-  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'logo' | 'fallback') => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>, target: 'logo' = 'logo') => {
     const file = e.target.files?.[0];
     if (file) {
       try {
@@ -368,8 +387,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         if (target === 'logo') {
           setLogoImage(compressed.dataUrl);
           setColorPhotos((prev) => ({ ...prev, Default: compressed.dataUrl }));
-        } else if (target === 'fallback') {
-          setFallbackAdditionalImage(compressed.dataUrl);
         }
       } catch {
         const reader = new FileReader();
@@ -379,8 +396,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             if (target === 'logo') {
               setLogoImage(res);
               setColorPhotos((prev) => ({ ...prev, Default: res }));
-            } else if (target === 'fallback') {
-              setFallbackAdditionalImage(res);
             }
           }
         };
@@ -402,10 +417,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       const finalStockCount = parseInt(initialQuantity) || 20;
 
       // Extract sizes and colors from specColumns
-      const sizesCol = specColumns.find((c) => c.name.toLowerCase().includes('size'));
+      const sizesCol = specColumns.find((c) => c.name.toLowerCase().startsWith('size'));
       const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['Standard'];
 
-      const colorsColumn = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
+      const colorsColumn = specColumns.find((c) => c.name.toLowerCase().startsWith('color'));
       const hasColors = Boolean(colorsColumn && colorsColumn.values.length > 0);
 
       let finalColors: { name: string; hex: string; image?: string }[] = [];
@@ -425,7 +440,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         finalImages = [logoImage, ...variantPhotos];
       } else {
         finalColors = [{ name: 'Default', hex: '#2563eb', image: logoImage }];
-        finalImages = fallbackAdditionalImage ? [logoImage, fallbackAdditionalImage] : [logoImage];
+        finalImages = [logoImage];
       }
 
       const specStrings = specColumns.map((c) => `${c.name}: ${c.values.join(', ') || 'Standard'}`);
@@ -750,7 +765,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 )}
               </div>
 
-              {/* Product Class Selection (Strict 4 classes: I, T, C, O) */}
+              {/* Product Class Selection (Strict 4 classes: I, T, C, O - NOT preselected) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-200 flex items-center gap-1">
@@ -764,7 +779,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                     <button
                       key={opt.code}
                       type="button"
-                      onClick={() => setSelectedClass(opt.code)}
+                      onClick={() => {
+                        setSelectedClass(opt.code);
+                        setTouched((prev) => ({ ...prev, productClass: true }));
+                      }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         selectedClass === opt.code
                           ? 'border-blue-500 bg-blue-600/20 text-white ring-1 ring-blue-500'
@@ -782,6 +800,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                     </button>
                   ))}
                 </div>
+                {touched.productClass && !isClassValid && (
+                  <p className="text-[11px] text-red-400 font-semibold flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3 h-3" /> Please select a product class to proceed
+                  </p>
+                )}
               </div>
 
               {/* Keywords Select Trigger & Chips */}
@@ -927,13 +950,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                             theme === 'dark' ? 'bg-[#122336] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                           }`}
                         >
-                          <option value="Colors">Colors</option>
-                          <option value="Sizes">Sizes</option>
-                          <option value="Material">Material</option>
-                          <option value="Edition">Edition</option>
-                          <option value="Fit / Cut">Fit / Cut</option>
-                          <option value="Sleeve Type">Sleeve Type</option>
-                          <option value="__CUSTOM__">+ Add Custom Column...</option>
+                          {availableSpecTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                          <option value="__CUSTOM__">+ Add Custom Specification...</option>
                         </select>
                         <button
                           type="button"
@@ -948,7 +968,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                       <div className="flex items-center gap-1.5 animate-in fade-in">
                         <input
                           type="text"
-                          placeholder="e.g. Fabric Weight"
+                          placeholder="e.g. Fit / Cut"
                           value={customColumnName}
                           onChange={(e) => setCustomColumnName(e.target.value)}
                           onKeyDown={(e) => {
@@ -966,7 +986,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                           onClick={() => handleAddColumn()}
                           className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer transition-colors"
                         >
-                          Create
+                          Add & Include in Dropdown
                         </button>
                         <button
                           type="button"
@@ -1138,51 +1158,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                         </div>
                       );
                     })}
-                  </div>
-                )}
-
-                {/* Secondary Photo Upload when NO color variants exist */}
-                {!hasColorVariants && (
-                  <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in ${
-                    theme === 'dark' ? 'bg-[#15283e] border-amber-500/40' : 'bg-amber-50 border-amber-300'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      {fallbackAdditionalImage ? (
-                        <img
-                          src={fallbackAdditionalImage}
-                          alt="Additional view"
-                          className="w-16 h-16 object-cover rounded-xl bg-slate-900 border border-slate-700 shrink-0 shadow-xs"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-slate-900/60 border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 shrink-0">
-                          <ImageIcon className="w-5 h-5 mb-1 text-slate-500" />
-                          <span className="text-[9px] font-semibold text-slate-400">Optional</span>
-                        </div>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                            Optional Secondary Photo
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-white">
-                          Additional Product Photo
-                        </h4>
-                        <p className="text-[11px] text-slate-400">
-                          No color variants are set. Upload another photo below specifications before confirming.
-                        </p>
-                      </div>
-                    </div>
-                    <label className="py-2 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto shrink-0 transition-colors">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Upload Photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleImageFileChange(e, 'fallback')}
-                      />
-                    </label>
                   </div>
                 )}
               </div>
