@@ -162,7 +162,7 @@ async function uploadProductImageToBucket(
           bytes[i] = binaryStr.charCodeAt(i);
         }
 
-        const client = supabaseAdmin || supabase;
+        const client = supabaseAdmin;
         const filePath = `${productUid}/${Date.now()}-${index}.${ext}`;
         const { error: uploadErr } = await client.storage
           .from('product-images')
@@ -188,9 +188,21 @@ async function uploadProductImageToBucket(
   return imagePayload;
 }
 
+function generateUuidV4(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 /**
  * Persists a new product both to Supabase (UUID allocated in `products.id`, Product ID written to `sku`,
  * images uploaded to bucket and linked via `product_images`) and to the client cache.
+ * Note: Product deletion is strictly prohibited by business policy to maintain audit and ledger integrity.
  */
 export async function createAndPersistProduct(input: CreateProductInput): Promise<Product> {
   const normCategorySlug = normalizeCategorySlug(input.categorySlug);
@@ -198,7 +210,10 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
   const classCode = codes.classCode; // Strictly 'I', 'T', 'C', 'O'
   const categoryCode = codes.categoryCode;
   const assignedProductId = input.id || generateProductId(classCode, categoryCode);
-  const productUid = input.uid || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'p-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8));
+  
+  // Guarantee strict PostgreSQL UUID compliance for products.id
+  const isInputUidValidUuid = typeof input.uid === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.uid);
+  const productUid = isInputUidValidUuid ? input.uid! : generateUuidV4();
 
   const classId = CLASS_UUIDS[classCode] || CLASS_UUIDS['I'];
   const categoryId = CATEGORY_UUIDS[normCategorySlug] || CATEGORY_UUIDS['kit'];
@@ -254,10 +269,10 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
     createdAt: new Date().toISOString(),
   };
 
-  // 2. Persist to Supabase database (bypassing RLS with service role if available)
+  // 2. Persist to Supabase database (bypassing RLS with service role)
   if (isSupabaseConfigured) {
     try {
-      const client = supabaseAdmin || supabase;
+      const client = supabaseAdmin;
       const { error: prodErr } = await client.from('products').insert({
         id: productUid, // UUID primary key
         sku: assignedProductId, // Product ID column
@@ -286,7 +301,7 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
       if (!prodErr) {
         // Insert product_images relational rows
         const imageRows = uploadedImages.map((imgPath, idx) => ({
-          id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'img-' + Date.now() + '-' + idx),
+          id: generateUuidV4(),
           product_id: productUid, // Foreign key to products.id (UUID)
           image_path: imgPath,
           display_order: idx + 1,
@@ -295,7 +310,7 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
         }));
         await client.from('product_images').insert(imageRows);
       } else {
-        console.warn('[ProductService] Supabase insert warning:', prodErr.message);
+        console.error('[ProductService] Supabase insert error:', prodErr.message);
       }
     } catch (err) {
       console.warn('[ProductService] Database persistence fallback to client cache', err);
