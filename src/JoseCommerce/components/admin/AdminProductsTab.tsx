@@ -23,12 +23,13 @@ import {
   SlidersHorizontal,
   ChevronRight
 } from 'lucide-react';
-import { Product, Order } from '../../types';
-import { CATEGORIES } from '../../data/categories';
+import { Product, Order, Category } from '../../types';
+import { getCachedCategories } from '../../services/storeCacheService';
 
 interface AdminProductsTabProps {
   products: Product[];
   orders: Order[];
+  categories?: Category[];
   theme?: 'dark' | 'light';
   onUpdateProductStock?: (productId: string, newStock: number) => void;
   onOpenAddProduct?: () => void;
@@ -37,10 +38,15 @@ interface AdminProductsTabProps {
 export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   products,
   orders,
+  categories: propCategories,
   theme = 'dark',
   onUpdateProductStock,
   onOpenAddProduct,
 }) => {
+  const availableCategories = useMemo(() => {
+    if (propCategories && propCategories.length > 0) return propCategories;
+    return getCachedCategories();
+  }, [propCategories]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryModal, setSelectedCategoryModal] = useState<string | null>(null);
   const [modalSearchTerm, setModalSearchTerm] = useState('');
@@ -69,7 +75,7 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
 
   // Compute stats per category: products count, total stock
   const categoryStats = useMemo(() => {
-    return CATEGORIES.map((cat) => {
+    return availableCategories.map((cat) => {
       const catProducts = products.filter((p) => p.categorySlug === cat.slug);
       const totalStock = catProducts.reduce((sum, p) => sum + (p.stockCount || 0), 0);
       return {
@@ -78,13 +84,13 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
         totalStock,
       };
     });
-  }, [products]);
+  }, [availableCategories, products]);
 
   // Active category in modal
   const activeCategoryInfo = useMemo(() => {
     if (!selectedCategoryModal) return null;
-    return CATEGORIES.find((c) => c.slug === selectedCategoryModal) || null;
-  }, [selectedCategoryModal]);
+    return availableCategories.find((c) => c.slug === selectedCategoryModal) || null;
+  }, [availableCategories, selectedCategoryModal]);
 
   // Products in modal filtered by category and modal search
   const modalProducts = useMemo(() => {
@@ -150,7 +156,7 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
                 Products & Ledger
               </span>
               <span className="text-xs text-slate-400 font-medium">
-                {products.length} registered products across {CATEGORIES.length} departments
+                {products.length} registered products across {availableCategories.length} departments
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight">

@@ -11,14 +11,15 @@ import {
   Sparkles,
   BarChart2
 } from 'lucide-react';
-import { Product, Order } from '../../types';
-import { CATEGORIES } from '../../data/categories';
+import { Product, Order, Category } from '../../types';
+import { getCachedCategories } from '../../services/storeCacheService';
 
 interface CategoryAnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
   orders: Order[];
+  categories?: Category[];
   theme?: 'dark' | 'light';
 }
 
@@ -29,8 +30,14 @@ export const CategoryAnalyticsModal: React.FC<CategoryAnalyticsModalProps> = ({
   onClose,
   products,
   orders,
+  categories: propCategories,
   theme = 'dark',
 }) => {
+  const availableCategories = useMemo(() => {
+    if (propCategories && propCategories.length > 0) return propCategories;
+    return getCachedCategories();
+  }, [propCategories]);
+
   const [sortField, setSortField] = useState<SortField>('revenue');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -46,7 +53,7 @@ export const CategoryAnalyticsModal: React.FC<CategoryAnalyticsModalProps> = ({
       topProductUnits: number;
     }> = {};
 
-    CATEGORIES.forEach((c) => {
+    availableCategories.forEach((c) => {
       catMap[c.name] = {
         name: c.name,
         placedUnits: 0,

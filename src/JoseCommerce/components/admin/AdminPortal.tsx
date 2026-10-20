@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { 
   Product, 
+  Category,
   Order, 
   AdminTab, 
   AdminCheckoutSettings, 
@@ -38,6 +39,7 @@ import { AddDepotModal } from './AddDepotModal';
 
 interface AdminPortalProps {
   products: Product[];
+  categories?: Category[];
   orders: Order[];
   cartAnalytics: CartAnalyticsData;
   checkoutSettings: AdminCheckoutSettings;
@@ -62,6 +64,7 @@ interface AdminPortalProps {
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
   products,
+  categories,
   orders,
   cartAnalytics,
   checkoutSettings,
@@ -419,6 +422,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {activeTab === 'analytics' && (
               <AdminAnalyticsTab
                 products={products}
+                categories={categories}
                 orders={orders}
                 cartAnalytics={cartAnalytics}
                 theme={theme}
@@ -428,6 +432,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {activeTab === 'products' && (
               <AdminProductsTab
                 products={products}
+                categories={categories}
                 orders={orders}
                 theme={theme}
                 onUpdateProductStock={(prodId, newStock) => {
@@ -443,6 +448,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {activeTab === 'orders-checkout' && (
               <AdminOrdersCheckoutTab
                 orders={orders}
+                categories={categories}
                 checkoutSettings={checkoutSettings}
                 onSaveCheckoutSettings={(newSettings) => {
                   onUpdateCheckoutSettings(newSettings);
@@ -495,6 +501,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         isOpen={isAddProductModalOpen}
         onClose={() => handleSetAddProductOpen(false)}
         onSaveProduct={handleSaveProduct}
+        categories={categories}
         theme={theme}
       />
 

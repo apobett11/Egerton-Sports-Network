@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   BarChart3, 
   ShoppingCart, 
@@ -19,15 +19,16 @@ import {
   ArrowRight,
   Filter
 } from 'lucide-react';
-import { Product, Order } from '../../types';
+import { Product, Order, Category } from '../../types';
 import { CartAnalyticsData } from '../../data/mockOrders';
 import { AnalyticsGraphModal } from './AnalyticsGraphModal';
 import { CategoryAnalyticsModal } from './CategoryAnalyticsModal';
-import { CATEGORIES } from '../../data/categories';
+import { getCachedCategories } from '../../services/storeCacheService';
 
 interface AdminAnalyticsTabProps {
   products?: Product[];
   orders: Order[];
+  categories?: Category[];
   cartAnalytics: CartAnalyticsData;
   theme?: 'dark' | 'light';
 }
@@ -42,9 +43,14 @@ interface ActiveGraphMetric {
 export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
   products = [],
   orders,
+  categories: propCategories,
   cartAnalytics,
   theme = 'dark',
 }) => {
+  const availableCategories = useMemo(() => {
+    if (propCategories && propCategories.length > 0) return propCategories;
+    return getCachedCategories();
+  }, [propCategories]);
   const [activeGraph, setActiveGraph] = useState<ActiveGraphMetric | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
@@ -117,7 +123,7 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
 
         {/* Categories Cards Grid: Side by side in mobile (2 columns) */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5 pt-4">
-          {CATEGORIES.map((cat) => {
+          {availableCategories.map((cat: Category) => {
             const catProducts = products.filter((p) => p.categorySlug === cat.slug || p.category === cat.name);
             const catStock = catProducts.reduce((sum, p) => sum + p.stockCount, 0);
             const catPlaced = orders.reduce((sum, o) => {
@@ -432,6 +438,7 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
         onClose={() => setIsCategoryModalOpen(false)}
         products={products}
         orders={orders}
+        categories={availableCategories}
         theme={theme}
       />
 

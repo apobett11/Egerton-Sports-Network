@@ -28,8 +28,8 @@ import {
   Clock,
   ArrowRight
 } from 'lucide-react';
-import { Order, AdminCheckoutSettings, OrderTrackingState, OrderTrackingStep } from '../../types';
-import { CATEGORIES } from '../../data/categories';
+import { Order, AdminCheckoutSettings, OrderTrackingState, OrderTrackingStep, Category } from '../../types';
+import { getCachedCategories } from '../../services/storeCacheService';
 import { getStoredOrders, saveStoredOrders } from '../../data/mockOrders';
 import { getStoredCountyPickupData, adminAddPickupStation, CountyPickupInfo } from '../../data/pickupStations';
 import { 
@@ -41,6 +41,7 @@ import { AdminOrderStatusModal } from './AdminOrderStatusModal';
 
 interface AdminOrdersCheckoutTabProps {
   orders: Order[];
+  categories?: Category[];
   checkoutSettings: AdminCheckoutSettings;
   onSaveCheckoutSettings: (settings: AdminCheckoutSettings) => void;
   onShowToast?: (message: string) => void;
@@ -49,11 +50,16 @@ interface AdminOrdersCheckoutTabProps {
 
 export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
   orders: propOrders,
+  categories: propCategories,
   checkoutSettings,
   onSaveCheckoutSettings,
   onShowToast,
   theme = 'dark',
 }) => {
+  const availableCategories = useMemo(() => {
+    if (propCategories && propCategories.length > 0) return propCategories;
+    return getCachedCategories();
+  }, [propCategories]);
   const [orders, setOrders] = useState<Order[]>(propOrders);
   const [formSettings, setFormSettings] = useState<AdminCheckoutSettings>(checkoutSettings);
   const [showCenterSuccess, setShowCenterSuccess] = useState(false);
@@ -133,7 +139,7 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
     let totalOrderedProductsAll = 0;
 
     const map: Record<string, { orderedProductsCount: number; ordersCount: number }> = {};
-    CATEGORIES.forEach((cat) => {
+    availableCategories.forEach((cat) => {
       map[cat.slug] = { orderedProductsCount: 0, ordersCount: 0 };
     });
 
@@ -160,7 +166,7 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
     });
 
     // Sort categories descending by the number of ordered products
-    const sortedCategories = CATEGORIES.map((cat) => ({
+    const sortedCategories = availableCategories.map((cat) => ({
       category: cat,
       orderedProductsCount: map[cat.slug]?.orderedProductsCount || 0,
       ordersCount: map[cat.slug]?.ordersCount || 0,
@@ -171,7 +177,7 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
       totalOrdersCount: orders.length,
       sortedCategories,
     };
-  }, [orders]);
+  }, [availableCategories, orders]);
 
   // Orders matching active modal category, depot filter, search terms, and sort order
   const modalOrders = useMemo(() => {
@@ -303,9 +309,9 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
   const activeCategoryTitle = useMemo(() => {
     if (!activeCategoryModal) return '';
     if (activeCategoryModal === 'all') return 'All Orders Master Ledger';
-    const found = CATEGORIES.find((c) => c.slug === activeCategoryModal);
+    const found = availableCategories.find((c) => c.slug === activeCategoryModal);
     return found ? `${found.name} Orders Ledger` : 'Category Orders';
-  }, [activeCategoryModal]);
+  }, [availableCategories, activeCategoryModal]);
 
   return (
     <div className="space-y-6 relative">

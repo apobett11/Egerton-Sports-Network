@@ -17,8 +17,8 @@ import {
   Flag,
   Layers
 } from 'lucide-react';
-import { CATEGORIES } from '../data/categories';
 import { Category } from '../types';
+import { getCachedCategories } from '../services/storeCacheService';
 
 export type StorefrontNavTab = 'home' | 'categories' | 'cart' | 'orders' | 'contact' | 'profile';
 
@@ -53,8 +53,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenCategories,
   isLoggedIn = false,
   theme = 'dark',
-  categoriesWithCounts = CATEGORIES,
+  categoriesWithCounts: propCategoriesWithCounts,
 }) => {
+  const categoriesWithCounts = propCategoriesWithCounts && propCategoriesWithCounts.length > 0 
+    ? propCategoriesWithCounts 
+    : getCachedCategories();
   const isDark = theme === 'dark';
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 

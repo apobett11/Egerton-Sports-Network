@@ -8,7 +8,7 @@ import {
 import { cn, formatMoney } from "../lib/utils";
 import { Product } from "../types";
 import { ProductCard } from "./ProductCard";
-import { MOCK_PRODUCTS } from "../data/mockProducts";
+import { getCachedCatalog } from "../services/storeCacheService";
 import { getStoredBusinessContact } from "../data/adminSettings";
 import { OptimizedImage } from "./OptimizedImage";
 import { ProductSpecsModal } from "./ProductSpecsModal";
@@ -22,20 +22,22 @@ export interface ProductDetailsCardProps {
 }
 
 export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
-  product = MOCK_PRODUCTS[0],
+  product,
   onBack,
   onSelectProduct,
   onAddToCart,
   theme = 'dark',
 }) => {
+  if (!product) return null;
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(product.reviewCount || 38);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSpecsOpen, setIsSpecsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<string>(product.sizes[0] || "Standard M");
-  const [selectedColor, setSelectedColor] = useState<string>(product.colors[0]?.name || "Official Edition");
+  const [selectedSize, setSelectedSize] = useState<string>(product.sizes?.[0] || "Standard M");
+  const [selectedColor, setSelectedColor] = useState<string>(product.colors?.[0]?.name || "Official Edition");
 
   const galleryRef = useRef<HTMLDivElement>(null);
   const isDark = theme === 'dark';
@@ -99,7 +101,7 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
     { icon: Banknote, label: "Team Bulk Deal", value: product.teamDiscount || "15% off on 10+ sets" },
   ];
 
-  const relatedProducts = MOCK_PRODUCTS.filter(p => p.id !== product.id).slice(0, 4);
+  const relatedProducts = (getCachedCatalog() || []).filter(p => p.id !== product.id).slice(0, 4);
 
   return (
     <div className={`min-h-screen pb-32 font-sans transition-colors ${

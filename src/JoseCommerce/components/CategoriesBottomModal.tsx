@@ -12,7 +12,7 @@ import {
   Layers
 } from 'lucide-react';
 import { Category } from '../types';
-import { CATEGORIES } from '../data/categories';
+import { getCachedCategories } from '../services/storeCacheService';
 
 interface CategoriesBottomModalProps {
   isOpen: boolean;
@@ -26,9 +26,10 @@ export const CategoriesBottomModal: React.FC<CategoriesBottomModalProps> = ({
   isOpen,
   onClose,
   onSelectCategory,
-  categories = CATEGORIES,
+  categories,
   theme = 'dark',
 }) => {
+  const displayCategories = categories && categories.length > 0 ? categories : getCachedCategories();
   if (!isOpen) return null;
 
   const isDark = theme === 'dark';
@@ -102,7 +103,7 @@ export const CategoriesBottomModal: React.FC<CategoriesBottomModalProps> = ({
         {/* CARDS GRID WITH VERY LITTLE SPACING BETWEEN THEM */}
         <div className="flex-grow overflow-y-auto pr-0.5">
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-            {categories.map((category) => {
+            {displayCategories.map((category) => {
               const Icon = getCategoryIcon(category.slug);
 
               return (

@@ -199,33 +199,28 @@ export const Header: React.FC<HeaderProps> = ({
               {isSearchActive ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
             </button>
 
-            {/* User Account / 1-Tap Login & Guest State */}
-            {currentUser ? (
+            {/* User Account / Login State */}
+            {currentUser && currentUser.role !== 'admin' && currentUser.role !== 'store_admin' && currentUser.username !== 'josephkamunyu5' ? (
               <div className="flex items-center gap-1.5 p-1 bg-[#224466] border border-[#345880] rounded-full text-xs">
                 <button
                   type="button"
                   onClick={onOpenDashboard}
                   className="flex items-center gap-1.5 hover:opacity-90 cursor-pointer"
-                  title="Open Client Dashboard & Order Tracking"
+                  title="My Account & Order Tracking"
                 >
                   <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-[11px] shadow-xs shrink-0">
                     {currentUser.username[0]?.toUpperCase() || 'U'}
                   </span>
-                  <div className="hidden lg:flex flex-col text-left px-1">
-                    <span className="text-[11px] font-bold text-white leading-tight">
-                      @{currentUser.username}
-                    </span>
-                    <span className="text-[9px] text-amber-300 font-semibold leading-tight">
-                      Client Dashboard
-                    </span>
-                  </div>
+                  <span className="hidden lg:inline text-[11px] font-bold text-white px-1">
+                    @{currentUser.username}
+                  </span>
                 </button>
                 {onEndSession && (
                   <button
                     type="button"
                     onClick={onEndSession}
                     className="p-1 text-slate-300 hover:text-red-400 rounded-full hover:bg-black/20 transition-colors cursor-pointer"
-                    title="End Session & Log Out"
+                    title="Log Out"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
@@ -233,27 +228,15 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
-                {rememberedAccount && onOneTapLogin && (
-                  <button
-                    type="button"
-                    onClick={onOneTapLogin}
-                    className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-blue-400/40 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold text-xs transition-colors cursor-pointer shadow-xs active:scale-95"
-                    title={`1-Tap Quick Login as @${rememberedAccount.username}`}
-                  >
-                    <Zap className="w-3.5 h-3.5 text-amber-300 fill-current" />
-                    <span>1-Tap @{rememberedAccount.username}</span>
-                  </button>
-                )}
-
                 {onOpenAuth && (
                   <button
                     type="button"
                     onClick={() => onOpenAuth('login')}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-600/80 bg-[#122336] hover:bg-[#1a334e] text-slate-100 font-bold text-xs transition-colors cursor-pointer shadow-xs active:scale-95"
-                    title="Sign into your personal page"
+                    title="Login"
                   >
                     <LogIn className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="hidden sm:inline">Sign In</span>
+                    <span>Login</span>
                   </button>
                 )}
               </div>

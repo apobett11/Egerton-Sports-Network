@@ -212,8 +212,18 @@ export function saveAllRegisteredUsers(users: UserAccount[]): void {
 export function getRememberedAccount(): UserAccount | null {
   try {
     const raw = safeStorage.getItem(STORAGE_KEY_REMEMBERED);
-    if (raw) return JSON.parse(raw);
-
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed?.role === 'admin' ||
+        parsed?.role === 'store_admin' ||
+        parsed?.username === STORE_ADMIN_CREDENTIALS.username
+      ) {
+        safeStorage.removeItem(STORAGE_KEY_REMEMBERED);
+        return null;
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error('Failed to parse remembered account', e);
   }
@@ -222,7 +232,7 @@ export function getRememberedAccount(): UserAccount | null {
 
 export function setRememberedAccount(user: UserAccount | null): void {
   try {
-    if (user) {
+    if (user && user.role !== 'admin' && user.role !== 'store_admin' && user.username !== STORE_ADMIN_CREDENTIALS.username) {
       safeStorage.setItem(STORAGE_KEY_REMEMBERED, JSON.stringify(user));
     } else {
       safeStorage.removeItem(STORAGE_KEY_REMEMBERED);
@@ -237,7 +247,18 @@ export function setRememberedAccount(user: UserAccount | null): void {
 export function getCurrentUser(): UserAccount | null {
   try {
     const raw = safeStorage.getItem(STORAGE_KEY_CURRENT_USER);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed?.role === 'admin' ||
+        parsed?.role === 'store_admin' ||
+        parsed?.username === STORE_ADMIN_CREDENTIALS.username
+      ) {
+        safeStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+        return null;
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error('Failed to parse current user session', e);
   }
@@ -421,7 +442,6 @@ export function loginStoreAdmin(
     };
 
     setCurrentAdmin(adminUser);
-    setCurrentUser(adminUser);
     return { success: true, admin: adminUser };
   }
 
@@ -454,7 +474,6 @@ export function loginStoreAdmin(
   saveAllRegisteredUsers(updatedUsers);
 
   setCurrentAdmin(updatedAdmin);
-  setCurrentUser(updatedAdmin);
 
   return { success: true, admin: updatedAdmin };
 }
@@ -500,8 +519,6 @@ export function loginWithCredentials(
         lastLoginAt: new Date().toISOString(),
       };
       setCurrentAdmin(adminUser);
-      setCurrentUser(adminUser);
-      if (rememberMe) setRememberedAccount(adminUser);
       return { success: true, user: adminUser, isAdmin: true };
     }
 
@@ -530,8 +547,6 @@ export function loginWithCredentials(
 
     saveAllRegisteredUsers(users.map((u) => (u.id === user.id ? updatedUser : u)));
     setCurrentAdmin(updatedUser);
-    setCurrentUser(updatedUser);
-    if (rememberMe) setRememberedAccount(updatedUser);
     return { success: true, user: updatedUser, isAdmin: true };
   }
 

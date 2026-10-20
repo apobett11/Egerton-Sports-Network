@@ -16,8 +16,8 @@ import {
   Sparkles,
   HelpCircle
 } from 'lucide-react';
-import { Product } from '../../types';
-import { CATEGORIES } from '../../data/categories';
+import { Product, Category } from '../../types';
+import { getCachedCategories } from '../../services/storeCacheService';
 import { generateProductId, resolveClassAndCategoryCodes, normalizeCategorySlug } from '../../services/productIdService';
 import { createAndPersistProduct } from '../../services/productService';
 import { compressImageBeforeUpload } from '../../lib/imageService';
@@ -27,6 +27,7 @@ interface AddProductModalProps {
   onClose: () => void;
   onSaveProduct: (product: Product) => void;
   theme?: 'dark' | 'light';
+  categories?: Category[];
 }
 
 
@@ -47,6 +48,8 @@ export const CLASS_OPTIONS: { code: 'I' | 'T' | 'C' | 'O'; label: string; descri
   { code: 'O', label: 'Officiation (O)', description: 'Referee kits, cards, boundary flags, whistles' },
 ];
 
+export const DEFAULT_PRODUCT_FALLBACK_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E";
+
 export interface SpecColumn {
   id: string;
   name: string; // e.g. "Colors", "Sizes", "Material", or custom name
@@ -60,7 +63,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   onClose,
   onSaveProduct,
   theme = 'dark',
+  categories: propCategories,
 }) => {
+  const availableCategories = React.useMemo(() => {
+    if (propCategories && propCategories.length > 0) return propCategories;
+    return getCachedCategories();
+  }, [propCategories]);
+
   // Restore draft state on reload
   const draft = React.useMemo(() => {
     try {
@@ -83,7 +92,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [initialQuantity, setInitialQuantity] = useState<string>(() => (typeof draft?.initialQuantity === 'string' || typeof draft?.initialQuantity === 'number' ? String(draft.initialQuantity) : '20'));
 
   // Step 2: Categorization & Keywords
-  const [selectedCategory, setSelectedCategory] = useState<string>(() => (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : CATEGORIES[0]?.name || 'Team Match Kits'));
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => (typeof draft?.selectedCategory === 'string' ? draft.selectedCategory : availableCategories[0]?.name || 'Kit'));
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState('');
   const [selectedClass, setSelectedClass] = useState<'I' | 'T' | 'C' | 'O' | ''>(() => {
@@ -246,12 +255,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const isKeywordsValid = selectedKeywords.length <= 6;
   const isStep2Valid = isCategoryValid && isClassValid && isKeywordsValid;
 
-  // Step 3 validation: Logo required. If color variants present, 4 other colors must each upload their photo.
+  // Step 3 validation: If color variants present, 4 other colors must each upload their photo.
   const colorsCol = (specColumns || []).find((c) => (c.name || '').toLowerCase().startsWith('color'));
   const hasColorVariants = Boolean(colorsCol && Array.isArray(colorsCol.values) && colorsCol.values.length > 0);
   const otherColors = hasColorVariants ? colorsCol!.values.filter((v) => v !== 'Default') : [];
   const areAllOtherColorsUploaded = otherColors.length === 0 || otherColors.every((v) => Boolean(colorPhotos?.[v]) && colorPhotos[v].trim().length > 0);
-  const isStep3Valid = Boolean(logoImage) && (hasColorVariants ? areAllOtherColorsUploaded : true);
+  const isStep3Valid = hasColorVariants ? areAllOtherColorsUploaded : true;
 
   const handleNext = () => {
     if (step === 1) {
@@ -452,21 +461,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       let finalColors: { name: string; hex: string; image?: string }[] = [];
       let finalImages: string[] = [];
 
+      const effectiveLogo = logoImage || DEFAULT_PRODUCT_FALLBACK_IMAGE;
+
       if (hasColors) {
         const validColorVals = (colorsColumn!.values || []).slice(0, 5); // Default + 4 others = max 5
         finalColors = validColorVals.map((v) => ({
           name: v,
           hex: '#2563eb',
-          image: v === 'Default' ? logoImage : (colorPhotos?.[v] || logoImage),
+          image: v === 'Default' ? effectiveLogo : (colorPhotos?.[v] || effectiveLogo),
         }));
         const variantPhotos = validColorVals
           .filter((v) => v !== 'Default')
           .map((v) => colorPhotos?.[v])
           .filter(Boolean) as string[];
-        finalImages = [logoImage, ...variantPhotos];
+        finalImages = [effectiveLogo, ...variantPhotos];
       } else {
-        finalColors = [{ name: 'Default', hex: '#2563eb', image: logoImage }];
-        finalImages = [logoImage];
+        finalColors = [{ name: 'Default', hex: '#2563eb', image: effectiveLogo }];
+        finalImages = [effectiveLogo];
       }
 
       const specStrings = (specColumns || []).map((c) => `${c.name || 'Spec'}: ${(Array.isArray(c.values) ? c.values : []).join(', ') || 'Standard'}`);
@@ -769,7 +780,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                       theme === 'dark' ? 'bg-[#182b42] border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   >
-                    {CATEGORIES.map((c) => (
+                    {availableCategories.map((c) => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                     <option value="__NEW__">+ Add Custom Category...</option>

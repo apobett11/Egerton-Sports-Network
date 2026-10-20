@@ -24,10 +24,9 @@ import { ProfileBottomModal } from './components/ProfileBottomModal';
 import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCache } from './services/cartCacheService';
 import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './services/storeCacheService';
 
-import { CATEGORIES } from './data/categories';
 import { normalizeCategorySlug } from './services/productIdService';
-import { syncCatalogFromDatabase, fetchProductById } from './services/productService';
-import { MOCK_PRODUCTS } from './data/mockProducts';
+import { syncCatalogFromDatabase, fetchProductById, fetchCategoriesFromDatabase } from './services/productService';
+import { StoreFrontDebugger } from './components/StoreFrontDebugger';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { getStoredOrders, addNewStoredOrder, MOCK_CARTS_ANALYTICS } from './data/mockOrders';
 import { 
@@ -58,6 +57,7 @@ import {
 } from './services/authService';
 import { 
   Product, 
+  Category,
   FilterState, 
   CartItem, 
   CartCustomization, 
@@ -155,21 +155,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [productsList, setProductsList] = useState<Product[]>(() => {
     return getCachedCatalog();
   });
+  const [categoriesList, setCategoriesList] = useState<Category[]>(() => {
+    return getCachedCategories();
+  });
   const [hasMoreProducts, setHasMoreProducts] = useState<boolean>(true);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(() => {
     if (persistedNav.selectedProductId) {
       const catalog = getCachedCatalog();
-      return catalog.find((p) => p.id === persistedNav.selectedProductId) || 
-             MOCK_PRODUCTS.find((p) => p.id === persistedNav.selectedProductId) || null;
+      return catalog.find((p) => p.id === persistedNav.selectedProductId) || null;
     }
     return null;
   });
   const [specsModalProduct, setSpecsModalProduct] = useState<Product | null>(() => {
     if (persistedNav.specsModalProductId) {
       const catalog = getCachedCatalog();
-      return catalog.find((p) => p.id === persistedNav.specsModalProductId) || 
-             MOCK_PRODUCTS.find((p) => p.id === persistedNav.specsModalProductId) || null;
+      return catalog.find((p) => p.id === persistedNav.specsModalProductId) || null;
     }
     return null;
   });
@@ -195,8 +196,16 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [isAdminAddProductOpen, setIsAdminAddProductOpen] = useState(false);
   const [isAdminAddDepotOpen, setIsAdminAddDepotOpen] = useState(false);
 
-  // Sync catalog updates across instances and fetch live from Supabase on mount
+  // Sync catalog and categories live from Supabase PostgreSQL database on mount
   useEffect(() => {
+    // 1. Fetch live categories directly from database
+    fetchCategoriesFromDatabase().then((liveCategories) => {
+      if (liveCategories && liveCategories.length > 0) {
+        setCategoriesList(liveCategories);
+      }
+    });
+
+    // 2. Fetch live products directly from database
     syncCatalogFromDatabase().then((liveProducts) => {
       setProductsList(liveProducts);
     });
@@ -208,7 +217,19 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       }
     };
     window.addEventListener('esn_store_catalog_updated', handleCatalogUpdate);
-    return () => window.removeEventListener('esn_store_catalog_updated', handleCatalogUpdate);
+
+    const handleCategoriesUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Category[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setCategoriesList(customEvent.detail);
+      }
+    };
+    window.addEventListener('esn_store_categories_updated', handleCategoriesUpdate);
+
+    return () => {
+      window.removeEventListener('esn_store_catalog_updated', handleCatalogUpdate);
+      window.removeEventListener('esn_store_categories_updated', handleCategoriesUpdate);
+    };
   }, []);
 
   // Request complete details, all photos, and variants when opening product card or quick add modal
@@ -264,17 +285,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     const cachedEntries = getCachedCartItems();
     if (cachedEntries.length > 0) {
       const catalog = getCachedCatalog();
-      return cachedEntries.map((entry) => {
-        const prod = catalog.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
-        return {
-          id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
-          product: prod,
-          size: entry.size || prod.sizes[0] || 'L',
-          color: entry.color || prod.colors[0]?.name || 'Standard',
-          quantity: entry.quantity || 1,
-          customization: entry.customization,
-        };
-      });
+      const items: CartItem[] = [];
+      for (const entry of cachedEntries) {
+        const prod = catalog.find((p) => p.id === entry.productId);
+        if (prod) {
+          items.push({
+            id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
+            product: prod,
+            size: entry.size || prod.sizes[0] || 'L',
+            color: entry.color || prod.colors[0]?.name || 'Standard',
+            quantity: entry.quantity || 1,
+            customization: entry.customization,
+            variantImage: entry.variantImage,
+          });
+        }
+      }
+      return items;
     }
     return [];
   });
@@ -288,10 +314,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     const cachedEntries = getCachedCartItems();
     if (cachedEntries.length > 0) {
       const catalog = getCachedCatalog();
-      return new Set(cachedEntries.map((entry) => {
-        const prod = catalog.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
+      const keys = cachedEntries.map((entry) => {
+        const prod = catalog.find((p) => p.id === entry.productId);
+        if (!prod) return null;
         return `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`;
-      }));
+      }).filter(Boolean) as string[];
+      return new Set(keys);
     }
     return new Set();
   });
@@ -367,17 +395,21 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       // Pull cached items from guest browsing session
       const cachedEntries = getCachedCartItems();
       if (cachedEntries.length > 0) {
-        const cachedCartItems: CartItem[] = cachedEntries.map((entry) => {
-          const prod = productsList.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
-          return {
-            id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
-            product: prod,
-            size: entry.size || prod.sizes[0] || 'L',
-            color: entry.color || prod.colors[0]?.name || 'Standard',
-            quantity: entry.quantity || 1,
-            customization: entry.customization,
-          };
-        });
+        const cachedCartItems: CartItem[] = [];
+        for (const entry of cachedEntries) {
+          const prod = productsList.find((p) => p.id === entry.productId);
+          if (prod) {
+            cachedCartItems.push({
+              id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
+              product: prod,
+              size: entry.size || prod.sizes[0] || 'L',
+              color: entry.color || prod.colors[0]?.name || 'Standard',
+              quantity: entry.quantity || 1,
+              customization: entry.customization,
+              variantImage: entry.variantImage,
+            });
+          }
+        }
 
         // Merge cached items into existing user cart
         const mergedCart = [...existingUserCart];
@@ -416,17 +448,21 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       // Guest mode: load any items from session cache
       const cachedEntries = getCachedCartItems();
       if (cachedEntries.length > 0) {
-        const guestItems = cachedEntries.map((entry) => {
-          const prod = productsList.find((p) => p.id === entry.productId) || MOCK_PRODUCTS.find((p) => p.id === entry.productId) || MOCK_PRODUCTS[0];
-          return {
-            id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
-            product: prod,
-            size: entry.size || prod.sizes[0] || 'L',
-            color: entry.color || prod.colors[0]?.name || 'Standard',
-            quantity: entry.quantity || 1,
-            customization: entry.customization,
-          };
-        });
+        const guestItems: CartItem[] = [];
+        for (const entry of cachedEntries) {
+          const prod = productsList.find((p) => p.id === entry.productId);
+          if (prod) {
+            guestItems.push({
+              id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
+              product: prod,
+              size: entry.size || prod.sizes[0] || 'L',
+              color: entry.color || prod.colors[0]?.name || 'Standard',
+              quantity: entry.quantity || 1,
+              customization: entry.customization,
+              variantImage: entry.variantImage,
+            });
+          }
+        }
         setCartItems(guestItems);
         setCheckedCartItemIds(new Set(guestItems.map((it) => it.id)));
       } else {
@@ -463,6 +499,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     setIsRefreshing(true);
     syncCatalogFromDatabase().then((liveProducts) => {
       setProductsList(liveProducts);
+    });
+    fetchCategoriesFromDatabase().then((liveCategories) => {
+      setCategoriesList(liveCategories);
     });
     setOrders(getStoredOrders());
     setCheckoutSettings(getStoredCheckoutSettings());
@@ -689,7 +728,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   // Universal Product Class counts
   // Dynamic category product counts based on selected global class
   const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map((cat) => {
+    return categoriesList.map((cat) => {
       const targetSlug = normalizeCategorySlug(cat.slug);
       const count = productsList.filter((p) => {
         if (!matchesProductClass(p, selectedClass)) return false;
@@ -697,7 +736,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       }).length;
       return { ...cat, count };
     });
-  }, [productsList, selectedClass]);
+  }, [categoriesList, productsList, selectedClass]);
 
   // Filter and sort products (respects universal page class and product ID search)
   const filteredProducts = useMemo(() => {
@@ -1057,6 +1096,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     return (
       <AdminPortal
         products={productsList}
+        categories={categoriesList}
         orders={orders}
         cartAnalytics={MOCK_CARTS_ANALYTICS}
         checkoutSettings={checkoutSettings}
@@ -1311,6 +1351,15 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           cartItems={cartItems}
           theme={theme}
         />
+
+        {/* Storefront Debugger */}
+        <StoreFrontDebugger
+          productsList={productsList}
+          categoriesList={categoriesList}
+          selectedClass={selectedClass}
+          theme={theme}
+          onReload={handleRefreshData}
+        />
       </div>
     );
   }
@@ -1366,7 +1415,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         <main className="flex-grow pb-16 sm:pb-0 sm:pl-16 xl:pl-52 transition-all">
           <CategoryListingsPage
             categorySlug={selectedCategorySlug}
-            allCategories={CATEGORIES}
+            allCategories={categoriesWithCounts}
             allProducts={productsList}
             onSelectCategory={(newSlug) => {
               setSelectedCategorySlug(newSlug);
@@ -1417,7 +1466,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         {/* 4. All Products Section with Filter & Sort Dropdown Popups (Continuous listings feed) */}
         <AllProductsSection
           products={filteredProducts}
-          allCategories={CATEGORIES}
+          allCategories={categoriesWithCounts}
           filters={filters}
           onFilterChange={handleFilterChange}
           onResetFilters={handleResetFilters}
@@ -1736,6 +1785,15 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         }}
         cartItems={cartItems}
         theme={theme}
+      />
+
+      {/* Storefront Debugger */}
+      <StoreFrontDebugger
+        productsList={productsList}
+        categoriesList={categoriesList}
+        selectedClass={selectedClass}
+        theme={theme}
+        onReload={handleRefreshData}
       />
     </div>
   );

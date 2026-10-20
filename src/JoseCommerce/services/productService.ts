@@ -1,10 +1,8 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Product, ProductClass, Category, SortOption, ProductImage } from '../types';
-import { MOCK_PRODUCTS } from '../data/mockProducts';
-import { CATEGORIES } from '../data/categories';
 import { PRODUCT_CLASSES, normalizeCategorySlug, resolveClassAndCategoryCodes, generateProductId } from './productIdService';
 export { normalizeCategorySlug } from './productIdService';
-import { getCachedCatalog, getCachedCategories, setCachedCatalog } from './storeCacheService';
+import { getCachedCatalog, getCachedCategories, setCachedCatalog, setCachedCategories } from './storeCacheService';
 
 export interface FetchProductsParams {
   classCode?: string;       // e.g. 'T', 'I', 'C', 'O' or 'all'
@@ -270,6 +268,41 @@ export async function syncCatalogFromDatabase(): Promise<Product[]> {
 }
 
 /**
+ * Fetches categories dynamically from the Supabase PostgreSQL database.
+ * Ensures that categories, descriptions, icons, and associations are
+ * 100% database-driven with zero hardcoded entries.
+ */
+export async function fetchCategoriesFromDatabase(): Promise<Category[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (!error && Array.isArray(data)) {
+        const mappedCategories: Category[] = data.map((row) => ({
+          id: row.id,
+          classId: row.class_id,
+          name: row.name,
+          slug: row.slug,
+          iconName: row.icon_name || 'Shirt',
+          count: 0,
+          description: row.description || '',
+          imageUrl: row.image_path || 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=70',
+        }));
+        setCachedCategories(mappedCategories);
+        return mappedCategories;
+      }
+    } catch (err) {
+      console.warn('[ProductService] Error fetching categories from Supabase:', err);
+    }
+  }
+
+  return getCachedCategories();
+}
+
+/**
  * Keyword index generator for frontend suggestion matching
  */
 export function getAllCatalogKeywords(catalog?: Product[]): string[] {
@@ -482,8 +515,8 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
     }
   }
 
-  // Graceful local fallback
-  const fallbackCatalog = getCachedCatalog() || MOCK_PRODUCTS;
+  // Graceful local cache fallback (dynamically populated from Supabase)
+  const fallbackCatalog = getCachedCatalog();
   return filterAndPaginateProducts(fallbackCatalog, {
     classCode,
     categorySlug,
@@ -634,19 +667,14 @@ export async function fetchProductById(productId: string): Promise<Product | nul
   }
 
   const cachedItem = getCachedCatalog().find((p) => p.id === productId || p.uid === productId || p.sku === productId);
-  if (cachedItem) {
-    return cachedItem;
-  }
-
-  const found = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
-  return found || null;
+  return cachedItem || null;
 }
 
 /**
  * Fetches categories scoped within a superior class.
  */
 export function getCategoriesByClass(classCode: string = 'all'): Category[] {
-  const baseCategories = getCachedCategories() || CATEGORIES;
+  const baseCategories = getCachedCategories();
   if (!classCode || classCode === 'all') return baseCategories;
 
   const cls = classCode.toUpperCase();

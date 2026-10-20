@@ -1,33 +1,26 @@
 import { Product, Category } from '../types';
-import { MOCK_PRODUCTS } from '../data/mockProducts';
-import { CATEGORIES } from '../data/categories';
 
 /**
  * STORE CACHE SERVICE
  * 
  * Provides persistent, multi-tiered client-side caching for catalog and categories
- * to reduce database API calls, CPU, memory, and egress usage to near zero.
+ * dynamically synchronized from the Supabase PostgreSQL database.
  * 
- * Statically caches:
- * - Categories list and metadata
- * - Storefront catalog and product information
- * 
- * STRICT EXCLUSION:
- * - Checkout operations, active stock verification, and order placements are ALWAYS LIVE.
+ * Zero hardcoded products or categories are seeded into this cache.
  */
 
 const STORAGE_KEY_CATALOG = 'esn_store_catalog_cache_v3';
 const STORAGE_KEY_CATEGORIES = 'esn_store_categories_cache_v3';
 const STORAGE_KEY_META = 'esn_store_cache_meta_v3';
 
-interface StoreCacheMeta {
+export interface StoreCacheMeta {
   version: string;
   timestamp: number;
   catalogCount: number;
   categoriesCount: number;
 }
 
-const CURRENT_CACHE_VERSION = '3.0.0_clean_slate';
+const CURRENT_CACHE_VERSION = '3.1.0_db_driven';
 
 // Immediately purge legacy cached seed products from user's browser localStorage
 if (typeof window !== 'undefined') {
@@ -48,7 +41,7 @@ if (typeof window !== 'undefined') {
 
 /**
  * Reads cached catalog from persistent storage.
- * Seeds with MOCK_PRODUCTS if empty so initial load avoids any network roundtrip.
+ * Returns empty array if not yet fetched from database (zero hardcoded fallback).
  */
 export function getCachedCatalog(): Product[] {
   try {
@@ -60,22 +53,20 @@ export function getCachedCatalog(): Product[] {
       }
     }
   } catch (err) {
-    console.warn('[StoreCache] Failed to parse cached catalog, using fallback', err);
+    console.warn('[StoreCache] Failed to parse cached catalog, using empty fallback', err);
   }
 
-  // Seed default clean catalog (0 products)
-  setCachedCatalog(MOCK_PRODUCTS);
-  return MOCK_PRODUCTS;
+  return [];
 }
 
 function sanitizeProductForCache(p: Product): Product {
-  // Strip heavy base64 data URIs if any exist to prevent localStorage quota exhaustion
+  // Strip heavy base64 data URIs (> 15000 chars) if any exist to prevent localStorage quota exhaustion
   const cleanImages = (p.images || []).map((img) =>
-    img.startsWith('data:') ? 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80' : img
-  );
+    img.startsWith('data:') && img.length > 15000 ? (p.images[0] && !p.images[0].startsWith('data:') ? p.images[0] : '') : img
+  ).filter(Boolean);
   const cleanColors = (p.colors || []).map((c) => ({
     ...c,
-    image: c.image && c.image.startsWith('data:') ? undefined : c.image,
+    image: c.image && c.image.startsWith('data:') && c.image.length > 15000 ? undefined : c.image,
   }));
   return {
     ...p,
@@ -85,7 +76,7 @@ function sanitizeProductForCache(p: Product): Product {
 }
 
 /**
- * Updates persistent catalog cache (e.g. when an admin adds/edits products or modifies stock)
+ * Updates persistent catalog cache from live Supabase data.
  */
 export function setCachedCatalog(products: Product[]): void {
   try {
@@ -94,21 +85,25 @@ export function setCachedCatalog(products: Product[]): void {
 
     try {
       localStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+      localStorage.setItem('esn_store_catalog_cache_v2', serialized);
     } catch {
       // If localStorage quota exceeded, gracefully store a capped subset
       try {
         const compactSerialized = JSON.stringify(sanitized.slice(0, 40));
         localStorage.setItem(STORAGE_KEY_CATALOG, compactSerialized);
+        localStorage.setItem('esn_store_catalog_cache_v2', compactSerialized);
       } catch {
         // Safe fallback: persist in sessionStorage
         try {
           sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+          sessionStorage.setItem('esn_store_catalog_cache_v2', serialized);
         } catch {}
       }
     }
 
     try {
       sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+      sessionStorage.setItem('esn_store_catalog_cache_v2', serialized);
     } catch {}
 
     updateCacheMeta({
@@ -124,7 +119,7 @@ export function setCachedCatalog(products: Product[]): void {
 
 /**
  * Reads cached categories from persistent storage.
- * Seeds with CATEGORIES if empty.
+ * Returns empty array if not yet fetched from database (zero hardcoded fallback).
  */
 export function getCachedCategories(): Category[] {
   try {
@@ -136,16 +131,14 @@ export function getCachedCategories(): Category[] {
       }
     }
   } catch (err) {
-    console.warn('[StoreCache] Failed to parse cached categories, using fallback', err);
+    console.warn('[StoreCache] Failed to parse cached categories', err);
   }
 
-  // Seed default categories into cache
-  setCachedCategories(CATEGORIES);
-  return CATEGORIES;
+  return [];
 }
 
 /**
- * Updates persistent categories cache
+ * Updates persistent categories cache with live database records.
  */
 export function setCachedCategories(categories: Category[]): void {
   try {
@@ -189,6 +182,14 @@ function updateCacheMeta(partial: Partial<StoreCacheMeta>): void {
   } catch {
     // Non-blocking
   }
+}
+
+export function getStoreCacheMeta(): StoreCacheMeta | null {
+  try {
+    const currentRaw = localStorage.getItem(STORAGE_KEY_META);
+    if (currentRaw) return JSON.parse(currentRaw);
+  } catch {}
+  return null;
 }
 
 /**

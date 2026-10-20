@@ -171,8 +171,8 @@ test.describe('Storefront & Admin 100-Products Comprehensive Audit', () => {
 
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    // If in store view, click Client Dashboard button to open Admin
-    const dashboardBtn = page.locator('button:has-text("Client Dashboard")');
+    // If in store view, click dashboard button to open Admin
+    const dashboardBtn = page.locator('button:has-text("Client Dashboard"), button:has-text("My Account")');
     if (await dashboardBtn.isVisible()) {
       await dashboardBtn.click();
       await page.waitForTimeout(400);
