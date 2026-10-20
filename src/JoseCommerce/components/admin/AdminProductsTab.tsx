@@ -163,6 +163,7 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
 
           {onOpenAddProduct && (
             <button
+              type="button"
               onClick={onOpenAddProduct}
               className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md transition-all cursor-pointer active:scale-98 shrink-0"
             >

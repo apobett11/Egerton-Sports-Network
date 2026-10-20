@@ -47,27 +47,31 @@ export const TransitionVignetteManager: React.FC = () => {
       document.head.appendChild(style);
     }
 
-    // Helper: Purge vignette overlays and restore document scroll
+    // Helper: Purge external vignette overlays safely without touching application DOM or modals
     const autoDismissVignette = () => {
-      // 1. Programmatically trigger Monetag native close buttons if rendered
-      const closeButtons = document.querySelectorAll<HTMLElement>(
-        '[class*="vignette"] button, [class*="vignette"] [class*="close"], [id*="vignette"] button, button[aria-label="Close"], [class*="close-btn"], [class*="close_button"]'
+      // 1. Programmatically trigger Monetag native close buttons ONLY within external ad overlays outside #root
+      const adContainers = document.querySelectorAll<HTMLElement>(
+        'body > div[id*="vignette"], body > [class*="vignette-overlay"], body > [class*="vignette-container"]'
       );
-      if (closeButtons.length > 0) {
-        closeButtons.forEach((btn) => {
+      adContainers.forEach((container) => {
+        if (container.closest('#root') || container.closest('[data-admin-modal]') || container.closest('[data-admin-product]')) return;
+        const closeBtns = container.querySelectorAll<HTMLElement>('button, [class*="close"]');
+        closeBtns.forEach((btn) => {
           try {
             btn.click();
           } catch {}
         });
-      }
+      });
 
-      // 2. Remove injected overlay cards, backdrop divs, and Monetag iframes
+      // 2. Remove ONLY third-party injected Monetag overlay cards and iframes outside #root
       document.querySelectorAll(
-        'div[id*="vignette"], [class*="vignette-overlay"], [class*="vignette-container"], iframe[src*="n6wxm"], div[class*="backdrop"]'
+        'body > div[id*="vignette"], body > [class*="vignette-overlay"], body > [class*="vignette-container"], iframe[src*="n6wxm"]'
       ).forEach((node) => {
-        try {
-          node.remove();
-        } catch {}
+        if (!node.closest('#root') && !node.closest('[data-admin-modal]') && !node.closest('[data-admin-product]')) {
+          try {
+            node.remove();
+          } catch {}
+        }
       });
 
       // 3. Remove script tag so subsequent paced triggers can cleanly reload
@@ -102,7 +106,6 @@ export const TransitionVignetteManager: React.FC = () => {
 
     const firePacedVignette = (force: boolean = false) => {
       if (isAdminActive()) {
-        autoDismissVignette();
         return false;
       }
 
@@ -160,10 +163,12 @@ export const TransitionVignetteManager: React.FC = () => {
 
     // Set recurring timer: Exactly one vignette popup every 1.5 minutes (90 seconds)
     const intervalTimer = setInterval(() => {
+      if (isAdminActive()) return;
       firePacedVignette(true);
     }, VIGNETTE_INTERVAL_MS);
 
     const handleTransition = (routeKey?: string) => {
+      if (isAdminActive()) return;
       const now = Date.now();
       const currentKey = routeKey || window.location.hash || window.location.pathname;
 

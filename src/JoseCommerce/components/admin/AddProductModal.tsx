@@ -117,13 +117,21 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => {
     if (draft?.specColumns && Array.isArray(draft.specColumns)) {
       const isOldPreset = draft.specColumns.some((c: any) => Array.isArray(c?.values) && c.values.includes('Official Navy'));
-      if (!isOldPreset) return draft.specColumns;
+      if (!isOldPreset) {
+        return draft.specColumns
+          .filter((c: any) => c && typeof c === 'object')
+          .map((c: any, idx: number) => ({
+            id: String(c.id || `col-${Date.now()}-${idx}`),
+            name: String(c.name || 'Specification'),
+            values: Array.isArray(c.values) ? c.values.filter(Boolean).map(String) : [],
+          }));
+      }
     }
     return [];
   });
   const [availableSpecTypes, setAvailableSpecTypes] = useState<string[]>(() => {
     if (draft?.availableSpecTypes && Array.isArray(draft.availableSpecTypes) && draft.availableSpecTypes.length > 0) {
-      return draft.availableSpecTypes;
+      return draft.availableSpecTypes.filter(Boolean).map(String);
     }
     return ['Size', 'Color', 'Material'];
   });
@@ -138,9 +146,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       document.body.setAttribute('data-admin-product-active', 'true');
       document.body.setAttribute('data-prevent-popunder', 'true');
 
-      // Purge only third-party Monetag script overlays, NEVER modal or app elements
+      // Purge only third-party Monetag script overlays outside #root, NEVER modal or app elements
       const overlays = document.querySelectorAll(
-        'div[id*="vignette"], [class*="vignette-overlay"], [class*="vignette-container"], iframe[src*="n6wxm"]'
+        'body > div[id*="vignette"], body > [class*="vignette-overlay"], body > [class*="vignette-container"], iframe[src*="n6wxm"]'
       );
       overlays.forEach((el) => {
         if (!el.closest('[data-admin-modal]') && !el.closest('#root')) {
@@ -167,10 +175,19 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   }, [logoImage]);
 
-  // Automatically persist step and draft inputs to localStorage to survive reloads
+  // Automatically persist step and draft inputs to localStorage without large base64 bloat
   React.useEffect(() => {
     if (isOpen) {
       try {
+        // Exclude large base64 image strings from localStorage to prevent QuotaExceededError
+        const safeLogo = (logoImage && !logoImage.startsWith('data:')) ? logoImage : '';
+        const safeColorPhotos: Record<string, string> = {};
+        Object.entries(colorPhotos || {}).forEach(([k, v]) => {
+          if (v && !v.startsWith('data:')) {
+            safeColorPhotos[k] = v;
+          }
+        });
+
         localStorage.setItem(STORAGE_KEY_ADD_PRODUCT_DRAFT, JSON.stringify({
           step,
           name,
@@ -180,12 +197,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           selectedCategory,
           selectedClass,
           selectedKeywords,
-          logoImage,
-          colorPhotos,
-          specColumns,
-          availableSpecTypes,
+          logoImage: safeLogo,
+          colorPhotos: safeColorPhotos,
+          specColumns: (specColumns || []).map((c, idx) => ({
+            id: c.id || `col-${Date.now()}-${idx}`,
+            name: c.name || 'Specification',
+            values: Array.isArray(c.values) ? c.values : [],
+          })),
+          availableSpecTypes: (availableSpecTypes || []).filter(Boolean),
         }));
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Draft autosave warning:', err);
+      }
     }
   }, [
     isOpen,
@@ -224,10 +247,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const isStep2Valid = isCategoryValid && isClassValid && isKeywordsValid;
 
   // Step 3 validation: Logo required. If color variants present, 4 other colors must each upload their photo.
-  const colorsCol = specColumns.find((c) => c.name.toLowerCase().startsWith('color'));
-  const hasColorVariants = Boolean(colorsCol && colorsCol.values.length > 0);
+  const colorsCol = (specColumns || []).find((c) => (c.name || '').toLowerCase().startsWith('color'));
+  const hasColorVariants = Boolean(colorsCol && Array.isArray(colorsCol.values) && colorsCol.values.length > 0);
   const otherColors = hasColorVariants ? colorsCol!.values.filter((v) => v !== 'Default') : [];
-  const areAllOtherColorsUploaded = otherColors.length === 0 || otherColors.every((v) => Boolean(colorPhotos[v]) && colorPhotos[v].trim().length > 0);
+  const areAllOtherColorsUploaded = otherColors.length === 0 || otherColors.every((v) => Boolean(colorPhotos?.[v]) && colorPhotos[v].trim().length > 0);
   const isStep3Valid = Boolean(logoImage) && (hasColorVariants ? areAllOtherColorsUploaded : true);
 
   const handleNext = () => {
@@ -254,14 +277,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
     // Keep newly added specification type in the dropdown options
     setAvailableSpecTypes((prev) => {
-      if (!prev.some((t) => t.toLowerCase() === nameToAdd.toLowerCase())) {
+      if (!prev.some((t) => (t || '').toLowerCase() === nameToAdd.toLowerCase())) {
         return [...prev, nameToAdd];
       }
       return prev;
     });
     setSelectedColumnToAdd(nameToAdd);
 
-    if (specColumns.some((col) => col.name.toLowerCase() === nameToAdd.toLowerCase())) {
+    if ((specColumns || []).some((col) => (col.name || '').toLowerCase() === nameToAdd.toLowerCase())) {
       alert(`The specification column "${nameToAdd}" is already added.`);
       setIsAddingCustomCol(false);
       setCustomColumnName('');
@@ -275,36 +298,38 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       values: isColor ? ['Default'] : [],
     };
     if (isColor && logoImage) {
-      setColorPhotos((prev) => ({ ...prev, Default: logoImage }));
+      setColorPhotos((prev) => ({ ...(prev || {}), Default: logoImage }));
     }
-    setSpecColumns((prev) => [...prev, newCol]);
+    setSpecColumns((prev) => [...(prev || []), newCol]);
     setCustomColumnName('');
     setIsAddingCustomCol(false);
   };
 
   const handleRemoveColumn = (colId: string) => {
-    setSpecColumns((prev) => prev.filter((col) => col.id !== colId));
+    setSpecColumns((prev) => (prev || []).filter((col) => col.id !== colId));
   };
 
   const handleAddValueToColumn = (colId: string) => {
-    const col = specColumns.find((c) => c.id === colId);
+    const col = (specColumns || []).find((c) => c.id === colId);
     if (!col) return;
-    const isColorCol = col.name.toLowerCase().startsWith('color');
-    if (isColorCol && col.values.length >= 5) {
+    const isColorCol = (col.name || '').toLowerCase().startsWith('color');
+    const existingValues = Array.isArray(col.values) ? col.values : [];
+    if (isColorCol && existingValues.length >= 5) {
       alert('A maximum of 5 color specifications (Default + 4 others) will be accepted for the products.');
       return;
     }
     const val = (newValInputs[colId] || '').trim();
     if (!val) return;
-    if (col.values.some((v) => v.toLowerCase() === val.toLowerCase())) {
+    if (existingValues.some((v) => (v || '').toLowerCase() === val.toLowerCase())) {
       alert(`The specification value "${val}" already exists in this column.`);
       return;
     }
 
     setSpecColumns((prev) =>
-      prev.map((c) => {
+      (prev || []).map((c) => {
         if (c.id === colId) {
-          return { ...c, values: [...c.values, val] };
+          const vals = Array.isArray(c.values) ? c.values : [];
+          return { ...c, values: [...vals, val] };
         }
         return c;
       })
@@ -315,22 +340,23 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   };
 
   const handleRemoveValueFromColumn = (colId: string, valueToRemove: string) => {
-    const col = specColumns.find((c) => c.id === colId);
-    const isColorCol = col && col.name.toLowerCase().startsWith('color');
+    const col = (specColumns || []).find((c) => c.id === colId);
+    const isColorCol = col && (col.name || '').toLowerCase().startsWith('color');
     if (isColorCol && valueToRemove === 'Default') {
       alert('The "Default" color uses the product logo photo and cannot be removed while the Color column is active. You can delete the entire Color column if no color variants are needed.');
       return;
     }
     setSpecColumns((prev) =>
-      prev.map((c) => {
+      (prev || []).map((c) => {
         if (c.id === colId) {
-          return { ...c, values: c.values.filter((v) => v !== valueToRemove) };
+          const vals = Array.isArray(c.values) ? c.values : [];
+          return { ...c, values: vals.filter((v) => v !== valueToRemove) };
         }
         return c;
       })
     );
     setColorPhotos((prev) => {
-      const copy = { ...prev };
+      const copy = { ...(prev || {}) };
       delete copy[valueToRemove];
       return copy;
     });
@@ -417,33 +443,33 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       const finalStockCount = parseInt(initialQuantity) || 20;
 
       // Extract sizes and colors from specColumns
-      const sizesCol = specColumns.find((c) => c.name.toLowerCase().startsWith('size'));
-      const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['Standard'];
+      const sizesCol = (specColumns || []).find((c) => (c.name || '').toLowerCase().startsWith('size'));
+      const uniqueSizes = sizesCol && Array.isArray(sizesCol.values) && sizesCol.values.length > 0 ? sizesCol.values : ['Standard'];
 
-      const colorsColumn = specColumns.find((c) => c.name.toLowerCase().startsWith('color'));
-      const hasColors = Boolean(colorsColumn && colorsColumn.values.length > 0);
+      const colorsColumn = (specColumns || []).find((c) => (c.name || '').toLowerCase().startsWith('color'));
+      const hasColors = Boolean(colorsColumn && Array.isArray(colorsColumn.values) && colorsColumn.values.length > 0);
 
       let finalColors: { name: string; hex: string; image?: string }[] = [];
       let finalImages: string[] = [];
 
       if (hasColors) {
-        const validColorVals = colorsColumn!.values.slice(0, 5); // Default + 4 others = max 5
+        const validColorVals = (colorsColumn!.values || []).slice(0, 5); // Default + 4 others = max 5
         finalColors = validColorVals.map((v) => ({
           name: v,
           hex: '#2563eb',
-          image: v === 'Default' ? logoImage : (colorPhotos[v] || logoImage),
+          image: v === 'Default' ? logoImage : (colorPhotos?.[v] || logoImage),
         }));
         const variantPhotos = validColorVals
           .filter((v) => v !== 'Default')
-          .map((v) => colorPhotos[v])
-          .filter(Boolean);
+          .map((v) => colorPhotos?.[v])
+          .filter(Boolean) as string[];
         finalImages = [logoImage, ...variantPhotos];
       } else {
         finalColors = [{ name: 'Default', hex: '#2563eb', image: logoImage }];
         finalImages = [logoImage];
       }
 
-      const specStrings = specColumns.map((c) => `${c.name}: ${c.values.join(', ') || 'Standard'}`);
+      const specStrings = (specColumns || []).map((c) => `${c.name || 'Spec'}: ${(Array.isArray(c.values) ? c.values : []).join(', ') || 'Standard'}`);
       const normSlug = normalizeCategorySlug(effectiveCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 
       const createdProduct = await createAndPersistProduct({
@@ -490,10 +516,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       data-admin-modal="true"
       data-admin-product="true"
       data-prevent-popunder="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto"
     >
       {/* Google Forms Minimalist Card Container */}
       <div 
+        onClick={(e) => e.stopPropagation()}
         className={`w-full max-w-4xl rounded-2xl shadow-2xl border flex flex-col overflow-hidden my-auto transition-all ${
           theme === 'dark' ? 'bg-[#122336] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
         }`}
@@ -524,7 +552,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
 
           <button
-            onClick={onClose}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-600 shadow-md transition-colors cursor-pointer shrink-0"
             title="Close add product modal"
           >
@@ -970,10 +1002,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                           type="text"
                           placeholder="e.g. Fit / Cut"
                           value={customColumnName}
-                          onChange={(e) => setCustomColumnName(e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setCustomColumnName(e.target.value);
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
+                              e.stopPropagation();
                               handleAddColumn();
                             }
                           }}
@@ -983,14 +1019,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                         />
                         <button
                           type="button"
-                          onClick={() => handleAddColumn()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddColumn();
+                          }}
                           className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer transition-colors"
                         >
                           Add & Include in Dropdown
                         </button>
                         <button
                           type="button"
-                          onClick={() => setIsAddingCustomCol(false)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddingCustomCol(false);
+                          }}
                           className="py-1.5 px-2 rounded-lg bg-slate-700 text-slate-300 text-xs hover:text-white cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -1001,18 +1043,21 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
 
                 {/* Specification Columns Board */}
-                {specColumns.length === 0 ? (
+                {(specColumns || []).length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-700 rounded-xl">
                     No specification columns added yet. Select a specification column above to get started.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-x-auto pb-1">
-                    {specColumns.map((col) => {
-                      const isColorCol = col.name.toLowerCase() === 'colors' || col.name.toLowerCase() === 'color';
+                    {(specColumns || []).map((col, colIdx) => {
+                      const colId = col?.id || `col-${colIdx}`;
+                      const colName = col?.name || 'Specification';
+                      const isColorCol = colName.toLowerCase() === 'colors' || colName.toLowerCase() === 'color';
+                      const colValues = Array.isArray(col?.values) ? col.values : [];
 
                       return (
                         <div
-                          key={col.id}
+                          key={colId}
                           className={`rounded-xl border flex flex-col justify-between overflow-hidden shadow-xs transition-colors ${
                             theme === 'dark'
                               ? 'bg-[#102235] border-slate-700'
@@ -1026,17 +1071,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className={`w-2 h-2 rounded-full ${isColorCol ? 'bg-rose-500' : 'bg-blue-500'}`} />
                               <h5 className="text-xs font-black uppercase tracking-wider truncate">
-                                {col.name} {isColorCol && '(Max 5)'}
+                                {colName} {isColorCol && '(Max 5)'}
                               </h5>
                               <span className="text-[10px] font-bold text-slate-400 bg-black/20 px-1.5 py-0.2 rounded-full">
-                                {col.values.length}{isColorCol && '/5'}
+                                {colValues.length}{isColorCol && '/5'}
                               </span>
                             </div>
                             <button
                               type="button"
-                              onClick={() => handleRemoveColumn(col.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveColumn(colId);
+                              }}
                               className="p-1 rounded-md text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                              title={`Remove ${col.name} column`}
+                              title={`Remove ${colName} column`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1044,14 +1092,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
                           {/* Column Values List - Data placed beneath column header */}
                           <div className="p-2.5 flex-grow space-y-2 min-h-[90px] max-h-[220px] overflow-y-auto">
-                            {col.values.length === 0 ? (
+                            {colValues.length === 0 ? (
                               <p className="text-[11px] text-slate-500 italic py-2 text-center">
-                                No values under {col.name}. Add below.
+                                No values under {colName}. Add below.
                               </p>
                             ) : (
-                              col.values.map((val) => (
+                              colValues.map((val, valIdx) => (
                                 <div
-                                  key={val}
+                                  key={`${colId}-${val}-${valIdx}`}
                                   className={`flex items-center justify-between gap-2 p-2 rounded-lg text-xs font-semibold ${
                                     theme === 'dark'
                                       ? 'bg-[#18314e] text-slate-100 border border-slate-700/60'
@@ -1060,9 +1108,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     {isColorCol && (
-                                      (colorPhotos[val] || (val === 'Default' ? logoImage : '')) ? (
+                                      (colorPhotos?.[val] || (val === 'Default' ? logoImage : '')) ? (
                                         <img
-                                          src={colorPhotos[val] || (val === 'Default' ? logoImage : '')}
+                                          src={colorPhotos?.[val] || (val === 'Default' ? logoImage : '')}
                                           alt={val}
                                           className="w-7 h-7 rounded-md object-cover border border-slate-600 shrink-0 bg-slate-900"
                                         />
@@ -1087,13 +1135,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                                           Default
                                         </span>
                                       ) : (
-                                        <label className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                                          colorPhotos[val]
+                                        <label 
+                                          onClick={(e) => e.stopPropagation()}
+                                          className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                          colorPhotos?.[val]
                                             ? 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40'
                                             : 'bg-amber-600/30 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40'
                                         }`}>
                                           <Upload className="w-2.5 h-2.5" />
-                                          <span>{colorPhotos[val] ? 'Photo Added' : 'Upload *'}</span>
+                                          <span>{colorPhotos?.[val] ? 'Photo Added' : 'Upload *'}</span>
                                           <input
                                             type="file"
                                             accept="image/*"
@@ -1106,7 +1156,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                                     {(!isColorCol || val !== 'Default') && (
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveValueFromColumn(col.id, val)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveValueFromColumn(colId, val);
+                                        }}
                                         className="text-slate-400 hover:text-red-400 p-1 cursor-pointer"
                                         title={`Remove ${val}`}
                                       >
@@ -1123,7 +1176,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                           <div className={`p-2 border-t ${
                             theme === 'dark' ? 'bg-[#0e1d2e] border-slate-700/60' : 'bg-slate-50 border-slate-200'
                           }`}>
-                            {isColorCol && col.values.length >= 5 ? (
+                            {isColorCol && colValues.length >= 5 ? (
                               <div className="text-[11px] font-semibold text-amber-400 text-center py-1 bg-amber-500/10 rounded-lg">
                                 Maximum 5 colors reached (Default + 4 others)
                               </div>
@@ -1131,13 +1184,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                               <div className="flex items-center gap-1">
                                 <input
                                   type="text"
-                                  placeholder={`Add ${col.name.toLowerCase()} value...`}
-                                  value={newValInputs[col.id] || ''}
-                                  onChange={(e) => setNewValInputs((prev) => ({ ...prev, [col.id]: e.target.value }))}
+                                  placeholder={`Add ${colName.toLowerCase()} value...`}
+                                  value={newValInputs[colId] || ''}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    setNewValInputs((prev) => ({ ...prev, [colId]: e.target.value }));
+                                  }}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      handleAddValueToColumn(col.id);
+                                      e.stopPropagation();
+                                      handleAddValueToColumn(colId);
                                     }
                                   }}
                                   className={`flex-grow px-2 py-1.5 text-xs rounded-lg border focus:outline-hidden ${
@@ -1146,9 +1203,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => handleAddValueToColumn(col.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddValueToColumn(colId);
+                                  }}
                                   className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-colors shrink-0"
-                                  title={`Add value to ${col.name}`}
+                                  title={`Add value to ${colName}`}
                                 >
                                   <Plus className="w-3 h-3" />
                                 </button>
@@ -1217,8 +1277,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
       {/* KEYWORDS SELECTION POPUP MODAL (Admin selects up to 6 keywords) */}
       {isKeywordsModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
-          <div className={`w-full max-w-lg rounded-2xl border shadow-2xl p-5 flex flex-col max-h-[85vh] ${
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-lg rounded-2xl border shadow-2xl p-5 flex flex-col max-h-[85vh] ${
             theme === 'dark' ? 'bg-[#15273c] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-700">
@@ -1232,7 +1297,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => setIsKeywordsModalOpen(false)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsKeywordsModalOpen(false);
+                }}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-600 transition-colors cursor-pointer"
                 title="Close keywords selector"
               >
@@ -1265,6 +1334,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
+                      e.stopPropagation();
                       handleAddCustomKeyword();
                     }
                   }}
