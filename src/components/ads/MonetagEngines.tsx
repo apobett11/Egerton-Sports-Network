@@ -21,12 +21,23 @@ const MIN_COOLDOWN_MS = 25 * 1000; // 25-second spacing minimum to prevent rapid
 export function registerUserClickAndTriggerPopunder(event?: MouseEvent): boolean {
   if (typeof window === 'undefined') return false;
 
-  // Protect sensitive targets and close buttons
+  // Protect sensitive targets, close buttons, and admin flows
+  if (typeof document !== 'undefined') {
+    if (
+      document.body.getAttribute('data-admin-product-active') === 'true' ||
+      document.querySelector('[data-admin-modal="true"], [data-admin-product="true"]') ||
+      sessionStorage.getItem('egerscore_store_current_admin') ||
+      localStorage.getItem('egerscore_store_current_admin')
+    ) {
+      return false;
+    }
+  }
+
   if (event?.target) {
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        'input, textarea, select, button[type="submit"], #auth-container, [data-prevent-popunder="true"], button[aria-label*="close" i], button[aria-label*="dismiss" i]'
+        'input, textarea, select, button[type="submit"], #auth-container, [data-prevent-popunder="true"], [data-admin-modal="true"], [data-admin-product="true"], button[aria-label*="close" i], button[aria-label*="dismiss" i]'
       )
     ) {
       return false;

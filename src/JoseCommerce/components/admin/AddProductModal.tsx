@@ -29,13 +29,7 @@ interface AddProductModalProps {
   theme?: 'dark' | 'light';
 }
 
-const DEFAULT_PRESET_IMAGES = [
-  'https://images.unsplash.com/photo-1577212017184-80cc0da11082?w=800&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=800&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=80'
-];
+
 
 const PRESET_KEYWORDS = [
   'Jersey', 'Team Kit', 'Egerton FC', 'Matchday', 'Training Kit',
@@ -97,27 +91,79 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     return resolveClassAndCategoryCodes(cat).classCode as 'I' | 'T' | 'C' | 'O';
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => draft?.selectedKeywords || ['Jersey', 'Team Kit']);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(() => draft?.selectedKeywords || []);
   const [isKeywordsModalOpen, setIsKeywordsModalOpen] = useState(false);
   const [keywordSearch, setKeywordSearch] = useState('');
   const [customKeywordInput, setCustomKeywordInput] = useState('');
 
-  // Step 3: Images & Multi-Column Specification Table
-  const [logoImage, setLogoImage] = useState<string>(() => draft?.logoImage || DEFAULT_PRESET_IMAGES[0]);
-  const [colorPhotos, setColorPhotos] = useState<Record<string, string>>(() => draft?.colorPhotos || {
-    'Official Navy': DEFAULT_PRESET_IMAGES[1],
-    'White Accent': DEFAULT_PRESET_IMAGES[2],
+  // Step 3: Images & Multi-Column Specification Table (Clean slate: NO mock preset defaults)
+  const [logoImage, setLogoImage] = useState<string>(() => {
+    if (draft?.logoImage && !draft.logoImage.includes('unsplash.com')) return draft.logoImage;
+    return '';
   });
-  const [fallbackAdditionalImage, setFallbackAdditionalImage] = useState<string>(() => draft?.fallbackAdditionalImage || DEFAULT_PRESET_IMAGES[1]);
+  const [colorPhotos, setColorPhotos] = useState<Record<string, string>>(() => {
+    if (draft?.colorPhotos) {
+      const clean: Record<string, string> = {};
+      Object.entries(draft.colorPhotos).forEach(([k, v]) => {
+        if (typeof v === 'string' && !v.includes('unsplash.com')) clean[k] = v;
+      });
+      return clean;
+    }
+    return {};
+  });
+  const [fallbackAdditionalImage, setFallbackAdditionalImage] = useState<string>('');
   
-  const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => draft?.specColumns || [
-    { id: 'col-sizes', name: 'Sizes', values: ['S', 'M', 'L', 'XL'] },
-    { id: 'col-colors', name: 'Colors', values: ['Official Navy', 'White Accent'] }
-  ]);
+  const [specColumns, setSpecColumns] = useState<SpecColumn[]>(() => {
+    if (draft?.specColumns && Array.isArray(draft.specColumns)) {
+      const isOldPreset = draft.specColumns.some((c: any) => c.values?.includes('Official Navy'));
+      if (!isOldPreset) return draft.specColumns;
+    }
+    return [];
+  });
   const [selectedColumnToAdd, setSelectedColumnToAdd] = useState('Colors');
   const [customColumnName, setCustomColumnName] = useState('');
   const [isAddingCustomCol, setIsAddingCustomCol] = useState(false);
   const [newValInputs, setNewValInputs] = useState<Record<string, string>>({});
+
+  // Manage admin active mode & suppress any ads/vignettes/popunders completely
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.setAttribute('data-admin-product-active', 'true');
+      document.body.setAttribute('data-prevent-popunder', 'true');
+
+      // Purge any existing Monetag overlays, backdrop cards, and iframes immediately
+      const overlays = document.querySelectorAll(
+        'div[id*="vignette"], [class*="vignette-overlay"], [class*="vignette-container"], iframe[src*="n6wxm"], div[class*="backdrop"]'
+      );
+      overlays.forEach((el) => {
+        try { el.remove(); } catch {}
+      });
+
+      // Restore document scroll cleanly
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('position');
+      document.body.style.removeProperty('pointer-events');
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+
+      return () => {
+        document.body.removeAttribute('data-admin-product-active');
+        document.body.removeAttribute('data-prevent-popunder');
+      };
+    }
+  }, [isOpen]);
+
+  // Keep Default color photo in sync with logoImage
+  React.useEffect(() => {
+    if (logoImage) {
+      setColorPhotos((prev) => {
+        if (prev['Default'] !== logoImage) {
+          return { ...prev, Default: logoImage };
+        }
+        return prev;
+      });
+    }
+  }, [logoImage]);
 
   // Automatically persist step and draft inputs to localStorage to survive reloads
   React.useEffect(() => {
@@ -172,13 +218,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const effectiveCategory = isAddingNewCategory ? customCategory.trim() : selectedCategory;
   const isCategoryValid = effectiveCategory.length > 0;
   const isClassValid = ['I', 'T', 'C', 'O'].includes(selectedClass);
-  const isKeywordsValid = selectedKeywords.length >= 1 && selectedKeywords.length <= 6;
+  const isKeywordsValid = selectedKeywords.length <= 6;
   const isStep2Valid = isCategoryValid && isClassValid && isKeywordsValid;
 
-  // Step 3 validation
+  // Step 3 validation: Logo required. If color variants present, 4 other colors must each upload their photo.
   const colorsCol = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
   const hasColorVariants = Boolean(colorsCol && colorsCol.values.length > 0);
-  const isStep3Valid = Boolean(logoImage) && (hasColorVariants ? colorsCol!.values.every(v => Boolean(colorPhotos[v])) : Boolean(fallbackAdditionalImage));
+  const otherColors = hasColorVariants ? colorsCol!.values.filter((v) => v !== 'Default') : [];
+  const areAllOtherColorsUploaded = otherColors.length === 0 || otherColors.every((v) => Boolean(colorPhotos[v]) && colorPhotos[v].trim().length > 0);
+  const isStep3Valid = Boolean(logoImage) && (hasColorVariants ? areAllOtherColorsUploaded : true);
 
   const handleNext = () => {
     if (step === 1) {
@@ -203,11 +251,15 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       alert(`The specification column "${nameToAdd}" is already added.`);
       return;
     }
+    const isColor = nameToAdd.toLowerCase() === 'colors' || nameToAdd.toLowerCase() === 'color';
     const newCol: SpecColumn = {
       id: `col-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: nameToAdd,
-      values: [],
+      values: isColor ? ['Default'] : [],
     };
+    if (isColor && logoImage) {
+      setColorPhotos((prev) => ({ ...prev, Default: logoImage }));
+    }
     setSpecColumns((prev) => [...prev, newCol]);
     setCustomColumnName('');
     setIsAddingCustomCol(false);
@@ -221,13 +273,16 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     const col = specColumns.find((c) => c.id === colId);
     if (!col) return;
     const isColorCol = col.name.toLowerCase() === 'colors' || col.name.toLowerCase() === 'color';
-    if (isColorCol && col.values.length >= 4) {
-      alert('A maximum of 4 colors will be accepted for the products.');
+    if (isColorCol && col.values.length >= 5) {
+      alert('A maximum of 5 color specifications (Default + 4 others) will be accepted for the products.');
       return;
     }
     const val = (newValInputs[colId] || '').trim();
     if (!val) return;
-    if (col.values.includes(val)) return;
+    if (col.values.some((v) => v.toLowerCase() === val.toLowerCase())) {
+      alert(`The specification value "${val}" already exists in this column.`);
+      return;
+    }
 
     setSpecColumns((prev) =>
       prev.map((c) => {
@@ -238,30 +293,37 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       })
     );
 
-    if (isColorCol && !colorPhotos[val]) {
-      const idx = (Object.keys(colorPhotos).length + 1) % DEFAULT_PRESET_IMAGES.length;
-      setColorPhotos((prev) => ({ ...prev, [val]: DEFAULT_PRESET_IMAGES[idx] }));
-    }
-
+    // Strictly NO preset dummy image: user must upload photo for each added color variant
     setNewValInputs((prev) => ({ ...prev, [colId]: '' }));
   };
 
   const handleRemoveValueFromColumn = (colId: string, valueToRemove: string) => {
+    const col = specColumns.find((c) => c.id === colId);
+    const isColorCol = col && (col.name.toLowerCase() === 'colors' || col.name.toLowerCase() === 'color');
+    if (isColorCol && valueToRemove === 'Default') {
+      alert('The "Default" color uses the product logo photo and cannot be removed while the Colors column is active. You can delete the entire Colors column if no color variants are needed.');
+      return;
+    }
     setSpecColumns((prev) =>
-      prev.map((col) => {
-        if (col.id === colId) {
-          return { ...col, values: col.values.filter((v) => v !== valueToRemove) };
+      prev.map((c) => {
+        if (c.id === colId) {
+          return { ...c, values: c.values.filter((v) => v !== valueToRemove) };
         }
-        return col;
+        return c;
       })
     );
+    setColorPhotos((prev) => {
+      const copy = { ...prev };
+      delete copy[valueToRemove];
+      return copy;
+    });
   };
 
   const handleColorPhotoFileChange = async (colorName: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressed = await compressImageBeforeUpload(file, 1200, 1200, 0.8);
+        const compressed = await compressImageBeforeUpload(file, 900, 900, 0.75);
         setColorPhotos((prev) => ({ ...prev, [colorName]: compressed.dataUrl }));
       } catch {
         const reader = new FileReader();
@@ -304,16 +366,24 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressed = await compressImageBeforeUpload(file, 1200, 1200, 0.8);
-        if (target === 'logo') setLogoImage(compressed.dataUrl);
-        else if (target === 'fallback') setFallbackAdditionalImage(compressed.dataUrl);
+        const compressed = await compressImageBeforeUpload(file, 900, 900, 0.75);
+        if (target === 'logo') {
+          setLogoImage(compressed.dataUrl);
+          setColorPhotos((prev) => ({ ...prev, Default: compressed.dataUrl }));
+        } else if (target === 'fallback') {
+          setFallbackAdditionalImage(compressed.dataUrl);
+        }
       } catch {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
             const res = event.target.result as string;
-            if (target === 'logo') setLogoImage(res);
-            else if (target === 'fallback') setFallbackAdditionalImage(res);
+            if (target === 'logo') {
+              setLogoImage(res);
+              setColorPhotos((prev) => ({ ...prev, Default: res }));
+            } else if (target === 'fallback') {
+              setFallbackAdditionalImage(res);
+            }
           }
         };
         reader.readAsDataURL(file);
@@ -335,7 +405,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
       // Extract sizes and colors from specColumns
       const sizesCol = specColumns.find((c) => c.name.toLowerCase().includes('size'));
-      const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['S', 'M', 'L', 'XL'];
+      const uniqueSizes = sizesCol && sizesCol.values.length > 0 ? sizesCol.values : ['Standard'];
 
       const colorsColumn = specColumns.find((c) => c.name.toLowerCase() === 'colors' || c.name.toLowerCase() === 'color');
       const hasColors = Boolean(colorsColumn && colorsColumn.values.length > 0);
@@ -344,17 +414,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       let finalImages: string[] = [];
 
       if (hasColors) {
-        const validColorVals = colorsColumn!.values.slice(0, 4);
+        const validColorVals = colorsColumn!.values.slice(0, 5); // Default + 4 others = max 5
         finalColors = validColorVals.map((v) => ({
           name: v,
           hex: '#2563eb',
-          image: colorPhotos[v] || logoImage,
+          image: v === 'Default' ? logoImage : (colorPhotos[v] || logoImage),
         }));
-        const variantPhotos = validColorVals.map((v) => colorPhotos[v]).filter(Boolean);
+        const variantPhotos = validColorVals
+          .filter((v) => v !== 'Default')
+          .map((v) => colorPhotos[v])
+          .filter(Boolean);
         finalImages = [logoImage, ...variantPhotos];
       } else {
-        finalColors = [{ name: 'Standard Edition', hex: '#2563eb' }];
-        finalImages = [logoImage, fallbackAdditionalImage || DEFAULT_PRESET_IMAGES[1]];
+        finalColors = [{ name: 'Default', hex: '#2563eb', image: logoImage }];
+        finalImages = fallbackAdditionalImage ? [logoImage, fallbackAdditionalImage] : [logoImage];
       }
 
       const specStrings = specColumns.map((c) => `${c.name}: ${c.values.join(', ') || 'Standard'}`);
@@ -400,7 +473,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
+    <div 
+      data-admin-modal="true"
+      data-admin-product="true"
+      data-prevent-popunder="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
+    >
       {/* Google Forms Minimalist Card Container */}
       <div 
         className={`w-full max-w-4xl rounded-2xl shadow-2xl border flex flex-col overflow-hidden my-auto transition-all ${
@@ -781,11 +859,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                   theme === 'dark' ? 'bg-[#182b42] border-blue-500/40' : 'bg-slate-50 border-blue-400'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={logoImage} 
-                      alt="Logo preview" 
-                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl bg-slate-900 border border-slate-700 shadow-sm shrink-0"
-                    />
+                    {logoImage ? (
+                      <img 
+                        src={logoImage} 
+                        alt="Logo preview" 
+                        className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl bg-slate-900 border border-slate-700 shadow-sm shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-900/60 border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 shrink-0">
+                        <ImageIcon className="w-6 h-6 mb-1 text-slate-500" />
+                        <span className="text-[9px] font-semibold text-slate-400">No logo</span>
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-[10px] font-black uppercase text-blue-400 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
@@ -793,7 +878,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-white">Headline Product Logo / Photo</h4>
-                      <p className="text-[11px] text-slate-400">Uploaded logo serves as the primary photo across all user views.</p>
+                      <p className="text-[11px] text-slate-400">Uploaded logo serves as the primary photo across all user views and Default color variant.</p>
                     </div>
                   </div>
                   <label className="py-2 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto shrink-0 transition-colors">
@@ -923,10 +1008,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className={`w-2 h-2 rounded-full ${isColorCol ? 'bg-rose-500' : 'bg-blue-500'}`} />
                               <h5 className="text-xs font-black uppercase tracking-wider truncate">
-                                {col.name} {isColorCol && '(Max 4)'}
+                                {col.name} {isColorCol && '(Max 5)'}
                               </h5>
                               <span className="text-[10px] font-bold text-slate-400 bg-black/20 px-1.5 py-0.2 rounded-full">
-                                {col.values.length}{isColorCol && '/4'}
+                                {col.values.length}{isColorCol && '/5'}
                               </span>
                             </div>
                             <button
@@ -957,36 +1042,59 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     {isColorCol && (
-                                      <img
-                                        src={colorPhotos[val] || DEFAULT_PRESET_IMAGES[1]}
-                                        alt={val}
-                                        className="w-7 h-7 rounded-md object-cover border border-slate-600 shrink-0 bg-slate-900"
-                                      />
+                                      (colorPhotos[val] || (val === 'Default' ? logoImage : '')) ? (
+                                        <img
+                                          src={colorPhotos[val] || (val === 'Default' ? logoImage : '')}
+                                          alt={val}
+                                          className="w-7 h-7 rounded-md object-cover border border-slate-600 shrink-0 bg-slate-900"
+                                        />
+                                      ) : (
+                                        <div className="w-7 h-7 rounded-md bg-slate-800 border border-dashed border-slate-600 flex items-center justify-center text-slate-400 shrink-0 text-[9px] font-bold">
+                                          ?
+                                        </div>
+                                      )
                                     )}
-                                    <span className="truncate text-xs font-bold">{val}</span>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="truncate text-xs font-bold">{val}</span>
+                                      {isColorCol && val === 'Default' && (
+                                        <span className="text-[9px] text-blue-400 font-medium">Uses Product Logo</span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     {isColorCol && (
-                                      <label className="px-2 py-1 rounded bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 text-[10px] font-bold text-blue-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors">
-                                        <Upload className="w-2.5 h-2.5" />
-                                        <span>Photo</span>
-                                        <input
-                                          type="file"
-                                          accept="image/*"
-                                          className="hidden"
-                                          onChange={(e) => handleColorPhotoFileChange(val, e)}
-                                        />
-                                      </label>
+                                      val === 'Default' ? (
+                                        <span className="px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 text-[10px] font-bold border border-blue-500/30">
+                                          Default
+                                        </span>
+                                      ) : (
+                                        <label className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                          colorPhotos[val]
+                                            ? 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40'
+                                            : 'bg-amber-600/30 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40'
+                                        }`}>
+                                          <Upload className="w-2.5 h-2.5" />
+                                          <span>{colorPhotos[val] ? 'Photo Added' : 'Upload *'}</span>
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => handleColorPhotoFileChange(val, e)}
+                                          />
+                                        </label>
+                                      )
                                     )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveValueFromColumn(col.id, val)}
-                                      className="text-slate-400 hover:text-red-400 p-1 cursor-pointer"
-                                      title={`Remove ${val}`}
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
+                                    {(!isColorCol || val !== 'Default') && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveValueFromColumn(col.id, val)}
+                                        className="text-slate-400 hover:text-red-400 p-1 cursor-pointer"
+                                        title={`Remove ${val}`}
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               ))
@@ -997,9 +1105,9 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                           <div className={`p-2 border-t ${
                             theme === 'dark' ? 'bg-[#0e1d2e] border-slate-700/60' : 'bg-slate-50 border-slate-200'
                           }`}>
-                            {isColorCol && col.values.length >= 4 ? (
+                            {isColorCol && col.values.length >= 5 ? (
                               <div className="text-[11px] font-semibold text-amber-400 text-center py-1 bg-amber-500/10 rounded-lg">
-                                Maximum 4 colors reached
+                                Maximum 5 colors reached (Default + 4 others)
                               </div>
                             ) : (
                               <div className="flex items-center gap-1">
@@ -1041,15 +1149,22 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                     theme === 'dark' ? 'bg-[#15283e] border-amber-500/40' : 'bg-amber-50 border-amber-300'
                   }`}>
                     <div className="flex items-center gap-3">
-                      <img
-                        src={fallbackAdditionalImage}
-                        alt="Additional view"
-                        className="w-16 h-16 object-cover rounded-xl bg-slate-900 border border-slate-700 shrink-0 shadow-xs"
-                      />
+                      {fallbackAdditionalImage ? (
+                        <img
+                          src={fallbackAdditionalImage}
+                          alt="Additional view"
+                          className="w-16 h-16 object-cover rounded-xl bg-slate-900 border border-slate-700 shrink-0 shadow-xs"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-slate-900/60 border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 shrink-0">
+                          <ImageIcon className="w-5 h-5 mb-1 text-slate-500" />
+                          <span className="text-[9px] font-semibold text-slate-400">Optional</span>
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                            Required Visual
+                            Optional Secondary Photo
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-white">

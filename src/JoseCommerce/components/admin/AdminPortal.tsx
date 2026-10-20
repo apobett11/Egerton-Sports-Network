@@ -147,7 +147,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   ];
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors relative ${
+    <div 
+      data-admin-modal="true"
+      data-admin-product="true"
+      data-prevent-popunder="true"
+      className={`min-h-screen flex flex-col font-sans transition-colors relative ${
       theme === 'dark' ? 'bg-[#0a1420] text-slate-100' : 'bg-slate-50 text-slate-900'
     }`}>
       {/* GLOBAL VISIBLE TOAST NOTIFICATION CONTAINER (Fixed & highly visible in current window) */}

@@ -91,7 +91,21 @@ export const TransitionVignetteManager: React.FC = () => {
       window.dispatchEvent(new CustomEvent('esn_refresh_inpage_push'));
     };
 
+    const isAdminActive = (): boolean => {
+      if (typeof document === 'undefined') return false;
+      if (document.body.getAttribute('data-admin-product-active') === 'true') return true;
+      if (document.querySelector('[data-admin-modal="true"], [data-admin-product="true"]')) return true;
+      if (sessionStorage.getItem('egerscore_store_current_admin') || localStorage.getItem('egerscore_store_current_admin')) return true;
+      if (typeof window !== 'undefined' && (window.location.hash.includes('admin') || window.location.pathname.includes('admin'))) return true;
+      return false;
+    };
+
     const firePacedVignette = (force: boolean = false) => {
+      if (isAdminActive()) {
+        autoDismissVignette();
+        return false;
+      }
+
       const now = Date.now();
       const lastFired = parseInt(sessionStorage.getItem(LAST_VIGNETTE_TIME_KEY) || '0', 10);
 

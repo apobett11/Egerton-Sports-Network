@@ -52,7 +52,7 @@ export function getOptimizedImageUrl(
   if (isStoragePath) {
     if (isSupabaseConfigured) {
       const { data } = supabase.storage
-        .from('product-catalog')
+        .from('product-images')
         .getPublicUrl(imagePathOrUrl, {
           transform: {
             width,
@@ -159,9 +159,9 @@ export interface CompressedImageResult {
  */
 export async function compressImageBeforeUpload(
   file: File,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.8
+  maxWidth = 900,
+  maxHeight = 900,
+  quality = 0.75
 ): Promise<CompressedImageResult> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {

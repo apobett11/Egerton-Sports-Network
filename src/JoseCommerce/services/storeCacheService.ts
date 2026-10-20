@@ -68,14 +68,48 @@ export function getCachedCatalog(): Product[] {
   return MOCK_PRODUCTS;
 }
 
+function sanitizeProductForCache(p: Product): Product {
+  // Strip heavy base64 data URIs if any exist to prevent localStorage quota exhaustion
+  const cleanImages = (p.images || []).map((img) =>
+    img.startsWith('data:') ? 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80' : img
+  );
+  const cleanColors = (p.colors || []).map((c) => ({
+    ...c,
+    image: c.image && c.image.startsWith('data:') ? undefined : c.image,
+  }));
+  return {
+    ...p,
+    images: cleanImages,
+    colors: cleanColors,
+  };
+}
+
 /**
  * Updates persistent catalog cache (e.g. when an admin adds/edits products or modifies stock)
  */
 export function setCachedCatalog(products: Product[]): void {
   try {
-    const serialized = JSON.stringify(products);
-    localStorage.setItem(STORAGE_KEY_CATALOG, serialized);
-    sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+    const sanitized = products.map(sanitizeProductForCache);
+    const serialized = JSON.stringify(sanitized);
+
+    try {
+      localStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+    } catch {
+      // If localStorage quota exceeded, gracefully store a capped subset
+      try {
+        const compactSerialized = JSON.stringify(sanitized.slice(0, 40));
+        localStorage.setItem(STORAGE_KEY_CATALOG, compactSerialized);
+      } catch {
+        // Safe fallback: persist in sessionStorage
+        try {
+          sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+        } catch {}
+      }
+    }
+
+    try {
+      sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
+    } catch {}
 
     updateCacheMeta({
       catalogCount: products.length,
@@ -83,7 +117,8 @@ export function setCachedCatalog(products: Product[]): void {
 
     window.dispatchEvent(new CustomEvent('esn_store_catalog_updated', { detail: products }));
   } catch (err) {
-    console.warn('[StoreCache] Failed to write catalog to cache', err);
+    console.warn('[StoreCache] Safely bypassed catalog cache write', err);
+    window.dispatchEvent(new CustomEvent('esn_store_catalog_updated', { detail: products }));
   }
 }
 

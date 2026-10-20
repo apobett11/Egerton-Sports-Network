@@ -26,7 +26,7 @@ import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './servi
 
 import { CATEGORIES } from './data/categories';
 import { normalizeCategorySlug } from './services/productIdService';
-import { syncCatalogFromDatabase } from './services/productService';
+import { syncCatalogFromDatabase, fetchProductById } from './services/productService';
 import { MOCK_PRODUCTS } from './data/mockProducts';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { getStoredOrders, addNewStoredOrder, MOCK_CARTS_ANALYTICS } from './data/mockOrders';
@@ -209,6 +209,51 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     };
     window.addEventListener('esn_store_catalog_updated', handleCatalogUpdate);
     return () => window.removeEventListener('esn_store_catalog_updated', handleCatalogUpdate);
+  }, []);
+
+  // Request complete details, all photos, and variants when opening product card or quick add modal
+  const handleOpenProductDetails = (product: Product, fromCategoryView?: boolean) => {
+    if (fromCategoryView) {
+      setPreviousView('category');
+    }
+    setSelectedProduct(product);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const targetId = product.id || product.uid || product.sku;
+    if (targetId) {
+      fetchProductById(targetId).then((fullProd) => {
+        if (fullProd) {
+          setSelectedProduct((curr) => (curr && (curr.id === fullProd.id || curr.uid === fullProd.uid) ? fullProd : curr));
+        }
+      });
+    }
+  };
+
+  const handleOpenProductSpecs = (product: Product) => {
+    setSpecsModalProduct(product);
+
+    const targetId = product.id || product.uid || product.sku;
+    if (targetId) {
+      fetchProductById(targetId).then((fullProd) => {
+        if (fullProd) {
+          setSpecsModalProduct((curr) => (curr && (curr.id === fullProd.id || curr.uid === fullProd.uid) ? fullProd : curr));
+        }
+      });
+    }
+  };
+
+  // Hydrate full photos for persisted product view on initial load
+  useEffect(() => {
+    if (persistedNav.selectedProductId) {
+      fetchProductById(persistedNav.selectedProductId).then((fullProd) => {
+        if (fullProd) setSelectedProduct(fullProd);
+      });
+    }
+    if (persistedNav.specsModalProductId) {
+      fetchProductById(persistedNav.specsModalProductId).then((fullProd) => {
+        if (fullProd) setSpecsModalProduct(fullProd);
+      });
+    }
   }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -1326,14 +1371,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             onSelectCategory={(newSlug) => {
               setSelectedCategorySlug(newSlug);
             }}
-            onOpenDetails={(product) => {
-              setPreviousView('category');
-              setSelectedProduct(product);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onQuickAdd={(product) => {
-              setSpecsModalProduct(product);
-            }}
+            onOpenDetails={(product) => handleOpenProductDetails(product, true)}
+            onQuickAdd={handleOpenProductSpecs}
             addedProductIds={cartedProductIds}
             onBack={handleBack}
             theme={theme}
@@ -1365,13 +1404,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         {/* 3. What's New Section: max 6 products, 20% smaller cards, full light navy background in dark mode */}
         <WhatsNewSection
           products={whatsNewProducts}
-          onOpenDetails={(product) => {
-            setSelectedProduct(product);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onQuickAdd={(product) => {
-            setSpecsModalProduct(product);
-          }}
+          onOpenDetails={(product) => handleOpenProductDetails(product)}
+          onQuickAdd={handleOpenProductSpecs}
           onViewAllLatest={() => {
             handleFilterChange({ sortBy: 'latest', category: 'all' });
             document.getElementById('all-products-catalog')?.scrollIntoView({ behavior: 'smooth' });
@@ -1387,13 +1421,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           filters={filters}
           onFilterChange={handleFilterChange}
           onResetFilters={handleResetFilters}
-          onOpenDetails={(product) => {
-            setSelectedProduct(product);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onQuickAdd={(product) => {
-            setSpecsModalProduct(product);
-          }}
+          onOpenDetails={(product) => handleOpenProductDetails(product)}
+          onQuickAdd={handleOpenProductSpecs}
           addedProductIds={cartedProductIds}
           theme={theme}
           searchQuery={filters.searchQuery}

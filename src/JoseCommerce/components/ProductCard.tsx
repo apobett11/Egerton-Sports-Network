@@ -2,7 +2,6 @@ import React from 'react';
 import { Star, ShoppingCart, Check, Users, User, Flame } from 'lucide-react';
 import { Product } from '../types';
 import { OptimizedImage } from './OptimizedImage';
-import { preloadAlternatePhotos } from '../lib/imageService';
 
 export interface ProductCardProps {
   product: Product;
@@ -24,13 +23,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     onQuickAdd(product);
   };
 
-  // Prefetch photos 2, 3, 4 into cache on hover
-  const handleMouseEnter = () => {
-    if (product.images && product.images.length > 1) {
-      preloadAlternatePhotos(product.images);
-    }
-  };
-
   const formattedPrice = new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: 'KES',
@@ -48,7 +40,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div
       onClick={() => onOpenDetails(product)}
-      onMouseEnter={handleMouseEnter}
       className="group relative flex flex-col justify-between h-full bg-white rounded-xl border border-slate-200/90 hover:border-slate-300 p-2 sm:p-2.5 transition-all duration-200 hover:shadow-md cursor-pointer select-none product-card-hover"
     >
       {/* Top Media & Tags */}

@@ -72,10 +72,17 @@ const CATEGORY_UUIDS: Record<string, string> = {
  * Maps database relation row to frontend Product type.
  * Ensures UUID is preserved in 'uid', and Product ID (e.g. IK-10001) is in 'id' & 'sku'.
  */
-function mapDatabaseProduct(row: any): Product {
-  const images = (row.product_images || [])
+function mapDatabaseProduct(row: any, listingOnly = false): Product {
+  const allImages = (row.product_images || [])
     .sort((a: any, b: any) => a.display_order - b.display_order)
     .map((img: any) => img.image_path);
+
+  const primaryImg = (row.product_images || []).find((img: any) => img.is_primary)?.image_path
+    || allImages[0]
+    || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80';
+
+  // For listings: only requested card info and the logo photo
+  const images = listingOnly ? [primaryImg] : (allImages.length > 0 ? allImages : [primaryImg]);
 
   const productIdentifier = row.sku || row.id;
   const categorySlug = normalizeCategorySlug(row.categories?.slug || row.category_id || 'kit');
@@ -95,8 +102,8 @@ function mapDatabaseProduct(row: any): Product {
     originalPrice: row.original_price ? Number(row.original_price) : undefined,
     rating: Number(row.rating || 5.0),
     reviewCount: Number(row.review_count || 0),
-    images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80'],
-    productImages: row.product_images?.map((img: any) => ({
+    images,
+    productImages: listingOnly ? undefined : row.product_images?.map((img: any) => ({
       id: img.id,
       productId: img.product_id,
       imagePath: img.image_path,
@@ -321,7 +328,7 @@ export async function syncCatalogFromDatabase(): Promise<Product[]> {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        const mappedProducts = data.map(mapDatabaseProduct);
+        const mappedProducts = data.map((item) => mapDatabaseProduct(item, true));
         setCachedCatalog(mappedProducts);
         return mappedProducts;
       }
@@ -532,7 +539,7 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
       const { data, count, error } = await query;
 
       if (!error && data) {
-        const mappedProducts = data.map(mapDatabaseProduct);
+        const mappedProducts = data.map((item) => mapDatabaseProduct(item, true));
         return {
           products: mappedProducts,
           totalCount: count || mappedProducts.length,
@@ -673,14 +680,9 @@ function filterAndPaginateProducts(
 }
 
 /**
- * Single product fetch by ID to avoid heavy catalog transfers.
+ * Single product fetch by ID to load complete details, all photos and variants.
  */
 export async function fetchProductById(productId: string): Promise<Product | null> {
-  const cachedItem = getCachedCatalog().find((p) => p.id === productId || p.uid === productId || p.sku === productId);
-  if (cachedItem) {
-    return cachedItem;
-  }
-
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
@@ -695,11 +697,16 @@ export async function fetchProductById(productId: string): Promise<Product | nul
         .single();
 
       if (!error && data) {
-        return mapDatabaseProduct(data);
+        return mapDatabaseProduct(data, false);
       }
     } catch (err) {
       console.warn('Fallback for fetchProductById', err);
     }
+  }
+
+  const cachedItem = getCachedCatalog().find((p) => p.id === productId || p.uid === productId || p.sku === productId);
+  if (cachedItem) {
+    return cachedItem;
   }
 
   const found = MOCK_PRODUCTS.find((p) => p.id === productId || p.sku === productId);
