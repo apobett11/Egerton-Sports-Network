@@ -61,11 +61,39 @@ function deviceCookiePlugin() {
   }
 }
 
+function adminApiPlugin() {
+  return {
+    name: 'esn-admin-api',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use('/api/admin/products', async (req, res) => {
+        try {
+          const { default: handler } = await import('./api/admin/products.ts')
+          const chunks: Buffer[] = []
+          req.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+          req.on('end', async () => {
+            try {
+              const rawBody = Buffer.concat(chunks).toString('utf8')
+              ;(req as any).body = rawBody ? JSON.parse(rawBody) : {}
+            } catch {
+              ;(req as any).body = {}
+            }
+            await handler(req, res)
+          })
+        } catch (err: any) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: err?.message || 'Server error' }))
+        }
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     deviceCookiePlugin(),
+    adminApiPlugin(),
   ],
 })

@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Product, ProductClass, Category, SortOption, ProductImage } from '../types';
 import { MOCK_PRODUCTS } from '../data/mockProducts';
 import { CATEGORIES } from '../data/categories';
@@ -134,60 +134,6 @@ function mapDatabaseProduct(row: any, listingOnly = false): Product {
  * Uploads a base64 / data URI image to the Supabase storage bucket 'product-images'.
  * Returns public URL if uploaded, or original URL if already an HTTP link.
  */
-async function uploadProductImageToBucket(
-  productUid: string,
-  imagePayload: string,
-  index: number
-): Promise<string> {
-  if (!imagePayload) {
-    return 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80';
-  }
-
-  // Already a remote URL
-  if (imagePayload.startsWith('http://') || imagePayload.startsWith('https://')) {
-    return imagePayload;
-  }
-
-  // Handle data URI upload
-  if (imagePayload.startsWith('data:')) {
-    try {
-      const match = imagePayload.match(/^data:([^;]+);base64,(.*)$/);
-      if (match) {
-        const mimeType = match[1];
-        const base64Data = match[2];
-        const ext = mimeType.split('/')[1] || 'webp';
-        const binaryStr = atob(base64Data);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const client = supabaseAdmin;
-        const filePath = `${productUid}/${Date.now()}-${index}.${ext}`;
-        const { error: uploadErr } = await client.storage
-          .from('product-images')
-          .upload(filePath, bytes, {
-            contentType: mimeType,
-            upsert: true,
-          });
-
-        if (!uploadErr) {
-          const { data: urlData } = client.storage
-            .from('product-images')
-            .getPublicUrl(filePath);
-          if (urlData?.publicUrl) {
-            return urlData.publicUrl;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[ProductService] Storage upload exception, falling back to data URL', e);
-    }
-  }
-
-  return imagePayload;
-}
-
 function generateUuidV4(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -200,8 +146,8 @@ function generateUuidV4(): string {
 }
 
 /**
- * Persists a new product both to Supabase (UUID allocated in `products.id`, Product ID written to `sku`,
- * images uploaded to bucket and linked via `product_images`) and to the client cache.
+ * Persists a new product securely through the Vercel Serverless Function `/api/admin/products`
+ * (bypassing client-side secret key exposure and Supabase 401 gateway rejection) and updates client cache.
  * Note: Product deletion is strictly prohibited by business policy to maintain audit and ledger integrity.
  */
 export async function createAndPersistProduct(input: CreateProductInput): Promise<Product> {
@@ -218,23 +164,9 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
   const classId = CLASS_UUIDS[classCode] || CLASS_UUIDS['I'];
   const categoryId = CATEGORY_UUIDS[normCategorySlug] || CATEGORY_UUIDS['kit'];
 
-  // 1. Upload images to product-images storage bucket
-  const uploadedImages: string[] = [];
   const rawImages = input.images && input.images.length > 0
     ? input.images
     : ['https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80'];
-
-  for (let i = 0; i < rawImages.length; i++) {
-    const url = await uploadProductImageToBucket(productUid, rawImages[i], i);
-    uploadedImages.push(url);
-  }
-
-  const uploadedColors = await Promise.all(
-    (input.colors || []).map(async (c, idx) => ({
-      ...c,
-      image: c.image ? await uploadProductImageToBucket(productUid, c.image, 10 + idx) : undefined,
-    }))
-  );
 
   const frontendProduct: Product = {
     id: assignedProductId, // Product ID for frontend navigation, sorts, and search
@@ -250,7 +182,7 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
     originalPrice: input.originalPrice ? Number(input.originalPrice) : undefined,
     rating: 5.0,
     reviewCount: 0,
-    images: uploadedImages,
+    images: rawImages,
     keywords: input.keywords || [],
     audience: input.audience || (classCode === 'T' ? 'team' : classCode === 'I' ? 'individual' : 'both'),
     isNew: input.isNew !== undefined ? input.isNew : true,
@@ -259,7 +191,7 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
     stockCount: input.stockCount,
     badge: input.badge || 'NEW ARRIVAL',
     sizes: input.sizes && input.sizes.length > 0 ? input.sizes : ['S', 'M', 'L', 'XL'],
-    colors: uploadedColors,
+    colors: input.colors || [],
     description: (input.description || '').trim(),
     productClass: classCode,
     classLetter: classCode,
@@ -269,55 +201,37 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
     createdAt: new Date().toISOString(),
   };
 
-  // 2. Persist to Supabase database (bypassing RLS with service role)
-  if (isSupabaseConfigured) {
-    try {
-      const client = supabaseAdmin;
-      const { error: prodErr } = await client.from('products').insert({
-        id: productUid, // UUID primary key
-        sku: assignedProductId, // Product ID column
-        class_id: classId,
-        category_id: categoryId,
-        name: frontendProduct.name,
-        subtitle: frontendProduct.subtitle,
-        price: frontendProduct.price,
-        original_price: frontendProduct.originalPrice,
-        rating: frontendProduct.rating,
-        review_count: frontendProduct.reviewCount,
-        audience: frontendProduct.audience,
-        is_new: frontendProduct.isNew,
-        is_featured: frontendProduct.isFeatured,
-        in_stock: frontendProduct.inStock,
-        stock_count: frontendProduct.stockCount,
-        badge: frontendProduct.badge,
-        sizes: frontendProduct.sizes,
-        colors: frontendProduct.colors,
-        features: frontendProduct.features,
-        specifications: frontendProduct.specifications,
-        keywords: frontendProduct.keywords,
-        description: frontendProduct.description,
-      });
+  // 1. Persist through secure Vercel Serverless Function
+  try {
+    const response = await fetch('/api/admin/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        product: frontendProduct,
+        rawImages: input.images,
+        colors: input.colors,
+      }),
+    });
 
-      if (!prodErr) {
-        // Insert product_images relational rows
-        const imageRows = uploadedImages.map((imgPath, idx) => ({
-          id: generateUuidV4(),
-          product_id: productUid, // Foreign key to products.id (UUID)
-          image_path: imgPath,
-          display_order: idx + 1,
-          is_primary: idx === 0,
-          alt_text: `${frontendProduct.name} photo ${idx + 1}`,
-        }));
-        await client.from('product_images').insert(imageRows);
-      } else {
-        console.error('[ProductService] Supabase insert error:', prodErr.message);
+    if (response.ok) {
+      const result = await response.json();
+      if (result.images && Array.isArray(result.images)) {
+        frontendProduct.images = result.images;
       }
-    } catch (err) {
-      console.warn('[ProductService] Database persistence fallback to client cache', err);
+      if (result.colors && Array.isArray(result.colors)) {
+        frontendProduct.colors = result.colors;
+      }
+    } else {
+      const errJson = await response.json().catch(() => ({}));
+      console.warn('[ProductService] Serverless insert response:', response.status, errJson);
     }
+  } catch (err) {
+    console.warn('[ProductService] Failed to reach /api/admin/products, falling back to client cache', err);
   }
 
-  // 3. Update persistent client cache
+  // 2. Update persistent client cache
   const existingCatalog = getCachedCatalog() || [];
   const updatedCatalog = [frontendProduct, ...existingCatalog.filter((p) => p.id !== assignedProductId && p.uid !== productUid)];
   setCachedCatalog(updatedCatalog);

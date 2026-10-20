@@ -97,10 +97,9 @@ export const TransitionVignetteManager: React.FC = () => {
 
     const isAdminActive = (): boolean => {
       if (typeof document === 'undefined') return false;
+      // Only suppress when the Add Product modal is explicitly active
       if (document.body.getAttribute('data-admin-product-active') === 'true') return true;
       if (document.querySelector('[data-admin-modal="true"], [data-admin-product="true"]')) return true;
-      if (sessionStorage.getItem('egerscore_store_current_admin') || localStorage.getItem('egerscore_store_current_admin')) return true;
-      if (typeof window !== 'undefined' && (window.location.hash.includes('admin') || window.location.pathname.includes('admin'))) return true;
       return false;
     };
 
