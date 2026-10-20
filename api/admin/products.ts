@@ -31,12 +31,27 @@ function generateUuidV4(): string {
   });
 }
 
+// In-flight dedup lock and recent success cache to prevent accidental double writes from network lags or double clicks
+const inFlightOperations = new Map<string, Promise<any>>();
+const recentOperations = new Map<string, { timestamp: number; result: any }>();
+
+function cleanStaleOperations() {
+  const cutoff = Date.now() - 30000; // 30 seconds idempotency window
+  for (const [key, val] of recentOperations.entries()) {
+    if (val.timestamp < cutoff) {
+      recentOperations.delete(key);
+    }
+  }
+}
+
 /**
  * Uploads a base64 / data URI image to the Supabase storage bucket 'product-images' on the server.
+ * Skips HTTP URLs and lightweight SVG vectors to keep uploads fast and memory usage minimal.
  */
 async function uploadBase64ToStorage(productUid: string, imagePayload: string, index: number): Promise<string> {
   if (!imagePayload) return imagePayload;
   if (imagePayload.startsWith('http://') || imagePayload.startsWith('https://')) return imagePayload;
+  if (imagePayload.startsWith('data:image/svg+xml')) return imagePayload;
   if (!imagePayload.startsWith('data:')) return imagePayload;
 
   try {
@@ -72,6 +87,86 @@ async function uploadBase64ToStorage(productUid: string, imagePayload: string, i
   }
 }
 
+async function executeSingleProductWrite(body: any): Promise<any> {
+  const incomingProduct = body.product || body;
+  const rawImages: string[] = Array.isArray(body.rawImages) 
+    ? body.rawImages 
+    : (Array.isArray(incomingProduct.images) ? incomingProduct.images : []);
+  const rawColors: any[] = Array.isArray(body.colors) 
+    ? body.colors 
+    : (Array.isArray(incomingProduct.colors) ? incomingProduct.colors : []);
+
+  const productUid = incomingProduct.uid || incomingProduct.id || generateUuidV4();
+  const productSku = incomingProduct.sku || incomingProduct.id || 'IK-10001';
+
+  // 1. Process and upload any base64 images concurrently to optimize execution time
+  const [resolvedImages, resolvedColors] = await Promise.all([
+    Promise.all(rawImages.map((img, idx) => uploadBase64ToStorage(productUid, img, idx))),
+    Promise.all(rawColors.map(async (c: any, idx: number) => ({
+      ...c,
+      image: c.image ? await uploadBase64ToStorage(productUid, c.image, 10 + idx) : undefined,
+    }))),
+  ]);
+
+  // 2. Prepare database product row
+  const dbRow = {
+    id: productUid,
+    sku: productSku,
+    class_id: incomingProduct.class_id || incomingProduct.classId || '6b1fd8b2-89a9-4c1f-851d-0e224012dc7c',
+    category_id: incomingProduct.category_id || incomingProduct.categoryId || '5ba081b1-9d76-45c9-8feb-62f8a31e7b00',
+    name: incomingProduct.name,
+    subtitle: incomingProduct.subtitle || '',
+    price: Number(incomingProduct.price),
+    original_price: incomingProduct.original_price ?? incomingProduct.originalPrice ?? null,
+    rating: incomingProduct.rating ? Number(incomingProduct.rating) : 5.0,
+    review_count: incomingProduct.review_count ?? incomingProduct.reviewCount ?? 0,
+    audience: incomingProduct.audience || 'both',
+    is_new: incomingProduct.is_new ?? incomingProduct.isNew ?? true,
+    is_featured: incomingProduct.is_featured ?? incomingProduct.isFeatured ?? false,
+    in_stock: incomingProduct.in_stock ?? incomingProduct.inStock ?? true,
+    stock_count: Number(incomingProduct.stock_count ?? incomingProduct.stockCount ?? 20),
+    badge: incomingProduct.badge || 'NEW ARRIVAL',
+    sizes: incomingProduct.sizes || ['M', 'L', 'XL'],
+    colors: resolvedColors.length > 0 ? resolvedColors : incomingProduct.colors || [],
+    features: incomingProduct.features || [],
+    specifications: incomingProduct.specifications || {},
+    keywords: incomingProduct.keywords || [],
+    description: incomingProduct.description || '',
+  };
+
+  // 3. Upsert product into Supabase bypassing RLS via server-side client with idempotency
+  const { data: insertedProduct, error: insertError } = await supabaseAdmin
+    .from('products')
+    .upsert(dbRow, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+
+  // 4. Upsert product_images relational rows safely (clear any existing images for this product ID first)
+  if (resolvedImages.length > 0) {
+    await supabaseAdmin.from('product_images').delete().eq('product_id', productUid);
+    const imageRows = resolvedImages.map((imgPath, idx) => ({
+      id: generateUuidV4(),
+      product_id: productUid,
+      image_path: imgPath,
+      display_order: idx + 1,
+      is_primary: idx === 0,
+      alt_text: `${incomingProduct.name} photo ${idx + 1}`,
+    }));
+    await supabaseAdmin.from('product_images').insert(imageRows);
+  }
+
+  return {
+    success: true,
+    product: insertedProduct,
+    images: resolvedImages,
+    colors: resolvedColors,
+  };
+}
+
 export default async function handler(req: any, res: any) {
   // Set CORS headers for security and preflight
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -90,6 +185,8 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    cleanStaleOperations();
+
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -105,88 +202,50 @@ export default async function handler(req: any, res: any) {
       return res.end(JSON.stringify({ error: 'Invalid product payload provided.' }));
     }
 
-    // Support both direct product insertion and structured CreateProductInput payload
     const incomingProduct = body.product || body;
-    const rawImages = Array.isArray(body.rawImages) ? body.rawImages : (Array.isArray(incomingProduct.images) ? incomingProduct.images : []);
-    const rawColors = Array.isArray(body.colors) ? body.colors : (Array.isArray(incomingProduct.colors) ? incomingProduct.colors : []);
+    const productUid = incomingProduct.uid || incomingProduct.id;
 
-    const productUid = incomingProduct.uid || incomingProduct.id || generateUuidV4();
-    const productSku = incomingProduct.sku || incomingProduct.id || 'IK-10001';
-
-    // 1. Process and upload any base64 images server-side
-    const resolvedImages: string[] = [];
-    for (let i = 0; i < rawImages.length; i++) {
-      const url = await uploadBase64ToStorage(productUid, rawImages[i], i);
-      resolvedImages.push(url);
+    // Idempotency check: if this exact product submission completed recently, return the cached result
+    if (productUid && recentOperations.has(productUid)) {
+      const cached = recentOperations.get(productUid)!;
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify(cached.result));
     }
 
-    const resolvedColors = await Promise.all(
-      rawColors.map(async (c: any, idx: number) => ({
-        ...c,
-        image: c.image ? await uploadBase64ToStorage(productUid, c.image, 10 + idx) : undefined,
-      }))
-    );
-
-    // 2. Prepare database product row
-    const dbRow = {
-      id: productUid,
-      sku: productSku,
-      class_id: incomingProduct.class_id || incomingProduct.classId || '6b1fd8b2-89a9-4c1f-851d-0e224012dc7c',
-      category_id: incomingProduct.category_id || incomingProduct.categoryId || '5ba081b1-9d76-45c9-8feb-62f8a31e7b00',
-      name: incomingProduct.name,
-      subtitle: incomingProduct.subtitle || '',
-      price: Number(incomingProduct.price),
-      original_price: incomingProduct.original_price ?? incomingProduct.originalPrice ?? null,
-      rating: incomingProduct.rating ? Number(incomingProduct.rating) : 5.0,
-      review_count: incomingProduct.review_count ?? incomingProduct.reviewCount ?? 0,
-      audience: incomingProduct.audience || 'both',
-      is_new: incomingProduct.is_new ?? incomingProduct.isNew ?? true,
-      is_featured: incomingProduct.is_featured ?? incomingProduct.isFeatured ?? false,
-      in_stock: incomingProduct.in_stock ?? incomingProduct.inStock ?? true,
-      stock_count: Number(incomingProduct.stock_count ?? incomingProduct.stockCount ?? 20),
-      badge: incomingProduct.badge || 'NEW ARRIVAL',
-      sizes: incomingProduct.sizes || ['M', 'L', 'XL'],
-      colors: resolvedColors.length > 0 ? resolvedColors : incomingProduct.colors || [],
-      features: incomingProduct.features || [],
-      specifications: incomingProduct.specifications || {},
-      keywords: incomingProduct.keywords || [],
-      description: incomingProduct.description || '',
-    };
-
-    // 3. Insert product into Supabase bypassing RLS via server-side client
-    const { data: insertedProduct, error: insertError } = await supabaseAdmin
-      .from('products')
-      .insert(dbRow)
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('[API/admin/products] Database insert error:', insertError.message);
-      res.statusCode = 500;
-      return res.end(JSON.stringify({ error: insertError.message }));
+    // In-flight dedup: if another request for the exact same product UID is currently writing, await it
+    if (productUid && inFlightOperations.has(productUid)) {
+      try {
+        const sharedResult = await inFlightOperations.get(productUid);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify(sharedResult));
+      } catch (err: any) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: err?.message || 'In-flight operation failed' }));
+      }
     }
 
-    // 4. Insert product_images relational rows
-    if (resolvedImages.length > 0) {
-      const imageRows = resolvedImages.map((imgPath, idx) => ({
-        id: generateUuidV4(),
-        product_id: productUid,
-        image_path: imgPath,
-        display_order: idx + 1,
-        is_primary: idx === 0,
-        alt_text: `${incomingProduct.name} photo ${idx + 1}`,
-      }));
-      await supabaseAdmin.from('product_images').insert(imageRows);
+    // Launch single product write promise and register in-flight lock
+    const writePromise = executeSingleProductWrite(body);
+    if (productUid) {
+      inFlightOperations.set(productUid, writePromise);
     }
 
-    res.statusCode = 201;
-    res.setHeader('Content-Type', 'application/json');
-    return res.end(JSON.stringify({
-      success: true,
-      product: insertedProduct,
-      images: resolvedImages,
-      colors: resolvedColors,
-    }));
+    try {
+      const result = await writePromise;
+      if (productUid) {
+        recentOperations.set(productUid, { timestamp: Date.now(), result });
+      }
+      res.statusCode = 201;
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify(result));
+    } finally {
+      if (productUid) {
+        inFlightOperations.delete(productUid);
+      }
+    }
   } catch (err: any) {
     console.error('[API/admin/products] Server error:', err);
     res.statusCode = 500;

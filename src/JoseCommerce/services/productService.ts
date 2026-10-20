@@ -144,11 +144,152 @@ function generateUuidV4(): string {
 }
 
 /**
- * Persists a new product securely through the Vercel Serverless Function `/api/admin/products`
- * (bypassing client-side secret key exposure and Supabase 401 gateway rejection) and updates client cache.
- * Note: Product deletion is strictly prohibited by business policy to maintain audit and ledger integrity.
+ * Asynchronous Worker Queue for Non-Blocking Product Writes
+ * Ensures that product creation is instant on the frontend, memory-efficient,
+ * and completely guarded against accidental double clicks and network lags.
  */
-export async function createAndPersistProduct(input: CreateProductInput): Promise<Product> {
+export interface QueuedProductWrite {
+  product: Product;
+  rawImages?: string[];
+  colors?: any[];
+}
+
+const writeQueue: QueuedProductWrite[] = [];
+const inFlightClientWrites = new Set<string>();
+const recentClientWrites = new Set<string>();
+let activeWorkersCount = 0;
+const MAX_CONCURRENT_WRITES = 2; // Keeps memory consumption minimal during bulk writes
+const drainListeners: (() => void)[] = [];
+
+export function isWriteQueueIdle(): boolean {
+  return writeQueue.length === 0 && activeWorkersCount === 0;
+}
+
+export function waitForPendingWrites(): Promise<void> {
+  if (isWriteQueueIdle()) return Promise.resolve();
+  return new Promise((resolve) => {
+    drainListeners.push(resolve);
+  });
+}
+
+function notifyDrainListenersIfIdle() {
+  if (isWriteQueueIdle()) {
+    while (drainListeners.length > 0) {
+      const listener = drainListeners.shift();
+      if (listener) listener();
+    }
+  }
+}
+
+async function processNextQueueItem() {
+  if (writeQueue.length === 0 || activeWorkersCount >= MAX_CONCURRENT_WRITES) {
+    notifyDrainListenersIfIdle();
+    return;
+  }
+
+  activeWorkersCount++;
+  const item = writeQueue.shift()!;
+  const uid = item.product.uid || item.product.id;
+
+  try {
+    inFlightClientWrites.add(uid);
+
+    // 1. Attempt Vercel serverless / Vite dev middleware persistence
+    let persistedViaServerless = false;
+    try {
+      const response = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          product: item.product,
+          rawImages: item.rawImages,
+          colors: item.colors,
+        }),
+      });
+
+      if (response.ok) {
+        persistedViaServerless = true;
+      }
+    } catch {
+      // Serverless endpoint unavailable; proceed to direct client fallback
+    }
+
+    // 2. Direct Supabase client fallback if serverless was not used
+    if (!persistedViaServerless && isSupabaseConfigured) {
+      try {
+        const dbRow = {
+          id: item.product.uid,
+          sku: item.product.sku || item.product.id,
+          class_id: item.product.classId,
+          category_id: item.product.categoryId,
+          name: item.product.name,
+          subtitle: item.product.subtitle || '',
+          price: Number(item.product.price),
+          original_price: item.product.originalPrice ? Number(item.product.originalPrice) : null,
+          rating: Number(item.product.rating || 5.0),
+          review_count: Number(item.product.reviewCount || 0),
+          audience: item.product.audience || 'both',
+          is_new: Boolean(item.product.isNew),
+          is_featured: Boolean(item.product.isFeatured),
+          in_stock: Boolean(item.product.inStock),
+          stock_count: Number(item.product.stockCount || 0),
+          badge: item.product.badge || 'NEW ARRIVAL',
+          sizes: item.product.sizes || ['M', 'L', 'XL'],
+          colors: item.product.colors || [],
+          features: item.product.features || [],
+          specifications: item.product.specifications || {},
+          keywords: item.product.keywords || [],
+          description: item.product.description || '',
+        };
+
+        await supabase
+          .from('products')
+          .upsert(dbRow, { onConflict: 'id' });
+      } catch (dbErr) {
+        console.warn('[ProductService] Fallback database write error:', dbErr);
+      }
+    }
+  } finally {
+    inFlightClientWrites.delete(uid);
+    // Explicitly release memory references to large payload strings
+    item.rawImages = undefined;
+    item.colors = undefined;
+
+    activeWorkersCount--;
+    // Continue processing remaining items in queue
+    processNextQueueItem();
+  }
+}
+
+/**
+ * Enqueues a product write in the background worker queue.
+ * Strictly prevents accidental double writes from double clicks or network retries.
+ */
+export function enqueueProductWrite(item: QueuedProductWrite): void {
+  const uid = item.product.uid || item.product.id;
+
+  // Accidental double clicks / network lag prevention:
+  // If this product was already queued or written in this session within 30s, ignore duplicate write
+  if (inFlightClientWrites.has(uid) || recentClientWrites.has(uid)) {
+    return;
+  }
+
+  recentClientWrites.add(uid);
+  setTimeout(() => {
+    recentClientWrites.delete(uid);
+  }, 30000);
+
+  writeQueue.push(item);
+  processNextQueueItem();
+}
+
+/**
+ * Creates a product optimistically: verifies and builds product in frontend,
+ * updates persistent cache, gives instant success, and delegates database write asynchronously.
+ */
+export function createProductOptimistic(input: CreateProductInput): Product {
   const normCategorySlug = normalizeCategorySlug(input.categorySlug);
   const codes = resolveClassAndCategoryCodes(normCategorySlug, input.productClass);
   const classCode = codes.classCode; // Strictly 'I', 'T', 'C', 'O'
@@ -199,42 +340,26 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
     createdAt: new Date().toISOString(),
   };
 
-  // 1. Persist through secure Vercel Serverless Function
-  try {
-    const response = await fetch('/api/admin/products', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        product: frontendProduct,
-        rawImages: input.images,
-        colors: input.colors,
-      }),
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      if (result.images && Array.isArray(result.images)) {
-        frontendProduct.images = result.images;
-      }
-      if (result.colors && Array.isArray(result.colors)) {
-        frontendProduct.colors = result.colors;
-      }
-    } else {
-      const errJson = await response.json().catch(() => ({}));
-      console.warn('[ProductService] Serverless insert response:', response.status, errJson);
-    }
-  } catch (err) {
-    console.warn('[ProductService] Failed to reach /api/admin/products, falling back to client cache', err);
-  }
-
-  // 2. Update persistent client cache
+  // 1. Immediately update persistent client cache so UI updates instantly with 0ms delay
   const existingCatalog = getCachedCatalog() || [];
   const updatedCatalog = [frontendProduct, ...existingCatalog.filter((p) => p.id !== assignedProductId && p.uid !== productUid)];
   setCachedCatalog(updatedCatalog);
 
+  // 2. Delegate database write asynchronously in the background
+  enqueueProductWrite({
+    product: frontendProduct,
+    rawImages: input.images,
+    colors: input.colors,
+  });
+
   return frontendProduct;
+}
+
+/**
+ * Creates and persists product asynchronously. Returns optimistic product immediately.
+ */
+export async function createAndPersistProduct(input: CreateProductInput): Promise<Product> {
+  return createProductOptimistic(input);
 }
 
 /**

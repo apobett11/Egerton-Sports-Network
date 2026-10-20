@@ -19,7 +19,7 @@ import {
 import { Product, Category } from '../../types';
 import { getCachedCategories } from '../../services/storeCacheService';
 import { generateProductId, resolveClassAndCategoryCodes, normalizeCategorySlug } from '../../services/productIdService';
-import { createAndPersistProduct } from '../../services/productService';
+import { createAndPersistProduct, createProductOptimistic } from '../../services/productService';
 import { compressImageBeforeUpload } from '../../lib/imageService';
 
 interface AddProductModalProps {
@@ -439,15 +439,22 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const isSubmittingRef = React.useRef(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || isSaving) return;
+
+    // Check everything in the frontend
     if (!isStep1Valid || !isStep2Valid || !isStep3Valid) {
       alert('Please correct any validation errors before saving.');
       return;
     }
-    if (isSaving) return;
 
+    // Lock immediately against double clicks / lag
+    isSubmittingRef.current = true;
     setIsSaving(true);
+
     try {
       const finalStockCount = parseInt(initialQuantity) || 20;
 
@@ -483,7 +490,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       const specStrings = (specColumns || []).map((c) => `${c.name || 'Spec'}: ${(Array.isArray(c.values) ? c.values : []).join(', ') || 'Standard'}`);
       const normSlug = normalizeCategorySlug(effectiveCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 
-      const createdProduct = await createAndPersistProduct({
+      // Non-blocking optimistic creation: instantly updates UI, closes modal, gives success, and executes write asynchronously
+      const createdProduct = createProductOptimistic({
         name: name.trim(),
         description: description.trim(),
         price: Number(price),
@@ -509,16 +517,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         },
       });
 
+      // Instantly deliver success to frontend & close modal
       onSaveProduct(createdProduct);
       try {
         localStorage.removeItem(STORAGE_KEY_ADD_PRODUCT_DRAFT);
       } catch (_) {}
       onClose();
     } catch (err) {
-      console.error('Failed to create and persist product:', err);
+      console.error('Failed to create product:', err);
       alert('Error creating product. Please try again.');
     } finally {
       setIsSaving(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -1276,10 +1286,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 transition-all cursor-pointer flex items-center gap-2 shadow-md active:scale-98"
+                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer flex items-center gap-2 shadow-md active:scale-98"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{isSaving ? 'Uploading & Persisting...' : 'Save Product to Catalog'}</span>
+                <span>{isSaving ? 'Saving...' : 'Save Product to Catalog'}</span>
               </button>
             )}
           </div>
