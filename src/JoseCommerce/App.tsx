@@ -26,6 +26,7 @@ import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './servi
 
 import { CATEGORIES } from './data/categories';
 import { normalizeCategorySlug } from './services/productIdService';
+import { syncCatalogFromDatabase } from './services/productService';
 import { MOCK_PRODUCTS } from './data/mockProducts';
 import { AdminPortal } from './components/admin/AdminPortal';
 import { getStoredOrders, addNewStoredOrder, MOCK_CARTS_ANALYTICS } from './data/mockOrders';
@@ -194,8 +195,12 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [isAdminAddProductOpen, setIsAdminAddProductOpen] = useState(() => Boolean(persistedNav.isAddProductModalOpen));
   const [isAdminAddDepotOpen, setIsAdminAddDepotOpen] = useState(() => Boolean(persistedNav.isAddDepotModalOpen));
 
-  // Sync catalog updates across instances
+  // Sync catalog updates across instances and fetch live from Supabase on mount
   useEffect(() => {
+    syncCatalogFromDatabase().then((liveProducts) => {
+      setProductsList(liveProducts);
+    });
+
     const handleCatalogUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<Product[]>;
       if (customEvent.detail && Array.isArray(customEvent.detail)) {
@@ -411,6 +416,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   // NO REALTIME: Data placed on load & manual explicit refresh (prevents background data drain)
   const handleRefreshData = () => {
     setIsRefreshing(true);
+    syncCatalogFromDatabase().then((liveProducts) => {
+      setProductsList(liveProducts);
+    });
     setOrders(getStoredOrders());
     setCheckoutSettings(getStoredCheckoutSettings());
     setBusinessContact(getStoredBusinessContact());

@@ -304,6 +304,36 @@ export async function createAndPersistProduct(input: CreateProductInput): Promis
 }
 
 /**
+ * Synchronizes the entire catalog from Supabase into the client cache.
+ * If Supabase has 0 products, the client cache is emptied.
+ */
+export async function syncCatalogFromDatabase(): Promise<Product[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          product_images ( id, product_id, image_path, display_order, is_primary ),
+          categories ( id, name, slug, class_id ),
+          product_classes ( id, code, name )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        const mappedProducts = data.map(mapDatabaseProduct);
+        setCachedCatalog(mappedProducts);
+        return mappedProducts;
+      }
+    } catch (err) {
+      console.warn('[ProductService] Error syncing catalog from Supabase:', err);
+    }
+  }
+
+  return getCachedCatalog();
+}
+
+/**
  * Keyword index generator for frontend suggestion matching
  */
 export function getAllCatalogKeywords(catalog?: Product[]): string[] {

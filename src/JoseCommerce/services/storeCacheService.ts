@@ -16,9 +16,9 @@ import { CATEGORIES } from '../data/categories';
  * - Checkout operations, active stock verification, and order placements are ALWAYS LIVE.
  */
 
-const STORAGE_KEY_CATALOG = 'esn_store_catalog_cache_v2';
-const STORAGE_KEY_CATEGORIES = 'esn_store_categories_cache_v2';
-const STORAGE_KEY_META = 'esn_store_cache_meta_v2';
+const STORAGE_KEY_CATALOG = 'esn_store_catalog_cache_v3';
+const STORAGE_KEY_CATEGORIES = 'esn_store_categories_cache_v3';
+const STORAGE_KEY_META = 'esn_store_cache_meta_v3';
 
 interface StoreCacheMeta {
   version: string;
@@ -27,7 +27,24 @@ interface StoreCacheMeta {
   categoriesCount: number;
 }
 
-const CURRENT_CACHE_VERSION = '2.1.0';
+const CURRENT_CACHE_VERSION = '3.0.0_clean_slate';
+
+// Immediately purge legacy cached seed products from user's browser localStorage
+if (typeof window !== 'undefined') {
+  try {
+    const legacyKeys = [
+      'esn_store_catalog_cache_v2',
+      'esn_store_categories_cache_v2',
+      'esn_store_cache_meta_v2',
+      'esn_store_catalog_cache',
+      'esn_store_categories_cache',
+    ];
+    legacyKeys.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+  } catch {}
+}
 
 /**
  * Reads cached catalog from persistent storage.
@@ -36,9 +53,9 @@ const CURRENT_CACHE_VERSION = '2.1.0';
 export function getCachedCatalog(): Product[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CATALOG) || sessionStorage.getItem(STORAGE_KEY_CATALOG);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -46,7 +63,7 @@ export function getCachedCatalog(): Product[] {
     console.warn('[StoreCache] Failed to parse cached catalog, using fallback', err);
   }
 
-  // Seed default catalog into cache
+  // Seed default clean catalog (0 products)
   setCachedCatalog(MOCK_PRODUCTS);
   return MOCK_PRODUCTS;
 }
