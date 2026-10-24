@@ -21,17 +21,20 @@ import { GameSquadsModal } from './Scores/GameSquadsModal';
 import { PredictionMatchDetailsModal } from './Scores/PredictionMatchDetailsModal';
 import { CompactDirectBanner } from '../ads/CompactDirectBanner';
 import { CompactTopRightPill } from '../ads/CompactTopRightPill';
-import { BanterComposer } from './Banter/BanterComposer';
+import { BanterTabs } from './Banter/BanterTabs';
 import { BanterFeed } from './Banter/BanterFeed';
 import { TalkDashboard } from './Banter/TalkDashboard';
-import { BanterCommentsModal } from './Banter/BanterCommentsModal';
 import { MatchBanterDrawer } from './Banter/MatchBanterDrawer';
+import { XStyleComposer } from './Banter/XStyleComposer';
+import { XFloatingComposeButton } from './Banter/XFloatingComposeButton';
+import { BanterThreadView } from './Banter/BanterThreadView';
+import { CoachMessagesView } from '../Coach/CoachMessagesView';
+import { JournalistBanterAnalytics } from '../Journalist/JournalistBanterAnalytics';
 import { shareService } from '../../services/predictions/shareService';
 import { StandingsPreviewModal } from './Standings/StandingsPreviewModal';
 import { DerbyUltimatePopup } from './Scores/DerbyUltimatePopup';
 import { PredictionSlipFlow } from './Scores/PredictionSlipFlow';
 import { FavouriteTeamModal } from './Scores/FavouriteTeamModal';
-import { CreatorPartnerModal } from './Banter/CreatorPartnerModal';
 import { PredictionAnalyticsView } from './Analytics/PredictionAnalyticsView';
 import { MonetagPushNotifications, MonetagInPagePush } from '../ads/MonetagEngines';
 
@@ -77,6 +80,7 @@ import type {
   ReactionType,
   UserPrediction,
   Team,
+  BanterMediaType,
 } from '../../types/predictions';
 import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
 
@@ -148,7 +152,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const switchedToNext = useRef(false);
 
   // Modals & Drawers
-  const [activeCommentPost, setActiveCommentPost] = useState<BanterPost | null>(null);
   const [selectedDerbyModal, setSelectedDerbyModal] = useState<Match | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -189,16 +192,51 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
   });
 
-  // Banter Creator/Journalist Partner Modal
-  const [showCreatorPartnerModal, setShowCreatorPartnerModal] = useState(false);
-  const hasShownCreatorModalRef = useRef(false);
+  // Hash routing for full-page thread view (#/banter/:postId)
+  const [threadPostId, setThreadPostId] = useState<string | null>(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+    const match = hash.match(/^#\/banter\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  });
+  const [mobileFabTool, setMobileFabTool] = useState<'text' | 'media' | 'poll' | null>(null);
 
   useEffect(() => {
-    if (activeTab === 'banter' && !hasShownCreatorModalRef.current) {
-      hasShownCreatorModalRef.current = true;
-      setShowCreatorPartnerModal(true);
-    }
-  }, [activeTab]);
+    const onHashChange = () => {
+      const hash = window.location.hash || '';
+      const match = hash.match(/^#\/banter\/([a-zA-Z0-9_-]+)/);
+      setThreadPostId(match ? match[1] : null);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Isolated Realtime Banter Feed Channel
+  useEffect(() => {
+    const channel = supabase.channel('banter_feed_live_sync')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banter_posts' }, (payload) => {
+        if (payload?.new) {
+          const newPost = payload.new as BanterPost;
+          setBanterPosts((prev) => {
+            if (prev.some((p) => p.id === newPost.id)) return prev;
+            return [newPost, ...prev];
+          });
+        }
+      })
+      .on('broadcast', { event: 'new_post' }, (payload) => {
+        if (payload?.payload?.post) {
+          const item = payload.payload.post as BanterPost;
+          setBanterPosts((prev) => {
+            if (prev.some((p) => p.id === item.id)) return prev;
+            return [item, ...prev];
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Twitter-Style Banter Feed State
   const [banterFilter, setBanterFilter] = useState<BanterFilterType>('trending');
@@ -947,14 +985,30 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   };
 
   // Banter Handlers
-  const handleCreatePost = async (content: string, imageUrl?: string | null) => {
+  const handleCreatePost = async (
+    content: string,
+    mediaUrls?: string[],
+    mediaType?: BanterMediaType,
+    poll?: { question: string; options: string[] },
+    taggedTeam?: { id: string; name: string } | null
+  ) => {
     const matchCtx = contextMatch ? {
       homeTeamName: contextMatch.homeTeam.name,
       awayTeamName: contextMatch.awayTeam.name,
       matchday: contextMatch.matchday
     } : undefined;
 
-    const created = await banterService.createPost(content, contextMatch?.id || null, matchCtx, imageUrl);
+    const created = await banterService.createPost({
+      content,
+      matchId: contextMatch?.id || null,
+      matchContext: matchCtx,
+      mediaUrls,
+      mediaType,
+      poll,
+      taggedTeamId: taggedTeam?.id || null,
+      taggedTeamName: taggedTeam?.name || null,
+      authorType: 'user'
+    });
     setBanterPosts(prev => [created, ...prev]);
   };
 
@@ -1124,115 +1178,155 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         {mainNav === 'news' && (
           <div className={activeTab === 'scores' && !favouriteTeam ? 'flex min-h-0 flex-1 flex-col gap-1.5' : 'space-y-4'}>
             {activeTab === 'banter' && (
-              <div className="space-y-4 animate-fadeIn">
-                <CompactTopRightPill label="Consensus IQ" badge="TOP" variant="amber" />
-                <div className="flex items-end justify-between gap-3 px-0.5">
-                  <div>
-                    <h1 className="text-lg font-black text-white tracking-tight">What's happening</h1>
-                    <p className="text-xs text-slate-400">
-                      {activePairDay
-                        ? `${activePairDay.label ?? 'Matchday'} · ${activePairDay.team} ${activePairDay.line}`
-                        : 'Drop one take. Your people answer.'}
-                    </p>
-                  </div>
-                  <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#ff0046]">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff0046] opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#ff0046]" />
+              threadPostId ? (
+                <BanterThreadView
+                  postId={threadPostId}
+                  onBack={() => {
+                    window.location.hash = '#/banter';
+                    setThreadPostId(null);
+                  }}
+                  onNavigatePost={(nextId) => {
+                    window.location.hash = `#/banter/${nextId}`;
+                    setThreadPostId(nextId);
+                  }}
+                />
+              ) : (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="hidden sm:flex items-end justify-between gap-3 px-0.5">
+                    <div>
+                      <h1 className="text-lg font-black text-white tracking-tight">What's happening</h1>
+                      <p className="text-xs text-zinc-400">
+                        {activePairDay
+                          ? `${activePairDay.label ?? 'Matchday'} · ${activePairDay.team} ${activePairDay.line}`
+                          : 'Drop one take. Your people answer.'}
+                      </p>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-sky-400">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400" />
+                      </span>
+                      Talking now
                     </span>
-                    Talking now
-                  </span>
+                  </div>
+                  {contextMatch && (
+                    <MatchBanterDrawer
+                      match={contextMatch}
+                      consensus={consensusMap.get(contextMatch.id)}
+                      userSelection={userPredMap.get(contextMatch.id) || null}
+                      onClose={() => setContextMatch(null)}
+                    />
+                  )}
+
+                  {/* Input / Composer preview */}
+                  <XStyleComposer
+                    onPostCreated={handleCreatePost}
+                    contextMatchName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+                    authorHandle={identity.publicHandle}
+                    activeTool={mobileFabTool}
+                    onClearActiveTool={() => setMobileFabTool(null)}
+                  />
+
+                  {/* Main section header with categories / sorts */}
+                  <div className="sticky top-0 z-20 bg-[#081018]/95 backdrop-blur-md pt-1 pb-1">
+                    <BanterTabs
+                      activeFilter={banterFilter}
+                      onSelectFilter={setBanterFilter}
+                      activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+                      onClearMatchContext={() => setContextMatch(null)}
+                    />
+                  </div>
+
+                  {clubBanterOnly && favouriteTeam && (
+                    <p className="text-[11px] font-bold text-amber-300">
+                      Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
+                    </p>
+                  )}
+
+                  {banterFilter === 'coach' ? (
+                    <CoachMessagesView
+                      teamName={favouriteTeam || 'Santos FC'}
+                      onOpenThread={(postId) => {
+                        window.location.hash = `#/banter/${postId}`;
+                        setThreadPostId(postId);
+                      }}
+                    />
+                  ) : banterFilter === 'analytics' ? (
+                    <JournalistBanterAnalytics
+                      onSelectTeam={(_teamId, _teamName) => {
+                        setBanterFilter('all');
+                      }}
+                    />
+                  ) : banterFilter === 'mine' ? (
+                    <TalkDashboard
+                      handle={identity.publicHandle}
+                      deviceBound={identity.bound}
+                      myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
+                      likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
+                      repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
+                    />
+                  ) : (
+                    <BanterFeed
+                      posts={shownBanterPosts}
+                      isLoading={isLoadingBanter}
+                      onRefresh={loadBanter}
+                      showHot={banterFilter === 'trending'}
+                      emptyTitle={
+                        clubBanterOnly
+                          ? 'No takes about your club on this matchday.'
+                          : banterFilter === 'banter'
+                          ? 'No banter & trolls yet.'
+                          : banterFilter === 'latest'
+                          ? 'Nothing new today.'
+                          : 'The room is quiet.'
+                      }
+                      emptyBody={
+                        banterFilter === 'banter'
+                          ? 'Start the banter, drop memes or troll the rivals.'
+                          : banterFilter === 'latest'
+                          ? 'Older takes are still in All.'
+                          : 'Be the first take. Your club is waiting.'
+                      }
+                      emptyActionLabel={banterFilter === 'trending' && !clubBanterOnly ? 'Post the first take' : 'See all takes'}
+                      onEmptyAction={
+                        banterFilter === 'trending' && !clubBanterOnly
+                          ? undefined
+                          : () => setBanterFilter('all')
+                      }
+                      onToggleReaction={handleToggleReaction}
+                      onOpenComments={(post) => {
+                        window.location.hash = `#/banter/${post.id}`;
+                        setThreadPostId(post.id);
+                      }}
+                      onPickGames={() => {
+                        setActiveTab('scores');
+                        window.scrollTo({ top: 0 });
+                      }}
+                      onSelectMatchContext={(matchId) => {
+                        const found = fixtures.find(f => f.id === matchId);
+                        if (found) setContextMatch(found);
+                      }}
+                      onStartBanterClick={() => {
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                      }}
+                      focusPostId={focusPostId}
+                      onRepost={(postId, active) => {
+                        setRepostedIds((prev) => active
+                          ? (prev.includes(postId) ? prev : [...prev, postId])
+                          : prev.filter((id) => id !== postId));
+                      }}
+                    />
+                  )}
+
+                  {/* Mobile Floating Action Button (FAB) */}
+                  <XFloatingComposeButton
+                    onSelectAction={(tool) => {
+                      setMobileFabTool(tool);
+                      window.scrollTo({ top: 80, behavior: 'smooth' });
+                    }}
+                  />
                 </div>
-                {contextMatch && (
-                  <MatchBanterDrawer
-                    match={contextMatch}
-                    consensus={consensusMap.get(contextMatch.id)}
-                    userSelection={userPredMap.get(contextMatch.id) || null}
-                    onClose={() => setContextMatch(null)}
-                  />
-                )}
-
-                <BanterComposer
-                  onPostCreated={handleCreatePost}
-                  contextMatchName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
-                  authorHandle={identity.publicHandle}
-                />
-
-                {clubBanterOnly && favouriteTeam && (
-                  <p className="text-[11px] font-bold text-amber-300">
-                    Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
-                  </p>
-                )}
-
-                {banterFilter === 'mine' && (
-                  <TalkDashboard
-                    handle={identity.publicHandle}
-                    deviceBound={identity.bound}
-                    myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
-                    likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
-                    repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
-                  />
-                )}
-
-                <BanterFeed
-                  posts={banterFilter === 'mine'
-                    ? banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)
-                    : shownBanterPosts}
-                  isLoading={isLoadingBanter}
-                  showHot={banterFilter === 'trending'}
-                  emptyTitle={
-                    clubBanterOnly
-                      ? 'No takes about your club on this matchday.'
-                      : banterFilter === 'coach'
-                      ? 'No coach update for this matchday.'
-                      : banterFilter === 'latest'
-                      ? 'Nothing new today.'
-                      : 'The room is quiet.'
-                  }
-                  emptyBody={
-                    banterFilter === 'coach'
-                      ? 'Coach notes show up here when a club posts one.'
-                      : banterFilter === 'latest'
-                      ? 'Older takes are still in All.'
-                      : 'Be the first take. Your club is waiting.'
-                  }
-                  emptyActionLabel={banterFilter === 'trending' && !clubBanterOnly ? 'Post the first take' : 'See all takes'}
-                  onEmptyAction={
-                    banterFilter === 'trending' && !clubBanterOnly
-                      ? undefined
-                      : () => setBanterFilter('all')
-                  }
-                  onToggleReaction={handleToggleReaction}
-                  onOpenComments={setActiveCommentPost}
-                  onPickGames={() => {
-                    setActiveTab('scores');
-                    window.scrollTo({ top: 0 });
-                  }}
-                  onSelectMatchContext={(matchId) => {
-                    const found = fixtures.find(f => f.id === matchId);
-                    if (found) setContextMatch(found);
-                  }}
-                  onStartBanterClick={() => {
-                    window.scrollTo({ top: 100, behavior: 'smooth' });
-                  }}
-                  focusPostId={focusPostId}
-                  onRepost={(postId, active) => {
-                    setRepostedIds((prev) => active
-                      ? (prev.includes(postId) ? prev : [...prev, postId])
-                      : prev.filter((id) => id !== postId));
-                  }}
-                />
-
-                {/* Additional Ad at Bottom of Banter Page */}
-                <div className="pt-2 pb-4">
-                  <CompactDirectBanner
-                    variant="purple"
-                    label="Campus Banter Spotlight"
-                    tagline="Join the football debate and win verified fan rewards"
-                    className="my-2"
-                  />
-                </div>
-              </div>
+              )
             )}
 
             {activeTab === 'scores' && (
@@ -1426,7 +1520,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
             setFreshPerspectiveMs(null);
             setMainNav('news');
             setActiveTab('banter');
-            setShowCreatorPartnerModal(true);
           }}
         />
       )}
@@ -1539,19 +1632,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         />
       )}
 
-      {/* Comments Thread Modal */}
-      {activeCommentPost && (
-        <BanterCommentsModal
-          post={activeCommentPost}
-          onClose={() => setActiveCommentPost(null)}
-          onCommentAdded={() => {
-            setBanterPosts(prev =>
-              prev.map(p => p.id === activeCommentPost.id ? { ...p, commentCount: p.commentCount + 1 } : p)
-            );
-          }}
-          onToggleReaction={handleToggleReaction}
-        />
-      )}
+
 
       {/* Derby Consensus Breakdown Modal */}
       {selectedDerbyModal && (
@@ -1665,12 +1746,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         />
       )}
 
-      {/* Banter Page Creator & Journalist Partner Popup */}
-      {showCreatorPartnerModal && (
-        <CreatorPartnerModal
-          onClose={() => setShowCreatorPartnerModal(false)}
-        />
-      )}
+
 
       {/* Floating Slip Icon & Counter at Bottom Center (constant across matchday pages) */}
       {activeTab === 'scores' && (

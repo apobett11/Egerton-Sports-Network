@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, MessageSquare, AlertCircle, User, ArrowLeft, BarChart2, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { formatRelativeTime } from '../../../lib/predictions/utils';
-import { banterService } from '../../../services/predictions/banterService';
-import { BANTER_CONFIG } from '../../../lib/predictions/constants';
-import { CompactDirectBanner } from '../../ads/CompactDirectBanner';
-import type { BanterPost, BanterComment, ReactionType } from '../../../types/predictions';
+import { formatRelativeTime } from '../../lib/predictions/utils';
+import { banterService } from '../../services/predictions/banterService';
+import { BANTER_CONFIG } from '../../lib/predictions/constants';
+import type { BanterPost, BanterComment, ReactionType } from '../../types/predictions';
 
 interface BanterCommentsModalProps {
   post: BanterPost;
@@ -140,7 +139,7 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
               </div>
               <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400">
                 <BarChart2 className="h-3.5 w-3.5" />
-                <span>{post.impressionsCount || 75} Views</span>
+                <span>{post.impressionsCount || 850} Views</span>
               </div>
             </div>
           </div>
@@ -179,13 +178,6 @@ export const BanterCommentsModal: React.FC<BanterCommentsModalProps> = ({
                 </div>
               ))
             )}
-            <div className="pt-2">
-              <CompactDirectBanner
-                label="Banter Pundit Special"
-                tagline="Turn Your Prediction Into Winnings"
-                variant="purple"
-              />
-            </div>
           </div>
         </div>
 

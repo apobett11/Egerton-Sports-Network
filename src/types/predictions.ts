@@ -68,12 +68,43 @@ export interface MatchSquadInfo {
   awayInjuries?: string[];
 }
 
-export type AuthorType = 'user' | 'journalist' | 'admin' | 'seed';
+export type AuthorType = 'user' | 'journalist' | 'coach' | 'admin' | 'seed';
 export type ReactionType = 'fire' | 'clown' | 'skull';
-export type BanterFilterType = 'trending' | 'coach' | 'latest' | 'all' | 'top' | 'today' | 'mine';
+export type BanterFilterType = 'all' | 'trending' | 'coach' | 'analytics' | 'banter' | 'latest' | 'top' | 'today' | 'mine';
+
+export interface BanterPollOption {
+  id: number;
+  text: string;
+  votes: number;
+}
+
+export interface BanterPoll {
+  id: string;
+  postId: string;
+  question: string;
+  options: BanterPollOption[];
+  totalVotes: number;
+  voters: Record<string, number>; // { device_id: option_id }
+  expiresAt: string;
+}
+
+export type BanterMediaType = 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO';
 
 export interface BanterPost {
   id: string;
+  parentId?: string | null;
+  rootId?: string | null;
+  depth?: number;
+  userId?: string;
+  authorHandle: string;
+  authorName?: string;
+  authorAvatar?: string;
+  authorType: AuthorType;
+  authorBadge?: string;
+  content: string;
+  mediaUrls?: string[];
+  mediaType?: BanterMediaType;
+  imageUrl?: string;
   matchId?: string | null;
   leagueId?: string | null;
   matchContext?: {
@@ -81,12 +112,10 @@ export interface BanterPost {
     awayTeamName: string;
     matchday?: number;
   };
-  authorHandle: string;
-  authorType: AuthorType;
-  authorBadge?: string;
-  content: string;
-  imageUrl?: string;
   sourceType: 'user' | 'journalist' | 'seed' | 'admin';
+  likesCount?: number;
+  repliesCount?: number;
+  repostsCount?: number;
   reactionFireCount: number;
   reactionClownCount: number;
   reactionSkullCount: number;
@@ -94,6 +123,11 @@ export interface BanterPost {
   repostCount?: number;
   impressionsCount?: number;
   viewsCount?: number;
+  pollId?: string | null;
+  poll?: BanterPoll | null;
+  taggedTeamId?: string | null;
+  taggedTeamName?: string | null;
+  authorDeviceId?: string;
   isMine?: boolean;
   isLiked?: boolean;
   isReposted?: boolean;
@@ -103,6 +137,7 @@ export interface BanterPost {
     clown?: boolean;
     skull?: boolean;
   };
+  children?: BanterPost[];
 }
 
 export interface BanterComment {
@@ -113,6 +148,21 @@ export interface BanterComment {
   authorBadge?: string;
   content: string;
   createdAt: string;
+}
+
+export interface JournalistAnalytics {
+  total_posts_7d: number;
+  total_replies_7d: number;
+  active_devices_7d: number;
+  top_tagged_teams: Array<{
+    tagged_team_id: string;
+    tagged_team_name: string;
+    tag_count: number;
+  }>;
+  hourly_distribution_24h: Array<{
+    hour_of_day: number;
+    post_count: number;
+  }>;
 }
 
 export interface AnonymousDevice {
