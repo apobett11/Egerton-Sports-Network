@@ -79,8 +79,8 @@ function mapDatabaseProduct(row: any, listingOnly = false): Product {
     || allImages[0]
     || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=400&q=80';
 
-  // For listings: only requested card info and the logo photo
-  const images = listingOnly ? [primaryImg] : (allImages.length > 0 ? allImages : [primaryImg]);
+  // Include all associated product images for instant gallery, color switching and speed
+  const images = allImages.length > 0 ? allImages : [primaryImg];
 
   const productIdentifier = row.sku || row.id;
   const categorySlug = normalizeCategorySlug(row.categories?.slug || row.category_id || 'kit');
