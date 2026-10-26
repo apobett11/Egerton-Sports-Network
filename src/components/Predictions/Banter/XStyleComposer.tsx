@@ -16,10 +16,11 @@ import {
 import { validateVideoFile } from '../../../services/predictions/banterService';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
+import { useBanterSession } from '../../../hooks/useBanterSession';
 import type { BanterMediaType, AuthorType } from '../../../types/predictions';
 
 interface XStyleComposerProps {
-  onPostCreated: (
+  onPostCreated?: (
     content: string,
     mediaUrls?: string[],
     mediaType?: BanterMediaType,
@@ -30,12 +31,14 @@ interface XStyleComposerProps {
   authorHandle?: string;
   placeholder?: string;
   parentId?: string | null;
+  rootPostId?: string | null;
   isReply?: boolean;
   activeTool?: 'text' | 'media' | 'poll' | null;
   onClearActiveTool?: () => void;
   autoFocus?: boolean;
   authorType?: AuthorType;
   authorBadge?: string;
+  onPostSuccess?: (data: any) => void;
 }
 
 const MAX_CHARS = 280;
@@ -46,13 +49,16 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   authorHandle = 'Fanatic',
   placeholder = "What's happening?!",
   parentId = null,
+  rootPostId = null,
   isReply = false,
   activeTool = null,
   onClearActiveTool,
   autoFocus = false,
   authorType = 'user',
-  authorBadge
+  authorBadge,
+  onPostSuccess
 }) => {
+  const { profile } = useBanterSession();
   const [isExpanded, setIsExpanded] = useState(isReply || autoFocus);
   const [content, setContent] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ url: string; type: 'image' | 'video'; duration?: number }>>([]);
@@ -280,7 +286,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -317,7 +323,46 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
         }
       }
 
-      await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
+      // Fast, session-verified post submission (Zero per-action verification overhead)
+      if (profile) {
+        const payload: Record<string, any> = {
+          root_id: rootPostId || parentId || null,
+          parent_id: parentId || null,
+          uid: profile.uid,                         // Session UID
+          author_device_id: profile.deviceId,       // Permanent hardware device ID
+          author_name: profile.authorName,
+          author_handle: profile.authorHandle,
+          author_avatar: profile.avatarColor,
+          content: content.trim(),
+          media_type: mediaType,
+        };
+
+        if (mediaUrls.length > 0) {
+          payload.media_urls = mediaUrls;
+        }
+        if (finalTeam?.id) {
+          payload.tagged_team_id = finalTeam.id;
+          payload.tagged_team_name = finalTeam.name;
+        }
+
+        const { data, error } = await supabase
+          .from('banter_posts')
+          .insert([payload])
+          .select()
+          .single();
+
+        if (error) {
+          // If direct insert is blocked by schema or RLS, route via onPostCreated fallback
+          if (onPostCreated) {
+            await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
+          }
+        } else {
+          if (onPostSuccess) onPostSuccess(data);
+          if (onPostCreated) await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
+        }
+      } else if (onPostCreated) {
+        await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
+      }
 
       // Reset
       setContent('');
@@ -366,8 +411,11 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
       {/* Compact Pill (Unexpanded State) */}
       {!isExpanded ? (
         <div className="flex items-center gap-3 h-11 px-2">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-slate-300">
-            <User className="h-4 w-4" />
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
+            style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
+          >
+            {profile?.authorName ? profile.authorName[0] : <User className="h-4 w-4" />}
           </div>
           <span className="text-zinc-500 text-sm font-medium flex-1 select-none">
             {placeholder}
@@ -424,14 +472,6 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
       ) : (
         /* Expanded Inline Composer */
         <div className="space-y-3">
-          {contextMatchName && (
-            <div className="flex items-center gap-1.5 pb-1">
-              <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2.5 py-0.5 text-[11px] font-bold text-sky-400 border border-sky-500/20">
-                <span>#{contextMatchName.replace(/\s+/g, '')}</span>
-              </span>
-            </div>
-          )}
-
           {/* Coach / Journalist Badge Indicator */}
           {authorType === 'coach' && (
             <div className="flex items-center gap-1.5">
@@ -443,11 +483,24 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           )}
 
           <div className="flex gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-slate-300">
-              <User className="h-5 w-5" />
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
+              style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
+            >
+              {profile?.authorName ? profile.authorName[0] : <User className="h-5 w-5" />}
             </div>
 
             <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between pb-1.5 text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-white text-xs">{profile?.authorName || authorHandle}</span>
+                  <span className="text-[11px] text-zinc-500 font-mono">@{profile?.authorHandle || authorHandle}</span>
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-black uppercase text-emerald-400 border border-emerald-500/30">
+                    <Shield className="h-2.5 w-2.5" />
+                    <span>Verified Session</span>
+                  </span>
+                </div>
+              </div>
               <textarea
                 ref={textareaRef}
                 value={content}

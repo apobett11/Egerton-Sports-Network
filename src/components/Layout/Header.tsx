@@ -409,7 +409,8 @@ export const Header: React.FC<HeaderProps> = ({
                             <span>Analytics</span>
                         </button>
                     </div>
-                    {predictionView === 'banter' && (
+                    {/* Banter row removed: already hosted in What's happening in-page */}
+                    {false && predictionView === 'banter' && (
                         <div className="px-2 sm:px-4 flex h-11 items-center gap-2">
                             <button
                                 type="button"

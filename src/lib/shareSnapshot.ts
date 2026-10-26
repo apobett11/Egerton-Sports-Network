@@ -1,3 +1,5 @@
+import type { BanterPost } from '../types/predictions';
+
 export interface SnapshotRow {
   left: string;
   right: string;
@@ -18,7 +20,7 @@ export interface SnapshotRow {
 }
 
 export interface SnapshotCard {
-  kind: 'table' | 'fixtures' | 'cleansheets';
+  kind: 'table' | 'fixtures' | 'cleansheets' | 'banter';
   title: string;
   subtitle: string;
   rows: SnapshotRow[];
@@ -423,17 +425,24 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function shareText(kind: SnapshotCard['kind']): string {
+function shareText(kind: SnapshotCard['kind'], title?: string, subtitle?: string): string {
   if (kind === 'fixtures') return 'EPL Fixtures · Check out the latest fixtures and scores on EgerScore';
   if (kind === 'cleansheets') return 'EPL Clean Sheets · Check out the clean sheets leaderboard on EgerScore';
+  if (kind === 'banter') return `🔥 ${title || 'Campus Banter'}: "${(subtitle || 'Check out the discussion').slice(0, 100)}" · EgerScore`;
   return 'EPL Standings · Check out the official league table on EgerScore';
 }
 
-function showPicture(file: File, hash: string, shareHref: string, title: string, subtitle: string, kind: SnapshotCard['kind']) {
+function showPicture(file: File, hash: string, shareHref: string, title: string, subtitle: string, kind: SnapshotCard['kind'], autoOpenWhatsapp: boolean = false) {
   const objectUrl = URL.createObjectURL(file);
-  const text = shareText(kind);
+  const text = shareText(kind, title, subtitle);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${shareHref}`)}`;
   const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareHref)}`;
+
+  if (autoOpenWhatsapp) {
+    try {
+      window.open(whatsappUrl, '_blank');
+    } catch {}
+  }
 
   const root = document.createElement('div');
   root.setAttribute('role', 'dialog');
@@ -544,4 +553,325 @@ export async function shareSnapshot(card: SnapshotCard): Promise<void> {
   const file = await renderSnapshot(card);
   if (file.size < 1000) throw new Error('Share image was empty.');
   showPicture(file, openHash(card.kind), pageUrl(card.kind), card.title, card.subtitle, card.kind);
+}
+
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (ctx.measureText(testLine).width <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+export async function renderBanterCardSnapshot(
+  post: BanterPost,
+  parentPost?: BanterPost | null
+): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not draw the banter card.');
+
+  // Base background
+  ctx.fillStyle = '#081018';
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 1. TOP SITE NAVIGATION BAR
+  ctx.fillStyle = '#ff0046';
+  ctx.fillRect(0, 0, WIDTH, 6);
+  ctx.fillStyle = '#0a1624';
+  ctx.fillRect(0, 6, WIDTH, 64);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 70, WIDTH, 1);
+
+  // Site Logo & Tagline
+  ctx.fillStyle = '#ff0046';
+  ctx.font = '800 24px Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('EGERSCORE', 48, 38);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 16px Arial, sans-serif';
+  ctx.fillText('·  OFFICIAL EGERTON SPORTS NETWORK', 204, 38);
+
+  // Right pill badge
+  roundBox(ctx, WIDTH - 180, 22, 132, 32, 16);
+  ctx.fillStyle = 'rgba(255, 0, 70, 0.12)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 0, 70, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#ff0046';
+  ctx.font = '800 12px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CAMPUS TALK', WIDTH - 114, 38);
+
+  // 2. HERO CARD HEADER
+  ctx.fillStyle = '#0e1c2b';
+  ctx.fillRect(0, 71, WIDTH, 124);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 195, WIDTH, 1);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '900 36px Arial, sans-serif';
+  const mainTitle = parentPost
+    ? 'OFFICIAL DISCUSSION THREAD'
+    : post.isTrending
+      ? 'TRENDING BANTER & BUZZ'
+      : post.authorType === 'coach'
+        ? 'COACH OFFICIAL BRIEFING'
+        : 'CAMPUS BANTER & TAKES';
+  ctx.fillText(mainTitle, 48, 122);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '700 16px Arial, sans-serif';
+  const subText = parentPost
+    ? 'REPLY THREAD · DIRECT FAN EXCHANGE'
+    : 'COMMUNITY PULSE · REAL-TIME FAN REACTIONS';
+  ctx.fillText(subText, 48, 160);
+
+  // Category Pill Badge
+  const badgeLabel = post.isTrending
+    ? 'TRENDING'
+    : post.authorType === 'coach'
+      ? `${post.taggedTeamName || 'COACH'}`
+      : 'FAN ZONE';
+  const badgeColor = post.isTrending ? '#f59e0b' : post.authorType === 'coach' ? '#10b981' : '#ff0046';
+  roundBox(ctx, WIDTH - 180, 114, 132, 36, 18);
+  ctx.fillStyle = post.isTrending ? 'rgba(245, 158, 11, 0.12)' : post.authorType === 'coach' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 0, 70, 0.12)';
+  ctx.fill();
+  ctx.strokeStyle = badgeColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = badgeColor;
+  ctx.font = '800 13px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(badgeLabel, WIDTH - 114, 132);
+
+  // Helper to draw a single card
+  const drawCard = (p: BanterPost, x: number, startY: number, width: number, isReply: boolean = false): number => {
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    ctx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
+    const textMaxWidth = width - 110;
+    
+    let displayContent = p.content;
+    let votedTag: string | null = null;
+    const voteMatch = displayContent.match(/^\[Voted:\s*([^\]]+)\]\s*(.*)$/);
+    if (voteMatch) {
+      votedTag = `VOTED: ${voteMatch[1]}`;
+      displayContent = voteMatch[2];
+    }
+
+    const lines = wrapLines(ctx, displayContent, textMaxWidth).slice(0, 6);
+    const lineHeight = isReply ? 36 : 40;
+    const textBlockHeight = lines.length * lineHeight;
+
+    let pollHeight = 0;
+    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
+      pollHeight = 35 + p.poll.options.length * 48 + 10;
+    }
+
+    const headerHeight = 75;
+    const votedTagHeight = votedTag ? 42 : 0;
+    const metricsHeight = 65;
+    const cardHeight = headerHeight + votedTagHeight + textBlockHeight + pollHeight + metricsHeight + 25;
+
+    // Card background
+    roundBox(ctx, x, startY, width, cardHeight, 18);
+    ctx.fillStyle = isReply ? '#112236' : '#0e1c2b';
+    ctx.fill();
+    ctx.strokeStyle = isReply ? '#253f5d' : '#1e354e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // User Avatar circle
+    const avatarX = x + 30;
+    const avatarY = startY + 24;
+    const avatarSize = 48;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = p.authorType === 'coach' ? '#059669' : '#2563eb';
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 20px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initials(p.authorName || p.authorHandle), avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 1);
+    ctx.restore();
+
+    // Author Name & Handle
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = '800 22px Arial, sans-serif';
+    const nameStr = p.authorName || p.authorHandle;
+    ctx.fillText(fit(ctx, nameStr, 280), avatarX + avatarSize + 14, avatarY + 2);
+
+    const nameWidth = ctx.measureText(nameStr).width;
+    if (p.authorType === 'coach') {
+      roundBox(ctx, avatarX + avatarSize + 22 + nameWidth, avatarY + 2, 110, 24, 12);
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+      ctx.fill();
+      ctx.fillStyle = '#34d399';
+      ctx.font = '800 12px Arial, sans-serif';
+      ctx.fillText('COACH', avatarX + avatarSize + 40 + nameWidth, avatarY + 6);
+    } else {
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 16px Arial, sans-serif';
+      ctx.fillText('✓', avatarX + avatarSize + 20 + nameWidth, avatarY + 4);
+    }
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '600 17px Arial, sans-serif';
+    const cleanH = `@${(p.authorHandle || 'fan').replace(/[^a-z0-9_]/gi, '_')}`;
+    ctx.fillText(`${cleanH} · ESN Fan`, avatarX + avatarSize + 14, avatarY + 28);
+
+    let currentY = avatarY + avatarSize + 16;
+    if (votedTag) {
+      roundBox(ctx, avatarX, currentY, 280, 32, 16);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 12px Arial, sans-serif';
+      ctx.fillText(`📊 ${votedTag}`, avatarX + 16, currentY + 8);
+      currentY += 42;
+    }
+
+    // Content text
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
+    lines.forEach((line) => {
+      ctx.fillText(line, avatarX, currentY);
+      currentY += lineHeight;
+    });
+
+    // Poll section
+    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
+      currentY += 8;
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 18px Arial, sans-serif';
+      ctx.fillText(`📊 ${p.poll.question || 'Community Poll'}`, avatarX, currentY);
+      currentY += 28;
+
+      const totalV = p.poll.totalVotes || 0;
+      p.poll.options.forEach((opt) => {
+        const pct = totalV > 0 ? Math.round(((opt.votes || 0) / totalV) * 100) : 0;
+        roundBox(ctx, avatarX, currentY, width - 60, 40, 8);
+        ctx.fillStyle = '#162b42';
+        ctx.fill();
+
+        if (pct > 0) {
+          roundBox(ctx, avatarX, currentY, Math.max(8, ((width - 60) * pct) / 100), 40, 8);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+          ctx.fill();
+        }
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = '700 16px Arial, sans-serif';
+        ctx.fillText(opt.text, avatarX + 16, currentY + 11);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '800 16px Arial, sans-serif';
+        ctx.fillText(`${pct}%`, avatarX + width - 80, currentY + 11);
+        ctx.textAlign = 'left';
+
+        currentY += 48;
+      });
+    }
+
+    // Metrics Row
+    currentY += 12;
+    ctx.fillStyle = isReply ? '#1a2e45' : '#162b42';
+    ctx.fillRect(x + 20, currentY, width - 40, 1);
+    currentY += 14;
+
+    const repCount = p.commentCount || p.repliesCount || 0;
+    const rCount = p.repostCount || p.repostsCount || 0;
+    const lCount = p.reactionFireCount || p.likesCount || 0;
+    const vCount = p.impressionsCount || 124;
+
+    ctx.font = '700 18px Arial, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`💬  ${repCount} Replies`, avatarX, currentY);
+    ctx.fillText(`🔁  ${rCount} Reposts`, avatarX + 220, currentY);
+    ctx.fillText(`❤️  ${lCount} Likes`, avatarX + 440, currentY);
+    ctx.fillText(`📊  ${vCount} Views`, avatarX + 640, currentY);
+
+    return cardHeight;
+  };
+
+  if (parentPost) {
+    const parentH = drawCard(parentPost, 48, 226, WIDTH - 96, false);
+    const lineX = 100;
+    const lineStartY = 226 + parentH;
+    const lineEndY = lineStartY + 36;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(lineX, lineStartY);
+    ctx.lineTo(lineX, lineEndY);
+    ctx.stroke();
+
+    drawCard(post, 108, lineEndY, WIDTH - 156, true);
+  } else {
+    drawCard(post, 48, 240, WIDTH - 96, false);
+  }
+
+  // 3. BOTTOM BRAND FOOTER
+  ctx.fillStyle = '#0a1522';
+  ctx.fillRect(0, 1180, WIDTH, HEIGHT - 1180);
+  ctx.fillStyle = '#1a2e45';
+  ctx.fillRect(0, 1180, WIDTH, 1);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#64748b';
+  ctx.font = '700 19px Arial, sans-serif';
+  ctx.fillText('EGERSCORE.COM · OFFICIAL CAMPUS SPORTS PLATFORM', 48, 1240);
+  ctx.fillStyle = '#475569';
+  ctx.font = '600 15px Arial, sans-serif';
+  ctx.fillText('CAMPUS MATCH COVERAGE · REAL-TIME FAN BANTER', 48, 1272);
+
+  roundBox(ctx, WIDTH - 380, 1222, 332, 54, 27);
+  ctx.fillStyle = '#ff0046';
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 18px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('JOIN CONVERSATION →', WIDTH - 214, 1249);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('Could not save the banter card.');
+  return new File([blob], 'egerscore-banter.png', { type: 'image/png' });
+}
+
+export async function shareBanterSnapshot(
+  post: BanterPost,
+  parentPost?: BanterPost | null
+): Promise<void> {
+  const file = await renderBanterCardSnapshot(post, parentPost);
+  const shareHref = `${window.location.origin}/#/banter/${post.id}`;
+  const title = post.authorName || post.authorHandle;
+  const subtitle = post.content;
+  showPicture(file, `#/banter/${post.id}`, shareHref, title, subtitle, 'banter', true);
 }

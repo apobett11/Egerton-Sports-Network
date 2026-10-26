@@ -44,6 +44,8 @@ import { consensusService } from '../../services/predictions/consensusService';
 import { derbyService } from '../../services/predictions/derbyService';
 import { banterService } from '../../services/predictions/banterService';
 import { anonymousIdentityService } from '../../services/predictions/anonymousIdentityService';
+import { useBanterSession } from '../../hooks/useBanterSession';
+import { getActiveSessionProfile } from '../../utils/sessionIdentity';
 import { supabase } from '../../lib/supabase';
 import { formatKickoffTime, formatTeamName } from '../../lib/predictions/utils';
 import { matchdayTeamLine } from '../../lib/predictions/newsMatchdays';
@@ -90,6 +92,9 @@ interface PredictionExperienceProps {
 }
 
 export function PredictionExperience({ activeTab, onSelectTab }: PredictionExperienceProps) {
+  // Auto-verify session upon mounting the banter feed (Zero per-action overhead)
+  const { profile: banterProfile } = useBanterSession();
+
   // Master Livescore Hierarchy Navigation
   const [mainNav, setMainNav] = useState<'livescore' | 'news' | 'standings'>('news');
 
@@ -239,7 +244,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   }, []);
 
   // Twitter-Style Banter Feed State
-  const [banterFilter, setBanterFilter] = useState<BanterFilterType>('trending');
+  const [banterFilter, setBanterFilter] = useState<BanterFilterType>('all');
   const [clubBanterOnly, setClubBanterOnly] = useState(false);
   const [showSlips, setShowSlips] = useState(false);
   const [showAllSlips, setShowAllSlips] = useState(false);
@@ -624,12 +629,23 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   // 2. Load Twitter-Style Banter Feed
   const loadBanter = useCallback(async () => {
     setIsLoadingBanter(true);
-    setBanterPosts([]);
     const matchId = contextMatch?.id || null;
-    const posts = await banterService.fetchPosts(banterFilter, matchId);
+    const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0);
     setBanterPosts(posts);
     setIsLoadingBanter(false);
   }, [banterFilter, contextMatch]);
+
+  const loadMoreBanter = useCallback(async () => {
+    const matchId = contextMatch?.id || null;
+    const more = await banterService.fetchPosts(banterFilter, matchId, 20, banterPosts.length);
+    if (more.length > 0) {
+      setBanterPosts((prev) => {
+        const ids = new Set(prev.map((p) => p.id));
+        const filtered = more.filter((p) => !ids.has(p.id));
+        return [...prev, ...filtered];
+      });
+    }
+  }, [banterFilter, contextMatch, banterPosts.length]);
 
   useEffect(() => {
     loadBanter();
@@ -638,8 +654,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const shownBanterPosts = useMemo(() => {
     const fav = favouriteTeam?.toLowerCase().trim() || '';
     return banterPosts.filter((post) => {
-      const day = post.matchContext?.matchday;
-      if (day && day !== activeMatchday) return false;
+      if (contextMatch && post.matchId && post.matchId !== contextMatch.id) return false;
       if (!clubBanterOnly || !fav) return true;
       const blob = `${post.content} ${post.matchContext?.homeTeamName || ''} ${post.matchContext?.awayTeamName || ''} ${post.authorHandle}`.toLowerCase();
       return blob.includes(fav);
@@ -998,6 +1013,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       matchday: contextMatch.matchday
     } : undefined;
 
+    const session = banterProfile || getActiveSessionProfile();
+
     const created = await banterService.createPost({
       content,
       matchId: contextMatch?.id || null,
@@ -1007,6 +1024,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       poll,
       taggedTeamId: taggedTeam?.id || null,
       taggedTeamName: taggedTeam?.name || null,
+      authorDeviceId: session?.deviceId,
+      uid: session?.uid,
+      authorName: session?.authorName,
+      authorHandle: session?.authorHandle,
+      authorAvatar: session?.avatarColor,
       authorType: 'user'
     });
     setBanterPosts(prev => [created, ...prev]);
@@ -1192,7 +1214,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                 />
               ) : (
                 <div className="space-y-4 animate-fadeIn">
-                  <div className="hidden sm:flex items-end justify-between gap-3 px-0.5">
+                  <div className="flex items-end justify-between gap-3 px-0.5">
                     <div>
                       <h1 className="text-lg font-black text-white tracking-tight">What's happening</h1>
                       <p className="text-xs text-zinc-400">
@@ -1221,7 +1243,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   {/* Input / Composer preview */}
                   <XStyleComposer
                     onPostCreated={handleCreatePost}
-                    contextMatchName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
                     authorHandle={identity.publicHandle}
                     activeTool={mobileFabTool}
                     onClearActiveTool={() => setMobileFabTool(null)}
@@ -1270,6 +1291,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       posts={shownBanterPosts}
                       isLoading={isLoadingBanter}
                       onRefresh={loadBanter}
+                      onLoadMore={loadMoreBanter}
                       showHot={banterFilter === 'trending'}
                       emptyTitle={
                         clubBanterOnly

@@ -4,6 +4,8 @@ import { BANTER_CONFIG, STORAGE_KEYS } from '../../lib/predictions/constants';
 import { getStoredItem, setStoredItem } from '../../lib/predictions/utils';
 import { anonymousIdentityService } from './anonymousIdentityService';
 import { getOrCreateDeviceIdentity } from '../../utils/deviceIdentity';
+import { getDeviceCredentials } from '../../lib/deviceCopies';
+import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
 import type {
   BanterPost,
   BanterComment,
@@ -19,6 +21,7 @@ import type {
 export interface CreatePostOptions {
   content: string;
   parentId?: string | null;
+  rootId?: string | null;
   matchId?: string | null;
   matchContext?: BanterPost['matchContext'];
   imageUrl?: string | null;
@@ -31,6 +34,10 @@ export interface CreatePostOptions {
   taggedTeamId?: string | null;
   taggedTeamName?: string | null;
   authorDeviceId?: string;
+  uid?: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatar?: string;
   authorType?: AuthorType;
   authorBadge?: string;
 }
@@ -289,17 +296,50 @@ const SEEDED_BANTER_POSTS: BanterPost[] = [
   }
 ];
 
-function isCoachPost(post: BanterPost): boolean {
+export function isCoachPost(post: BanterPost): boolean {
   if (post.authorType === 'coach') return true;
   const badge = (post.authorBadge || '').toLowerCase();
   const handle = post.authorHandle.toLowerCase();
   return badge.includes('coach') || handle.includes('coach');
 }
 
+export function formatCoachTag(teamName?: string | null, badge?: string | null): string {
+  const team = teamName || (badge && !badge.toLowerCase().includes('coach') ? badge : '') || 'Team';
+  return `${team} Coach`;
+}
+
+export function compareTrending(a: BanterPost, b: BanterPost): number {
+  const oneHourAgo = Date.now() - 3600000;
+  const aTime = new Date(a.createdAt).getTime();
+  const bTime = new Date(b.createdAt).getTime();
+  const aInHour = aTime >= oneHourAgo;
+  const bInHour = bTime >= oneHourAgo;
+
+  if (aInHour && !bInHour) return -1;
+  if (!aInHour && bInHour) return 1;
+
+  // 1. Most replies (commentCount / repliesCount)
+  const aReplies = a.commentCount ?? a.repliesCount ?? 0;
+  const bReplies = b.commentCount ?? b.repliesCount ?? 0;
+  if (bReplies !== aReplies) return bReplies - aReplies;
+
+  // 2. Favourites / reposts
+  const aFav = a.repostCount ?? a.repostsCount ?? 0;
+  const bFav = b.repostCount ?? b.repostsCount ?? 0;
+  if (bFav !== aFav) return bFav - aFav;
+
+  // 3. Likes
+  const aLikes = a.reactionFireCount ?? a.likesCount ?? 0;
+  const bLikes = b.reactionFireCount ?? b.likesCount ?? 0;
+  if (bLikes !== aLikes) return bLikes - aLikes;
+
+  return bTime - aTime;
+}
+
 function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType | 'hot' | 'latest' | 'matchday'): BanterPost[] {
   let all = [...posts];
   if (filter === 'trending' || filter === 'hot') {
-    all.sort((a, b) => (b.reactionFireCount * 2 + b.commentCount * 3) - (a.reactionFireCount * 2 + a.commentCount * 3));
+    all.sort(compareTrending);
   } else if (filter === 'top') {
     all.sort((a, b) => (b.reactionFireCount + b.commentCount + (b.repostCount || 0)) - (a.reactionFireCount + a.commentCount + (a.repostCount || 0)));
   } else if (filter === 'coach') {
@@ -313,8 +353,20 @@ function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType | 'hot'
     all = all.filter((post) => new Date(post.createdAt).getTime() >= oneDayAgo);
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else {
+    // Default 'all'
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
+
+  // Identify top trending post and tag with isTrending = true
+  if (all.length > 0) {
+    const trendingLeader = [...all].sort(compareTrending)[0];
+    if (trendingLeader) {
+      all.forEach((p) => {
+        p.isTrending = p.id === trendingLeader.id;
+      });
+    }
+  }
+
   return all;
 }
 
@@ -368,6 +420,38 @@ export class BanterService {
         }
         return mapped;
       }
+
+      // If not in banter_posts, look up in banter_comments
+      const { data: cData, error: cErr } = await supabase
+        .from('banter_comments')
+        .select('*')
+        .eq('id', postId)
+        .maybeSingle();
+
+      if (!cErr && cData) {
+        return {
+          id: cData.id,
+          parentId: cData.post_id,
+          rootId: cData.post_id,
+          depth: 1,
+          userId: cData.device_id,
+          authorDeviceId: cData.device_id,
+          authorHandle: cData.author_handle || 'guest',
+          authorName: (cData.author_handle || 'Guest').split(' #')[0],
+          authorType: cData.author_type || 'user',
+          sourceType: 'user' as const,
+          content: cData.content,
+          reactionFireCount: 0,
+          reactionClownCount: 0,
+          reactionSkullCount: 0,
+          commentCount: 0,
+          repliesCount: 0,
+          repostCount: 0,
+          impressionsCount: 1,
+          createdAt: cData.created_at,
+          userReactions: {}
+        };
+      }
     } catch {
       // offline safe
     }
@@ -378,7 +462,8 @@ export class BanterService {
   public async fetchPosts(
     filter: BanterFilterType | 'hot' | 'latest' | 'matchday',
     matchId?: string | null,
-    limit = 30
+    limit = 20,
+    offset = 0
   ): Promise<BanterPost[]> {
     const userReactions = getStoredItem<Record<string, Record<ReactionType, boolean>>>(
       STORAGE_KEYS.USER_REACTIONS,
@@ -387,55 +472,44 @@ export class BanterService {
 
     const seededPosts = usesLocalFictionalSlate() ? fictionalBanterPosts() : SEEDED_BANTER_POSTS;
 
-    if (!usesLocalFictionalSlate()) {
-      try {
-        let query = supabase
-          .from('banter_posts')
-          .select('*')
-          .is('parent_id', null); // Fetch root posts for feed
+    try {
+      let query = supabase
+        .from('banter_posts')
+        .select('*')
+        .eq('status', 'active');
 
-        if (matchId) {
-          query = query.eq('match_id', matchId);
-        }
-
-        if (filter === 'trending' || filter === 'hot') {
-          query = query.order('reaction_fire_count', { ascending: false });
-        } else if (filter === 'top') {
-          query = query.order('comment_count', { ascending: false });
-        } else {
-          query = query.order('created_at', { ascending: false });
-        }
-
-        const { data, error } = await query.limit(limit);
-
-        if (!error && data && data.length > 0) {
-          const posts: BanterPost[] = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
-          
-          // Attach polls where available
-          const pollIds = posts.map(p => p.pollId).filter(Boolean) as string[];
-          if (pollIds.length > 0) {
-            const { data: pollData } = await supabase
-              .from('banter_polls')
-              .select('*')
-              .in('id', pollIds);
-            if (pollData) {
-              const pollMap = new Map(pollData.map((p: any) => [p.id, this.mapDatabaseRowToPoll(p)]));
-              posts.forEach(p => {
-                if (p.pollId && pollMap.has(p.pollId)) {
-                  p.poll = pollMap.get(p.pollId);
-                }
-              });
-            }
-          }
-
-          const filtered = applyBanterFilter(posts, filter);
-          if (filtered.length > 0) {
-            return filtered.slice(0, limit);
-          }
-        }
-      } catch {
-        // offline fallback
+      if (matchId) {
+        query = query.eq('match_id', matchId);
       }
+
+      if (filter === 'trending' || filter === 'hot') {
+        query = query
+          .order('comment_count', { ascending: false })
+          .order('repost_count', { ascending: false })
+          .order('reaction_fire_count', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      query = query.range(offset, offset + limit - 1);
+      const { data, error } = await query;
+
+      if (!error && data && data.length > 0) {
+        const posts: BanterPost[] = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+
+        // Merge local posts that are not in database yet (e.g. freshly posted)
+        const unSyncedLocal = this.localPosts.filter(
+          (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id)
+        );
+        const combined = [...unSyncedLocal, ...posts];
+
+        const filtered = applyBanterFilter(combined, filter);
+        if (filtered.length > 0) {
+          return filtered.slice(0, limit);
+        }
+      }
+    } catch {
+      // offline fallback
     }
 
     // Combine local user root posts + seeded root posts
@@ -453,7 +527,7 @@ export class BanterService {
       userReactions: userReactions[p.id] || {}
     }));
 
-    return applyBanterFilter(all, filter).slice(0, limit);
+    return applyBanterFilter(all, filter).slice(offset, offset + limit);
   }
 
   public async fetchThread(postId: string): Promise<{
@@ -466,54 +540,77 @@ export class BanterService {
       {}
     );
 
+    // Section Load: Only load the opened root thread post
     let activePost = await this.getPostById(postId);
+    let targetPostId = postId;
 
-    // Build Ancestry chain
-    const ancestry: BanterPost[] = [];
-    let currentParentId = activePost?.parentId;
-
-    while (currentParentId) {
-      const parentPost = await this.getPostById(currentParentId);
-      if (!parentPost) break;
-      ancestry.unshift(parentPost);
-      currentParentId = parentPost.parentId;
-    }
-
-    // Build Replies
-    let replies: BanterPost[] = [];
-
-    if (!usesLocalFictionalSlate()) {
-      try {
-        const { data, error } = await supabase
-          .from('banter_posts')
-          .select('*')
-          .or(`parent_id.eq.${postId},root_id.eq.${activePost?.rootId || postId}`)
-          .order('created_at', { ascending: true });
-
-        if (!error && data && data.length > 0) {
-          replies = data
-            .filter((d: any) => d.id !== postId && d.parent_id === postId)
-            .map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+    // If requested post is a reply, resolve the root post so thread displays the root message with all replies
+    if (activePost && (activePost.parentId || activePost.rootId)) {
+      const rootId = activePost.rootId || activePost.parentId;
+      if (rootId && rootId !== activePost.id) {
+        const rootPost = await this.getPostById(rootId);
+        if (rootPost) {
+          activePost = rootPost;
+          targetPostId = rootPost.id;
         }
-      } catch {
-        // fallback to memory
       }
     }
 
-    if (replies.length === 0) {
-      const allKnown = [...this.localPosts, ...SEEDED_BANTER_POSTS];
-      replies = allKnown
-        .filter(p => p.parentId === postId)
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        .map(p => ({
-          ...p,
-          userReactions: userReactions[p.id] || {}
+    // Section Load: Only load direct replies for this thread from banter_comments (avoids deep recursive overhead)
+    let replies: BanterPost[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from('banter_comments')
+        .select('*')
+        .eq('post_id', targetPostId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (!error && data && data.length > 0) {
+        replies = data.map((d: any) => ({
+          id: d.id,
+          parentId: postId,
+          rootId: postId,
+          depth: 1,
+          userId: d.device_id,
+          authorDeviceId: d.device_id,
+          matchId: activePost?.matchId || null,
+          leagueId: activePost?.leagueId || null,
+          authorHandle: d.author_handle,
+          authorName: d.author_handle.split(' #')[0],
+          authorType: d.author_type || 'user',
+          sourceType: 'user',
+          content: d.content,
+          reactionFireCount: 0,
+          reactionClownCount: 0,
+          reactionSkullCount: 0,
+          commentCount: 0,
+          repliesCount: 0,
+          repostCount: 0,
+          impressionsCount: 1,
+          createdAt: d.created_at,
+          userReactions: userReactions[d.id] || {}
         }));
+      }
+    } catch {
+      // offline safe
     }
+
+    // Merge any local replies for this thread
+    const localReplies = this.localPosts
+      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id))
+      .map((p) => ({
+        ...p,
+        userReactions: userReactions[p.id] || {}
+      }));
+
+    replies = [...replies, ...localReplies];
 
     return {
       post: activePost,
-      ancestry,
+      ancestry: [],
       replies
     };
   }
@@ -523,17 +620,7 @@ export class BanterService {
     matchId?: string | null,
     matchContext?: BanterPost['matchContext'],
     imageUrl?: string | null,
-    extraOptions?: {
-      parentId?: string | null;
-      mediaUrls?: string[];
-      mediaType?: BanterMediaType;
-      poll?: { question: string; options: string[] };
-      taggedTeamId?: string | null;
-      taggedTeamName?: string | null;
-      authorDeviceId?: string;
-      authorType?: AuthorType;
-      authorBadge?: string;
-    }
+    extraOptions?: Partial<CreatePostOptions>
   ): Promise<BanterPost> {
     const opts: CreatePostOptions = typeof contentOrOptions === 'string'
       ? {
@@ -541,15 +628,7 @@ export class BanterService {
           matchId,
           matchContext,
           imageUrl,
-          parentId: extraOptions?.parentId,
-          mediaUrls: extraOptions?.mediaUrls,
-          mediaType: extraOptions?.mediaType,
-          poll: extraOptions?.poll,
-          taggedTeamId: extraOptions?.taggedTeamId,
-          taggedTeamName: extraOptions?.taggedTeamName,
-          authorDeviceId: extraOptions?.authorDeviceId,
-          authorType: extraOptions?.authorType,
-          authorBadge: extraOptions?.authorBadge
+          ...extraOptions
         }
       : contentOrOptions;
 
@@ -570,9 +649,14 @@ export class BanterService {
     }
     this.lastPostTimestamp = now;
 
+    const sessionProfile = getActiveSessionProfile();
     const identity = anonymousIdentityService.getIdentity();
     const deviceIdentity = getOrCreateDeviceIdentity();
-    const effectiveDeviceId = opts.authorDeviceId || deviceIdentity.deviceId || identity.deviceId;
+    const effectiveDeviceId = opts.authorDeviceId || sessionProfile?.deviceId || deviceIdentity.deviceId || identity.deviceId;
+    const effectiveUid = opts.uid || sessionProfile?.uid || `usr_${effectiveDeviceId.slice(0, 8)}_${Date.now().toString(36)}`;
+    const effectiveAuthorName = opts.authorName || sessionProfile?.authorName || identity.publicHandle.split(' #')[0] || 'Fanatic';
+    const effectiveAuthorHandle = opts.authorHandle || sessionProfile?.authorHandle || identity.publicHandle;
+    const effectiveAuthorAvatar = opts.authorAvatar || sessionProfile?.avatarColor;
     const postId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `post-${Date.now()}`;
 
     // Calculate depth and rootId using Self-Referential Adjacency Tree
@@ -635,6 +719,63 @@ export class BanterService {
       this.savePoll(pollObj);
     }
 
+    // If this is a reply to an opened thread, route to thread reply persistence
+    if (opts.parentId) {
+      const parent = await this.getPostById(opts.parentId);
+      if (parent) {
+        parent.commentCount = (parent.commentCount || 0) + 1;
+        parent.repliesCount = (parent.repliesCount || 0) + 1;
+      }
+
+      const replyPost: BanterPost = {
+        id: postId,
+        parentId: opts.parentId,
+        rootId: opts.parentId,
+        depth: 1,
+        userId: effectiveDeviceId,
+        authorDeviceId: effectiveDeviceId,
+        author_device_id: effectiveDeviceId,
+        uid: effectiveUid,
+        taggedTeamId: opts.taggedTeamId || null,
+        taggedTeamName: opts.taggedTeamName || null,
+        matchId: opts.matchId || null,
+        leagueId: '11111111-1111-1111-1111-111111111111',
+        matchContext: opts.matchContext,
+        authorHandle: effectiveAuthorHandle,
+        authorName: effectiveAuthorName,
+        authorAvatar: effectiveAuthorAvatar,
+        authorType: opts.authorType || 'user',
+        authorBadge: opts.authorBadge,
+        content: trimmed,
+        mediaUrls,
+        mediaType: finalMediaType,
+        imageUrl: mediaUrls[0] || opts.imageUrl || undefined,
+        sourceType: 'user',
+        reactionFireCount: 0,
+        reactionClownCount: 0,
+        reactionSkullCount: 0,
+        commentCount: 0,
+        repliesCount: 0,
+        repostCount: 0,
+        impressionsCount: 1,
+        viewsCount: 1,
+        isMine: true,
+        createdAt: new Date().toISOString(),
+        userReactions: {}
+      };
+
+      // Optimistically update local array
+      this.localPosts = [replyPost, ...this.localPosts];
+      setStoredItem('egerscore_local_banter_posts', this.localPosts);
+
+      // Persist reply to backend in background via Promise
+      this.persistReplyToBackend(replyPost).catch((err) => {
+        console.warn('Backend reply persist deferred:', err);
+      });
+
+      return replyPost;
+    }
+
     const newPost: BanterPost = {
       id: postId,
       parentId,
@@ -642,13 +783,16 @@ export class BanterService {
       depth,
       userId: effectiveDeviceId,
       authorDeviceId: effectiveDeviceId,
+      author_device_id: effectiveDeviceId,
+      uid: effectiveUid,
       taggedTeamId: opts.taggedTeamId || null,
       taggedTeamName: opts.taggedTeamName || null,
       matchId: opts.matchId || null,
       leagueId: '11111111-1111-1111-1111-111111111111',
       matchContext: opts.matchContext,
-      authorHandle: identity.publicHandle,
-      authorName: identity.publicHandle.split(' #')[0] || 'Fanatic',
+      authorHandle: effectiveAuthorHandle,
+      authorName: effectiveAuthorName,
+      authorAvatar: effectiveAuthorAvatar,
       authorType: opts.authorType || 'user',
       authorBadge: opts.authorBadge,
       content: trimmed,
@@ -698,7 +842,8 @@ export class BanterService {
     optionId: number,
     deviceId?: string
   ): Promise<{ success: boolean; poll: BanterPoll }> {
-    const voterId = deviceId || anonymousIdentityService.getIdentity().deviceId;
+    const session = getActiveSessionProfile();
+    const voterId = deviceId || session?.deviceId || anonymousIdentityService.getIdentity().deviceId;
 
     // Try executing atomic database function via Supabase RPC to prevent concurrent race conditions
     try {
@@ -801,45 +946,143 @@ export class BanterService {
 
   private async persistPostToBackend(post: BanterPost, poll?: BanterPoll | null): Promise<void> {
     try {
-      const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
+      const session = getActiveSessionProfile();
+      const devId = post.authorDeviceId || session?.deviceId || getOrCreatePermanentDeviceId();
+      const uid = post.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
 
-      if (poll) {
-        await supabase.from('banter_polls').insert({
-          id: poll.id,
-          post_id: post.id,
-          question: poll.question,
-          options: poll.options,
-          total_votes: poll.totalVotes,
-          voters: poll.voters,
-          expires_at: poll.expiresAt
-        });
+      const payload: Record<string, any> = {
+        root_id: post.rootId || post.parentId || null,
+        parent_id: post.parentId || null,
+        uid,
+        author_device_id: devId,
+        author_name: post.authorName,
+        author_handle: post.authorHandle,
+        author_avatar: post.authorAvatar,
+        content: post.content,
+        media_type: post.mediaType || 'NONE',
+        match_id: post.matchId || null,
+        league_id: post.leagueId || null,
+        status: 'active'
+      };
+
+      if (/^[0-9a-f-]{36}$/i.test(post.id)) {
+        payload.id = post.id;
+      }
+      if (post.mediaUrls && post.mediaUrls.length > 0) {
+        payload.media_urls = post.mediaUrls;
+      }
+      if (post.taggedTeamId) {
+        payload.tagged_team_id = post.taggedTeamId;
+        payload.tagged_team_name = post.taggedTeamName;
       }
 
-      await supabase.from('banter_posts').insert({
-        id: post.id,
-        parent_id: post.parentId || null,
-        root_id: post.rootId || post.id,
-        depth: post.depth || 0,
-        user_id: post.userId || devRowId || 'anonymous-device',
-        author_device_id: post.authorDeviceId || devRowId || post.userId,
-        tagged_team_id: post.taggedTeamId || null,
-        tagged_team_name: post.taggedTeamName || null,
-        match_id: post.matchId,
-        league_id: post.leagueId,
-        device_id: devRowId,
-        author_handle: post.authorHandle,
-        author_name: post.authorName || post.authorHandle,
-        author_type: post.authorType,
-        author_badge: post.authorBadge,
-        content: post.content,
-        media_urls: post.mediaUrls || [],
-        media_type: post.mediaType || 'NONE',
-        poll_id: post.pollId || null,
-        source_type: post.sourceType || 'user',
+      const { data, error } = await supabase
+        .from('banter_posts')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (!error && data) {
+        post.id = data.id;
+        return;
+      }
+
+      // Fallback to RPC if direct insert fails
+      const creds = await getDeviceCredentials();
+      const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
+      const effectiveDeviceId = creds.deviceId || devRowId;
+
+      if (effectiveDeviceId && creds.secret) {
+        await supabase.rpc('register_or_check_in_device', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_platform: 'web',
+          p_label: post.authorHandle
+        });
+
+        const { data: rpcData } = await supabase.rpc('post_device_banter', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_post_id: /^[0-9a-f-]{36}$/i.test(post.id) ? post.id : null,
+          p_match_id: post.matchId || null,
+          p_league_id: post.leagueId || null,
+          p_author_handle: post.authorHandle,
+          p_content: post.content
+        });
+
+        if (rpcData) {
+          post.id = rpcData;
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend banter post persist deferred:', err);
+    }
+  }
+
+  private async persistReplyToBackend(reply: BanterPost): Promise<void> {
+    try {
+      if (!reply.parentId) return;
+      const session = getActiveSessionProfile();
+      const devId = reply.authorDeviceId || session?.deviceId || getOrCreatePermanentDeviceId();
+      const uid = reply.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
+
+      const payload: Record<string, any> = {
+        root_id: reply.rootId || reply.parentId,
+        parent_id: reply.parentId,
+        uid,
+        author_device_id: devId,
+        author_name: reply.authorName,
+        author_handle: reply.authorHandle,
+        author_avatar: reply.authorAvatar,
+        content: reply.content,
+        media_type: reply.mediaType || 'NONE',
         status: 'active'
-      });
-    } catch {
-      // offline fallback
+      };
+
+      if (/^[0-9a-f-]{36}$/i.test(reply.id)) {
+        payload.id = reply.id;
+      }
+
+      const { data, error } = await supabase
+        .from('banter_posts')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (!error && data) {
+        reply.id = data.id;
+        return;
+      }
+
+      // Fallback to RPC if direct insert fails
+      const creds = await getDeviceCredentials();
+      const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
+      const effectiveDeviceId = creds.deviceId || devRowId;
+
+      if (effectiveDeviceId && creds.secret) {
+        await supabase.rpc('register_or_check_in_device', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_platform: 'web',
+          p_label: reply.authorHandle
+        });
+
+        const { data: rpcData } = await supabase.rpc('post_device_banter_comment', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_post_id: reply.parentId,
+          p_author_handle: reply.authorHandle,
+          p_content: reply.content
+        });
+
+        if (rpcData) {
+          reply.id = rpcData;
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend reply persist deferred:', err);
     }
   }
 
@@ -849,27 +1092,28 @@ export class BanterService {
     isActive: boolean
   ): Promise<void> {
     try {
+      const creds = await getDeviceCredentials();
       const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
-      if (!devRowId) return;
+      const effectiveDeviceId = creds.deviceId || devRowId;
 
-      if (isActive) {
-        await supabase.from('banter_reactions').insert({
-          post_id: postId,
-          device_id: devRowId,
-          reaction_type: reactionType
+      if (effectiveDeviceId && creds.secret) {
+        await supabase.rpc('register_or_check_in_device', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_platform: 'web',
+          p_label: 'Reaction Voter'
         });
-      } else {
-        await supabase
-          .from('banter_reactions')
-          .delete()
-          .match({
-            post_id: postId,
-            device_id: devRowId,
-            reaction_type: reactionType
-          });
+
+        await supabase.rpc('toggle_device_banter_reaction', {
+          p_device_id: effectiveDeviceId,
+          p_secret: creds.secret,
+          p_post_id: postId,
+          p_reaction_type: reactionType,
+          p_active: isActive
+        });
       }
-    } catch {
-      // offline safe
+    } catch (err) {
+      console.warn('Backend reaction persist deferred:', err);
     }
   }
 
@@ -936,24 +1180,29 @@ export class BanterService {
     const existing = getStoredItem<BanterComment[]>(`egerscore_comments_${postId}`, []);
     setStoredItem(`egerscore_comments_${postId}`, [...existing, comment]);
 
-    try {
-      const devRowId = await anonymousIdentityService.ensureDeviceRegistered();
-      if (devRowId) {
-        await supabase.from('banter_comments').insert({
-          post_id: postId,
-          device_id: devRowId,
-          author_handle: comment.authorHandle,
-          content: comment.content
-        });
-      }
-    } catch {
-      // offline safe
-    }
+    // Persist to backend asynchronously via Promise
+    this.persistReplyToBackend({
+      ...comment,
+      parentId: postId
+    } as any).catch(() => {});
 
     return comment;
   }
 
   private mapDatabaseRowToPost(d: any, userReactions: Record<string, any> = {}): BanterPost {
+    let authorType = d.author_type || 'user';
+    let authorBadge = d.author_badge;
+    const authorHandle = d.author_handle || 'Fanatic';
+
+    if (
+      authorType === 'coach' ||
+      (authorBadge || '').toLowerCase().includes('coach') ||
+      authorHandle.toLowerCase().includes('coach')
+    ) {
+      authorType = 'coach';
+      authorBadge = formatCoachTag(d.tagged_team_name, authorBadge);
+    }
+
     return {
       id: d.id,
       parentId: d.parent_id || null,
@@ -962,11 +1211,11 @@ export class BanterService {
       userId: d.user_id || d.device_id,
       matchId: d.match_id,
       leagueId: d.league_id,
-      authorHandle: d.author_handle,
-      authorName: d.author_name || d.author_handle.split(' #')[0],
+      authorHandle,
+      authorName: d.author_name || authorHandle.split(' #')[0],
       authorAvatar: d.author_avatar,
-      authorType: d.author_type || 'user',
-      authorBadge: d.author_badge,
+      authorType,
+      authorBadge,
       content: d.content,
       mediaUrls: d.media_urls || (d.image_url ? [d.image_url] : []),
       mediaType: d.media_type || (d.image_url ? 'IMAGE' : 'NONE'),
@@ -984,7 +1233,9 @@ export class BanterService {
       pollId: d.poll_id || null,
       taggedTeamId: d.tagged_team_id || null,
       taggedTeamName: d.tagged_team_name || null,
-      authorDeviceId: d.author_device_id || null,
+      uid: d.uid || null,
+      authorDeviceId: d.author_device_id || d.device_id || null,
+      author_device_id: d.author_device_id || d.device_id || null,
       createdAt: d.created_at,
       userReactions: userReactions[d.id] || {}
     };

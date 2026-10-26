@@ -411,7 +411,8 @@ export const AppContent: React.FC = () => {
     if (route === 'analytics' || route.startsWith('analytics')) return 'analytics';
     const viewParam = new URLSearchParams(window.location.search).get('view');
     if (viewParam === 'analytics') return 'analytics';
-    return viewParam === 'talk' ? 'banter' : 'scores';
+    if (viewParam === 'picks' || viewParam === 'scores') return 'scores';
+    return 'banter';
   });
   const selectPredictionView = useCallback((view: 'banter' | 'scores' | 'analytics') => {
     setPredictionView(view);
@@ -419,6 +420,7 @@ export const AppContent: React.FC = () => {
     url.searchParams.set('view', view === 'banter' ? 'talk' : view === 'analytics' ? 'analytics' : 'picks');
     window.history.replaceState(null, '', url);
   }, []);
+  const isBanterPage = activeTab === 'news' && predictionView === 'banter';
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
@@ -627,6 +629,7 @@ export const AppContent: React.FC = () => {
         setActiveTab('favorites');
       }
       if (newRoute === 'news' || newRoute.startsWith('news')) {
+        selectPredictionView('banter');
         setActiveTab('news');
       }
       if (newRoute === 'banter' || newRoute.startsWith('banter')) {
@@ -1323,6 +1326,7 @@ export const AppContent: React.FC = () => {
         ) : (
           // Home view
           <PredictionChromeProvider view={predictionView} setView={selectPredictionView}>
+            {!isBanterPage && (
             <Header
               darkMode={darkMode}
               toggleDarkMode={toggleDarkMode}
@@ -1354,6 +1358,9 @@ export const AppContent: React.FC = () => {
                     } catch {}
                   }
                 }
+                if (tab === 'news') {
+                  selectPredictionView('banter');
+                }
                 setActiveTab(tab);
               }}
               favoritesCount={favorites.length}
@@ -1365,13 +1372,18 @@ export const AppContent: React.FC = () => {
               onSelectPredictionView={selectPredictionView}
             />
 
+            )}
+            {!isBanterPage && (
             <Navigation
               activeTab={activeTab}
               setActiveTab={(tab) => {
                 if ((tab as any) === 'login') {
                   handleNavigateHash('/login');
                 } else {
-                  setActiveTab(tab);
+                  if (tab === 'news') {
+                  selectPredictionView('banter');
+                }
+                setActiveTab(tab);
                 }
               }}
               favoritesCount={favorites.length}
@@ -1385,7 +1397,9 @@ export const AppContent: React.FC = () => {
               onOpenCalendar={() => setIsCalendarOpen(true)}
             />
 
-            <main className={`flex-1 w-full max-w-5xl mx-auto px-0 sm:px-2 md:px-4 pt-2 ${activeTab === 'news' ? 'pb-0' : 'pb-12'}`}>
+            )}
+
+            <main className={`flex-1 w-full max-w-5xl mx-auto px-0 sm:px-2 md:px-4 ${isBanterPage ? 'pt-0 pb-0' : activeTab === 'news' ? 'pt-2 pb-0' : 'pt-2 pb-12'}`}>
               {activeTab === 'scores' && (
                 <HomePage
                   selectedDate={selectedDate}

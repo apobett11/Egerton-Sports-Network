@@ -128,9 +128,12 @@ export interface BanterPost {
   taggedTeamId?: string | null;
   taggedTeamName?: string | null;
   authorDeviceId?: string;
+  author_device_id?: string;
+  uid?: string;
   isMine?: boolean;
   isLiked?: boolean;
   isReposted?: boolean;
+  isTrending?: boolean;
   createdAt: string;
   userReactions?: {
     fire?: boolean;

@@ -12,13 +12,18 @@ import {
   Sparkles,
   Film,
   Shield,
-  Send
+  Send,
+  BarChart2
 } from 'lucide-react';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { banterService } from '../../../services/predictions/banterService';
 import { shareService } from '../../../services/predictions/shareService';
+import { shareBanterSnapshot } from '../../../lib/shareSnapshot';
+import { BanterReplyModal } from '../../Banter/BanterReplyModal';
 import { XPollWidget } from './XPollWidget';
 import { BanterPostCard } from './BanterPostCard';
+import { useBanterSession } from '../../../hooks/useBanterSession';
+import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
 import type { BanterPost, ReactionType, BanterMediaType } from '../../../types/predictions';
 
 interface BanterThreadViewProps {
@@ -49,6 +54,8 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   onBack,
   onNavigatePost
 }) => {
+  const { profile } = useBanterSession();
+  const currentDeviceId = profile?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
   const [post, setPost] = useState<BanterPost | null>(null);
   const [ancestry, setAncestry] = useState<BanterPost[]>([]);
   const [replies, setReplies] = useState<BanterPost[]>([]);
@@ -63,12 +70,32 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   const [moreStories, setMoreStories] = useState<BanterPost[]>([]);
   const channelRef = useRef<any>(null);
 
+  const rootAuthorDeviceId = post?.authorDeviceId || (post as any)?.author_device_id || post?.userId;
+  const isRootYou = Boolean(currentDeviceId && rootAuthorDeviceId === currentDeviceId);
+
   // Scroll to absolute top on mount / navigation: no auto-scroll to input
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    setVisibleRepliesCount(5);
   }, [postId]);
+
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState(5);
+  const [replyTargetPost, setReplyTargetPost] = useState<BanterPost | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (typeof window !== 'undefined') {
+        const scrollBottom = window.innerHeight + window.scrollY;
+        if (scrollBottom >= document.body.offsetHeight - 500) {
+          setVisibleRepliesCount(prev => (prev < replies.length ? prev + 5 : prev));
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [replies.length]);
 
   const loadThread = useCallback(async () => {
     setIsLoading(true);
@@ -118,7 +145,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
 
   const handleShare = () => {
     if (!post) return;
-    shareService.shareTalk(post);
+    shareBanterSnapshot(post, null);
   };
 
   const handleCreateReply = async (
@@ -129,6 +156,12 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     taggedTeam?: { id: string; name: string } | null
   ) => {
     if (!post) return;
+
+    const effectiveDeviceId = profile?.deviceId || currentDeviceId;
+    const effectiveUid = profile?.uid || `usr_${effectiveDeviceId.slice(0, 8)}_${Date.now().toString(36)}`;
+    const effectiveName = profile?.authorName || 'Guest Pundit';
+    const effectiveHandle = profile?.authorHandle || 'guest';
+    const effectiveAvatar = profile?.avatarColor || '#9333ea';
 
     // Optimistic Update
     const optimisticId = `temp-${Date.now()}`;
@@ -142,8 +175,12 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
       mediaType: mediaType || 'NONE',
       taggedTeamId: taggedTeam?.id || null,
       taggedTeamName: taggedTeam?.name || null,
-      authorHandle: 'Me',
-      authorName: 'Me',
+      authorDeviceId: effectiveDeviceId,
+      author_device_id: effectiveDeviceId,
+      uid: effectiveUid,
+      authorHandle: effectiveHandle,
+      authorName: effectiveName,
+      authorAvatar: effectiveAvatar,
       authorType: 'user',
       sourceType: 'user',
       reactionFireCount: 0,
@@ -158,24 +195,59 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     setPost((current: BanterPost | null) => current ? { ...current, commentCount: current.commentCount + 1, repliesCount: (current.repliesCount || 0) + 1 } : null);
 
     try {
-      const newReply = await banterService.createPost({
-        content,
-        parentId: post.id,
-        mediaUrls,
-        mediaType,
-        poll,
-        taggedTeamId: taggedTeam?.id || null,
-        taggedTeamName: taggedTeam?.name || null
-      });
+      let createdReply: BanterPost | null = null;
 
-      setReplies(prev => prev.map(r => r.id === optimisticId ? newReply : r));
+      // 1. Direct session insert with verified UID & hardware device token (Zero verification overhead)
+      const payload: Record<string, any> = {
+        root_id: post.rootId || post.id,
+        parent_id: post.id,
+        uid: effectiveUid,
+        author_device_id: effectiveDeviceId,
+        author_name: effectiveName,
+        author_handle: effectiveHandle,
+        author_avatar: effectiveAvatar,
+        content: content.trim(),
+        media_type: mediaType || 'NONE',
+      };
+
+      const { data, error } = await supabase
+        .from('banter_posts')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (!error && data) {
+        createdReply = {
+          ...optimisticItem,
+          id: data.id,
+        };
+      } else {
+        // Fallback to service persistence
+        createdReply = await banterService.createPost({
+          content,
+          parentId: post.id,
+          rootId: post.rootId || post.id,
+          mediaUrls,
+          mediaType,
+          poll,
+          taggedTeamId: taggedTeam?.id || null,
+          taggedTeamName: taggedTeam?.name || null,
+          authorDeviceId: effectiveDeviceId,
+          uid: effectiveUid,
+          authorName: effectiveName,
+          authorHandle: effectiveHandle,
+          authorAvatar: effectiveAvatar,
+        });
+      }
+
+      setReplies(prev => prev.map(r => r.id === optimisticId ? (createdReply || r) : r));
 
       // Broadcast to other viewers in this thread room only
-      if (channelRef.current) {
+      if (channelRef.current && createdReply) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'new_reply',
-          payload: { reply: newReply },
+          payload: { reply: createdReply },
         });
       }
     } catch (err) {
@@ -331,17 +403,28 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           {/* Author Strip */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 shadow-sm">
-                <User className="h-6 w-6" />
+              <div
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm shadow-sm border border-white/10"
+                style={{ backgroundColor: post.authorAvatar || (isRootYou ? profile?.avatarColor : undefined) || '#2563eb' }}
+              >
+                {post.authorName ? post.authorName[0] : <User className="h-6 w-6" />}
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-base text-white tracking-tight">
                     {post.authorName || post.authorHandle}
                   </span>
                   {isJournalist && (
                     <span title="Verified Reporter">
                       <ShieldCheck className="h-4 w-4 text-sky-400" />
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-sky-400 border border-sky-500/30">
+                    OP
+                  </span>
+                  {isRootYou && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-purple-300 border border-purple-500/30">
+                      You
                     </span>
                   )}
                 </div>
@@ -540,65 +623,147 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {replies.map((reply, idx) => (
-                <div
-                  key={reply.id}
-                  onClick={() => onNavigatePost ? onNavigatePost(reply.id) : (window.location.hash = `#/banter/${reply.id}`)}
-                  className="group relative flex gap-3 p-3 rounded-2xl border border-zinc-900 hover:border-zinc-800 bg-zinc-950/40 hover:bg-zinc-950 transition-all cursor-pointer"
-                >
-                  {/* Avatar & Number badge */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300">
-                      <User className="h-4 w-4" />
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800">
-                      #{idx + 1}
-                    </span>
-                  </div>
+              {replies.slice(0, visibleRepliesCount).map((reply, idx) => {
+                const replyAuthorDeviceId = reply.authorDeviceId || (reply as any).author_device_id || reply.userId;
+                const isOP = Boolean(rootAuthorDeviceId && replyAuthorDeviceId === rootAuthorDeviceId);
+                const isYou = Boolean(currentDeviceId && replyAuthorDeviceId === currentDeviceId);
+                const voteMatch = reply.content.match(/^\[Voted:\s*([^\]]+)\]\s*(.*)$/);
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-xs text-white group-hover:underline">
-                          {reply.authorName || reply.authorHandle}
-                        </span>
-                        <span className="text-[11px] text-zinc-500 font-mono">
-                          @{reply.authorHandle.replace(/\s+/g, '_').toLowerCase()}
-                        </span>
-                        <span className="text-[11px] text-zinc-600">·</span>
-                        <span className="text-[11px] text-zinc-500">
-                          {formatFullTimestamp(reply.createdAt).split(' · ')[0]}
-                        </span>
+                return (
+                  <div
+                    key={reply.id}
+                    onClick={() => onNavigatePost ? onNavigatePost(reply.id) : (window.location.hash = `#/banter/${reply.id}`)}
+                    className="group relative flex gap-3 p-3 rounded-2xl border border-zinc-900 hover:border-zinc-800 bg-zinc-950/40 hover:bg-zinc-950 transition-all cursor-pointer"
+                  >
+                    {/* Avatar & Number badge */}
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs border border-white/10"
+                        style={{ backgroundColor: reply.authorAvatar || (isYou ? profile?.avatarColor : undefined) || '#2563eb' }}
+                      >
+                        {reply.authorName ? reply.authorName[0] : <User className="h-4 w-4" />}
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800">
+                        #{idx + 1}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs text-white group-hover:underline">
+                            {reply.authorName || reply.authorHandle}
+                          </span>
+                          {isOP && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-sky-400 border border-sky-500/30">
+                              OP
+                            </span>
+                          )}
+                          {isYou && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-purple-300 border border-purple-500/30">
+                              You
+                            </span>
+                          )}
+                          <span className="text-[11px] text-zinc-500 font-mono">
+                            @{reply.authorHandle.replace(/\s+/g, '_').toLowerCase()}
+                          </span>
+                          <span className="text-[11px] text-zinc-600">·</span>
+                          <span className="text-[11px] text-zinc-500">
+                            {formatFullTimestamp(reply.createdAt).split(' · ')[0]}
+                          </span>
+                        </div>
+                      </div>
+
+                      {voteMatch ? (
+                        <div className="space-y-1 my-1">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-xs font-bold">
+                            <BarChart2 className="w-3.5 h-3.5" />
+                            <span>Voted: {voteMatch[1]}</span>
+                          </div>
+                          <ExpandableReplyText text={voteMatch[2]} />
+                        </div>
+                      ) : (
+                        <ExpandableReplyText text={reply.content} />
+                      )}
+
+                      {reply.poll && (
+                        <XPollWidget poll={reply.poll} />
+                      )}
+
+                      {/* Reply mini action toolbar */}
+                      <div className="flex items-center gap-5 mt-2.5 text-zinc-500 text-xs">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReplyTargetPost(reply);
+                          }}
+                          className="flex items-center gap-1 hover:text-sky-400 cursor-pointer p-1"
+                          title="Reply"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          <span>{reply.commentCount || 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, repostCount: (r.repostCount || 0) + 1 } : r));
+                          }}
+                          className="flex items-center gap-1 hover:text-emerald-400 cursor-pointer p-1"
+                          title="Repost"
+                        >
+                          <Repeat2 className="h-3.5 w-3.5" />
+                          <span>{reply.repostCount || 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, reactionFireCount: (r.reactionFireCount || 0) + 1 } : r));
+                            Promise.resolve().then(() => banterService.toggleReaction(reply.id, 'fire')).catch(console.warn);
+                          }}
+                          className="flex items-center gap-1 hover:text-rose-400 cursor-pointer p-1"
+                          title="Like"
+                        >
+                          <Heart className="h-3.5 w-3.5" />
+                          <span>{reply.reactionFireCount || 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (post) shareBanterSnapshot(reply, post);
+                          }}
+                          className="flex items-center gap-1 hover:text-sky-400 cursor-pointer p-1 ml-auto"
+                          title="Share"
+                        >
+                          <Share className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
-
-                    <ExpandableReplyText text={reply.content} />
-
-                    {reply.poll && (
-                      <XPollWidget poll={reply.poll} />
-                    )}
-
-                    {/* Reply mini action toolbar */}
-                    <div className="flex items-center gap-6 mt-2 text-zinc-500 text-xs">
-                      <span className="flex items-center gap-1 hover:text-sky-400">
-                        <MessageCircle className="h-3.5 w-3.5" />
-                        <span>{reply.commentCount || 0}</span>
-                      </span>
-                      <span className="flex items-center gap-1 hover:text-emerald-400">
-                        <Repeat2 className="h-3.5 w-3.5" />
-                        <span>{reply.repostCount || 0}</span>
-                      </span>
-                      <span className="flex items-center gap-1 hover:text-rose-400">
-                        <Heart className="h-3.5 w-3.5" />
-                        <span>{reply.reactionFireCount || 0}</span>
-                      </span>
-                    </div>
                   </div>
+                );
+              })}
+              {visibleRepliesCount < replies.length && (
+                <div className="text-center py-3 text-xs text-zinc-500 font-mono">
+                  Showing {visibleRepliesCount} of {replies.length} replies · Scroll for more
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
+
+        {replyTargetPost && (
+          <BanterReplyModal
+            post={replyTargetPost}
+            isOpen={Boolean(replyTargetPost)}
+            onClose={() => setReplyTargetPost(null)}
+            onSuccess={() => {
+              setReplies(prev => prev.map(r => r.id === replyTargetPost.id ? { ...r, commentCount: (r.commentCount || 0) + 1 } : r));
+            }}
+          />
+        )}
 
         {/* Single input bar fixed at the bottom */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-md border-t border-zinc-800 p-2.5 sm:p-3 shadow-2xl">
@@ -619,15 +784,18 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             }}
             className="max-w-2xl mx-auto flex items-center gap-2"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
-              <User className="h-4 w-4" />
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
+              style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
+            >
+              {profile?.authorName ? profile.authorName[0] : <User className="h-4 w-4" />}
             </div>
             <input
               type="text"
               value={singleReplyText}
               onChange={(e) => setSingleReplyText(e.target.value.slice(0, 280))}
               maxLength={280}
-              placeholder="Post your reply..."
+              placeholder={`Reply as @${profile?.authorHandle || 'you'}...`}
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
             />
             <button

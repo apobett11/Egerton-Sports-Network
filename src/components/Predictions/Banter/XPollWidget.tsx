@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, BarChart2, Send } from 'lucide-react';
 import { banterService } from '../../../services/predictions/banterService';
 import { anonymousIdentityService } from '../../../services/predictions/anonymousIdentityService';
+import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
 import type { BanterPoll } from '../../../types/predictions';
 
 interface XPollWidgetProps {
@@ -16,8 +17,10 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   const [reasonText, setReasonText] = useState('');
   const [isSubmittingReason, setIsSubmittingReason] = useState(false);
   const [reasonSubmitted, setReasonSubmitted] = useState(false);
+  const [submittedReasonText, setSubmittedReasonText] = useState('');
 
-  const deviceId = anonymousIdentityService.getIdentity().deviceId;
+  const session = getActiveSessionProfile();
+  const deviceId = session?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : anonymousIdentityService.getIdentity().deviceId);
   const userVotedOptionId = poll.voters ? poll.voters[deviceId] : undefined;
   const hasVoted = userVotedOptionId !== undefined;
   const totalVotes = poll.totalVotes || 0;
@@ -43,11 +46,13 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     e.preventDefault();
     if (!reasonText.trim() || isSubmittingReason) return;
 
+    const val = reasonText.trim();
     setIsSubmittingReason(true);
+    setSubmittedReasonText(val);
     try {
       const selectedOpt = poll.options.find((o) => o.id === userVotedOptionId);
       const prefix = selectedOpt ? `[Voted: ${selectedOpt.text}] ` : '';
-      await banterService.createReply(poll.postId, `${prefix}${reasonText.trim()}`);
+      await banterService.createReply(poll.postId, `${prefix}${val}`);
       setReasonSubmitted(true);
     } catch {
       setReasonSubmitted(true);
@@ -128,7 +133,15 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
       {/* Optional Reason input appearing immediately below selected poll */}
       {hasVoted && (
         <div className="mt-2.5 pt-2.5 border-t border-zinc-800/80 animate-fadeIn space-y-2">
-          {!reasonSubmitted ? (
+          {reasonSubmitted ? (
+            <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-xs text-sky-200 flex flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-sky-400 font-bold text-[11px]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Your reason (posted as reply in discussion):</span>
+              </div>
+              <p className="text-zinc-200 leading-relaxed italic">"{submittedReasonText || reasonText}"</p>
+            </div>
+          ) : (
             <form onSubmit={handleShareReason} className="flex items-center gap-1.5">
               <input
                 type="text"
@@ -147,11 +160,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 <Send className="h-3 w-3" />
               </button>
             </form>
-          ) : (
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-medium">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Reason shared in discussion!</span>
-            </div>
           )}
         </div>
       )}

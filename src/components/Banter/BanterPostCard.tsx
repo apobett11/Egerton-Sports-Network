@@ -10,11 +10,15 @@ import {
   ShieldCheck,
   User,
   Film,
-  Shield
+  Shield,
+  Flame
 } from 'lucide-react';
 import { formatRelativeTime } from '../../lib/predictions/utils';
 import { shareService } from '../../services/predictions/shareService';
+import { shareBanterSnapshot } from '../../lib/shareSnapshot';
+import { BanterReplyModal } from './BanterReplyModal';
 import { XPollWidget } from '../Predictions/Banter/XPollWidget';
+import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -42,11 +46,18 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   onSelectMatchContext,
   onRepost,
 }) => {
+  const session = getActiveSessionProfile();
+  const currentDeviceId = session?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : null);
+  const postAuthorDeviceId = post.authorDeviceId || (post as any).author_device_id || post.userId;
+  const isYou = Boolean(currentDeviceId && postAuthorDeviceId === currentDeviceId);
+
   const isJournalist =
     post.authorType === 'journalist' ||
     (post.authorBadge || '').toLowerCase().includes('journalist');
 
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [replyCount, setReplyCount] = useState(post.commentCount || post.repliesCount || 0);
   const [expanded, setExpanded] = useState(false);
   const [repostCount, setRepostCount] = useState(
     post.repostCount || post.repostsCount || Math.floor((post.reactionFireCount + 5) * 1.4)
@@ -72,27 +83,28 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const handleRepost = (e: React.MouseEvent) => {
     e.stopPropagation();
     const next = !hasReposted;
-    if (hasReposted) {
-      setRepostCount((prev: number) => prev - 1);
-      setHasReposted(false);
-    } else {
-      setRepostCount((prev: number) => prev + 1);
-      setHasReposted(true);
+    // Instant UI update
+    setRepostCount((prev: number) => prev + (next ? 1 : -1));
+    setHasReposted(next);
+    // Background asynchronous promise
+    if (onRepost) {
+      Promise.resolve().then(() => onRepost(post.id, next)).catch(console.warn);
     }
-    if (onRepost) onRepost(post.id, next);
   };
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const next = !isLiked;
+    // Instant UI update
     setIsLiked(next);
     setLikesCount((prev: number) => prev + (next ? 1 : -1));
-    onToggleReaction(post.id, 'fire');
+    // Background asynchronous promise
+    Promise.resolve().then(() => onToggleReaction(post.id, 'fire')).catch(console.warn);
   };
 
   const handleShareTake = (e: React.MouseEvent) => {
     e.stopPropagation();
-    shareService.shareTalk(post);
+    shareBanterSnapshot(post, null);
   };
 
   const renderTweetContent = (text: string) => {
@@ -133,9 +145,14 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
       <div className="flex gap-3">
         {/* User Avatar Circle */}
         <div className="flex-shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-bold text-xs shadow-sm">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
+            style={{ backgroundColor: post.authorAvatar || (isYou ? session?.avatarColor : undefined) || '#2563eb' }}
+          >
             {isJournalist ? (
               <ShieldCheck className="h-4 w-4 text-sky-400" />
+            ) : post.authorName ? (
+              post.authorName[0]
             ) : (
               <User className="h-4 w-4 text-zinc-400" />
             )}
@@ -151,10 +168,16 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 {post.authorName || post.authorHandle}
               </span>
 
-              {post.authorType === 'coach' ? (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-emerald-400 border border-emerald-500/40">
+              {isYou && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-purple-300 border border-purple-500/40">
+                  You
+                </span>
+              )}
+
+              {post.authorType === 'coach' || (post.authorBadge || '').toLowerCase().includes('coach') ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400 border border-emerald-500/40">
                   <Shield className="h-2.5 w-2.5 text-emerald-400" />
-                  <span>{post.authorBadge || 'COACH'}</span>
+                  <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : (post.authorBadge || 'Coach')}</span>
                 </span>
               ) : isJournalist ? (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-sky-400 border border-sky-500/40">
@@ -175,9 +198,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 {formatRelativeTime(post.createdAt)}
               </span>
 
-              {isHot && (
-                <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded-full border border-rose-500/20">
-                  Hot
+              {(isHot || post.isTrending) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/25 via-yellow-400/25 to-amber-500/25 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300 border border-amber-400/60 shadow-[0_0_10px_rgba(251,191,36,0.3)]">
+                  <Flame className="h-3 w-3 text-amber-400 fill-amber-400 animate-pulse" />
+                  <span>Trending</span>
                 </span>
               )}
             </div>
@@ -185,17 +209,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
           {/* Match Context & Tagged Team Badges */}
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {post.matchContext && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (post.matchId && onSelectMatchContext) onSelectMatchContext(post.matchId);
-                }}
-                className="inline-flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-0.5 text-[10px] font-bold text-zinc-300 hover:text-white border border-zinc-800 transition-colors cursor-pointer"
-              >
+            {post.matchContext && post.content.includes('#') && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-800">
                 <span>⚽ {post.matchContext.homeTeamName} vs {post.matchContext.awayTeamName}</span>
-              </button>
+              </span>
             )}
 
             {post.taggedTeamName && (
@@ -276,13 +293,18 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           {/* Twitter Action Bar: seamlessly at the bottom of the message without separating line */}
           <div className="mt-2 flex items-center justify-between text-xs text-zinc-500 max-w-md">
             {/* 1. Cyan Reply Hover */}
-            <div
-              className="flex items-center gap-1.5 p-1.5 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors"
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsReplyModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 p-1.5 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
               title="Reply"
             >
               <MessageCircle className="h-4 w-4" />
-              <span className="font-medium text-[11px]">{post.commentCount || 0}</span>
-            </div>
+              <span className="font-medium text-[11px]">{replyCount}</span>
+            </button>
 
             {/* 2. Green Repost Hover */}
             <button
@@ -344,6 +366,13 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           </div>
         </div>
       </div>
+
+      <BanterReplyModal
+        post={post}
+        isOpen={isReplyModalOpen}
+        onClose={() => setIsReplyModalOpen(false)}
+        onSuccess={() => setReplyCount(prev => prev + 1)}
+      />
     </article>
   );
 };
