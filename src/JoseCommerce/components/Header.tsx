@@ -308,6 +308,17 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
+                  {onOpenAdmin && (
+                    <button
+                      type="button"
+                      onClick={onOpenAdmin}
+                      className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full border border-emerald-500/60 bg-[#0c2417] hover:bg-[#123623] text-emerald-400 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="Staff Login"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Staff</span>
+                    </button>
+                  )}
                   {onOpenAuth && (
                     <button
                       type="button"

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, ArrowRight, Star, ShoppingCart, Check } from 'lucide-react';
 import { Product } from '../types';
 
@@ -23,6 +23,13 @@ export const WhatsNewSection: React.FC<WhatsNewSectionProps> = ({
 
   // Maximum of six product cards in What's New as requested
   const displayProducts = products.slice(0, 6);
+
+  // Default strictly to the left (scroll position 0) and prevent rightward auto-scroll
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [products]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -64,8 +71,37 @@ export const WhatsNewSection: React.FC<WhatsNewSectionProps> = ({
               </div>
             </div>
 
-            {/* Action: "View All" Button */}
+            {/* Action: Desktop Scroll Arrows & "View All" Button */}
             <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scroll('left')}
+                  className={`p-1 rounded-lg border transition-colors cursor-pointer ${
+                    theme === 'dark' 
+                      ? 'border-[#345880] text-slate-300 hover:text-white hover:bg-[#224466]' 
+                      : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  aria-label="Scroll left"
+                  title="Scroll left"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scroll('right')}
+                  className={`p-1 rounded-lg border transition-colors cursor-pointer ${
+                    theme === 'dark' 
+                      ? 'border-[#345880] text-slate-300 hover:text-white hover:bg-[#224466]' 
+                      : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  aria-label="Scroll right"
+                  title="Scroll right"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               <button
                 onClick={onViewAllLatest}
                 className={`flex items-center gap-1 text-[11px] font-bold transition-colors cursor-pointer px-2.5 py-1 rounded-full shadow-2xs border ${
@@ -80,9 +116,10 @@ export const WhatsNewSection: React.FC<WhatsNewSectionProps> = ({
             </div>
           </div>
 
-          {/* Horizontally Scrollable 6 Product Cards (Held within the same single card) */}
+          {/* Horizontally Scrollable 6 Product Cards (Held within the same single card, default starting left) */}
           <div
             ref={scrollRef}
+            dir="ltr"
             className="flex items-stretch gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar scroll-smooth py-1 px-0.5 category-snap"
           >
             {displayProducts.length === 0 ? (

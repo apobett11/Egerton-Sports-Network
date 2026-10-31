@@ -67,7 +67,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Staff Login Form State
   const [staffIdentifier, setStaffIdentifier] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
-  const [staffPin, setStaffPin] = useState('');
 
   // Forgot Password State
   const [forgotEmail, setForgotEmail] = useState('');
@@ -305,7 +304,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleFillDemoAdmin = () => {
     setStaffIdentifier(STORE_ADMIN_CREDENTIALS.email);
     setStaffPassword(STORE_ADMIN_CREDENTIALS.password);
-    setStaffPin(STORE_ADMIN_CREDENTIALS.pin);
     setErrorMessage('');
   };
 
@@ -367,7 +365,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Context Reason Notice (Only if redirected from cart, checkout or orders) */}
-        {(reason === 'cart_save' || reason === 'cart_limit') && (
+        {reason === 'cart_limit' && (
+          <div className="mx-5 mt-3.5 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
+            <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-medium">You can only add up to 3 products before logging in. Sign in to save and add more.</span>
+          </div>
+        )}
+        {reason === 'cart_save' && (
           <div className="mx-5 mt-3.5 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
             <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
             <span className="font-medium">Please log in to save your cart and products.</span>
@@ -524,23 +528,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>Sign In</span>
               </button>
 
-              {/* Footer navigation: Register + Staff Login link */}
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                <div>
-                  <span>No account? </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMessage('');
-                      setSuccessMessage('');
-                      setView('register');
-                    }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
-                  >
-                    Register
-                  </button>
+              {/* Footer navigation: Register + Visible Staff Login Button */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <div>
+                    <span>No account? </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMessage('');
+                        setSuccessMessage('');
+                        setView('register');
+                      }}
+                      className="text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                    >
+                      Register
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-400">Store Staff?</span>
                 </div>
 
+                {/* Highly Visible Staff Login Button */}
                 <button
                   type="button"
                   onClick={() => {
@@ -548,9 +556,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setSuccessMessage('');
                     setView('staff_login');
                   }}
-                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:underline cursor-pointer flex items-center gap-1"
+                  className={`w-full py-2 px-3 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-[0.99] ${
+                    isDark
+                      ? 'bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/40 text-emerald-400 hover:border-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700 hover:border-emerald-400'
+                  }`}
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   <span>Staff Login</span>
                 </button>
               </div>
@@ -879,28 +891,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     }`}
                   />
                 </div>
-              </div>
-
-              {/* Staff Security PIN (Optional) */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
-                    Operations Security PIN (Optional)
-                  </label>
-                  <span className="text-[10px] text-slate-400">Default: 9922</span>
-                </div>
-                <input
-                  type="password"
-                  maxLength={6}
-                  value={staffPin}
-                  onChange={(e) => setStaffPin(e.target.value)}
-                  placeholder="PIN code"
-                  className={`w-full px-3 py-2 text-xs rounded-lg border transition-colors outline-hidden font-mono ${
-                    isDark 
-                      ? 'bg-slate-800/60 border-slate-700 text-white focus:border-emerald-500' 
-                      : 'bg-white border-slate-300 text-slate-900 focus:border-emerald-600'
-                  }`}
-                />
               </div>
 
               {/* Submit Staff Login */}

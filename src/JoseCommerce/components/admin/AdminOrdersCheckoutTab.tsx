@@ -37,6 +37,7 @@ import {
   getOrderTrackingStep, 
   getOrderTrackingLabel 
 } from '../../services/checkoutAlgorithm';
+import { normalizeCategorySlug } from '../../services/productIdService';
 import { AdminOrderStatusModal } from './AdminOrderStatusModal';
 
 interface AdminOrdersCheckoutTabProps {
@@ -113,64 +114,140 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
 
   // Category Icon Resolver
   const getCategoryIcon = (slug: string) => {
-    switch (slug) {
+    const clean = normalizeCategorySlug(slug);
+    switch (clean) {
+      case 'jerseys':
+      case 'kit':
       case 'team-kits':
         return <Shirt className="w-5 h-5 text-[#ff0046]" />;
       case 'training-breakers':
+      case 'fitness-and-training':
+      case 'pitch-training':
         return <Wind className="w-5 h-5 text-sky-400" />;
       case 'boots-personal':
+      case 'boots-and-balls':
         return <Footprints className="w-5 h-5 text-amber-400" />;
       case 'balls-equipment':
         return <CircleDot className="w-5 h-5 text-emerald-400" />;
       case 'goalkeeper':
+      case 'goalkeepers':
         return <Shield className="w-5 h-5 text-indigo-400" />;
       case 'medical-recovery':
         return <Cross className="w-5 h-5 text-rose-400" />;
       case 'tactical-coach':
+      case 'officiating':
         return <ClipboardList className="w-5 h-5 text-purple-400" />;
       default:
         return <LayoutGrid className="w-5 h-5 text-blue-400" />;
     }
   };
 
-  // 1. Calculate Ordered Products count and total Orders per Category
+  // 1. Calculate Ordered Products count and total Orders per Category, ranked descending
   const categoryOrderStats = useMemo(() => {
-    // Total ordered units across all orders
     let totalOrderedProductsAll = 0;
 
-    const map: Record<string, { orderedProductsCount: number; ordersCount: number }> = {};
+    // Build complete category map incorporating available categories + categories from real orders
+    const categoryDict = new Map<string, Category>();
+
     availableCategories.forEach((cat) => {
-      map[cat.slug] = { orderedProductsCount: 0, ordersCount: 0 };
+      const normSlug = normalizeCategorySlug(cat.slug || cat.name);
+      if (normSlug) {
+        categoryDict.set(normSlug, {
+          ...cat,
+          slug: normSlug,
+        });
+      }
+    });
+
+    // Ensure every category with real orders is represented
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        const rawSlug = item.product.categorySlug || item.product.category || 'jerseys';
+        const normSlug = normalizeCategorySlug(rawSlug);
+        if (normSlug && !categoryDict.has(normSlug)) {
+          const displayName = item.product.category || rawSlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+          categoryDict.set(normSlug, {
+            id: normSlug,
+            name: displayName,
+            slug: normSlug,
+            iconName: 'Shirt',
+            count: 0,
+            description: `${displayName} apparel & gear`,
+            imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=70',
+          });
+        }
+      });
+    });
+
+    const statsMap: Record<
+      string,
+      {
+        orderedProductsCount: number;
+        ordersCount: number;
+        productBreakdown: Map<string, { id: string; name: string; qty: number; image?: string; price: number }>;
+      }
+    > = {};
+
+    categoryDict.forEach((_, slug) => {
+      statsMap[slug] = { orderedProductsCount: 0, ordersCount: 0, productBreakdown: new Map() };
     });
 
     orders.forEach((order) => {
       const catsInThisOrder = new Set<string>();
 
       order.items.forEach((item) => {
-        const catSlug = item.product.categorySlug || 'team-kits';
+        const rawSlug = item.product.categorySlug || item.product.category || 'jerseys';
+        const normSlug = normalizeCategorySlug(rawSlug);
         const qty = item.quantity || 1;
         totalOrderedProductsAll += qty;
 
-        if (!map[catSlug]) {
-          map[catSlug] = { orderedProductsCount: 0, ordersCount: 0 };
+        if (!statsMap[normSlug]) {
+          statsMap[normSlug] = { orderedProductsCount: 0, ordersCount: 0, productBreakdown: new Map() };
         }
-        map[catSlug].orderedProductsCount += qty;
-        catsInThisOrder.add(catSlug);
+        statsMap[normSlug].orderedProductsCount += qty;
+        catsInThisOrder.add(normSlug);
+
+        // Record real product ordered
+        const prodId = item.product.id;
+        const existing = statsMap[normSlug].productBreakdown.get(prodId);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          statsMap[normSlug].productBreakdown.set(prodId, {
+            id: prodId,
+            name: item.product.name,
+            qty,
+            image: item.product.images?.[0],
+            price: item.product.price,
+          });
+        }
       });
 
       catsInThisOrder.forEach((slug) => {
-        if (map[slug]) {
-          map[slug].ordersCount += 1;
+        if (statsMap[slug]) {
+          statsMap[slug].ordersCount += 1;
         }
       });
     });
 
-    // Sort categories descending by the number of ordered products
-    const sortedCategories = availableCategories.map((cat) => ({
-      category: cat,
-      orderedProductsCount: map[cat.slug]?.orderedProductsCount || 0,
-      ordersCount: map[cat.slug]?.ordersCount || 0,
-    })).sort((a, b) => b.orderedProductsCount - a.orderedProductsCount);
+    // Rank all categories descending by ordered products count, then orders count
+    const sortedCategories = Array.from(categoryDict.values())
+      .map((cat) => {
+        const data = statsMap[cat.slug] || { orderedProductsCount: 0, ordersCount: 0, productBreakdown: new Map() };
+        const orderedProducts = Array.from(data.productBreakdown.values()).sort((a, b) => b.qty - a.qty);
+        return {
+          category: cat,
+          orderedProductsCount: data.orderedProductsCount,
+          ordersCount: data.ordersCount,
+          orderedProducts,
+        };
+      })
+      .sort((a, b) => {
+        if (b.orderedProductsCount !== a.orderedProductsCount) {
+          return b.orderedProductsCount - a.orderedProductsCount;
+        }
+        return b.ordersCount - a.ordersCount;
+      });
 
     return {
       totalOrderedProductsAll,
@@ -185,8 +262,12 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
 
     let filtered = orders;
     if (activeCategoryModal !== 'all') {
+      const activeNorm = normalizeCategorySlug(activeCategoryModal);
       filtered = orders.filter((o) =>
-        o.items.some((it) => it.product.categorySlug === activeCategoryModal)
+        o.items.some((it) => {
+          const itSlug = normalizeCategorySlug(it.product.categorySlug || it.product.category);
+          return itSlug === activeNorm;
+        })
       );
     }
 
@@ -309,9 +390,10 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
   const activeCategoryTitle = useMemo(() => {
     if (!activeCategoryModal) return '';
     if (activeCategoryModal === 'all') return 'All Orders Master Ledger';
-    const found = availableCategories.find((c) => c.slug === activeCategoryModal);
-    return found ? `${found.name} Orders Ledger` : 'Category Orders';
-  }, [availableCategories, activeCategoryModal]);
+    const norm = normalizeCategorySlug(activeCategoryModal);
+    const found = categoryOrderStats.sortedCategories.find((sc) => sc.category.slug === norm);
+    return found ? `${found.category.name} Orders Ledger` : 'Category Orders';
+  }, [categoryOrderStats, activeCategoryModal]);
 
   return (
     <div className="space-y-6 relative">
@@ -422,8 +504,8 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
             </div>
           </button>
 
-          {/* Buttons 2..N: Category Buttons Sorted by Ordered Products Count */}
-          {categoryOrderStats.sortedCategories.map(({ category, orderedProductsCount, ordersCount }, idx) => (
+          {/* Buttons 2..N: Category Buttons Ranked by Orders & Ordered Products */}
+          {categoryOrderStats.sortedCategories.map(({ category, orderedProductsCount, ordersCount, orderedProducts }, idx) => (
             <button
               key={category.slug}
               type="button"
@@ -438,25 +520,49 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
                   : 'bg-white hover:bg-blue-50/50 border-slate-200 hover:border-blue-400'
               }`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="w-10 h-10 rounded-xl bg-[#0b1522] border border-slate-700/60 flex items-center justify-center shrink-0">
-                  {getCategoryIcon(category.slug)}
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#0b1522] border border-slate-700/60 flex items-center justify-center shrink-0">
+                    {getCategoryIcon(category.slug)}
+                  </div>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30">
+                    Rank #{idx + 1}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                  Rank #{idx + 1}
-                </span>
+
+                <div className="mt-3">
+                  <h3 className="text-sm font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
+                    {category.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                    {category.description}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-3">
-                <h3 className="text-sm font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
-                  {category.name}
-                </h3>
-                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                  {category.description}
-                </p>
-              </div>
+              {/* Real products ordered preview */}
+              {orderedProducts && orderedProducts.length > 0 && (
+                <div className="my-2.5 pt-2 border-t border-slate-700/50 space-y-1 text-left">
+                  <div className="text-[9px] uppercase tracking-wider font-extrabold text-blue-400">
+                    Products Ordered ({orderedProducts.length}):
+                  </div>
+                  <div className="space-y-0.5">
+                    {orderedProducts.slice(0, 3).map((prod) => (
+                      <div key={prod.id} className="text-[10px] text-slate-300 truncate flex items-center justify-between gap-1">
+                        <span className="truncate">• {prod.name}</span>
+                        <span className="font-mono text-amber-400 font-bold shrink-0">x{prod.qty}</span>
+                      </div>
+                    ))}
+                    {orderedProducts.length > 3 && (
+                      <div className="text-[9px] text-slate-400 font-medium">
+                        +{orderedProducts.length - 3} more product{orderedProducts.length - 3 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center justify-between">
+              <div className="mt-auto pt-2.5 border-t border-slate-700/60 flex items-center justify-between">
                 <div className={`text-xs font-bold font-mono ${
                   orderedProductsCount > 0 ? 'text-amber-400' : 'text-slate-400'
                 }`}>
@@ -631,8 +737,13 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
                     <tbody className="divide-y divide-slate-800/30 font-mono text-[11px]">
                       {paginatedModalOrders.map((ord, idx) => {
                         const index = (modalPage - 1) * modalPageSize + idx;
-                        const totalUnits = ord.items.reduce((sum, it) => sum + it.quantity, 0);
-                        const productIds = ord.items.map((it) => it.product.id).join(', ');
+                        const activeNorm = activeCategoryModal && activeCategoryModal !== 'all'
+                          ? normalizeCategorySlug(activeCategoryModal)
+                          : null;
+                        const displayItems = activeNorm
+                          ? ord.items.filter((it) => normalizeCategorySlug(it.product.categorySlug || it.product.category) === activeNorm)
+                          : ord.items;
+                        const totalUnits = displayItems.reduce((sum, it) => sum + (it.quantity || 1), 0);
                         const currentStatus = (ord.trackingState || ord.status || 'order_recorded') as OrderTrackingState;
 
                         return (
@@ -654,22 +765,39 @@ export const AdminOrdersCheckoutTab: React.FC<AdminOrdersCheckoutTabProps> = ({
                             </td>
 
                             <td className="py-3 px-3">
-                              <div className="space-y-1 max-w-xs">
-                                <span className="font-bold text-blue-400 bg-blue-500/10 border border-blue-500/25 px-1.5 py-0.5 rounded text-[10px] block truncate">
-                                  {productIds}
-                                </span>
-                                <div className="text-[11px] font-sans text-slate-300 truncate">
-                                  {ord.items[0]?.product.name} {ord.items.length > 1 && `(+${ord.items.length - 1} more)`}
-                                </div>
-                                {ord.items.some(it => it.size || it.color || it.customization?.teamName) && (
-                                  <div className="text-[9px] text-amber-300/90 font-mono truncate">
-                                    {ord.items.map(it => [
-                                      it.size && `Size:${it.size}`,
-                                      it.color && `Color:${it.color}`,
-                                      it.customization?.teamName && `Club:${it.customization.teamName}`
-                                    ].filter(Boolean).join(' | ')).join(' • ')}
+                              <div className="space-y-1.5 max-w-sm">
+                                {displayItems.map((item, itemIdx) => (
+                                  <div
+                                    key={`${item.id}-${itemIdx}`}
+                                    className="flex items-start gap-2 p-1.5 rounded-lg bg-black/20 border border-slate-700/50"
+                                  >
+                                    {item.product.images?.[0] && (
+                                      <img
+                                        src={item.product.images[0]}
+                                        alt={item.product.name}
+                                        className="w-8 h-8 rounded-sm object-cover shrink-0 bg-slate-800 border border-slate-700/60"
+                                      />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-mono text-[9px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 px-1 py-0.2 rounded">
+                                          {item.product.id}
+                                        </span>
+                                        <span className="font-bold text-slate-200 truncate text-[11px] font-sans">
+                                          {item.product.name}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-slate-300 font-sans mt-0.5 flex-wrap">
+                                        <span className="text-amber-400 font-mono font-bold">Qty: {item.quantity}</span>
+                                        {item.size && <span className="text-slate-400">Size: <strong className="text-slate-200">{item.size}</strong></span>}
+                                        {item.color && <span className="text-slate-400">Color: <strong className="text-slate-200">{item.color}</strong></span>}
+                                        {item.customization?.teamName && (
+                                          <span className="text-sky-300 font-mono text-[9px]">[{item.customization.teamName}]</span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
-                                )}
+                                ))}
                               </div>
                             </td>
 

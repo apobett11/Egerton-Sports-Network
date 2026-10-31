@@ -393,11 +393,22 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       const existingUserCart = personalData.cartItems || [];
 
       // Pull cached items from guest browsing session
-      const cachedEntries = getCachedCartItems();
+      let cachedEntries = getCachedCartItems();
+      if (cachedEntries.length === 0 && cartItems.length > 0) {
+        cachedEntries = cartItems.map((item) => ({
+          productId: item.product.id,
+          size: item.size,
+          color: item.color,
+          quantity: item.quantity,
+          customization: item.customization,
+          variantImage: item.variantImage,
+        }));
+      }
+
       if (cachedEntries.length > 0) {
         const cachedCartItems: CartItem[] = [];
         for (const entry of cachedEntries) {
-          const prod = productsList.find((p) => p.id === entry.productId);
+          const prod = productsList.find((p) => p.id === entry.productId) || getCachedCatalog().find((p) => p.id === entry.productId);
           if (prod) {
             cachedCartItems.push({
               id: `${prod.id}-${entry.size || prod.sizes[0] || 'L'}-${entry.color || prod.colors[0]?.name || 'Standard'}`,
@@ -411,7 +422,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           }
         }
 
-        // Merge cached items into existing user cart
+        // Merge cached items into existing user cart (they will be selected and added)
         const mergedCart = [...existingUserCart];
         cachedCartItems.forEach((cachedItem) => {
           const found = mergedCart.find((it) => it.product.id === cachedItem.product.id);
@@ -430,10 +441,11 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           cartItems: mergedCart,
         });
 
-        // Once recorded, that will be cleared from the cache
+        // Once recorded, clear from the cache
         clearCartCache();
 
         setCartItems(mergedCart);
+        // Retained and selected upon login
         setCheckedCartItemIds(new Set(mergedCart.map((it) => it.id)));
       } else {
         setCartItems(existingUserCart);
@@ -865,6 +877,14 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       return;
     }
 
+    // Strict limit: guest cannot add more than 3 products to the cart before login
+    if (!currentUser && cartItems.length >= 3) {
+      setAuthModalReason('cart_limit');
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     if (currentUser) {
       incrementUserDailyUsage(currentUser.id);
     } else {
@@ -899,9 +919,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
       ];
     });
 
-    // When guest reaches 6 items in cart (or wants to add to 6), prompt them to login to save their cart & products
-    if (!currentUser && cartItems.length + 1 >= 6) {
-      setAuthModalReason('cart_save');
+    // When guest reaches the 3 product threshold, prompt them to login to save their cart & products
+    if (!currentUser && cartItems.length + 1 >= 3) {
+      setAuthModalReason('cart_limit');
       setAuthModalMode('login');
       setIsAuthModalOpen(true);
     }

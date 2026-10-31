@@ -417,8 +417,7 @@ export function endAdminSession(): void {
 
 export function loginStoreAdmin(
   identifier: string,
-  password: string,
-  pin?: string
+  password: string
 ): { success: boolean; admin?: UserAccount; error?: string } {
   const users = getAllRegisteredUsers();
   const normalized = identifier.trim().toLowerCase();
@@ -430,10 +429,6 @@ export function loginStoreAdmin(
     password === STORE_ADMIN_CREDENTIALS.password;
 
   if (isRootAdmin) {
-    if (pin && pin.trim() !== STORE_ADMIN_CREDENTIALS.pin) {
-      return { success: false, error: 'Invalid Store Administrator Security PIN.' };
-    }
-
     const today = getTodayString();
     const adminUser: UserAccount = {
       ...STORE_ADMIN_CREDENTIALS,
