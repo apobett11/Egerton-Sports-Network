@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Product, Category } from '../types';
 import { ProductCard } from './ProductCard';
+import { normalizeCategorySlug } from '../services/productIdService';
 
 interface CategoryListingsPageProps {
   categorySlug: string;
@@ -135,11 +136,11 @@ export const CategoryListingsPage: React.FC<CategoryListingsPageProps> = ({
   const categoryBaseProducts = useMemo(() => {
     return allProducts.filter((product) => {
       if (product.categorySlug) {
-        return product.categorySlug === currentCategory.slug;
+        return normalizeCategorySlug(product.categorySlug) === normalizeCategorySlug(currentCategory.slug);
       }
       return (
-        product.category?.toLowerCase() === currentCategory.name.toLowerCase() ||
-        product.category?.toLowerCase() === currentCategory.slug.toLowerCase()
+        normalizeCategorySlug(product.category) === normalizeCategorySlug(currentCategory.name) ||
+        normalizeCategorySlug(product.category) === normalizeCategorySlug(currentCategory.slug)
       );
     });
   }, [allProducts, currentCategory]);

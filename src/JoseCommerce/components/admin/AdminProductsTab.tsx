@@ -61,6 +61,7 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
       case 'pitch-training':
         return <Wind className="w-5 h-5 text-sky-400" />;
       case 'kit':
+      case 'jerseys':
         return <Shirt className="w-5 h-5 text-[#ff0046]" />;
       case 'goalkeepers':
         return <Shield className="w-5 h-5 text-emerald-400" />;

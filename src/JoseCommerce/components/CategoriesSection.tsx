@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { Category } from '../types';
 import { getMatchingKeywordSuggestions, hasMatchingKeywords } from '../services/productService';
+import { getCategoryLogoUrl, CATEGORY_ORDER } from '../lib/categoryLogos';
+import { normalizeCategorySlug } from '../services/productIdService';
 
 interface CategoriesSectionProps {
   categories: Category[];
@@ -36,6 +38,7 @@ interface CategoriesSectionProps {
   theme?: 'dark' | 'light';
   selectedClass?: string;
   onSelectClass?: (classCode: string) => void;
+  fallbackImages?: Record<string, string>;
 }
 
 export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
@@ -48,11 +51,21 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   theme = 'dark',
   selectedClass = 'all',
   onSelectClass,
+  fallbackImages,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(Boolean(searchQuery));
   const [isInputFocused, setIsInputFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Enforced order: jerseys, boots and balls, goalkeepers, officiating, pitch training, fitness and training
+  const orderedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const idxA = CATEGORY_ORDER.indexOf(normalizeCategorySlug(a.slug));
+      const idxB = CATEGORY_ORDER.indexOf(normalizeCategorySlug(b.slug));
+      return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
+    });
+  }, [categories]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -117,12 +130,22 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
     <section className="w-full py-1 sm:py-1.5">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         
-        {/* Categories Section Card */}
-        <div className={`rounded-2xl shadow-sm p-3.5 sm:p-5 transition-colors ${
+        {/* Categories Section Card with subtle wavy line pattern */}
+        <div className={`relative overflow-hidden rounded-2xl shadow-sm p-3.5 sm:p-5 transition-colors ${
           theme === 'dark'
             ? 'bg-[#13273e] border border-[#234568]'
             : 'bg-white border border-slate-200/90'
         }`}>
+          {/* Subtle wavy lines pattern: enriches background without confusing user or concealing logos */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.06] dark:opacity-[0.14] overflow-hidden" aria-hidden="true">
+            <svg className="w-full h-full text-slate-500 dark:text-cyan-400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 900 240">
+              <path d="M-50,30 Q200,100 450,30 T950,30" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M-50,75 Q200,145 450,75 T950,75" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 6" />
+              <path d="M-50,120 Q200,50 450,120 T950,120" fill="none" stroke="currentColor" strokeWidth="2.2" />
+              <path d="M-50,165 Q200,95 450,165 T950,165" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" />
+              <path d="M-50,210 Q200,140 450,210 T950,210" fill="none" stroke="currentColor" strokeWidth="2" />
+            </svg>
+          </div>
           {/* Section Header: Minimal One Bar with Search Icon at far right */}
           <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
             {/* Title & Category Count */}
@@ -282,11 +305,12 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
           )}
 
           {/* Mobile-Only Class Selection Bar: Condensed to width of word with equal spacing */}
+          {/* Functionality commented out so selection of classes does not affect frontend; buttons made non-reactive */}
           {onSelectClass && (
             <div className="sm:hidden flex items-center justify-center gap-1 p-0.5 mb-2.5 bg-[#18324f] dark:bg-[#122438] rounded-xl border border-[#264c73] overflow-x-auto no-scrollbar text-xs w-fit mx-auto">
               <button
                 type="button"
-                onClick={() => onSelectClass('all')}
+                /* onClick={() => onSelectClass('all')} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'all'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -298,7 +322,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => onSelectClass('team')}
+                /* onClick={() => onSelectClass('team')} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'team'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -310,7 +334,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => onSelectClass('individual')}
+                /* onClick={() => onSelectClass('individual')} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'individual'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -322,7 +346,7 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => onSelectClass('training')}
+                /* onClick={() => onSelectClass('training')} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedClass === 'training'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -335,13 +359,16 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
             </div>
           )}
 
-          {/* Categories Container: Circles 10% larger, NO circular border */}
+          {/* Categories Container: Circles 15% larger, borderless, NO highlight ring on profile */}
           <div
             ref={scrollContainerRef}
-            className="flex items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-1.5 px-0.5 category-snap"
+            className="flex items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1 category-snap"
           >
-            {categories.map((category) => {
+            {orderedCategories.map((category) => {
               const isSelected = selectedCategorySlug === category.slug;
+              const normSlug = normalizeCategorySlug(category.slug);
+              const logoSrc = getCategoryLogoUrl(category.slug);
+              const fallbackSrc = fallbackImages?.[normSlug] || category.imageUrl;
 
               return (
                 <button
@@ -353,50 +380,43 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                       onSelectCategory(category.slug);
                     }
                   }}
-                  className="group flex flex-col items-center shrink-0 w-[84px] sm:w-[96px] text-center cursor-pointer focus:outline-hidden category-snap-item transition-all"
+                  className="group flex flex-col items-center shrink-0 w-[96px] sm:w-[110px] text-center cursor-pointer focus:outline-hidden category-snap-item transition-all"
                 >
-                  {/* Circle: 10% larger (76px / 88px) and borderless */}
+                  {/* Circle: 15% larger (88px / 102px) and NO selection highlight ring */}
                   <div
-                    className={`relative flex items-center justify-center w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] rounded-full transition-all duration-300 shadow-md ${
-                      isSelected
-                        ? 'ring-3 ring-[#ff0046] ring-offset-2 scale-105'
-                        : 'hover:scale-105'
-                    }`}
+                    className="relative flex items-center justify-center w-[88px] h-[88px] sm:w-[102px] sm:h-[102px] rounded-full transition-transform duration-300 shadow-md hover:scale-105"
                   >
-                    {/* Category Image or Icon centered flush with NO circular border */}
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-800/20 dark:bg-slate-900/60 shadow-inner">
-                      {category.imageUrl ? (
-                        <img
-                          src={category.imageUrl}
-                          alt={category.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                          loading="lazy"
-                        />
-                      ) : (
-                        getIcon(category.iconName, isSelected)
-                      )}
+                    {/* Category Logo Image centered flush with NO circular border or highlight */}
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-800/30 dark:bg-slate-900/70 shadow-inner">
+                      <img
+                        src={logoSrc}
+                        alt={category.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
+                        onError={(e) => {
+                          if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
+                            e.currentTarget.src = fallbackSrc;
+                          }
+                        }}
+                      />
                     </div>
 
                     {/* Micro Count Badge on Circle */}
                     <span
-                      className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[19px] h-[19px] px-1 text-[10px] font-black rounded-full leading-none shadow-sm ${
-                        isSelected
-                          ? 'bg-[#ff0046] text-white'
-                          : theme === 'dark' ? 'bg-[#0b1522] text-white ring-1 ring-slate-700' : 'bg-slate-900 text-white ring-1 ring-slate-600'
+                      className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-black rounded-full leading-none shadow-sm ${
+                        theme === 'dark' ? 'bg-[#0b1522] text-white ring-1 ring-slate-700' : 'bg-slate-900 text-white ring-1 ring-slate-600'
                       }`}
                     >
                       {category.count}
                     </span>
                   </div>
 
-                  {/* Name Below Circle */}
+                  {/* Name Below Circle: Clear and readable, no glowing profile highlight */}
                   <span
-                    className={`mt-2 text-[11px] sm:text-xs font-bold tracking-tight line-clamp-1 w-full transition-colors ${
-                      isSelected
-                        ? 'text-[#ff0046] font-black'
-                        : theme === 'dark'
-                          ? 'text-slate-200 group-hover:text-white'
-                          : 'text-slate-800 group-hover:text-slate-950'
+                    className={`mt-2 text-xs sm:text-[13px] font-bold tracking-tight line-clamp-1 w-full text-center transition-colors ${
+                      theme === 'dark'
+                        ? 'text-slate-200 group-hover:text-white'
+                        : 'text-slate-800 group-hover:text-slate-950'
                     }`}
                   >
                     {category.name}

@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Category } from '../types';
 import { getCachedCategories } from '../services/storeCacheService';
+import { getCategoryLogoUrl, CATEGORY_ORDER } from '../lib/categoryLogos';
+import { normalizeCategorySlug } from '../services/productIdService';
 
 interface CategoriesBottomModalProps {
   isOpen: boolean;
@@ -29,7 +31,12 @@ export const CategoriesBottomModal: React.FC<CategoriesBottomModalProps> = ({
   categories,
   theme = 'dark',
 }) => {
-  const displayCategories = categories && categories.length > 0 ? categories : getCachedCategories();
+  const rawCategories = categories && categories.length > 0 ? categories : getCachedCategories();
+  const displayCategories = [...rawCategories].sort((a, b) => {
+    const idxA = CATEGORY_ORDER.indexOf(normalizeCategorySlug(a.slug));
+    const idxB = CATEGORY_ORDER.indexOf(normalizeCategorySlug(b.slug));
+    return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
+  });
   if (!isOpen) return null;
 
   const isDark = theme === 'dark';
@@ -41,6 +48,7 @@ export const CategoriesBottomModal: React.FC<CategoriesBottomModalProps> = ({
       case 'pitch-training':
         return Wind;
       case 'kit':
+      case 'jerseys':
         return Shirt;
       case 'goalkeepers':
         return Shield;
@@ -120,13 +128,11 @@ export const CategoriesBottomModal: React.FC<CategoriesBottomModalProps> = ({
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200 hover:border-blue-400'
                   }`}
                 >
-                  {/* Subtle Background Image Overlay */}
-                  {category.imageUrl && (
-                    <div 
-                      className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity bg-cover bg-center"
-                      style={{ backgroundImage: `url(${category.imageUrl})` }}
-                    />
-                  )}
+                  {/* Subtle Background Image Overlay from bundled logo */}
+                  <div 
+                    className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity bg-cover bg-center"
+                    style={{ backgroundImage: `url(${getCategoryLogoUrl(category.slug) || category.imageUrl})` }}
+                  />
 
                   <div className="relative z-10 flex items-start justify-between">
                     <span className="w-8 h-8 rounded-lg bg-blue-600/15 text-blue-400 border border-blue-500/20 flex items-center justify-center font-bold">

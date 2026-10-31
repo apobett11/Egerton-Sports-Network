@@ -61,6 +61,7 @@ const CATEGORY_UUIDS: Record<string, string> = {
   'fitness-and-training': 'b893569d-16ec-44f1-9500-fdc4dd05dba6',
   'pitch-training': 'e1087da1-d9a9-489d-94bf-8ca49a28a0b7',
   'kit': '5ba081b1-9d76-45c9-8feb-62f8a31e7b00',
+  'jerseys': '5ba081b1-9d76-45c9-8feb-62f8a31e7b00',
   'goalkeepers': '4be0b071-be3b-42ee-a29c-81379cc11c0b',
   'boots-and-balls': '759de649-2d75-4968-acb7-c7965822c3a8',
   'officiating': '79ddc254-e8c7-4fc4-bf70-e04a9acf5d08',
@@ -566,11 +567,13 @@ export async function fetchProducts(params: FetchProductsParams = {}): Promise<F
           product_classes!inner ( id, code, name )
         `, { count: 'exact' });
 
-      // Class superiority filter: supports class code or Product ID first letter
+      // Class superiority filter: supports class code or Product ID first letter (commented out so class code has no effect now)
+      /*
       if (classCode && classCode !== 'all') {
         const cCode = classCode.toUpperCase();
         query = query.or(`product_classes.code.eq.${cCode},sku.ilike.${cCode}%`);
       }
+      */
 
       // Category filter (normalizes goalkeeper & goalkeepers)
       if (categorySlug && categorySlug !== 'all') {
@@ -676,7 +679,8 @@ function filterAndPaginateProducts(
   const { classCode, categorySlug, search, audience, inStockOnly, minRating, priceRange, sortBy, offset, pageSize, page } = options;
 
   let filtered = sourceCatalog.filter((prod) => {
-    // 1. Superior Class Filter (Product ID first letter or productClass)
+    // 1. Superior Class Filter (commented out so classification has no effect now)
+    /*
     if (classCode && classCode !== 'all') {
       const cls = classCode.toUpperCase();
       const pClass = (prod.productClass || '').toUpperCase();
@@ -691,6 +695,7 @@ function filterAndPaginateProducts(
         if (cls === 'O' && prod.productClass !== 'O' && prod.categorySlug !== 'officiating') return false;
       }
     }
+    */
 
     // 2. Category Scoped Search (Normalizes goalkeeper and goalkeepers to have same effect)
     if (categorySlug && categorySlug !== 'all') {

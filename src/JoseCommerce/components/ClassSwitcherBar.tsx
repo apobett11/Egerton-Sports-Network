@@ -66,11 +66,12 @@ export const ClassSwitcherBar: React.FC<ClassSwitcherBarProps> = ({
           </div>
 
           {/* Button capsules row */}
+          {/* Functionality commented out so selection of classes will not affect frontend; buttons made non-reactive */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {/* All Products Option */}
             <button
               type="button"
-              onClick={() => onSelectClass('all')}
+              /* onClick={() => onSelectClass('all')} */
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
                 selectedClass === 'all'
                   ? 'bg-[#ff0046] text-white border-[#ff0046] shadow-sm'
@@ -104,7 +105,7 @@ export const ClassSwitcherBar: React.FC<ClassSwitcherBarProps> = ({
                 <button
                   key={cls.code}
                   type="button"
-                  onClick={() => onSelectClass(cls.code)}
+                  /* onClick={() => onSelectClass(cls.code)} */
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
                     isSelected
                       ? 'bg-blue-600 text-white border-blue-500 shadow-sm'

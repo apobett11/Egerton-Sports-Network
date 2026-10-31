@@ -101,13 +101,14 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Universal Class Sort Buttons (Desktop only - condensed to word width with equal spacing) */}
+            {/* Functionality commented out so selection of classes does not affect frontend; buttons made non-reactive */}
             {!hideClassSwitcher && (
               <div className="hidden sm:inline-flex items-center gap-1 p-0.5 bg-[#224466] rounded-xl border border-[#345880] text-xs font-semibold overflow-x-auto no-scrollbar w-fit">
               <button
                 type="button"
-                onClick={() => {
+                /* onClick={() => {
                   onSelectClass?.('all');
-                }}
+                }} */
                 className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs font-bold ${
                   selectedClass === 'all'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -120,9 +121,9 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                /* onClick={() => {
                   onSelectClass?.('team');
-                }}
+                }} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs font-bold ${
                   selectedClass === 'team'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -135,9 +136,9 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                /* onClick={() => {
                   onSelectClass?.('individual');
-                }}
+                }} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs font-bold ${
                   selectedClass === 'individual'
                     ? 'bg-[#ff0046] text-white shadow-xs'
@@ -150,9 +151,9 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                /* onClick={() => {
                   onSelectClass?.('training');
-                }}
+                }} */
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-xs font-bold ${
                   selectedClass === 'training'
                     ? 'bg-[#ff0046] text-white shadow-xs'

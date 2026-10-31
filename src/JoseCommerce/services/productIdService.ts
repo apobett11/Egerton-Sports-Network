@@ -36,6 +36,8 @@ export const CATEGORY_TO_CODES: Record<string, { classCode: string; categoryCode
   'fitness-and-training': { classCode: 'I', categoryCode: 'F' },
   'pitch-training': { classCode: 'T', categoryCode: 'P' },
   'kit': { classCode: 'I', categoryCode: 'K' },
+  'jerseys': { classCode: 'I', categoryCode: 'K' },
+  'jersey': { classCode: 'I', categoryCode: 'K' },
   'goalkeepers': { classCode: 'I', categoryCode: 'G' },
   'goalkeeper': { classCode: 'I', categoryCode: 'G' },
   'goalkeeper-s': { classCode: 'I', categoryCode: 'G' },
@@ -44,13 +46,16 @@ export const CATEGORY_TO_CODES: Record<string, { classCode: string; categoryCode
 };
 
 /**
- * Normalizes category slugs to prevent mismatches (e.g. goalkeeper, goalkeepers, goalkeeper-s)
+ * Normalizes category slugs to prevent mismatches (e.g. goalkeeper, goalkeepers, kit, jerseys)
  */
 export function normalizeCategorySlug(slug?: string): string {
   if (!slug) return '';
   const clean = slug.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
   if (clean === 'goalkeeper' || clean === 'goalkeepers') {
     return 'goalkeepers';
+  }
+  if (clean === 'kit' || clean === 'kits' || clean === 'jersey' || clean === 'jerseys') {
+    return 'jerseys';
   }
   return slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
 }

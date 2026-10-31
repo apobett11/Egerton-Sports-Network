@@ -25,6 +25,7 @@ import { getCachedCartItems, setCachedCartItems, addCachedCartItem, clearCartCac
 import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './services/storeCacheService';
 
 import { normalizeCategorySlug } from './services/productIdService';
+import { CATEGORY_ORDER } from './lib/categoryLogos';
 import { syncCatalogFromDatabase, fetchProductById, fetchCategoriesFromDatabase } from './services/productService';
 import { StoreFrontDebugger } from './components/StoreFrontDebugger';
 import { AdminPortal } from './components/admin/AdminPortal';
@@ -81,6 +82,9 @@ const INITIAL_FILTERS: FilterState = {
 };
 
 export function matchesProductClass(product: Product, selectedClass: string): boolean {
+  // Classification commented out so selection of classes will not affect the storefront
+  return true;
+  /*
   if (!selectedClass || selectedClass === 'all') return true;
   const cls = selectedClass.toLowerCase();
   const firstLetter = (product.id || product.sku || '')[0]?.toUpperCase();
@@ -99,6 +103,7 @@ export function matchesProductClass(product: Product, selectedClass: string): bo
     return firstLetter === 'O' || pClass === 'O' || product.classId === 'officiation' || product.categorySlug === 'officiating';
   }
   return true;
+  */
 }
 
 export interface CommerceAppProps {
@@ -725,25 +730,42 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     return new Set(cartItems.map((item) => item.product.id));
   }, [cartItems]);
 
-  // Universal Product Class counts
-  // Dynamic category product counts based on selected global class
+  // Dynamic category product counts and strict ordering:
+  // jerseys, boots and balls, goalkeepers, officiating, pitch training, fitness and training
   const categoriesWithCounts = useMemo(() => {
     return categoriesList.map((cat) => {
       const targetSlug = normalizeCategorySlug(cat.slug);
       const count = productsList.filter((p) => {
-        if (!matchesProductClass(p, selectedClass)) return false;
         return normalizeCategorySlug(p.categorySlug) === targetSlug;
       }).length;
       return { ...cat, count };
+    }).sort((a, b) => {
+      const idxA = CATEGORY_ORDER.indexOf(normalizeCategorySlug(a.slug));
+      const idxB = CATEGORY_ORDER.indexOf(normalizeCategorySlug(b.slug));
+      return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
     });
-  }, [categoriesList, productsList, selectedClass]);
+  }, [categoriesList, productsList]);
+
+  // Latest product image per category used as fallback backup if a category logo fails to load
+  const categoryFallbackImages = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of productsList) {
+      const slug = normalizeCategorySlug(p.categorySlug);
+      if (!map[slug] && p.images && p.images[0]) {
+        map[slug] = p.images[0];
+      }
+    }
+    return map;
+  }, [productsList]);
 
   // Filter and sort products (respects universal page class and product ID search)
   const filteredProducts = useMemo(() => {
     return productsList.filter((product) => {
-      // 0. Universal Page Class
+      // 0. Universal Page Class (commented out so class selection does not affect frontend)
+      /*
       const activeClass = (Boolean(filters.productClass) && filters.productClass !== 'all') ? filters.productClass : selectedClass;
       if (!matchesProductClass(product, activeClass)) return false;
+      */
 
       // 1. Search Query
       if (filters.searchQuery.trim()) {
@@ -788,15 +810,16 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }).sort((a, b) => {
       if (filters.sortBy === 'price-asc') return a.price - b.price;
       if (filters.sortBy === 'price-desc') return b.price - a.price;
+      if (filters.sortBy === 'rating') return b.rating - a.rating;
 
       // If category filter is placed, use chronological
       if (filters.category !== 'all') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
 
-      // Randomize listings unless a filter or explicit sort is placed
-      const hashA = (a.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) * 31 + a.name.length * 7) % 997;
-      const hashB = (b.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) * 31 + b.name.length * 7) % 997;
+      // In the main listing, products are randomly rendered across all categories
+      const hashA = (a.id.split('').reduce((acc, c) => (acc * 33 + c.charCodeAt(0)) | 0, 17) * 2654435761) & 0x7fffffff;
+      const hashB = (b.id.split('').reduce((acc, c) => (acc * 33 + c.charCodeAt(0)) | 0, 17) * 2654435761) & 0x7fffffff;
       return hashA - hashB;
     });
   }, [productsList, selectedClass, filters]);
@@ -1198,7 +1221,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           onRefreshData={handleRefreshData}
           isRefreshing={isRefreshing}
           selectedClass={selectedClass}
-          onSelectClass={(code) => setSelectedClass(code)}
+          onSelectClass={(/* code */) => {
+            /* setSelectedClass(code); - commented out so class selection is non-reactive */
+          }}
           hideClassSwitcher={previousView === 'category'}
         />
 
@@ -1406,7 +1431,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onRefreshData={handleRefreshData}
         isRefreshing={isRefreshing}
         selectedClass={selectedClass}
-        onSelectClass={(code) => setSelectedClass(code)}
+        onSelectClass={(/* code */) => {
+          /* setSelectedClass(code); - commented out so class selection is non-reactive */
+        }}
         hideClassSwitcher={currentView === 'category'}
       />
 
@@ -1434,6 +1461,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           <CategoriesSection
             categories={categoriesWithCounts}
             selectedCategorySlug={selectedCategorySlug}
+            fallbackImages={categoryFallbackImages}
             onSelectCategory={(slug) => {
               setActiveNav('categories');
               setSelectedCategorySlug(slug);
@@ -1447,7 +1475,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             totalResults={filteredProducts.length}
             theme={theme}
             selectedClass={selectedClass}
-            onSelectClass={(code) => setSelectedClass(code)}
+            onSelectClass={(/* code */) => {
+              /* setSelectedClass(code); - commented out so class selection is non-reactive */
+            }}
           />
 
         {/* 3. What's New Section: max 6 products, 20% smaller cards, full light navy background in dark mode */}

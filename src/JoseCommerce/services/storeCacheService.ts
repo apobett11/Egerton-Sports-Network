@@ -9,9 +9,9 @@ import { Product, Category } from '../types';
  * Zero hardcoded products or categories are seeded into this cache.
  */
 
-const STORAGE_KEY_CATALOG = 'esn_store_catalog_cache_v3';
-const STORAGE_KEY_CATEGORIES = 'esn_store_categories_cache_v3';
-const STORAGE_KEY_META = 'esn_store_cache_meta_v3';
+const STORAGE_KEY_CATALOG = 'esn_store_catalog_cache_v4';
+const STORAGE_KEY_CATEGORIES = 'esn_store_categories_cache_v4';
+const STORAGE_KEY_META = 'esn_store_cache_meta_v4';
 
 export interface StoreCacheMeta {
   version: string;
@@ -20,17 +20,21 @@ export interface StoreCacheMeta {
   categoriesCount: number;
 }
 
-const CURRENT_CACHE_VERSION = '3.1.0_db_driven';
+const CURRENT_CACHE_VERSION = '4.0.0_clean_slate';
 
 // Immediately purge legacy cached seed products from user's browser localStorage
 if (typeof window !== 'undefined') {
   try {
     const legacyKeys = [
+      'esn_store_catalog_cache_v3',
+      'esn_store_categories_cache_v3',
+      'esn_store_cache_meta_v3',
       'esn_store_catalog_cache_v2',
       'esn_store_categories_cache_v2',
       'esn_store_cache_meta_v2',
       'esn_store_catalog_cache',
       'esn_store_categories_cache',
+      'esn_store_persisted_state',
     ];
     legacyKeys.forEach((key) => {
       localStorage.removeItem(key);
@@ -85,25 +89,21 @@ export function setCachedCatalog(products: Product[]): void {
 
     try {
       localStorage.setItem(STORAGE_KEY_CATALOG, serialized);
-      localStorage.setItem('esn_store_catalog_cache_v2', serialized);
     } catch {
       // If localStorage quota exceeded, gracefully store a capped subset
       try {
         const compactSerialized = JSON.stringify(sanitized.slice(0, 40));
         localStorage.setItem(STORAGE_KEY_CATALOG, compactSerialized);
-        localStorage.setItem('esn_store_catalog_cache_v2', compactSerialized);
       } catch {
         // Safe fallback: persist in sessionStorage
         try {
           sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
-          sessionStorage.setItem('esn_store_catalog_cache_v2', serialized);
         } catch {}
       }
     }
 
     try {
       sessionStorage.setItem(STORAGE_KEY_CATALOG, serialized);
-      sessionStorage.setItem('esn_store_catalog_cache_v2', serialized);
     } catch {}
 
     updateCacheMeta({

@@ -197,10 +197,11 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                   Product Class
                 </label>
+                {/* Product Class buttons made non-reactive */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setDraftClass('all')}
+                    /* onClick={() => setDraftClass('all')} */
                     className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center ${
                       draftClass === 'all'
                         ? 'bg-[#ff0046] text-white shadow-xs'
@@ -211,7 +212,7 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDraftClass('team')}
+                    /* onClick={() => setDraftClass('team')} */
                     className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       draftClass === 'team'
                         ? 'bg-[#ff0046] text-white shadow-xs'
@@ -223,7 +224,7 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDraftClass('individual')}
+                    /* onClick={() => setDraftClass('individual')} */
                     className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       draftClass === 'individual'
                         ? 'bg-[#ff0046] text-white shadow-xs'
@@ -235,7 +236,7 @@ export const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDraftClass('training')}
+                    /* onClick={() => setDraftClass('training')} */
                     className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       draftClass === 'training'
                         ? 'bg-[#ff0046] text-white shadow-xs'

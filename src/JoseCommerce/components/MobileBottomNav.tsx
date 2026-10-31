@@ -68,6 +68,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       case 'pitch-training':
         return Wind;
       case 'kit':
+      case 'jerseys':
         return Shirt;
       case 'goalkeepers':
         return Shield;
