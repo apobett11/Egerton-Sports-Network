@@ -74,9 +74,21 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
   const cleanHandle = post.authorHandle.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
+  const [reactions, setReactions] = useState({
+    fire: post.reactionFireCount || 0,
+    clown: post.reactionClownCount || 0,
+    skull: post.reactionSkullCount || 0,
+  });
+  const [userReactions, setUserReactions] = useState({
+    fire: Boolean(post.userReactions?.fire),
+    clown: Boolean(post.userReactions?.clown),
+    skull: Boolean(post.userReactions?.skull),
+  });
+
   const handlePostClick = () => {
-    // Navigate to full-page thread view (no popup)
-    window.location.hash = `#/banter/${post.id}`;
+    // Navigate to full-page thread view (no UID in the top link)
+    sessionStorage.setItem('active_banter_thread_id', post.id);
+    window.location.hash = '#/banter/thread';
     if (onOpenComments) onOpenComments(post);
   };
 
@@ -92,14 +104,23 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     }
   };
 
-  const handleLikeClick = (e: React.MouseEvent) => {
+  const handleBanterReaction = (e: React.MouseEvent, type: ReactionType) => {
     e.stopPropagation();
-    const next = !isLiked;
-    // Instant UI update
-    setIsLiked(next);
-    setLikesCount((prev: number) => prev + (next ? 1 : -1));
-    // Background asynchronous promise
-    Promise.resolve().then(() => onToggleReaction(post.id, 'fire')).catch(console.warn);
+    const active = !userReactions[type];
+    setUserReactions((prev) => ({ ...prev, [type]: active }));
+    setReactions((prev) => ({
+      ...prev,
+      [type]: Math.max(0, prev[type] + (active ? 1 : -1)),
+    }));
+    if (type === 'fire') {
+      setIsLiked(active);
+      setLikesCount((prev) => Math.max(0, prev + (active ? 1 : -1)));
+    }
+    Promise.resolve().then(() => onToggleReaction(post.id, type)).catch(console.warn);
+  };
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    handleBanterReaction(e, 'fire');
   };
 
   const handleShareTake = (e: React.MouseEvent) => {
@@ -140,8 +161,13 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   return (
     <article
       onClick={handlePostClick}
-      className="border border-zinc-800/80 bg-[#09090b] hover:bg-[#000000] p-3 sm:p-4 rounded-2xl transition-all cursor-pointer hover:border-zinc-700 shadow-sm"
+      className={`group relative overflow-hidden border border-zinc-800/80 bg-gradient-to-b from-zinc-900/60 to-[#09090b] hover:from-zinc-900/90 hover:to-zinc-950 p-3.5 sm:p-4 rounded-2xl transition-all duration-200 cursor-pointer hover:border-zinc-700 shadow-md hover:shadow-xl hover:-translate-y-0.5 ${
+        isHot || post.isTrending ? 'ring-1 ring-amber-500/30' : ''
+      }`}
     >
+      {(isHot || post.isTrending) && (
+        <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+      )}
       <div className="flex gap-3">
         {/* User Avatar Circle */}
         <div className="flex-shrink-0">
@@ -290,28 +316,28 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
             <XPollWidget poll={post.poll} />
           )}
 
-          {/* Twitter Action Bar: seamlessly at the bottom of the message without separating line */}
-          <div className="mt-2 flex items-center justify-between text-xs text-zinc-500 max-w-md">
-            {/* 1. Cyan Reply Hover */}
+          {/* Action & Banter Reactions Bar */}
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-lg">
+            {/* 1. Reply */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsReplyModalOpen(true);
               }}
-              className="flex items-center gap-1.5 p-1.5 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
               title="Reply"
             >
               <MessageCircle className="h-4 w-4" />
               <span className="font-medium text-[11px]">{replyCount}</span>
             </button>
 
-            {/* 2. Green Repost Hover */}
+            {/* 2. Repost */}
             <button
               type="button"
               onClick={handleRepost}
-              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer ${
-                hasReposted ? 'text-emerald-500' : ''
+              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer ${
+                hasReposted ? 'text-emerald-400' : ''
               }`}
               title="Repost"
             >
@@ -319,35 +345,67 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               <span className="font-medium text-[11px]">{repostCount}</span>
             </button>
 
-            {/* 3. Pink Like Hover */}
+            {/* 3. 🔥 Fire / Hot Take */}
             <button
               type="button"
-              onClick={handleLikeClick}
-              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer ${
-                isLiked ? 'text-rose-500' : ''
+              onClick={(e) => handleBanterReaction(e, 'fire')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                userReactions.fire
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                  : 'hover:bg-amber-500/10 hover:text-amber-300'
               }`}
-              title="Like"
+              title="Fire Take 🔥"
             >
-              <Heart className={`h-4 w-4 ${isLiked ? 'fill-rose-500' : ''}`} />
-              <span className="font-medium text-[11px]">{likesCount}</span>
+              <Flame className={`h-3.5 w-3.5 ${userReactions.fire ? 'fill-amber-400 text-amber-400' : ''}`} />
+              <span className="text-[11px] font-mono">{reactions.fire}</span>
             </button>
 
-            {/* 4. Impressions */}
+            {/* 4. 🤡 Clown / Delusional */}
+            <button
+              type="button"
+              onClick={(e) => handleBanterReaction(e, 'clown')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                userReactions.clown
+                  ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 shadow-xs'
+                  : 'hover:bg-yellow-500/10 hover:text-yellow-300'
+              }`}
+              title="Clown / Delusional 🤡"
+            >
+              <span className="text-xs">🤡</span>
+              <span className="text-[11px] font-mono">{reactions.clown}</span>
+            </button>
+
+            {/* 5. 💀 Dead / Savage */}
+            <button
+              type="button"
+              onClick={(e) => handleBanterReaction(e, 'skull')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                userReactions.skull
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
+                  : 'hover:bg-purple-500/10 hover:text-purple-300'
+              }`}
+              title="Savage Take 💀"
+            >
+              <span className="text-xs">💀</span>
+              <span className="text-[11px] font-mono">{reactions.skull}</span>
+            </button>
+
+            {/* 6. Impressions */}
             <div className="hidden xs:flex items-center gap-1 text-zinc-500" title="Views">
               <BarChart2 className="h-3.5 w-3.5" />
               <span className="text-[11px] font-mono">{formatTwitterMetric(impressions)}</span>
             </div>
 
-            {/* 5. Bookmark & Sky Share Hover */}
-            <div className="flex items-center gap-1">
+            {/* 7. Bookmark & Share */}
+            <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsBookmarked(prev => !prev);
                 }}
-                className={`p-1.5 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer ${
-                  isBookmarked ? 'text-sky-500' : ''
+                className={`p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer ${
+                  isBookmarked ? 'text-sky-400' : ''
                 }`}
                 title="Bookmark"
               >
@@ -357,7 +415,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               <button
                 type="button"
                 onClick={handleShareTake}
-                className="p-1.5 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
                 title="Share"
               >
                 <Share className="h-3.5 w-3.5" />

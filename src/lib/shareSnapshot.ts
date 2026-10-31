@@ -432,68 +432,134 @@ function shareText(kind: SnapshotCard['kind'], title?: string, subtitle?: string
   return 'EPL Standings · Check out the official league table on EgerScore';
 }
 
-function showPicture(file: File, hash: string, shareHref: string, title: string, subtitle: string, kind: SnapshotCard['kind'], autoOpenWhatsapp: boolean = false) {
+function showPicture(
+  file: File,
+  hash: string,
+  shareHref: string,
+  title: string,
+  subtitle: string,
+  kind: SnapshotCard['kind'],
+  shortLinkDisplay?: string,
+  autoOpenWhatsapp: boolean = false
+) {
   const objectUrl = URL.createObjectURL(file);
   const text = shareText(kind, title, subtitle);
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${shareHref}`)}`;
-  const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareHref)}`;
+  const displayLink = shortLinkDisplay || shareHref.replace(/^https?:\/\//, '');
+  const finalShareUrl = shareHref.startsWith('http') ? shareHref : `https://${shareHref}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${displayLink}`)}`;
+  const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(finalShareUrl)}`;
+
+  const sendToWhatsApp = async () => {
+    // 1. Try native Web Share with file attachment (Directly sends big image to WhatsApp!)
+    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `EgerScore: ${title}`,
+          text: `${text}\n${displayLink}`,
+        });
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // 2. Clipboard image copy for instant pasting in WhatsApp Web
+    let copied = false;
+    try {
+      if (navigator.clipboard && (window as any).ClipboardItem) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': file })
+        ]);
+        copied = true;
+      }
+    } catch {}
+
+    // 3. Auto download the big image
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = `egerscore-banter-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // 4. Open WhatsApp
+    window.open(whatsappUrl, '_blank');
+
+    const feedback = root.querySelector('[data-share-feedback]') as HTMLElement | null;
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.textContent = copied
+        ? '✓ Big image copied & downloaded! In WhatsApp, just press Ctrl+V / Paste to send image.'
+        : '✓ Big image downloaded! Attach in WhatsApp to send the big template image.';
+    }
+  };
 
   if (autoOpenWhatsapp) {
     try {
-      window.open(whatsappUrl, '_blank');
+      void sendToWhatsApp();
     } catch {}
   }
 
   const root = document.createElement('div');
   root.setAttribute('role', 'dialog');
-  root.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+  root.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;';
   root.innerHTML = `
-    <div style="width:min(520px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:14px;overflow:hidden;color:white;font-family:Arial,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.06);margin:auto;">
+    <div style="width:min(540px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:16px;overflow:hidden;color:white;font-family:Arial,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.08);margin:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#112236;border-bottom:1px solid #1a2e45;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#ff0046;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;">EGERSCORE</span>
+          <span style="color:#ff0046;font-size:11px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;">EGERSCORE</span>
           <span style="color:#64748b;font-size:12px;">•</span>
           <strong style="font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#f8fafc;">${escapeHtml(title)}</strong>
         </div>
         <button type="button" data-close aria-label="Close" style="background:#152a40;color:#94a3b8;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
       </div>
 
-      <!-- Google Forms / WhatsApp Preview Card: Screenshot Presentation -->
-      <div style="margin:14px;background:#08121d;border:1px solid #20354b;border-radius:10px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5),0 6px 12px -2px rgba(0,0,0,0.3);">
-        <!-- Cropped Photo with larger height (screenshot presentation) and preview badge -->
-        <div style="position:relative;width:100%;height:380px;overflow:hidden;background:#08121d;cursor:pointer;">
-          <img data-card alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;display:block;background:#0e1c2b;pointer-events:none;" />
-          <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(to top, rgba(8,18,29,0.95), transparent);pointer-events:none;z-index:1;"></div>
-          <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.85);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;z-index:1;">PAGE PREVIEW</div>
-          <a href="${hash}" data-open data-open-image data-share="${shareHref}" aria-label="Open ${escapeHtml(title)}" style="position:absolute;inset:0;z-index:2;display:block;cursor:pointer;"></a>
+      <!-- High-res Uncropped Template Image Preview -->
+      <div style="margin:12px;background:#08121d;border:1px solid #20354b;border-radius:12px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5);">
+        <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#08121d;text-align:center;">
+          <img data-card alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;" />
+          <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.9);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;">
+            BIG TEMPLATE IMAGE
+          </div>
         </div>
 
-        <!-- Wordings: Clickable title and description -->
-        <a href="${hash}" data-open-wordings aria-label="Open ${escapeHtml(title)}" style="display:block;padding:12px 14px 6px;text-decoration:none;color:inherit;cursor:pointer;border-top:1px solid #1a2e45;">
-          <div data-title style="font-size:15px;font-weight:800;color:#f8fafc;line-height:1.3;letter-spacing:-0.01em;">${escapeHtml(title)}</div>
-          <div data-subtitle style="font-size:12px;color:#94a3b8;line-height:1.4;margin-top:3px;">${escapeHtml(subtitle || 'Tap to open the full list')}</div>
-        </a>
-
-        <!-- Clicks: Clickable link text -->
-        <a href="${hash}" data-open-link data-share-url="${shareHref}" aria-label="Open link ${escapeHtml(shareHref)}" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px 12px;text-decoration:none;color:#38bdf8;font-size:11px;font-weight:600;cursor:pointer;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <span style="text-decoration:underline;word-break:break-all;">${escapeHtml(shareHref)}</span>
-        </a>
+        <!-- Short Link & Wordings -->
+        <div style="padding:10px 14px;border-top:1px solid #1a2e45;background:#0e1c2b;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div data-title style="font-size:14px;font-weight:800;color:#f8fafc;line-height:1.3;">${escapeHtml(title)}</div>
+            <div style="font-size:11px;color:#38bdf8;font-weight:700;margin-top:2px;font-family:monospace;">${escapeHtml(displayLink)}</div>
+          </div>
+          <span style="font-size:10px;background:rgba(56,189,248,0.15);color:#38bdf8;padding:3px 8px;border-radius:6px;font-weight:700;">Full Analytics</span>
+        </div>
       </div>
+
+      <!-- Feedback Banner -->
+      <div data-share-feedback style="display:none;margin:0 12px 8px;padding:8px 12px;background:rgba(16,185,129,0.15);border:1px solid #10b981;border-radius:8px;font-size:11px;color:#34d399;font-weight:600;text-align:center;"></div>
 
       <!-- Share Action Section -->
       <div style="padding:14px;border-top:1px solid #1a2e45;background:#112236;">
-        <div style="font-size:10px;font-weight:800;color:#64748b;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">SHARE LINK & PREVIEW</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" data-share-whatsapp aria-label="Share to WhatsApp" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 12px;border-radius:8px;cursor:pointer;border:0;box-shadow:0 2px 8px rgba(37,211,102,0.3);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.842-.981z"/></svg>
-            <span>WhatsApp</span>
-          </a>
-          <a href="${xUrl}" target="_blank" rel="noopener noreferrer" data-share-x aria-label="Share to X" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#000000;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 12px;border-radius:8px;cursor:pointer;border:1px solid #334155;box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <!-- Primary WhatsApp Share Button (preserves image) -->
+          <button type="button" data-share-whatsapp aria-label="Share Image to WhatsApp" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#ffffff;font-size:13px;font-weight:800;padding:11px 14px;border-radius:10px;cursor:pointer;border:0;box-shadow:0 3px 12px rgba(37,211,102,0.35);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.842-.981z"/></svg>
+            <span>Share Image to WhatsApp</span>
+          </button>
+          
+          <a href="${xUrl}" target="_blank" rel="noopener noreferrer" data-share-x aria-label="Share to X" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#000000;color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;padding:11px 14px;border-radius:10px;cursor:pointer;border:1px solid #334155;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             <span>X</span>
           </a>
-          <button type="button" data-copy-link aria-label="Copy share link" style="background:#1c3148;color:#f8fafc;border:1px solid #29435d;border-radius:8px;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" data-copy-image aria-label="Copy image to clipboard" style="flex:1;background:#152a40;color:#38bdf8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span>📋 Copy Image</span>
+          </button>
+          <button type="button" data-download-image aria-label="Download image" style="flex:1;background:#152a40;color:#f8fafc;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <span>⬇️ Download Image</span>
+          </button>
+          <button type="button" data-copy-link aria-label="Copy short link" style="background:#152a40;color:#94a3b8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;">
             Copy Link
           </button>
         </div>
@@ -507,39 +573,62 @@ function showPicture(file: File, hash: string, shareHref: string, title: string,
 
   root.querySelector('[data-close]')?.addEventListener('click', close);
 
-  const openDestination = (event: Event) => {
-    event.preventDefault();
-    close();
-    window.location.hash = hash;
-  };
-
-  root.querySelector('[data-open]')?.addEventListener('click', openDestination);
-  root.querySelector('[data-open-wordings]')?.addEventListener('click', openDestination);
-  root.querySelector('[data-open-link]')?.addEventListener('click', openDestination);
-
   root.querySelector('[data-share-whatsapp]')?.addEventListener('click', () => {
-    (window as any).__lastSharedTarget = 'whatsapp';
-    (window as any).__lastSharedUrl = whatsappUrl;
+    void sendToWhatsApp();
   });
 
-  root.querySelector('[data-share-x]')?.addEventListener('click', () => {
-    (window as any).__lastSharedTarget = 'x';
-    (window as any).__lastSharedUrl = xUrl;
+  const copyImgBtn = root.querySelector('[data-copy-image]') as HTMLButtonElement | null;
+  copyImgBtn?.addEventListener('click', async () => {
+    try {
+      if (navigator.clipboard && (window as any).ClipboardItem) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': file })
+        ]);
+        if (copyImgBtn) {
+          copyImgBtn.textContent = '✓ Image Copied!';
+          setTimeout(() => { if (copyImgBtn) copyImgBtn.textContent = '📋 Copy Image'; }, 2000);
+        }
+        const feedback = root.querySelector('[data-share-feedback]') as HTMLElement | null;
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.textContent = '✓ Big image copied! In WhatsApp, just press Ctrl+V to paste the image directly.';
+        }
+      }
+    } catch {
+      if (copyImgBtn) copyImgBtn.textContent = '✓ Downloaded!';
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = 'egerscore-banter.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  });
+
+  const downloadBtn = root.querySelector('[data-download-image]') as HTMLButtonElement | null;
+  downloadBtn?.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = 'egerscore-banter.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    if (downloadBtn) {
+      downloadBtn.textContent = '✓ Downloaded!';
+      setTimeout(() => { if (downloadBtn) downloadBtn.textContent = '⬇️ Download Image'; }, 2000);
+    }
   });
 
   const copyBtn = root.querySelector('[data-copy-link]') as HTMLButtonElement | null;
   copyBtn?.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(shareHref);
+      await navigator.clipboard.writeText(displayLink);
       if (copyBtn) {
         copyBtn.textContent = 'Copied!';
         setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy Link'; }, 2000);
       }
     } catch {
-      if (copyBtn) {
-        copyBtn.textContent = 'Copied!';
-        setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy Link'; }, 2000);
-      }
+      if (copyBtn) copyBtn.textContent = 'Copied!';
     }
   });
 
@@ -573,19 +662,55 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return lines;
 }
 
+export function getShortBanterLink(postId: string): string {
+  if (!postId) return 'egerscore.com/banter';
+  const cleanId = postId
+    .replace(/^post-seed-/, '')
+    .replace(/^temp-/, '');
+  return `egerscore.com/b/${cleanId}`;
+}
+
 export async function renderBanterCardSnapshot(
   post: BanterPost,
-  parentPost?: BanterPost | null
+  parentPost?: BanterPost | null,
+  shortLinkText?: string
 ): Promise<File> {
+  const shortLink = shortLinkText || getShortBanterLink(post.id);
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  const tempCtx = canvas.getContext('2d');
+  if (!tempCtx) throw new Error('Could not draw the banter card.');
+
+  const calcCardHeight = (p: BanterPost, isReply: boolean): number => {
+    tempCtx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
+    const lines = wrapLines(tempCtx, p.content, (isReply ? WIDTH - 156 : WIDTH - 96) - 110).slice(0, 7);
+    const lineHeight = isReply ? 38 : 42;
+    const textH = lines.length * lineHeight;
+    let pollH = 0;
+    if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
+      pollH = 36 + p.poll.options.length * 48 + 12;
+    }
+    const contextH = p.matchContext || p.taggedTeamName ? 38 : 0;
+    const headerH = 80;
+    const metricsH = 76;
+    return headerH + contextH + textH + pollH + metricsH + 34;
+  };
+
+  const parentHeight = parentPost ? calcCardHeight(parentPost, false) : 0;
+  const targetHeight = calcCardHeight(post, Boolean(parentPost));
+  const connectorHeight = parentPost ? 36 : 0;
+  const headerHeight = 196;
+  const footerHeight = 124;
+  const paddingY = 48;
+  const totalHeight = Math.max(720, Math.min(1850, headerHeight + parentHeight + connectorHeight + targetHeight + footerHeight + paddingY));
+
+  canvas.height = totalHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not draw the banter card.');
 
   // Base background
   ctx.fillStyle = '#081018';
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, WIDTH, totalHeight);
 
   // 1. TOP SITE NAVIGATION BAR
   ctx.fillStyle = '#ff0046';
@@ -677,19 +802,20 @@ export async function renderBanterCardSnapshot(
       displayContent = voteMatch[2];
     }
 
-    const lines = wrapLines(ctx, displayContent, textMaxWidth).slice(0, 6);
-    const lineHeight = isReply ? 36 : 40;
+    const lines = wrapLines(ctx, displayContent, textMaxWidth).slice(0, 7);
+    const lineHeight = isReply ? 38 : 42;
     const textBlockHeight = lines.length * lineHeight;
 
     let pollHeight = 0;
     if (!isReply && p.poll && p.poll.options && p.poll.options.length > 0) {
-      pollHeight = 35 + p.poll.options.length * 48 + 10;
+      pollHeight = 36 + p.poll.options.length * 48 + 12;
     }
 
-    const headerHeight = 75;
+    const contextHeight = p.matchContext || p.taggedTeamName ? 38 : 0;
+    const headerHeight = 78;
     const votedTagHeight = votedTag ? 42 : 0;
-    const metricsHeight = 65;
-    const cardHeight = headerHeight + votedTagHeight + textBlockHeight + pollHeight + metricsHeight + 25;
+    const metricsHeight = 72;
+    const cardHeight = headerHeight + contextHeight + votedTagHeight + textBlockHeight + pollHeight + metricsHeight + 30;
 
     // Card background
     roundBox(ctx, x, startY, width, cardHeight, 18);
@@ -707,7 +833,7 @@ export async function renderBanterCardSnapshot(
     ctx.beginPath();
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.closePath();
-    ctx.fillStyle = p.authorType === 'coach' ? '#059669' : '#2563eb';
+    ctx.fillStyle = p.authorType === 'coach' ? '#059669' : p.authorType === 'journalist' ? '#0284c7' : '#2563eb';
     ctx.fill();
     ctx.fillStyle = '#ffffff';
     ctx.font = '800 20px Arial, sans-serif';
@@ -732,6 +858,13 @@ export async function renderBanterCardSnapshot(
       ctx.fillStyle = '#34d399';
       ctx.font = '800 12px Arial, sans-serif';
       ctx.fillText('COACH', avatarX + avatarSize + 40 + nameWidth, avatarY + 6);
+    } else if (p.authorType === 'journalist' || (p.authorBadge || '').toLowerCase().includes('journalist')) {
+      roundBox(ctx, avatarX + avatarSize + 22 + nameWidth, avatarY + 2, 120, 24, 12);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '800 12px Arial, sans-serif';
+      ctx.fillText('REPORTER', avatarX + avatarSize + 32 + nameWidth, avatarY + 6);
     } else {
       ctx.fillStyle = '#38bdf8';
       ctx.font = '800 16px Arial, sans-serif';
@@ -743,7 +876,36 @@ export async function renderBanterCardSnapshot(
     const cleanH = `@${(p.authorHandle || 'fan').replace(/[^a-z0-9_]/gi, '_')}`;
     ctx.fillText(`${cleanH} · ESN Fan`, avatarX + avatarSize + 14, avatarY + 28);
 
-    let currentY = avatarY + avatarSize + 16;
+    let currentY = avatarY + avatarSize + 14;
+
+    // Match Context Badge & Tagged Team
+    if (p.matchContext || p.taggedTeamName) {
+      if (p.matchContext) {
+        roundBox(ctx, avatarX, currentY, 320, 30, 15);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '700 13px Arial, sans-serif';
+        ctx.fillText(`⚽ ${p.matchContext.homeTeamName} vs ${p.matchContext.awayTeamName}`, avatarX + 12, currentY + 7);
+      }
+      if (p.taggedTeamName) {
+        const offsetLeft = p.matchContext ? 332 : 0;
+        roundBox(ctx, avatarX + offsetLeft, currentY, 180, 30, 15);
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+        ctx.fill();
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = '#34d399';
+        ctx.font = '700 13px Arial, sans-serif';
+        ctx.fillText(`🛡️ @${p.taggedTeamName}`, avatarX + offsetLeft + 12, currentY + 7);
+      }
+      currentY += 38;
+    }
+
     if (votedTag) {
       roundBox(ctx, avatarX, currentY, 280, 32, 16);
       ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
@@ -757,11 +919,22 @@ export async function renderBanterCardSnapshot(
       currentY += 42;
     }
 
-    // Content text
-    ctx.fillStyle = '#f1f5f9';
+    // Content text with rich hashtag styling
     ctx.font = isReply ? '400 24px Arial, sans-serif' : '400 26px Arial, sans-serif';
     lines.forEach((line) => {
-      ctx.fillText(line, avatarX, currentY);
+      let wordX = avatarX;
+      const words = line.split(' ');
+      words.forEach((word) => {
+        if (word.startsWith('#')) {
+          ctx.fillStyle = '#38bdf8';
+        } else if (word.startsWith('@')) {
+          ctx.fillStyle = '#34d399';
+        } else {
+          ctx.fillStyle = '#f1f5f9';
+        }
+        ctx.fillText(word, wordX, currentY);
+        wordX += ctx.measureText(word + ' ').width;
+      });
       currentY += lineHeight;
     });
 
@@ -800,23 +973,36 @@ export async function renderBanterCardSnapshot(
       });
     }
 
-    // Metrics Row
-    currentY += 12;
-    ctx.fillStyle = isReply ? '#1a2e45' : '#162b42';
-    ctx.fillRect(x + 20, currentY, width - 40, 1);
+    // Full Analytics & Metrics Row
     currentY += 14;
+    ctx.fillStyle = isReply ? '#1a2e45' : '#162b42';
+    ctx.fillRect(x + 20, currentY, width - 40, 1.5);
+    currentY += 16;
 
     const repCount = p.commentCount || p.repliesCount || 0;
     const rCount = p.repostCount || p.repostsCount || 0;
-    const lCount = p.reactionFireCount || p.likesCount || 0;
-    const vCount = p.impressionsCount || 124;
+    const fireCount = p.reactionFireCount || p.likesCount || 0;
+    const clownCount = p.reactionClownCount || 0;
+    const skullCount = p.reactionSkullCount || 0;
+    const viewsCount = p.impressionsCount || (fireCount + clownCount + skullCount + repCount + 10) * 64;
 
     ctx.font = '700 18px Arial, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`💬  ${repCount} Replies`, avatarX, currentY);
-    ctx.fillText(`🔁  ${rCount} Reposts`, avatarX + 220, currentY);
-    ctx.fillText(`❤️  ${lCount} Likes`, avatarX + 440, currentY);
-    ctx.fillText(`📊  ${vCount} Views`, avatarX + 640, currentY);
+
+    const metrics: { icon: string; text: string; color: string }[] = [
+      { icon: '💬', text: `${repCount} Replies`, color: '#38bdf8' },
+      { icon: '🔁', text: `${rCount} Reposts`, color: '#34d399' },
+      { icon: '🔥', text: `${fireCount} Fire`, color: '#f59e0b' },
+      { icon: '🤡', text: `${clownCount} Clowns`, color: '#fbbf24' },
+      { icon: '💀', text: `${skullCount} Savage`, color: '#c084fc' },
+      { icon: '📊', text: `${viewsCount.toLocaleString()} Views`, color: '#94a3b8' },
+    ];
+
+    let metricX = avatarX;
+    metrics.forEach((m) => {
+      ctx.fillStyle = m.color;
+      ctx.fillText(`${m.icon} ${m.text}`, metricX, currentY);
+      metricX += 148;
+    });
 
     return cardHeight;
   };
@@ -835,30 +1021,32 @@ export async function renderBanterCardSnapshot(
 
     drawCard(post, 108, lineEndY, WIDTH - 156, true);
   } else {
-    drawCard(post, 48, 240, WIDTH - 96, false);
+    drawCard(post, 48, 230, WIDTH - 96, false);
   }
 
-  // 3. BOTTOM BRAND FOOTER
+  // 3. BOTTOM BRAND & SHORT LINK FOOTER
+  const footerY = totalHeight - 120;
   ctx.fillStyle = '#0a1522';
-  ctx.fillRect(0, 1180, WIDTH, HEIGHT - 1180);
+  ctx.fillRect(0, footerY, WIDTH, 120);
   ctx.fillStyle = '#1a2e45';
-  ctx.fillRect(0, 1180, WIDTH, 1);
+  ctx.fillRect(0, footerY, WIDTH, 1.5);
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#64748b';
-  ctx.font = '700 19px Arial, sans-serif';
-  ctx.fillText('EGERSCORE.COM · OFFICIAL CAMPUS SPORTS PLATFORM', 48, 1240);
-  ctx.fillStyle = '#475569';
-  ctx.font = '600 15px Arial, sans-serif';
-  ctx.fillText('CAMPUS MATCH COVERAGE · REAL-TIME FAN BANTER', 48, 1272);
+  ctx.font = '700 16px Arial, sans-serif';
+  ctx.fillText('EGERSCORE · OFFICIAL CAMPUS SPORTS PLATFORM', 48, footerY + 40);
 
-  roundBox(ctx, WIDTH - 380, 1222, 332, 54, 27);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = '800 22px Arial, sans-serif';
+  ctx.fillText(shortLink, 48, footerY + 76);
+
+  roundBox(ctx, WIDTH - 340, footerY + 34, 292, 52, 26);
   ctx.fillStyle = '#ff0046';
   ctx.fill();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 18px Arial, sans-serif';
+  ctx.font = '900 17px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('JOIN CONVERSATION →', WIDTH - 214, 1249);
+  ctx.fillText('JOIN CONVERSATION →', WIDTH - 194, footerY + 66);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not save the banter card.');
@@ -869,9 +1057,35 @@ export async function shareBanterSnapshot(
   post: BanterPost,
   parentPost?: BanterPost | null
 ): Promise<void> {
-  const file = await renderBanterCardSnapshot(post, parentPost);
-  const shareHref = `${window.location.origin}/#/banter/${post.id}`;
+  const shortLink = getShortBanterLink(post.id);
+  const file = await renderBanterCardSnapshot(post, parentPost, shortLink);
   const title = post.authorName || post.authorHandle;
   const subtitle = post.content;
-  showPicture(file, `#/banter/${post.id}`, shareHref, title, subtitle, 'banter', true);
+  const shareText = `🔥 ${title}: "${post.content.slice(0, 90).trim()}..." · EgerScore`;
+
+  // 1. If native share supports files (e.g. Android/iOS WhatsApp), share the actual image directly!
+  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `EgerScore Banter: ${title}`,
+        text: `${shareText}\nhttps://${shortLink}`,
+      });
+      return;
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  // 2. Otherwise open rich modal with WhatsApp image copy, direct WhatsApp share & download
+  showPicture(
+    file,
+    '#/banter/thread',
+    `https://${shortLink}`,
+    title,
+    subtitle,
+    'banter',
+    shortLink,
+    true
+  );
 }

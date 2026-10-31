@@ -140,34 +140,6 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
             />
           </div>
         ))}
-
-        {posts.length >= 10 && onLoadMore && (
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={onLoadMore}
-              className="px-5 py-2 rounded-full bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Show earlier takes
-            </button>
-          </div>
-        )}
-
-        {posts.length > 0 && (
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-4 text-center">
-            <p className="text-sm font-black text-white">You're caught up.</p>
-            <p className="text-xs text-zinc-400 mt-1">Come back Saturday. Bring the same people.</p>
-            {onPickGames && (
-              <button
-                type="button"
-                onClick={onPickGames}
-                className="mt-2 text-xs font-black text-sky-400 hover:underline cursor-pointer"
-              >
-                Pick this matchday
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </PullToRefresh>
   );

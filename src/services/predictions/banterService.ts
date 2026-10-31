@@ -308,49 +308,61 @@ export function formatCoachTag(teamName?: string | null, badge?: string | null):
   return `${team} Coach`;
 }
 
+export function getPostEngagement(p: BanterPost): number {
+  const replies = p.commentCount ?? p.repliesCount ?? 0;
+  const reposts = p.repostCount ?? p.repostsCount ?? 0;
+  const fires = p.reactionFireCount ?? p.likesCount ?? 0;
+  const clowns = p.reactionClownCount ?? 0;
+  const skulls = p.reactionSkullCount ?? 0;
+  return replies * 3 + reposts * 2 + fires + clowns + skulls;
+}
+
 export function compareTrending(a: BanterPost, b: BanterPost): number {
-  const oneHourAgo = Date.now() - 3600000;
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
   const aTime = new Date(a.createdAt).getTime();
   const bTime = new Date(b.createdAt).getTime();
-  const aInHour = aTime >= oneHourAgo;
-  const bInHour = bTime >= oneHourAgo;
+  const aIn24h = aTime >= twentyFourHoursAgo;
+  const bIn24h = bTime >= twentyFourHoursAgo;
 
-  if (aInHour && !bInHour) return -1;
-  if (!aInHour && bInHour) return 1;
+  // Primary: highest engagement from the previous 24 hours
+  if (aIn24h && !bIn24h) return -1;
+  if (!aIn24h && bIn24h) return 1;
 
-  // 1. Most replies (commentCount / repliesCount)
+  const aEng = getPostEngagement(a);
+  const bEng = getPostEngagement(b);
+  if (bEng !== aEng) return bEng - aEng;
+
+  // Secondary tiebreakers: replies, then reposts, then likes, then recency
   const aReplies = a.commentCount ?? a.repliesCount ?? 0;
   const bReplies = b.commentCount ?? b.repliesCount ?? 0;
   if (bReplies !== aReplies) return bReplies - aReplies;
 
-  // 2. Favourites / reposts
   const aFav = a.repostCount ?? a.repostsCount ?? 0;
   const bFav = b.repostCount ?? b.repostsCount ?? 0;
   if (bFav !== aFav) return bFav - aFav;
 
-  // 3. Likes
-  const aLikes = a.reactionFireCount ?? a.likesCount ?? 0;
-  const bLikes = b.reactionFireCount ?? b.likesCount ?? 0;
-  if (bLikes !== aLikes) return bLikes - aLikes;
-
   return bTime - aTime;
 }
 
-function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType | 'hot' | 'latest' | 'matchday'): BanterPost[] {
+export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType | 'hot' | 'latest' | 'matchday'): BanterPost[] {
   let all = [...posts];
   if (filter === 'trending' || filter === 'hot') {
     all.sort(compareTrending);
   } else if (filter === 'top') {
-    all.sort((a, b) => (b.reactionFireCount + b.commentCount + (b.repostCount || 0)) - (a.reactionFireCount + a.commentCount + (a.repostCount || 0)));
+    all.sort((a, b) => getPostEngagement(b) - getPostEngagement(a));
   } else if (filter === 'coach') {
     all = all.filter(isCoachPost);
+    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } else if (filter === 'analytics') {
+    all = all.filter(p => p.authorType === 'journalist' || (p.authorBadge || '').toLowerCase().includes('journalist'));
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else if (filter === 'banter') {
     all = all.filter(p => !isCoachPost(p) && p.authorType !== 'journalist' && !(p.authorBadge || '').toLowerCase().includes('journalist'));
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else if (filter === 'latest' || filter === 'today') {
     const oneDayAgo = Date.now() - 86400000;
-    all = all.filter((post) => new Date(post.createdAt).getTime() >= oneDayAgo);
+    const recent = all.filter((post) => new Date(post.createdAt).getTime() >= oneDayAgo);
+    all = recent.length > 0 ? recent : all;
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else {
     // Default 'all'
@@ -409,9 +421,15 @@ export class BanterService {
   }
 
   public async getPostById(postId: string): Promise<BanterPost | null> {
-    const post = this.localPosts.find((p: BanterPost) => p.id === postId)
-      || SEEDED_BANTER_POSTS.find((p: BanterPost) => p.id === postId)
-      || (fictionalBanterPosts() as BanterPost[]).find((p: BanterPost) => p.id === postId);
+    const matchesId = (p: BanterPost) =>
+      p.id === postId ||
+      p.id.endsWith(postId) ||
+      p.id.replace(/^post-seed-/, '') === postId ||
+      (postId.length >= 6 && p.id.startsWith(postId));
+
+    const post = this.localPosts.find(matchesId)
+      || SEEDED_BANTER_POSTS.find(matchesId)
+      || (fictionalBanterPosts() as BanterPost[]).find(matchesId);
 
     if (post) {
       if (post.pollId) {
@@ -498,10 +516,16 @@ export class BanterService {
       }
 
       if (filter === 'trending' || filter === 'hot') {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         query = query
+          .gte('created_at', twentyFourHoursAgo)
           .order('comment_count', { ascending: false })
           .order('repost_count', { ascending: false })
           .order('reaction_fire_count', { ascending: false });
+      } else if (filter === 'coach') {
+        query = query.or('author_type.eq.coach,author_badge.ilike.%coach%').order('created_at', { ascending: false });
+      } else if (filter === 'analytics') {
+        query = query.or('author_type.eq.journalist,author_badge.ilike.%journalist%').order('created_at', { ascending: false });
       } else {
         query = query.order('created_at', { ascending: false });
       }

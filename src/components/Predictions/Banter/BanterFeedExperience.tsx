@@ -36,7 +36,8 @@ export const BanterFeedExperience: React.FC = () => {
           <article
             key={post.id}
             onClick={() => {
-              window.location.hash = `#/banter/${post.id}`;
+              sessionStorage.setItem('active_banter_thread_id', post.id);
+              window.location.hash = '#/banter/thread';
             }}
             className="p-3.5 hover:bg-zinc-950/40 cursor-pointer transition"
           >

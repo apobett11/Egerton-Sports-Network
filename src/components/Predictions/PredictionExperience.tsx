@@ -42,7 +42,7 @@ import { eplFixtureService } from '../../services/predictions/eplFixtureService'
 import { predictionService } from '../../services/predictions/predictionService';
 import { consensusService } from '../../services/predictions/consensusService';
 import { derbyService } from '../../services/predictions/derbyService';
-import { banterService } from '../../services/predictions/banterService';
+import { banterService, applyBanterFilter } from '../../services/predictions/banterService';
 import { anonymousIdentityService } from '../../services/predictions/anonymousIdentityService';
 import { useBanterSession } from '../../hooks/useBanterSession';
 import { getActiveSessionProfile } from '../../utils/sessionIdentity';
@@ -197,19 +197,50 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
   });
 
-  // Hash routing for full-page thread view (#/banter/:postId)
+  // Hash routing for full-page thread view (clean link without exposing internal UID)
   const [threadPostId, setThreadPostId] = useState<string | null>(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
-    const match = hash.match(/^#\/banter\/([a-zA-Z0-9_-]+)/);
-    return match ? match[1] : null;
+    if (hash.startsWith('#/banter/thread')) {
+      return sessionStorage.getItem('active_banter_thread_id');
+    }
+    const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
+    if (match && match[1] !== 'thread') {
+      const id = match[1];
+      window.history.replaceState(null, '', '#/banter/thread');
+      sessionStorage.setItem('active_banter_thread_id', id);
+      return id;
+    }
+    const pathname = typeof window !== 'undefined' ? window.location.pathname || '' : '';
+    const pathMatch = pathname.match(/^\/b\/([a-zA-Z0-9_-]+)/);
+    if (pathMatch) {
+      const id = pathMatch[1];
+      sessionStorage.setItem('active_banter_thread_id', id);
+      return id;
+    }
+    return null;
   });
   const [mobileFabTool, setMobileFabTool] = useState<'text' | 'media' | 'poll' | null>(null);
 
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash || '';
-      const match = hash.match(/^#\/banter\/([a-zA-Z0-9_-]+)/);
-      setThreadPostId(match ? match[1] : null);
+      if (hash === '#/banter' || hash === '' || hash === '#/') {
+        setThreadPostId(null);
+        sessionStorage.removeItem('active_banter_thread_id');
+        return;
+      }
+      if (hash.startsWith('#/banter/thread')) {
+        const stored = sessionStorage.getItem('active_banter_thread_id');
+        if (stored) setThreadPostId(stored);
+        return;
+      }
+      const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
+      if (match && match[1] !== 'thread') {
+        const id = match[1];
+        window.history.replaceState(null, '', '#/banter/thread');
+        sessionStorage.setItem('active_banter_thread_id', id);
+        setThreadPostId(id);
+      }
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -653,13 +684,14 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
 
   const shownBanterPosts = useMemo(() => {
     const fav = favouriteTeam?.toLowerCase().trim() || '';
-    return banterPosts.filter((post) => {
+    const filtered = banterPosts.filter((post) => {
       if (contextMatch && post.matchId && post.matchId !== contextMatch.id) return false;
       if (!clubBanterOnly || !fav) return true;
       const blob = `${post.content} ${post.matchContext?.homeTeamName || ''} ${post.matchContext?.awayTeamName || ''} ${post.authorHandle}`.toLowerCase();
       return blob.includes(fav);
     });
-  }, [banterPosts, activeMatchday, clubBanterOnly, favouriteTeam]);
+    return applyBanterFilter(filtered, banterFilter);
+  }, [banterPosts, activeMatchday, clubBanterOnly, favouriteTeam, banterFilter, contextMatch]);
 
   const selectNewsMatchday = (day: number, dayKey?: string) => {
     const first = pairDays[0];
@@ -1206,27 +1238,37 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   onBack={() => {
                     window.location.hash = '#/banter';
                     setThreadPostId(null);
+                    sessionStorage.removeItem('active_banter_thread_id');
                   }}
                   onNavigatePost={(nextId) => {
-                    window.location.hash = `#/banter/${nextId}`;
+                    sessionStorage.setItem('active_banter_thread_id', nextId);
                     setThreadPostId(nextId);
+                    window.location.hash = '#/banter/thread';
                   }}
                 />
               ) : (
                 <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-end justify-between gap-3 px-0.5">
+                  <div className="flex items-center justify-between gap-3 px-1 py-1">
                     <div>
-                      <h1 className="text-lg font-black text-white tracking-tight">What's happening</h1>
-                      <p className="text-xs text-zinc-400">
-                        {activePairDay
-                          ? `${activePairDay.label ?? 'Matchday'} · ${activePairDay.team} ${activePairDay.line}`
-                          : 'Drop one take. Your people answer.'}
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ff0046] via-amber-500 to-orange-400 shadow-md shadow-[#ff0046]/30">
+                          <Flame className="h-4 w-4 text-white animate-pulse" />
+                        </span>
+                        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                          What's happening
+                        </h1>
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-500/20">
+                          Live Feed
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-400 font-medium">
+                        Hot takes, fiery rivalries & real-time pitchside banter across the league.
                       </p>
                     </div>
-                    <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-sky-400">
-                      <span className="relative flex h-1.5 w-1.5">
+                    <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-400">
+                      <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-400" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-400" />
                       </span>
                       Talking now
                     </span>
@@ -1264,21 +1306,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     </p>
                   )}
 
-                  {banterFilter === 'coach' ? (
-                    <CoachMessagesView
-                      teamName={favouriteTeam || 'Santos FC'}
-                      onOpenThread={(postId) => {
-                        window.location.hash = `#/banter/${postId}`;
-                        setThreadPostId(postId);
-                      }}
-                    />
-                  ) : banterFilter === 'analytics' ? (
-                    <JournalistBanterAnalytics
-                      onSelectTeam={(_teamId, _teamName) => {
-                        setBanterFilter('all');
-                      }}
-                    />
-                  ) : banterFilter === 'mine' ? (
+                  {banterFilter === 'mine' ? (
                     <TalkDashboard
                       handle={identity.publicHandle}
                       deviceBound={identity.bound}
@@ -1296,6 +1324,10 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       emptyTitle={
                         clubBanterOnly
                           ? 'No takes about your club on this matchday.'
+                          : banterFilter === 'coach'
+                          ? 'No coach dispatches yet.'
+                          : banterFilter === 'analytics'
+                          ? 'No league journal articles yet.'
                           : banterFilter === 'banter'
                           ? 'No banter & trolls yet.'
                           : banterFilter === 'latest'
@@ -1303,7 +1335,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           : 'The room is quiet.'
                       }
                       emptyBody={
-                        banterFilter === 'banter'
+                        banterFilter === 'coach'
+                          ? 'Coaches will post squad notes and tactical breakdowns soon.'
+                          : banterFilter === 'analytics'
+                          ? 'Egerton journalists will drop match analysis and post-game reports here.'
+                          : banterFilter === 'banter'
                           ? 'Start the banter, drop memes or troll the rivals.'
                           : banterFilter === 'latest'
                           ? 'Older takes are still in All.'
@@ -1317,8 +1353,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       }
                       onToggleReaction={handleToggleReaction}
                       onOpenComments={(post) => {
-                        window.location.hash = `#/banter/${post.id}`;
+                        sessionStorage.setItem('active_banter_thread_id', post.id);
                         setThreadPostId(post.id);
+                        window.location.hash = '#/banter/thread';
                       }}
                       onPickGames={() => {
                         setActiveTab('scores');

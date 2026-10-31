@@ -369,7 +369,14 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             {ancestry.map((ancestor, aIdx) => (
               <div
                 key={ancestor.id}
-                onClick={() => onNavigatePost ? onNavigatePost(ancestor.id) : (window.location.hash = `#/banter/${ancestor.id}`)}
+                onClick={() => {
+                  if (onNavigatePost) {
+                    onNavigatePost(ancestor.id);
+                  } else {
+                    sessionStorage.setItem('active_banter_thread_id', ancestor.id);
+                    window.location.hash = '#/banter/thread';
+                  }
+                }}
                 className="group relative flex gap-3 cursor-pointer pb-4"
               >
                 {/* Vertical Continuous Thread Line */}
@@ -614,7 +621,8 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                       if (onNavigatePost) {
                         onNavigatePost(p.id);
                       } else {
-                        window.location.hash = `#/banter/${p.id}`;
+                        sessionStorage.setItem('active_banter_thread_id', p.id);
+                        window.location.hash = '#/banter/thread';
                       }
                     }}
                   />
@@ -632,7 +640,14 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                 return (
                   <div
                     key={reply.id}
-                    onClick={() => onNavigatePost ? onNavigatePost(reply.id) : (window.location.hash = `#/banter/${reply.id}`)}
+                    onClick={() => {
+                      if (onNavigatePost) {
+                        onNavigatePost(reply.id);
+                      } else {
+                        sessionStorage.setItem('active_banter_thread_id', reply.id);
+                        window.location.hash = '#/banter/thread';
+                      }
+                    }}
                     className="group relative flex gap-3 p-3 rounded-2xl border border-zinc-900 hover:border-zinc-800 bg-zinc-950/40 hover:bg-zinc-950 transition-all cursor-pointer"
                   >
                     {/* Avatar & Number badge */}

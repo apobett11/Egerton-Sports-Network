@@ -275,7 +275,8 @@ export const CoachMessagesView: React.FC<CoachMessagesViewProps> = ({
                   if (onOpenThread) {
                     onOpenThread(p.id);
                   } else {
-                    window.location.hash = `#/banter/${p.id}`;
+                    sessionStorage.setItem('active_banter_thread_id', p.id);
+                    window.location.hash = '#/banter/thread';
                   }
                 }}
               />
@@ -309,7 +310,8 @@ export const CoachMessagesView: React.FC<CoachMessagesViewProps> = ({
                       if (onOpenThread) {
                         onOpenThread(post.id);
                       } else {
-                        window.location.hash = `#/banter/${post.id}`;
+                        sessionStorage.setItem('active_banter_thread_id', post.id);
+                        window.location.hash = '#/banter/thread';
                       }
                     }}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs transition-colors cursor-pointer"

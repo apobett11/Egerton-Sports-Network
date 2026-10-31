@@ -607,7 +607,7 @@ export const AppContent: React.FC = () => {
         setActiveTab('potw');
       } else if (isPotwWinner) {
         setActiveTab('table');
-      } else if (initialRoute === 'banter' || initialRoute.startsWith('banter')) {
+      } else if (initialRoute === 'banter' || initialRoute.startsWith('banter') || initialRoute.startsWith('b/')) {
         setActiveTab('news');
         selectPredictionView('banter');
       } else if (initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
