@@ -151,38 +151,38 @@ export const ExitStoreModal: React.FC<ExitStoreModalProps> = ({
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-col sm:flex-row gap-2">
-          {cartItems.length > 0 && (
-            <button
-              type="button"
-              onClick={onOpenCheckout}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>Checkout Products</span>
-            </button>
-          )}
+        {/* Action Buttons: Inline small normal buttons */}
+        <div className="mt-4 pt-3 border-t border-slate-700/60 flex flex-row items-center justify-end gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={onConfirmExit}
+            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wide shadow-xs active:scale-95 transition-all cursor-pointer text-center"
+          >
+            Exit Store
+          </button>
 
           <button
             type="button"
             onClick={onClose}
-            className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer text-center active:scale-95 ${
+            className={`px-3 py-1.5 rounded-lg border font-semibold text-xs transition-all cursor-pointer text-center active:scale-95 ${
               isDark 
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' 
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white' 
+                : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Continue Shopping
+            Continue
           </button>
 
-          <button
-            type="button"
-            onClick={onConfirmExit}
-            className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-rose-600/25 active:scale-95 transition-all cursor-pointer text-center"
-          >
-            Exit Store
-          </button>
+          {cartItems.length > 0 && (
+            <button
+              type="button"
+              onClick={onOpenCheckout}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wide shadow-sm flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>Checkout</span>
+            </button>
+          )}
         </div>
 
       </div>

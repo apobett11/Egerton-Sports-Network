@@ -156,10 +156,10 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
               }`}>
                 Categories
               </h2>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/80 ${
                 theme === 'dark'
-                  ? 'text-slate-300 bg-[#1e3a5a] border-[#2a4e76]'
-                  : 'text-slate-800 bg-slate-100 border-slate-300'
+                  ? 'text-slate-200 bg-[#1e3a5a]'
+                  : 'text-slate-800 bg-slate-100'
               }`}>
                 {categories.length} Categories
               </span>
@@ -382,16 +382,16 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                   }}
                   className="group flex flex-col items-center shrink-0 w-[96px] sm:w-[110px] text-center cursor-pointer focus:outline-hidden category-snap-item transition-all"
                 >
-                  {/* Circle: 15% larger (88px / 102px) and NO selection highlight ring */}
+                  {/* Circle: 15% larger with white border */}
                   <div
-                    className="relative flex items-center justify-center w-[88px] h-[88px] sm:w-[102px] sm:h-[102px] rounded-full transition-transform duration-300 shadow-md hover:scale-105"
+                    className="relative flex items-center justify-center w-[88px] h-[88px] sm:w-[102px] sm:h-[102px] rounded-full border-[1.5px] border-white/85 transition-transform duration-300 shadow-md hover:scale-105"
                   >
-                    {/* Category Logo Image centered flush with NO circular border or highlight */}
-                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-800/30 dark:bg-slate-900/70 shadow-inner">
+                    {/* Category Logo Image centered with 5px margin */}
+                    <div className="w-[calc(100%-10px)] h-[calc(100%-10px)] m-[5px] rounded-full overflow-hidden flex items-center justify-center bg-slate-800/30 dark:bg-slate-900/70 shadow-inner">
                       <img
                         src={logoSrc}
                         alt={category.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        className="w-full h-full object-cover rounded-full transition-transform duration-300 group-hover:scale-110"
                         loading="lazy"
                         onError={(e) => {
                           if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
@@ -401,10 +401,10 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                       />
                     </div>
 
-                    {/* Micro Count Badge on Circle */}
+                    {/* Micro Count Badge on Circle with white border */}
                     <span
-                      className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-black rounded-full leading-none shadow-sm ${
-                        theme === 'dark' ? 'bg-[#0b1522] text-white ring-1 ring-slate-700' : 'bg-slate-900 text-white ring-1 ring-slate-600'
+                      className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-black rounded-full leading-none shadow-sm border-[1.5px] border-white ${
+                        theme === 'dark' ? 'bg-[#0b1522] text-white' : 'bg-slate-900 text-white'
                       }`}
                     >
                       {category.count}

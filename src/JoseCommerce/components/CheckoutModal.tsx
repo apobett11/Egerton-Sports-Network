@@ -93,7 +93,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   
   const [deliveryAddress, setDeliveryAddress] = useState(() => draft?.deliveryAddress ?? '');
   const [notes, setNotes] = useState(() => draft?.notes ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'delivery'>(() => draft?.paymentMethod ?? 'mpesa');
+  const [payOnDelivery, setPayOnDelivery] = useState<boolean>(false);
+  const [useDashboardInfo, setUseDashboardInfo] = useState<boolean>(true);
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'delivery'>(() => 'delivery');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
@@ -202,6 +204,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     setCheckoutError('');
 
+    if (!payOnDelivery) {
+      setCheckoutError('In-app payment system oncoming.');
+      return;
+    }
+
     if (!customerName || !phoneNumber) {
       setCheckoutError('Please provide your name and phone number.');
       return;
@@ -233,7 +240,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           subCounty,
           pickupStation,
           notes,
-          paymentMethod,
+          paymentMethod: 'delivery',
           checkoutType: 'in-app',
         },
         checkoutSettings || {
@@ -319,12 +326,88 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {step === 'details' && (
               <form onSubmit={handleSubmitOrder} className="p-4 sm:p-5 space-y-4 text-xs">
                 
+                {/* Pay on Delivery & Dashboard Information Checkboxes */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                  {/* Pay on Delivery (Default unchecked) */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={payOnDelivery}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setPayOnDelivery(checked);
+                        if (checked) {
+                          setCheckoutError('');
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div className="flex-grow">
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <Truck className="w-3.5 h-3.5 text-blue-600" />
+                        Pay on Delivery
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        Pay upon receiving your equipment package at the pickup station.
+                      </p>
+                    </div>
+                    {payOnDelivery ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+                        Selected
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        Optional
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Immediate Checkout Notice if Pay on Delivery is unchecked */}
+                  {!payOnDelivery && (
+                    <div 
+                      onClick={() => setCheckoutError('In-app payment system oncoming.')}
+                      className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-2 cursor-pointer hover:bg-amber-100/60 transition-colors"
+                      title="Online checkout integration status"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>In-app payment system oncoming. Check &quot;Pay on Delivery&quot; above to place your order.</span>
+                    </div>
+                  )}
+
+                  {/* Use Dashboard Information Checkbox */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none pt-2 border-t border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={useDashboardInfo}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUseDashboardInfo(checked);
+                        if (checked && activeUser) {
+                          setCustomerName(activeUser.username || '');
+                          setCustomerEmail(activeUser.email || '');
+                          setPhoneNumber(activeUser.phoneNumber || '');
+                        }
+                      }}
+                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <div className="flex-grow">
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-600" />
+                        Use dashboard information
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        Prefills your dashboard details. You can modify your phone number and email below.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
                 {/* Customer Contact Details */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                        Full Name / Captain *
+                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
+                        Full Name *
                       </label>
                       <input
                         type="text"
@@ -332,13 +415,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="e.g. Brian Otieno"
-                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#0b1522]"
+                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                        Phone Number (M-Pesa) *
+                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
+                        Phone Number (Used in Order Placement) *
                       </label>
                       <input
                         type="tel"
@@ -346,27 +429,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="e.g. 0712 345 678"
-                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#0b1522]"
+                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                        Email Address (Receipt & Tracking)
+                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
+                        Email Address (Receipt &amp; Tracking)
                       </label>
                       <input
                         type="email"
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         placeholder="e.g. brian@sportsclub.co.ke"
-                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#0b1522]"
+                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
                         Team / Club Name (Optional)
                       </label>
                       <input
@@ -374,7 +457,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
                         placeholder="e.g. Wazalendo FC"
-                        className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#0b1522]"
+                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
                       />
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Home, 
   LayoutGrid, 
@@ -39,7 +39,7 @@ interface MobileBottomNavProps {
   categoriesWithCounts?: Category[];
 }
 
-export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
+export const MobileBottomNavComponent: React.FC<MobileBottomNavProps> = ({
   cartCount,
   activeNav = 'home',
   onSelectNav,
@@ -55,13 +55,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   theme = 'dark',
   categoriesWithCounts: propCategoriesWithCounts,
 }) => {
-  const categoriesWithCounts = propCategoriesWithCounts && propCategoriesWithCounts.length > 0 
-    ? propCategoriesWithCounts 
-    : getCachedCategories();
+  const categoriesWithCounts = useMemo(() => {
+    return propCategoriesWithCounts && propCategoriesWithCounts.length > 0 
+      ? propCategoriesWithCounts 
+      : getCachedCategories();
+  }, [propCategoriesWithCounts]);
+
   const isDark = theme === 'dark';
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
-  const getCategoryIcon = (slug: string) => {
+  const getCategoryIcon = useCallback((slug: string) => {
     switch (slug) {
       case 'fitness-and-training':
         return Dumbbell;
@@ -79,9 +82,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       default:
         return Layers;
     }
-  };
+  }, []);
 
-  const navItems = [
+  const navItems = useMemo(() => [
     {
       id: 'home' as StorefrontNavTab,
       label: 'Home',
@@ -156,7 +159,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         }
       },
     },
-  ];
+  ], [
+    cartCount,
+    isLoggedIn,
+    onSelectNav,
+    onGoHome,
+    onOpenCategories,
+    onOpenCart,
+    onOpenOrders,
+    onOpenContact,
+    onOpenProfile,
+    onOpenAuth,
+  ]);
 
   return (
     <>
@@ -316,7 +330,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               <button
                 key={item.id}
                 onClick={item.onClick}
-                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer touch-spring ${
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-transform duration-100 ease-out cursor-pointer active:scale-95 touch-manipulation will-change-transform ${
                   isActive
                     ? 'bg-gradient-to-b from-blue-600 to-indigo-600 text-white shadow-md font-bold'
                     : isDark
@@ -349,3 +363,5 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     </>
   );
 };
+
+export const MobileBottomNav = React.memo(MobileBottomNavComponent);

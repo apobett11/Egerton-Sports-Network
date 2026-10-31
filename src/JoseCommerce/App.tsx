@@ -27,7 +27,7 @@ import { getCachedCatalog, setCachedCatalog, getCachedCategories } from './servi
 import { normalizeCategorySlug } from './services/productIdService';
 import { CATEGORY_ORDER } from './lib/categoryLogos';
 import { syncCatalogFromDatabase, fetchProductById, fetchCategoriesFromDatabase } from './services/productService';
-import { StoreFrontDebugger } from './components/StoreFrontDebugger';
+// StoreFrontDebugger removed per user request (database analytics completely removed from frontend)
 import { AdminPortal } from './components/admin/AdminPortal';
 import { getStoredOrders, addNewStoredOrder, MOCK_CARTS_ANALYTICS } from './data/mockOrders';
 import { 
@@ -1377,14 +1377,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           theme={theme}
         />
 
-        {/* Storefront Debugger */}
-        <StoreFrontDebugger
-          productsList={productsList}
-          categoriesList={categoriesList}
-          selectedClass={selectedClass}
-          theme={theme}
-          onReload={handleRefreshData}
-        />
+
       </div>
     );
   }
@@ -1405,6 +1398,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onOpenSearch={() => setIsMobileSearchActive(true)}
         isSearchActive={isMobileSearchActive}
         onCloseSearch={() => setIsMobileSearchActive(false)}
+        searchQuery={filters.searchQuery}
+        onSearchChange={(query) => handleFilterChange({ searchQuery: query })}
         onBackToLiveScore={handleBack}
         onSelectAudience={(aud) => handleFilterChange({ audience: aud })}
         currentAudience={filters.audience}
@@ -1436,6 +1431,46 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         }}
         hideClassSwitcher={currentView === 'category'}
       />
+
+      {/* Greeting Banner between Top Bar and Categories when Logged In */}
+      {currentUser && (
+        <div className="w-full pt-2 pb-1 px-3 sm:px-6 sm:pl-16 xl:pl-52 transition-all">
+          <div className="max-w-7xl mx-auto">
+            <div className={`flex items-center justify-between px-3.5 sm:px-4 py-2 rounded-2xl border shadow-xs backdrop-blur-md transition-all ${
+              theme === 'dark'
+                ? 'bg-[#15293d]/90 border-[#284f78] text-white'
+                : 'bg-white border-slate-200 text-slate-900'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                  {currentUser.username[0]?.toUpperCase() || 'U'}
+                </span>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <span className="font-semibold text-slate-300">Hello</span>
+                  <span className="font-black text-[#ff0046] tracking-tight">{currentUser.username}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentUser.role === 'admin' || currentUser.role === 'store_admin') {
+                    handleOpenAdmin();
+                  } else {
+                    setIsUserDashboardOpen(true);
+                  }
+                }}
+                className={`text-[11px] font-bold px-3 py-1 rounded-xl border transition-all cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-[#1d3855] border-[#315780] text-blue-200 hover:text-white hover:bg-[#234568]'
+                    : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+                }`}
+              >
+                Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Category Listings Page OR Main Storefront Flow */}
       {currentView === 'category' ? (
@@ -1817,14 +1852,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         theme={theme}
       />
 
-      {/* Storefront Debugger */}
-      <StoreFrontDebugger
-        productsList={productsList}
-        categoriesList={categoriesList}
-        selectedClass={selectedClass}
-        theme={theme}
-        onReload={handleRefreshData}
-      />
+
     </div>
   );
 }
