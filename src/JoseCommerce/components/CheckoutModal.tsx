@@ -93,11 +93,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   
   const [deliveryAddress, setDeliveryAddress] = useState(() => draft?.deliveryAddress ?? '');
   const [notes, setNotes] = useState(() => draft?.notes ?? '');
-  const [payOnDelivery, setPayOnDelivery] = useState<boolean>(false);
-  const [useDashboardInfo, setUseDashboardInfo] = useState<boolean>(true);
+  const [payOnDelivery, setPayOnDelivery] = useState<boolean>(true);
+  const [useProfileInfo, setUseProfileInfo] = useState<boolean>(true);
+  const [highlightProfileCheckbox, setHighlightProfileCheckbox] = useState<boolean>(false);
+  const highlightTimerRef = React.useRef<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'delivery'>(() => 'delivery');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+
+  // Handle click on prefilled inputs while profile info is locked
+  const handleInputAttemptEdit = () => {
+    if (useProfileInfo) {
+      setHighlightProfileCheckbox(true);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightProfileCheckbox(false);
+      }, 2200);
+    }
+  };
 
   // Automatically persist checkout progress and step across reloads
   React.useEffect(() => {
@@ -326,125 +339,160 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {step === 'details' && (
               <form onSubmit={handleSubmitOrder} className="p-4 sm:p-5 space-y-4 text-xs">
                 
-                {/* Pay on Delivery & Dashboard Information Checkboxes */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                  {/* Pay on Delivery (Default unchecked) */}
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={payOnDelivery}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setPayOnDelivery(checked);
-                        if (checked) {
-                          setCheckoutError('');
-                        }
-                      }}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="flex-grow">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Truck className="w-3.5 h-3.5 text-blue-600" />
-                        Pay on Delivery
-                      </span>
-                      <p className="text-[10px] text-slate-500">
-                        Pay upon receiving your equipment package at the pickup station.
-                      </p>
-                    </div>
-                    {payOnDelivery ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
-                        Selected
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium text-slate-400">
-                        Optional
-                      </span>
+                {/* Pay on Delivery & Profile Information Checkboxes */}
+                <div className="space-y-2.5">
+                  {/* Pay on Delivery (Default checked, cannot be unchecked) */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                    <label className="flex items-center gap-2.5 cursor-not-allowed select-none">
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        readOnly
+                        disabled
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-0 cursor-not-allowed opacity-90"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-blue-600" />
+                          Pay on Delivery
+                        </span>
+                        <p className="text-[10px] text-slate-500">
+                          In-app payment system oncoming. Standard payment upon parcel pickup.
+                        </p>
+                      </div>
+                    </label>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full shrink-0">
+                      Standard • Active
+                    </span>
+                  </div>
+
+                  {/* Use Profile Information Checkbox (Green border highlight on input click) */}
+                  <div className={`p-3 rounded-xl transition-all duration-300 ${
+                    highlightProfileCheckbox
+                      ? 'border-2 border-emerald-500 bg-emerald-50/70 ring-4 ring-emerald-500/25 shadow-md shadow-emerald-500/10'
+                      : 'border border-slate-200 bg-slate-50'
+                  }`}>
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={useProfileInfo}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setUseProfileInfo(checked);
+                          if (checked && activeUser) {
+                            setCustomerName(activeUser.username || '');
+                            setCustomerEmail(activeUser.email || '');
+                            setPhoneNumber(activeUser.phoneNumber || '');
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <div className="flex-grow">
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-emerald-600" />
+                          Use profile information
+                        </span>
+                        <p className="text-[10px] text-slate-500">
+                          {useProfileInfo 
+                            ? 'Prefilled from your profile (locked). Uncheck to modify your phone & email.' 
+                            : 'Custom details active. Enter your contact details below.'}
+                        </p>
+                      </div>
+                      {useProfileInfo && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full shrink-0">
+                          Prefilled
+                        </span>
+                      )}
+                    </label>
+
+                    {highlightProfileCheckbox && (
+                      <div className="mt-2 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-2.5 py-1 rounded-lg flex items-center gap-1.5 animate-fadeIn">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                        <span>Uncheck &quot;Use profile information&quot; above to edit your name, phone, or email.</span>
+                      </div>
                     )}
-                  </label>
-
-                  {/* Immediate Checkout Notice if Pay on Delivery is unchecked */}
-                  {!payOnDelivery && (
-                    <div 
-                      onClick={() => setCheckoutError('In-app payment system oncoming.')}
-                      className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-center gap-2 cursor-pointer hover:bg-amber-100/60 transition-colors"
-                      title="Online checkout integration status"
-                    >
-                      <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>In-app payment system oncoming. Check &quot;Pay on Delivery&quot; above to place your order.</span>
-                    </div>
-                  )}
-
-                  {/* Use Dashboard Information Checkbox */}
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none pt-2 border-t border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={useDashboardInfo}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setUseDashboardInfo(checked);
-                        if (checked && activeUser) {
-                          setCustomerName(activeUser.username || '');
-                          setCustomerEmail(activeUser.email || '');
-                          setPhoneNumber(activeUser.phoneNumber || '');
-                        }
-                      }}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="flex-grow">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-indigo-600" />
-                        Use dashboard information
-                      </span>
-                      <p className="text-[10px] text-slate-500">
-                        Prefills your dashboard details. You can modify your phone number and email below.
-                      </p>
-                    </div>
-                  </label>
+                  </div>
                 </div>
 
                 {/* Customer Contact Details */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
-                        Full Name *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-600 block">
+                          Full Name *
+                        </label>
+                        {useProfileInfo && (
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Profile Locked</span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         required
+                        readOnly={useProfileInfo}
                         value={customerName}
+                        onClick={handleInputAttemptEdit}
+                        onFocus={handleInputAttemptEdit}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="e.g. Brian Otieno"
-                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
+                        className={`w-full h-8 px-2.5 text-[#0b1522] font-semibold border rounded-lg placeholder:text-slate-400 focus:outline-hidden transition-colors ${
+                          useProfileInfo
+                            ? 'bg-slate-100 border-slate-300 cursor-not-allowed select-none'
+                            : 'bg-white border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        }`}
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
-                        Phone Number (Used in Order Placement) *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-600 block">
+                          Phone Number (Used in Order Placement) *
+                        </label>
+                        {useProfileInfo && (
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Profile Locked</span>
+                        )}
+                      </div>
                       <input
                         type="tel"
                         required
+                        readOnly={useProfileInfo}
                         value={phoneNumber}
+                        onClick={handleInputAttemptEdit}
+                        onFocus={handleInputAttemptEdit}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         placeholder="e.g. 0712 345 678"
-                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
+                        className={`w-full h-8 px-2.5 text-[#0b1522] font-semibold border rounded-lg placeholder:text-slate-400 focus:outline-hidden transition-colors ${
+                          useProfileInfo
+                            ? 'bg-slate-100 border-slate-300 cursor-not-allowed select-none'
+                            : 'bg-white border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        }`}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-600 block mb-1">
-                        Email Address (Receipt &amp; Tracking)
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-600 block">
+                          Email Address (Receipt &amp; Tracking)
+                        </label>
+                        {useProfileInfo && (
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Profile Locked</span>
+                        )}
+                      </div>
                       <input
                         type="email"
+                        readOnly={useProfileInfo}
                         value={customerEmail}
+                        onClick={handleInputAttemptEdit}
+                        onFocus={handleInputAttemptEdit}
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         placeholder="e.g. brian@sportsclub.co.ke"
-                        className="w-full h-8 px-2.5 bg-slate-100 text-[#0b1522] font-semibold border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-600 transition-colors"
+                        className={`w-full h-8 px-2.5 text-[#0b1522] font-semibold border rounded-lg placeholder:text-slate-400 focus:outline-hidden transition-colors ${
+                          useProfileInfo
+                            ? 'bg-slate-100 border-slate-300 cursor-not-allowed select-none'
+                            : 'bg-white border-blue-500 focus:ring-1 focus:ring-blue-500'
+                        }`}
                       />
                     </div>
 

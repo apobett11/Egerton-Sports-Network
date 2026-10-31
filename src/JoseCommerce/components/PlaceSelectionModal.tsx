@@ -25,6 +25,8 @@ export const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
   const [county, setCounty] = useState<string>(selectedCounty || 'Nakuru');
   const [subCounty, setSubCounty] = useState<string>(selectedSubCounty || 'Njoro');
   const [station, setStation] = useState<string>(selectedStation || '');
+  const [isCustomTown, setIsCustomTown] = useState<boolean>(false);
+  const [customTownName, setCustomTownName] = useState<string>('');
 
   useEffect(() => {
     const handleUpdated = (e: any) => {
@@ -39,23 +41,26 @@ export const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
   // Auto-select first sub-county and station when county changes
   useEffect(() => {
     if (currentCountyObj) {
-      if (!currentCountyObj.subCounties.includes(subCounty)) {
+      if (!isCustomTown && !currentCountyObj.subCounties.includes(subCounty)) {
         setSubCounty(currentCountyObj.subCounties[0] || 'Central');
       }
       if (!currentCountyObj.pickupStations.includes(station)) {
         setStation(currentCountyObj.pickupStations[0] || '');
       }
     }
-  }, [county, currentCountyObj]);
+  }, [county, currentCountyObj, isCustomTown]);
 
   if (!isOpen) return null;
 
+  const resolvedTown = isCustomTown ? (customTownName.trim() || 'Custom Town') : subCounty;
+  const resolvedStation = station || `${resolvedTown} Central Pickup Depot`;
+
   const handleConfirm = () => {
-    if (!county || !station) {
-      alert('Please select a county and a pickup station.');
+    if (!county || !resolvedTown) {
+      alert('Please choose a county and town for delivery.');
       return;
     }
-    onConfirmSelection(county, subCounty, station);
+    onConfirmSelection(county, resolvedTown, resolvedStation);
     onClose();
   };
 
@@ -128,27 +133,69 @@ export const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
             </div>
           </div>
 
-          {/* Step 2: Sub-County Selection */}
-          {currentCountyObj && currentCountyObj.subCounties.length > 0 && (
+          {/* Step 2: Town Selection with Custom Town Input Option */}
+          {currentCountyObj && (
             <div>
-              <label className="text-xs font-bold uppercase text-slate-300 block mb-1.5">
-                2. Sub-County
-              </label>
-              <select
-                value={subCounty}
-                onChange={(e) => setSubCounty(e.target.value)}
-                className={`w-full px-3 py-2 text-xs rounded-xl border font-medium focus:outline-hidden ${
-                  theme === 'dark' 
-                    ? 'bg-[#182b42] border-slate-700 text-white focus:border-blue-500' 
-                    : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500'
-                }`}
-              >
-                {currentCountyObj.subCounties.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold uppercase text-slate-300 block">
+                  2. Town for Delivery
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomTown((prev) => !prev)}
+                  className="text-[11px] font-bold text-blue-400 hover:text-blue-300 cursor-pointer"
+                >
+                  {isCustomTown ? '← Choose from list' : '+ Town not in list?'}
+                </button>
+              </div>
+
+              {!isCustomTown ? (
+                <div className="space-y-1.5">
+                  <select
+                    value={subCounty}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setIsCustomTown(true);
+                      } else {
+                        setSubCounty(e.target.value);
+                      }
+                    }}
+                    className={`w-full px-3 py-2 text-xs rounded-xl border font-semibold focus:outline-hidden ${
+                      theme === 'dark' 
+                        ? 'bg-[#182b42] border-slate-700 text-white focus:border-blue-500' 
+                        : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-blue-500'
+                    }`}
+                  >
+                    {currentCountyObj.subCounties.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Other / Town not listed...</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={customTownName}
+                    onChange={(e) => {
+                      setCustomTownName(e.target.value);
+                      setStation(`${e.target.value.trim() || 'Town'} Central Pickup Depot`);
+                    }}
+                    placeholder="Enter your town name (e.g. Rongai, Salgaa, Subukia)..."
+                    className={`w-full px-3 py-2 text-xs rounded-xl border font-semibold focus:outline-hidden ${
+                      theme === 'dark'
+                        ? 'bg-[#182b42] border-blue-500 text-white placeholder:text-slate-400'
+                        : 'bg-white border-blue-500 text-slate-900 placeholder:text-slate-400'
+                    }`}
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Your parcel will be dispatched to the central courier depot nearest to {customTownName || 'your town'}.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -156,8 +203,21 @@ export const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
           {currentCountyObj && (
             <div>
               <label className="text-xs font-bold uppercase text-slate-300 block mb-1.5">
-                3. Pickup Station ({currentCountyObj.pickupStations.length} available in {county})
+                3. Pickup Station ({county} Depot)
               </label>
+
+              {isCustomTown && customTownName.trim() && (
+                <div className="mb-2 p-2.5 rounded-xl border border-blue-500/40 bg-blue-600/10 flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-blue-400" />
+                    <span>{customTownName.trim()} Central Pickup Depot</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                    Auto-Assigned
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {currentCountyObj.pickupStations.map((st) => {
                   const isSelected = st === station;

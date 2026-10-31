@@ -79,11 +79,22 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
   }, [activeUser?.id]);
 
   useEffect(() => {
-    if (initialOrderId && orders.length > 0) {
-      const found = orders.find((o) => o.id === initialOrderId);
-      if (found) setSelectedOrder(found);
+    if (isOpen) {
+      if (initialOrderId && orders.length > 0) {
+        const found = orders.find((o) => o.id === initialOrderId);
+        if (found) {
+          setSelectedOrder(found);
+          return;
+        }
+      }
+      // If user has exactly 1 order, show that order's details by default; otherwise show orders list
+      if (orders.length === 1) {
+        setSelectedOrder(orders[0]);
+      } else {
+        setSelectedOrder(null);
+      }
     }
-  }, [initialOrderId, orders]);
+  }, [isOpen, initialOrderId, orders.length]);
 
   if (!isOpen) return null;
 
