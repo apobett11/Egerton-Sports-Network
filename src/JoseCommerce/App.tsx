@@ -136,13 +136,8 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingCheckoutAfterLogin, setPendingCheckoutAfterLogin] = useState(false);
 
-  // Sync personal theme whenever user logs in or switches account
-  useEffect(() => {
-    if (currentUser?.themePreference) {
-      setTheme(currentUser.themePreference);
-      localStorage.setItem('egerscore-theme', currentUser.themePreference);
-    }
-  }, [currentUser?.id, currentUser?.themePreference]);
+  // Theme persistence: always defaults to dark mode, never affected by login or refresh.
+  // Persists in localStorage only when the user explicitly changes it.
 
   // Storefront Persisted State (Class selected, filters)
   const persistedSession = getPersistedStorefrontState();
@@ -1602,6 +1597,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         }}
         onOpenOrders={() => {
           closeAllNavDrawers();
+          setTrackingOrderId(undefined);
           if (!currentUser) {
             setAuthModalReason('orders');
             setAuthModalMode('login');
@@ -1747,10 +1743,6 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
         onLoginSuccess={(user, isAdmin) => {
           setCurrentUser(user);
           setRememberedAccountState(user);
-          if (user.themePreference) {
-            setTheme(user.themePreference);
-            localStorage.setItem('egerscore-theme', user.themePreference);
-          }
           if (isAdmin || user.role === 'admin' || user.role === 'store_admin') {
             setCurrentView('admin');
             setAdminTab('home');

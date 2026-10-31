@@ -87,14 +87,10 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
           return;
         }
       }
-      // If user has exactly 1 order, show that order's details by default; otherwise show orders list
-      if (orders.length === 1) {
-        setSelectedOrder(orders[0]);
-      } else {
-        setSelectedOrder(null);
-      }
+      // Orders button always shows the orders list by default
+      setSelectedOrder(null);
     }
-  }, [isOpen, initialOrderId, orders.length]);
+  }, [isOpen, initialOrderId]);
 
   if (!isOpen) return null;
 
