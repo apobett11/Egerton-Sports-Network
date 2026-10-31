@@ -383,6 +383,16 @@ export class BanterService {
   }
 
   public getPollById(pollId: string): BanterPoll | null {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(`egerscore_banter_poll_${pollId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          this.localPolls[pollId] = parsed;
+          return parsed;
+        }
+      }
+    } catch {}
     if (this.localPolls[pollId]) return this.localPolls[pollId];
     if (SEEDED_POLL_1.id === pollId) return SEEDED_POLL_1;
     return null;
@@ -390,6 +400,11 @@ export class BanterService {
 
   public savePoll(poll: BanterPoll): void {
     this.localPolls[poll.id] = poll;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`egerscore_banter_poll_${poll.id}`, JSON.stringify(poll));
+      }
+    } catch {}
     setStoredItem('egerscore_local_polls', this.localPolls);
   }
 
@@ -399,8 +414,8 @@ export class BanterService {
       || (fictionalBanterPosts() as BanterPost[]).find((p: BanterPost) => p.id === postId);
 
     if (post) {
-      if (post.pollId && !post.poll) {
-        post.poll = this.getPollById(post.pollId);
+      if (post.pollId) {
+        post.poll = this.getPollById(post.pollId) || post.poll;
       }
       return post;
     }
@@ -540,19 +555,22 @@ export class BanterService {
       {}
     );
 
-    // Section Load: Only load the opened root thread post
-    let activePost = await this.getPostById(postId);
-    let targetPostId = postId;
+    // Section Load: Resolve the active post and its complete ancestry chain
+    const activePost = await this.getPostById(postId);
+    const ancestry: BanterPost[] = [];
 
-    // If requested post is a reply, resolve the root post so thread displays the root message with all replies
-    if (activePost && (activePost.parentId || activePost.rootId)) {
-      const rootId = activePost.rootId || activePost.parentId;
-      if (rootId && rootId !== activePost.id) {
-        const rootPost = await this.getPostById(rootId);
-        if (rootPost) {
-          activePost = rootPost;
-          targetPostId = rootPost.id;
-        }
+    // Traverse upwards to assemble the complete ancestry chain with continuous vertical connectors
+    let currentAncestorId = activePost?.parentId;
+    while (currentAncestorId) {
+      const ancestor = await this.getPostById(currentAncestorId);
+      if (ancestor) {
+        ancestry.unshift({
+          ...ancestor,
+          userReactions: userReactions[ancestor.id] || {}
+        });
+        currentAncestorId = ancestor.parentId;
+      } else {
+        break;
       }
     }
 
@@ -563,7 +581,7 @@ export class BanterService {
       const { data, error } = await supabase
         .from('banter_comments')
         .select('*')
-        .eq('post_id', targetPostId)
+        .eq('post_id', postId)
         .eq('status', 'active')
         .order('created_at', { ascending: true })
         .limit(100);
@@ -572,8 +590,8 @@ export class BanterService {
         replies = data.map((d: any) => ({
           id: d.id,
           parentId: postId,
-          rootId: postId,
-          depth: 1,
+          rootId: activePost?.rootId || postId,
+          depth: (activePost?.depth || 0) + 1,
           userId: d.device_id,
           authorDeviceId: d.device_id,
           matchId: activePost?.matchId || null,
@@ -598,7 +616,14 @@ export class BanterService {
       // offline safe
     }
 
-    // Merge any local replies for this thread
+    // Include seeded and local replies directly attached to this post
+    const seededReplies = SEEDED_BANTER_POSTS
+      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id))
+      .map((p) => ({
+        ...p,
+        userReactions: userReactions[p.id] || {}
+      }));
+
     const localReplies = this.localPosts
       .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id))
       .map((p) => ({
@@ -606,11 +631,11 @@ export class BanterService {
         userReactions: userReactions[p.id] || {}
       }));
 
-    replies = [...replies, ...localReplies];
+    replies = [...replies, ...seededReplies, ...localReplies];
 
     return {
       post: activePost,
-      ancestry: [],
+      ancestry,
       replies
     };
   }

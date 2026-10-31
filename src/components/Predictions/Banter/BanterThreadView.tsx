@@ -768,19 +768,19 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         {/* Single input bar fixed at the bottom */}
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-md border-t border-zinc-800 p-2.5 sm:p-3 shadow-2xl">
           <form
-            onSubmit={async (e) => {
+            onSubmit={(e) => {
               e.preventDefault();
               if (!singleReplyText.trim() || !post || isSubmittingReply) return;
-              setIsSubmittingReply(true);
               const textToSubmit = singleReplyText.trim();
-              try {
-                await handleCreateReply(textToSubmit);
-                setSingleReplyText('');
-              } catch (err) {
-                console.warn('Failed to submit reply:', err);
-              } finally {
-                setIsSubmittingReply(false);
-              }
+              setSingleReplyText('');
+              setIsSubmittingReply(true);
+              handleCreateReply(textToSubmit)
+                .catch((err) => {
+                  console.warn('Failed to submit reply:', err);
+                })
+                .finally(() => {
+                  setIsSubmittingReply(false);
+                });
             }}
             className="max-w-2xl mx-auto flex items-center gap-2"
           >
