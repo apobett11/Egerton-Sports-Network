@@ -1,26 +1,25 @@
 import React, { useState } from 'react';
 import { 
-  ArrowLeft, 
   LayoutDashboard, 
-  BarChart3, 
+  ShoppingBag, 
   Package, 
-  SlidersHorizontal, 
-  PhoneCall, 
-  UserCheck, 
+  Boxes, 
+  BarChart3, 
+  Users, 
+  Settings, 
   Sun, 
   Moon, 
-  ShieldCheck, 
   Trophy, 
-  ExternalLink,
-  CheckCircle2,
-  X,
-  Menu,
-  ChevronRight,
-  LogOut
+  CheckCircle2, 
+  X, 
+  Menu, 
+  ChevronRight, 
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { 
   Product, 
-  Category,
+  Category, 
   Order, 
   AdminTab, 
   AdminCheckoutSettings, 
@@ -28,14 +27,16 @@ import {
   AdminProfile 
 } from '../../types';
 import { CartAnalyticsData } from '../../data/mockOrders';
-import { AdminHomeTab } from './AdminHomeTab';
-import { AdminAnalyticsTab } from './AdminAnalyticsTab';
-import { AdminProductsTab } from './AdminProductsTab';
-import { AdminOrdersCheckoutTab } from './AdminOrdersCheckoutTab';
-import { AdminContactsTab } from './AdminContactsTab';
-import { AdminProfileTab } from './AdminProfileTab';
+import { AdminDashboardView } from './AdminDashboardView';
+import { AdminOrdersView } from './AdminOrdersView';
+import { AdminProductsView } from './AdminProductsView';
+import { AdminInventoryView } from './AdminInventoryView';
+import { AdminAnalyticsView } from './AdminAnalyticsView';
+import { AdminCustomersView } from './AdminCustomersView';
+import { AdminSettingsView } from './AdminSettingsView';
 import { AddProductModal } from './AddProductModal';
 import { AddDepotModal } from './AddDepotModal';
+import { AdminOrderStatusModal } from './AdminOrderStatusModal';
 
 interface AdminPortalProps {
   products: Product[];
@@ -62,10 +63,21 @@ interface AdminPortalProps {
   onAddDepotOpenChange?: (open: boolean) => void;
 }
 
+// Map legacy tab names to the new 7 primary tabs
+function normalizeTab(tab: AdminTab): 'dashboard' | 'orders' | 'products' | 'inventory' | 'analytics' | 'customers' | 'settings' {
+  if (tab === 'home') return 'dashboard';
+  if (tab === 'orders-checkout') return 'orders';
+  if (tab === 'contacts' || tab === 'profile') return 'settings';
+  if (tab === 'dashboard' || tab === 'orders' || tab === 'products' || tab === 'inventory' || tab === 'analytics' || tab === 'customers' || tab === 'settings') {
+    return tab;
+  }
+  return 'dashboard';
+}
+
 export const AdminPortal: React.FC<AdminPortalProps> = ({
   products,
   categories,
-  orders,
+  orders: propOrders,
   cartAnalytics,
   checkoutSettings,
   businessContact,
@@ -79,22 +91,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onLogoutAdmin,
   theme,
   onToggleTheme,
-  initialTab = 'home',
+  initialTab = 'dashboard',
   onTabChange,
   isAddProductOpen,
   onAddProductOpenChange,
   isAddDepotOpen,
   onAddDepotOpenChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'inventory' | 'analytics' | 'customers' | 'settings'>(
+    normalizeTab(initialTab)
+  );
+  const [settingsSubTab, setSettingsSubTab] = useState<'contact' | 'checkout' | 'depots' | 'profile' | 'appearance'>('contact');
+  const [orders, setOrders] = useState<Order[]>(propOrders);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(Boolean(isAddProductOpen));
   const [isAddDepotModalOpen, setIsAddDepotModalOpen] = useState(Boolean(isAddDepotOpen));
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [inspectingOrder, setInspectingOrder] = useState<Order | null>(null);
 
   React.useEffect(() => {
-    if (initialTab && initialTab !== activeTab) {
-      setActiveTab(initialTab);
+    setOrders(propOrders);
+  }, [propOrders]);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      const normalized = normalizeTab(initialTab);
+      setActiveTab(normalized);
+      if (initialTab === 'contacts') setSettingsSubTab('contact');
+      if (initialTab === 'profile') setSettingsSubTab('profile');
+      if (initialTab === 'orders-checkout') setActiveTab('orders');
     }
   }, [initialTab]);
 
@@ -110,7 +135,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   }, [isAddDepotOpen]);
 
-  const handleSelectTab = (tab: AdminTab) => {
+  const handleSelectTab = (tab: 'dashboard' | 'orders' | 'products' | 'inventory' | 'analytics' | 'customers' | 'settings') => {
     setActiveTab(tab);
     if (onTabChange) onTabChange(tab);
   };
@@ -140,14 +165,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     triggerToast(`Product "${newProduct.name}" successfully added to catalog!`);
   };
 
-  const TABS: { id: AdminTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'home', label: 'Overview', icon: LayoutDashboard },
+  const PRIMARY_NAV: { 
+    id: 'dashboard' | 'orders' | 'products' | 'inventory' | 'analytics' | 'customers' | 'settings'; 
+    label: string; 
+    icon: React.ComponentType<{ className?: string }> 
+  }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'orders', label: 'Orders', icon: ShoppingBag },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'inventory', label: 'Inventory', icon: Boxes },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'products', label: 'Products & Ledger', icon: Package },
-    { id: 'orders-checkout', label: 'Orders & Checkout', icon: SlidersHorizontal },
-    { id: 'contacts', label: 'Business Contact', icon: PhoneCall },
-    { id: 'profile', label: 'Admin Profile', icon: UserCheck },
+    { id: 'customers', label: 'Customers', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  const currentTabLabel = PRIMARY_NAV.find((t) => t.id === activeTab)?.label || 'Dashboard';
 
   return (
     <div 
@@ -155,9 +187,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       data-admin-product="true"
       data-prevent-popunder="true"
       className={`min-h-screen flex flex-col font-sans transition-colors relative ${
-      theme === 'dark' ? 'bg-[#0a1420] text-slate-100' : 'bg-slate-50 text-slate-900'
-    }`}>
-      {/* GLOBAL VISIBLE TOAST NOTIFICATION CONTAINER (Fixed & highly visible in current window) */}
+        theme === 'dark' ? 'bg-[#0a1420] text-slate-100' : 'bg-slate-50 text-slate-900'
+      }`}
+    >
+      {/* GLOBAL FEEDBACK TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="fixed top-20 right-4 sm:right-6 z-70 max-w-md w-full animate-spring-in">
           <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-900/95 text-white shadow-2xl border border-emerald-500/50 backdrop-blur-md">
@@ -185,21 +218,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
-      {/* Top Admin Navigation Header (Tabs removed from here; placed into sidebar) */}
+      {/* TOP GLOBAL HEADER */}
       <header className={`sticky top-0 z-40 w-full shadow-md border-b transition-colors ${
         theme === 'dark' ? 'bg-[#15273c] border-slate-700' : 'bg-white border-slate-200'
       }`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16 gap-3">
             
-            {/* Left: Hamburger Button (Mobile collapsible) + Brand */}
+            {/* Left: Hamburger Button (Mobile collapsible) + Brand & Breadcrumb */}
             <div className="flex items-center gap-2.5 sm:gap-3">
-              {/* Mobile Hamburger Toggle */}
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-700"
-                title="Open Operations Menu"
+                title="Open Navigation Menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -211,14 +243,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs sm:text-sm font-black tracking-tight text-white">
-                      EGERSCORE
+                      SPORTS HOUSE
                     </span>
                     <span className="rounded-xs bg-[#00b04f] px-1.5 py-0.2 text-[9px] font-black uppercase text-white tracking-wider">
                       ADMIN
                     </span>
                   </div>
                   <span className="text-[9px] font-semibold text-slate-400 -mt-0.5 hidden sm:inline">
-                    Operations Portal
+                    Operations Portal • {currentTabLabel}
                   </span>
                 </div>
               </div>
@@ -236,9 +268,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
 
               <button
-                onClick={() => handleSelectTab('profile')}
-                className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-colors cursor-pointer text-left"
-                title="View Admin Profile"
+                onClick={() => {
+                  setSettingsSubTab('profile');
+                  handleSelectTab('settings');
+                }}
+                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 transition-colors cursor-pointer text-left"
+                title="Administrator Profile"
               >
                 <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">
                   {adminProfile.fullName.charAt(0)}
@@ -248,7 +283,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     {adminProfile.fullName || 'Admin'}
                   </span>
                   <span className="text-[9px] text-slate-400 leading-none">
-                    Operations
+                    Store Manager
                   </span>
                 </div>
               </button>
@@ -258,10 +293,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   type="button"
                   onClick={onLogoutAdmin}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="Sign out of Store Administrator session"
+                  title="Sign out of Administrator session"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Log Out Admin</span>
+                  <span className="hidden sm:inline">Log Out</span>
                 </button>
               )}
             </div>
@@ -270,22 +305,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       </header>
 
-      {/* Main Container: Sidebar + Content Body */}
+      {/* MAIN CONTAINER: SIDEBAR + CONTENT BODY */}
       <div className="flex-1 flex min-h-0 w-full max-w-7xl mx-auto">
         
-        {/* DESKTOP SIDEBAR (Permanent sleek left sidebar on lg screens) */}
+        {/* DESKTOP SIDEBAR (7 Primary Navigation Pages) */}
         <aside className={`hidden lg:flex flex-col w-60 xl:w-64 border-r shrink-0 p-4 justify-between transition-colors ${
           theme === 'dark' ? 'bg-[#102033] border-slate-800' : 'bg-white border-slate-200'
         }`}>
           <div className="space-y-4">
             <div className="px-3 py-1">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                Operations Menu
+                Commerce Navigation
               </span>
             </div>
 
             <nav className="space-y-1">
-              {TABS.map((tab) => {
+              {PRIMARY_NAV.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -328,20 +363,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
         </aside>
 
-        {/* MOBILE COLLAPSIBLE SIDEBAR DRAWER */}
+        {/* MOBILE COLLAPSIBLE DRAWER */}
         {isMobileSidebarOpen && (
           <div className="fixed inset-0 z-60 lg:hidden bg-black/80 backdrop-blur-xs flex">
             <div className={`w-72 h-full shadow-2xl p-4 sm:p-5 flex flex-col justify-between transition-all animate-spring-in ${
               theme === 'dark' ? 'bg-[#122336] text-white' : 'bg-white text-slate-900'
             }`}>
               <div className="space-y-4">
-                {/* Drawer Top Header with VISIBLE Close X Button */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                   <div className="flex items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#224466] text-[#ff0046] border border-[#345880]">
                       <Trophy className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-black tracking-tight">OPERATIONS MENU</span>
+                    <span className="text-sm font-black tracking-tight">SPORTS HOUSE</span>
                   </div>
                   <button
                     onClick={() => setIsMobileSidebarOpen(false)}
@@ -353,7 +387,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 <nav className="space-y-1.5 pt-1">
-                  {TABS.map((tab) => {
+                  {PRIMARY_NAV.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
                     return (
@@ -380,7 +414,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </nav>
               </div>
 
-              {/* Drawer Bottom */}
               {onLogoutAdmin && (
                 <div className="pt-3 border-t border-slate-800">
                   <button
@@ -397,7 +430,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               )}
             </div>
 
-            {/* Click outside to close */}
             <div 
               className="flex-1 h-full cursor-pointer" 
               onClick={() => setIsMobileSidebarOpen(false)} 
@@ -405,98 +437,118 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </div>
         )}
 
-        {/* Content Body */}
+        {/* CONTENT BODY */}
         <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
           <main className="flex-grow w-full p-3.5 sm:p-6">
-            {activeTab === 'home' && (
-              <AdminHomeTab
+            
+            {/* 1. DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <AdminDashboardView
                 orders={orders}
-                cartAnalytics={cartAnalytics}
-                onNavigate={(t) => handleSelectTab(t)}
+                products={products}
+                onNavigate={(t) => handleSelectTab(normalizeTab(t))}
                 onOpenAddProduct={() => handleSetAddProductOpen(true)}
-                onOpenAddDepot={() => handleSetAddDepotOpen(true)}
+                onInspectOrder={(ord) => setInspectingOrder(ord)}
                 theme={theme}
               />
             )}
 
-            {activeTab === 'analytics' && (
-              <AdminAnalyticsTab
-                products={products}
-                categories={categories}
+            {/* 2. ORDERS */}
+            {activeTab === 'orders' && (
+              <AdminOrdersView
                 orders={orders}
-                cartAnalytics={cartAnalytics}
+                onOrdersUpdated={(updated) => setOrders(updated)}
+                onShowToast={triggerToast}
                 theme={theme}
               />
             )}
 
+            {/* 3. PRODUCTS */}
             {activeTab === 'products' && (
-              <AdminProductsTab
+              <AdminProductsView
                 products={products}
                 categories={categories}
-                orders={orders}
+                onOpenAddProduct={() => handleSetAddProductOpen(true)}
+                onNavigateToInventory={() => handleSelectTab('inventory')}
                 theme={theme}
+              />
+            )}
+
+            {/* 4. INVENTORY */}
+            {activeTab === 'inventory' && (
+              <AdminInventoryView
+                products={products}
+                categories={categories}
                 onUpdateProductStock={(prodId, newStock) => {
                   if (onUpdateProductStock) {
                     onUpdateProductStock(prodId, newStock);
-                    triggerToast('Product inventory stock updated successfully!');
                   }
                 }}
-                onOpenAddProduct={() => handleSetAddProductOpen(true)}
+                onShowToast={triggerToast}
+                theme={theme}
               />
             )}
 
-            {activeTab === 'orders-checkout' && (
-              <AdminOrdersCheckoutTab
+            {/* 5. ANALYTICS */}
+            {activeTab === 'analytics' && (
+              <AdminAnalyticsView
+                products={products}
                 orders={orders}
                 categories={categories}
+                theme={theme}
+              />
+            )}
+
+            {/* 6. CUSTOMERS */}
+            {activeTab === 'customers' && (
+              <AdminCustomersView
+                orders={orders}
+                onInspectOrder={(ord) => setInspectingOrder(ord)}
+                theme={theme}
+              />
+            )}
+
+            {/* 7. SETTINGS */}
+            {activeTab === 'settings' && (
+              <AdminSettingsView
                 checkoutSettings={checkoutSettings}
-                onSaveCheckoutSettings={(newSettings) => {
+                businessContact={businessContact}
+                adminProfile={adminProfile}
+                onUpdateCheckoutSettings={(newSettings) => {
                   onUpdateCheckoutSettings(newSettings);
-                  triggerToast('Checkout and cart settings saved successfully!');
+                  triggerToast('Checkout settings saved successfully!');
                 }}
-                onShowToast={triggerToast}
-                theme={theme}
-              />
-            )}
-
-            {activeTab === 'contacts' && (
-              <AdminContactsTab
-                contactSettings={businessContact}
-                onSaveContactSettings={(newContact) => {
+                onUpdateBusinessContact={(newContact) => {
                   onUpdateBusinessContact(newContact);
-                  triggerToast('Business point of contact details saved successfully!');
+                  triggerToast('Business point of contact saved successfully!');
                 }}
+                onUpdateAdminProfile={(newProf) => {
+                  onUpdateAdminProfile(newProf);
+                  triggerToast('Administrator personal profile updated!');
+                }}
+                onOpenAddDepot={() => handleSetAddDepotOpen(true)}
                 onShowToast={triggerToast}
                 theme={theme}
+                onToggleTheme={onToggleTheme}
+                initialSubTab={settingsSubTab}
               />
             )}
 
-            {activeTab === 'profile' && (
-              <AdminProfileTab
-                profile={adminProfile}
-                onUpdateProfile={(newProfile) => {
-                  onUpdateAdminProfile(newProfile);
-                  triggerToast('Admin personal profile saved successfully!');
-                }}
-                onShowToast={triggerToast}
-                theme={theme}
-              />
-            )}
           </main>
 
-          {/* Admin Micro Footer */}
+          {/* Micro Footer */}
           <footer className={`py-3 px-4 text-center text-[11px] border-t transition-colors ${
             theme === 'dark' ? 'bg-[#0b1522] border-slate-800 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-600'
           }`}>
             <div className="max-w-7xl mx-auto flex items-center justify-center">
-              <span>Egerscore Commerce Operations Panel • Version 2.4.0</span>
+              <span>Sports House Commerce Operations Panel • Version 3.0.0</span>
             </div>
           </footer>
         </div>
 
       </div>
 
-      {/* 3-STEP ADD PRODUCT POPUP MODAL */}
+      {/* 3-STEP ADD PRODUCT POPUP MODAL (Preserved with validation, ID generation, compression) */}
       <AddProductModal
         isOpen={isAddProductModalOpen}
         onClose={() => handleSetAddProductOpen(false)}
@@ -515,6 +567,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         }}
         theme={theme}
       />
+
+      {/* ORDER INSPECTION MODAL (When clicked from Dashboard or Customers) */}
+      {inspectingOrder && (
+        <AdminOrderStatusModal
+          isOpen={Boolean(inspectingOrder)}
+          onClose={() => setInspectingOrder(null)}
+          order={inspectingOrder}
+          theme={theme}
+          onStatusUpdated={(updated) => {
+            setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+            setInspectingOrder(null);
+            triggerToast(`Order #${updated.id} state updated.`);
+          }}
+        />
+      )}
+
     </div>
   );
 };

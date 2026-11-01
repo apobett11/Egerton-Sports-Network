@@ -1040,6 +1040,33 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   };
 
   const handleOrderSuccess = (order: Order, remainingCartItems: CartItem[]) => {
+    // 1. Deduct ordered quantities from product inventory stock in catalog
+    const orderedQuantitiesByProductId = order.items.reduce((acc, item) => {
+      const pid = item.product.id || item.product.uid || item.product.sku;
+      if (pid) {
+        acc[pid] = (acc[pid] || 0) + (item.quantity || 1);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const currentCatalog = getCachedCatalog();
+    const updatedCatalog = (currentCatalog.length > 0 ? currentCatalog : productsList).map((p) => {
+      const pid = p.id || p.uid || p.sku;
+      const qtyToDeduct = pid ? orderedQuantitiesByProductId[pid] : 0;
+      if (qtyToDeduct && qtyToDeduct > 0) {
+        const updatedStock = Math.max(0, (p.stockCount ?? 0) - qtyToDeduct);
+        return {
+          ...p,
+          stockCount: updatedStock,
+          inStock: updatedStock > 0,
+        };
+      }
+      return p;
+    });
+
+    setCachedCatalog(updatedCatalog);
+    setProductsList(updatedCatalog);
+
     if (currentUser) {
       incrementUserDailyUsage(currentUser.id);
       const currentData = getUserPersonalData(currentUser.id);

@@ -214,5 +214,17 @@ export interface AdminProfile {
   avatarUrl?: string;
 }
 
-export type AdminTab = 'home' | 'analytics' | 'products' | 'orders-checkout' | 'contacts' | 'profile';
+export type AdminTab =
+  | 'dashboard'
+  | 'orders'
+  | 'products'
+  | 'inventory'
+  | 'analytics'
+  | 'customers'
+  | 'settings'
+  // Legacy aliases for backward compatibility:
+  | 'home'
+  | 'orders-checkout'
+  | 'contacts'
+  | 'profile';
 
