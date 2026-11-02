@@ -110,6 +110,35 @@ export interface CommerceAppProps {
   onBackToLiveScore?: () => void;
 }
 
+export function getStoreProductIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const searchParams = new URLSearchParams(window.location.search);
+  const qProd = searchParams.get('product') || searchParams.get('p') || searchParams.get('id');
+  if (qProd) return qProd;
+
+  const hash = window.location.hash.replace(/^#\/?/, '');
+  const hashQIdx = hash.indexOf('?');
+  if (hashQIdx !== -1) {
+    const hashParams = new URLSearchParams(hash.slice(hashQIdx));
+    const p = hashParams.get('product') || hashParams.get('p') || hashParams.get('id');
+    if (p) return p;
+  }
+
+  const cleanPath = window.location.pathname.replace(/^\/+/, '');
+  const pathParts = cleanPath.split('/');
+  if (pathParts[0]?.toLowerCase() === 'store' && pathParts[1]) {
+    return decodeURIComponent(pathParts[1].split('?')[0]);
+  }
+
+  const hashClean = hash.split('?')[0];
+  const hashParts = hashClean.split('/');
+  if (hashParts[0]?.toLowerCase() === 'store' && hashParts[1]) {
+    return decodeURIComponent(hashParts[1]);
+  }
+
+  return null;
+}
+
 export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('egerscore-theme') as 'dark' | 'light') || 'dark';
@@ -263,18 +292,46 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
     }
   };
 
-  // Hydrate full photos for persisted product view on initial load
+  // Hydrate full photos for URL product or persisted product view on initial load
   useEffect(() => {
-    if (persistedNav.selectedProductId) {
-      fetchProductById(persistedNav.selectedProductId).then((fullProd) => {
-        if (fullProd) setSelectedProduct(fullProd);
+    const urlProductId = getStoreProductIdFromUrl();
+    const targetProductId = urlProductId || persistedNav.selectedProductId;
+    if (targetProductId) {
+      fetchProductById(targetProductId).then((fullProd) => {
+        if (fullProd) {
+          setSelectedProduct(fullProd);
+        } else if (urlProductId) {
+          // When the link is tampered or product id missing/not available, load the storefront
+          setSelectedProduct(null);
+        }
+      }).catch(() => {
+        if (urlProductId) setSelectedProduct(null);
       });
     }
+
+    const handleUrlChange = () => {
+      const changedUrlId = getStoreProductIdFromUrl();
+      if (changedUrlId) {
+        fetchProductById(changedUrlId).then((fullProd) => {
+          if (fullProd) setSelectedProduct(fullProd);
+          else setSelectedProduct(null);
+        });
+      }
+    };
+
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+
     if (persistedNav.specsModalProductId) {
       fetchProductById(persistedNav.specsModalProductId).then((fullProd) => {
         if (fullProd) setSpecsModalProduct(fullProd);
       });
     }
+
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
   }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -1267,6 +1324,7 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
             /* setSelectedClass(code); - commented out so class selection is non-reactive */
           }}
           hideClassSwitcher={previousView === 'category'}
+          hideFloatingCart={true}
         />
 
         {/* Full Product Details Card */}
@@ -1281,6 +1339,9 @@ export function App({ onBackToLiveScore }: CommerceAppProps = {}) {
           onAddToCart={(prod, size, color, qty, variantImg) => {
             handleConfirmSpecsAddToCart(prod, size, color, qty, variantImg);
           }}
+          onOpenContact={() => setIsContactModalOpen(true)}
+          cartCount={totalCartCount}
+          isAdded={cartedProductIds.has(selectedProduct.id)}
         />
 
         {/* Cart Drawer */}

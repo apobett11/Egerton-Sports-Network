@@ -10,6 +10,9 @@ const PICK_MAP = {
   '2': '2',
 };
 
+const DEFAULT_SUPABASE_URL = 'https://tdfiodqlzptaruhivapj.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_R8MgdxmLXhHdmcE8cwJADw_aLIplyk6';
+
 export function normalizeFixtureId(value) {
   const raw = String(value || '').toLowerCase().replace(/[^0-9a-f-]/g, '');
   if (/^[0-9a-f]{32}$/.test(raw)) {
@@ -24,15 +27,19 @@ export function normalizePick(value) {
   return PICK_MAP[String(value || '').toLowerCase()] || null;
 }
 
-async function supabaseGet(path) {
-  const base = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-  const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+export async function supabaseGet(path) {
+  const base = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
   if (!base || !key) return null;
-  const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/${path}`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
-  });
-  if (!response.ok) return null;
-  return response.json();
+  try {
+    const response = await fetch(`${base.replace(/\/$/, '')}/rest/v1/${path}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
 }
 
 export async function loadPredictionShare(matchValue, pickValue) {
@@ -84,6 +91,85 @@ export async function loadPredictionShare(matchValue, pickValue) {
       awayVotes: shown.awayVotes,
       others: [],
     }),
+  };
+}
+
+export async function loadProductShare(productId) {
+  if (!productId) return null;
+  const cleanId = String(productId).trim();
+  const select = encodeURIComponent(
+    'id,sku,name,price,original_price,rating,review_count,badge,audience,is_new,category_id,categories(name,slug),product_images(image_path,is_primary,display_order)'
+  );
+
+  let rows = null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+    rows = await supabaseGet(`products?id=eq.${cleanId}&select=${select}&limit=1`);
+  } else {
+    rows = await supabaseGet(`products?sku=eq.${cleanId}&select=${select}&limit=1`);
+    if (!rows || rows.length === 0) {
+      rows = await supabaseGet(`products?id=eq.${cleanId}&select=${select}&limit=1`);
+    }
+  }
+
+  const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  if (!row) return null;
+
+  const images = (row.product_images || [])
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+    .map((img) => img.image_path);
+  const primaryImage = (row.product_images || []).find((img) => img.is_primary)?.image_path
+    || images[0]
+    || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80';
+
+  const categoryName = (Array.isArray(row.categories) ? row.categories[0] : row.categories)?.name || 'Equipment';
+
+  return {
+    id: row.sku || row.id,
+    uid: row.id,
+    sku: row.sku || row.id,
+    name: row.name,
+    price: Number(row.price) || 0,
+    originalPrice: row.original_price ? Number(row.original_price) : null,
+    rating: Number(row.rating) || 5.0,
+    reviewCount: Number(row.review_count) || 38,
+    badge: row.badge || (row.is_new ? 'NEW ARRIVAL' : 'Official Match Grade'),
+    audience: row.audience || 'team',
+    category: categoryName,
+    image: primaryImage,
+  };
+}
+
+export async function loadBanterShare(banterId) {
+  if (!banterId) return null;
+  const cleanId = String(banterId).trim().replace(/^post-seed-/, '').replace(/^temp-/, '');
+  const select = encodeURIComponent('id,content,author_handle,author_badge,created_at');
+
+  let rows = null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId)) {
+    rows = await supabaseGet(`banter_posts?id=eq.${cleanId}&select=${select}&limit=1`);
+  } else {
+    rows = await supabaseGet(`banter_posts?id=ilike.*${cleanId}*&select=${select}&limit=1`);
+  }
+
+  const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  if (!row) {
+    return {
+      id: cleanId,
+      content: 'Official Matchday Banter and Discussion on EgerScore',
+      authorName: 'EgerScore Banter',
+      authorHandle: '@EgerScore',
+      authorBadge: '',
+      image: null,
+    };
+  }
+
+  return {
+    id: row.id,
+    content: row.content || '',
+    authorName: row.author_handle || 'Fanatic',
+    authorHandle: row.author_handle || '@fan',
+    authorBadge: row.author_badge || '',
+    image: null,
   };
 }
 

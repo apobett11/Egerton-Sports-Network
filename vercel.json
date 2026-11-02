@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/store/:id",
+      "destination": "/api/share?store=:id"
+    },
+    {
+      "source": "/b/:id",
+      "destination": "/api/share?banter=:id"
+    },
+    {
       "source": "/prediction/:team/:match/:pick",
       "destination": "/api/share?m=:match&p=:pick"
     },

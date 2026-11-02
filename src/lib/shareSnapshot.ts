@@ -1058,34 +1058,21 @@ export async function shareBanterSnapshot(
   parentPost?: BanterPost | null
 ): Promise<void> {
   const shortLink = getShortBanterLink(post.id);
-  const file = await renderBanterCardSnapshot(post, parentPost, shortLink);
-  const title = post.authorName || post.authorHandle;
-  const subtitle = post.content;
-  const shareText = `🔥 ${title}: "${post.content.slice(0, 90).trim()}..." · EgerScore`;
+  const shareUrl = `https://${shortLink}`;
+  const title = post.authorName || post.authorHandle || 'Fanatic';
+  const snippet = post.content.length > 90 ? `"${post.content.slice(0, 90).trim()}..."` : `"${post.content}"`;
+  const introMessage = `🔥 Check this out! ${title} on EgerScore Banter:\n${snippet}\n\nHere's the link: ${shareUrl}`;
 
-  // 1. If native share supports files (e.g. Android/iOS WhatsApp), share the actual image directly!
-  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: `EgerScore Banter: ${title}`,
-        text: `${shareText}\nhttps://${shortLink}`,
-      });
-      return;
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+  // WhatsApp Click-to-Chat API with URL-encoded message for rich OG link preview
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(introMessage)}`;
+
+  try {
+    if (typeof window !== 'undefined') {
+      window.open(whatsappUrl, '_blank');
+    }
+  } catch {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
     }
   }
-
-  // 2. Otherwise open rich modal with WhatsApp image copy, direct WhatsApp share & download
-  showPicture(
-    file,
-    '#/banter/thread',
-    `https://${shortLink}`,
-    title,
-    subtitle,
-    'banter',
-    shortLink,
-    true
-  );
 }

@@ -6,6 +6,8 @@ import {
 import {
   loadPredictionShare,
   loadShareCode,
+  loadProductShare,
+  loadBanterShare,
   normalizeFixtureId,
   predictionDestination,
 } from '../src/lib/predictions/shareServer.mjs';
@@ -21,7 +23,7 @@ function escapeHtml(value) {
 
 function isCrawler(req) {
   const ua = String(req.headers['user-agent'] || '');
-  return /facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|meta-externalagent|Googlebot|bingbot|Baiduspider|yandex/i.test(ua);
+  return /facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|meta-externalagent|WhatsApp|Googlebot|bingbot|Baiduspider|yandex/i.test(ua);
 }
 
 function getOrigin(req) {
@@ -34,6 +36,169 @@ function getOrigin(req) {
     return `https://${host}`;
   }
   return `${protocol}://${host}`;
+}
+
+function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot }) {
+  if (!product) {
+    const destination = `${origin}/#/store`;
+    const title = 'Official Egerton Sports Depot · Store';
+    const description = 'Browse official jerseys, boots, balls, and match-grade gear at Egerton Sports Depot.';
+    const image = `${origin}/api/og?store=featured`;
+    const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Egerton Sports Depot">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(`${origin}/store`)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Loading Egerton Sports Depot… <a href="${escapeHtml(destination)}" style="color:#ff0046;font-weight:bold;text-decoration:none;">Click here</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
+  }
+
+  const destination = `${origin}/#/store?product=${encodeURIComponent(product.id)}`;
+  const title = `${product.name} | Egerton Sports Depot`;
+  const formattedPrice = `KES ${Number(product.price || 0).toLocaleString()}`;
+  const description = `${product.category} · ${formattedPrice} · 100% Authentic Match-Grade Gear. Tap to view official product card.`;
+  const image = `${origin}/api/og?store=${encodeURIComponent(product.id)}`;
+  const canonicalUrl = `${origin}/store/${encodeURIComponent(product.id)}`;
+  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Egerton Sports Depot">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(product.name)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@EgerScore">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Loading ${escapeHtml(product.name)}… <a href="${escapeHtml(destination)}" style="color:#ff0046;font-weight:bold;text-decoration:none;">Click here to view product</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
+}
+
+function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
+  if (!post) {
+    const destination = `${origin}/#/banter`;
+    const title = 'EgerScore Banter Feed';
+    const description = 'Join the live matchday discussion, team banter, and fan debates on EgerScore.';
+    const image = `${origin}/api/og?banter=feed`;
+    const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EgerScore Banter">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(`${origin}/#/banter`)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Loading Banter Feed… <a href="${escapeHtml(destination)}" style="color:#ff0046;font-weight:bold;text-decoration:none;">Click here</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
+  }
+
+  const destination = `${origin}/#/banter?post=${encodeURIComponent(post.id)}`;
+  const title = `${post.authorName} on EgerScore Banter`;
+  const snippet = post.content.length > 120 ? `${post.content.slice(0, 120).trim()}...` : post.content;
+  const description = `"${snippet}" · Tap to join the live debate on EgerScore Banter`;
+  const image = `${origin}/api/og?banter=${encodeURIComponent(post.id)}`;
+  const canonicalUrl = `${origin}/b/${encodeURIComponent(post.id)}`;
+  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHtml(title)} | EgerScore Banter</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EgerScore Banter">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
+  <meta property="og:image" content="${escapeHtml(image)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${escapeHtml(title)}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@EgerScore">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
+  ${refreshTag}
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</head>
+<body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <p style="color:#94a3b8;font-size:14px;">Opening Banter Post… <a href="${escapeHtml(destination)}" style="color:#ff0046;font-weight:bold;text-decoration:none;">Click here</a></p>
+  <script>location.replace(${JSON.stringify(destination)})</script>
+</body>
+</html>`;
 }
 
 function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
@@ -132,6 +297,24 @@ export default async function handler(req, res) {
   const isBot = isCrawler(req);
   const origin = getOrigin(req);
 
+  const store = typeof req.query?.store === 'string' ? req.query.store : '';
+  if (store) {
+    const product = await loadProductShare(store);
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(productPage({ origin, product, storeId: store, requestUrl: req.url || `/store/${store}`, isCrawler: isBot }));
+    return;
+  }
+
+  const banter = typeof req.query?.banter === 'string' ? req.query.banter : '';
+  if (banter) {
+    const post = await loadBanterShare(banter);
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(banterPage({ origin, post, banterId: banter, requestUrl: req.url || `/b/${banter}`, isCrawler: isBot }));
+    return;
+  }
+
   const team = typeof req.query?.team === 'string' ? req.query.team : '';
   if (team) {
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
@@ -193,6 +376,7 @@ export default async function handler(req, res) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
+  <link rel="canonical" href="${escapeHtml(destination)}">
   ${refreshTag}
   <script>location.replace(${JSON.stringify(destination)})</script>
 </head>

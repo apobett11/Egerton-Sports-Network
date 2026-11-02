@@ -1,7 +1,12 @@
 import React from 'react';
 import { ImageResponse } from '@vercel/og';
 import { decodeShareCard } from '../src/lib/predictions/shareCard.mjs';
-import { loadPredictionShare, loadShareCode } from '../src/lib/predictions/shareServer.mjs';
+import {
+  loadPredictionShare,
+  loadShareCode,
+  loadProductShare,
+  loadBanterShare,
+} from '../src/lib/predictions/shareServer.mjs';
 
 const h = React.createElement;
 
@@ -1468,10 +1473,397 @@ async function fetchTeamAnalyticsData(teamSlug) {
   }
 }
 
+function productOGCard(product) {
+  const pName = product?.name || 'Official Match Grade Product';
+  const pPrice = product?.price ? ('KES ' + Number(product.price).toLocaleString()) : 'KES 2,500';
+  const pCategory = product?.category || 'Official Equipment';
+  const pBadge = product?.badge || 'Official Match Grade';
+  const pAudience = product?.audience === 'team' ? 'Varsity Squad Pack' : 'Player Edition';
+  const pImg = product?.image || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80';
+
+  return h(
+    'div',
+    {
+      style: {
+        width: '100%',
+        height: '100%',
+        padding: '36px 44px',
+        background: '#081018',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      },
+    },
+    h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 } },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+        h(
+          'span',
+          {
+            style: {
+              background: '#ff0046',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 900,
+              padding: '6px 14px',
+              borderRadius: 999,
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+            },
+          },
+          'Egerton Sports Depot',
+        ),
+        h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'Official Storefront'),
+      ),
+      h(
+        'span',
+        {
+          style: {
+            background: 'rgba(0, 176, 79, 0.15)',
+            color: '#00b04f',
+            border: '1px solid rgba(0, 176, 79, 0.4)',
+            fontSize: 13,
+            fontWeight: 800,
+            padding: '5px 12px',
+            borderRadius: 999,
+          },
+        },
+        '100% Authentic Match-Grade',
+      ),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          flexDirection: 'row',
+          background: '#0e1c2b',
+          border: '2px solid #29435d',
+          borderRadius: 24,
+          padding: '28px',
+          gap: 32,
+          flex: 1,
+          alignItems: 'center',
+        },
+      },
+      h(
+        'div',
+        {
+          style: {
+            width: 320,
+            height: 320,
+            borderRadius: 18,
+            overflow: 'hidden',
+            background: '#15273b',
+            border: '2px solid #29435d',
+            display: 'flex',
+            position: 'relative',
+          },
+        },
+        h('img', {
+          src: pImg,
+          width: 320,
+          height: 320,
+          style: { objectFit: 'cover' },
+        }),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flex: 1,
+            height: 320,
+          },
+        },
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+          h(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+            h(
+              'span',
+              {
+                style: {
+                  background: 'rgba(255, 0, 70, 0.15)',
+                  color: '#ff0046',
+                  fontSize: 12,
+                  fontWeight: 900,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  textTransform: 'uppercase',
+                },
+              },
+              pBadge,
+            ),
+            h(
+              'span',
+              {
+                style: {
+                  color: '#94a3b8',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                },
+              },
+              pCategory + ' • ' + pAudience,
+            ),
+          ),
+          h(
+            'div',
+            {
+              style: {
+                fontSize: 32,
+                fontWeight: 900,
+                color: '#ffffff',
+                lineHeight: 1.25,
+                maxHeight: 80,
+                overflow: 'hidden',
+              },
+            },
+            pName,
+          ),
+          h(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+            h('span', { style: { color: '#ff9800', fontSize: 18 } }, '★ ★ ★ ★ ★'),
+            h('span', { style: { color: '#e2e8f0', fontSize: 15, fontWeight: 700 } }, '5.0'),
+            h('span', { style: { color: '#94a3b8', fontSize: 14 } }, '(' + (product?.reviewCount || 38) + ' verified player ratings)'),
+          ),
+        ),
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: 16,
+              borderTop: '1px solid #29435d',
+            },
+          },
+          h(
+            'div',
+            { style: { display: 'flex', flexDirection: 'column' } },
+            h('span', { style: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: 700 } }, 'Official Depot Price'),
+            h('span', { style: { color: '#ff0046', fontSize: 40, fontWeight: 900 } }, pPrice),
+          ),
+          h(
+            'div',
+            {
+              style: {
+                background: '#ff0046',
+                color: '#ffffff',
+                fontSize: 16,
+                fontWeight: 800,
+                padding: '12px 24px',
+                borderRadius: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              },
+            },
+            'Tap to View Official Card →',
+          ),
+        ),
+      ),
+    ),
+    h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 } },
+      h('span', { style: { color: '#64748b', fontSize: 15 } }, 'Tap card or link in WhatsApp to open product specifications'),
+      h('span', { style: { color: '#ff0046', fontSize: 17, fontWeight: 800 } }, 'egerscore.com/store'),
+    ),
+  );
+}
+
+function banterOGCard(post) {
+  const author = post?.authorName || post?.authorHandle || 'Fanatic';
+  const handle = post?.authorHandle ? (post.authorHandle.startsWith('@') ? post.authorHandle : ('@' + post.authorHandle)) : '@EgerScore';
+  const content = post?.content || 'Matchday banter and live community discussion on EgerScore!';
+
+  return h(
+    'div',
+    {
+      style: {
+        width: '100%',
+        height: '100%',
+        padding: '38px 48px',
+        background: '#081018',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      },
+    },
+    h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 } },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+        h(
+          'span',
+          {
+            style: {
+              background: '#ff0046',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 900,
+              padding: '6px 14px',
+              borderRadius: 999,
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+            },
+          },
+          'EgerScore Banter',
+        ),
+        h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'Fan Zone & Matchday Debate'),
+      ),
+      h('span', { style: { color: '#ff0046', fontSize: 18, fontWeight: 800 } }, '🔥 LIVE TAKE'),
+    ),
+    h(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          background: '#0e1c2b',
+          border: '2px solid #29435d',
+          borderRadius: 24,
+          padding: '32px 36px',
+          flex: 1,
+        },
+      },
+      h(
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: 16 } },
+        h(
+          'div',
+          {
+            style: {
+              width: 56,
+              height: 56,
+              borderRadius: 999,
+              background: '#ff0046',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              fontSize: 24,
+              fontWeight: 900,
+            },
+          },
+          author[0]?.toUpperCase() || 'E',
+        ),
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column' } },
+          h('span', { style: { color: '#ffffff', fontSize: 24, fontWeight: 800 } }, author),
+          h('span', { style: { color: '#64748b', fontSize: 16, fontWeight: 600 } }, handle),
+        ),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 28,
+            fontWeight: 500,
+            color: '#f8fafc',
+            lineHeight: 1.4,
+            padding: '12px 0',
+          },
+        },
+        '"' + (content.length > 200 ? content.slice(0, 200) + '…' : content) + '"',
+      ),
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 16,
+            borderTop: '1px solid #29435d',
+          },
+        },
+        h('span', { style: { color: '#94a3b8', fontSize: 16 } }, 'Tap card or link in WhatsApp to join the debate'),
+        h(
+          'div',
+          {
+            style: {
+              background: '#ff0046',
+              color: '#ffffff',
+              fontSize: 15,
+              fontWeight: 800,
+              padding: '10px 20px',
+              borderRadius: 12,
+            },
+          },
+          'View Take on EgerScore →',
+        ),
+      ),
+    ),
+    h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 } },
+      h('span', { style: { color: '#64748b', fontSize: 15 } }, 'EgerScore · The Fan Discussion Arena'),
+      h('span', { style: { color: '#ff0046', fontSize: 17, fontWeight: 800 } }, 'egerscore.com/banter'),
+    ),
+  );
+}
+
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
   const url = new URL(request.url);
+
+  const storeId = url.searchParams.get('store');
+  if (storeId) {
+    try {
+      const product = await loadProductShare(storeId);
+      return new ImageResponse(productOGCard(product), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
+      });
+    } catch {
+      return new ImageResponse(productOGCard(null), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
+      });
+    }
+  }
+
+  const banterId = url.searchParams.get('banter');
+  if (banterId) {
+    try {
+      const post = await loadBanterShare(banterId);
+      return new ImageResponse(banterOGCard(post), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
+      });
+    } catch {
+      return new ImageResponse(banterOGCard(null), {
+        width: 1200,
+        height: 630,
+        headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
+      });
+    }
+  }
+
   const team = url.searchParams.get('team');
   if (team) {
     try {

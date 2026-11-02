@@ -18,6 +18,9 @@ export interface ProductDetailsCardProps {
   onBack?: () => void;
   onSelectProduct?: (product: Product) => void;
   onAddToCart?: (product: Product, size: string, color: string, quantity: number, variantImage?: string) => void;
+  onOpenContact?: () => void;
+  cartCount?: number;
+  isAdded?: boolean;
   theme?: 'dark' | 'light';
 }
 
@@ -26,6 +29,9 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
   onBack,
   onSelectProduct,
   onAddToCart,
+  onOpenContact,
+  cartCount = 0,
+  isAdded = false,
   theme = 'dark',
 }) => {
   if (!product) return null;
@@ -65,32 +71,38 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
     }
   };
 
-  const getShareUrl = () => {
-    if (typeof window === "undefined") return "";
-    return window.location.href;
+  const getProductShareUrl = () => {
+    if (typeof window === "undefined") return `https://egerscore.com/store/${product.id}`;
+    const origin = window.location.origin.includes('localhost') ? 'https://egerscore.com' : window.location.origin;
+    return `${origin}/store/${product.id}`;
   };
 
   const handleShare = (platform: string) => {
-    const url = encodeURIComponent(getShareUrl());
-    const text = encodeURIComponent(`Check out this official gear: ${product.name}`);
+    const shareUrl = getProductShareUrl();
+    const introMessage = `Check this out! Here's the link: ${shareUrl}`;
 
     switch (platform) {
-      case "whatsapp":
-        window.open(`https://wa.me/?text=${text}%20${url}`, "_blank");
+      case "whatsapp": {
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(introMessage)}`;
+        window.open(whatsappUrl, "_blank");
         break;
-      case "facebook":
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
+      }
+      case "facebook": {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
         break;
-      case "twitter":
-        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, "_blank");
+      }
+      case "twitter": {
+        const tweetText = `Check out ${product.name} on Egerton Sports Depot!`;
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
         break;
-      case "copy":
-        navigator.clipboard.writeText(getShareUrl());
+      }
+      case "copy": {
+        navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         break;
+      }
     }
-    setShowShareModal(false);
   };
 
   // Specifications
@@ -140,10 +152,11 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
             <ArrowLeft size={19} />
           </button>
           
-          <div className="flex gap-2.5 pointer-events-auto">
+          {/* Capsule border around the like and the share button: pink background with white border */}
+          <div className="flex items-center gap-2 p-1.5 rounded-full bg-[#ff0046] border-2 border-white shadow-xl pointer-events-auto">
             <button
               onClick={() => setShowShareModal(true)}
-              className="w-10 h-10 bg-black/40 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg active:scale-95"
+              className="w-9 h-9 sm:w-10 sm:h-10 bg-black/40 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white hover:text-black transition-all cursor-pointer shadow-md active:scale-95"
               aria-label="Share product"
             >
               <Share2 size={17} />
@@ -151,9 +164,9 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
             <button
               onClick={handleLike}
               className={cn(
-                "w-10 h-10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95",
+                "w-9 h-9 sm:w-10 sm:h-10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95",
                 isLiked
-                  ? "bg-[#ff0046] text-white border-[#ff0046]"
+                  ? "bg-white text-[#ff0046] border-white"
                   : "bg-black/40 text-white hover:bg-white hover:text-[#ff0046]"
               )}
               aria-label="Like product"
@@ -439,26 +452,46 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
           {/* The TWO Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
             
-            {/* Button 1: Add to Cart (Opens specifications popup) */}
+            {/* Button 1: Add to Cart (Shows cart count, turns green with tick when added) */}
             <button
               type="button"
-              onClick={() => setIsSpecsOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl bg-[#ff0046] hover:bg-[#e0003c] text-white font-black text-xs sm:text-sm transition-all cursor-pointer shadow-lg shadow-[#ff0046]/25 active:scale-95"
+              disabled={isAdded}
+              onClick={() => {
+                if (!isAdded) setIsSpecsOpen(true);
+              }}
+              className={cn(
+                "flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-black text-xs sm:text-sm transition-all shadow-lg active:scale-95",
+                isAdded
+                  ? "bg-[#00b04f] text-white shadow-emerald-500/25 cursor-default"
+                  : "bg-[#ff0046] hover:bg-[#e0003c] text-white shadow-[#ff0046]/25 cursor-pointer"
+              )}
+              title={isAdded ? "Already added to cart" : "Choose specifications & add to cart"}
             >
-              <ShoppingCart size={17} />
-              <span>Add to Cart</span>
+              {isAdded ? (
+                <>
+                  <Check size={18} className="stroke-[3]" />
+                  <span>Added to Cart</span>
+                  {cartCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white text-[#00b04f] text-[10px] font-black leading-none">
+                      {cartCount}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <ShoppingCart size={17} />
+                  <span>Add to Cart</span>
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white text-[#ff0046] text-[10px] font-black leading-none">
+                    {cartCount}
+                  </span>
+                </>
+              )}
             </button>
 
-            {/* Button 2: Chat the Store (Not kitmaster) */}
+            {/* Button 2: Chat the Store (Opens same contact popup as storefront) */}
             <button
               type="button"
-              onClick={() => {
-                const contact = getStoredBusinessContact();
-                const phone = (contact.whatsappNumber || contact.callPhoneNumber || '').replace(/\D/g, '');
-                if (phone) {
-                  window.open(`https://wa.me/${phone}?text=Hi%2C%20I%20am%20inquiring%20about%20${encodeURIComponent(product.name)}`, "_blank");
-                }
-              }}
+              onClick={() => onOpenContact?.()}
               className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-bold text-xs sm:text-sm border transition-all cursor-pointer shadow-sm active:scale-95 ${
                 isDark
                   ? 'border-[#335982] bg-[#1a3654] text-white hover:bg-[#234568]'
@@ -474,52 +507,108 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
         </div>
       </div>
 
-      {/* --- Share Modal --- */}
+      {/* --- Share Modal (WhatsApp OG Link Preview Template & Product Card Representation) --- */}
       {showShareModal && (
         <div
           className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setShowShareModal(false)}
         >
           <div
-            className={`rounded-2xl p-5 w-full max-w-sm shadow-2xl border ${
+            className={`rounded-2xl p-5 w-full max-w-md shadow-2xl border ${
               isDark ? 'bg-[#13273e] border-[#254668] text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider">Share this product</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-[#ff0046]/15 text-[#ff0046]">
+                  <Share2 size={16} />
+                </span>
+                <h3 className="text-sm font-black uppercase tracking-wider">Share Product Card</h3>
+              </div>
               <button
                 onClick={() => setShowShareModal(false)}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="text-slate-400 hover:text-white cursor-pointer text-base p-1"
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+
+            {/* Exact Product Card Template Preview */}
+            <div className={`p-3 rounded-xl border mb-3 ${
+              isDark ? 'bg-[#0e1c2b] border-[#29435d]' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <img
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-16 h-16 rounded-lg object-cover border border-slate-700/50 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-xs bg-[#ff0046] text-white">
+                      {product.badge || 'Official'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">
+                      {product.category}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold truncate leading-tight">
+                    {product.name}
+                  </h4>
+                  <div className="text-xs font-black text-[#ff0046] mt-0.5">
+                    {formatMoney(product.price)}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 pt-2 border-t border-slate-700/40">
+                Shares with predetermined large promotional image preview and short clickable link.
+              </p>
+            </div>
+
+            {/* Shortened URL Display */}
+            <div className={`flex items-center justify-between px-3 py-2 rounded-xl border text-xs mb-3 font-mono ${
+              isDark ? 'bg-[#0a1420] border-[#234568] text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+            }`}>
+              <span className="truncate pr-2">egerscore.com/store/{product.id}</span>
               <button
-                onClick={() => handleShare("whatsapp")}
-                className="p-3 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                onClick={() => handleShare("copy")}
+                className="text-xs font-bold text-[#ff0046] hover:underline shrink-0 cursor-pointer"
               >
-                WhatsApp
+                {copied ? "Copied!" : "Copy"}
               </button>
+            </div>
+
+            {/* Prominent WhatsApp Click-to-Chat Button */}
+            <button
+              onClick={() => handleShare("whatsapp")}
+              className="w-full mb-2 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-black text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
+            >
+              <MessageCircle size={17} className="fill-current" />
+              <span>Share to WhatsApp (Large Preview)</span>
+            </button>
+
+            {/* Secondary fallback options */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
               <button
-                onClick={() => handleShare("facebook")}
-                className="p-3 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold hover:bg-blue-500/25 transition-colors cursor-pointer"
+                onClick={() => handleShare("copy")}
+                className="p-2.5 rounded-xl bg-slate-500/15 font-bold hover:bg-slate-500/25 transition-colors cursor-pointer flex items-center justify-center gap-1"
               >
-                Facebook
+                {copied ? <Check size={14} className="text-emerald-400" /> : null}
+                <span>{copied ? "Copied" : "Copy Link"}</span>
               </button>
               <button
                 onClick={() => handleShare("twitter")}
-                className="p-3 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold hover:bg-sky-500/25 transition-colors cursor-pointer"
+                className="p-2.5 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold hover:bg-sky-500/25 transition-colors cursor-pointer text-center"
               >
                 Twitter / X
               </button>
               <button
-                onClick={() => handleShare("copy")}
-                className="p-3 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold hover:bg-rose-500/25 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                onClick={() => handleShare("facebook")}
+                className="p-2.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold hover:bg-blue-500/25 transition-colors cursor-pointer text-center"
               >
-                {copied ? <Check size={14} /> : null}
-                <span>{copied ? "Copied!" : "Copy Link"}</span>
+                Facebook
               </button>
             </div>
           </div>

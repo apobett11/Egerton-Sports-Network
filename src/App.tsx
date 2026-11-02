@@ -632,7 +632,7 @@ export const AppContent: React.FC = () => {
         selectPredictionView('banter');
         setActiveTab('news');
       }
-      if (newRoute === 'banter' || newRoute.startsWith('banter')) {
+      if (newRoute === 'banter' || newRoute.startsWith('banter') || newRoute.startsWith('b/')) {
         setActiveTab('news');
         selectPredictionView('banter');
       }
@@ -1081,7 +1081,7 @@ export const AppContent: React.FC = () => {
     );
   }
 
-  if (route === 'store') {
+  if (route === 'store' || route.startsWith('store/') || route.startsWith('store?')) {
     return (
       <Suspense fallback={<StorePageSkeleton theme={darkMode ? 'dark' : 'light'} />}>
         <JoseCommerceApp onBackToLiveScore={() => handleNavigateHash('/home')} />

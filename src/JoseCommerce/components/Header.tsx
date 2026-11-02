@@ -47,6 +47,7 @@ interface HeaderProps {
   onEndSession?: () => void;
   onRefreshData?: () => void;
   isRefreshing?: boolean;
+  hideFloatingCart?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -76,6 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
   onEndSession,
   onRefreshData,
   isRefreshing = false,
+  hideFloatingCart = false,
 }) => {
   const [isOverlaySearchOpen, setIsOverlaySearchOpen] = React.useState(false);
 
@@ -338,25 +340,27 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-    {/* Floating Cart Button below the Navigation Bar */}
-    <button
-      onClick={onOpenCart}
-      className={`fixed top-16 sm:top-20 right-3 sm:right-6 z-40 flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-full transition-all duration-300 cursor-pointer shadow-xl select-none border border-white/20 ${
-        isCartBouncing
-          ? 'animate-bounce scale-110 ring-4 ring-[#ff0046]/50 bg-[#ff0046] text-white'
-          : 'bg-[#ff0046] hover:bg-[#e0003c] text-white shadow-[#ff0046]/40 active:scale-95'
-      }`}
-      aria-label="View shopping cart"
-      title="Shopping Cart"
-    >
-      <ShoppingCart className="w-4 h-4 text-white stroke-[2.5]" />
-      <span className="text-xs font-black uppercase tracking-wider hidden sm:inline text-white">
-        Cart
-      </span>
-      <span className="flex items-center justify-center min-w-[19px] h-[19px] px-1 text-[10px] font-black rounded-full bg-white text-[#ff0046] shadow-xs leading-none">
-        {cartCount}
-      </span>
-    </button>
+    {/* Floating Cart Button below the Navigation Bar (Hidden in Product Details Card) */}
+    {!hideFloatingCart && (
+      <button
+        onClick={onOpenCart}
+        className={`fixed top-16 sm:top-20 right-3 sm:right-6 z-40 flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-full transition-all duration-300 cursor-pointer shadow-xl select-none border border-white/20 ${
+          isCartBouncing
+            ? 'animate-bounce scale-110 ring-4 ring-[#ff0046]/50 bg-[#ff0046] text-white'
+            : 'bg-[#ff0046] hover:bg-[#e0003c] text-white shadow-[#ff0046]/40 active:scale-95'
+        }`}
+        aria-label="View shopping cart"
+        title="Shopping Cart"
+      >
+        <ShoppingCart className="w-4 h-4 text-white stroke-[2.5]" />
+        <span className="text-xs font-black uppercase tracking-wider hidden sm:inline text-white">
+          Cart
+        </span>
+        <span className="flex items-center justify-center min-w-[19px] h-[19px] px-1 text-[10px] font-black rounded-full bg-white text-[#ff0046] shadow-xs leading-none">
+          {cartCount}
+        </span>
+      </button>
+    )}
   </>
   );
 };
