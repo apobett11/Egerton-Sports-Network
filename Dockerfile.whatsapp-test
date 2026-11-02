@@ -1,0 +1,30 @@
+FROM mcr.microsoft.com/playwright:v1.50.0-noble
+
+WORKDIR /app
+
+# Install system dependencies including fontconfig and fonts for accurate text rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    fontconfig \
+    libvips-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package manifests
+COPY package*.json ./
+
+# Install dependencies including sharp and Playwright browsers
+RUN npm ci || npm install
+
+# Copy application code, pregeneration scripts, and tests
+COPY . .
+
+# Set environment
+ENV CI=true
+ENV NODE_ENV=development
+
+# Expose ports
+EXPOSE 5173 3000
+
+# Execute pregeneration, performance suite, and WhatsApp Playwright test suite
+CMD ["sh", "-c", "node scripts/pregenerate-share-cards.mjs && node tests/image-delivery-performance.test.mjs && node tests/share-product.test.mjs && npx playwright test tests/whatsapp-product-sharing.spec.ts"]

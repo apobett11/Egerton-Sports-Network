@@ -1,0 +1,145 @@
+[
+  {
+    "item": "IB-10001",
+    "rawSize": 1705077,
+    "optSize": 157542,
+    "reduction": "90.8%",
+    "durationMs": 2606,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\IB-10001.jpg"
+  },
+  {
+    "item": "IG-10002",
+    "rawSize": 3629017,
+    "optSize": 382819,
+    "reduction": "89.5%",
+    "durationMs": 2882,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\IG-10002.jpg"
+  },
+  {
+    "item": "IB-10003",
+    "rawSize": 3545334,
+    "optSize": 335100,
+    "reduction": "90.5%",
+    "durationMs": 2858,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\IB-10003.jpg"
+  },
+  {
+    "item": "IB-10004",
+    "rawSize": 3896563,
+    "optSize": 356321,
+    "reduction": "90.9%",
+    "durationMs": 3158,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\IB-10004.jpg"
+  },
+  {
+    "item": "IB-10005",
+    "rawSize": 3554997,
+    "optSize": 290519,
+    "reduction": "91.8%",
+    "durationMs": 2478,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\IB-10005.jpg"
+  },
+  {
+    "item": "featured",
+    "rawSize": 2563514,
+    "optSize": 229903,
+    "reduction": "91.0%",
+    "durationMs": 9902,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\featured.jpg"
+  },
+  {
+    "item": "test-large-img",
+    "rawSize": 2756742,
+    "optSize": 234813,
+    "reduction": "91.5%",
+    "durationMs": 69425,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-large-img.jpg"
+  },
+  {
+    "item": "test-small-img",
+    "rawSize": 1560932,
+    "optSize": 136776,
+    "reduction": "91.2%",
+    "durationMs": 5091,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-small-img.jpg"
+  },
+  {
+    "item": "test-portrait-img",
+    "rawSize": 1927718,
+    "optSize": 153642,
+    "reduction": "92.0%",
+    "durationMs": 9696,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-portrait-img.jpg"
+  },
+  {
+    "item": "test-landscape-img",
+    "rawSize": 1669880,
+    "optSize": 180865,
+    "reduction": "89.2%",
+    "durationMs": 19321,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-landscape-img.jpg"
+  },
+  {
+    "item": "test-square-img",
+    "rawSize": 2421040,
+    "optSize": 212081,
+    "reduction": "91.2%",
+    "durationMs": 23068,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-square-img.jpg"
+  },
+  {
+    "item": "test-long-title",
+    "rawSize": 1654022,
+    "optSize": 171945,
+    "reduction": "89.6%",
+    "durationMs": 12645,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-long-title.jpg"
+  },
+  {
+    "item": "test-fallback-img",
+    "rawSize": 1665911,
+    "optSize": 177284,
+    "reduction": "89.4%",
+    "durationMs": 11279,
+    "width": 1200,
+    "height": 1892,
+    "format": "jpeg",
+    "outPath": "C:\\Users\\HP\\Desktop\\livescore\\public\\og\\products\\test-fallback-img.jpg"
+  }
+]

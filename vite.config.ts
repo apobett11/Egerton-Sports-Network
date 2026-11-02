@@ -88,6 +88,46 @@ function adminApiPlugin() {
   }
 }
 
+function shareApiPlugin() {
+  return {
+    name: 'esn-share-api',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || ''
+        const storeMatch = url.match(/^\/store\/([^?]+)/)
+        const isApiShare = url.startsWith('/api/share')
+        if (storeMatch || isApiShare) {
+          try {
+            // @ts-expect-error JS module without declaration
+            const { default: handler } = await import('./api/share.js')
+            const parsedUrl = new URL(url, 'http://localhost:5173')
+            ;(req as any).query = Object.fromEntries(parsedUrl.searchParams.entries())
+            if (storeMatch) {
+              ;(req as any).query.store = decodeURIComponent(storeMatch[1])
+            }
+            ;(res as any).status = (code: number) => {
+              res.statusCode = code
+              return res
+            }
+            ;(res as any).send = (body: any) => {
+              res.end(body)
+              return res
+            }
+            await handler(req, res)
+            return
+          } catch (err: any) {
+            console.error('Error in share middleware:', err)
+            res.statusCode = 500
+            res.end(err?.message || 'Server error')
+            return
+          }
+        }
+        next()
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -95,5 +135,6 @@ export default defineConfig({
     tailwindcss(),
     deviceCookiePlugin(),
     adminApiPlugin(),
+    shareApiPlugin(),
   ],
 })

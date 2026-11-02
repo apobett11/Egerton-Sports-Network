@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import {
   cardDescription,
   cardTitle,
@@ -43,7 +45,11 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
     const destination = `${origin}/#/store`;
     const title = 'Official Egerton Sports Depot · Store';
     const description = 'Browse official jerseys, boots, balls, and match-grade gear at Egerton Sports Depot.';
-    const image = `${origin}/api/og?store=featured&v=20261102`;
+    const staticFeatured = path.join(process.cwd(), 'public', 'og', 'products', 'featured.jpg');
+    const hasFeatured = fs.existsSync(staticFeatured);
+    const image = hasFeatured
+      ? `${origin}/og/products/featured.jpg?v=20261102`
+      : `${origin}/api/og?store=featured&v=20261102`;
     const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
     return `<!doctype html>
@@ -60,7 +66,7 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:url" content="${escapeHtml(`${origin}/store`)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
@@ -83,7 +89,12 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   const title = `${product.name} | Egerton Sports Depot`;
   const formattedPrice = `KES ${Number(product.price || 0).toLocaleString()}`;
   const description = `${product.category} · ${formattedPrice} · 100% Authentic Match-Grade Gear. Tap to view official product card.`;
-  const image = `${origin}/api/og?store=${encodeURIComponent(product.id)}&v=20261102`;
+  const prodKey = product.sku || product.id;
+  const staticPath = path.join(process.cwd(), 'public', 'og', 'products', `${prodKey}.jpg`);
+  const hasStatic = fs.existsSync(staticPath);
+  const image = hasStatic
+    ? `${origin}/og/products/${encodeURIComponent(prodKey)}.jpg?v=20261102`
+    : `${origin}/api/og?store=${encodeURIComponent(product.id)}&v=20261102`;
   const canonicalUrl = `${origin}/store/${encodeURIComponent(product.id)}`;
   const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
@@ -101,7 +112,7 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(product.name)}">
@@ -143,7 +154,7 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:url" content="${escapeHtml(`${origin}/#/banter`)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
@@ -181,7 +192,7 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
@@ -231,7 +242,7 @@ function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
   <meta property="og:url" content="${escapeHtml(`${origin}${requestUrl}`)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
@@ -273,7 +284,7 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   <meta property="og:url" content="${escapeHtml(`${origin}${requestUrl}`)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
@@ -368,7 +379,7 @@ export default async function handler(req, res) {
   <meta property="og:url" content="${escapeHtml(`${origin}${req.url}`)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
-  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="1892">
   <meta property="og:image:alt" content="${escapeHtml(title)}">

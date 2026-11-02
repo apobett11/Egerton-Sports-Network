@@ -1,0 +1,14 @@
+services:
+  whatsapp-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.whatsapp-test
+    container_name: esn-whatsapp-test
+    environment:
+      - CI=true
+      - NODE_ENV=development
+    volumes:
+      - ./test-results:/app/test-results
+      - ./public/og/products:/app/public/og/products
+    ports:
+      - "5173:5173"
