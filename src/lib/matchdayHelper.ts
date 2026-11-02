@@ -2,7 +2,7 @@ import type { Match } from '../types';
 import { guestCache } from './guestCache';
 import { supabase } from './supabase';
 
-export const PLAYDAY_INDEX_KEY = 'playday_index_v5';
+export const PLAYDAY_INDEX_KEY = 'playday_index_v6';
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
 
@@ -147,7 +147,7 @@ export function readPlaydayIndex(): PlaydayMark[] {
 
 let playdayInflight: Promise<PlaydayMark[]> | null = null;
 
-const PLAYDAY_REV_KEY = 'playday_rev_v3';
+const PLAYDAY_REV_KEY = 'playday_rev_v4';
 const PLAYDAY_TTL = 24 * 60 * 60 * 1000;
 
 /**
@@ -180,7 +180,7 @@ export function refreshPlaydayIndex(): Promise<PlaydayMark[]> {
 
       const { data } = await supabase
         .from('fixtures')
-        .select('scheduled_time, matchday, competition_id, status, league, is_friendly')
+        .select('scheduled_time, matchday, competition_id, status')
         .order('scheduled_time', { ascending: true });
       const index = buildPlaydayIndex(data || []);
       if (index.length > 0) {
