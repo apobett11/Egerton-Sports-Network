@@ -1473,16 +1473,51 @@ async function fetchTeamAnalyticsData(teamSlug) {
   }
 }
 
-function userIcon() {
+function starIcon(size = 18) {
   return h(
     'svg',
     {
-      width: 22,
-      height: 22,
+      width: size,
+      height: size,
+      viewBox: '0 0 24 24',
+      fill: '#f59e0b',
+      stroke: '#f59e0b',
+      strokeWidth: 1.5,
+      style: { marginRight: 5, flexShrink: 0 },
+    },
+    h('polygon', {
+      points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2',
+    }),
+  );
+}
+
+function checkIcon(size = 18) {
+  return h(
+    'svg',
+    {
+      width: size,
+      height: size,
       viewBox: '0 0 24 24',
       fill: 'none',
-      stroke: '#64748b',
-      strokeWidth: 2,
+      stroke: '#00b04f',
+      strokeWidth: 2.5,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    },
+    h('polyline', { points: '20 6 9 17 4 12' }),
+  );
+}
+
+function userIcon(size = 20) {
+  return h(
+    'svg',
+    {
+      width: size,
+      height: size,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: '#475569',
+      strokeWidth: 2.2,
       strokeLinecap: 'round',
       strokeLinejoin: 'round',
     },
@@ -1491,34 +1526,34 @@ function userIcon() {
   );
 }
 
-function cartIcon() {
+function cartIcon(size = 20) {
   return h(
     'svg',
     {
-      width: 22,
-      height: 22,
+      width: size,
+      height: size,
       viewBox: '0 0 24 24',
       fill: 'none',
-      stroke: '#334155',
+      stroke: '#0f172a',
       strokeWidth: 2.2,
       strokeLinecap: 'round',
       strokeLinejoin: 'round',
     },
-    h('circle', { cx: 8, cy: 21, r: 1.5 }),
-    h('circle', { cx: 19, cy: 21, r: 1.5 }),
-    h('path', { d: 'M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12' }),
+    h('circle', { cx: 9, cy: 21, r: 1 }),
+    h('circle', { cx: 20, cy: 21, r: 1 }),
+    h('path', { d: 'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6' }),
   );
 }
 
-function chatIcon() {
+function chatIcon(size = 20) {
   return h(
     'svg',
     {
-      width: 22,
-      height: 22,
+      width: size,
+      height: size,
       viewBox: '0 0 24 24',
       fill: 'none',
-      stroke: '#334155',
+      stroke: '#ff0046',
       strokeWidth: 2.2,
       strokeLinecap: 'round',
       strokeLinejoin: 'round',
@@ -1530,7 +1565,9 @@ function chatIcon() {
 function productOGCard(product) {
   const pName = product?.name || 'solid black original goalkeeper gloves';
   const pPrice = product?.price ? ('Ksh ' + Number(product.price).toLocaleString()) : 'Ksh 900';
-  const pOrigPrice = product?.originalPrice ? ('Ksh ' + Number(product.originalPrice).toLocaleString()) : (product?.price ? ('Ksh ' + Number(Math.round(product.price * 1.15)).toLocaleString()) : 'Ksh 1,035');
+  const pOrigPrice = product?.originalPrice
+    ? ('Ksh ' + Number(product.originalPrice).toLocaleString())
+    : (product?.price ? ('Ksh ' + Number(Math.round(product.price * 1.15)).toLocaleString()) : 'Ksh 1,035');
   const pCategory = product?.category || "Goalkeeper's";
   const pBadge = product?.badge || 'NEW ARRIVAL';
   const pRating = product?.rating ? Number(product.rating).toFixed(1) : '4.8';
@@ -1541,381 +1578,690 @@ function productOGCard(product) {
     'div',
     {
       style: {
-        width: 600,
-        height: 946,
-        padding: 16,
-        background: '#ffffff',
+        width: 1200,
+        height: 630,
+        background: '#081018',
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'space-between',
+        padding: '24px 50px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        borderRadius: 32,
-        border: '1.5px solid #e2e8f0',
         boxSizing: 'border-box',
+        position: 'relative',
       },
     },
-    // Top Media Image Container (1:1 square, dominant)
+    // Left Branded Panel
     h(
       'div',
       {
         style: {
-          width: 568,
-          height: 568,
-          borderRadius: 22,
-          overflow: 'hidden',
-          background: '#f8fafc',
-          position: 'relative',
-          display: 'flex',
-        },
-      },
-      h('img', {
-        src: pImg,
-        width: 568,
-        height: 568,
-        style: { width: '100%', height: '100%', objectFit: 'cover' },
-      }),
-      // Top Left Badge: NEW ARRIVAL (locked visual spec)
-      h(
-        'div',
-        {
-          style: {
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            background: 'rgba(11, 21, 34, 0.94)',
-            color: '#ffffff',
-            fontSize: 14,
-            fontWeight: 900,
-            padding: '5px 12px',
-            borderRadius: 6,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            display: 'flex',
-            alignItems: 'center',
-          },
-        },
-        pBadge,
-      ),
-      // Top Right Circle: User icon
-      h(
-        'div',
-        {
-          style: {
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            width: 44,
-            height: 44,
-            borderRadius: 999,
-            background: 'rgba(255, 255, 255, 0.92)',
-            border: '1px solid rgba(226, 232, 240, 0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-        },
-        userIcon(),
-      ),
-    ),
-    // Details Section Beneath Image
-    h(
-      'div',
-      {
-        style: {
+          width: 320,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          flex: 1,
-          paddingTop: 16,
-          paddingBottom: 8,
-          paddingLeft: 8,
-          paddingRight: 8,
+          justifyContent: 'center',
+          gap: 16,
         },
       },
-      // Row 1: Rating & Category
       h(
         'div',
-        {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          },
-        },
+        { style: { display: 'flex', alignItems: 'center', gap: 10 } },
         h(
-          'div',
-          { style: { display: 'flex', alignItems: 'center' } },
-          h('span', { style: { color: '#f59e0b', fontSize: 24, marginRight: 6 } }, '★'),
-          h('span', { style: { color: '#0f172a', fontSize: 22, fontWeight: 900 } }, pRating),
-          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, marginLeft: 6 } }, '(' + pReviews + ')'),
+          'span',
+          {
+            style: {
+              background: '#ff0046',
+              color: '#ffffff',
+              fontWeight: 900,
+              fontSize: 15,
+              padding: '4px 10px',
+              borderRadius: 8,
+              letterSpacing: 1,
+            },
+          },
+          'EGERSCORE',
         ),
         h(
           'span',
           {
             style: {
-              color: '#60a5fa',
-              fontSize: 20,
-              fontWeight: 700,
+              color: '#94a3b8',
+              fontWeight: 800,
+              fontSize: 15,
+              letterSpacing: 0.8,
             },
           },
-          pCategory,
+          'SPORTS DEPOT',
         ),
       ),
-      // Row 2: Product Title (2 lines max, bold dark slate)
       h(
         'div',
         {
           style: {
-            fontSize: 28,
+            fontSize: 34,
             fontWeight: 900,
-            color: '#0f172a',
-            lineHeight: 1.25,
-            marginTop: 8,
-            marginBottom: 8,
-            maxHeight: 72,
-            overflow: 'hidden',
+            color: '#ffffff',
+            lineHeight: 1.15,
+            letterSpacing: -0.5,
           },
         },
-        pName,
+        'Official Match Gear',
       ),
-      // Row 3: Price and Cart Action
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 16,
+            color: '#94a3b8',
+            lineHeight: 1.45,
+          },
+        },
+        'Authentic varsity jerseys, gloves & equipment at Egerton University.',
+      ),
       h(
         'div',
         {
           style: {
             display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            paddingTop: 8,
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(0, 176, 79, 0.15)',
+            border: '1.5px solid rgba(0, 176, 79, 0.4)',
+            padding: '8px 14px',
+            borderRadius: 12,
           },
         },
-        h(
-          'div',
-          { style: { display: 'flex', flexDirection: 'column' } },
-          h('span', { style: { color: '#0b1522', fontSize: 34, fontWeight: 900, letterSpacing: -0.5 } }, pPrice),
-          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, textDecoration: 'line-through', marginTop: 2 } }, pOrigPrice),
-        ),
-        // Cart button
+        checkIcon(18),
+        h('span', { style: { color: '#ffffff', fontSize: 14, fontWeight: 700 } }, '100% Authentic Quality'),
+      ),
+    ),
+
+    // CENTER: Locked Reference Product Card (Proportions match reference screenshot 104x164)
+    h(
+      'div',
+      {
+        style: {
+          width: 370,
+          height: 580,
+          background: '#ffffff',
+          borderRadius: 24,
+          border: '2px solid rgba(255, 255, 255, 0.85)',
+          padding: 14,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxSizing: 'border-box',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+        },
+      },
+      // Top Media Image Container (1:1 square, dominant)
+      h(
+        'div',
+        {
+          style: {
+            width: 338,
+            height: 338,
+            borderRadius: 18,
+            overflow: 'hidden',
+            background: '#f1f5f9',
+            position: 'relative',
+            display: 'flex',
+          },
+        },
+        h('img', {
+          src: pImg,
+          width: 338,
+          height: 338,
+          style: { width: '100%', height: '100%', objectFit: 'cover' },
+        }),
+        // Top Left Badge: NEW ARRIVAL (locked visual spec)
         h(
           'div',
           {
             style: {
-              width: 58,
-              height: 58,
-              borderRadius: 18,
-              background: '#f1f5f9',
-              border: '1.5px solid #e2e8f0',
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              background: 'rgba(11, 21, 34, 0.94)',
+              color: '#ffffff',
+              fontSize: 11,
+              fontWeight: 900,
+              padding: '4px 9px',
+              borderRadius: 6,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+            },
+          },
+          pBadge,
+        ),
+        // Top Right Circle: User icon
+        h(
+          'div',
+          {
+            style: {
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              background: 'rgba(255, 255, 255, 0.92)',
+              border: '1px solid rgba(226, 232, 240, 0.9)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             },
           },
-          cartIcon(),
+          userIcon(18),
         ),
+      ),
+      // Details Section Beneath Image
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flex: 1,
+            paddingTop: 12,
+            paddingBottom: 4,
+            paddingLeft: 4,
+            paddingRight: 4,
+          },
+        },
+        // Row 1: Rating & Category
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            },
+          },
+          h(
+            'div',
+            { style: { display: 'flex', alignItems: 'center' } },
+            starIcon(18),
+            h('span', { style: { color: '#0f172a', fontSize: 16, fontWeight: 900 } }, pRating),
+            h('span', { style: { color: '#94a3b8', fontSize: 15, fontWeight: 600, marginLeft: 5 } }, '(' + pReviews + ')'),
+          ),
+          h(
+            'span',
+            {
+              style: {
+                color: '#3b82f6',
+                fontSize: 15,
+                fontWeight: 700,
+              },
+            },
+            pCategory,
+          ),
+        ),
+        // Row 2: Product Title (2 lines max, bold dark slate)
+        h(
+          'div',
+          {
+            style: {
+              fontSize: 19,
+              fontWeight: 900,
+              color: '#0f172a',
+              lineHeight: 1.25,
+              marginTop: 6,
+              marginBottom: 6,
+              maxHeight: 48,
+              overflow: 'hidden',
+            },
+          },
+          pName,
+        ),
+        // Row 3: Price and Cart Action
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              paddingTop: 4,
+            },
+          },
+          h(
+            'div',
+            { style: { display: 'flex', flexDirection: 'column' } },
+            h('span', { style: { color: '#0b1522', fontSize: 24, fontWeight: 900, letterSpacing: -0.5 } }, pPrice),
+            h('span', { style: { color: '#94a3b8', fontSize: 15, fontWeight: 600, textDecoration: 'line-through', marginTop: 1 } }, pOrigPrice),
+          ),
+          // Cart button
+          h(
+            'div',
+            {
+              style: {
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: '#f1f5f9',
+                border: '1.5px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            },
+            cartIcon(19),
+          ),
+        ),
+      ),
+    ),
+
+    // Right Branded Panel
+    h(
+      'div',
+      {
+        style: {
+          width: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 18,
+          alignItems: 'flex-end',
+          textAlign: 'right',
+        },
+      },
+      h(
+        'div',
+        {
+          style: {
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1.5px solid rgba(255, 255, 255, 0.1)',
+            padding: '12px 18px',
+            borderRadius: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            alignItems: 'flex-end',
+          },
+        },
+        h('span', { style: { color: '#ff0046', fontSize: 13, fontWeight: 900, letterSpacing: 1 } }, 'CAMPUS DELIVERY'),
+        h('span', { style: { color: '#ffffff', fontSize: 17, fontWeight: 800 } }, 'Pavilion & Njoro Campus'),
+        h('span', { style: { color: '#94a3b8', fontSize: 13 } }, 'Fast student pickup & delivery'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            background: '#ff0046',
+            color: '#ffffff',
+            fontWeight: 900,
+            fontSize: 16,
+            padding: '12px 24px',
+            borderRadius: 999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          },
+        },
+        'TAP LINK TO VIEW →',
+      ),
+      h(
+        'span',
+        {
+          style: {
+            color: '#64748b',
+            fontSize: 13,
+            fontWeight: 600,
+          },
+        },
+        'egerscore.com/store',
       ),
     ),
   );
 }
 
 function banterOGCard(post) {
-  const author = post?.authorName || post?.authorHandle || 'Fanatic';
+  const author = post?.authorName || post?.authorHandle || 'Campus Fanatic';
   const handle = post?.authorHandle ? (post.authorHandle.startsWith('@') ? post.authorHandle : ('@' + post.authorHandle)) : '@EgerScore';
-  const content = post?.content || 'Matchday banter and live community discussion on EgerScore!';
-  const pImg = post?.image || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80';
+  const content = post?.content || 'Matchday banter and live community discussion on EgerScore! Who takes the derby win this weekend?';
+  const pImg = post?.image || 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80';
 
   return h(
     'div',
     {
       style: {
-        width: 600,
-        height: 946,
-        padding: 16,
-        background: '#ffffff',
+        width: 1200,
+        height: 630,
+        background: '#081018',
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'space-between',
+        padding: '24px 50px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        borderRadius: 32,
-        border: '1.5px solid #e2e8f0',
         boxSizing: 'border-box',
+        position: 'relative',
       },
     },
-    // Top Media Image Container (1:1 square, dominant)
+    // Left Branded Panel
     h(
       'div',
       {
         style: {
-          width: 568,
-          height: 568,
-          borderRadius: 22,
-          overflow: 'hidden',
-          background: '#0b1522',
-          position: 'relative',
-          display: 'flex',
-        },
-      },
-      h('img', {
-        src: pImg,
-        width: 568,
-        height: 568,
-        style: { width: '100%', height: '100%', objectFit: 'cover' },
-      }),
-      // Top Left Badge
-      h(
-        'div',
-        {
-          style: {
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            background: 'rgba(11, 21, 34, 0.94)',
-            color: '#ffffff',
-            fontSize: 14,
-            fontWeight: 900,
-            padding: '5px 12px',
-            borderRadius: 6,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
-            display: 'flex',
-            alignItems: 'center',
-          },
-        },
-        'LIVE BANTER',
-      ),
-      // Top Right Circle
-      h(
-        'div',
-        {
-          style: {
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            width: 44,
-            height: 44,
-            borderRadius: 999,
-            background: '#ff0046',
-            border: '2px solid #ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            fontSize: 20,
-            fontWeight: 900,
-          },
-        },
-        author[0]?.toUpperCase() || 'E',
-      ),
-    ),
-    // Details Section Beneath Image
-    h(
-      'div',
-      {
-        style: {
+          width: 320,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          flex: 1,
-          paddingTop: 16,
-          paddingBottom: 8,
-          paddingLeft: 8,
-          paddingRight: 8,
+          justifyContent: 'center',
+          gap: 16,
         },
       },
-      // Row 1: Flame Reaction & Category
       h(
         'div',
-        {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          },
-        },
+        { style: { display: 'flex', alignItems: 'center', gap: 10 } },
         h(
-          'div',
-          { style: { display: 'flex', alignItems: 'center' } },
-          h('span', { style: { color: '#ff0046', fontSize: 22, marginRight: 6 } }, '🔥'),
-          h('span', { style: { color: '#0f172a', fontSize: 22, fontWeight: 900 } }, '5.0'),
-          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, marginLeft: 6 } }, '(42 reactions)'),
+          'span',
+          {
+            style: {
+              background: '#ff0046',
+              color: '#ffffff',
+              fontWeight: 900,
+              fontSize: 15,
+              padding: '4px 10px',
+              borderRadius: 8,
+              letterSpacing: 1,
+            },
+          },
+          'EGERSCORE',
         ),
         h(
           'span',
           {
             style: {
-              color: '#60a5fa',
-              fontSize: 20,
-              fontWeight: 700,
+              color: '#38bdf8',
+              fontWeight: 800,
+              fontSize: 15,
+              letterSpacing: 0.8,
             },
           },
-          'Fan Debate',
+          'BANTER',
         ),
       ),
-      // Row 2: Author Name
       h(
         'div',
         {
           style: {
-            fontSize: 28,
+            fontSize: 34,
             fontWeight: 900,
-            color: '#0f172a',
-            lineHeight: 1.25,
-            marginTop: 8,
-            marginBottom: 4,
+            color: '#ffffff',
+            lineHeight: 1.15,
+            letterSpacing: -0.5,
+          },
+        },
+        'Live Matchday Debate',
+      ),
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 16,
+            color: '#94a3b8',
+            lineHeight: 1.45,
+          },
+        },
+        'Real-time reactions, banter and fan discussions across Egerton campus leagues.',
+      ),
+      h(
+        'div',
+        {
+          style: {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
+            background: 'rgba(56, 189, 248, 0.15)',
+            border: '1.5px solid rgba(56, 189, 248, 0.4)',
+            padding: '8px 14px',
+            borderRadius: 12,
           },
         },
-        author + ' ' + handle,
+        checkIcon(18),
+        h('span', { style: { color: '#ffffff', fontSize: 14, fontWeight: 700 } }, 'Verified Campus Fan Post'),
       ),
-      // Row 3: Take Content Quote
+    ),
+
+    // CENTER: Locked Reference Card
+    h(
+      'div',
+      {
+        style: {
+          width: 370,
+          height: 580,
+          background: '#ffffff',
+          borderRadius: 24,
+          border: '2px solid rgba(255, 255, 255, 0.85)',
+          padding: 14,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxSizing: 'border-box',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+        },
+      },
+      // Top Media Image Container (1:1 square, dominant)
       h(
         'div',
         {
           style: {
-            fontSize: 22,
-            fontWeight: 600,
-            color: '#334155',
-            lineHeight: 1.35,
-            maxHeight: 60,
+            width: 338,
+            height: 338,
+            borderRadius: 18,
             overflow: 'hidden',
-          },
-        },
-        '"' + (content.length > 120 ? content.slice(0, 120) + '…' : content) + '"',
-      ),
-      // Row 4: Bottom Row (Tap to View & Chat button)
-      h(
-        'div',
-        {
-          style: {
+            background: '#0b1522',
+            position: 'relative',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 8,
           },
         },
-        h(
-          'div',
-          { style: { display: 'flex', flexDirection: 'column' } },
-          h('span', { style: { color: '#ff0046', fontSize: 22, fontWeight: 900 } }, 'Join the Discussion'),
-          h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'egerscore.com/banter'),
-        ),
+        h('img', {
+          src: pImg,
+          width: 338,
+          height: 338,
+          style: { width: '100%', height: '100%', objectFit: 'cover' },
+        }),
+        // Top Left Badge: BANTER
         h(
           'div',
           {
             style: {
-              width: 58,
-              height: 58,
-              borderRadius: 18,
-              background: '#f1f5f9',
-              border: '1.5px solid #e2e8f0',
+              position: 'absolute',
+              top: 12,
+              left: 12,
+              background: 'rgba(11, 21, 34, 0.94)',
+              color: '#ffffff',
+              fontSize: 11,
+              fontWeight: 900,
+              padding: '4px 9px',
+              borderRadius: 6,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+            },
+          },
+          'BANTER',
+        ),
+        // Top Right Circle: User icon
+        h(
+          'div',
+          {
+            style: {
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              background: 'rgba(255, 255, 255, 0.92)',
+              border: '1px solid rgba(226, 232, 240, 0.9)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             },
           },
-          chatIcon(),
+          userIcon(18),
         ),
+      ),
+      // Details Section Beneath Image
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flex: 1,
+            paddingTop: 12,
+            paddingBottom: 4,
+            paddingLeft: 4,
+            paddingRight: 4,
+          },
+        },
+        // Row 1: Author & Handle
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            },
+          },
+          h(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            h('span', { style: { color: '#0f172a', fontSize: 16, fontWeight: 900 } }, author),
+            h('span', { style: { color: '#38bdf8', fontSize: 14, fontWeight: 700 } }, handle),
+          ),
+          h(
+            'span',
+            {
+              style: {
+                color: '#94a3b8',
+                fontSize: 13,
+                fontWeight: 600,
+              },
+            },
+            'LIVE',
+          ),
+        ),
+        // Row 2: Post Excerpt (2-3 lines max)
+        h(
+          'div',
+          {
+            style: {
+              fontSize: 18,
+              fontWeight: 800,
+              color: '#0f172a',
+              lineHeight: 1.3,
+              marginTop: 6,
+              marginBottom: 6,
+              maxHeight: 64,
+              overflow: 'hidden',
+            },
+          },
+          content,
+        ),
+        // Row 3: Comments & Reply Button
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: 4,
+            },
+          },
+          h(
+            'span',
+            { style: { color: '#64748b', fontSize: 14, fontWeight: 700 } },
+            'Tap to join thread',
+          ),
+          h(
+            'div',
+            {
+              style: {
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: '#fef2f2',
+                border: '1.5px solid #fecaca',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            },
+            chatIcon(20),
+          ),
+        ),
+      ),
+    ),
+
+    // Right Branded Panel
+    h(
+      'div',
+      {
+        style: {
+          width: 320,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 18,
+          alignItems: 'flex-end',
+          textAlign: 'right',
+        },
+      },
+      h(
+        'div',
+        {
+          style: {
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1.5px solid rgba(255, 255, 255, 0.1)',
+            padding: '12px 18px',
+            borderRadius: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            alignItems: 'flex-end',
+          },
+        },
+        h('span', { style: { color: '#38bdf8', fontSize: 13, fontWeight: 900, letterSpacing: 1 } }, 'EGERTON SPORTS NETWORK'),
+        h('span', { style: { color: '#ffffff', fontSize: 17, fontWeight: 800 } }, 'Pavilion & Campus Leagues'),
+        h('span', { style: { color: '#94a3b8', fontSize: 13 } }, 'Live scores, votes & fan banter'),
+      ),
+      h(
+        'div',
+        {
+          style: {
+            background: '#ff0046',
+            color: '#ffffff',
+            fontWeight: 900,
+            fontSize: 16,
+            padding: '12px 24px',
+            borderRadius: 999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          },
+        },
+        'JOIN THREAD →',
+      ),
+      h(
+        'span',
+        {
+          style: {
+            color: '#64748b',
+            fontSize: 13,
+            fontWeight: 600,
+          },
+        },
+        'egerscore.com/b',
       ),
     ),
   );
@@ -1931,14 +2277,14 @@ export default async function handler(request) {
     try {
       const product = await loadProductShare(storeId);
       return new ImageResponse(productOGCard(product), {
-        width: 600,
-        height: 946,
+        width: 1200,
+        height: 630,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(productOGCard(null), {
-        width: 600,
-        height: 946,
+        width: 1200,
+        height: 630,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }
@@ -1949,14 +2295,14 @@ export default async function handler(request) {
     try {
       const post = await loadBanterShare(banterId);
       return new ImageResponse(banterOGCard(post), {
-        width: 600,
-        height: 946,
+        width: 1200,
+        height: 630,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(banterOGCard(null), {
-        width: 600,
-        height: 946,
+        width: 1200,
+        height: 630,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }

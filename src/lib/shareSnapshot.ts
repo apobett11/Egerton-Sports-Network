@@ -667,7 +667,7 @@ export function getShortBanterLink(postId: string): string {
   const cleanId = postId
     .replace(/^post-seed-/, '')
     .replace(/^temp-/, '');
-  return `egerscore.com/b/${cleanId}`;
+  return `egerscore.com/b/${cleanId}?v=20261102`;
 }
 
 export async function renderBanterCardSnapshot(

@@ -43,7 +43,7 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
     const destination = `${origin}/#/store`;
     const title = 'Official Egerton Sports Depot · Store';
     const description = 'Browse official jerseys, boots, balls, and match-grade gear at Egerton Sports Depot.';
-    const image = `${origin}/api/og?store=featured`;
+    const image = `${origin}/api/og?store=featured&v=20261102`;
     const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
     return `<!doctype html>
@@ -61,8 +61,8 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
@@ -83,7 +83,7 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   const title = `${product.name} | Egerton Sports Depot`;
   const formattedPrice = `KES ${Number(product.price || 0).toLocaleString()}`;
   const description = `${product.category} · ${formattedPrice} · 100% Authentic Match-Grade Gear. Tap to view official product card.`;
-  const image = `${origin}/api/og?store=${encodeURIComponent(product.id)}`;
+  const image = `${origin}/api/og?store=${encodeURIComponent(product.id)}&v=20261102`;
   const canonicalUrl = `${origin}/store/${encodeURIComponent(product.id)}`;
   const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
@@ -102,8 +102,8 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(product.name)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -126,7 +126,7 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
     const destination = `${origin}/#/banter`;
     const title = 'EgerScore Banter Feed';
     const description = 'Join the live matchday discussion, team banter, and fan debates on EgerScore.';
-    const image = `${origin}/api/og?banter=feed`;
+    const image = `${origin}/api/og?banter=feed&v=20261102`;
     const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
     return `<!doctype html>
@@ -144,8 +144,8 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="${escapeHtml(destination)}">
@@ -163,7 +163,7 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   const title = `${post.authorName} on EgerScore Banter`;
   const snippet = post.content.length > 120 ? `${post.content.slice(0, 120).trim()}...` : post.content;
   const description = `"${snippet}" · Tap to join the live debate on EgerScore Banter`;
-  const image = `${origin}/api/og?banter=${encodeURIComponent(post.id)}`;
+  const image = `${origin}/api/og?banter=${encodeURIComponent(post.id)}&v=20261102`;
   const canonicalUrl = `${origin}/b/${encodeURIComponent(post.id)}`;
   const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
@@ -182,8 +182,8 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -232,8 +232,8 @@ function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
@@ -274,8 +274,8 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -369,8 +369,8 @@ export default async function handler(req, res) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="600">
-  <meta property="og:image:height" content="946">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">

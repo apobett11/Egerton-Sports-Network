@@ -72,9 +72,9 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
   };
 
   const getProductShareUrl = () => {
-    if (typeof window === "undefined") return `https://egerscore.com/store/${product.id}`;
+    if (typeof window === "undefined") return `https://egerscore.com/store/${product.id}?v=20261102`;
     const origin = window.location.origin.includes('localhost') ? 'https://egerscore.com' : window.location.origin;
-    return `${origin}/store/${product.id}`;
+    return `${origin}/store/${product.id}?v=20261102`;
   };
 
   const handleShare = (platform: string) => {
