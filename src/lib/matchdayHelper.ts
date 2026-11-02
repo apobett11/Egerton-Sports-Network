@@ -2,7 +2,7 @@ import type { Match } from '../types';
 import { guestCache } from './guestCache';
 import { supabase } from './supabase';
 
-export const PLAYDAY_INDEX_KEY = 'playday_index_v4';
+export const PLAYDAY_INDEX_KEY = 'playday_index_v5';
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
 
@@ -109,19 +109,13 @@ export function buildPlaydayIndex(rows: Array<{
   is_friendly?: boolean;
   status?: string | null;
 }>): PlaydayMark[] {
-  const maxAllowedMatchday = getNextUnplayedMatchday(rows);
   const map = new Map<string, PlaydayMark & { hasEpl: boolean }>();
   rows.forEach((row) => {
-    const friendly = isFriendlyRow(row);
-    const md = Number(row.matchday) || 0;
-    // Pause rendering at the unplayed matchday: do not index future unplayed matchdays
-    if (!friendly && md > maxAllowedMatchday) {
-      return;
-    }
-
     const date = fixtureDateKey(row.scheduledTime || row.scheduled_time);
     if (!date) return;
+    const friendly = isFriendlyRow(row);
     const isEpl = row.competition_id === EPL_COMP_ID || (row.league || '').toLowerCase().includes('premier');
+    const md = Number(row.matchday) || 0;
     const prev = map.get(date);
     if (!prev) {
       map.set(date, {
@@ -153,7 +147,7 @@ export function readPlaydayIndex(): PlaydayMark[] {
 
 let playdayInflight: Promise<PlaydayMark[]> | null = null;
 
-const PLAYDAY_REV_KEY = 'playday_rev_v2';
+const PLAYDAY_REV_KEY = 'playday_rev_v3';
 const PLAYDAY_TTL = 24 * 60 * 60 * 1000;
 
 /**
@@ -252,12 +246,7 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
     }
   }
 
-  // 3. Fallback to latest allowed mark in index (which is capped at unplayed matchday)
-  if (index.length > 0) {
-    return dateFromKey(index[index.length - 1].date);
-  }
-
-  // 4. Default paused date for Matchday 13
+  // 3. Default paused date for Matchday 13
   return dateFromKey('2026-10-17');
 }
 
