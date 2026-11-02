@@ -61,8 +61,8 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
@@ -102,8 +102,8 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(product.name)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -144,8 +144,8 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="${escapeHtml(destination)}">
@@ -182,8 +182,8 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -232,8 +232,8 @@ function boardPage({ origin, view, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
@@ -274,8 +274,8 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
@@ -369,8 +369,8 @@ export default async function handler(req, res) {
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="946">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">

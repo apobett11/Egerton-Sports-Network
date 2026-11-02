@@ -1473,214 +1473,246 @@ async function fetchTeamAnalyticsData(teamSlug) {
   }
 }
 
+function userIcon() {
+  return h(
+    'svg',
+    {
+      width: 22,
+      height: 22,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: '#64748b',
+      strokeWidth: 2,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    },
+    h('path', { d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2' }),
+    h('circle', { cx: 12, cy: 7, r: 4 }),
+  );
+}
+
+function cartIcon() {
+  return h(
+    'svg',
+    {
+      width: 22,
+      height: 22,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: '#334155',
+      strokeWidth: 2.2,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    },
+    h('circle', { cx: 8, cy: 21, r: 1.5 }),
+    h('circle', { cx: 19, cy: 21, r: 1.5 }),
+    h('path', { d: 'M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12' }),
+  );
+}
+
+function chatIcon() {
+  return h(
+    'svg',
+    {
+      width: 22,
+      height: 22,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: '#334155',
+      strokeWidth: 2.2,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    },
+    h('path', { d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' }),
+  );
+}
+
 function productOGCard(product) {
-  const pName = product?.name || 'Official Match Grade Product';
-  const pPrice = product?.price ? ('KES ' + Number(product.price).toLocaleString()) : 'KES 2,500';
-  const pCategory = product?.category || 'Official Equipment';
-  const pBadge = product?.badge || 'Official Match Grade';
-  const pAudience = product?.audience === 'team' ? 'Varsity Squad Pack' : 'Player Edition';
+  const pName = product?.name || 'solid black original goalkeeper gloves';
+  const pPrice = product?.price ? ('Ksh ' + Number(product.price).toLocaleString()) : 'Ksh 900';
+  const pOrigPrice = product?.originalPrice ? ('Ksh ' + Number(product.originalPrice).toLocaleString()) : (product?.price ? ('Ksh ' + Number(Math.round(product.price * 1.15)).toLocaleString()) : 'Ksh 1,035');
+  const pCategory = product?.category || "Goalkeeper's";
+  const pBadge = product?.badge || 'NEW ARRIVAL';
+  const pRating = product?.rating ? Number(product.rating).toFixed(1) : '4.8';
+  const pReviews = product?.reviewCount || 17;
   const pImg = product?.image || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80';
 
   return h(
     'div',
     {
       style: {
-        width: '100%',
-        height: '100%',
-        padding: '36px 44px',
-        background: '#081018',
-        color: '#ffffff',
-        fontFamily: 'Arial, sans-serif',
+        width: 600,
+        height: 946,
+        padding: 16,
+        background: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        borderRadius: 32,
+        border: '1.5px solid #e2e8f0',
+        boxSizing: 'border-box',
       },
     },
+    // Top Media Image Container (1:1 square, dominant)
     h(
       'div',
-      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 } },
+      {
+        style: {
+          width: 568,
+          height: 568,
+          borderRadius: 22,
+          overflow: 'hidden',
+          background: '#f8fafc',
+          position: 'relative',
+          display: 'flex',
+        },
+      },
+      h('img', {
+        src: pImg,
+        width: 568,
+        height: 568,
+        style: { width: '100%', height: '100%', objectFit: 'cover' },
+      }),
+      // Top Left Badge: NEW ARRIVAL (locked visual spec)
       h(
         'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 12 } },
-        h(
-          'span',
-          {
-            style: {
-              background: '#ff0046',
-              color: '#ffffff',
-              fontSize: 14,
-              fontWeight: 900,
-              padding: '6px 14px',
-              borderRadius: 999,
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
-            },
-          },
-          'Egerton Sports Depot',
-        ),
-        h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'Official Storefront'),
-      ),
-      h(
-        'span',
         {
           style: {
-            background: 'rgba(0, 176, 79, 0.15)',
-            color: '#00b04f',
-            border: '1px solid rgba(0, 176, 79, 0.4)',
-            fontSize: 13,
-            fontWeight: 800,
+            position: 'absolute',
+            top: 16,
+            left: 16,
+            background: 'rgba(11, 21, 34, 0.94)',
+            color: '#ffffff',
+            fontSize: 14,
+            fontWeight: 900,
             padding: '5px 12px',
-            borderRadius: 999,
+            borderRadius: 6,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
           },
         },
-        '100% Authentic Match-Grade',
+        pBadge,
+      ),
+      // Top Right Circle: User icon
+      h(
+        'div',
+        {
+          style: {
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            width: 44,
+            height: 44,
+            borderRadius: 999,
+            background: 'rgba(255, 255, 255, 0.92)',
+            border: '1px solid rgba(226, 232, 240, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        },
+        userIcon(),
       ),
     ),
+    // Details Section Beneath Image
     h(
       'div',
       {
         style: {
           display: 'flex',
-          flexDirection: 'row',
-          background: '#0e1c2b',
-          border: '2px solid #29435d',
-          borderRadius: 24,
-          padding: '28px',
-          gap: 32,
+          flexDirection: 'column',
+          justifyContent: 'space-between',
           flex: 1,
-          alignItems: 'center',
+          paddingTop: 16,
+          paddingBottom: 8,
+          paddingLeft: 8,
+          paddingRight: 8,
         },
       },
-      h(
-        'div',
-        {
-          style: {
-            width: 320,
-            height: 320,
-            borderRadius: 18,
-            overflow: 'hidden',
-            background: '#15273b',
-            border: '2px solid #29435d',
-            display: 'flex',
-            position: 'relative',
-          },
-        },
-        h('img', {
-          src: pImg,
-          width: 320,
-          height: 320,
-          style: { objectFit: 'cover' },
-        }),
-      ),
+      // Row 1: Rating & Category
       h(
         'div',
         {
           style: {
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            flex: 1,
-            height: 320,
           },
         },
         h(
           'div',
-          { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-          h(
-            'div',
-            { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-            h(
-              'span',
-              {
-                style: {
-                  background: 'rgba(255, 0, 70, 0.15)',
-                  color: '#ff0046',
-                  fontSize: 12,
-                  fontWeight: 900,
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  textTransform: 'uppercase',
-                },
-              },
-              pBadge,
-            ),
-            h(
-              'span',
-              {
-                style: {
-                  color: '#94a3b8',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                },
-              },
-              pCategory + ' • ' + pAudience,
-            ),
-          ),
-          h(
-            'div',
-            {
-              style: {
-                fontSize: 32,
-                fontWeight: 900,
-                color: '#ffffff',
-                lineHeight: 1.25,
-                maxHeight: 80,
-                overflow: 'hidden',
-              },
-            },
-            pName,
-          ),
-          h(
-            'div',
-            { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-            h('span', { style: { color: '#ff9800', fontSize: 18 } }, '★ ★ ★ ★ ★'),
-            h('span', { style: { color: '#e2e8f0', fontSize: 15, fontWeight: 700 } }, '5.0'),
-            h('span', { style: { color: '#94a3b8', fontSize: 14 } }, '(' + (product?.reviewCount || 38) + ' verified player ratings)'),
-          ),
+          { style: { display: 'flex', alignItems: 'center' } },
+          h('span', { style: { color: '#f59e0b', fontSize: 24, marginRight: 6 } }, '★'),
+          h('span', { style: { color: '#0f172a', fontSize: 22, fontWeight: 900 } }, pRating),
+          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, marginLeft: 6 } }, '(' + pReviews + ')'),
         ),
+        h(
+          'span',
+          {
+            style: {
+              color: '#60a5fa',
+              fontSize: 20,
+              fontWeight: 700,
+            },
+          },
+          pCategory,
+        ),
+      ),
+      // Row 2: Product Title (2 lines max, bold dark slate)
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 28,
+            fontWeight: 900,
+            color: '#0f172a',
+            lineHeight: 1.25,
+            marginTop: 8,
+            marginBottom: 8,
+            maxHeight: 72,
+            overflow: 'hidden',
+          },
+        },
+        pName,
+      ),
+      // Row 3: Price and Cart Action
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            paddingTop: 8,
+          },
+        },
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column' } },
+          h('span', { style: { color: '#0b1522', fontSize: 34, fontWeight: 900, letterSpacing: -0.5 } }, pPrice),
+          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, textDecoration: 'line-through', marginTop: 2 } }, pOrigPrice),
+        ),
+        // Cart button
         h(
           'div',
           {
             style: {
+              width: 58,
+              height: 58,
+              borderRadius: 18,
+              background: '#f1f5f9',
+              border: '1.5px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: 16,
-              borderTop: '1px solid #29435d',
+              justifyContent: 'center',
             },
           },
-          h(
-            'div',
-            { style: { display: 'flex', flexDirection: 'column' } },
-            h('span', { style: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: 700 } }, 'Official Depot Price'),
-            h('span', { style: { color: '#ff0046', fontSize: 40, fontWeight: 900 } }, pPrice),
-          ),
-          h(
-            'div',
-            {
-              style: {
-                background: '#ff0046',
-                color: '#ffffff',
-                fontSize: 16,
-                fontWeight: 800,
-                padding: '12px 24px',
-                borderRadius: 14,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              },
-            },
-            'Tap to View Official Card →',
-          ),
+          cartIcon(),
         ),
       ),
-    ),
-    h(
-      'div',
-      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 } },
-      h('span', { style: { color: '#64748b', fontSize: 15 } }, 'Tap card or link in WhatsApp to open product specifications'),
-      h('span', { style: { color: '#ff0046', fontSize: 17, fontWeight: 800 } }, 'egerscore.com/store'),
     ),
   );
 }
@@ -1689,48 +1721,92 @@ function banterOGCard(post) {
   const author = post?.authorName || post?.authorHandle || 'Fanatic';
   const handle = post?.authorHandle ? (post.authorHandle.startsWith('@') ? post.authorHandle : ('@' + post.authorHandle)) : '@EgerScore';
   const content = post?.content || 'Matchday banter and live community discussion on EgerScore!';
+  const pImg = post?.image || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80';
 
   return h(
     'div',
     {
       style: {
-        width: '100%',
-        height: '100%',
-        padding: '38px 48px',
-        background: '#081018',
-        color: '#ffffff',
-        fontFamily: 'Arial, sans-serif',
+        width: 600,
+        height: 946,
+        padding: 16,
+        background: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        borderRadius: 32,
+        border: '1.5px solid #e2e8f0',
+        boxSizing: 'border-box',
       },
     },
+    // Top Media Image Container (1:1 square, dominant)
     h(
       'div',
-      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 } },
+      {
+        style: {
+          width: 568,
+          height: 568,
+          borderRadius: 22,
+          overflow: 'hidden',
+          background: '#0b1522',
+          position: 'relative',
+          display: 'flex',
+        },
+      },
+      h('img', {
+        src: pImg,
+        width: 568,
+        height: 568,
+        style: { width: '100%', height: '100%', objectFit: 'cover' },
+      }),
+      // Top Left Badge
       h(
         'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 12 } },
-        h(
-          'span',
-          {
-            style: {
-              background: '#ff0046',
-              color: '#ffffff',
-              fontSize: 14,
-              fontWeight: 900,
-              padding: '6px 14px',
-              borderRadius: 999,
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
-            },
+        {
+          style: {
+            position: 'absolute',
+            top: 16,
+            left: 16,
+            background: 'rgba(11, 21, 34, 0.94)',
+            color: '#ffffff',
+            fontSize: 14,
+            fontWeight: 900,
+            padding: '5px 12px',
+            borderRadius: 6,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
           },
-          'EgerScore Banter',
-        ),
-        h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'Fan Zone & Matchday Debate'),
+        },
+        'LIVE BANTER',
       ),
-      h('span', { style: { color: '#ff0046', fontSize: 18, fontWeight: 800 } }, '🔥 LIVE TAKE'),
+      // Top Right Circle
+      h(
+        'div',
+        {
+          style: {
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            width: 44,
+            height: 44,
+            borderRadius: 999,
+            background: '#ff0046',
+            border: '2px solid #ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontSize: 20,
+            fontWeight: 900,
+          },
+        },
+        author[0]?.toUpperCase() || 'E',
+      ),
     ),
+    // Details Section Beneath Image
     h(
       'div',
       {
@@ -1738,54 +1814,14 @@ function banterOGCard(post) {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: '#0e1c2b',
-          border: '2px solid #29435d',
-          borderRadius: 24,
-          padding: '32px 36px',
           flex: 1,
+          paddingTop: 16,
+          paddingBottom: 8,
+          paddingLeft: 8,
+          paddingRight: 8,
         },
       },
-      h(
-        'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 16 } },
-        h(
-          'div',
-          {
-            style: {
-              width: 56,
-              height: 56,
-              borderRadius: 999,
-              background: '#ff0046',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              fontSize: 24,
-              fontWeight: 900,
-            },
-          },
-          author[0]?.toUpperCase() || 'E',
-        ),
-        h(
-          'div',
-          { style: { display: 'flex', flexDirection: 'column' } },
-          h('span', { style: { color: '#ffffff', fontSize: 24, fontWeight: 800 } }, author),
-          h('span', { style: { color: '#64748b', fontSize: 16, fontWeight: 600 } }, handle),
-        ),
-      ),
-      h(
-        'div',
-        {
-          style: {
-            fontSize: 28,
-            fontWeight: 500,
-            color: '#f8fafc',
-            lineHeight: 1.4,
-            padding: '12px 0',
-          },
-        },
-        '"' + (content.length > 200 ? content.slice(0, 200) + '…' : content) + '"',
-      ),
+      // Row 1: Flame Reaction & Category
       h(
         'div',
         {
@@ -1793,32 +1829,94 @@ function banterOGCard(post) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: 16,
-            borderTop: '1px solid #29435d',
           },
         },
-        h('span', { style: { color: '#94a3b8', fontSize: 16 } }, 'Tap card or link in WhatsApp to join the debate'),
+        h(
+          'div',
+          { style: { display: 'flex', alignItems: 'center' } },
+          h('span', { style: { color: '#ff0046', fontSize: 22, marginRight: 6 } }, '🔥'),
+          h('span', { style: { color: '#0f172a', fontSize: 22, fontWeight: 900 } }, '5.0'),
+          h('span', { style: { color: '#94a3b8', fontSize: 20, fontWeight: 600, marginLeft: 6 } }, '(42 reactions)'),
+        ),
+        h(
+          'span',
+          {
+            style: {
+              color: '#60a5fa',
+              fontSize: 20,
+              fontWeight: 700,
+            },
+          },
+          'Fan Debate',
+        ),
+      ),
+      // Row 2: Author Name
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 28,
+            fontWeight: 900,
+            color: '#0f172a',
+            lineHeight: 1.25,
+            marginTop: 8,
+            marginBottom: 4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          },
+        },
+        author + ' ' + handle,
+      ),
+      // Row 3: Take Content Quote
+      h(
+        'div',
+        {
+          style: {
+            fontSize: 22,
+            fontWeight: 600,
+            color: '#334155',
+            lineHeight: 1.35,
+            maxHeight: 60,
+            overflow: 'hidden',
+          },
+        },
+        '"' + (content.length > 120 ? content.slice(0, 120) + '…' : content) + '"',
+      ),
+      // Row 4: Bottom Row (Tap to View & Chat button)
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 8,
+          },
+        },
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column' } },
+          h('span', { style: { color: '#ff0046', fontSize: 22, fontWeight: 900 } }, 'Join the Discussion'),
+          h('span', { style: { color: '#94a3b8', fontSize: 16, fontWeight: 600 } }, 'egerscore.com/banter'),
+        ),
         h(
           'div',
           {
             style: {
-              background: '#ff0046',
-              color: '#ffffff',
-              fontSize: 15,
-              fontWeight: 800,
-              padding: '10px 20px',
-              borderRadius: 12,
+              width: 58,
+              height: 58,
+              borderRadius: 18,
+              background: '#f1f5f9',
+              border: '1.5px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             },
           },
-          'View Take on EgerScore →',
+          chatIcon(),
         ),
       ),
-    ),
-    h(
-      'div',
-      { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 } },
-      h('span', { style: { color: '#64748b', fontSize: 15 } }, 'EgerScore · The Fan Discussion Arena'),
-      h('span', { style: { color: '#ff0046', fontSize: 17, fontWeight: 800 } }, 'egerscore.com/banter'),
     ),
   );
 }
@@ -1833,14 +1931,14 @@ export default async function handler(request) {
     try {
       const product = await loadProductShare(storeId);
       return new ImageResponse(productOGCard(product), {
-        width: 1200,
-        height: 630,
+        width: 600,
+        height: 946,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(productOGCard(null), {
-        width: 1200,
-        height: 630,
+        width: 600,
+        height: 946,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }
@@ -1851,14 +1949,14 @@ export default async function handler(request) {
     try {
       const post = await loadBanterShare(banterId);
       return new ImageResponse(banterOGCard(post), {
-        width: 1200,
-        height: 630,
+        width: 600,
+        height: 946,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(banterOGCard(null), {
-        width: 1200,
-        height: 630,
+        width: 600,
+        height: 946,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }
