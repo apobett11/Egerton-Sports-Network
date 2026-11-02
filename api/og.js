@@ -1473,7 +1473,7 @@ async function fetchTeamAnalyticsData(teamSlug) {
   }
 }
 
-function starIcon(size = 18) {
+function starIcon(size = 44) {
   return h(
     'svg',
     {
@@ -1483,7 +1483,7 @@ function starIcon(size = 18) {
       fill: '#f59e0b',
       stroke: '#f59e0b',
       strokeWidth: 1.5,
-      style: { marginRight: 5, flexShrink: 0 },
+      style: { marginRight: 10, flexShrink: 0 },
     },
     h('polygon', {
       points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2',
@@ -1491,24 +1491,7 @@ function starIcon(size = 18) {
   );
 }
 
-function checkIcon(size = 18) {
-  return h(
-    'svg',
-    {
-      width: size,
-      height: size,
-      viewBox: '0 0 24 24',
-      fill: 'none',
-      stroke: '#00b04f',
-      strokeWidth: 2.5,
-      strokeLinecap: 'round',
-      strokeLinejoin: 'round',
-    },
-    h('polyline', { points: '20 6 9 17 4 12' }),
-  );
-}
-
-function userIcon(size = 20) {
+function userIcon(size = 46) {
   return h(
     'svg',
     {
@@ -1526,7 +1509,7 @@ function userIcon(size = 20) {
   );
 }
 
-function cartIcon(size = 20) {
+function cartIcon(size = 52) {
   return h(
     'svg',
     {
@@ -1545,7 +1528,7 @@ function cartIcon(size = 20) {
   );
 }
 
-function chatIcon(size = 20) {
+function chatIcon(size = 52) {
   return h(
     'svg',
     {
@@ -1562,6 +1545,7 @@ function chatIcon(size = 20) {
   );
 }
 
+// Exact 104x164 ratio scaled to width 1200 (1200 x 1892) - full canvas card with zero side fillings
 function productOGCard(product) {
   const pName = product?.name || 'solid black original goalkeeper gloves';
   const pPrice = product?.price ? ('Ksh ' + Number(product.price).toLocaleString()) : 'Ksh 900';
@@ -1572,205 +1556,106 @@ function productOGCard(product) {
   const pBadge = product?.badge || 'NEW ARRIVAL';
   const pRating = product?.rating ? Number(product.rating).toFixed(1) : '4.8';
   const pReviews = product?.reviewCount || 17;
-  const pImg = product?.image || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80';
+  const pImg = product?.image || 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1200&q=80';
 
   return h(
     'div',
     {
       style: {
         width: 1200,
-        height: 630,
-        background: '#081018',
+        height: 1892,
+        background: '#ffffff',
+        padding: 44,
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: '24px 50px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         boxSizing: 'border-box',
-        position: 'relative',
+        borderRadius: 56,
+        border: '3px solid #e2e8f0',
       },
     },
-    // Left Branded Panel
+    // Top Media Image Container (1:1 square, dominant, exactly filling width minus padding)
     h(
       'div',
       {
         style: {
-          width: 320,
+          width: 1112,
+          height: 1112,
+          borderRadius: 44,
+          overflow: 'hidden',
+          background: '#f8fafc',
+          position: 'relative',
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          gap: 16,
         },
       },
-      h(
-        'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-        h(
-          'span',
-          {
-            style: {
-              background: '#ff0046',
-              color: '#ffffff',
-              fontWeight: 900,
-              fontSize: 15,
-              padding: '4px 10px',
-              borderRadius: 8,
-              letterSpacing: 1,
-            },
-          },
-          'EGERSCORE',
-        ),
-        h(
-          'span',
-          {
-            style: {
-              color: '#94a3b8',
-              fontWeight: 800,
-              fontSize: 15,
-              letterSpacing: 0.8,
-            },
-          },
-          'SPORTS DEPOT',
-        ),
-      ),
+      h('img', {
+        src: pImg,
+        width: 1112,
+        height: 1112,
+        style: { width: '100%', height: '100%', objectFit: 'cover' },
+      }),
+      // Top Left Badge: NEW ARRIVAL (locked visual spec)
       h(
         'div',
         {
           style: {
-            fontSize: 34,
-            fontWeight: 900,
+            position: 'absolute',
+            top: 36,
+            left: 36,
+            background: 'rgba(11, 21, 34, 0.94)',
             color: '#ffffff',
-            lineHeight: 1.15,
-            letterSpacing: -0.5,
-          },
-        },
-        'Official Match Gear',
-      ),
-      h(
-        'div',
-        {
-          style: {
-            fontSize: 16,
-            color: '#94a3b8',
-            lineHeight: 1.45,
-          },
-        },
-        'Authentic varsity jerseys, gloves & equipment at Egerton University.',
-      ),
-      h(
-        'div',
-        {
-          style: {
+            fontSize: 28,
+            fontWeight: 900,
+            padding: '12px 28px',
+            borderRadius: 14,
+            letterSpacing: 1.2,
+            textTransform: 'uppercase',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            background: 'rgba(0, 176, 79, 0.15)',
-            border: '1.5px solid rgba(0, 176, 79, 0.4)',
-            padding: '8px 14px',
-            borderRadius: 12,
           },
         },
-        checkIcon(18),
-        h('span', { style: { color: '#ffffff', fontSize: 14, fontWeight: 700 } }, '100% Authentic Quality'),
+        pBadge,
+      ),
+      // Top Right Circle: User icon
+      h(
+        'div',
+        {
+          style: {
+            position: 'absolute',
+            top: 36,
+            right: 36,
+            width: 88,
+            height: 88,
+            borderRadius: 999,
+            background: 'rgba(255, 255, 255, 0.92)',
+            border: '2.5px solid rgba(226, 232, 240, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        },
+        userIcon(46),
       ),
     ),
-
-    // CENTER: Locked Reference Product Card (Proportions match reference screenshot 104x164)
+    // Details Section Beneath Image
     h(
       'div',
       {
         style: {
-          width: 370,
-          height: 580,
-          background: '#ffffff',
-          borderRadius: 24,
-          border: '2px solid rgba(255, 255, 255, 0.85)',
-          padding: 14,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          boxSizing: 'border-box',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          flex: 1,
+          paddingTop: 36,
+          paddingBottom: 24,
+          paddingLeft: 20,
+          paddingRight: 20,
         },
       },
-      // Top Media Image Container (1:1 square, dominant)
       h(
         'div',
-        {
-          style: {
-            width: 338,
-            height: 338,
-            borderRadius: 18,
-            overflow: 'hidden',
-            background: '#f1f5f9',
-            position: 'relative',
-            display: 'flex',
-          },
-        },
-        h('img', {
-          src: pImg,
-          width: 338,
-          height: 338,
-          style: { width: '100%', height: '100%', objectFit: 'cover' },
-        }),
-        // Top Left Badge: NEW ARRIVAL (locked visual spec)
-        h(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              background: 'rgba(11, 21, 34, 0.94)',
-              color: '#ffffff',
-              fontSize: 11,
-              fontWeight: 900,
-              padding: '4px 9px',
-              borderRadius: 6,
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-            },
-          },
-          pBadge,
-        ),
-        // Top Right Circle: User icon
-        h(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              width: 34,
-              height: 34,
-              borderRadius: 999,
-              background: 'rgba(255, 255, 255, 0.92)',
-              border: '1px solid rgba(226, 232, 240, 0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-          },
-          userIcon(18),
-        ),
-      ),
-      // Details Section Beneath Image
-      h(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            flex: 1,
-            paddingTop: 12,
-            paddingBottom: 4,
-            paddingLeft: 4,
-            paddingRight: 4,
-          },
-        },
+        { style: { display: 'flex', flexDirection: 'column' } },
         // Row 1: Rating & Category
         h(
           'div',
@@ -1779,141 +1664,78 @@ function productOGCard(product) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              marginBottom: 20,
             },
           },
           h(
             'div',
             { style: { display: 'flex', alignItems: 'center' } },
-            starIcon(18),
-            h('span', { style: { color: '#0f172a', fontSize: 16, fontWeight: 900 } }, pRating),
-            h('span', { style: { color: '#94a3b8', fontSize: 15, fontWeight: 600, marginLeft: 5 } }, '(' + pReviews + ')'),
+            starIcon(46),
+            h('span', { style: { color: '#0f172a', fontSize: 46, fontWeight: 900 } }, pRating),
+            h('span', { style: { color: '#94a3b8', fontSize: 40, fontWeight: 600, marginLeft: 12 } }, '(' + pReviews + ')'),
           ),
           h(
             'span',
             {
               style: {
                 color: '#3b82f6',
-                fontSize: 15,
+                fontSize: 44,
                 fontWeight: 700,
               },
             },
             pCategory,
           ),
         ),
-        // Row 2: Product Title (2 lines max, bold dark slate)
+        // Row 2: Product Title (bold dark slate)
         h(
           'div',
           {
             style: {
-              fontSize: 19,
+              fontSize: 60,
               fontWeight: 900,
               color: '#0f172a',
               lineHeight: 1.25,
-              marginTop: 6,
-              marginBottom: 6,
-              maxHeight: 48,
+              maxHeight: 150,
               overflow: 'hidden',
             },
           },
           pName,
         ),
-        // Row 3: Price and Cart Action
+      ),
+      // Row 3: Price and Cart Action
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            paddingTop: 24,
+          },
+        },
+        h(
+          'div',
+          { style: { display: 'flex', flexDirection: 'column' } },
+          h('span', { style: { color: '#0b1522', fontSize: 72, fontWeight: 900, letterSpacing: -1.5 } }, pPrice),
+          h('span', { style: { color: '#94a3b8', fontSize: 42, fontWeight: 600, textDecoration: 'line-through', marginTop: 4 } }, pOrigPrice),
+        ),
+        // Cart button
         h(
           'div',
           {
             style: {
+              width: 116,
+              height: 116,
+              borderRadius: 34,
+              background: '#f1f5f9',
+              border: '3px solid #e2e8f0',
               display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              paddingTop: 4,
+              alignItems: 'center',
+              justifyContent: 'center',
             },
           },
-          h(
-            'div',
-            { style: { display: 'flex', flexDirection: 'column' } },
-            h('span', { style: { color: '#0b1522', fontSize: 24, fontWeight: 900, letterSpacing: -0.5 } }, pPrice),
-            h('span', { style: { color: '#94a3b8', fontSize: 15, fontWeight: 600, textDecoration: 'line-through', marginTop: 1 } }, pOrigPrice),
-          ),
-          // Cart button
-          h(
-            'div',
-            {
-              style: {
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                background: '#f1f5f9',
-                border: '1.5px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            },
-            cartIcon(19),
-          ),
+          cartIcon(52),
         ),
-      ),
-    ),
-
-    // Right Branded Panel
-    h(
-      'div',
-      {
-        style: {
-          width: 320,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          gap: 18,
-          alignItems: 'flex-end',
-          textAlign: 'right',
-        },
-      },
-      h(
-        'div',
-        {
-          style: {
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1.5px solid rgba(255, 255, 255, 0.1)',
-            padding: '12px 18px',
-            borderRadius: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            alignItems: 'flex-end',
-          },
-        },
-        h('span', { style: { color: '#ff0046', fontSize: 13, fontWeight: 900, letterSpacing: 1 } }, 'CAMPUS DELIVERY'),
-        h('span', { style: { color: '#ffffff', fontSize: 17, fontWeight: 800 } }, 'Pavilion & Njoro Campus'),
-        h('span', { style: { color: '#94a3b8', fontSize: 13 } }, 'Fast student pickup & delivery'),
-      ),
-      h(
-        'div',
-        {
-          style: {
-            background: '#ff0046',
-            color: '#ffffff',
-            fontWeight: 900,
-            fontSize: 16,
-            padding: '12px 24px',
-            borderRadius: 999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          },
-        },
-        'TAP LINK TO VIEW →',
-      ),
-      h(
-        'span',
-        {
-          style: {
-            color: '#64748b',
-            fontSize: 13,
-            fontWeight: 600,
-          },
-        },
-        'egerscore.com/store',
       ),
     ),
   );
@@ -1923,205 +1745,106 @@ function banterOGCard(post) {
   const author = post?.authorName || post?.authorHandle || 'Campus Fanatic';
   const handle = post?.authorHandle ? (post.authorHandle.startsWith('@') ? post.authorHandle : ('@' + post.authorHandle)) : '@EgerScore';
   const content = post?.content || 'Matchday banter and live community discussion on EgerScore! Who takes the derby win this weekend?';
-  const pImg = post?.image || 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80';
+  const pImg = post?.image || 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1200&q=80';
 
   return h(
     'div',
     {
       style: {
         width: 1200,
-        height: 630,
-        background: '#081018',
+        height: 1892,
+        background: '#ffffff',
+        padding: 44,
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: '24px 50px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         boxSizing: 'border-box',
-        position: 'relative',
+        borderRadius: 56,
+        border: '3px solid #e2e8f0',
       },
     },
-    // Left Branded Panel
+    // Top Media Image Container (1:1 square, dominant)
     h(
       'div',
       {
         style: {
-          width: 320,
+          width: 1112,
+          height: 1112,
+          borderRadius: 44,
+          overflow: 'hidden',
+          background: '#0b1522',
+          position: 'relative',
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          gap: 16,
         },
       },
-      h(
-        'div',
-        { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-        h(
-          'span',
-          {
-            style: {
-              background: '#ff0046',
-              color: '#ffffff',
-              fontWeight: 900,
-              fontSize: 15,
-              padding: '4px 10px',
-              borderRadius: 8,
-              letterSpacing: 1,
-            },
-          },
-          'EGERSCORE',
-        ),
-        h(
-          'span',
-          {
-            style: {
-              color: '#38bdf8',
-              fontWeight: 800,
-              fontSize: 15,
-              letterSpacing: 0.8,
-            },
-          },
-          'BANTER',
-        ),
-      ),
+      h('img', {
+        src: pImg,
+        width: 1112,
+        height: 1112,
+        style: { width: '100%', height: '100%', objectFit: 'cover' },
+      }),
+      // Top Left Badge: BANTER
       h(
         'div',
         {
           style: {
-            fontSize: 34,
-            fontWeight: 900,
+            position: 'absolute',
+            top: 36,
+            left: 36,
+            background: 'rgba(11, 21, 34, 0.94)',
             color: '#ffffff',
-            lineHeight: 1.15,
-            letterSpacing: -0.5,
-          },
-        },
-        'Live Matchday Debate',
-      ),
-      h(
-        'div',
-        {
-          style: {
-            fontSize: 16,
-            color: '#94a3b8',
-            lineHeight: 1.45,
-          },
-        },
-        'Real-time reactions, banter and fan discussions across Egerton campus leagues.',
-      ),
-      h(
-        'div',
-        {
-          style: {
+            fontSize: 28,
+            fontWeight: 900,
+            padding: '12px 28px',
+            borderRadius: 14,
+            letterSpacing: 1.2,
+            textTransform: 'uppercase',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            background: 'rgba(56, 189, 248, 0.15)',
-            border: '1.5px solid rgba(56, 189, 248, 0.4)',
-            padding: '8px 14px',
-            borderRadius: 12,
           },
         },
-        checkIcon(18),
-        h('span', { style: { color: '#ffffff', fontSize: 14, fontWeight: 700 } }, 'Verified Campus Fan Post'),
+        'BANTER',
+      ),
+      // Top Right Circle: User icon
+      h(
+        'div',
+        {
+          style: {
+            position: 'absolute',
+            top: 36,
+            right: 36,
+            width: 88,
+            height: 88,
+            borderRadius: 999,
+            background: 'rgba(255, 255, 255, 0.92)',
+            border: '2.5px solid rgba(226, 232, 240, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        },
+        userIcon(46),
       ),
     ),
-
-    // CENTER: Locked Reference Card
+    // Details Section Beneath Image
     h(
       'div',
       {
         style: {
-          width: 370,
-          height: 580,
-          background: '#ffffff',
-          borderRadius: 24,
-          border: '2px solid rgba(255, 255, 255, 0.85)',
-          padding: 14,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          boxSizing: 'border-box',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
+          flex: 1,
+          paddingTop: 36,
+          paddingBottom: 24,
+          paddingLeft: 20,
+          paddingRight: 20,
         },
       },
-      // Top Media Image Container (1:1 square, dominant)
       h(
         'div',
-        {
-          style: {
-            width: 338,
-            height: 338,
-            borderRadius: 18,
-            overflow: 'hidden',
-            background: '#0b1522',
-            position: 'relative',
-            display: 'flex',
-          },
-        },
-        h('img', {
-          src: pImg,
-          width: 338,
-          height: 338,
-          style: { width: '100%', height: '100%', objectFit: 'cover' },
-        }),
-        // Top Left Badge: BANTER
-        h(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              background: 'rgba(11, 21, 34, 0.94)',
-              color: '#ffffff',
-              fontSize: 11,
-              fontWeight: 900,
-              padding: '4px 9px',
-              borderRadius: 6,
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-            },
-          },
-          'BANTER',
-        ),
-        // Top Right Circle: User icon
-        h(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              width: 34,
-              height: 34,
-              borderRadius: 999,
-              background: 'rgba(255, 255, 255, 0.92)',
-              border: '1px solid rgba(226, 232, 240, 0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-          },
-          userIcon(18),
-        ),
-      ),
-      // Details Section Beneath Image
-      h(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            flex: 1,
-            paddingTop: 12,
-            paddingBottom: 4,
-            paddingLeft: 4,
-            paddingRight: 4,
-          },
-        },
+        { style: { display: 'flex', flexDirection: 'column' } },
         // Row 1: Author & Handle
         h(
           'div',
@@ -2130,138 +1853,75 @@ function banterOGCard(post) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              marginBottom: 20,
             },
           },
           h(
             'div',
-            { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-            h('span', { style: { color: '#0f172a', fontSize: 16, fontWeight: 900 } }, author),
-            h('span', { style: { color: '#38bdf8', fontSize: 14, fontWeight: 700 } }, handle),
+            { style: { display: 'flex', alignItems: 'center', gap: 14 } },
+            h('span', { style: { color: '#0f172a', fontSize: 46, fontWeight: 900 } }, author),
+            h('span', { style: { color: '#38bdf8', fontSize: 38, fontWeight: 700 } }, handle),
           ),
           h(
             'span',
             {
               style: {
                 color: '#94a3b8',
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: 36,
+                fontWeight: 700,
               },
             },
             'LIVE',
           ),
         ),
-        // Row 2: Post Excerpt (2-3 lines max)
+        // Row 2: Post Excerpt
         h(
           'div',
           {
             style: {
-              fontSize: 18,
+              fontSize: 56,
               fontWeight: 800,
               color: '#0f172a',
               lineHeight: 1.3,
-              marginTop: 6,
-              marginBottom: 6,
-              maxHeight: 64,
+              maxHeight: 200,
               overflow: 'hidden',
             },
           },
           content,
         ),
-        // Row 3: Comments & Reply Button
+      ),
+      // Row 3: Comments & Reply Button
+      h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: 24,
+          },
+        },
+        h(
+          'span',
+          { style: { color: '#64748b', fontSize: 38, fontWeight: 700 } },
+          'Tap to join thread',
+        ),
         h(
           'div',
           {
             style: {
+              width: 116,
+              height: 116,
+              borderRadius: 34,
+              background: '#fef2f2',
+              border: '3px solid #fecaca',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingTop: 4,
+              justifyContent: 'center',
             },
           },
-          h(
-            'span',
-            { style: { color: '#64748b', fontSize: 14, fontWeight: 700 } },
-            'Tap to join thread',
-          ),
-          h(
-            'div',
-            {
-              style: {
-                width: 44,
-                height: 44,
-                borderRadius: 14,
-                background: '#fef2f2',
-                border: '1.5px solid #fecaca',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            },
-            chatIcon(20),
-          ),
+          chatIcon(52),
         ),
-      ),
-    ),
-
-    // Right Branded Panel
-    h(
-      'div',
-      {
-        style: {
-          width: 320,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          gap: 18,
-          alignItems: 'flex-end',
-          textAlign: 'right',
-        },
-      },
-      h(
-        'div',
-        {
-          style: {
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1.5px solid rgba(255, 255, 255, 0.1)',
-            padding: '12px 18px',
-            borderRadius: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            alignItems: 'flex-end',
-          },
-        },
-        h('span', { style: { color: '#38bdf8', fontSize: 13, fontWeight: 900, letterSpacing: 1 } }, 'EGERTON SPORTS NETWORK'),
-        h('span', { style: { color: '#ffffff', fontSize: 17, fontWeight: 800 } }, 'Pavilion & Campus Leagues'),
-        h('span', { style: { color: '#94a3b8', fontSize: 13 } }, 'Live scores, votes & fan banter'),
-      ),
-      h(
-        'div',
-        {
-          style: {
-            background: '#ff0046',
-            color: '#ffffff',
-            fontWeight: 900,
-            fontSize: 16,
-            padding: '12px 24px',
-            borderRadius: 999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          },
-        },
-        'JOIN THREAD →',
-      ),
-      h(
-        'span',
-        {
-          style: {
-            color: '#64748b',
-            fontSize: 13,
-            fontWeight: 600,
-          },
-        },
-        'egerscore.com/b',
       ),
     ),
   );
@@ -2278,13 +1938,13 @@ export default async function handler(request) {
       const product = await loadProductShare(storeId);
       return new ImageResponse(productOGCard(product), {
         width: 1200,
-        height: 630,
+        height: 1892,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(productOGCard(null), {
         width: 1200,
-        height: 630,
+        height: 1892,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }
@@ -2296,13 +1956,13 @@ export default async function handler(request) {
       const post = await loadBanterShare(banterId);
       return new ImageResponse(banterOGCard(post), {
         width: 1200,
-        height: 630,
+        height: 1892,
         headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000' },
       });
     } catch {
       return new ImageResponse(banterOGCard(null), {
         width: 1200,
-        height: 630,
+        height: 1892,
         headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' },
       });
     }
