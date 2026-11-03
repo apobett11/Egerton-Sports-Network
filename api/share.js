@@ -14,13 +14,32 @@ import {
   predictionDestination,
 } from '../src/lib/predictions/shareServer.mjs';
 
-function escapeHtml(value) {
+const shareRateLimitMap = new Map();
+
+export function checkShareRateLimit(ip, maxRequests = 120, windowMs = 60000) {
+  const now = Date.now();
+  const record = shareRateLimitMap.get(ip);
+  if (!record || now > record.resetAt) {
+    shareRateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  record.count += 1;
+  return true;
+}
+
+export function escapeHtml(value) {
   return String(value || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll("'", '&#39;')
+    .replaceAll('\n', ' ')
+    .replaceAll('\r', ' ')
+    .replaceAll('\0', '');
 }
 
 function isCrawler(req) {
@@ -305,6 +324,13 @@ function teamAnalyticsPage({ origin, team, requestUrl, isCrawler: isBot }) {
 }
 
 export default async function handler(req, res) {
+  const clientIp = String(req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  if (!checkShareRateLimit(clientIp, 120, 60000)) {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(429).send(JSON.stringify({ error: 'Rate limit exceeded for sharing endpoints.' }));
+    return;
+  }
+
   const isBot = isCrawler(req);
   const origin = getOrigin(req);
 

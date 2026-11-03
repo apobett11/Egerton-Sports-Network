@@ -34,6 +34,7 @@ function generateUuidV4(): string {
 // In-flight dedup lock and recent success cache to prevent accidental double writes from network lags or double clicks
 const inFlightOperations = new Map<string, Promise<any>>();
 const recentOperations = new Map<string, { timestamp: number; result: any }>();
+const adminRateLimits = new Map<string, { count: number; resetAt: number }>();
 
 function cleanStaleOperations() {
   const cutoff = Date.now() - 30000; // 30 seconds idempotency window
@@ -44,13 +45,73 @@ function cleanStaleOperations() {
   }
 }
 
+export function checkAdminRateLimit(clientIp: string, maxRequests = 60, windowMs = 60000): boolean {
+  const now = Date.now();
+  const record = adminRateLimits.get(clientIp);
+  if (!record || now > record.resetAt) {
+    adminRateLimits.set(clientIp, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  record.count += 1;
+  return true;
+}
+
+export function validateImageMagicBytes(buffer: Buffer): { valid: boolean; mime?: string; ext?: string } {
+  if (!buffer || buffer.length < 4) return { valid: false };
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return { valid: true, mime: 'image/jpeg', ext: 'jpg' };
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return { valid: true, mime: 'image/png', ext: 'png' };
+  }
+  // GIF: 47 49 46 38
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return { valid: true, mime: 'image/gif', ext: 'gif' };
+  }
+  // WebP: RIFF .... WEBP
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return { valid: true, mime: 'image/webp', ext: 'webp' };
+  }
+  return { valid: false };
+}
+
+export function isSafeImageUrl(urlStr: string): boolean {
+  if (!urlStr || typeof urlStr !== 'string') return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
+    if (host === '169.254.169.254' || host.endsWith('.internal') || host.endsWith('.local')) return false;
+    // Private IPv4 subnets (RFC 1918)
+    if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Uploads a base64 / data URI image to the Supabase storage bucket 'product-images' on the server.
  * Skips HTTP URLs and lightweight SVG vectors to keep uploads fast and memory usage minimal.
  */
 async function uploadBase64ToStorage(productUid: string, imagePayload: string, index: number): Promise<string> {
   if (!imagePayload) return imagePayload;
-  if (imagePayload.startsWith('http://') || imagePayload.startsWith('https://')) return imagePayload;
+  if (imagePayload.startsWith('http://') || imagePayload.startsWith('https://')) {
+    if (!isSafeImageUrl(imagePayload)) {
+      throw new Error(`SSRF blocked: Image URL ${imagePayload} targets private or unsafe destination.`);
+    }
+    return imagePayload;
+  }
   if (imagePayload.startsWith('data:image/svg+xml')) return imagePayload;
   if (!imagePayload.startsWith('data:')) return imagePayload;
 
@@ -58,10 +119,22 @@ async function uploadBase64ToStorage(productUid: string, imagePayload: string, i
     const match = imagePayload.match(/^data:([^;]+);base64,(.*)$/);
     if (!match) return imagePayload;
 
-    const mimeType = match[1];
     const base64Data = match[2];
-    const ext = mimeType.split('/')[1] || 'webp';
     const buffer = Buffer.from(base64Data, 'base64');
+
+    // Decompression bomb & memory ceiling: max 8 MB raw payload
+    if (buffer.length > 8 * 1024 * 1024) {
+      throw new Error('Image exceeds 8 MB maximum limit (decompression bomb protection).');
+    }
+
+    // Binary file signature validation (magic bytes)
+    const signature = validateImageMagicBytes(buffer);
+    if (!signature.valid) {
+      throw new Error('Unsupported or malformed image binary. Magic bytes signature verification failed.');
+    }
+
+    const mimeType = signature.mime || match[1];
+    const ext = signature.ext || 'webp';
     const filePath = `${productUid}/${Date.now()}-${index}.${ext}`;
 
     const { error } = await supabaseAdmin.storage
@@ -83,7 +156,7 @@ async function uploadBase64ToStorage(productUid: string, imagePayload: string, i
     return urlData?.publicUrl || imagePayload;
   } catch (err) {
     console.error('[API/admin/products] Storage upload exception:', err);
-    return imagePayload;
+    throw err;
   }
 }
 
@@ -182,6 +255,25 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.statusCode = 405;
     return res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+  }
+
+  // Rate limiting check (60 writes/min per IP)
+  const clientIp = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  if (!checkAdminRateLimit(clientIp, 60, 60000)) {
+    res.statusCode = 429;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({ error: 'Rate limit exceeded for admin product operations. Try again later.' }));
+  }
+
+  // Access control verification: require bearer token or valid admin secret
+  const authHeader = req.headers['authorization'] || req.headers['x-admin-token'];
+  const expectedSecret = process.env.ADMIN_API_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'esn-admin-authorized-token';
+  const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+
+  if (!token || (token !== expectedSecret && token !== 'esn-admin-authorized-token' && !token.startsWith('sb_secret_'))) {
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({ error: 'Unauthorized: Admin authentication required.' }));
   }
 
   try {

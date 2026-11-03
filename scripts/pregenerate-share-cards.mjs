@@ -249,36 +249,104 @@ export function productOGCard(product) {
   );
 }
 
+export function validateImageMagicBytes(buffer) {
+  if (!buffer || buffer.length < 4) return { valid: false };
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return { valid: true, mime: 'image/jpeg', ext: 'jpg' };
+  }
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return { valid: true, mime: 'image/png', ext: 'png' };
+  }
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return { valid: true, mime: 'image/gif', ext: 'gif' };
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return { valid: true, mime: 'image/webp', ext: 'webp' };
+  }
+  return { valid: false };
+}
+
+export function isSafeImageUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
+    if (host === '169.254.169.254' || host.endsWith('.internal') || host.endsWith('.local')) return false;
+    if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function generateAndOptimizeCard(product, outPath) {
   const t0 = Date.now();
-  const element = productOGCard(product);
+
+  // 1. SSRF URL sanitization: ensure externally supplied images are safe
+  let safeImg = product?.image;
+  if (!safeImg || !isSafeImageUrl(safeImg)) {
+    safeImg = 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1200&q=80';
+  }
+  const safeProduct = { ...product, image: safeImg };
+
+  const element = productOGCard(safeProduct);
   const response = new ImageResponse(element, { width: 1200, height: 1892 });
   const rawBuf = Buffer.from(await response.arrayBuffer());
   const rawSize = rawBuf.length;
 
-  const optBuf = await sharp(rawBuf)
+  // 2. Compress with strict decompression bomb ceiling
+  const optBuf = await sharp(rawBuf, { limitInputPixels: 50000000 })
     .jpeg({ quality: 86, mozjpeg: true, progressive: true })
     .toBuffer();
   const optSize = optBuf.length;
 
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, optBuf);
+  // 3. Verify magic bytes of optimized image
+  const signature = validateImageMagicBytes(optBuf);
+  if (!signature.valid || signature.ext !== 'jpg') {
+    throw new Error(`Magic bytes validation failed for card ${product?.id}: expected JPEG, got ${signature.mime || 'unknown'}`);
+  }
 
-  // Verification step: verify decoded metadata
-  const decoded = await sharp(outPath).metadata();
-  const duration = Date.now() - t0;
-  const reduction = (((rawSize - optSize) / rawSize) * 100).toFixed(1);
+  // 4. Atomic file generation: write to unique temporary file
+  const dir = path.dirname(outPath);
+  fs.mkdirSync(dir, { recursive: true });
+  const tmpPath = `${outPath}.tmp.${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  fs.writeFileSync(tmpPath, optBuf);
 
-  return {
-    rawSize,
-    optSize,
-    reduction: `${reduction}%`,
-    durationMs: duration,
-    width: decoded.width,
-    height: decoded.height,
-    format: decoded.format,
-    outPath,
-  };
+  try {
+    // 5. Verify actual image bytes, dimensions and decoding before publishing
+    const decoded = await sharp(tmpPath, { limitInputPixels: 50000000 }).metadata();
+    if (decoded.width !== 1200 || decoded.height !== 1892 || decoded.format !== 'jpeg') {
+      throw new Error(`Pre-publication verification failed: unexpected geometry ${decoded.width}x${decoded.height} ${decoded.format}`);
+    }
+
+    // 6. Atomic swap: safely replace destination while preserving old valid asset if any error occurred prior
+    fs.renameSync(tmpPath, outPath);
+
+    const duration = Date.now() - t0;
+    const reduction = (((rawSize - optSize) / rawSize) * 100).toFixed(1);
+
+    return {
+      rawSize,
+      optSize,
+      reduction: `${reduction}%`,
+      durationMs: duration,
+      width: decoded.width,
+      height: decoded.height,
+      format: decoded.format,
+      outPath,
+    };
+  } catch (err) {
+    if (fs.existsSync(tmpPath)) {
+      try { fs.unlinkSync(tmpPath); } catch {}
+    }
+    throw err;
+  }
 }
 
 async function main() {
@@ -429,4 +497,7 @@ async function main() {
   console.log(`--- FINISHED: ${results.length} CARDS PRE-GENERATED & OPTIMIZED ---`);
 }
 
-main().catch(console.error);
+const isDirectRun = process.argv[1] && process.argv[1].includes('pregenerate-share-cards');
+if (isDirectRun) {
+  main().catch(console.error);
+}
