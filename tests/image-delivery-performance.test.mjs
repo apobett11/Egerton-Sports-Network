@@ -36,13 +36,13 @@ test('Performance: All pre-generated product cards exist and meet performance bu
     const decodeMs = (performance.now() - t0).toFixed(2);
 
     assert.equal(meta.width, 1200, `Width must be 1200px for ${asset.id}`);
-    assert.equal(meta.height, 1892, `Height must be 1892px for ${asset.id}`);
+    assert.equal(meta.height, 630, `Height must be 630px for ${asset.id}`);
     assert.equal(meta.format, 'jpeg', `Format must be jpeg for ${asset.id}`);
 
     const ratio = (meta.width / meta.height).toFixed(4);
-    const expectedRatio = (104 / 164).toFixed(4);
+    const expectedRatio = (1200 / 630).toFixed(4);
     const diff = Math.abs(Number(ratio) - Number(expectedRatio));
-    assert.ok(diff < 0.001, `Aspect ratio must match 104:164 within rounding (${diff})`);
+    assert.ok(diff < 0.001, `Aspect ratio must match 1.91:1 within rounding (${diff})`);
 
     const withinPreferred = stats.size <= 380 * 1024;
     console.log(`| ${asset.id} | ${meta.width}x${meta.height} | ${sizeKb} KB | ${withinPreferred ? 'PASS' : 'WARN (under 550KB)'} | ${decodeMs} ms | ${ratio} | PASS |`);

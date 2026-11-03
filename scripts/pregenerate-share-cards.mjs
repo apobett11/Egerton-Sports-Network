@@ -79,25 +79,27 @@ export function productOGCard(product) {
     {
       style: {
         width: 1200,
-        height: 1892,
+        height: 630,
         background: '#ffffff',
-        padding: 44,
+        padding: 36,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         boxSizing: 'border-box',
-        borderRadius: 56,
+        borderRadius: 40,
         border: '3px solid #e2e8f0',
       },
     },
+    // Left Media Box (Square, fills height cleanly)
     h(
       'div',
       {
         style: {
-          width: 1112,
-          height: 1112,
-          borderRadius: 44,
+          width: 558,
+          height: 558,
+          borderRadius: 28,
           overflow: 'hidden',
           background: '#f8fafc',
           position: 'relative',
@@ -106,23 +108,23 @@ export function productOGCard(product) {
       },
       h('img', {
         src: pImg,
-        width: 1112,
-        height: 1112,
-        style: { width: '100%', height: '100%', objectFit: 'cover' },
+        width: 558,
+        height: 558,
+        style: { width: '100%', height: '100%', objectFit: 'contain' },
       }),
       h(
         'div',
         {
           style: {
             position: 'absolute',
-            top: 36,
-            left: 36,
+            top: 24,
+            left: 24,
             background: 'rgba(11, 21, 34, 0.94)',
             color: '#ffffff',
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: 900,
-            padding: '12px 28px',
-            borderRadius: 14,
+            padding: '8px 20px',
+            borderRadius: 12,
             letterSpacing: 1.2,
             textTransform: 'uppercase',
             display: 'flex',
@@ -136,38 +138,39 @@ export function productOGCard(product) {
         {
           style: {
             position: 'absolute',
-            top: 36,
-            right: 36,
-            width: 88,
-            height: 88,
+            top: 24,
+            right: 24,
+            width: 64,
+            height: 64,
             borderRadius: 999,
-            background: 'rgba(255, 255, 255, 0.92)',
-            border: '2.5px solid rgba(226, 232, 240, 0.9)',
+            background: 'rgba(255, 255, 255, 0.94)',
+            border: '2px solid rgba(226, 232, 240, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           },
         },
-        userIcon(46)
+        userIcon(36)
       )
     ),
+    // Right Details Column
     h(
       'div',
       {
         style: {
+          width: 530,
+          height: 558,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          flex: 1,
-          paddingTop: 36,
-          paddingBottom: 24,
-          paddingLeft: 20,
-          paddingRight: 20,
+          padding: '16px 0',
+          boxSizing: 'border-box',
         },
       },
       h(
         'div',
         { style: { display: 'flex', flexDirection: 'column' } },
+        // Category and Rating row
         h(
           'div',
           {
@@ -175,43 +178,48 @@ export function productOGCard(product) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: 20,
+              marginBottom: 16,
             },
           },
           h(
             'div',
             { style: { display: 'flex', alignItems: 'center' } },
-            starIcon(46),
-            h('span', { style: { color: '#0f172a', fontSize: 46, fontWeight: 900 } }, pRating),
-            h('span', { style: { color: '#94a3b8', fontSize: 40, fontWeight: 600, marginLeft: 12 } }, '(' + pReviews + ')')
+            starIcon(34),
+            h('span', { style: { color: '#0f172a', fontSize: 32, fontWeight: 900 } }, pRating),
+            h('span', { style: { color: '#94a3b8', fontSize: 26, fontWeight: 600, marginLeft: 8 } }, '(' + pReviews + ')')
           ),
           h(
             'span',
             {
               style: {
                 color: '#3b82f6',
-                fontSize: 44,
+                fontSize: 30,
                 fontWeight: 700,
+                background: '#eff6ff',
+                padding: '6px 16px',
+                borderRadius: 10,
               },
             },
             pCategory
           )
         ),
+        // Product Title
         h(
           'div',
           {
             style: {
-              fontSize: 60,
+              fontSize: 44,
               fontWeight: 900,
               color: '#0f172a',
               lineHeight: 1.25,
-              maxHeight: 150,
+              maxHeight: 170,
               overflow: 'hidden',
             },
           },
           pName
         )
       ),
+      // Price and Cart Button
       h(
         'div',
         {
@@ -219,30 +227,31 @@ export function productOGCard(product) {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            paddingTop: 24,
+            paddingTop: 16,
+            borderTop: '2px solid #f1f5f9',
           },
         },
         h(
           'div',
           { style: { display: 'flex', flexDirection: 'column' } },
-          h('span', { style: { color: '#0b1522', fontSize: 72, fontWeight: 900, letterSpacing: -1.5 } }, pPrice),
-          h('span', { style: { color: '#94a3b8', fontSize: 42, fontWeight: 600, textDecoration: 'line-through', marginTop: 4 } }, pOrigPrice)
+          h('span', { style: { color: '#ff0046', fontSize: 56, fontWeight: 900, letterSpacing: -1.2 } }, pPrice),
+          h('span', { style: { color: '#94a3b8', fontSize: 32, fontWeight: 600, textDecoration: 'line-through', marginTop: 2 } }, pOrigPrice)
         ),
         h(
           'div',
           {
             style: {
-              width: 116,
-              height: 116,
-              borderRadius: 34,
+              width: 88,
+              height: 88,
+              borderRadius: 24,
               background: '#f1f5f9',
-              border: '3px solid #e2e8f0',
+              border: '2.5px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             },
           },
-          cartIcon(52)
+          cartIcon(42)
         )
       )
     )
@@ -296,7 +305,7 @@ export async function generateAndOptimizeCard(product, outPath) {
   const safeProduct = { ...product, image: safeImg };
 
   const element = productOGCard(safeProduct);
-  const response = new ImageResponse(element, { width: 1200, height: 1892 });
+  const response = new ImageResponse(element, { width: 1200, height: 630 });
   const rawBuf = Buffer.from(await response.arrayBuffer());
   const rawSize = rawBuf.length;
 
@@ -321,7 +330,7 @@ export async function generateAndOptimizeCard(product, outPath) {
   try {
     // 5. Verify actual image bytes, dimensions and decoding before publishing
     const decoded = await sharp(tmpPath, { limitInputPixels: 50000000 }).metadata();
-    if (decoded.width !== 1200 || decoded.height !== 1892 || decoded.format !== 'jpeg') {
+    if (decoded.width !== 1200 || decoded.height !== 630 || decoded.format !== 'jpeg') {
       throw new Error(`Pre-publication verification failed: unexpected geometry ${decoded.width}x${decoded.height} ${decoded.format}`);
     }
 

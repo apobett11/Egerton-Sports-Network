@@ -36,7 +36,7 @@ test('Asset Reliability: Publish generated images atomically and preserve previo
   assert.strictEqual(fs.existsSync(outPath), true);
   const initialContent = fs.readFileSync(outPath);
   assert.strictEqual(initialStats.width, 1200);
-  assert.strictEqual(initialStats.height, 1892);
+  assert.strictEqual(initialStats.height, 630);
 
   // 2. Simulate broken generation attempt: should throw and NOT corrupt existing file
   const corruptProduct = {
@@ -109,7 +109,7 @@ test('Full Preview Pipeline: 7-Stage End-to-End Verification with Step Timings',
 
   // Stage 1: Product URL retrieval
   const t1_0 = performance.now();
-  const productShareUrl = `${origin}/store/${sku}?v=20261102`;
+  const productShareUrl = `${origin}/store/${sku}?v=20261103`;
   assert.strictEqual(typeof productShareUrl, 'string');
   const t1 = performance.now() - t1_0;
   console.log(`[Stage 1] Product URL Retrieval: ${t1.toFixed(3)} ms -> ${productShareUrl}`);
@@ -130,7 +130,7 @@ test('Full Preview Pipeline: 7-Stage End-to-End Verification with Step Timings',
 
   // Stage 4: Image URL retrieval
   const t4_0 = performance.now();
-  const imageUrl = `${origin}/og/products/${sku}.jpg?v=20261102`;
+  const imageUrl = `${origin}/og/products/${sku}.jpg?v=20261103`;
   assert.strictEqual(imageUrl.startsWith('https://'), true);
   const t4 = performance.now() - t4_0;
   console.log(`[Stage 4] Stable HTTPS Image URL Retrieval: ${t4.toFixed(3)} ms -> ${imageUrl}`);
@@ -148,17 +148,17 @@ test('Full Preview Pipeline: 7-Stage End-to-End Verification with Step Timings',
   const metadata = await sharp(imageBuffer, { limitInputPixels: 50000000 }).metadata();
   assert.strictEqual(metadata.format, 'jpeg');
   assert.strictEqual(metadata.width, 1200);
-  assert.strictEqual(metadata.height, 1892);
+  assert.strictEqual(metadata.height, 630);
   const t6 = performance.now() - t6_0;
-  console.log(`[Stage 6] Image Decoding (Sharp 1200x1892): ${t6.toFixed(3)} ms`);
+  console.log(`[Stage 6] Image Decoding (Sharp 1200x630): ${t6.toFixed(3)} ms`);
 
   // Stage 7: Preview readiness assertion
   const t7_0 = performance.now();
   const isPreviewReady = (
     imageBuffer.length < 550 * 1024 &&
     metadata.width === 1200 &&
-    metadata.height === 1892 &&
-    Math.abs((metadata.width / metadata.height) - (104 / 164)) < 0.001
+    metadata.height === 630 &&
+    Math.abs((metadata.width / metadata.height) - (1200 / 630)) < 0.001
   );
   assert.strictEqual(isPreviewReady, true, 'Preview must satisfy all readiness criteria');
   const t7 = performance.now() - t7_0;

@@ -72,9 +72,8 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
   };
 
   const getProductShareUrl = () => {
-    if (typeof window === "undefined") return `https://egerscore.com/store/${product.id}?v=20261102`;
-    const origin = window.location.origin.includes('localhost') ? 'https://egerscore.com' : window.location.origin;
-    return `${origin}/store/${product.id}?v=20261102`;
+    const prodId = product.sku || product.id;
+    return `https://www.egerscore.com/store/${encodeURIComponent(prodId)}?v=20261103`;
   };
 
   const handleShare = (platform: string) => {
@@ -571,7 +570,7 @@ export const ProductDetailsCard: React.FC<ProductDetailsCardProps> = ({
             <div className={`flex items-center justify-between px-3 py-2 rounded-xl border text-xs mb-3 font-mono ${
               isDark ? 'bg-[#0a1420] border-[#234568] text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
             }`}>
-              <span className="truncate pr-2">egerscore.com/store/{product.id}</span>
+              <span className="truncate pr-2">www.egerscore.com/store/{product.sku || product.id}</span>
               <button
                 onClick={() => handleShare("copy")}
                 className="text-xs font-bold text-[#ff0046] hover:underline shrink-0 cursor-pointer"

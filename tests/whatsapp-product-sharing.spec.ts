@@ -69,7 +69,7 @@ test.describe('WhatsApp Product Sharing & Open Graph Suite', () => {
         expect(shareUrl).toContain('https://wa.me/?text=');
         expect(shareUrl).toContain('Check%20this%20out');
         expect(shareUrl).toContain(encodeURIComponent('IB-10001'));
-        expect(shareUrl).toContain('v%3D20261102');
+        expect(shareUrl).toContain('v%3D20261103');
       }
     });
   }
@@ -77,7 +77,7 @@ test.describe('WhatsApp Product Sharing & Open Graph Suite', () => {
   // PHASE 6 & 8: Server-Rendered Open Graph Metadata Verification
   for (const prod of TEST_PRODUCTS) {
     test(`Open Graph SSR Metadata for Product [${prod.id}]`, async ({ request }) => {
-      const response = await request.get(`/store/${prod.id}?v=20261102`, {
+      const response = await request.get(`/store/${prod.id}?v=20261103`, {
         headers: {
           'User-Agent': 'WhatsApp/2.23.20.0 A', // Emulate WhatsApp link crawler
         },
@@ -92,7 +92,7 @@ test.describe('WhatsApp Product Sharing & Open Graph Suite', () => {
       expect(html).toContain(prod.name);
       expect(html).toContain('property="og:image"');
       expect(html).toContain('property="og:image:width" content="1200"');
-      expect(html).toContain('property="og:image:height" content="1892"');
+      expect(html).toContain('property="og:image:height" content="630"');
       expect(html).toContain('property="og:image:type" content="image/jpeg"');
       expect(html).toContain(`store/${prod.id}`);
 
@@ -106,7 +106,7 @@ test.describe('WhatsApp Product Sharing & Open Graph Suite', () => {
   }
 
   // PHASE 4, 7, 8: Image Decoding, Geometry & Compression Validation
-  test('Image Asset Validation: Complete decoding, 1200x1892 geometry, file size budget', async () => {
+  test('Image Asset Validation: Complete decoding, 1200x630 geometry, file size budget', async () => {
     for (const prod of TEST_PRODUCTS) {
       const filePath = path.resolve(process.cwd(), `public/og/products/${prod.id}.jpg`);
       expect(fs.existsSync(filePath)).toBe(true);
@@ -116,12 +116,12 @@ test.describe('WhatsApp Product Sharing & Open Graph Suite', () => {
 
       const meta = await sharp(buf).metadata();
       expect(meta.width).toBe(1200);
-      expect(meta.height).toBe(1892);
+      expect(meta.height).toBe(630);
       expect(meta.format).toBe('jpeg');
 
-      // Aspect ratio must equal 104:164 (0.6342)
+      // Aspect ratio must equal 1.91:1 (1200 / 630)
       const ratio = meta.width! / meta.height!;
-      expect(Math.abs(ratio - (104 / 164))).toBeLessThan(0.001);
+      expect(Math.abs(ratio - (1200 / 630))).toBeLessThan(0.001);
     }
   });
 

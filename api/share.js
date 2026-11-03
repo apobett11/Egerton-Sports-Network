@@ -48,14 +48,14 @@ function isCrawler(req) {
 }
 
 function getOrigin(req) {
-  const protocol = req.headers['x-forwarded-proto'] || (req.headers.host?.includes('localhost') ? 'http' : 'https');
-  const host = req.headers.host || 'egerscore.com';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.egerscore.com';
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return 'https://egerscore.com';
+    return 'https://www.egerscore.com';
   }
-  if (protocol === 'https' || host.includes('vercel.app') || host.includes('egerscore.com')) {
-    return `https://${host}`;
+  if (host === 'egerscore.com') {
+    return 'https://www.egerscore.com';
   }
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
   return `${protocol}://${host}`;
 }
 
@@ -67,9 +67,9 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
     const staticFeatured = path.join(process.cwd(), 'public', 'og', 'products', 'featured.jpg');
     const hasFeatured = fs.existsSync(staticFeatured);
     const image = hasFeatured
-      ? `${origin}/og/products/featured.jpg?v=20261102`
-      : `${origin}/api/og?store=featured&v=20261102`;
-    const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
+      ? `${origin}/og/products/featured.jpg?v=20261103`
+      : `${origin}/api/og?store=featured&v=20261103`;
+    const canonicalUrl = `${origin}/store`;
 
     return `<!doctype html>
 <html lang="en">
@@ -82,19 +82,18 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:site_name" content="Egerton Sports Depot">
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
-  <meta property="og:url" content="${escapeHtml(`${origin}/store`)}">
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}">
   <meta property="og:image" content="${escapeHtml(image)}">
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="1892">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-  <link rel="canonical" href="${escapeHtml(destination)}">
-  ${refreshTag}
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
   <script>location.replace(${JSON.stringify(destination)})</script>
 </head>
 <body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
@@ -112,10 +111,9 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   const staticPath = path.join(process.cwd(), 'public', 'og', 'products', `${prodKey}.jpg`);
   const hasStatic = fs.existsSync(staticPath);
   const image = hasStatic
-    ? `${origin}/og/products/${encodeURIComponent(prodKey)}.jpg?v=20261102`
-    : `${origin}/api/og?store=${encodeURIComponent(product.id)}&v=20261102`;
+    ? `${origin}/og/products/${encodeURIComponent(prodKey)}.jpg?v=20261103`
+    : `${origin}/api/og?store=${encodeURIComponent(product.id)}&v=20261103`;
   const canonicalUrl = `${origin}/store/${encodeURIComponent(product.id)}`;
-  const refreshTag = isBot ? '' : `<meta http-equiv="refresh" content="0;url=${escapeHtml(destination)}">`;
 
   return `<!doctype html>
 <html lang="en">
@@ -133,15 +131,14 @@ function productPage({ origin, product, storeId, requestUrl, isCrawler: isBot })
   <meta property="og:image:secure_url" content="${escapeHtml(image)}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="1892">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="${escapeHtml(product.name)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@EgerScore">
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${escapeHtml(image)}">
-  <link rel="canonical" href="${escapeHtml(destination)}">
-  ${refreshTag}
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}">
   <script>location.replace(${JSON.stringify(destination)})</script>
 </head>
 <body style="margin:0;background:#081018;color:white;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
