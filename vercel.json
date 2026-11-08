@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/royaldevelopers",
+      "destination": "/royaldevelopers/index.html"
+    },
+    {
       "source": "/store/:id",
       "destination": "/api/share?store=:id"
     },

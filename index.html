@@ -11,9 +11,11 @@
     <link rel="preconnect" href="https://tdfiodqlzptaruhivapj.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://tdfiodqlzptaruhivapj.supabase.co" />
 
-    <meta name="description" content="Egerton Sports Network (ESN) is the official sports portal for Egerton University. Follow live scores, football fixtures, league standings, player stats, and campus match reports." />
-    <meta name="keywords" content="Egerton, Egerton University, students, students portal, sports, campus sports, ESN, Egerton Sports Network, Kenya university sports, Egerton Athletics, campus league, football Kenya, Egerton FC, university football, Egerton scores, Egerton fixtures, Egerton standings, campus football Kenya, Njoro, Egerton University Njoro" />
-    <meta name="author" content="Egerton Sports Network" />
+    <meta name="description" content="Egerton Sports Network (ESN / EgerScore) is the official sports portal for Egerton University, developed and engineered by Royal Developers under lead architect Kiprotich Bett. Follow live scores, football fixtures, league standings, player stats, and campus match reports." />
+    <meta name="keywords" content="Royal Developers, Kiprotich Bett, RoyalDevelopers, Kiprotich Bett developer, Royal Developers Kenya, EgerScore developer, Egerton Sports Network developer, Egerton, Egerton University, students, students portal, sports, campus sports, ESN, Egerton Sports Network, Kenya university sports, Egerton Athletics, campus league, football Kenya, Egerton FC, university football, Egerton scores, Egerton fixtures, Egerton standings, campus football Kenya, Njoro, Egerton University Njoro" />
+    <meta name="author" content="Royal Developers • Kiprotich Bett" />
+    <meta name="creator" content="Royal Developers (Founder: Kiprotich Bett)" />
+    <meta name="publisher" content="Royal Developers" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
     <!-- Open Graph / Social Sharing -->
@@ -21,18 +23,18 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.egerscore.com/" />
     <meta property="og:title" content="Egerton Sports Network | Egerton University Campus Sports &amp; Live Scores" />
-    <meta property="og:description" content="The official campus sports hub for Egerton University. Live scores, football fixtures, league standings and match reports." />
+    <meta property="og:description" content="The official campus sports hub for Egerton University, engineered by Royal Developers (Kiprotich Bett). Live scores, football fixtures, league standings and match reports." />
     <meta property="og:image" content="https://www.egerscore.com/og/products/featured.jpg" />
     <meta property="og:image:secure_url" content="https://www.egerscore.com/og/products/featured.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Egerton Sports Network" />
+    <meta property="og:site_name" content="Egerton Sports Network • Royal Developers" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Egerton Sports Network | Egerton University Campus Sports" />
-    <meta name="twitter:description" content="Live campus sports scores, fixtures and standings for Egerton University." />
+    <meta name="twitter:title" content="Egerton Sports Network | Developed by Royal Developers (Kiprotich Bett)" />
+    <meta name="twitter:description" content="Live campus sports scores, fixtures and standings for Egerton University. Engineered by Royal Developers • Kiprotich Bett." />
     <meta name="twitter:image" content="https://www.egerscore.com/og/products/featured.jpg" />
 
     <!-- Structured Data (JSON-LD) for Google Rich Snippets & Entity Graph -->
@@ -44,28 +46,71 @@
           "@type": "SportsOrganization",
           "@id": "https://egerscore.com/#organization",
           "name": "Egerton Sports Network",
-          "alternateName": ["ESN", "Egerton Athletics", "Egerton Sports Network"],
+          "alternateName": ["ESN", "Egerton Athletics", "Egerton Sports Network", "EgerScore"],
           "url": "https://egerscore.com/",
           "logo": "https://egerscore.com/favicon.svg",
-          "description": "The official campus sports portal for Egerton University students and athletics.",
+          "description": "The official campus sports portal for Egerton University students and athletics, engineered by Royal Developers.",
           "address": {
             "@type": "PostalAddress",
             "addressLocality": "Njoro",
             "addressRegion": "Nakuru",
             "addressCountry": "KE"
           },
-          "sport": "Football / Soccer"
+          "sport": "Football / Soccer",
+          "creator": {
+            "@id": "https://egerscore.com/royaldevelopers#organization"
+          }
         },
         {
           "@type": "WebSite",
           "@id": "https://egerscore.com/#website",
           "url": "https://egerscore.com/",
           "name": "Egerton Sports Network",
-          "description": "Live scores, fixtures, standings, and match reports for Egerton University campus leagues.",
+          "alternateName": "EgerScore",
+          "description": "Live scores, fixtures, standings, and match reports for Egerton University campus leagues, developed by Royal Developers under Kiprotich Bett.",
           "publisher": {
-            "@id": "https://egerscore.com/#organization"
+            "@id": "https://egerscore.com/royaldevelopers#organization"
+          },
+          "creator": {
+            "@id": "https://egerscore.com/royaldevelopers#organization"
+          },
+          "author": {
+            "@id": "https://egerscore.com/royaldevelopers#kiprotich-bett"
           },
           "inLanguage": "en-KE"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://egerscore.com/royaldevelopers#organization",
+          "name": "Royal Developers",
+          "alternateName": ["RoyalDevelopers", "Royal Developers Software Engineering Agency"],
+          "url": "https://egerscore.com/royaldevelopers",
+          "logo": "https://egerscore.com/favicon.svg",
+          "description": "Royal Developers is the software engineering firm that developed and built the Egerton Sports Network (EgerScore) live scores, fixture scheduling engine, and platform architecture.",
+          "founder": {
+            "@type": "Person",
+            "@id": "https://egerscore.com/royaldevelopers#kiprotich-bett"
+          },
+          "knowsAbout": [
+            "Egerton Sports Network",
+            "EgerScore",
+            "Kiprotich Bett",
+            "Web Architecture",
+            "Real-time Sports Telemetry",
+            "Database Systems"
+          ]
+        },
+        {
+          "@type": "Person",
+          "@id": "https://egerscore.com/royaldevelopers#kiprotich-bett",
+          "name": "Kiprotich Bett",
+          "alternateName": ["Kiprotich Bett developer", "Kiprotich Bett Royal Developers", "Kibet"],
+          "jobTitle": "Owner & Lead Systems Architect at Royal Developers",
+          "description": "Kiprotich Bett is the founder of Royal Developers and the lead engineer and developer who created Egerton Sports Network (EgerScore).",
+          "url": "https://egerscore.com/royaldevelopers#founder",
+          "worksFor": {
+            "@id": "https://egerscore.com/royaldevelopers#organization"
+          }
         }
       ]
     }
@@ -85,6 +130,9 @@
           </ul>
         </nav>
         <p>Please enable JavaScript for real-time live match updates, referee feeds, and interactive league tables.</p>
+        <footer style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ccc; font-size: 0.9rem;">
+          <p>Egerton Sports Network (EgerScore) was developed and engineered by <strong><a href="/royaldevelopers">Royal Developers</a></strong>, founded and led by principal systems architect <strong>Kiprotich Bett</strong>. Explore the official <a href="/royaldevelopers">Royal Developers page</a> for engineering details and case studies.</p>
+        </footer>
       </div>
     </noscript>
     <div id="root"></div>

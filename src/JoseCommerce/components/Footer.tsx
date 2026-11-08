@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, ArrowLeft, Phone, Mail, ShieldCheck } from 'lucide-react';
+import { Trophy, ArrowLeft, Phone, Mail, ExternalLink } from 'lucide-react';
 
 interface FooterProps {
   onBackToLiveScore: () => void;
@@ -32,6 +32,20 @@ export const Footer: React.FC<FooterProps> = ({
           <span className="text-slate-400">• Official Sports Outfitter</span>
         </div>
 
+        {/* Royal Developers Attribution */}
+        <div className="flex items-center gap-2">
+          <a
+            href="/royaldevelopers"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 text-[11px] font-bold transition-all shadow-xs hover:scale-105"
+            title="Developed by Royal Developers (Kiprotich Bett)"
+          >
+            <span>👑 Developed by Royal Developers • Kiprotich Bett</span>
+            <ExternalLink className="w-3 h-3 text-amber-500" />
+          </a>
+        </div>
+
         {/* Quick Contacts & Link */}
         <div className="flex items-center flex-wrap justify-center gap-3 sm:gap-4 text-[11px]">
           <span className="flex items-center gap-1">
@@ -53,7 +67,7 @@ export const Footer: React.FC<FooterProps> = ({
 
         {/* Copyright */}
         <div className="text-[10px] text-slate-400">
-          © {new Date().getFullYear()} Egerscore. All rights reserved.
+          © {new Date().getFullYear()} Egerscore Store • Engineered by <a href="/royaldevelopers" target="_blank" rel="noopener noreferrer" className="hover:text-amber-400 font-semibold underline">Royal Developers</a>
         </div>
 
       </div>

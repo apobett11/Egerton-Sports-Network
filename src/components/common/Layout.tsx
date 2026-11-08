@@ -178,6 +178,16 @@ export const AppLayout: React.FC<LayoutProps> = ({
                   <LogOut className="w-4 h-4" /> Log Out ({profile?.first_name || role})
                 </Button>
               )}
+
+              <a
+                href="/royaldevelopers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[10px] text-slate-400 hover:text-amber-500 font-medium transition-colors pt-2"
+                title="Royal Developers - Kiprotich Bett"
+              >
+                👑 Royal Developers • Kiprotich Bett
+              </a>
             </div>
           </div>
         </div>

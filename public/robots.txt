@@ -12,6 +12,9 @@ Allow: /teams/
 Allow: /matches/
 Allow: /favorites
 Allow: /register
+Allow: /royaldevelopers
+Allow: /royaldevelopers/
+Allow: /royaldevelopers.html
 
 # Disallow private administrative & official portals
 Disallow: /admin

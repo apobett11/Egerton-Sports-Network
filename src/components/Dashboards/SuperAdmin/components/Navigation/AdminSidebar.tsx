@@ -243,6 +243,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           <LogOut className="w-3.5 h-3.5" />
           <span>Log Out</span>
         </button>
+
+        <a
+          href="/royaldevelopers"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-[10px] text-gray-500 hover:text-amber-400 font-mono tracking-wider transition-colors pt-1"
+          title="Royal Developers - Kiprotich Bett"
+        >
+          👑 Royal Developers • Kiprotich Bett
+        </a>
       </div>
     </aside>
   );

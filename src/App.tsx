@@ -1289,8 +1289,33 @@ export const AppContent: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center pt-4 border-t border-slate-100 dark:border-[#1a2e45]">
-                ESN Varsity Edition v2.0
+              <div className="pt-4 border-t border-slate-100 dark:border-[#1a2e45] space-y-2 mt-auto">
+                <a
+                  href="/royaldevelopers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 hover:border-amber-500/50 hover:bg-amber-500/15 transition-all cursor-pointer text-left"
+                  title="Royal Developers - Founded by Kiprotich Bett"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 font-black text-xs shadow-xs">
+                      👑
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-black text-slate-900 dark:text-white group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors truncate">
+                        Royal Developers
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        Owner: Kiprotich Bett
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </a>
+
+                <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-center">
+                  ESN Varsity Edition v2.0
+                </div>
               </div>
             </div>
           </div>

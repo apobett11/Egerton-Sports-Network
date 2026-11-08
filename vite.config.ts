@@ -128,6 +128,21 @@ function shareApiPlugin() {
   }
 }
 
+function royalDevelopersPlugin() {
+  return {
+    name: 'royal-developers-page',
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use((req, _res, next) => {
+        const url = (req.url || '').split('?')[0]
+        if (url === '/royaldevelopers' || url === '/royaldevelopers/') {
+          req.url = '/royaldevelopers/index.html'
+        }
+        next()
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -136,5 +151,6 @@ export default defineConfig({
     deviceCookiePlugin(),
     adminApiPlugin(),
     shareApiPlugin(),
+    royalDevelopersPlugin(),
   ],
 })

@@ -1111,6 +1111,35 @@ export const PublicStaticPage: React.FC<{
               </div>
             </div>
           </Card>
+
+          <Card className="p-6 sm:p-8 space-y-4 border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">
+                  Engineering & Technical Architecture
+                </span>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 mt-1">
+                  <span className="w-2 h-5 bg-amber-500 rounded-xs" />
+                  Developed by Royal Developers
+                </h2>
+              </div>
+              <a
+                href="/royaldevelopers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs transition-transform active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
+              >
+                <span>Royal Developers Official Page</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+            <p>
+              The Egerton Sports Network (EgerScore) digital infrastructure was designed, architected, and engineered by <strong>Royal Developers</strong>, led by founder and lead systems architect <strong>Kiprotich Bett</strong>.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              From real-time WebSocket match synchronization and automated fixture scheduling engines to high-concurrency student voting and university sports databases, Royal Developers delivers resilient, zero-downtime platforms.
+            </p>
+          </Card>
         </div>
       </div>
     );

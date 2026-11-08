@@ -15,7 +15,8 @@ import {
   Shield,
   Footprints,
   Flag,
-  Layers
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 import { Category } from '../types';
 import { getCachedCategories } from '../services/storeCacheService';
@@ -307,9 +308,19 @@ export const MobileBottomNavComponent: React.FC<MobileBottomNavProps> = ({
           </nav>
         </div>
 
-        <div className="hidden xl:block px-2 py-2 border-t border-slate-800/60 text-[10px] text-slate-500 font-medium">
-          Egerscore Sports
-        </div>
+        <a
+          href="/royaldevelopers"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden xl:flex items-center justify-between px-2.5 py-2 border-t border-slate-800/60 text-[10px] text-slate-400 hover:text-amber-400 font-semibold transition-colors group"
+          title="Royal Developers - Kiprotich Bett"
+        >
+          <div className="truncate text-left">
+            <span className="block text-slate-200 group-hover:text-amber-400 font-bold">👑 Royal Developers</span>
+            <span className="text-[9px] text-slate-500">Kiprotich Bett</span>
+          </div>
+          <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-amber-400 shrink-0" />
+        </a>
       </aside>
 
       {/* ================= 2. MOBILE BOTTOM NAVIGATION ================= */}

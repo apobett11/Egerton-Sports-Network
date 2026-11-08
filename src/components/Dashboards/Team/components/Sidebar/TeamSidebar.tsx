@@ -105,6 +105,18 @@ export const TeamSidebar: React.FC<TeamSidebarProps> = ({
           );
         })}
       </nav>
+
+      <div className="pt-3 border-t border-slate-100 dark:border-[#1a2e45] text-center">
+        <a
+          href="/royaldevelopers"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-slate-400 hover:text-amber-500 font-medium transition-colors"
+          title="Royal Developers - Kiprotich Bett"
+        >
+          👑 Royal Developers • Kiprotich Bett
+        </a>
+      </div>
     </aside>
   );
 };
