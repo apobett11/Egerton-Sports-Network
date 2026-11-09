@@ -55,6 +55,27 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   const [pollReplies, setPollReplies] = useState<PollReplyItem[]>([]);
   const [expandedRepliesOption, setExpandedRepliesOption] = useState<number | null>(null);
 
+  // Active reply option: only set immediately when user votes in the current session (never restored on reload/mount)
+  const [activeReplyOptionId, setActiveReplyOptionId] = useState<number | null>(null);
+  const [voteTimestamp, setVoteTimestamp] = useState<number | null>(null);
+
+  // 5-minute window rule: cannot add a reply after 5 minutes of selection
+  useEffect(() => {
+    if (!activeReplyOptionId || !voteTimestamp) return;
+
+    const remainingMs = Math.max(0, 5 * 60 * 1000 - (Date.now() - voteTimestamp));
+    if (remainingMs === 0) {
+      setActiveReplyOptionId(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setActiveReplyOptionId(null);
+    }, remainingMs);
+
+    return () => clearTimeout(timer);
+  }, [activeReplyOptionId, voteTimestamp]);
+
   const session = getActiveSessionProfile();
   const permanentDeviceId = typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '';
   const deviceId = permanentDeviceId || session?.deviceId || anonymousIdentityService.getIdentity().deviceId;
@@ -144,6 +165,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     e.stopPropagation();
     if (hasVoted || isVoting) return;
 
+    const now = Date.now();
     const userVoterId = permanentDeviceId || deviceId;
     const updatedOptions = poll.options.map(o => o.id === optionId ? { ...o, votes: (o.votes || 0) + 1 } : o);
     const updatedTotalVotes = (poll.totalVotes || 0) + 1;
@@ -156,12 +178,14 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     setPoll(optimisticPoll);
     if (onPollUpdated) onPollUpdated(optimisticPoll);
 
-    // Expand replies & reason for the newly selected option
+    // Prompt for optional reply right after active selection in this session within 5m
+    setActiveReplyOptionId(optionId);
+    setVoteTimestamp(now);
     setExpandedRepliesOption(optionId);
 
     // Persist immediately to localStorage so this device permanently remembers it has voted
     try {
-      localStorage.setItem(`egerscore_poll_voted_${poll.id}`, JSON.stringify({ optionId, deviceId: userVoterId, votedAt: Date.now() }));
+      localStorage.setItem(`egerscore_poll_voted_${poll.id}`, JSON.stringify({ optionId, deviceId: userVoterId, votedAt: now }));
       localStorage.setItem(`banter_poll_voted_${poll.id}`, String(optionId));
       const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
       const votedMap = votedMapRaw ? JSON.parse(votedMapRaw) : {};
@@ -186,6 +210,12 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
   const handleShareReasonForOption = async (e: React.FormEvent, optionId: number) => {
     e.preventDefault();
+    // Enforce 5-minute limit from selection
+    if (voteTimestamp && Date.now() - voteTimestamp > 5 * 60 * 1000) {
+      setActiveReplyOptionId(null);
+      return;
+    }
+
     const textVal = (reasonInputs[optionId] || '').trim();
     if (!textVal || isSubmittingReason[optionId]) return;
 
@@ -214,8 +244,9 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
         localStorage.setItem(`egerscore_poll_reason_${poll.id}`, textVal);
       } catch {}
 
-      // Clear input
+      // Clear input and close active reply prompt
       setReasonInputs(prev => ({ ...prev, [optionId]: '' }));
+      setActiveReplyOptionId(null);
     } catch (err) {
       console.warn('Poll reply deferred:', err);
     } finally {
@@ -249,6 +280,11 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
           }
           const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
           const optReplies = pollReplies.filter(r => r.optionId === opt.id);
+
+          const isWithin5Minutes = !!(voteTimestamp && Date.now() - voteTimestamp <= 5 * 60 * 1000);
+          // Optional reply prompt ONLY upon active vote selection in current session within 5m (NEVER on message load or page reload)
+          const showReplyPrompt = hasVoted && isUserPick && activeReplyOptionId === opt.id && isWithin5Minutes && !submittedReasons[opt.id];
+          const showOptionReplies = expandedRepliesOption === opt.id && !showReplyPrompt;
 
           return (
             <React.Fragment key={opt.id}>
@@ -307,8 +343,8 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 </button>
               )}
 
-              {/* IMMEDIATELY BELOW THE SELECTED OPTION: Input highlighted with blue border & option replies */}
-              {hasVoted && isUserPick && (
+              {/* IMMEDIATELY BELOW THE SELECTED OPTION: Optional Reply Input only upon active selection within 5m */}
+              {showReplyPrompt && (
                 <div
                   className="rounded-xl border-2 border-[#1d9bf0] bg-zinc-900/90 p-3 shadow-lg animate-fadeIn space-y-2.5"
                   data-testid="poll-inline-reply-container"
@@ -316,16 +352,19 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5">
                       <MessageCircle className="h-3.5 w-3.5" />
-                      <span>Reason / Reply for "{opt.text}"</span>
+                      <span>Reason / Reply for "{opt.text}" (Optional)</span>
                     </span>
-                    {submittedReasons[opt.id] && (
-                      <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Shared
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveReplyOptionId(null)}
+                      className="text-[10px] text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 transition cursor-pointer"
+                      title="Skip reply"
+                    >
+                      Skip
+                    </button>
                   </div>
 
-                  {/* Input highlighted with blue border and placeholder */}
+                  {/* Input highlighted with blue border and placeholder - no autoFocus to prevent viewport jumping */}
                   <form onSubmit={(e) => handleShareReasonForOption(e, opt.id)} className="flex items-center gap-1.5">
                     <input
                       type="text"
@@ -337,7 +376,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                       placeholder={`Why did you pick ${opt.text}? Add your reply...`}
                       className="flex-1 bg-black/60 border border-sky-500/40 focus:border-sky-400 rounded-xl px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition shadow-inner"
                       maxLength={180}
-                      autoFocus
                     />
                     <button
                       type="submit"
@@ -348,13 +386,6 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                       <Send className="h-3 w-3" />
                     </button>
                   </form>
-
-                  {/* User's submitted reason if present */}
-                  {submittedReasons[opt.id] && (
-                    <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/25 text-xs text-sky-200">
-                      <p className="italic">"{submittedReasons[opt.id]}"</p>
-                    </div>
-                  )}
 
                   {/* Fan Replies for this Option */}
                   {optReplies.length > 0 && (
@@ -373,20 +404,34 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 </div>
               )}
 
-              {/* If user clicks on another option (not user's pick) after voting, show that option's replies on toggle */}
-              {hasVoted && !isUserPick && expandedRepliesOption === opt.id && (
+              {/* Option replies and user's saved reason on click toggle */}
+              {hasVoted && showOptionReplies && (
                 <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-2.5 shadow-md animate-fadeIn space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
-                    <span>Replies for "{opt.text}" ({optReplies.length})</span>
+                    <span className="flex items-center gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5 text-sky-400" />
+                      <span>Replies for "{opt.text}" ({optReplies.length})</span>
+                    </span>
                     <button
                       type="button"
                       onClick={() => setExpandedRepliesOption(null)}
-                      className="text-[10px] text-zinc-500 hover:text-white"
+                      className="text-[10px] text-zinc-500 hover:text-white cursor-pointer px-1.5 py-0.5 rounded hover:bg-zinc-800 transition"
                     >
                       Hide
                     </button>
                   </div>
-                  {optReplies.length === 0 ? (
+
+                  {/* User's submitted reason if present */}
+                  {submittedReasons[opt.id] && (
+                    <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/25 text-xs text-sky-200">
+                      <span className="text-[10px] font-bold text-emerald-400 block mb-0.5 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Your Reason
+                      </span>
+                      <p className="italic">"{submittedReasons[opt.id]}"</p>
+                    </div>
+                  )}
+
+                  {optReplies.length === 0 && !submittedReasons[opt.id] ? (
                     <p className="text-[11px] text-zinc-500 italic">No replies yet for this option.</p>
                   ) : (
                     <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
