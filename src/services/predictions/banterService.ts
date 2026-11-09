@@ -858,9 +858,12 @@ export function compareTrending(a: BanterPost, b: BanterPost): number {
 export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType | 'hot' | 'latest' | 'matchday'): BanterPost[] {
   let all = [...posts];
   if (filter === 'trending' || filter === 'hot') {
-    all.sort(compareTrending);
+    all.sort((a, b) => getPostEngagement(b) - getPostEngagement(a));
   } else if (filter === 'top') {
     all.sort((a, b) => getPostEngagement(b) - getPostEngagement(a));
+  } else if (filter === 'teams') {
+    all = all.filter(p => Boolean(p.taggedTeamName || p.taggedTeamId || p.matchContext || p.leagueId || (p.content && (p.content.includes('@') || p.content.includes('#EPL') || p.content.includes('#Championship') || p.content.includes('#Derby') || p.content.includes('#Matchday')))));
+    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else if (filter === 'coach') {
     all = all.filter(isCoachPost);
     all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -933,6 +936,190 @@ export class BanterService {
     });
   }
 
+  public getAuthoritativeDeviceId(preferredDeviceId?: string): string {
+    if (typeof window === 'undefined') return preferredDeviceId || 'ssr-device';
+    try {
+      if (
+        preferredDeviceId &&
+        preferredDeviceId.length > 5 &&
+        !preferredDeviceId.startsWith('usr_') &&
+        !preferredDeviceId.startsWith('user_')
+      ) {
+        localStorage.setItem('esn_permanent_device_id', preferredDeviceId);
+        localStorage.setItem('esn_device_id', preferredDeviceId);
+        return preferredDeviceId;
+      }
+
+      // 1. Check permanent device key
+      let deviceId = localStorage.getItem('esn_permanent_device_id');
+      if (deviceId && deviceId.length > 5) {
+        if (!localStorage.getItem('esn_device_id')) {
+          localStorage.setItem('esn_device_id', deviceId);
+        }
+        return deviceId;
+      }
+
+      // 2. Check active session profile device ID
+      const session = getActiveSessionProfile();
+      if (session?.deviceId && session.deviceId.length > 5) {
+        localStorage.setItem('esn_permanent_device_id', session.deviceId);
+        localStorage.setItem('esn_device_id', session.deviceId);
+        return session.deviceId;
+      }
+
+      // 3. Check legacy esn_device_id
+      const legacy = localStorage.getItem('esn_device_id');
+      if (legacy && legacy.length > 5) {
+        localStorage.setItem('esn_permanent_device_id', legacy);
+        return legacy;
+      }
+
+      // 4. Check esn_device_identity
+      const rawIdentity = localStorage.getItem('esn_device_identity');
+      if (rawIdentity) {
+        try {
+          const parsed = JSON.parse(rawIdentity);
+          if (parsed?.deviceId && parsed.deviceId.length > 5) {
+            localStorage.setItem('esn_permanent_device_id', parsed.deviceId);
+            localStorage.setItem('esn_device_id', parsed.deviceId);
+            return parsed.deviceId;
+          }
+        } catch {}
+      }
+
+      // 5. Generate and persist single permanent device ID
+      const created = getOrCreatePermanentDeviceId();
+      if (created) {
+        localStorage.setItem('esn_permanent_device_id', created);
+        localStorage.setItem('esn_device_id', created);
+        return created;
+      }
+    } catch {}
+    return 'anon-device';
+  }
+
+  /**
+   * Batch fetches and auto-fills poll states for only the given poll IDs and device.
+   * Avoids N+1 queries by fetching polls and device votes in direct batch calls.
+   */
+  public async syncPollsForDevice(pollIds: string[], deviceId?: string): Promise<Record<string, BanterPoll>> {
+    if (!pollIds || pollIds.length === 0) return {};
+    const devId = deviceId || this.getAuthoritativeDeviceId();
+    const uniquePollIds = Array.from(new Set(pollIds.filter(Boolean)));
+    if (uniquePollIds.length === 0) return {};
+
+    const updatedMap: Record<string, BanterPoll> = {};
+
+    // 1. Direct batch query for polls (only the ones that have been fetched)
+    try {
+      const { data: pollsData } = await supabase
+        .from('banter_polls')
+        .select('*')
+        .in('id', uniquePollIds);
+
+      if (pollsData && pollsData.length > 0) {
+        pollsData.forEach((p: any) => {
+          const mapped = this.mapDatabaseRowToPoll(p, devId);
+          this.localPolls[mapped.id] = mapped;
+          updatedMap[mapped.id] = mapped;
+        });
+      }
+    } catch {
+      // offline safe
+    }
+
+    // Ensure seeded / local polls are available if requested
+    uniquePollIds.forEach((pid) => {
+      if (!updatedMap[pid]) {
+        const local = this.getPollById(pid);
+        if (local) updatedMap[pid] = local;
+      }
+    });
+
+    // 2. Direct batch query for device votes on only these polls (avoids N+1)
+    if (devId && devId !== 'ssr-device' && devId !== 'anon-device') {
+      try {
+        const { data: votesData } = await supabase
+          .from('banter_poll_votes')
+          .select('poll_id, option_id, reason')
+          .eq('device_id', devId)
+          .in('poll_id', uniquePollIds);
+
+        if (votesData && votesData.length > 0) {
+          votesData.forEach((v: any) => {
+            const p = updatedMap[v.poll_id] || this.getPollById(v.poll_id);
+            if (p) {
+              const optId = Number(v.option_id);
+              const mergedVoters = { ...(p.voters || {}), [devId]: optId };
+              p.voters = mergedVoters;
+              p.totalVotes = Math.max(p.totalVotes || 0, Object.keys(mergedVoters).length);
+              this.savePoll(p);
+              updatedMap[p.id] = p;
+
+              // Ensure localStorage is aligned so all sessions/tabs reflect the vote
+              try {
+                if (typeof localStorage !== 'undefined') {
+                  localStorage.setItem(`egerscore_poll_voted_${p.id}`, JSON.stringify({ optionId: optId, deviceId: devId, votedAt: Date.now() }));
+                  localStorage.setItem(`banter_poll_voted_${p.id}`, String(optId));
+                  const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+                  const votedMap = votedMapRaw ? JSON.parse(votedMapRaw) : {};
+                  votedMap[p.id] = optId;
+                  localStorage.setItem('egerscore_voted_polls', JSON.stringify(votedMap));
+                  if (v.reason) {
+                    localStorage.setItem(`egerscore_poll_reason_${p.id}`, v.reason);
+                  }
+                }
+              } catch {}
+            }
+          });
+        }
+      } catch {
+        // offline safe
+      }
+    }
+
+    // 3. Local fallback check for device votes across browser storage
+    uniquePollIds.forEach((pid) => {
+      const p = updatedMap[pid] || this.getPollById(pid);
+      if (p) {
+        let votedOption: number | undefined;
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(`egerscore_poll_voted_${pid}`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (typeof parsed === 'number') votedOption = parsed;
+              else if (parsed?.optionId !== undefined) votedOption = Number(parsed.optionId);
+            }
+            if (votedOption === undefined) {
+              const legacy = localStorage.getItem(`banter_poll_voted_${pid}`);
+              if (legacy) {
+                const parsed = parseInt(legacy, 10);
+                if (!isNaN(parsed)) votedOption = parsed;
+              }
+            }
+            if (votedOption === undefined) {
+              const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+              if (votedMapRaw) {
+                const vm = JSON.parse(votedMapRaw);
+                if (vm && vm[pid] !== undefined) votedOption = Number(vm[pid]);
+              }
+            }
+          }
+        } catch {}
+
+        if (votedOption !== undefined && (!p.voters || p.voters[devId] === undefined)) {
+          p.voters = { ...(p.voters || {}), [devId]: votedOption };
+          p.totalVotes = Math.max(p.totalVotes || 0, Object.keys(p.voters).length);
+          this.savePoll(p);
+          updatedMap[pid] = p;
+        }
+      }
+    });
+
+    return updatedMap;
+  }
+
   public getPollById(pollId: string): BanterPoll | null {
     if (this.localPolls[pollId]) return this.localPolls[pollId];
     try {
@@ -965,7 +1152,8 @@ export class BanterService {
     setStoredItem('egerscore_local_polls', this.localPolls);
   }
 
-  public async getPostById(postId: string): Promise<BanterPost | null> {
+  public async getPostById(postId: string, deviceId?: string): Promise<BanterPost | null> {
+    const devId = deviceId || this.getAuthoritativeDeviceId();
     const matchesId = (p: BanterPost) =>
       p.id === postId ||
       p.id.endsWith(postId) ||
@@ -978,6 +1166,7 @@ export class BanterService {
 
     if (post) {
       if (post.pollId) {
+        await this.syncPollsForDevice([post.pollId], devId);
         post.poll = this.getPollById(post.pollId) || post.poll;
       }
       return post;
@@ -991,11 +1180,10 @@ export class BanterService {
         .maybeSingle();
 
       if (!error && data) {
-        const mapped = this.mapDatabaseRowToPost(data);
-        if (mapped.pollId) {
-          const { data: pData } = await supabase.from('banter_polls').select('*').eq('id', mapped.pollId).maybeSingle();
-          if (pData) mapped.poll = this.mapDatabaseRowToPoll(pData);
+        if (data.poll_id) {
+          await this.syncPollsForDevice([data.poll_id], devId);
         }
+        const mapped = this.mapDatabaseRowToPost(data, {}, devId);
         return mapped;
       }
 
@@ -1041,8 +1229,12 @@ export class BanterService {
     filter: BanterFilterType | 'hot' | 'latest' | 'matchday',
     matchId?: string | null,
     limit = 20,
-    offset = 0
+    offset = 0,
+    deviceId?: string
   ): Promise<BanterPost[]> {
+    // 1. Device ID is the first thing checked
+    const devId = deviceId || this.getAuthoritativeDeviceId();
+
     const userReactions = getStoredItem<Record<string, Record<ReactionType, boolean>>>(
       STORAGE_KEYS.USER_REACTIONS,
       {}
@@ -1075,24 +1267,20 @@ export class BanterService {
         query = query.order('created_at', { ascending: false });
       }
 
+      // Paginated query: avoids returning entire tables or only device ID
       query = query.range(offset, offset + limit - 1);
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
+        // Collect poll IDs only for the messages that have been fetched (avoids N+1)
         const pollIds = data.map((d: any) => d.poll_id).filter(Boolean);
         if (pollIds.length > 0) {
-          try {
-            const { data: pollsData } = await supabase.from('banter_polls').select('*').in('id', pollIds);
-            if (pollsData && pollsData.length > 0) {
-              pollsData.forEach((p: any) => {
-                this.localPolls[p.id] = this.mapDatabaseRowToPoll(p);
-              });
-            }
-          } catch {}
+          await this.syncPollsForDevice(pollIds, devId);
         }
+
         const posts: BanterPost[] = data
           .filter((d: any) => !isTestPost(d))
-          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
 
         // Merge local posts and seeded posts that are not in database yet
         const unSyncedLocal = this.localPosts.filter(
@@ -1101,7 +1289,23 @@ export class BanterService {
         const unSyncedSeeded = seededPosts.filter(
           (sp) => (!sp.parentId || sp.depth === 0) && !posts.some((p) => p.id === sp.id) && !isTestPost(sp)
         );
-        const combined = [...unSyncedLocal, ...posts, ...unSyncedSeeded];
+
+        // Sync polls for un-synced local and seeded posts
+        const unSyncedPollIds = [...unSyncedLocal, ...unSyncedSeeded].map((p) => p.pollId).filter(Boolean) as string[];
+        if (unSyncedPollIds.length > 0) {
+          await this.syncPollsForDevice(unSyncedPollIds, devId);
+        }
+
+        const syncedUnSyncedLocal = unSyncedLocal.map((p) => ({
+          ...p,
+          poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
+        }));
+        const syncedUnSyncedSeeded = unSyncedSeeded.map((p) => ({
+          ...p,
+          poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined
+        }));
+
+        const combined = [...syncedUnSyncedLocal, ...posts, ...syncedUnSyncedSeeded];
 
         const filtered = applyBanterFilter(combined, filter);
         if (filtered.length > 0) {
@@ -1119,9 +1323,14 @@ export class BanterService {
       all = all.filter(p => p.matchId === matchId);
     }
 
+    const fallbackPollIds = all.map(p => p.pollId).filter(Boolean) as string[];
+    if (fallbackPollIds.length > 0) {
+      await this.syncPollsForDevice(fallbackPollIds, devId);
+    }
+
     all = all.map(p => ({
       ...p,
-      poll: p.pollId ? (p.poll || this.getPollById(p.pollId)) : undefined,
+      poll: p.pollId ? (this.getPollById(p.pollId) || p.poll) : undefined,
       repostCount: p.repostCount || Math.floor((p.reactionFireCount + 5) * 1.4),
       impressionsCount: p.impressionsCount || (p.reactionFireCount + p.reactionClownCount + p.commentCount + 10) * 72,
       userReactions: userReactions[p.id] || {}
@@ -1130,24 +1339,27 @@ export class BanterService {
     return applyBanterFilter(all, filter).slice(offset, offset + limit);
   }
 
-  public async fetchThread(postId: string): Promise<{
+  public async fetchThread(postId: string, deviceId?: string): Promise<{
     post: BanterPost | null;
     ancestry: BanterPost[];
     replies: BanterPost[];
   }> {
+    // 1. Device ID is the first thing checked
+    const devId = deviceId || this.getAuthoritativeDeviceId();
+
     const userReactions = getStoredItem<Record<string, Record<ReactionType, boolean>>>(
       STORAGE_KEYS.USER_REACTIONS,
       {}
     );
 
     // Section Load: Resolve the active post and its complete ancestry chain
-    const activePost = await this.getPostById(postId);
+    const activePost = await this.getPostById(postId, devId);
     const ancestry: BanterPost[] = [];
 
     // Traverse upwards to assemble the complete ancestry chain with continuous vertical connectors
     let currentAncestorId = activePost?.parentId;
     while (currentAncestorId) {
-      const ancestor = await this.getPostById(currentAncestorId);
+      const ancestor = await this.getPostById(currentAncestorId, devId);
       if (ancestor) {
         ancestry.unshift({
           ...ancestor,
@@ -1159,7 +1371,7 @@ export class BanterService {
       }
     }
 
-    // Section Load: Only load direct replies for this thread from banter_comments (avoids deep recursive overhead)
+    // Section Load: Only load direct replies for this thread from banter_posts
     let replies: BanterPost[] = [];
 
     try {
@@ -1174,7 +1386,7 @@ export class BanterService {
       if (!error && data && data.length > 0) {
         replies = data
           .filter((d: any) => !isTestPost(d))
-          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
       }
     } catch {
       // offline safe
@@ -1196,6 +1408,26 @@ export class BanterService {
       }));
 
     replies = [...replies, ...seededReplies, ...localReplies];
+
+    // Collect poll IDs from active post, ancestry, and only fetched replies (avoid N+1)
+    const threadPollIds: string[] = [];
+    if (activePost?.pollId) threadPollIds.push(activePost.pollId);
+    ancestry.forEach((a) => { if (a.pollId) threadPollIds.push(a.pollId); });
+    replies.forEach((r) => { if (r.pollId) threadPollIds.push(r.pollId); });
+
+    if (threadPollIds.length > 0) {
+      await this.syncPollsForDevice(threadPollIds, devId);
+      if (activePost?.pollId) {
+        activePost.poll = this.getPollById(activePost.pollId) || activePost.poll;
+      }
+      ancestry.forEach((a) => {
+        if (a.pollId) a.poll = this.getPollById(a.pollId) || a.poll;
+      });
+      replies = replies.map((r) => ({
+        ...r,
+        poll: r.pollId ? (this.getPollById(r.pollId) || r.poll) : undefined
+      }));
+    }
 
     return {
       post: activePost,
@@ -1823,7 +2055,7 @@ export class BanterService {
     return comment;
   }
 
-  private mapDatabaseRowToPost(d: any, userReactions: Record<string, any> = {}): BanterPost {
+  private mapDatabaseRowToPost(d: any, userReactions: Record<string, any> = {}, deviceId?: string): BanterPost {
     const seededMatch = SEEDED_BANTER_POSTS.find((p) => p.id === d.id);
     let authorType = seededMatch?.authorType || d.author_type || 'user';
     let authorBadge = seededMatch?.authorBadge || d.author_badge;
@@ -1841,7 +2073,19 @@ export class BanterService {
     const mediaUrls = seededMatch?.mediaUrls || d.media_urls || (d.image_url ? [d.image_url] : []);
     const mediaType = seededMatch?.mediaType || d.media_type || (mediaUrls.length > 0 ? 'IMAGE' : 'NONE');
     const pollId = seededMatch?.pollId || d.poll_id || null;
-    const poll = seededMatch?.poll || (pollId ? this.getPollById(pollId) : undefined);
+    let poll = seededMatch?.poll || (pollId ? this.getPollById(pollId) : undefined);
+    if (poll && deviceId && !poll.voters[deviceId]) {
+      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`egerscore_poll_voted_${poll.id}`) : null;
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const opt = typeof parsed === 'number' ? parsed : parsed?.optionId;
+          if (opt !== undefined) {
+            poll = { ...poll, voters: { ...poll.voters, [deviceId]: Number(opt) } };
+          }
+        } catch {}
+      }
+    }
 
     return {
       id: d.id,
@@ -1884,7 +2128,8 @@ export class BanterService {
     };
   }
 
-  public async fetchPostsForTeam(teamId?: string, teamName?: string): Promise<BanterPost[]> {
+  public async fetchPostsForTeam(teamId?: string, teamName?: string, deviceId?: string): Promise<BanterPost[]> {
+    const devId = this.getAuthoritativeDeviceId(deviceId);
     const userReactions = getStoredItem<Record<string, Record<ReactionType, boolean>>>(
       STORAGE_KEYS.USER_REACTIONS,
       {}
@@ -1911,7 +2156,15 @@ export class BanterService {
         .limit(50);
 
       if (!error && data && data.length > 0) {
-        return data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+        const posts = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions, devId));
+        const pollIds = posts.filter(p => p.pollId).map(p => p.pollId as string);
+        if (pollIds.length > 0) {
+          await this.syncPollsForDevice(pollIds, devId);
+          posts.forEach(p => {
+            if (p.pollId) p.poll = this.getPollById(p.pollId) || p.poll;
+          });
+        }
+        return posts;
       }
     } catch {
       // offline fallback
@@ -1994,12 +2247,12 @@ export class BanterService {
     };
   }
 
-  private mapDatabaseRowToPoll(p: any): BanterPoll {
+  private mapDatabaseRowToPoll(p: any, deviceId?: string): BanterPoll {
     const voters = typeof p.voters === 'string' ? JSON.parse(p.voters) : (p.voters || {});
     try {
       if (typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem(`egerscore_poll_voted_${p.id}`);
-        const permanentId = localStorage.getItem('esn_permanent_device_id') || localStorage.getItem('esn_device_id');
+        const permanentId = deviceId || localStorage.getItem('esn_permanent_device_id') || localStorage.getItem('esn_device_id');
         if (stored && permanentId && voters[permanentId] === undefined) {
           const parsed = JSON.parse(stored);
           const optId = typeof parsed === 'number' ? parsed : parsed?.optionId;

@@ -1,2 +1,10 @@
-/royaldevelopers    /royaldevelopers/index.html    200
-/*                   /index.html                    200
+/royaldevelopers                     /royaldevelopers/index.html                     200
+/royaldevelopers/                    /royaldevelopers/index.html                     200
+/royaldevelopers/projects/:slug      /royaldevelopers/projects/:slug/index.html      200
+/royaldevelopers/projects/:slug/     /royaldevelopers/projects/:slug/index.html      200
+/royaldevelopers/services/:slug      /royaldevelopers/services/:slug/index.html      200
+/royaldevelopers/services/:slug/     /royaldevelopers/services/:slug/index.html      200
+/royaldevelopers/:page               /royaldevelopers/:page/index.html               200
+/royaldevelopers/:page/              /royaldevelopers/:page/index.html               200
+/royaldevelopers/*                   /royaldevelopers/:splat                         200
+/*                                   /index.html                                     200

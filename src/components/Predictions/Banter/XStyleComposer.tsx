@@ -9,7 +9,6 @@ import {
   Trash2,
   Film,
   Send,
-  User,
   AtSign,
   Shield
 } from 'lucide-react';
@@ -17,7 +16,69 @@ import { validateVideoFile } from '../../../services/predictions/banterService';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
 import { useBanterSession } from '../../../hooks/useBanterSession';
+import { getAuthorIdentityMeta } from '../../../lib/predictions/footballAvatars';
 import type { BanterMediaType, AuthorType } from '../../../types/predictions';
+
+const TODAY_MATCHES_LIST = [
+  'Santos FC vs BCOM FC',
+  'Blue Blazers vs Mighty Blacks',
+  'Celtics FC vs Five Stars FC',
+  'Giants FC vs Legends FC',
+  'Med FC vs Rising Stars',
+  'Super Eagles vs Wazito FC',
+  'Young Legends vs Rangers FC',
+  'Tatton FC vs Aged FC',
+  'Ajax FC vs Talanta FC',
+  'Law FC vs Fass Elites',
+];
+
+const EPL_TEAMS_LIST = [
+  'Engineering FC',
+  'Santos FC',
+  'BCOM FC',
+  'Blue Blazers',
+  'Mighty Blacks',
+  'Celtics FC',
+  'Five Stars FC',
+  'Giants FC',
+  'Legends FC',
+  'Med FC',
+  'Rising Stars',
+  'Super Eagles',
+  'Wazito FC',
+];
+
+const CHAMPIONSHIP_TEAMS_LIST = [
+  'Aged FC',
+  'Ajax FC',
+  'Tatton FC',
+  'Talanta FC',
+  'Rangers FC',
+  'Law FC',
+  'Fass Elites',
+  'Emsa FC',
+  'Young Legends',
+  'Young Stars',
+  'Education Stars',
+  'Health Sciences FC',
+  'Nakuru Town Campus FC',
+  'Veterinary Academy FC',
+];
+
+const COACHES_LIST = [
+  { name: 'Coach Odhiambo', team: 'Super Eagles (EPL)' },
+  { name: 'Coach Kamau', team: 'Santos FC (EPL)' },
+  { name: 'Prof. J. Mwangi', team: 'Engineering Strikers (EPL)' },
+  { name: 'Coach Peter Maina', team: 'Njoro Spurs (EPL)' },
+  { name: 'Coach Mark Ruto', team: 'Science Lions (EPL)' },
+  { name: 'Coach Alex Omondi', team: 'Tatton United (EPL)' },
+  { name: 'Coach Eric Kiprop', team: 'Vet Med Warriors (EPL)' },
+  { name: 'Coach David Kamau', team: 'Agriculture FC (EPL)' },
+  { name: 'Coach Josephat Langat', team: 'Education Stars (Championship)' },
+  { name: 'Coach Beatrice Korir', team: 'Health Sciences FC (Championship)' },
+  { name: 'Coach Simon Ouma', team: 'Nakuru Town Campus FC (Championship)' },
+  { name: 'Coach Faith Chepkoech', team: 'Veterinary Academy FC (Championship)' },
+];
 
 interface XStyleComposerProps {
   onPostCreated?: (
@@ -59,7 +120,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   onPostSuccess
 }) => {
   const { profile } = useBanterSession();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(Boolean(isReply || autoFocus));
   const [content, setContent] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ url: string; type: 'image' | 'video'; duration?: number }>>([]);
   const [showPollBuilder, setShowPollBuilder] = useState(false);
@@ -67,6 +128,12 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Tagging dropdown & categories: Match, EPL Team, Championship Team, Coach
+  const [showTagMenu, setShowTagMenu] = useState(false);
+  const [selectedTagCategory, setSelectedTagCategory] = useState<'match' | 'epl' | 'championship' | 'coach'>('match');
+  const [taggedMatch, setTaggedMatch] = useState<string | null>(null);
+  const [taggedCoach, setTaggedCoach] = useState<string | null>(null);
 
   // Team tagging state
   const [availableTeams, setAvailableTeams] = useState<Array<{ id: string; name: string; shortName?: string }>>([]);
@@ -77,6 +144,54 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const composerContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Collapse back to one strip when clicking outside with empty composer
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (composerContainerRef.current && !composerContainerRef.current.contains(e.target as Node)) {
+        setShowTagMenu(false);
+        setShowTeamDropdown(false);
+        if (!isReply && !content.trim() && mediaPreviews.length === 0 && !showPollBuilder && !selectedTeam && !taggedMatch && !taggedCoach) {
+          setIsExpanded(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isReply, content, mediaPreviews, showPollBuilder, selectedTeam, taggedMatch, taggedCoach]);
+
+  const authorMeta = getAuthorIdentityMeta({
+    authorType,
+    authorHandle: profile?.authorHandle || authorHandle,
+    authorName: profile?.authorName,
+    authorBadge,
+    authorAvatar: profile?.avatarColor
+  });
+
+  const handleSelectMatchTag = (matchName: string) => {
+    setTaggedMatch(matchName);
+    setShowTagMenu(false);
+    const tagText = `@${matchName}`;
+    setContent(prev => prev.includes(tagText) ? prev : `${prev ? prev + ' ' : ''}${tagText} `.slice(0, MAX_CHARS));
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  const handleSelectTeamTag = (teamName: string) => {
+    const teamObj = { id: teamName.toLowerCase().replace(/\s+/g, '-'), name: teamName };
+    setSelectedTeam(teamObj);
+    setShowTagMenu(false);
+    const tagText = `@${teamName}`;
+    setContent(prev => prev.includes(tagText) ? prev : `${prev ? prev + ' ' : ''}${tagText} `.slice(0, MAX_CHARS));
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
+  const handleSelectCoachTag = (coach: { name: string; team: string }) => {
+    setTaggedCoach(coach.name);
+    setShowTagMenu(false);
+    const tagText = `@${coach.name}`;
+    setContent(prev => prev.includes(tagText) ? prev : `${prev ? prev + ' ' : ''}${tagText} `.slice(0, MAX_CHARS));
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
 
   // Load campus teams for autocomplete (Supabase -> EPL_TEAMS fallback)
   useEffect(() => {
@@ -404,17 +519,16 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
 
       {/* Compact Pill (Unexpanded State) */}
       {!isExpanded ? (
-        <div className="flex items-center gap-3 h-11 px-2">
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
-            style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
-          >
-            {profile?.authorName ? profile.authorName[0] : <User className="h-4 w-4" />}
-          </div>
-          <span className="text-zinc-500 text-sm font-medium flex-1 select-none">
+        <div className="flex items-center gap-3 h-12 px-2">
+          <img
+            src={authorMeta.avatarUrl}
+            alt={authorMeta.displayName}
+            className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm border border-white/10"
+          />
+          <span className="text-zinc-500 text-sm font-medium flex-1 select-none truncate">
             {placeholder}
           </span>
-          <div className="flex items-center gap-2 text-sky-500">
+          <div className="flex items-center gap-2 text-sky-500 shrink-0">
             <button
               type="button"
               aria-label="Upload Media"
@@ -423,7 +537,8 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 setIsExpanded(true);
                 fileInputRef.current?.click();
               }}
-              className="p-1.5 rounded-full hover:bg-sky-500/10 transition-colors"
+              className="p-1.5 rounded-full hover:bg-sky-500/10 text-sky-400 transition-colors"
+              title="Add Media"
             >
               <ImageIcon className="h-4 w-4" />
             </button>
@@ -435,21 +550,24 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 setIsExpanded(true);
                 setShowPollBuilder(true);
               }}
-              className="p-1.5 rounded-full hover:bg-sky-500/10 transition-colors"
+              className="p-1.5 rounded-full hover:bg-sky-500/10 text-sky-400 transition-colors"
+              title="Create Poll"
             >
               <BarChart2 className="h-4 w-4" />
             </button>
             <button
               type="button"
-              aria-label="Send to Team"
+              aria-label="Tag Selector"
               onClick={(e) => {
                 e.stopPropagation();
-                handleSendToTeamClick();
+                setIsExpanded(true);
+                setShowTagMenu(true);
               }}
-              className="p-1.5 rounded-full hover:bg-emerald-500/10 text-emerald-400 transition-colors"
-              title="Tag a Team"
+              className="p-1.5 rounded-full hover:bg-emerald-500/10 text-emerald-400 transition-colors flex items-center gap-1 cursor-pointer"
+              title="Tag: Match, EPL Team, Championship Team, Coach"
             >
               <AtSign className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs font-bold">Tag</span>
             </button>
             <button
               type="button"
@@ -457,7 +575,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 e.stopPropagation();
                 setIsExpanded(true);
               }}
-              className="px-4 py-1.5 rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs transition-colors shadow-xs"
+              className="px-4 py-1.5 rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
             >
               Post
             </button>
@@ -477,12 +595,11 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           )}
 
           <div className="flex gap-3">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
-              style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
-            >
-              {profile?.authorName ? profile.authorName[0] : <User className="h-5 w-5" />}
-            </div>
+            <img
+              src={authorMeta.avatarUrl}
+              alt={authorMeta.displayName}
+              className="h-9 w-9 shrink-0 rounded-full object-cover shadow-sm border border-white/10"
+            />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between pb-1.5 text-xs">
@@ -495,6 +612,55 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* Tagged Badges (Team, Match, Coach) */}
+              {(selectedTeam || taggedMatch || taggedCoach) && (
+                <div className="my-1.5 flex flex-wrap items-center gap-1.5">
+                  {selectedTeam && (
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+                      <Shield className="h-3 w-3" />
+                      <span className="font-semibold">@{selectedTeam.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTeam(null)}
+                        className="p-0.5 hover:text-rose-400 text-zinc-400 rounded-full cursor-pointer ml-0.5"
+                        title="Remove tag"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {taggedMatch && (
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs">
+                      <span>⚽ {taggedMatch}</span>
+                      <button
+                        type="button"
+                        onClick={() => setTaggedMatch(null)}
+                        className="p-0.5 hover:text-rose-400 text-zinc-400 rounded-full cursor-pointer ml-0.5"
+                        title="Remove match tag"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {taggedCoach && (
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
+                      <span>👔 @{taggedCoach}</span>
+                      <button
+                        type="button"
+                        onClick={() => setTaggedCoach(null)}
+                        className="p-0.5 hover:text-rose-400 text-zinc-400 rounded-full cursor-pointer ml-0.5"
+                        title="Remove coach tag"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <textarea
                 ref={textareaRef}
                 value={content}
@@ -506,19 +672,118 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 className="w-full bg-transparent text-white placeholder-zinc-500 text-base md:text-lg resize-none outline-none focus:ring-0 leading-relaxed font-sans"
               />
 
-              {/* Tagged Team Active Badge */}
-              {selectedTeam && (
-                <div className="my-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs w-fit">
-                  <Shield className="h-3.5 w-3.5" />
-                  <span className="font-semibold">Tagged Team: @{selectedTeam.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTeam(null)}
-                    className="p-0.5 hover:text-rose-400 text-zinc-400 rounded-full cursor-pointer"
-                    title="Remove tag"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+              {/* 4-Category Tag Selector Dropdown: match, EPL team, Championship team, coach */}
+              {showTagMenu && (
+                <div className="my-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl z-30 animate-fadeIn space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                      <AtSign className="h-4 w-4" /> Tag Selection
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTagMenu(false)}
+                      className="p-1 rounded-full text-zinc-500 hover:text-white transition cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 4 Category Tabs */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-zinc-900 rounded-xl">
+                    {[
+                      { id: 'match', label: 'Match' },
+                      { id: 'epl', label: 'EPL Team' },
+                      { id: 'championship', label: 'Championship' },
+                      { id: 'coach', label: 'Coach' }
+                    ].map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedTagCategory(cat.id as any)}
+                        className={`py-1 px-2 rounded-lg text-[11px] font-bold transition cursor-pointer text-center ${
+                          selectedTagCategory === cat.id
+                            ? 'bg-emerald-500 text-black shadow-xs'
+                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Category Options List */}
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 text-xs">
+                    {selectedTagCategory === 'match' && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-zinc-500 px-1">Today's Matches</p>
+                        {TODAY_MATCHES_LIST.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => handleSelectMatchTag(m)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-200 hover:text-white flex items-center justify-between group cursor-pointer transition"
+                          >
+                            <span className="font-semibold">{m}</span>
+                            <span className="text-[10px] text-zinc-500 group-hover:text-emerald-400 font-mono">Tag</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedTagCategory === 'epl' && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-zinc-500 px-1">Active EPL Teams</p>
+                        {EPL_TEAMS_LIST.map((teamName) => (
+                          <button
+                            key={teamName}
+                            type="button"
+                            onClick={() => handleSelectTeamTag(teamName)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-200 hover:text-white flex items-center justify-between group cursor-pointer transition"
+                          >
+                            <span className="font-semibold">{teamName}</span>
+                            <span className="text-[10px] text-zinc-500 group-hover:text-emerald-400 font-mono">@{teamName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedTagCategory === 'championship' && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-zinc-500 px-1">Active Championship Teams</p>
+                        {CHAMPIONSHIP_TEAMS_LIST.map((teamName) => (
+                          <button
+                            key={teamName}
+                            type="button"
+                            onClick={() => handleSelectTeamTag(teamName)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-200 hover:text-white flex items-center justify-between group cursor-pointer transition"
+                          >
+                            <span className="font-semibold">{teamName}</span>
+                            <span className="text-[10px] text-zinc-500 group-hover:text-emerald-400 font-mono">@{teamName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedTagCategory === 'coach' && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-zinc-500 px-1">Active League Coaches</p>
+                        {COACHES_LIST.map((coach) => (
+                          <button
+                            key={coach.name}
+                            type="button"
+                            onClick={() => handleSelectCoachTag(coach)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-200 hover:text-white flex items-center justify-between group cursor-pointer transition"
+                          >
+                            <div>
+                              <span className="font-semibold text-zinc-100">{coach.name}</span>
+                              <span className="text-[10px] text-zinc-500 ml-2">({coach.team})</span>
+                            </div>
+                            <span className="text-[10px] text-zinc-500 group-hover:text-emerald-400 font-mono">@{coach.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -731,16 +996,18 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 <BarChart2 className="h-5 w-5" />
               </button>
 
-              {/* Dedicated "Send to Team" Button */}
+              {/* Category Tag Selector Button */}
               <button
                 type="button"
-                aria-label="Send to Team"
-                onClick={handleSendToTeamClick}
-                className="p-2 rounded-full hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
-                title="Send to Team (@team)"
+                aria-label="Tag Selector"
+                onClick={() => setShowTagMenu(prev => !prev)}
+                className={`p-2 rounded-full transition-colors flex items-center gap-1 cursor-pointer ${
+                  showTagMenu ? 'bg-emerald-500/20 text-emerald-300' : 'hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300'
+                }`}
+                title="Tag: Match, EPL Team, Championship Team, Coach"
               >
                 <AtSign className="h-5 w-5" />
-                <span className="hidden sm:inline text-[11px] font-bold">Send to Team</span>
+                <span className="hidden sm:inline text-[11px] font-bold">Tag</span>
               </button>
 
               <button

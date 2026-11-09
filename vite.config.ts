@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
+import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -142,9 +143,19 @@ function royalDevelopersPlugin() {
     name: 'royal-developers-page',
     configureServer(server: ViteDevServer) {
       server.middlewares.use((req, _res, next) => {
-        const url = (req.url || '').split('?')[0]
-        if (url === '/royaldevelopers' || url === '/royaldevelopers/') {
+        const rawUrl = (req.url || '').split('?')[0]
+        if (rawUrl === '/royaldevelopers' || rawUrl === '/royaldevelopers/') {
           req.url = '/royaldevelopers/index.html'
+          return next()
+        }
+        if (rawUrl.startsWith('/royaldevelopers/')) {
+          const publicPath = path.resolve(__dirname, 'public', rawUrl.replace(/^\//, ''))
+          if (fs.existsSync(publicPath) && fs.statSync(publicPath).isDirectory()) {
+            const indexPath = path.join(publicPath, 'index.html')
+            if (fs.existsSync(indexPath)) {
+              req.url = `${rawUrl.replace(/\/$/, '')}/index.html`
+            }
+          }
         }
         next()
       })

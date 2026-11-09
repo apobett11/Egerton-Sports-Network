@@ -45,7 +45,7 @@ import { derbyService } from '../../services/predictions/derbyService';
 import { banterService, applyBanterFilter } from '../../services/predictions/banterService';
 import { anonymousIdentityService } from '../../services/predictions/anonymousIdentityService';
 import { useBanterSession } from '../../hooks/useBanterSession';
-import { getActiveSessionProfile } from '../../utils/sessionIdentity';
+import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
 import { supabase } from '../../lib/supabase';
 import { formatKickoffTime, formatTeamName } from '../../lib/predictions/utils';
 import { matchdayTeamLine } from '../../lib/predictions/newsMatchdays';
@@ -674,14 +674,16 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   const loadBanter = useCallback(async () => {
     setIsLoadingBanter(true);
     const matchId = contextMatch?.id || null;
-    const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0);
+    const devId = banterProfile?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
+    const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0, devId);
     setBanterPosts(posts);
     setIsLoadingBanter(false);
-  }, [banterFilter, contextMatch]);
+  }, [banterFilter, contextMatch, banterProfile?.deviceId]);
 
   const loadMoreBanter = useCallback(async () => {
     const matchId = contextMatch?.id || null;
-    const more = await banterService.fetchPosts(banterFilter, matchId, 20, banterPosts.length);
+    const devId = banterProfile?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
+    const more = await banterService.fetchPosts(banterFilter, matchId, 20, banterPosts.length, devId);
     if (more.length > 0) {
       setBanterPosts((prev) => {
         const ids = new Set(prev.map((p) => p.id));
@@ -689,7 +691,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         return [...prev, ...filtered];
       });
     }
-  }, [banterFilter, contextMatch, banterPosts.length]);
+  }, [banterFilter, contextMatch, banterPosts.length, banterProfile?.deviceId]);
 
   useEffect(() => {
     loadBanter();
@@ -1337,9 +1339,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           <h1 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
                             What's happening
                           </h1>
-                          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-500/20">
-                            Live Feed
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -1454,6 +1453,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           emptyTitle={
                             clubBanterOnly
                               ? 'No takes about your club on this matchday.'
+                              : banterFilter === 'teams'
+                              ? 'No tagged team takes yet.'
                               : banterFilter === 'coach'
                               ? 'No coach dispatches yet.'
                               : banterFilter === 'analytics'
@@ -1465,7 +1466,9 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                               : 'The room is quiet.'
                           }
                           emptyBody={
-                            banterFilter === 'coach'
+                            banterFilter === 'teams'
+                              ? 'Takes tagging specific teams or leagues will appear here. Tag a team with @ or using the Tag button!'
+                              : banterFilter === 'coach'
                               ? 'Coaches will post squad notes and tactical breakdowns soon.'
                               : banterFilter === 'analytics'
                               ? 'Egerton journalists will drop match analysis and post-game reports here.'

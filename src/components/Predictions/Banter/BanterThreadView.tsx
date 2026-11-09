@@ -27,6 +27,13 @@ import { BanterPostCard } from './BanterPostCard';
 import { useBanterSession } from '../../../hooks/useBanterSession';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
 import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
+import {
+  getAuthorIdentityMeta,
+  InstagramBlueTick,
+  OrangeCoachTick,
+  ChampionshipAmberCoachTick,
+  AvatarViewModal
+} from '../../../lib/predictions/footballAvatars';
 import type { BanterPost, BanterMediaType, ReactionType } from '../../../types/predictions';
 
 interface BanterThreadViewProps {
@@ -86,6 +93,9 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   const [threadTeamFilterQuery, setThreadTeamFilterQuery] = useState('');
   const [selectedThreadTeam, setSelectedThreadTeam] = useState<{ id: string; name: string } | null>(null);
 
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const authorMeta = post ? getAuthorIdentityMeta(post) : null;
+
   const rootAuthorDeviceId = post?.authorDeviceId || (post as any)?.author_device_id || post?.userId;
   const isRootYou = Boolean(currentDeviceId && rootAuthorDeviceId === currentDeviceId);
 
@@ -135,7 +145,8 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
 
   const loadThread = useCallback(async () => {
     setIsLoading(true);
-    const data = await banterService.fetchThread(postId);
+    const devId = currentDeviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
+    const data = await banterService.fetchThread(postId, devId);
     if (data.post) {
       setPost(data.post);
       setAncestry(data.ancestry);
@@ -156,13 +167,13 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
       });
     }
     try {
-      const feedPosts = await banterService.fetchPosts('trending', null, 8);
+      const feedPosts = await banterService.fetchPosts('trending', null, 8, 0, devId);
       setMoreStories((feedPosts as BanterPost[]).filter((p: BanterPost) => p.id !== postId).slice(0, 3));
     } catch {
       // offline safe
     }
     setIsLoading(false);
-  }, [postId]);
+  }, [postId, currentDeviceId]);
 
   // Load campus teams for autocomplete
   useEffect(() => {
@@ -739,22 +750,57 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           {/* Author Strip */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm shadow-sm border border-white/10"
-                style={{ backgroundColor: post.authorAvatar || (isRootYou ? profile?.avatarColor : undefined) || '#2563eb' }}
-              >
-                {post.authorName ? post.authorName[0] : <User className="h-6 w-6" />}
-              </div>
+              {authorMeta && (
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
+                  title="View image and session details"
+                >
+                  <img
+                    src={authorMeta.avatarUrl}
+                    alt={authorMeta.displayName}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              )}
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-base text-white tracking-tight">
-                    {post.authorName || post.authorHandle}
-                  </span>
-                  {isJournalist && (
-                    <span title="Verified Reporter">
-                      <ShieldCheck className="h-4 w-4 text-sky-400" />
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className="font-bold text-base text-white tracking-tight hover:underline hover:text-sky-300 cursor-pointer text-left"
+                  >
+                    {authorMeta?.displayName || post.authorName || post.authorHandle}
+                  </button>
+
+                  {authorMeta?.isJournalist ? (
+                    <div className="inline-flex items-center gap-1">
+                      <InstagramBlueTick className="h-4 w-4" />
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-[#0095f6]/15 px-1.5 py-0.2 text-[9px] font-black uppercase text-[#0095f6] border border-[#0095f6]/30">
+                        Official Journalist
+                      </span>
+                    </div>
+                  ) : authorMeta?.isCoach ? (
+                    authorMeta.coachLeague === 'championship' ? (
+                      <div className="inline-flex items-center gap-1">
+                        <ChampionshipAmberCoachTick className="h-4 w-4" />
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-amber-400 border border-amber-500/30">
+                          <Shield className="h-2.5 w-2.5 text-amber-400" />
+                          <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'Championship Coach'}</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1">
+                        <OrangeCoachTick className="h-4 w-4" />
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-orange-400 border border-orange-500/30">
+                          <Shield className="h-2.5 w-2.5 text-orange-400" />
+                          <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'EPL Coach'}</span>
+                        </span>
+                      </div>
+                    )
+                  ) : null}
+
                   <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-sky-400 border border-sky-500/30">
                     OP
                   </span>
@@ -1113,7 +1159,10 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                         )}
 
                         {reply.poll && (
-                          <XPollWidget poll={reply.poll} />
+                          <XPollWidget
+                            poll={reply.poll}
+                            onPollUpdated={(updated) => setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, poll: updated } : r))}
+                          />
                         )}
 
                         {/* Reply mini action toolbar */}
@@ -1365,11 +1414,12 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             }}
             className="max-w-2xl mx-auto flex items-end gap-2"
           >
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10 mb-1"
-              style={{ backgroundColor: profile?.avatarColor || '#2563eb' }}
-            >
-              {profile?.authorName ? profile.authorName[0] : <User className="h-4 w-4" />}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 mb-1">
+              <img
+                src={getAuthorIdentityMeta(profile || {}).avatarUrl}
+                alt="My Avatar"
+                className="w-full h-full object-cover"
+              />
             </div>
             <textarea
               placeholder="Post your reply"
@@ -1393,6 +1443,19 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           </form>
         </div>
       </div>
+
+      {authorMeta && (
+        <AvatarViewModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          imageUrl={authorMeta.avatarUrl}
+          sessionName={authorMeta.displayName}
+          handle={post.authorHandle.replace(/\s+/g, '_').toLowerCase()}
+          isCoach={authorMeta.isCoach}
+          isJournalist={authorMeta.isJournalist}
+          coachLeague={authorMeta.coachLeague}
+        />
+      )}
     </div>
   );
 };

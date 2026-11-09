@@ -70,7 +70,7 @@ export interface MatchSquadInfo {
 
 export type AuthorType = 'user' | 'journalist' | 'coach' | 'admin' | 'seed';
 export type ReactionType = 'fire' | 'clown' | 'skull';
-export type BanterFilterType = 'all' | 'trending' | 'coach' | 'analytics' | 'banter' | 'latest' | 'top' | 'today' | 'mine';
+export type BanterFilterType = 'all' | 'trending' | 'teams' | 'coach' | 'analytics' | 'banter' | 'latest' | 'top' | 'today' | 'mine';
 
 export interface BanterPollOption {
   id: number;

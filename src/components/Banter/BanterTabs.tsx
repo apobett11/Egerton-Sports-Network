@@ -11,9 +11,9 @@ interface BanterTabsProps {
 const SORTS: { id: BanterFilterType; label: string }[] = [
   { id: 'all', label: 'For you' },
   { id: 'trending', label: 'Trending' },
+  { id: 'teams', label: 'Teams' },
   { id: 'coach', label: 'Coaches' },
   { id: 'analytics', label: 'Journals' },
-  { id: 'banter', label: 'Banter & Trolls' },
 ];
 
 export const BanterTabs: React.FC<BanterTabsProps> = ({

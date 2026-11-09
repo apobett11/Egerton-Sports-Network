@@ -2,24 +2,26 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   MessageCircle,
   Repeat2,
-  Heart,
   BarChart2,
   Share,
   Bookmark,
-  CheckCircle2,
-  ShieldCheck,
-  User,
   Film,
   Shield,
   Flame,
   Smile
 } from 'lucide-react';
 import { formatRelativeTime } from '../../lib/predictions/utils';
-import { shareService } from '../../services/predictions/shareService';
 import { shareBanterSnapshot } from '../../lib/shareSnapshot';
 import { BanterReplyModal } from './BanterReplyModal';
 import { XPollWidget } from '../Predictions/Banter/XPollWidget';
 import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
+import {
+  getAuthorIdentityMeta,
+  InstagramBlueTick,
+  OrangeCoachTick,
+  ChampionshipAmberCoachTick,
+  AvatarViewModal
+} from '../../lib/predictions/footballAvatars';
 import type { BanterPost, ReactionType } from '../../types/predictions';
 
 interface BanterPostCardProps {
@@ -52,9 +54,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const postAuthorDeviceId = post.authorDeviceId || (post as any).author_device_id || post.userId;
   const isYou = Boolean(currentDeviceId && postAuthorDeviceId === currentDeviceId);
 
-  const isJournalist =
-    post.authorType === 'journalist' ||
-    (post.authorBadge || '').toLowerCase().includes('journalist');
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const authorMeta = getAuthorIdentityMeta(post);
+
+  const isJournalist = authorMeta.isJournalist;
 
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
@@ -202,20 +205,24 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
       )}
       <div className="flex gap-3">
-        {/* User Avatar Circle */}
+        {/* User Avatar - Clicking opens Large Image Modal with Session Name & Privacy Notice */}
         <div className="flex-shrink-0">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white font-bold text-xs shadow-sm border border-white/10"
-            style={{ backgroundColor: post.authorAvatar || (isYou ? session?.avatarColor : undefined) || '#2563eb' }}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAvatarModalOpen(true);
+            }}
+            className="group/avatar flex h-10 w-10 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
+            title="View image and session details"
           >
-            {isJournalist ? (
-              <ShieldCheck className="h-4 w-4 text-sky-400" />
-            ) : post.authorName ? (
-              post.authorName[0]
-            ) : (
-              <User className="h-4 w-4 text-zinc-400" />
-            )}
-          </div>
+            <img
+              src={authorMeta.avatarUrl}
+              alt={authorMeta.displayName}
+              className="h-full w-full object-cover group-hover/avatar:scale-105 transition-transform duration-200"
+              loading="lazy"
+            />
+          </button>
         </div>
 
         {/* Tweet Body Column */}
@@ -223,9 +230,17 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           {/* Header: Name, Verified Badge, @Handle · Time */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 flex-wrap leading-tight">
-              <span className="font-bold text-white text-sm hover:underline truncate max-w-[150px]">
-                {post.authorName || post.authorHandle}
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAvatarModalOpen(true);
+                }}
+                className="font-bold text-white text-sm hover:underline hover:text-sky-300 truncate max-w-[150px] cursor-pointer text-left"
+                title="View image and session details"
+              >
+                {authorMeta.displayName}
+              </button>
 
               {isYou && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-purple-300 border border-purple-500/40">
@@ -233,19 +248,32 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 </span>
               )}
 
-              {post.authorType === 'coach' || (post.authorBadge || '').toLowerCase().includes('coach') ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400 border border-emerald-500/40">
-                  <Shield className="h-2.5 w-2.5 text-emerald-400" />
-                  <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : (post.authorBadge || 'Coach')}</span>
-                </span>
-              ) : isJournalist ? (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase text-sky-400 border border-sky-500/40">
-                  <CheckCircle2 className="h-2.5 w-2.5 text-sky-400" />
-                  <span>{post.authorBadge || 'REPORTER'}</span>
-                </span>
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5 text-sky-400 fill-sky-400/20" />
-              )}
+              {authorMeta.isJournalist ? (
+                <div className="inline-flex items-center gap-1">
+                  <InstagramBlueTick className="h-4 w-4" />
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-[#0095f6]/15 px-1.5 py-0.2 text-[9px] font-black uppercase text-[#0095f6] border border-[#0095f6]/30">
+                    Official Journalist
+                  </span>
+                </div>
+              ) : authorMeta.isCoach ? (
+                authorMeta.coachLeague === 'championship' ? (
+                  <div className="inline-flex items-center gap-1">
+                    <ChampionshipAmberCoachTick className="h-4 w-4" />
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-amber-400 border border-amber-500/30">
+                      <Shield className="h-2.5 w-2.5 text-amber-400" />
+                      <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'Championship Coach'}</span>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1">
+                    <OrangeCoachTick className="h-4 w-4" />
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-orange-400 border border-orange-500/30">
+                      <Shield className="h-2.5 w-2.5 text-orange-400" />
+                      <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'EPL Coach'}</span>
+                    </span>
+                  </div>
+                )
+              ) : null}
 
               <span className="text-xs text-zinc-500 font-mono truncate max-w-[100px]">
                 @{cleanHandle}
@@ -541,6 +569,17 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         isOpen={isReplyModalOpen}
         onClose={() => setIsReplyModalOpen(false)}
         onSuccess={() => setReplyCount(prev => prev + 1)}
+      />
+
+      <AvatarViewModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+        imageUrl={authorMeta.avatarUrl}
+        sessionName={authorMeta.displayName}
+        handle={cleanHandle}
+        isCoach={authorMeta.isCoach}
+        isJournalist={authorMeta.isJournalist}
+        coachLeague={authorMeta.coachLeague}
       />
     </article>
   );

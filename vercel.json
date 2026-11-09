@@ -5,6 +5,22 @@
       "destination": "/royaldevelopers/index.html"
     },
     {
+      "source": "/royaldevelopers/",
+      "destination": "/royaldevelopers/index.html"
+    },
+    {
+      "source": "/royaldevelopers/projects/:slug",
+      "destination": "/royaldevelopers/projects/:slug/index.html"
+    },
+    {
+      "source": "/royaldevelopers/services/:slug",
+      "destination": "/royaldevelopers/services/:slug/index.html"
+    },
+    {
+      "source": "/royaldevelopers/:path*",
+      "destination": "/royaldevelopers/:path*/index.html"
+    },
+    {
       "source": "/store/:id",
       "destination": "/api/share?store=:id"
     },

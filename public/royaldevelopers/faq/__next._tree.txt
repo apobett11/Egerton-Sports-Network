@@ -1,0 +1,2 @@
+:HL["/royaldevelopers/_next/static/css/2bfcf83a35df2e33.css","style"]
+0:{"buildId":"DAaR39o9FJ0jDnW6Dp7zQ","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"faq","paramType":null,"paramKey":"faq","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
