@@ -8,6 +8,7 @@ export default defineConfig({
     '**/poll_atomic_concurrency.spec.ts',
     '**/identity_and_tagging.spec.ts',
     '**/media_guard_and_gestures.spec.ts',
+    '**/banter_share_reactions_back.spec.ts',
   ],
   timeout: 30 * 1000,
   expect: {
