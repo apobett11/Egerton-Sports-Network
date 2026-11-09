@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, BarChart2, Send } from 'lucide-react';
 import { banterService } from '../../../services/predictions/banterService';
 import { anonymousIdentityService } from '../../../services/predictions/anonymousIdentityService';
@@ -10,6 +10,31 @@ interface XPollWidgetProps {
   onPollUpdated?: (poll: BanterPoll) => void;
 }
 
+const getStoredUserVote = (pollId: string): number | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = localStorage.getItem(`egerscore_poll_voted_${pollId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'number') return parsed;
+      if (parsed?.optionId !== undefined) return Number(parsed.optionId);
+    }
+    const legacy = localStorage.getItem(`banter_poll_voted_${pollId}`);
+    if (legacy) {
+      const parsed = parseInt(legacy, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+    if (votedMapRaw) {
+      const votedMap = JSON.parse(votedMapRaw);
+      if (votedMap && votedMap[pollId] !== undefined) {
+        return Number(votedMap[pollId]);
+      }
+    }
+  } catch {}
+  return undefined;
+};
+
 export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onPollUpdated }) => {
   const [poll, setPoll] = useState<BanterPoll>(initialPoll);
   const [isVoting, setIsVoting] = useState(false);
@@ -20,10 +45,48 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
   const [submittedReasonText, setSubmittedReasonText] = useState('');
 
   const session = getActiveSessionProfile();
-  const deviceId = session?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : anonymousIdentityService.getIdentity().deviceId);
-  const userVotedOptionId = poll.voters ? poll.voters[deviceId] : undefined;
+  const permanentDeviceId = typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '';
+  const deviceId = session?.deviceId || permanentDeviceId || anonymousIdentityService.getIdentity().deviceId;
+
+  const candidateDeviceIds = useMemo(() => {
+    return [
+      deviceId,
+      session?.deviceId,
+      permanentDeviceId,
+      typeof window !== 'undefined' ? localStorage.getItem('esn_device_id') : null,
+      typeof window !== 'undefined' ? localStorage.getItem('esn_permanent_device_id') : null,
+      anonymousIdentityService.getIdentity().deviceId,
+    ].filter(Boolean) as string[];
+  }, [deviceId, session?.deviceId, permanentDeviceId]);
+
+  // Sync state if initialPoll changes from parent, keeping existing local voters intact
+  useEffect(() => {
+    setPoll(prev => {
+      const mergedVoters = { ...(prev.voters || {}), ...(initialPoll.voters || {}) };
+      return {
+        ...initialPoll,
+        voters: mergedVoters,
+        totalVotes: Math.max(initialPoll.totalVotes || 0, Object.keys(mergedVoters).length)
+      };
+    });
+  }, [initialPoll]);
+
+  // Determine if this device has already voted
+  const userVotedOptionId = useMemo(() => {
+    const stored = getStoredUserVote(poll.id);
+    if (stored !== undefined) return stored;
+    if (poll.voters) {
+      for (const dId of candidateDeviceIds) {
+        if (poll.voters[dId] !== undefined) {
+          return Number(poll.voters[dId]);
+        }
+      }
+    }
+    return undefined;
+  }, [poll.id, poll.voters, candidateDeviceIds]);
+
   const hasVoted = userVotedOptionId !== undefined;
-  const totalVotes = poll.totalVotes || 0;
+  const totalVotes = Math.max(poll.totalVotes || 0, hasVoted ? 1 : 0);
 
   const handleVote = async (e: React.MouseEvent, optionId: number) => {
     e.stopPropagation();
@@ -40,6 +103,16 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     };
     setPoll(optimisticPoll);
     if (onPollUpdated) onPollUpdated(optimisticPoll);
+
+    // Persist immediately to localStorage so this device permanently remembers it has voted
+    try {
+      localStorage.setItem(`egerscore_poll_voted_${poll.id}`, JSON.stringify({ optionId, deviceId, votedAt: Date.now() }));
+      localStorage.setItem(`banter_poll_voted_${poll.id}`, String(optionId));
+      const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+      const votedMap = votedMapRaw ? JSON.parse(votedMapRaw) : {};
+      votedMap[poll.id] = optionId;
+      localStorage.setItem('egerscore_voted_polls', JSON.stringify(votedMap));
+    } catch {}
 
     setIsVoting(true);
     setError(null);
@@ -93,9 +166,12 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
 
       <div className="space-y-2">
         {poll.options.map((opt) => {
-          const votes = opt.votes || 0;
-          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
           const isUserPick = userVotedOptionId === opt.id;
+          let votes = opt.votes || 0;
+          if (hasVoted && isUserPick && votes === 0 && (poll.totalVotes || 0) === 0) {
+            votes = 1;
+          }
+          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
 
           if (hasVoted) {
             // Post-vote state with progress bars

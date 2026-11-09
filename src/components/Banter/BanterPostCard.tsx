@@ -283,7 +283,10 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           </div>
 
           {/* Tweet Text Content with Maximum View Limit */}
-          <p className="mt-2 text-sm text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text">
+          <p
+            data-testid="banter-post-content"
+            className="mt-2 text-sm text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text"
+          >
             {renderTweetContent(
               !expanded && post.content.length > MAX_VIEW_CHARS
                 ? `${post.content.slice(0, MAX_VIEW_CHARS).trim()}…`
@@ -346,7 +349,12 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
           {/* Interactive Community Poll */}
           {post.poll && (
-            <XPollWidget poll={post.poll} />
+            <XPollWidget
+              poll={post.poll}
+              onPollUpdated={(updated) => {
+                post.poll = updated;
+              }}
+            />
           )}
 
           {/* Action & Banter Reactions Bar */}

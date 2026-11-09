@@ -1426,9 +1426,27 @@ export class BanterService {
       if (!error && data) {
         const mapped = this.mapDatabaseRowToPoll(data);
         this.savePoll(mapped);
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`egerscore_poll_voted_${pollId}`, JSON.stringify({ optionId, deviceId: voterId, votedAt: Date.now() }));
+            localStorage.setItem(`banter_poll_voted_${pollId}`, String(optionId));
+            const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+            const votedMap = votedMapRaw ? JSON.parse(votedMapRaw) : {};
+            votedMap[pollId] = optionId;
+            localStorage.setItem('egerscore_voted_polls', JSON.stringify(votedMap));
+          }
+        } catch {}
         return { success: true, poll: mapped };
       }
       if (error && (error.message?.includes('already voted') || error.message?.includes('Device has already voted'))) {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+            const votedMap = votedMapRaw ? JSON.parse(votedMapRaw) : {};
+            votedMap[pollId] = optionId;
+            localStorage.setItem('egerscore_voted_polls', JSON.stringify(votedMap));
+          }
+        } catch {}
         throw new Error('Device has already voted on this poll.');
       }
     } catch (err: any) {
@@ -1952,13 +1970,35 @@ export class BanterService {
   }
 
   private mapDatabaseRowToPoll(p: any): BanterPoll {
+    const voters = typeof p.voters === 'string' ? JSON.parse(p.voters) : (p.voters || {});
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(`egerscore_poll_voted_${p.id}`);
+        const permanentId = localStorage.getItem('esn_permanent_device_id') || localStorage.getItem('esn_device_id');
+        if (stored && permanentId && voters[permanentId] === undefined) {
+          const parsed = JSON.parse(stored);
+          const optId = typeof parsed === 'number' ? parsed : parsed?.optionId;
+          if (optId !== undefined) {
+            voters[permanentId] = Number(optId);
+          }
+        }
+        const votedMapRaw = localStorage.getItem('egerscore_voted_polls');
+        if (votedMapRaw && permanentId && voters[permanentId] === undefined) {
+          const votedMap = JSON.parse(votedMapRaw);
+          if (votedMap && votedMap[p.id] !== undefined) {
+            voters[permanentId] = Number(votedMap[p.id]);
+          }
+        }
+      }
+    } catch {}
+    const totalVotes = Math.max(p.total_votes || 0, Object.keys(voters).length);
     return {
       id: p.id,
       postId: p.post_id,
       question: p.question,
       options: typeof p.options === 'string' ? JSON.parse(p.options) : p.options,
-      totalVotes: p.total_votes || 0,
-      voters: typeof p.voters === 'string' ? JSON.parse(p.voters) : (p.voters || {}),
+      totalVotes,
+      voters,
       expiresAt: p.expires_at
     };
   }
