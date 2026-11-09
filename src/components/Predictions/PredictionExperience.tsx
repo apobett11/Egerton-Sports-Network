@@ -84,7 +84,7 @@ import type {
   Team,
   BanterMediaType,
 } from '../../types/predictions';
-import { ArrowRight, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, AlertCircle, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
 
 interface PredictionExperienceProps {
   activeTab: 'banter' | 'scores' | 'analytics';
@@ -209,6 +209,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       sessionStorage.setItem('active_banter_thread_id', id);
       return id;
     }
+    const hashQuery = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]).get('post') : null;
+    const searchPost = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('post') : null;
+    const targetId = hashQuery || searchPost;
+    if (targetId) {
+      sessionStorage.setItem('active_banter_thread_id', targetId);
+      return targetId;
+    }
     const pathname = typeof window !== 'undefined' ? window.location.pathname || '' : '';
     const pathMatch = pathname.match(/^\/b\/([a-zA-Z0-9_-]+)/);
     if (pathMatch) {
@@ -218,6 +225,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
     return null;
   });
+  const [showLeaveBanterPrompt, setShowLeaveBanterPrompt] = useState(false);
   const [mobileFabTool, setMobileFabTool] = useState<'text' | 'media' | 'poll' | null>(null);
 
   useEffect(() => {
@@ -238,6 +246,13 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         const id = match[1];
         sessionStorage.setItem('active_banter_thread_id', id);
         setThreadPostId(id);
+        return;
+      }
+      const hashQuery = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]).get('post') : null;
+      if (hashQuery) {
+        sessionStorage.setItem('active_banter_thread_id', hashQuery);
+        setThreadPostId(hashQuery);
+        return;
       }
     };
     window.addEventListener('hashchange', onHashChange);
@@ -1089,7 +1104,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       matchContext: matchCtx,
       mediaUrls,
       mediaType,
-      poll,
+      poll: poll ? { id: `poll-${tempId}`, question: poll.question, options: poll.options } : undefined,
       taggedTeamId: taggedTeam?.id || null,
       taggedTeamName: taggedTeam?.name || null,
       authorDeviceId: session?.deviceId,
@@ -1302,21 +1317,33 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               ) : (
                 <div className="space-y-4 animate-fadeIn">
                   <div className="flex items-center justify-between gap-3 px-1 py-1">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ff0046] via-amber-500 to-orange-400 shadow-md shadow-[#ff0046]/30">
-                          <Flame className="h-4 w-4 text-white animate-pulse" />
-                        </span>
-                        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                          What's happening
-                        </h1>
-                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-500/20">
-                          Live Feed
-                        </span>
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => setShowLeaveBanterPrompt(true)}
+                        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition-colors text-xs font-bold cursor-pointer group shadow-xs shrink-0"
+                        aria-label="Back"
+                        data-testid="banter-back-button"
+                      >
+                        <ArrowLeft className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+                        <span>Back</span>
+                      </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ff0046] via-amber-500 to-orange-400 shadow-md shadow-[#ff0046]/30">
+                            <Flame className="h-4 w-4 text-white animate-pulse" />
+                          </span>
+                          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
+                            What's happening
+                          </h1>
+                          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-500/20">
+                            Live Feed
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-zinc-400 font-medium truncate">
+                          Hot takes, fiery rivalries & real-time pitchside banter across the league.
+                        </p>
                       </div>
-                      <p className="mt-1 text-xs text-zinc-400 font-medium">
-                        Hot takes, fiery rivalries & real-time pitchside banter across the league.
-                      </p>
                     </div>
                     <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-400">
                       <span className="relative flex h-2 w-2">
@@ -1326,6 +1353,53 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       Talking now
                     </span>
                   </div>
+
+                  {/* Confirmation Modal to Leave Banter Feed */}
+                  {showLeaveBanterPrompt && (
+                    <div
+                      role="dialog"
+                      aria-modal="true"
+                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-fadeIn"
+                      data-testid="leave-banter-modal"
+                    >
+                      <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-5 shadow-2xl space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            <AlertCircle className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-white">Leave Banter?</h3>
+                            <p className="text-xs text-zinc-400 mt-0.5">
+                              Are you sure you want to leave the live banter feed?
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            onClick={() => setShowLeaveBanterPrompt(false)}
+                            className="px-4 py-2 text-xs font-semibold rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors cursor-pointer"
+                            data-testid="cancel-leave-banter-btn"
+                          >
+                            Stay
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowLeaveBanterPrompt(false);
+                              onSelectTab('scores');
+                              window.location.hash = '#/scores';
+                            }}
+                            className="px-4 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 transition-colors cursor-pointer"
+                            data-testid="confirm-leave-banter-btn"
+                          >
+                            Leave Page
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {contextMatch && (
                     <MatchBanterDrawer
                       match={contextMatch}

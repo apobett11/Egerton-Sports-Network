@@ -37,6 +37,7 @@ export interface CreatePostOptions {
   mediaUrls?: string[];
   mediaType?: BanterMediaType;
   poll?: {
+    id?: string;
     question: string;
     options: string[];
   };
@@ -912,6 +913,7 @@ export class BanterService {
   }
 
   public getPollById(pollId: string): BanterPoll | null {
+    if (this.localPolls[pollId]) return this.localPolls[pollId];
     try {
       if (typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem(`egerscore_banter_poll_${pollId}`);
@@ -922,7 +924,6 @@ export class BanterService {
         }
       }
     } catch {}
-    if (this.localPolls[pollId]) return this.localPolls[pollId];
     const known: Record<string, BanterPoll> = {
       [POLL_PAUSE_RESUMPTION.id]: POLL_PAUSE_RESUMPTION,
       [POLL_OFFICIATING.id]: POLL_OFFICIATING,
@@ -1057,6 +1058,17 @@ export class BanterService {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
+        const pollIds = data.map((d: any) => d.poll_id).filter(Boolean);
+        if (pollIds.length > 0) {
+          try {
+            const { data: pollsData } = await supabase.from('banter_polls').select('*').in('id', pollIds);
+            if (pollsData && pollsData.length > 0) {
+              pollsData.forEach((p: any) => {
+                this.localPolls[p.id] = this.mapDatabaseRowToPoll(p);
+              });
+            }
+          } catch {}
+        }
         const posts: BanterPost[] = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
 
         // Merge local posts and seeded posts that are not in database yet
@@ -1258,7 +1270,7 @@ export class BanterService {
     let pollObj: BanterPoll | null = null;
 
     if (opts.poll && opts.poll.options && opts.poll.options.length >= 2) {
-      pollId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `poll-${Date.now()}`;
+      pollId = opts.poll.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `poll-${Date.now()}`);
       pollObj = {
         id: pollId,
         postId,
@@ -1508,6 +1520,9 @@ export class BanterService {
       const devId = post.authorDeviceId || session?.deviceId || getOrCreatePermanentDeviceId();
       const uid = post.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
 
+      const targetPoll = poll || post.poll;
+      const pollId = targetPoll?.id || post.pollId || null;
+
       const payload: Record<string, any> = {
         root_id: (post.rootId && post.rootId !== post.id) ? post.rootId : (post.parentId || null),
         parent_id: post.parentId || null,
@@ -1520,7 +1535,8 @@ export class BanterService {
         media_type: post.mediaType || 'NONE',
         match_id: post.matchId || null,
         league_id: post.leagueId || null,
-        status: 'active'
+        status: 'active',
+        poll_id: pollId
       };
 
       if (/^[0-9a-f-]{36}$/i.test(post.id)) {
@@ -1544,6 +1560,7 @@ export class BanterService {
         post.id = data.id;
         const targetPoll = poll || post.poll;
         if (targetPoll) {
+          this.savePoll(targetPoll);
           try {
             await supabase.from('banter_polls').upsert([{
               id: targetPoll.id,
@@ -1843,7 +1860,7 @@ export class BanterService {
       } else if (teamName) {
         query = query.ilike('tagged_team_name', `%${teamName}%`);
       } else {
-        query = query.not('tagged_team_name', 'is', null);
+        query = query.or('tagged_team_name.not.is.null,content.ilike.%@%');
       }
 
       const { data, error } = await query

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   MessageCircle,
   Repeat2,
@@ -11,7 +11,8 @@ import {
   User,
   Film,
   Shield,
-  Flame
+  Flame,
+  Smile
 } from 'lucide-react';
 import { formatRelativeTime } from '../../lib/predictions/utils';
 import { shareService } from '../../services/predictions/shareService';
@@ -103,6 +104,19 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     clown: Boolean(post.userReactions?.clown),
     skull: Boolean(post.userReactions?.skull),
   });
+  const [isReactionMenuOpen, setIsReactionMenuOpen] = useState(false);
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isReactionMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target as Node)) {
+        setIsReactionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isReactionMenuOpen]);
 
   const handlePostClick = () => {
     // Navigate to full-page thread view
@@ -364,50 +378,120 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               <span className="font-medium text-[11px]">{repostCount}</span>
             </button>
 
-            {/* 3. 🔥 Fire / Hot Take */}
-            <button
-              type="button"
-              onClick={(e) => handleBanterReaction(e, 'fire')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                userReactions.fire
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                  : 'hover:bg-amber-500/10 hover:text-amber-300'
-              }`}
-              title="Fire Take 🔥"
-            >
-              <Flame className={`h-3.5 w-3.5 ${userReactions.fire ? 'fill-amber-400 text-amber-400' : ''}`} />
-              <span className="text-[11px] font-mono">{reactions.fire}</span>
-            </button>
+            {/* 3. Consolidated Emoji Reaction Picker */}
+            {(() => {
+              const activeUserReactionType: ReactionType | null =
+                userReactions.fire ? 'fire' : userReactions.clown ? 'clown' : userReactions.skull ? 'skull' : null;
+              const totalReactions = (reactions.fire || 0) + (reactions.clown || 0) + (reactions.skull || 0);
 
-            {/* 4. 🤡 Clown / Delusional */}
-            <button
-              type="button"
-              onClick={(e) => handleBanterReaction(e, 'clown')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                userReactions.clown
-                  ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 shadow-xs'
-                  : 'hover:bg-yellow-500/10 hover:text-yellow-300'
-              }`}
-              title="Clown / Delusional 🤡"
-            >
-              <span className="text-xs">🤡</span>
-              <span className="text-[11px] font-mono">{reactions.clown}</span>
-            </button>
+              return (
+                <div
+                  ref={reactionPickerRef}
+                  className="relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReactionMenuOpen((prev) => !prev);
+                    }}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer group ${
+                      activeUserReactionType === 'fire'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                        : activeUserReactionType === 'clown'
+                        ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 shadow-xs'
+                        : activeUserReactionType === 'skull'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
+                        : 'hover:bg-zinc-800 text-zinc-400 hover:text-amber-400'
+                    }`}
+                    title="React"
+                    aria-label="React"
+                    data-testid="emoji-reaction-trigger"
+                  >
+                    {activeUserReactionType === 'fire' ? (
+                      <span className="text-xs">🔥</span>
+                    ) : activeUserReactionType === 'clown' ? (
+                      <span className="text-xs">🤡</span>
+                    ) : activeUserReactionType === 'skull' ? (
+                      <span className="text-xs">💀</span>
+                    ) : (
+                      <Smile className="h-3.5 w-3.5 text-zinc-400 group-hover:text-amber-400" />
+                    )}
+                    <span className="text-[11px] font-mono">
+                      {totalReactions > 0 ? totalReactions : ''}
+                    </span>
+                  </button>
 
-            {/* 5. 💀 Dead / Savage */}
-            <button
-              type="button"
-              onClick={(e) => handleBanterReaction(e, 'skull')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                userReactions.skull
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
-                  : 'hover:bg-purple-500/10 hover:text-purple-300'
-              }`}
-              title="Savage Take 💀"
-            >
-              <span className="text-xs">💀</span>
-              <span className="text-[11px] font-mono">{reactions.skull}</span>
-            </button>
+                  {/* Reaction Popover Array */}
+                  {isReactionMenuOpen && (
+                    <div
+                      role="toolbar"
+                      aria-label="Reaction options"
+                      data-testid="reaction-emoji-array"
+                      className="absolute bottom-full mb-1.5 left-0 z-40 flex items-center gap-1.5 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-700/80 rounded-full shadow-2xl animate-in fade-in zoom-in-95"
+                    >
+                      <button
+                        type="button"
+                        data-testid="react-fire-btn"
+                        aria-label="Fire reaction"
+                        title="Fire Take 🔥"
+                        onClick={(e) => {
+                          handleBanterReaction(e, 'fire');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          userReactions.fire
+                            ? 'bg-amber-500/30 text-amber-300 ring-1 ring-amber-400 scale-105'
+                            : 'hover:bg-amber-500/15 text-zinc-300 hover:text-amber-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-sm">🔥</span>
+                        <span className="text-[10px] font-mono">{reactions.fire}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        data-testid="react-clown-btn"
+                        aria-label="Clown reaction"
+                        title="Clown / Delusional 🤡"
+                        onClick={(e) => {
+                          handleBanterReaction(e, 'clown');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          userReactions.clown
+                            ? 'bg-yellow-500/30 text-yellow-300 ring-1 ring-yellow-400 scale-105'
+                            : 'hover:bg-yellow-500/15 text-zinc-300 hover:text-yellow-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-sm">🤡</span>
+                        <span className="text-[10px] font-mono">{reactions.clown}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        data-testid="react-skull-btn"
+                        aria-label="Skull reaction"
+                        title="Savage Take 💀"
+                        onClick={(e) => {
+                          handleBanterReaction(e, 'skull');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          userReactions.skull
+                            ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-400 scale-105'
+                            : 'hover:bg-purple-500/15 text-zinc-300 hover:text-purple-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-sm">💀</span>
+                        <span className="text-[10px] font-mono">{reactions.skull}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* 6. Impressions */}
             <div className="hidden xs:flex items-center gap-1 text-zinc-500" title="Views">

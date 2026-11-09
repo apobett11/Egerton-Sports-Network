@@ -36,7 +36,7 @@ test.describe('Session Identity, OP Attributions, and @Team Autocomplete', () =>
 
     // 4. Test @Team Tagging Autocomplete
     await authorPage.locator('textarea[placeholder*="Post your reply"]').fill('Paging @Eng');
-    const autocompleteDropdown = authorPage.locator('div:has-text("Select Team to Tag")');
+    const autocompleteDropdown = authorPage.locator('div:has-text("Select Team to Tag")').last();
     await expect(autocompleteDropdown).toBeVisible();
 
     // Select Engineering team

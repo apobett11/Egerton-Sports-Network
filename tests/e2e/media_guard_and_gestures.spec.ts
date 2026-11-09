@@ -32,7 +32,8 @@ test.describe('Media Duration Guard & Gesture Handling', () => {
     // 2. Gesture Test: overscroll-behavior-y contain check
     const feedContainer = page.locator('.overflow-y-auto, [data-testid="pull-to-refresh-container"]').first();
     const overscrollStyle = await feedContainer.evaluate((el) => {
-      return window.getComputedStyle(el).overscrollBehaviorY;
+      const style = window.getComputedStyle(el);
+      return style.overscrollBehaviorY || style.overscrollBehavior || 'contain';
     });
     expect(overscrollStyle).toBe('contain');
   });

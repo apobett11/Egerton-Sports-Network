@@ -14,7 +14,9 @@ import {
   Shield,
   Send,
   BarChart2,
-  AtSign
+  AtSign,
+  Smile,
+  Flame
 } from 'lucide-react';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { banterService } from '../../../services/predictions/banterService';
@@ -23,9 +25,9 @@ import { BanterReplyModal } from '../../Banter/BanterReplyModal';
 import { XPollWidget } from './XPollWidget';
 import { BanterPostCard } from './BanterPostCard';
 import { useBanterSession } from '../../../hooks/useBanterSession';
-import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
-import type { BanterPost, BanterMediaType } from '../../../types/predictions';
+import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
+import type { BanterPost, BanterMediaType, ReactionType } from '../../../types/predictions';
 
 interface BanterThreadViewProps {
   postId: string;
@@ -86,6 +88,26 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   const rootAuthorDeviceId = post?.authorDeviceId || (post as any)?.author_device_id || post?.userId;
   const isRootYou = Boolean(currentDeviceId && rootAuthorDeviceId === currentDeviceId);
 
+  const [threadReactions, setThreadReactions] = useState<{ fire: number; clown: number; skull: number }>({
+    fire: 0,
+    clown: 0,
+    skull: 0,
+  });
+  const [threadUserReactions, setThreadUserReactions] = useState<{ fire?: boolean; clown?: boolean; skull?: boolean }>({});
+  const [isReactionMenuOpen, setIsReactionMenuOpen] = useState(false);
+  const reactionPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isReactionMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target as Node)) {
+        setIsReactionMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isReactionMenuOpen]);
+
   // Scroll to absolute top on mount / navigation
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -121,6 +143,16 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
       setRepostCount(data.post.repostCount || data.post.repostsCount || 0);
       setLiked(Boolean(data.post.userReactions?.fire));
       setReposted(Boolean(data.post.isReposted));
+      setThreadReactions({
+        fire: data.post.reactionFireCount || data.post.likesCount || 0,
+        clown: data.post.reactionClownCount || 0,
+        skull: data.post.reactionSkullCount || 0,
+      });
+      setThreadUserReactions({
+        fire: Boolean(data.post.userReactions?.fire),
+        clown: Boolean(data.post.userReactions?.clown),
+        skull: Boolean(data.post.userReactions?.skull),
+      });
     }
     try {
       const feedPosts = await banterService.fetchPosts('trending', null, 8);
@@ -136,15 +168,26 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     let mounted = true;
     supabase.from('teams').select('id, name, short_name').then(
       ({ data, error }) => {
-        if (!error && data && data.length > 0 && mounted) {
-          setAvailableTeams(data.map((t: any) => ({
-            id: t.id,
-            name: t.name,
-            shortName: t.short_name || t.name.slice(0, 3).toUpperCase()
-          })));
+        if (mounted) {
+          const teamMap = new Map<string, { id: string; name: string; shortName?: string }>();
+          EPL_TEAMS.forEach(t => teamMap.set(t.name.toLowerCase(), t));
+          if (!error && data && data.length > 0) {
+            data.forEach((t: any) => {
+              teamMap.set(t.name.toLowerCase(), {
+                id: t.id,
+                name: t.name,
+                shortName: t.short_name || t.name.slice(0, 3).toUpperCase()
+              });
+            });
+          }
+          setAvailableTeams(Array.from(teamMap.values()));
         }
       },
-      () => {}
+      () => {
+        if (mounted) {
+          setAvailableTeams(EPL_TEAMS);
+        }
+      }
     );
     return () => { mounted = false; };
   }, []);

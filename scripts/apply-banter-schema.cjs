@@ -157,6 +157,10 @@ EXECUTE FUNCTION public.update_banter_post_reply_counts();
 DELETE FROM public.banter_posts WHERE content LIKE '%Root Derby Match Take%';
 DELETE FROM public.banter_posts WHERE content LIKE '%Thread Alpha Discussion%';
 DELETE FROM public.banter_posts WHERE content LIKE '%Thread Beta Discussion%';
+DELETE FROM public.banter_posts WHERE content LIKE '%Identity Authority Match Thread%';
+DELETE FROM public.banter_posts WHERE content LIKE '%Paging @%';
+DELETE FROM public.banter_polls WHERE question LIKE '%Who takes the 2026 Nakuru Derby%';
+DELETE FROM public.banter_posts WHERE id IN (SELECT post_id FROM public.banter_polls WHERE question LIKE '%Who takes the 2026 Nakuru Derby%');
 
 `;
 

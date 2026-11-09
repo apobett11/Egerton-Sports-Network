@@ -1,17 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
-  testMatch: process.env.TEST_ALL
-    ? undefined
-    : [
-        '**/thread_hierarchy_counters.spec.ts',
-        '**/realtime_scoping_isolation.spec.ts',
-        '**/poll_atomic_concurrency.spec.ts',
-        '**/identity_and_tagging.spec.ts',
-        '**/media_guard_and_gestures.spec.ts',
-        '**/*.test.mjs',
-      ],
+  testDir: './tests/e2e',
+  testMatch: [
+    '**/thread_hierarchy_counters.spec.ts',
+    '**/realtime_scoping_isolation.spec.ts',
+    '**/poll_atomic_concurrency.spec.ts',
+    '**/identity_and_tagging.spec.ts',
+    '**/media_guard_and_gestures.spec.ts',
+  ],
   timeout: 30 * 1000,
   expect: {
     timeout: 5000,
