@@ -30,12 +30,98 @@ export function formatRelativeTime(dateStr: string): string {
     const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
 
     if (diffSec < 45) return 'Just now';
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-    return `${Math.floor(diffSec / 86400)}d ago`;
+    if (diffSec < 3600) {
+      const m = Math.floor(diffSec / 60);
+      return `${m}m ago`;
+    }
+    if (diffSec < 86400) {
+      const h = Math.floor(diffSec / 3600);
+      return `${h}h ago`;
+    }
+    const days = Math.floor(diffSec / 86400);
+    if (days < 30) {
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    }
+    const months = Math.floor(days / 30);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
   } catch {
     return 'Recently';
   }
+}
+
+/**
+ * Format team tag:
+ * - Single name team (e.g. "Legends FC", "Wazito", "Santos FC") -> keep as is (e.g. "Legends FC", "Wazito")
+ * - Double / multi-named team (e.g. "Super Eagles FC", "Health Sciences FC", "Nakuru Town Campus FC") -> names only, no FC!
+ * - Never appends redundant "team" or "Team" word.
+ */
+export function formatTeamTag(rawName: string): string {
+  if (!rawName) return '';
+  let clean = rawName.trim();
+  // Strip redundant "team" suffix if someone typed "Legends FC team" or "Wazito team"
+  clean = clean.replace(/\s+teams?$/i, '').trim();
+
+  // Strip FC / SC / Club at end to count root words
+  const withoutFc = clean.replace(/\s+(FC|SC|Club)$/i, '').trim();
+  const words = withoutFc.split(/\s+/).filter(Boolean);
+
+  // For double or multi-named teams, place the names only (no FC)
+  if (words.length >= 2) {
+    return words.join(' ');
+  }
+
+  // Single named team (e.g. "Wazito" or "Legends FC" or "Santos FC")
+  return clean;
+}
+
+/**
+ * Formats a match tag between two teams according to the above configuration
+ * e.g. "Santos FC vs BCOM FC" -> "@Santos FC vs @BCOM FC"
+ * e.g. "Super Eagles FC vs Wazito FC" -> "@Super Eagles vs @Wazito FC"
+ */
+export function formatMatchTag(rawMatch: string): string {
+  if (!rawMatch) return '';
+  const clean = rawMatch.replace(/^@/, '').trim();
+  const separator = clean.includes(' vs ') ? ' vs ' : clean.includes(' v ') ? ' v ' : ' - ';
+  if (clean.includes(separator)) {
+    const [teamA, teamB] = clean.split(separator);
+    const tagA = formatTeamTag(teamA);
+    const tagB = formatTeamTag(teamB);
+    return `@${tagA} vs @${tagB}`;
+  }
+  return `@${formatTeamTag(clean)}`;
+}
+
+/**
+ * Deterministic clean message identifier for browser links, top bar, and sharing.
+ * Never exposes database UUIDs or internal UIDs.
+ */
+export function getCleanMessageRef(postOrId: { id?: string; createdAt?: string } | string): string {
+  const rawId = typeof postOrId === 'string' ? postOrId : (postOrId?.id || '');
+  if (!rawId) return 'msg-1';
+
+  // Seeded / clean posts like "post-seed-01" -> "msg-1"
+  const seedMatch = rawId.match(/^(?:post-)?seed-0*(\d+)/i);
+  if (seedMatch) {
+    return `msg-${seedMatch[1]}`;
+  }
+  const cleanMatch = rawId.match(/^msg-(\d+)/i);
+  if (cleanMatch) {
+    return `msg-${cleanMatch[1]}`;
+  }
+
+  // If already a short clean ref, keep it
+  if (!rawId.includes('-') && rawId.length <= 8) {
+    return `msg-${rawId}`;
+  }
+
+  // For UUIDs, generate a deterministic, friendly message number (e.g. msg-1042)
+  let hash = 0;
+  for (let i = 0; i < rawId.length; i++) {
+    hash = (hash * 31 + rawId.charCodeAt(i)) & 0xffffffff;
+  }
+  const msgNum = (Math.abs(hash) % 9000) + 1000;
+  return `msg-${msgNum}`;
 }
 
 export interface CountdownResult {

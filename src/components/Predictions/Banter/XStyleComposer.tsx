@@ -15,6 +15,7 @@ import {
 import { validateVideoFile } from '../../../services/predictions/banterService';
 import { supabase } from '../../../lib/predictions/banterSupabase';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
+import { formatTeamTag, formatMatchTag } from '../../../lib/predictions/utils';
 import { useBanterSession } from '../../../hooks/useBanterSession';
 import { getAuthorIdentityMeta } from '../../../lib/predictions/footballAvatars';
 import type { BanterMediaType, AuthorType } from '../../../types/predictions';
@@ -171,16 +172,17 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   const handleSelectMatchTag = (matchName: string) => {
     setTaggedMatch(matchName);
     setShowTagMenu(false);
-    const tagText = `@${matchName}`;
+    const tagText = formatMatchTag(matchName);
     setContent(prev => prev.includes(tagText) ? prev : `${prev ? prev + ' ' : ''}${tagText} `.slice(0, MAX_CHARS));
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
   const handleSelectTeamTag = (teamName: string) => {
-    const teamObj = { id: teamName.toLowerCase().replace(/\s+/g, '-'), name: teamName };
+    const formatted = formatTeamTag(teamName);
+    const teamObj = { id: teamName.toLowerCase().replace(/\s+/g, '-'), name: formatted };
     setSelectedTeam(teamObj);
     setShowTagMenu(false);
-    const tagText = `@${teamName}`;
+    const tagText = `@${formatted}`;
     setContent(prev => prev.includes(tagText) ? prev : `${prev ? prev + ' ' : ''}${tagText} `.slice(0, MAX_CHARS));
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
@@ -372,7 +374,8 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
 
   // Selecting team from autocomplete dropdown
   const handleSelectTeam = (team: { id: string; name: string }) => {
-    setSelectedTeam(team);
+    const formatted = formatTeamTag(team.name);
+    setSelectedTeam({ ...team, name: formatted });
     setShowTeamDropdown(false);
 
     const cursorPos = textareaRef.current?.selectionStart ?? content.length;
@@ -382,9 +385,9 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
 
     let newContent = '';
     if (atIndex !== -1) {
-      newContent = `${textBefore.slice(0, atIndex)}@${team.name} ${textAfter}`;
+      newContent = `${textBefore.slice(0, atIndex)}@${formatted} ${textAfter}`;
     } else {
-      newContent = `${content} @${team.name} `;
+      newContent = `${content} @${formatted} `;
     }
 
     setContent(newContent.slice(0, MAX_CHARS));

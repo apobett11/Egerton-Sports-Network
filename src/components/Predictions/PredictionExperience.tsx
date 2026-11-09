@@ -47,7 +47,7 @@ import { anonymousIdentityService } from '../../services/predictions/anonymousId
 import { useBanterSession } from '../../hooks/useBanterSession';
 import { getActiveSessionProfile, getOrCreatePermanentDeviceId } from '../../utils/sessionIdentity';
 import { supabase } from '../../lib/supabase';
-import { formatKickoffTime, formatTeamName } from '../../lib/predictions/utils';
+import { formatKickoffTime, formatTeamName, getCleanMessageRef } from '../../lib/predictions/utils';
 import { matchdayTeamLine } from '../../lib/predictions/newsMatchdays';
 import { slipResult } from '../../lib/predictions/votingWindow';
 import { EPL_TEAMS } from '../../lib/predictions/eplTeams';
@@ -205,23 +205,36 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     }
     const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
     if (match && match[1] !== 'thread') {
-      const id = match[1];
-      sessionStorage.setItem('active_banter_thread_id', id);
-      return id;
+      const ref = match[1];
+      const realId =
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`banter_ref_${ref}`) : null) ||
+        banterService.resolvePostIdFromRef(ref) ||
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('active_banter_thread_id') : null) ||
+        ref;
+      sessionStorage.setItem('active_banter_thread_id', realId);
+      return realId;
     }
     const hashQuery = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]).get('post') : null;
     const searchPost = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('post') : null;
     const targetId = hashQuery || searchPost;
     if (targetId) {
-      sessionStorage.setItem('active_banter_thread_id', targetId);
-      return targetId;
+      const realId =
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`banter_ref_${targetId}`) : null) ||
+        banterService.resolvePostIdFromRef(targetId) ||
+        targetId;
+      sessionStorage.setItem('active_banter_thread_id', realId);
+      return realId;
     }
     const pathname = typeof window !== 'undefined' ? window.location.pathname || '' : '';
     const pathMatch = pathname.match(/^\/b\/([a-zA-Z0-9_-]+)/);
     if (pathMatch) {
-      const id = pathMatch[1];
-      sessionStorage.setItem('active_banter_thread_id', id);
-      return id;
+      const ref = pathMatch[1];
+      const realId =
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`banter_ref_${ref}`) : null) ||
+        banterService.resolvePostIdFromRef(ref) ||
+        ref;
+      sessionStorage.setItem('active_banter_thread_id', realId);
+      return realId;
     }
     return null;
   });
@@ -243,15 +256,24 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       }
       const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
       if (match && match[1] !== 'thread') {
-        const id = match[1];
-        sessionStorage.setItem('active_banter_thread_id', id);
-        setThreadPostId(id);
+        const ref = match[1];
+        const realId =
+          sessionStorage.getItem(`banter_ref_${ref}`) ||
+          banterService.resolvePostIdFromRef(ref) ||
+          sessionStorage.getItem('active_banter_thread_id') ||
+          ref;
+        sessionStorage.setItem('active_banter_thread_id', realId);
+        setThreadPostId(realId);
         return;
       }
       const hashQuery = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]).get('post') : null;
       if (hashQuery) {
-        sessionStorage.setItem('active_banter_thread_id', hashQuery);
-        setThreadPostId(hashQuery);
+        const realId =
+          sessionStorage.getItem(`banter_ref_${hashQuery}`) ||
+          banterService.resolvePostIdFromRef(hashQuery) ||
+          hashQuery;
+        sessionStorage.setItem('active_banter_thread_id', realId);
+        setThreadPostId(realId);
         return;
       }
     };
@@ -670,14 +692,30 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     return regularMatches.length > 0 && picksCompletedCount >= regularMatches.length;
   }, [regularMatches, picksCompletedCount]);
 
-  // 2. Load Twitter-Style Banter Feed
+  // 2. Load Twitter-Style Banter Feed (Instant Cache Render -> Background Refresh)
   const loadBanter = useCallback(async () => {
-    setIsLoadingBanter(true);
     const matchId = contextMatch?.id || null;
     const devId = banterProfile?.deviceId || (typeof window !== 'undefined' ? getOrCreatePermanentDeviceId() : '');
-    const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0, devId);
-    setBanterPosts(posts);
-    setIsLoadingBanter(false);
+
+    // Render cached main thread messages instantly while fresh ones are being fetched
+    const cached = banterService.getCachedMainPosts(banterFilter, matchId);
+    if (cached && cached.length > 0) {
+      setBanterPosts(cached);
+      setIsLoadingBanter(false);
+    } else {
+      setIsLoadingBanter(true);
+    }
+
+    try {
+      const posts = await banterService.fetchPosts(banterFilter, matchId, 20, 0, devId);
+      if (posts && posts.length > 0) {
+        setBanterPosts(posts);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch banter posts:', err);
+    } finally {
+      setIsLoadingBanter(false);
+    }
   }, [banterFilter, contextMatch, banterProfile?.deviceId]);
 
   const loadMoreBanter = useCallback(async () => {
@@ -1311,9 +1349,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     sessionStorage.removeItem('active_banter_thread_id');
                   }}
                   onNavigatePost={(nextId) => {
+                    const cleanRef = getCleanMessageRef(nextId);
                     sessionStorage.setItem('active_banter_thread_id', nextId);
+                    sessionStorage.setItem(`banter_ref_${cleanRef}`, nextId);
+                    banterService.registerPostRef(nextId, cleanRef);
                     setThreadPostId(nextId);
-                    window.location.hash = `#/banter/${nextId}`;
+                    window.location.hash = `#/banter/${cleanRef}`;
                   }}
                 />
               ) : (
@@ -1486,9 +1527,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                           }
                           onToggleReaction={handleToggleReaction}
                           onOpenComments={(post) => {
+                            const cleanRef = getCleanMessageRef(post);
                             sessionStorage.setItem('active_banter_thread_id', post.id);
+                            sessionStorage.setItem(`banter_ref_${cleanRef}`, post.id);
+                            banterService.registerPostRef(post.id, cleanRef);
                             setThreadPostId(post.id);
-                            window.location.hash = `#/banter/${post.id}`;
+                            window.location.hash = `#/banter/${cleanRef}`;
                           }}
                           onPickGames={() => {
                             setActiveTab('scores');

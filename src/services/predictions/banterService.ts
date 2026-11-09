@@ -1,7 +1,7 @@
 import { fictionalBanterPosts, fictionalComments, usesLocalFictionalSlate } from '../../lib/predictions/fictionalSlate';
 import { supabase } from '../../lib/predictions/banterSupabase';
 import { BANTER_CONFIG, STORAGE_KEYS } from '../../lib/predictions/constants';
-import { getStoredItem, setStoredItem } from '../../lib/predictions/utils';
+import { getStoredItem, setStoredItem, getCleanMessageRef } from '../../lib/predictions/utils';
 import { anonymousIdentityService } from './anonymousIdentityService';
 import { getOrCreateDeviceIdentity } from '../../utils/deviceIdentity';
 import { getDeviceCredentials } from '../../lib/deviceCopies';
@@ -921,6 +921,8 @@ export class BanterService {
   private localPosts: BanterPost[] = [];
   private localPolls: Record<string, BanterPoll> = {};
   private lastPostTimestamp = 0;
+  private postRefToIdMap: Record<string, string> = {};
+  private postIdToRefMap: Record<string, string> = {};
 
   constructor() {
     const rawLocal = getStoredItem<BanterPost[]>('egerscore_local_banter_posts', []);
@@ -934,6 +936,42 @@ export class BanterService {
       [POLL_CHAMPIONSHIP_PROMOTION.id]: POLL_CHAMPIONSHIP_PROMOTION,
       [POLL_SURPRISE_TEAM.id]: POLL_SURPRISE_TEAM,
     });
+  }
+
+  public registerPostRef(postId: string, ref: string): void {
+    if (postId && ref) {
+      this.postRefToIdMap[ref] = postId;
+      this.postIdToRefMap[postId] = ref;
+    }
+  }
+
+  public resolvePostIdFromRef(refOrId: string): string {
+    if (!refOrId) return '';
+    if (this.postRefToIdMap[refOrId]) return this.postRefToIdMap[refOrId];
+    return refOrId;
+  }
+
+  public getCachedMainPosts(filter: string, matchId?: string | null): BanterPost[] | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const cacheKey = `egerscore_banter_cache_${filter}_${matchId || 'all'}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
+  }
+
+  public setCachedMainPosts(filter: string, matchId: string | null | undefined, posts: BanterPost[]): void {
+    if (typeof localStorage === 'undefined' || !Array.isArray(posts) || posts.length === 0) return;
+    try {
+      const cacheKey = `egerscore_banter_cache_${filter}_${matchId || 'all'}`;
+      localStorage.setItem(cacheKey, JSON.stringify(posts.slice(0, 30)));
+    } catch {}
   }
 
   public getAuthoritativeDeviceId(preferredDeviceId?: string): string {
@@ -1154,17 +1192,21 @@ export class BanterService {
 
   public async getPostById(postId: string, deviceId?: string): Promise<BanterPost | null> {
     const devId = deviceId || this.getAuthoritativeDeviceId();
+    const resolvedId = this.resolvePostIdFromRef(postId);
     const matchesId = (p: BanterPost) =>
+      p.id === resolvedId ||
       p.id === postId ||
-      p.id.endsWith(postId) ||
-      p.id.replace(/^post-seed-/, '') === postId ||
-      (postId.length >= 6 && p.id.startsWith(postId));
+      p.id.endsWith(resolvedId) ||
+      p.id.replace(/^post-seed-/, '') === resolvedId ||
+      getCleanMessageRef(p) === postId ||
+      (resolvedId.length >= 6 && p.id.startsWith(resolvedId));
 
     const post = this.localPosts.find(matchesId)
       || SEEDED_BANTER_POSTS.find(matchesId)
       || (fictionalBanterPosts() as BanterPost[]).find(matchesId);
 
     if (post) {
+      this.registerPostRef(post.id, getCleanMessageRef(post));
       if (post.pollId) {
         await this.syncPollsForDevice([post.pollId], devId);
         post.poll = this.getPollById(post.pollId) || post.poll;
@@ -1176,10 +1218,11 @@ export class BanterService {
       const { data, error } = await supabase
         .from('banter_posts')
         .select('*')
-        .eq('id', postId)
+        .eq('id', resolvedId)
         .maybeSingle();
 
       if (!error && data) {
+        this.registerPostRef(data.id, getCleanMessageRef(data.id));
         if (data.poll_id) {
           await this.syncPollsForDevice([data.poll_id], devId);
         }
@@ -1191,7 +1234,7 @@ export class BanterService {
       const { data: cData, error: cErr } = await supabase
         .from('banter_comments')
         .select('*')
-        .eq('id', postId)
+        .eq('id', resolvedId)
         .maybeSingle();
 
       if (!cErr && cData) {
@@ -1246,7 +1289,8 @@ export class BanterService {
       let query = supabase
         .from('banter_posts')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .is('parent_id', null);
 
       if (matchId) {
         query = query.eq('match_id', matchId);
@@ -1309,7 +1353,11 @@ export class BanterService {
 
         const filtered = applyBanterFilter(combined, filter);
         if (filtered.length > 0) {
-          return filtered.slice(0, limit);
+          const result = filtered.slice(0, limit);
+          if (offset === 0) {
+            this.setCachedMainPosts(filter, matchId, result);
+          }
+          return result;
         }
       }
     } catch {

@@ -1,4 +1,5 @@
 import type { BanterPost } from '../types/predictions';
+import { getCleanMessageRef } from './predictions/utils';
 
 export interface SnapshotRow {
   left: string;
@@ -688,10 +689,8 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
 
 export function getShortBanterLink(postId: string): string {
   if (!postId) return 'egerscore.com/banter';
-  const cleanId = postId
-    .replace(/^post-seed-/, '')
-    .replace(/^temp-/, '');
-  return `egerscore.com/b/${cleanId}?v=20261102`;
+  const cleanId = getCleanMessageRef(postId);
+  return `egerscore.com/b/${cleanId}`;
 }
 
 export async function renderBanterCardSnapshot(
@@ -1082,8 +1081,9 @@ export async function shareBanterSnapshot(
   parentPost?: BanterPost | null
 ): Promise<void> {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.egerscore.com';
-  const shareHref = `${origin}/#/banter/${post.id}`;
-  const shortLink = getShortBanterLink(post.id);
+  const cleanRef = getCleanMessageRef(post);
+  const shareHref = `${origin}/#/banter/${cleanRef}`;
+  const shortLink = `egerscore.com/b/${cleanRef}`;
   const title = post.authorName || post.authorHandle || 'Fanatic';
   const snippet = post.content.length > 90 ? `"${post.content.slice(0, 90).trim()}..."` : `"${post.content}"`;
 
@@ -1091,7 +1091,7 @@ export async function shareBanterSnapshot(
     const file = await renderBanterCardSnapshot(post, parentPost, shortLink);
     showPicture(
       file,
-      `banter/${post.id}`,
+      `banter/${cleanRef}`,
       shareHref,
       title,
       snippet,

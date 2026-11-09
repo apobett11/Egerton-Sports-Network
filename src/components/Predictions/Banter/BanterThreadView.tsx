@@ -27,6 +27,7 @@ import { BanterPostCard } from './BanterPostCard';
 import { useBanterSession } from '../../../hooks/useBanterSession';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
 import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
+import { formatRelativeTime, formatTeamTag, formatMatchTag, getCleanMessageRef } from '../../../lib/predictions/utils';
 import {
   getAuthorIdentityMeta,
   InstagramBlueTick,
@@ -367,15 +368,16 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   };
 
   const handleSelectThreadTeam = (team: { id: string; name: string }) => {
-    setSelectedThreadTeam(team);
+    const formatted = formatTeamTag(team.name);
+    setSelectedThreadTeam({ ...team, name: formatted });
     setShowThreadTeamDropdown(false);
 
     const atIndex = singleReplyText.lastIndexOf('@');
     let next = '';
     if (atIndex !== -1) {
-      next = `${singleReplyText.slice(0, atIndex)}@${team.name} `;
+      next = `${singleReplyText.slice(0, atIndex)}@${formatted} `;
     } else {
-      next = `${singleReplyText} @${team.name} `;
+      next = `${singleReplyText} @${formatted} `;
     }
     setSingleReplyText(next.slice(0, 280));
   };
@@ -633,12 +635,14 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
         );
       }
       if (part.startsWith('@')) {
+        const rawTag = part.slice(1);
+        const formatted = formatTeamTag(rawTag);
         return (
           <span
             key={idx}
-            className="text-emerald-400 font-semibold inline-flex items-center gap-0.5 bg-emerald-500/10 px-1 rounded border border-emerald-500/20"
+            className="text-emerald-400 font-semibold inline-flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20 text-xs sm:text-[13px]"
           >
-            {part}
+            @{formatted}
           </span>
         );
       }
@@ -714,8 +718,10 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                   if (onNavigatePost) {
                     onNavigatePost(ancestor.id);
                   } else {
+                    const cleanRef = getCleanMessageRef(ancestor);
                     sessionStorage.setItem('active_banter_thread_id', ancestor.id);
-                    window.location.hash = `#/banter/${ancestor.id}`;
+                    sessionStorage.setItem(`banter_ref_${cleanRef}`, ancestor.id);
+                    window.location.hash = `#/banter/${cleanRef}`;
                   }
                 }}
                 className="group relative flex gap-3 cursor-pointer pb-4"
@@ -917,9 +923,9 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
             <button
               type="button"
               aria-label="Reply"
-              className="flex items-center gap-1.5 p-2 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 p-2 rounded-full hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer text-zinc-400"
             >
-              <MessageCircle className="h-5 w-5" />
+              <span className="text-base leading-none">💬</span>
             </button>
 
             <button
@@ -1066,31 +1072,49 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
           </div>
 
           {replies.length === 0 ? (
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 pb-1 border-b border-zinc-900">
-                <Sparkles className="h-3.5 w-3.5 text-sky-400" />
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-                  More stories
-                </h4>
+            <div className="pt-2">
+              {/* Large blank space & empty state for replies */}
+              <div className="py-20 sm:py-28 my-6 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-zinc-900 bg-zinc-950/40 px-6">
+                <div className="h-16 w-16 rounded-full bg-zinc-900/90 border border-zinc-800/80 flex items-center justify-center text-3xl mb-4 shadow-inner">
+                  💬
+                </div>
+                <h4 className="text-base sm:text-lg font-bold text-white tracking-tight">No replies yet</h4>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1.5 max-w-sm leading-relaxed">
+                  Start the conversation — share your tactical take, banter the opposition, or leave a thought below.
+                </p>
               </div>
-              <div className="space-y-3">
-                {moreStories.map((story) => (
-                  <BanterPostCard
-                    key={story.id}
-                    post={story}
-                    onToggleReaction={async (pId, type) => {
-                      await banterService.toggleReaction(pId, type);
-                    }}
-                    onOpenComments={(p) => {
-                      if (onNavigatePost) {
-                        onNavigatePost(p.id);
-                      } else {
+
+              {/* Generous blank space before Top stories */}
+              <div className="h-12 sm:h-16" />
+
+              <div className="space-y-3 pt-4 border-t border-zinc-900/80">
+                <div className="flex items-center gap-2 pb-1">
+                  <Sparkles className="h-4 w-4 text-sky-400" />
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300">
+                    Top stories
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {moreStories.map((story) => (
+                    <BanterPostCard
+                      key={story.id}
+                      post={story}
+                      onToggleReaction={async (pId, type) => {
+                        await banterService.toggleReaction(pId, type);
+                      }}
+                      onOpenComments={(p) => {
+                        const cleanRef = getCleanMessageRef(p);
                         sessionStorage.setItem('active_banter_thread_id', p.id);
-                        window.location.hash = `#/banter/${p.id}`;
-                      }
-                    }}
-                  />
-                ))}
+                        sessionStorage.setItem(`banter_ref_${cleanRef}`, p.id);
+                        if (onNavigatePost) {
+                          onNavigatePost(p.id);
+                        } else {
+                          window.location.hash = `#/banter/${cleanRef}`;
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
@@ -1110,7 +1134,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                       {/* Avatar & Number badge */}
                       <div className="flex flex-col items-center gap-1">
                         <div
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs border border-white/10"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm border border-white/10 overflow-hidden shadow-sm"
                           style={{ backgroundColor: reply.authorAvatar || (isYou ? profile?.avatarColor : undefined) || '#2563eb' }}
                         >
                           {reply.authorName ? reply.authorName[0] : <User className="h-4 w-4" />}
@@ -1140,8 +1164,8 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                               @{reply.authorHandle.replace(/\s+/g, '_').toLowerCase()}
                             </span>
                             <span className="text-[11px] text-zinc-600">·</span>
-                            <span className="text-[11px] text-zinc-500">
-                              {formatFullTimestamp(reply.createdAt).split(' · ')[0]}
+                            <span className="text-[11px] text-zinc-500 whitespace-nowrap">
+                              {formatRelativeTime(reply.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -1174,11 +1198,11 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                               e.stopPropagation();
                               setActiveDeepReplyTargetId(prev => prev === reply.id ? null : reply.id);
                             }}
-                            className="flex items-center gap-1 hover:text-sky-400 cursor-pointer p-1"
+                            className="flex items-center gap-1 hover:text-sky-400 cursor-pointer p-1 text-zinc-400"
                             title="Reply"
                           >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            <span>💬 {reply.commentCount || reply.repliesCount || 0}</span>
+                            <span className="text-[13px] leading-none">💬</span>
+                            <span className="font-mono">{reply.commentCount || reply.repliesCount || 0}</span>
                           </button>
                           <button
                             type="button"

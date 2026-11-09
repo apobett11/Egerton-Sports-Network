@@ -10,7 +10,7 @@ import {
   Flame,
   Smile
 } from 'lucide-react';
-import { formatRelativeTime } from '../../lib/predictions/utils';
+import { formatRelativeTime, formatTeamTag, getCleanMessageRef } from '../../lib/predictions/utils';
 import { shareBanterSnapshot } from '../../lib/shareSnapshot';
 import { BanterReplyModal } from './BanterReplyModal';
 import { XPollWidget } from '../Predictions/Banter/XPollWidget';
@@ -122,9 +122,11 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   }, [isReactionMenuOpen]);
 
   const handlePostClick = () => {
-    // Navigate to full-page thread view
+    // Navigate to full-page thread view (clean message ref, never internal UID)
+    const messageRef = getCleanMessageRef(post);
     sessionStorage.setItem('active_banter_thread_id', post.id);
-    window.location.hash = `#/banter/${post.id}`;
+    sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
+    window.location.hash = `#/banter/${messageRef}`;
     if (onOpenComments) onOpenComments(post);
   };
 
@@ -165,7 +167,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   };
 
   const renderTweetContent = (text: string) => {
-    const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_\s]{2,20}(?=\s|$|[.,!?]))/g);
+    const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_\s]{2,25}(?=\s|$|[.,!?]))/g);
     return parts.map((part, idx) => {
       if (part.startsWith('#')) {
         return (
@@ -175,12 +177,14 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         );
       }
       if (part.startsWith('@')) {
+        const rawTag = part.slice(1);
+        const formatted = formatTeamTag(rawTag);
         return (
           <span
             key={idx}
-            className="text-emerald-400 font-semibold inline-flex items-center gap-0.5 bg-emerald-500/10 px-1 rounded border border-emerald-500/20"
+            className="text-emerald-400 font-semibold inline-flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20 text-xs sm:text-[13px]"
           >
-            {part}
+            @{formatted}
           </span>
         );
       }
@@ -197,7 +201,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   return (
     <article
       onClick={handlePostClick}
-      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-colors duration-150 cursor-pointer hover:bg-white/[0.02] ${
+      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-colors duration-150 cursor-pointer hover:bg-white/[0.02] max-w-2xl mx-auto border-b border-zinc-800/70 ${
         isHot || post.isTrending ? 'bg-amber-500/[0.02]' : ''
       }`}
     >
@@ -205,7 +209,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
       )}
       <div className="flex gap-3">
-        {/* User Avatar - Clicking opens Large Image Modal with Session Name & Privacy Notice */}
+        {/* User Avatar / Logo - Made larger matching Google Stitch / X standard */}
         <div className="flex-shrink-0">
           <button
             type="button"
@@ -213,7 +217,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               e.stopPropagation();
               setIsAvatarModalOpen(true);
             }}
-            className="group/avatar flex h-10 w-10 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
+            className="group/avatar flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shadow-sm border border-white/10 hover:border-sky-400 transition cursor-pointer"
             title="View image and session details"
           >
             <img
@@ -236,7 +240,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                   e.stopPropagation();
                   setIsAvatarModalOpen(true);
                 }}
-                className="font-bold text-white text-sm hover:underline hover:text-sky-300 truncate max-w-[150px] cursor-pointer text-left"
+                className="font-bold text-white text-[15px] hover:underline hover:text-sky-300 truncate max-w-[170px] cursor-pointer text-left"
                 title="View image and session details"
               >
                 {authorMeta.displayName}
@@ -261,7 +265,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                     <ChampionshipAmberCoachTick className="h-4 w-4" />
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-amber-400 border border-amber-500/30">
                       <Shield className="h-2.5 w-2.5 text-amber-400" />
-                      <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'Championship Coach'}</span>
+                      <span>{post.taggedTeamName ? `${formatTeamTag(post.taggedTeamName)} Coach` : 'Championship Coach'}</span>
                     </span>
                   </div>
                 ) : (
@@ -269,19 +273,19 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                     <OrangeCoachTick className="h-4 w-4" />
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 px-2 py-0.2 text-[9px] font-black uppercase text-orange-400 border border-orange-500/30">
                       <Shield className="h-2.5 w-2.5 text-orange-400" />
-                      <span>{post.taggedTeamName ? `${post.taggedTeamName} Coach` : 'EPL Coach'}</span>
+                      <span>{post.taggedTeamName ? `${formatTeamTag(post.taggedTeamName)} Coach` : 'EPL Coach'}</span>
                     </span>
                   </div>
                 )
               ) : null}
 
-              <span className="text-xs text-zinc-500 font-mono truncate max-w-[100px]">
+              <span className="text-sm text-zinc-500 font-normal truncate max-w-[120px]">
                 @{cleanHandle}
               </span>
 
-              <span className="text-zinc-600 text-xs">·</span>
+              <span className="text-zinc-600 text-sm">·</span>
 
-              <span className="text-xs text-zinc-500 whitespace-nowrap">
+              <span className="text-sm text-zinc-500 whitespace-nowrap hover:underline">
                 {formatRelativeTime(post.createdAt)}
               </span>
 
@@ -298,14 +302,14 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {post.matchContext && post.content.includes('#') && (
               <span className="inline-flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-0.5 text-[10px] font-bold text-zinc-300 border border-zinc-800">
-                <span>⚽ {post.matchContext.homeTeamName} vs {post.matchContext.awayTeamName}</span>
+                <span>⚽ {formatTeamTag(post.matchContext.homeTeamName)} vs {formatTeamTag(post.matchContext.awayTeamName)}</span>
               </span>
             )}
 
             {post.taggedTeamName && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/25">
                 <Shield className="h-2.5 w-2.5" />
-                <span>@{post.taggedTeamName}</span>
+                <span>@{formatTeamTag(post.taggedTeamName)}</span>
               </span>
             )}
           </div>
@@ -387,18 +391,18 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
 
           {/* Action & Banter Reactions Bar */}
           <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-md">
-            {/* 1. Reply */}
+            {/* 1. Reply - Kept single non-white message bubble */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsReplyModalOpen(true);
               }}
-              className="flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 transition-colors cursor-pointer group/reply"
+              className="flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full hover:bg-[#1d9bf0]/10 transition-colors cursor-pointer group/reply text-zinc-400 hover:text-[#1d9bf0]"
               title="Reply"
             >
-              <MessageCircle className="h-4 w-4 group-hover/reply:text-[#1d9bf0]" />
-              <span className="font-medium text-xs">💬 {replyCount}</span>
+              <span className="text-[14px] leading-none">💬</span>
+              <span className="font-medium text-xs font-mono">{replyCount}</span>
             </button>
 
             {/* 2. Repost */}
