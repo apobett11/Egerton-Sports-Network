@@ -303,12 +303,23 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
     };
   }, [postId, loadThread]);
 
-  const handleToggleLike = async () => {
+  const handleThreadReaction = async (type: ReactionType) => {
     if (!post) return;
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikeCount(prev => prev + (nextLiked ? 1 : -1));
-    await banterService.toggleReaction(post.id, 'fire');
+    const active = !threadUserReactions[type];
+    setThreadUserReactions((prev) => ({ ...prev, [type]: active }));
+    setThreadReactions((prev) => ({
+      ...prev,
+      [type]: Math.max(0, (prev[type] || 0) + (active ? 1 : -1)),
+    }));
+    if (type === 'fire') {
+      setLiked(active);
+      setLikeCount((prev) => Math.max(0, prev + (active ? 1 : -1)));
+    }
+    await banterService.toggleReaction(post.id, type);
+  };
+
+  const handleToggleLike = async () => {
+    await handleThreadReaction('fire');
   };
 
   const handleToggleRepost = () => {
