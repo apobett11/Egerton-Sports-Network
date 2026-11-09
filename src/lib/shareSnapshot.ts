@@ -503,6 +503,7 @@ function showPicture(
 
   const root = document.createElement('div');
   root.setAttribute('role', 'dialog');
+  root.setAttribute('data-testid', 'share-modal-dialog');
   root.style.cssText = 'position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;';
   root.innerHTML = `
     <div style="width:min(540px,100%);background:#0e1c2b;border:1px solid #1a2e45;border-radius:16px;overflow:hidden;color:white;font-family:Arial,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.08);margin:auto;">
@@ -515,10 +516,12 @@ function showPicture(
         <button type="button" data-close aria-label="Close" style="background:#152a40;color:#94a3b8;border:0;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;">Close</button>
       </div>
 
-      <!-- High-res Uncropped Template Image Preview -->
+      <!-- High-res Uncropped Template Image Preview (Clickable) -->
       <div style="margin:12px;background:#08121d;border:1px solid #20354b;border-radius:12px;overflow:hidden;box-shadow:0 12px 28px -4px rgba(0,0,0,0.5);">
         <div style="position:relative;width:100%;max-height:460px;overflow-y:auto;background:#08121d;text-align:center;">
-          <img data-card alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;" />
+          <a href="${finalShareUrl}" data-post-link aria-label="Open message" style="display:block;cursor:pointer;text-decoration:none;">
+            <img data-card data-testid="share-card-image" alt="${escapeHtml(title)}" draggable="false" src="${objectUrl}" style="width:100%;height:auto;max-height:460px;object-fit:contain;display:block;background:#0e1c2b;margin:0 auto;" />
+          </a>
           <div style="position:absolute;top:10px;right:10px;background:rgba(14,28,43,0.9);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:4px 8px;font-size:10px;font-weight:800;color:#ff0046;letter-spacing:0.05em;pointer-events:none;">
             BIG TEMPLATE IMAGE
           </div>
@@ -528,9 +531,9 @@ function showPicture(
         <div style="padding:10px 14px;border-top:1px solid #1a2e45;background:#0e1c2b;display:flex;justify-content:space-between;align-items:center;">
           <div>
             <div data-title style="font-size:14px;font-weight:800;color:#f8fafc;line-height:1.3;">${escapeHtml(title)}</div>
-            <div style="font-size:11px;color:#38bdf8;font-weight:700;margin-top:2px;font-family:monospace;">${escapeHtml(displayLink)}</div>
+            <a href="${finalShareUrl}" data-post-link data-testid="share-post-link" style="font-size:11px;color:#38bdf8;font-weight:700;margin-top:2px;font-family:monospace;text-decoration:none;display:inline-block;">🔗 ${escapeHtml(displayLink)}</a>
           </div>
-          <span style="font-size:10px;background:rgba(56,189,248,0.15);color:#38bdf8;padding:3px 8px;border-radius:6px;font-weight:700;">Full Analytics</span>
+          <a href="${finalShareUrl}" data-post-link data-testid="open-message-link" style="font-size:10px;background:rgba(56,189,248,0.15);color:#38bdf8;padding:4px 8px;border-radius:6px;font-weight:700;text-decoration:none;">Open Message →</a>
         </div>
       </div>
 
@@ -559,7 +562,7 @@ function showPicture(
           <button type="button" data-download-image aria-label="Download image" style="flex:1;background:#152a40;color:#f8fafc;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
             <span>⬇️ Download Image</span>
           </button>
-          <button type="button" data-copy-link aria-label="Copy short link" style="background:#152a40;color:#94a3b8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;">
+          <button type="button" data-copy-link aria-label="Copy link" style="background:#152a40;color:#94a3b8;border:1px solid #254160;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;">
             Copy Link
           </button>
         </div>
@@ -572,6 +575,22 @@ function showPicture(
   };
 
   root.querySelector('[data-close]')?.addEventListener('click', close);
+
+  root.querySelectorAll('[data-post-link]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = el.getAttribute('href');
+      close();
+      if (typeof window !== 'undefined' && href) {
+        if (href.includes('#')) {
+          const targetHash = '#' + href.split('#')[1].replace(/^#+/, '');
+          window.location.hash = targetHash;
+        } else {
+          window.location.href = href;
+        }
+      }
+    });
+  });
 
   root.querySelector('[data-share-whatsapp]')?.addEventListener('click', () => {
     void sendToWhatsApp();
@@ -622,10 +641,15 @@ function showPicture(
   const copyBtn = root.querySelector('[data-copy-link]') as HTMLButtonElement | null;
   copyBtn?.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(displayLink);
+      await navigator.clipboard.writeText(finalShareUrl);
       if (copyBtn) {
         copyBtn.textContent = 'Copied!';
         setTimeout(() => { if (copyBtn) copyBtn.textContent = 'Copy Link'; }, 2000);
+      }
+      const feedback = root.querySelector('[data-share-feedback]') as HTMLElement | null;
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.textContent = '✓ Active share link copied to clipboard!';
       }
     } catch {
       if (copyBtn) copyBtn.textContent = 'Copied!';
@@ -984,7 +1008,7 @@ export async function renderBanterCardSnapshot(
     const fireCount = p.reactionFireCount || p.likesCount || 0;
     const clownCount = p.reactionClownCount || 0;
     const skullCount = p.reactionSkullCount || 0;
-    const viewsCount = p.impressionsCount || (fireCount + clownCount + skullCount + repCount + 10) * 64;
+    const viewsCount = p.impressions || p.impressionsCount || (p.isTrending ? 1680 : 840);
 
     ctx.font = '700 18px Arial, sans-serif';
 
@@ -1037,8 +1061,8 @@ export async function renderBanterCardSnapshot(
   ctx.fillText('EGERSCORE · OFFICIAL CAMPUS SPORTS PLATFORM', 48, footerY + 40);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = '800 22px Arial, sans-serif';
-  ctx.fillText(shortLink, 48, footerY + 76);
+  ctx.font = '800 18px Arial, sans-serif';
+  ctx.fillText(fit(ctx, shortLink, WIDTH - 420), 48, footerY + 76);
 
   roundBox(ctx, WIDTH - 340, footerY + 34, 292, 52, 26);
   ctx.fillStyle = '#ff0046';
@@ -1057,22 +1081,28 @@ export async function shareBanterSnapshot(
   post: BanterPost,
   parentPost?: BanterPost | null
 ): Promise<void> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.egerscore.com';
+  const shareHref = `${origin}/#/banter/${post.id}`;
   const shortLink = getShortBanterLink(post.id);
-  const shareUrl = `https://${shortLink}`;
   const title = post.authorName || post.authorHandle || 'Fanatic';
   const snippet = post.content.length > 90 ? `"${post.content.slice(0, 90).trim()}..."` : `"${post.content}"`;
-  const introMessage = `🔥 Check this out! ${title} on EgerScore Banter:\n${snippet}\n\nHere's the link: ${shareUrl}`;
-
-  // WhatsApp Click-to-Chat API with URL-encoded message for rich OG link preview
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(introMessage)}`;
 
   try {
-    if (typeof window !== 'undefined') {
-      window.open(whatsappUrl, '_blank');
-    }
-  } catch {
+    const file = await renderBanterCardSnapshot(post, parentPost, shortLink);
+    showPicture(
+      file,
+      `banter/${post.id}`,
+      shareHref,
+      title,
+      snippet,
+      'banter',
+      shortLink,
+      false
+    );
+  } catch (err) {
+    console.warn('Failed to render banter card snapshot:', err);
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl);
+      navigator.clipboard.writeText(shareHref);
     }
   }
 }

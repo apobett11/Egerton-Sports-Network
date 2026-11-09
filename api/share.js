@@ -49,13 +49,13 @@ function isCrawler(req) {
 
 function getOrigin(req) {
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'www.egerscore.com';
+  const protocol = req.headers['x-forwarded-proto'] || (host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https');
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return 'https://www.egerscore.com';
+    return `${protocol}://${host}`;
   }
   if (host === 'egerscore.com') {
     return 'https://www.egerscore.com';
   }
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
   return `${protocol}://${host}`;
 }
 
@@ -186,7 +186,7 @@ function banterPage({ origin, post, banterId, requestUrl, isCrawler: isBot }) {
 </html>`;
   }
 
-  const destination = `${origin}/#/banter?post=${encodeURIComponent(post.id)}`;
+  const destination = `${origin}/#/banter/${encodeURIComponent(post.id)}`;
   const title = `${post.authorName} on EgerScore Banter`;
   const snippet = post.content.length > 120 ? `${post.content.slice(0, 120).trim()}...` : post.content;
   const description = `"${snippet}" · Tap to join the live debate on EgerScore Banter`;

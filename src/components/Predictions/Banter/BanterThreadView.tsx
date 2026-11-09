@@ -1143,19 +1143,99 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                             <Repeat2 className="h-3.5 w-3.5" />
                             <span>{reply.repostCount || 0}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, reactionFireCount: (r.reactionFireCount || 0) + 1 } : r));
-                              Promise.resolve().then(() => banterService.toggleReaction(reply.id, 'fire')).catch(console.warn);
-                            }}
-                            className="flex items-center gap-1 hover:text-rose-400 cursor-pointer p-1"
-                            title="Like"
-                          >
-                            <Heart className="h-3.5 w-3.5" />
-                            <span>{reply.reactionFireCount || 0}</span>
-                          </button>
+                          {/* Consolidated Reaction Picker for Reply */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveReplyReactionPickerId((prev) => (prev === reply.id ? null : reply.id));
+                              }}
+                              className={`flex items-center gap-1 cursor-pointer p-1 rounded-full transition-colors ${
+                                reply.userReactions?.fire || reply.userReactions?.clown || reply.userReactions?.skull
+                                  ? 'text-amber-400 bg-amber-500/10'
+                                  : 'hover:text-amber-400'
+                              }`}
+                              title="React"
+                              aria-label="React"
+                            >
+                              {reply.userReactions?.fire ? (
+                                <span className="text-xs">🔥</span>
+                              ) : reply.userReactions?.clown ? (
+                                <span className="text-xs">🤡</span>
+                              ) : reply.userReactions?.skull ? (
+                                <span className="text-xs">💀</span>
+                              ) : (
+                                <Smile className="h-3.5 w-3.5" />
+                              )}
+                              <span>
+                                {((reply.reactionFireCount || 0) + (reply.reactionClownCount || 0) + (reply.reactionSkullCount || 0)) || ''}
+                              </span>
+                            </button>
+
+                            {activeReplyReactionPickerId === reply.id && (
+                              <div
+                                role="toolbar"
+                                aria-label="Reaction options"
+                                className="absolute bottom-full mb-1 left-0 z-40 flex items-center gap-1.5 p-1 bg-zinc-900/95 backdrop-blur-md border border-zinc-700/80 rounded-full shadow-2xl animate-in fade-in zoom-in-95"
+                              >
+                                <button
+                                  type="button"
+                                  title="Fire 🔥"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplies((prev) =>
+                                      prev.map((r) =>
+                                        r.id === reply.id ? { ...r, reactionFireCount: (r.reactionFireCount || 0) + 1 } : r
+                                      )
+                                    );
+                                    setActiveReplyReactionPickerId(null);
+                                    Promise.resolve().then(() => banterService.toggleReaction(reply.id, 'fire')).catch(console.warn);
+                                  }}
+                                  className="flex items-center gap-0.5 px-2 py-0.5 rounded-full hover:bg-amber-500/20 text-xs text-zinc-300 hover:text-amber-300 cursor-pointer"
+                                >
+                                  <span>🔥</span>
+                                  <span className="text-[10px] font-mono">{reply.reactionFireCount || 0}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Clown 🤡"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplies((prev) =>
+                                      prev.map((r) =>
+                                        r.id === reply.id ? { ...r, reactionClownCount: (r.reactionClownCount || 0) + 1 } : r
+                                      )
+                                    );
+                                    setActiveReplyReactionPickerId(null);
+                                    Promise.resolve().then(() => banterService.toggleReaction(reply.id, 'clown')).catch(console.warn);
+                                  }}
+                                  className="flex items-center gap-0.5 px-2 py-0.5 rounded-full hover:bg-yellow-500/20 text-xs text-zinc-300 hover:text-yellow-300 cursor-pointer"
+                                >
+                                  <span>🤡</span>
+                                  <span className="text-[10px] font-mono">{reply.reactionClownCount || 0}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Savage 💀"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReplies((prev) =>
+                                      prev.map((r) =>
+                                        r.id === reply.id ? { ...r, reactionSkullCount: (r.reactionSkullCount || 0) + 1 } : r
+                                      )
+                                    );
+                                    setActiveReplyReactionPickerId(null);
+                                    Promise.resolve().then(() => banterService.toggleReaction(reply.id, 'skull')).catch(console.warn);
+                                  }}
+                                  className="flex items-center gap-0.5 px-2 py-0.5 rounded-full hover:bg-purple-500/20 text-xs text-zinc-300 hover:text-purple-300 cursor-pointer"
+                                >
+                                  <span>💀</span>
+                                  <span className="text-[10px] font-mono">{reply.reactionSkullCount || 0}</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1 text-zinc-500 text-[11px] font-mono p-1 select-none" title="Views">
                             <BarChart2 className="h-3.5 w-3.5" />
                             <span>

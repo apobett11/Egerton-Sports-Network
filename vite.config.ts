@@ -100,8 +100,9 @@ function shareApiPlugin() {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || ''
         const storeMatch = url.match(/^\/store\/([^?]+)/)
+        const banterMatch = url.match(/^\/b\/([^?]+)/)
         const isApiShare = url.startsWith('/api/share')
-        if (storeMatch || isApiShare) {
+        if (storeMatch || banterMatch || isApiShare) {
           try {
             // @ts-expect-error JS module without declaration
             const { default: handler } = await import('./api/share.js')
@@ -109,6 +110,9 @@ function shareApiPlugin() {
             ;(req as any).query = Object.fromEntries(parsedUrl.searchParams.entries())
             if (storeMatch) {
               ;(req as any).query.store = decodeURIComponent(storeMatch[1])
+            }
+            if (banterMatch) {
+              ;(req as any).query.banter = decodeURIComponent(banterMatch[1])
             }
             ;(res as any).status = (code: number) => {
               res.statusCode = code
