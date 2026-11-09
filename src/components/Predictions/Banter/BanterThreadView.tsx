@@ -78,6 +78,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   // Deep Reply (Reply to Reply) State
   const [activeDeepReplyTargetId, setActiveDeepReplyTargetId] = useState<string | null>(null);
   const [deepReplyText, setDeepReplyText] = useState('');
+  const [activeReplyReactionPickerId, setActiveReplyReactionPickerId] = useState<string | null>(null);
 
   // Team Autocomplete State
   const [availableTeams, setAvailableTeams] = useState<Array<{ id: string; name: string; shortName?: string }>>(EPL_TEAMS);
@@ -886,16 +887,107 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
               <Repeat2 className="h-5 w-5" />
             </button>
 
-            <button
-              type="button"
-              aria-label="Like"
-              onClick={handleToggleLike}
-              className={`flex items-center gap-1.5 p-2 rounded-full hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer ${
-                liked ? 'text-rose-500 fill-rose-500' : ''
-              }`}
-            >
-              <Heart className={`h-5 w-5 ${liked ? 'fill-rose-500' : ''}`} />
-            </button>
+            {/* Consolidated Reaction Picker */}
+            {(() => {
+              const activeReaction: ReactionType | null =
+                threadUserReactions.fire ? 'fire' : threadUserReactions.clown ? 'clown' : threadUserReactions.skull ? 'skull' : null;
+              return (
+                <div ref={reactionPickerRef} className="relative">
+                  <button
+                    type="button"
+                    aria-label="React with emoji"
+                    data-testid="thread-emoji-reaction-trigger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReactionMenuOpen(prev => !prev);
+                    }}
+                    className={`flex items-center gap-1.5 p-2 rounded-full transition-colors cursor-pointer ${
+                      activeReaction === 'fire'
+                        ? 'text-amber-400 bg-amber-500/15'
+                        : activeReaction === 'clown'
+                        ? 'text-yellow-400 bg-yellow-500/15'
+                        : activeReaction === 'skull'
+                        ? 'text-purple-400 bg-purple-500/15'
+                        : 'hover:text-amber-400 hover:bg-amber-500/10'
+                    }`}
+                    title="React"
+                  >
+                    {activeReaction === 'fire' ? (
+                      <span className="text-base leading-none">🔥</span>
+                    ) : activeReaction === 'clown' ? (
+                      <span className="text-base leading-none">🤡</span>
+                    ) : activeReaction === 'skull' ? (
+                      <span className="text-base leading-none">💀</span>
+                    ) : (
+                      <Smile className="h-5 w-5" />
+                    )}
+                  </button>
+
+                  {isReactionMenuOpen && (
+                    <div
+                      role="toolbar"
+                      aria-label="Reaction options"
+                      data-testid="thread-reaction-emoji-array"
+                      className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 p-1.5 bg-zinc-900/95 backdrop-blur-md border border-zinc-700/80 rounded-full shadow-2xl animate-in fade-in zoom-in-95"
+                    >
+                      <button
+                        type="button"
+                        data-testid="thread-react-fire-btn"
+                        title="Fire 🔥"
+                        onClick={() => {
+                          handleThreadReaction('fire');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          threadUserReactions.fire
+                            ? 'bg-amber-500/30 text-amber-300 ring-1 ring-amber-400 scale-105'
+                            : 'hover:bg-amber-500/15 text-zinc-300 hover:text-amber-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-base">🔥</span>
+                        <span className="text-[10px] font-mono">{threadReactions.fire}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        data-testid="thread-react-clown-btn"
+                        title="Clown 🤡"
+                        onClick={() => {
+                          handleThreadReaction('clown');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          threadUserReactions.clown
+                            ? 'bg-yellow-500/30 text-yellow-300 ring-1 ring-yellow-400 scale-105'
+                            : 'hover:bg-yellow-500/15 text-zinc-300 hover:text-yellow-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-base">🤡</span>
+                        <span className="text-[10px] font-mono">{threadReactions.clown}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        data-testid="thread-react-skull-btn"
+                        title="Savage 💀"
+                        onClick={() => {
+                          handleThreadReaction('skull');
+                          setIsReactionMenuOpen(false);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                          threadUserReactions.skull
+                            ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-400 scale-105'
+                            : 'hover:bg-purple-500/15 text-zinc-300 hover:text-purple-300 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-base">💀</span>
+                        <span className="text-[10px] font-mono">{threadReactions.skull}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <button
               type="button"
