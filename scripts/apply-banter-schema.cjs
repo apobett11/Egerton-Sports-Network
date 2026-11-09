@@ -154,11 +154,21 @@ FOR EACH ROW
 EXECUTE FUNCTION public.update_banter_post_reply_counts();
 
 -- Clear old test runs
-DELETE FROM public.banter_posts WHERE content LIKE '%Root Derby Match Take%';
-DELETE FROM public.banter_posts WHERE content LIKE '%Thread Alpha Discussion%';
-DELETE FROM public.banter_posts WHERE content LIKE '%Thread Beta Discussion%';
-DELETE FROM public.banter_posts WHERE content LIKE '%Identity Authority Match Thread%';
-DELETE FROM public.banter_posts WHERE content LIKE '%Paging @%';
+DELETE FROM public.banter_posts WHERE 
+  content LIKE '%Root Derby Match Take%' OR
+  content LIKE '%Thread Alpha Discussion%' OR
+  content LIKE '%Thread Beta Discussion%' OR
+  content LIKE '%Identity Authority Match Thread%' OR
+  content LIKE '%Derby Tactics: High Pressing%' OR
+  content LIKE '%Root post with root_id=self%' OR
+  content LIKE '%Test post%' OR
+  content LIKE '%Level 1 Reply%' OR
+  content LIKE '%Level 2 Sub-Reply%' OR
+  content LIKE '%Alpha Exclusive Message%' OR
+  content LIKE '%Author follow-up clarification%' OR
+  content LIKE '%Replier comment%' OR
+  content LIKE '%Paging @%' OR
+  trim(content) = '';
 DELETE FROM public.banter_polls WHERE question LIKE '%Who takes the 2026 Nakuru Derby%';
 DELETE FROM public.banter_posts WHERE id IN (SELECT post_id FROM public.banter_polls WHERE question LIKE '%Who takes the 2026 Nakuru Derby%');
 

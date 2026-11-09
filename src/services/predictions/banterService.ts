@@ -125,6 +125,23 @@ export function calculateReplyMetadata(parent: {
   };
 }
 
+export function isTestPost(post: BanterPost | { content?: string; id?: string }): boolean {
+  if (!post.content || !post.content.trim()) return true;
+  const c = post.content.toLowerCase();
+  return (
+    c.includes('root derby match take') ||
+    c.includes('thread alpha discussion') ||
+    c.includes('thread beta discussion') ||
+    c.includes('derby tactics: high pressing') ||
+    c.includes('root post with root_id=self') ||
+    c.includes('test post') ||
+    c.includes('level 1 reply') ||
+    c.includes('level 2 sub-reply') ||
+    c.includes('alpha exclusive message') ||
+    c.includes('paging @engineering fc')
+  );
+}
+
 // -------------------------------------------------------------
 // Pre-seeded high quality football community conversations with Threads & Polls
 // -------------------------------------------------------------
@@ -216,7 +233,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-26T10:00:00.000Z',
   },
   {
-    id: 'reply-pause-01-1',
+    id: 'b1000000-0000-4000-8000-000000000101',
     parentId: 'b1000000-0000-4000-8000-000000000001',
     rootId: 'b1000000-0000-4000-8000-000000000001',
     depth: 1,
@@ -232,7 +249,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-26T10:45:00.000Z',
   },
   {
-    id: 'reply-pause-01-2',
+    id: 'b1000000-0000-4000-8000-000000000102',
     parentId: 'b1000000-0000-4000-8000-000000000001',
     rootId: 'b1000000-0000-4000-8000-000000000001',
     depth: 1,
@@ -248,7 +265,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-26T11:15:00.000Z',
   },
   {
-    id: 'reply-pause-01-3',
+    id: 'b1000000-0000-4000-8000-000000000103',
     parentId: 'b1000000-0000-4000-8000-000000000001',
     rootId: 'b1000000-0000-4000-8000-000000000001',
     depth: 1,
@@ -293,7 +310,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-27T14:30:00.000Z',
   },
   {
-    id: 'reply-dom-02-1',
+    id: 'b1000000-0000-4000-8000-000000000201',
     parentId: 'b1000000-0000-4000-8000-000000000002',
     rootId: 'b1000000-0000-4000-8000-000000000002',
     depth: 1,
@@ -309,7 +326,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-27T15:10:00.000Z',
   },
   {
-    id: 'reply-dom-02-2',
+    id: 'b1000000-0000-4000-8000-000000000202',
     parentId: 'b1000000-0000-4000-8000-000000000002',
     rootId: 'b1000000-0000-4000-8000-000000000002',
     depth: 1,
@@ -325,7 +342,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-27T16:00:00.000Z',
   },
   {
-    id: 'reply-dom-02-3',
+    id: 'b1000000-0000-4000-8000-000000000203',
     parentId: 'b1000000-0000-4000-8000-000000000002',
     rootId: 'b1000000-0000-4000-8000-000000000002',
     depth: 1,
@@ -370,7 +387,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-28T16:15:00.000Z',
   },
   {
-    id: 'reply-ref-03-1',
+    id: 'b1000000-0000-4000-8000-000000000301',
     parentId: 'b1000000-0000-4000-8000-000000000003',
     rootId: 'b1000000-0000-4000-8000-000000000003',
     depth: 1,
@@ -386,7 +403,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-28T17:00:00.000Z',
   },
   {
-    id: 'reply-ref-03-2',
+    id: 'b1000000-0000-4000-8000-000000000302',
     parentId: 'b1000000-0000-4000-8000-000000000003',
     rootId: 'b1000000-0000-4000-8000-000000000003',
     depth: 1,
@@ -402,7 +419,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-28T17:40:00.000Z',
   },
   {
-    id: 'reply-ref-03-3',
+    id: 'b1000000-0000-4000-8000-000000000303',
     parentId: 'b1000000-0000-4000-8000-000000000003',
     rootId: 'b1000000-0000-4000-8000-000000000003',
     depth: 1,
@@ -444,7 +461,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-29T11:00:00.000Z',
   },
   {
-    id: 'reply-coach-04-1',
+    id: 'b1000000-0000-4000-8000-000000000401',
     parentId: 'b1000000-0000-4000-8000-000000000004',
     rootId: 'b1000000-0000-4000-8000-000000000004',
     depth: 1,
@@ -460,7 +477,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-29T11:45:00.000Z',
   },
   {
-    id: 'reply-coach-04-2',
+    id: 'b1000000-0000-4000-8000-000000000402',
     parentId: 'b1000000-0000-4000-8000-000000000004',
     rootId: 'b1000000-0000-4000-8000-000000000004',
     depth: 1,
@@ -503,7 +520,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-30T18:45:00.000Z',
   },
   {
-    id: 'reply-mb-05-1',
+    id: 'b1000000-0000-4000-8000-000000000501',
     parentId: 'b1000000-0000-4000-8000-000000000005',
     rootId: 'b1000000-0000-4000-8000-000000000005',
     depth: 1,
@@ -519,7 +536,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-30T19:20:00.000Z',
   },
   {
-    id: 'reply-mb-05-2',
+    id: 'b1000000-0000-4000-8000-000000000502',
     parentId: 'b1000000-0000-4000-8000-000000000005',
     rootId: 'b1000000-0000-4000-8000-000000000005',
     depth: 1,
@@ -563,7 +580,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-30T21:10:00.000Z',
   },
   {
-    id: 'reply-ts-06-1',
+    id: 'b1000000-0000-4000-8000-000000000601',
     parentId: 'b1000000-0000-4000-8000-000000000006',
     rootId: 'b1000000-0000-4000-8000-000000000006',
     depth: 1,
@@ -579,7 +596,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-30T21:45:00.000Z',
   },
   {
-    id: 'reply-ts-06-2',
+    id: 'b1000000-0000-4000-8000-000000000602',
     parentId: 'b1000000-0000-4000-8000-000000000006',
     rootId: 'b1000000-0000-4000-8000-000000000006',
     depth: 1,
@@ -624,7 +641,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-31T15:20:00.000Z',
   },
   {
-    id: 'reply-champ-07-1',
+    id: 'b1000000-0000-4000-8000-000000000701',
     parentId: 'b1000000-0000-4000-8000-000000000007',
     rootId: 'b1000000-0000-4000-8000-000000000007',
     depth: 1,
@@ -640,7 +657,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-10-31T16:00:00.000Z',
   },
   {
-    id: 'reply-champ-07-2',
+    id: 'b1000000-0000-4000-8000-000000000702',
     parentId: 'b1000000-0000-4000-8000-000000000007',
     rootId: 'b1000000-0000-4000-8000-000000000007',
     depth: 1,
@@ -683,7 +700,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-11-01T08:30:00.000Z',
   },
   {
-    id: 'reply-qa-08-1',
+    id: 'b1000000-0000-4000-8000-000000000801',
     parentId: 'b1000000-0000-4000-8000-000000000008',
     rootId: 'b1000000-0000-4000-8000-000000000008',
     depth: 1,
@@ -699,7 +716,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-11-01T09:00:00.000Z',
   },
   {
-    id: 'reply-qa-08-2',
+    id: 'b1000000-0000-4000-8000-000000000802',
     parentId: 'b1000000-0000-4000-8000-000000000008',
     rootId: 'b1000000-0000-4000-8000-000000000008',
     depth: 1,
@@ -715,7 +732,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-11-01T09:30:00.000Z',
   },
   {
-    id: 'reply-qa-08-3',
+    id: 'b1000000-0000-4000-8000-000000000803',
     parentId: 'b1000000-0000-4000-8000-000000000008',
     rootId: 'b1000000-0000-4000-8000-000000000008',
     depth: 1,
@@ -757,7 +774,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-11-01T10:15:00.000Z',
   },
   {
-    id: 'reply-sec-09-1',
+    id: 'b1000000-0000-4000-8000-000000000901',
     parentId: 'b1000000-0000-4000-8000-000000000009',
     rootId: 'b1000000-0000-4000-8000-000000000009',
     depth: 1,
@@ -773,7 +790,7 @@ export const SEEDED_BANTER_POSTS: BanterPost[] = [
     createdAt: '2026-11-01T10:45:00.000Z',
   },
   {
-    id: 'reply-sec-09-2',
+    id: 'b1000000-0000-4000-8000-000000000902',
     parentId: 'b1000000-0000-4000-8000-000000000009',
     rootId: 'b1000000-0000-4000-8000-000000000009',
     depth: 1,
@@ -903,7 +920,11 @@ export class BanterService {
   private lastPostTimestamp = 0;
 
   constructor() {
-    this.localPosts = getStoredItem<BanterPost[]>('egerscore_local_banter_posts', []);
+    const rawLocal = getStoredItem<BanterPost[]>('egerscore_local_banter_posts', []);
+    this.localPosts = rawLocal.filter((p) => !isTestPost(p));
+    if (this.localPosts.length !== rawLocal.length) {
+      setStoredItem('egerscore_local_banter_posts', this.localPosts);
+    }
     this.localPolls = getStoredItem<Record<string, BanterPoll>>('egerscore_local_polls', {
       [POLL_PAUSE_RESUMPTION.id]: POLL_PAUSE_RESUMPTION,
       [POLL_OFFICIATING.id]: POLL_OFFICIATING,
@@ -1069,14 +1090,16 @@ export class BanterService {
             }
           } catch {}
         }
-        const posts: BanterPost[] = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+        const posts: BanterPost[] = data
+          .filter((d: any) => !isTestPost(d))
+          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
 
         // Merge local posts and seeded posts that are not in database yet
         const unSyncedLocal = this.localPosts.filter(
-          (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id)
+          (lp) => !lp.parentId && !posts.some((p) => p.id === lp.id) && !isTestPost(lp)
         );
         const unSyncedSeeded = seededPosts.filter(
-          (sp) => (!sp.parentId || sp.depth === 0) && !posts.some((p) => p.id === sp.id)
+          (sp) => (!sp.parentId || sp.depth === 0) && !posts.some((p) => p.id === sp.id) && !isTestPost(sp)
         );
         const combined = [...unSyncedLocal, ...posts, ...unSyncedSeeded];
 
@@ -1090,7 +1113,7 @@ export class BanterService {
     }
 
     // Combine local user root posts + seeded root posts
-    const allRoot = [...this.localPosts, ...seededPosts].filter(p => !p.parentId || p.depth === 0);
+    const allRoot = [...this.localPosts, ...seededPosts].filter(p => (!p.parentId || p.depth === 0) && !isTestPost(p));
     let all = allRoot;
     if (matchId) {
       all = all.filter(p => p.matchId === matchId);
@@ -1149,7 +1172,9 @@ export class BanterService {
         .limit(100);
 
       if (!error && data && data.length > 0) {
-        replies = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
+        replies = data
+          .filter((d: any) => !isTestPost(d))
+          .map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
       }
     } catch {
       // offline safe
@@ -1157,14 +1182,14 @@ export class BanterService {
 
     // Include seeded and local replies directly attached to this post
     const seededReplies = SEEDED_BANTER_POSTS
-      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id))
+      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id) && !isTestPost(p))
       .map((p) => ({
         ...p,
         userReactions: userReactions[p.id] || {}
       }));
 
     const localReplies = this.localPosts
-      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id))
+      .filter((p) => p.parentId === postId && !replies.some((r) => r.id === p.id) && !isTestPost(p))
       .map((p) => ({
         ...p,
         userReactions: userReactions[p.id] || {}
