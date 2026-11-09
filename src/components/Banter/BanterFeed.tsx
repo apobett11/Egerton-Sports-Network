@@ -47,10 +47,11 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
   const topRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!focusPostId || isLoading) return;
-    const node = document.querySelector(`[data-post-id="${focusPostId}"]`);
-    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [focusPostId, isLoading, posts.length]);
+    // Normal render: render directly to the top of the page, as normal pages do
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, []);
 
   useEffect(() => {
     if (!primed.current) {

@@ -735,6 +735,12 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     loadBanter();
   }, [loadBanter]);
 
+  useEffect(() => {
+    if (activeTab === 'banter' && !threadPostId) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [activeTab, threadPostId]);
+
   const shownBanterPosts = useMemo(() => {
     const fav = favouriteTeam?.toLowerCase().trim() || '';
     const filtered = banterPosts.filter((post) => {
@@ -1543,7 +1549,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                             if (found) setContextMatch(found);
                           }}
                           onStartBanterClick={() => {
-                            window.scrollTo({ top: 100, behavior: 'smooth' });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           focusPostId={focusPostId}
                           onRepost={(postId, active) => {
@@ -1657,7 +1663,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   <XFloatingComposeButton
                     onSelectAction={(tool) => {
                       setMobileFabTool(tool);
-                      window.scrollTo({ top: 80, behavior: 'smooth' });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                   />
                 </div>

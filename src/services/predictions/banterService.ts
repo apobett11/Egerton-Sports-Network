@@ -1316,10 +1316,10 @@ export class BanterService {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
-        // Collect poll IDs only for the messages that have been fetched (avoids N+1)
+        // Collect poll IDs for background synchronization without blocking message rendering
         const pollIds = data.map((d: any) => d.poll_id).filter(Boolean);
         if (pollIds.length > 0) {
-          await this.syncPollsForDevice(pollIds, devId);
+          void this.syncPollsForDevice(pollIds, devId).catch(() => {});
         }
 
         const posts: BanterPost[] = data
@@ -1334,10 +1334,10 @@ export class BanterService {
           (sp) => (!sp.parentId || sp.depth === 0) && !posts.some((p) => p.id === sp.id) && !isTestPost(sp)
         );
 
-        // Sync polls for un-synced local and seeded posts
+        // Sync polls in background for un-synced local and seeded posts without blocking message rendering
         const unSyncedPollIds = [...unSyncedLocal, ...unSyncedSeeded].map((p) => p.pollId).filter(Boolean) as string[];
         if (unSyncedPollIds.length > 0) {
-          await this.syncPollsForDevice(unSyncedPollIds, devId);
+          void this.syncPollsForDevice(unSyncedPollIds, devId).catch(() => {});
         }
 
         const syncedUnSyncedLocal = unSyncedLocal.map((p) => ({
@@ -1373,7 +1373,7 @@ export class BanterService {
 
     const fallbackPollIds = all.map(p => p.pollId).filter(Boolean) as string[];
     if (fallbackPollIds.length > 0) {
-      await this.syncPollsForDevice(fallbackPollIds, devId);
+      void this.syncPollsForDevice(fallbackPollIds, devId).catch(() => {});
     }
 
     all = all.map(p => ({
