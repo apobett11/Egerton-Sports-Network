@@ -59,7 +59,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   onPostSuccess
 }) => {
   const { profile } = useBanterSession();
-  const [isExpanded, setIsExpanded] = useState(isReply || autoFocus);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [content, setContent] = useState('');
   const [mediaPreviews, setMediaPreviews] = useState<Array<{ url: string; type: 'image' | 'video'; duration?: number }>>([]);
   const [showPollBuilder, setShowPollBuilder] = useState(false);
@@ -324,7 +324,26 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
       }
 
       // Fast, session-verified post submission (Zero per-action verification overhead)
-      if (profile) {
+      const contentToSubmit = content;
+      const pollToSubmit = pollData;
+      const teamToSubmit = finalTeam;
+
+      // Reset immediately for instant optimistic responsiveness (< 16ms)
+      setContent('');
+      setMediaPreviews([]);
+      setShowPollBuilder(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
+      setSelectedTeam(null);
+      setShowTeamDropdown(false);
+      setIsExpanded(true);
+
+      // Notify parent immediately for optimistic UI paint
+      if (onPostCreated) {
+        await onPostCreated(contentToSubmit, mediaUrls, mediaType, pollToSubmit, teamToSubmit);
+      }
+
+      if (!onPostCreated && profile) {
         const payload: Record<string, any> = {
           root_id: rootPostId || parentId || null,
           parent_id: parentId || null,
@@ -333,47 +352,29 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           author_name: profile.authorName,
           author_handle: profile.authorHandle,
           author_avatar: profile.avatarColor,
-          content: content.trim(),
+          content: contentToSubmit.trim(),
           media_type: mediaType,
         };
 
         if (mediaUrls.length > 0) {
           payload.media_urls = mediaUrls;
         }
-        if (finalTeam?.id) {
-          payload.tagged_team_id = finalTeam.id;
-          payload.tagged_team_name = finalTeam.name;
+        if (teamToSubmit?.id) {
+          payload.tagged_team_id = teamToSubmit.id;
+          payload.tagged_team_name = teamToSubmit.name;
         }
 
-        const { data, error } = await supabase
+        void supabase
           .from('banter_posts')
           .insert([payload])
           .select()
-          .single();
-
-        if (error) {
-          // If direct insert is blocked by schema or RLS, route via onPostCreated fallback
-          if (onPostCreated) {
-            await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
-          }
-        } else {
-          if (onPostSuccess) onPostSuccess(data);
-          if (onPostCreated) await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
-        }
-      } else if (onPostCreated) {
-        await onPostCreated(content, mediaUrls, mediaType, pollData, finalTeam);
-      }
-
-      // Reset
-      setContent('');
-      setMediaPreviews([]);
-      setShowPollBuilder(false);
-      setPollQuestion('');
-      setPollOptions(['', '']);
-      setSelectedTeam(null);
-      setShowTeamDropdown(false);
-      if (!isReply) {
-        setIsExpanded(false);
+          .single()
+          .then(
+            ({ data }) => {
+              if (data && onPostSuccess) onPostSuccess(data);
+            },
+            () => {}
+          );
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to submit post.');
@@ -391,22 +392,13 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   return (
     <div
       ref={composerContainerRef}
-      className={`border border-zinc-800 bg-[#000000] rounded-2xl transition-all duration-200 overflow-hidden relative ${
+      className={`border border-zinc-800 bg-[#000000] rounded-2xl overflow-hidden relative ${
         isExpanded ? 'p-3.5 sm:p-4 shadow-xl' : 'p-2 cursor-pointer hover:border-zinc-700'
       }`}
       onClick={() => {
         if (!isExpanded) setIsExpanded(true);
       }}
     >
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={handleMediaSelect}
-      />
 
       {/* Compact Pill (Unexpanded State) */}
       {!isExpanded ? (
@@ -533,7 +525,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 <div className="my-2 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl z-30 max-h-56 overflow-y-auto">
                   <div className="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-zinc-400 border-b border-zinc-800/80 mb-1">
                     <span className="flex items-center gap-1 text-emerald-400">
-                      <AtSign className="h-3.5 w-3.5" /> Tag Campus Team
+                      <AtSign className="h-3.5 w-3.5" /> Select Team to Tag
                     </span>
                     <button
                       type="button"
@@ -657,7 +649,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                     type="text"
                     value={pollQuestion}
                     onChange={(e) => setPollQuestion(e.target.value)}
-                    placeholder="Ask a question..."
+                    placeholder="Question"
                     className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
                   />
 
@@ -810,9 +802,9 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 type="button"
                 disabled={!canSubmit}
                 onClick={() => handleSubmit()}
-                className={`px-5 py-2 rounded-full font-black text-xs uppercase tracking-wider transition-all duration-150 shadow-md ${
+                className={`px-5 py-2 rounded-full font-black text-xs uppercase tracking-wider shadow-md ${
                   canSubmit
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white cursor-pointer active:scale-95'
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white cursor-pointer'
                     : 'bg-sky-500/40 text-white/50 cursor-not-allowed'
                 }`}
               >
@@ -828,6 +820,16 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleMediaSelect}
+      />
     </div>
   );
 };

@@ -65,6 +65,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      data-testid="pull-to-refresh-container"
+      style={{ overscrollBehaviorY: 'contain' }}
       className="relative w-full"
     >
       {/* Pull / Spinner Indicator */}

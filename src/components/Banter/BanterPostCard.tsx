@@ -58,6 +58,9 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
   const [replyCount, setReplyCount] = useState(post.commentCount || post.repliesCount || 0);
+  React.useEffect(() => {
+    setReplyCount(post.commentCount || post.repliesCount || 0);
+  }, [post.commentCount, post.repliesCount]);
   const [expanded, setExpanded] = useState(false);
   const [repostCount, setRepostCount] = useState(
     post.repostCount || post.repostsCount || Math.floor((post.reactionFireCount + 5) * 1.4)
@@ -68,9 +71,25 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     post.likesCount || post.reactionFireCount || 0
   );
 
-  const impressions =
-    post.impressionsCount ||
-    (post.reactionFireCount + post.reactionClownCount + post.commentCount + 8) * 64;
+  const isMessage = Boolean(post.parentId || (post.rootId && post.rootId !== post.id));
+  const isTrending = Boolean(post.isTrending && !isMessage);
+  let baseImp = post.impressions ?? post.impressionsCount;
+  if (!baseImp) {
+    if (isTrending) {
+      baseImp = 1500 + Math.min(440, 220 + ((post.reactionFireCount || 0) * 2));
+    } else {
+      baseImp = Math.min(1500, Math.max(500, 500 + ((post.reactionFireCount || 0) * 8) + ((post.commentCount || 0) * 12)));
+    }
+  } else if (isTrending) {
+    baseImp = Math.min(1940, Math.max(1501, baseImp > 1500 ? baseImp : 1500 + (baseImp % 440)));
+  } else {
+    if (baseImp > 1500) {
+      baseImp = Math.min(1500, Math.max(500, 500 + (baseImp % 1000)));
+    } else if (baseImp < 500 && (baseImp < 18 || baseImp > 45)) {
+      baseImp = Math.min(1500, Math.max(500, 500 + (baseImp % 500)));
+    }
+  }
+  const impressions = baseImp;
 
   const cleanHandle = post.authorHandle.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
@@ -86,9 +105,9 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   });
 
   const handlePostClick = () => {
-    // Navigate to full-page thread view (no UID in the top link)
+    // Navigate to full-page thread view
     sessionStorage.setItem('active_banter_thread_id', post.id);
-    window.location.hash = '#/banter/thread';
+    window.location.hash = `#/banter/${post.id}`;
     if (onOpenComments) onOpenComments(post);
   };
 
@@ -329,7 +348,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               title="Reply"
             >
               <MessageCircle className="h-4 w-4" />
-              <span className="font-medium text-[11px]">{replyCount}</span>
+              <span className="font-medium text-[11px]">💬 {replyCount}</span>
             </button>
 
             {/* 2. Repost */}

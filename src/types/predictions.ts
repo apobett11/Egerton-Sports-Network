@@ -122,6 +122,7 @@ export interface BanterPost {
   commentCount: number;
   repostCount?: number;
   impressionsCount?: number;
+  impressions?: number;
   viewsCount?: number;
   pollId?: string | null;
   poll?: BanterPoll | null;

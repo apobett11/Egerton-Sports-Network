@@ -15,6 +15,9 @@ export interface BanterPost {
   media_type: 'NONE' | 'IMAGE' | 'DUAL_IMAGE' | 'VIDEO';
   likes_count: number;
   replies_count: number;
+  impressions?: number;
+  impressions_count?: number;
+  is_trending?: boolean;
   created_at: string;
 }
 

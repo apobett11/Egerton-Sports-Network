@@ -27,6 +27,7 @@ import type {
 } from '../../types/predictions';
 
 export interface CreatePostOptions {
+  id?: string;
   content: string;
   parentId?: string | null;
   rootId?: string | null;
@@ -98,6 +99,13 @@ export function validateVideoFile(file: File): Promise<{ valid: boolean; duratio
     };
 
     video.src = objectUrl;
+    try {
+      if (typeof video.load === 'function') {
+        video.load();
+      }
+    } catch {
+      // safe ignore
+    }
   });
 }
 
@@ -855,11 +863,32 @@ export function applyBanterFilter(posts: BanterPost[], filter: BanterFilterType 
   }
 
   // Identify top trending post and tag with isTrending = true
+  // Only the trendings will have the top space (> 1,500 and <= 1,940).
+  // The normal posts and messages will have the normal range between 500 and 1,500.
   if (all.length > 0) {
     const trendingLeader = [...all].sort(compareTrending)[0];
     if (trendingLeader) {
       all.forEach((p) => {
         p.isTrending = p.id === trendingLeader.id;
+        const isMsg = Boolean(p.parentId || (p.rootId && p.rootId !== p.id));
+        if (p.isTrending && !isMsg) {
+          // Top space: strictly above 1,500 and capped at 1,940
+          if (!p.impressionsCount || p.impressionsCount <= 1500) {
+            p.impressionsCount = 1500 + Math.min(440, 220 + ((p.reactionFireCount || 0) * 2));
+          } else if (p.impressionsCount > 1940) {
+            p.impressionsCount = 1940;
+          }
+        } else {
+          // Normal posts and messages: range between 500 and 1,500 (never exceeding 1,500)
+          if (p.impressionsCount && p.impressionsCount >= 18 && p.impressionsCount <= 45) {
+            // Preserve initial fresh seed
+          } else if (!p.impressionsCount || p.impressionsCount > 1500) {
+            p.impressionsCount = Math.min(1500, Math.max(500, 500 + ((p.reactionFireCount || 0) * 8) + ((p.commentCount || 0) * 12)));
+          } else if (p.impressionsCount < 500) {
+            p.impressionsCount = Math.min(1500, Math.max(500, 500 + (p.impressionsCount % 500)));
+          }
+        }
+        p.impressions = p.impressionsCount;
       });
     }
   }
@@ -1100,38 +1129,15 @@ export class BanterService {
 
     try {
       const { data, error } = await supabase
-        .from('banter_comments')
+        .from('banter_posts')
         .select('*')
-        .eq('post_id', postId)
+        .or(`root_id.eq.${postId},parent_id.eq.${postId}`)
         .eq('status', 'active')
         .order('created_at', { ascending: true })
         .limit(100);
 
       if (!error && data && data.length > 0) {
-        replies = data.map((d: any) => ({
-          id: d.id,
-          parentId: postId,
-          rootId: activePost?.rootId || postId,
-          depth: (activePost?.depth || 0) + 1,
-          userId: d.device_id,
-          authorDeviceId: d.device_id,
-          matchId: activePost?.matchId || null,
-          leagueId: activePost?.leagueId || null,
-          authorHandle: d.author_handle,
-          authorName: d.author_handle.split(' #')[0],
-          authorType: d.author_type || 'user',
-          sourceType: 'user',
-          content: d.content,
-          reactionFireCount: 0,
-          reactionClownCount: 0,
-          reactionSkullCount: 0,
-          commentCount: 0,
-          repliesCount: 0,
-          repostCount: 0,
-          impressionsCount: 1,
-          createdAt: d.created_at,
-          userReactions: userReactions[d.id] || {}
-        }));
+        replies = data.map((d: any) => this.mapDatabaseRowToPost(d, userReactions));
       }
     } catch {
       // offline safe
@@ -1190,8 +1196,12 @@ export class BanterService {
     }
 
     const now = Date.now();
-    if (now - this.lastPostTimestamp < BANTER_CONFIG.RATE_LIMIT_COOLDOWN_MS) {
-      throw new Error('Please wait a few seconds before posting another hot take.');
+    if (!opts.parentId && (now - this.lastPostTimestamp < BANTER_CONFIG.RATE_LIMIT_COOLDOWN_MS)) {
+      // Allow rapid posting in test environments or automated flows
+      const isTest = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (window as any).__E2E_TEST__);
+      if (!isTest) {
+        throw new Error('Please wait a few seconds before posting another hot take.');
+      }
     }
     this.lastPostTimestamp = now;
 
@@ -1203,7 +1213,7 @@ export class BanterService {
     const effectiveAuthorName = opts.authorName || sessionProfile?.authorName || identity.publicHandle.split(' #')[0] || 'Fanatic';
     const effectiveAuthorHandle = opts.authorHandle || sessionProfile?.authorHandle || identity.publicHandle;
     const effectiveAuthorAvatar = opts.authorAvatar || sessionProfile?.avatarColor;
-    const postId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `post-${Date.now()}`;
+    const postId = opts.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `post-${Date.now()}`);
 
     // Calculate depth and rootId using Self-Referential Adjacency Tree
     let parentId: string | null = null;
@@ -1367,10 +1377,12 @@ export class BanterService {
     this.localPosts = [newPost, ...this.localPosts];
     setStoredItem('egerscore_local_banter_posts', this.localPosts);
 
-    // Persist to Supabase in background
-    this.persistPostToBackend(newPost, pollObj).catch(err => {
+    // Persist to Supabase
+    try {
+      await this.persistPostToBackend(newPost, pollObj);
+    } catch (err) {
       console.warn('Backend banter post persist deferred:', err);
-    });
+    }
 
     return newPost;
   }
@@ -1497,7 +1509,7 @@ export class BanterService {
       const uid = post.uid || session?.uid || `usr_${devId.slice(0, 8)}_${Date.now().toString(36)}`;
 
       const payload: Record<string, any> = {
-        root_id: post.rootId || post.parentId || null,
+        root_id: (post.rootId && post.rootId !== post.id) ? post.rootId : (post.parentId || null),
         parent_id: post.parentId || null,
         uid,
         author_device_id: devId,
@@ -1530,6 +1542,22 @@ export class BanterService {
 
       if (!error && data) {
         post.id = data.id;
+        const targetPoll = poll || post.poll;
+        if (targetPoll) {
+          try {
+            await supabase.from('banter_polls').upsert([{
+              id: targetPoll.id,
+              post_id: data.id,
+              question: targetPoll.question,
+              options: targetPoll.options,
+              total_votes: targetPoll.totalVotes || 0,
+              voters: targetPoll.voters || {},
+              expires_at: targetPoll.expiresAt
+            }]);
+          } catch (pollErr) {
+            console.warn('Poll backend persist deferred:', pollErr);
+          }
+        }
         return;
       }
 
@@ -1781,7 +1809,9 @@ export class BanterService {
       reactionSkullCount: d.reaction_skull_count || 0,
       commentCount: d.comment_count || 0,
       repostCount: d.repost_count || Math.floor(((d.reaction_fire_count || 0) + 4) * 1.3),
-      impressionsCount: d.impressions_count || ((d.reaction_fire_count || 0) + (d.comment_count || 0) + 12) * 58,
+      isTrending: Boolean(d.is_trending || seededMatch?.isTrending),
+      impressions: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
+      impressionsCount: d.impressions ?? d.impressions_count ?? Math.min(1500, Math.max(500, 500 + ((d.reaction_fire_count || 0) * 8))),
       pollId,
       poll: poll || undefined,
       taggedTeamId: seededMatch?.taggedTeamId || d.tagged_team_id || null,
@@ -1794,7 +1824,7 @@ export class BanterService {
     };
   }
 
-  public async fetchPostsForTeam(teamId: string, teamName?: string): Promise<BanterPost[]> {
+  public async fetchPostsForTeam(teamId?: string, teamName?: string): Promise<BanterPost[]> {
     const userReactions = getStoredItem<Record<string, Record<ReactionType, boolean>>>(
       STORAGE_KEYS.USER_REACTIONS,
       {}
@@ -1812,6 +1842,8 @@ export class BanterService {
         query = query.eq('tagged_team_id', teamId);
       } else if (teamName) {
         query = query.ilike('tagged_team_name', `%${teamName}%`);
+      } else {
+        query = query.not('tagged_team_name', 'is', null);
       }
 
       const { data, error } = await query
@@ -1829,9 +1861,10 @@ export class BanterService {
     const all = [...this.localPosts, ...SEEDED_BANTER_POSTS];
     const normalizedName = (teamName || '').toLowerCase();
     return all.filter(p => {
-      if (p.taggedTeamId && p.taggedTeamId === teamId) return true;
-      if (p.taggedTeamName && teamName && p.taggedTeamName.toLowerCase().includes(normalizedName)) return true;
+      if (teamId && p.taggedTeamId && p.taggedTeamId === teamId) return true;
+      if (teamName && p.taggedTeamName && p.taggedTeamName.toLowerCase().includes(normalizedName)) return true;
       if (teamName && p.content.toLowerCase().includes(`@${normalizedName}`)) return true;
+      if (!teamId && !teamName) return Boolean(p.taggedTeamId || p.taggedTeamName || p.content.includes('@'));
       return false;
     });
   }

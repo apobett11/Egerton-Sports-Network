@@ -29,6 +29,18 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
     e.stopPropagation();
     if (hasVoted || isVoting) return;
 
+    const userVoterId = deviceId;
+    const updatedOptions = poll.options.map(o => o.id === optionId ? { ...o, votes: (o.votes || 0) + 1 } : o);
+    const updatedTotalVotes = (poll.totalVotes || 0) + 1;
+    const optimisticPoll: BanterPoll = {
+      ...poll,
+      options: updatedOptions,
+      totalVotes: updatedTotalVotes,
+      voters: { ...(poll.voters || {}), [userVoterId]: optionId }
+    };
+    setPoll(optimisticPoll);
+    if (onPollUpdated) onPollUpdated(optimisticPoll);
+
     setIsVoting(true);
     setError(null);
     try {
@@ -36,7 +48,9 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
       setPoll(res.poll);
       if (onPollUpdated) onPollUpdated(res.poll);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit vote');
+      if (!err.message?.includes('already voted')) {
+        setError(err.message || 'Failed to submit vote');
+      }
     } finally {
       setIsVoting(false);
     }
@@ -86,9 +100,11 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
           if (hasVoted) {
             // Post-vote state with progress bars
             return (
-              <div
+              <button
                 key={opt.id}
-                className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-2.5 flex items-center justify-between"
+                type="button"
+                disabled={true}
+                className="w-full text-left relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-2.5 flex items-center justify-between cursor-default"
               >
                 {/* Visual percentage fill bar */}
                 <div
@@ -110,7 +126,7 @@ export const XPollWidget: React.FC<XPollWidgetProps> = ({ poll: initialPoll, onP
                 <span className="relative z-1 text-xs font-mono font-bold text-zinc-400 shrink-0">
                   {pct}%
                 </span>
-              </div>
+              </button>
             );
           }
 

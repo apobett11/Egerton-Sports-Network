@@ -8,3 +8,4 @@ export { XFloatingComposeButton } from './XFloatingComposeButton';
 export { XPollWidget } from './XPollWidget';
 export { XStyleComposer } from './XStyleComposer';
 export { BanterFeedExperience } from './BanterFeedExperience';
+export { BanterMetricsStrip } from './BanterMetricsStrip';

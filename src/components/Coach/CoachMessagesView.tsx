@@ -27,8 +27,8 @@ interface CoachMessagesViewProps {
 }
 
 export const CoachMessagesView: React.FC<CoachMessagesViewProps> = ({
-  teamId = 'epl-santos',
-  teamName = 'Santos FC',
+  teamId,
+  teamName,
   coachName = 'Coach Odhiambo',
   onOpenThread
 }) => {

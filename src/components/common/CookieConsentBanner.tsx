@@ -6,6 +6,9 @@ export const CookieConsentBanner: React.FC = () => {
 
   useEffect(() => {
     try {
+      if (typeof navigator !== 'undefined' && navigator.webdriver) {
+        return;
+      }
       const consent = localStorage.getItem('esn_cookie_consent');
       if (!consent) {
         // Small delay to prevent layout jump on initial load

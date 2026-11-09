@@ -5,6 +5,7 @@ import type { Team } from '../../types/predictions';
  * Static choices only: no database ids, no fixture join, no livescore logos.
  */
 export const EPL_TEAMS: Team[] = [
+  { id: 'epl-engineering', name: 'Engineering FC', shortName: 'ENG' },
   { id: 'epl-bcom', name: 'BCOM FC', shortName: 'BCM' },
   { id: 'epl-blue-blazers', name: 'Blue Blazers', shortName: 'BLU' },
   { id: 'epl-celtics', name: 'Celtics FC', shortName: 'CEL' },

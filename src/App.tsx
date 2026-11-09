@@ -45,6 +45,7 @@ import { X, LogIn, Loader2, Moon, Sun, Bell, Star, ShieldCheck, FileText, Info, 
 
 const SuperAdminDashboard = lazy(() => import('./components/Dashboards/SuperAdmin/SuperAdminDashboard'));
 const TeamDashboard = lazy(() => import('./components/Dashboards/Team/TeamDashboard'));
+const CoachMessagesView = lazy(() => import('./components/Coach/CoachMessagesView').then(m => ({ default: m.CoachMessagesView })));
 const JournalistDashboard = lazy(() => import('./components/Dashboards/Journalist/JournalistDashboard'));
 const PresidentDashboard = lazy(() => import('./components/Dashboards/President/PresidentDashboard'));
 const RefereeDashboard = lazy(() => import('./components/Dashboards/Referee/RefereeDashboard'));
@@ -983,6 +984,14 @@ export const AppContent: React.FC = () => {
           <SuperAdminDashboard />
         </Suspense>
       </ProtectedRoute>
+    );
+  }
+
+  if (route === 'coach/messages' || route.startsWith('coach/messages')) {
+    return (
+      <Suspense fallback={<DashboardLoader />}>
+        <CoachMessagesView onOpenThread={(id) => handleNavigateHash(`/banter/${id}`)} />
+      </Suspense>
     );
   }
 

@@ -206,7 +206,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
     if (match && match[1] !== 'thread') {
       const id = match[1];
-      window.history.replaceState(null, '', '#/banter/thread');
       sessionStorage.setItem('active_banter_thread_id', id);
       return id;
     }
@@ -237,7 +236,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);
       if (match && match[1] !== 'thread') {
         const id = match[1];
-        window.history.replaceState(null, '', '#/banter/thread');
         sessionStorage.setItem('active_banter_thread_id', id);
         setThreadPostId(id);
       }
@@ -1046,8 +1044,46 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
     } : undefined;
 
     const session = banterProfile || getActiveSessionProfile();
+    const tempId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `temp-${Date.now()}`;
+    const optimisticPost: BanterPost = {
+      id: tempId,
+      content,
+      mediaUrls,
+      mediaType: mediaType || 'NONE',
+      poll: poll ? ({
+        id: `poll-${tempId}`,
+        postId: tempId,
+        question: poll.question,
+        options: poll.options.map((opt, i) => ({ id: i + 1, text: opt, votes: 0 })),
+        totalVotes: 0,
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        voters: {}
+      } as any) : undefined,
+      taggedTeamId: taggedTeam?.id || null,
+      taggedTeamName: taggedTeam?.name || null,
+      authorDeviceId: session?.deviceId || identity.deviceId || 'device-id',
+      authorHandle: session?.authorHandle || identity.publicHandle,
+      authorName: session?.authorName || identity.publicHandle.split(' #')[0],
+      authorAvatar: session?.avatarColor || '#2563eb',
+      authorType: 'user',
+      sourceType: 'user',
+      reactionFireCount: 0,
+      reactionClownCount: 0,
+      reactionSkullCount: 0,
+      commentCount: 0,
+      repliesCount: 0,
+      repostCount: 0,
+      impressionsCount: 1,
+      createdAt: new Date().toISOString(),
+      userReactions: {}
+    };
 
-    const created = await banterService.createPost({
+    // Instant optimistic render in next animation frame / tick (<16ms)
+    setBanterPosts(prev => [optimisticPost, ...prev]);
+
+    // Async backend persistence
+    await banterService.createPost({
+      id: tempId,
       content,
       matchId: contextMatch?.id || null,
       matchContext: matchCtx,
@@ -1062,8 +1098,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       authorHandle: session?.authorHandle,
       authorAvatar: session?.avatarColor,
       authorType: 'user'
+    }).then(created => {
+      setBanterPosts(prev => prev.map(p => p.id === tempId ? { ...created, poll: created.poll || optimisticPost.poll } : p));
+    }).catch(err => {
+      console.warn('Deferred backend post:', err);
     });
-    setBanterPosts(prev => [created, ...prev]);
   };
 
   const handleToggleReaction = async (postId: string, type: ReactionType) => {
@@ -1235,7 +1274,21 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
               threadPostId ? (
                 <BanterThreadView
                   postId={threadPostId}
-                  onBack={() => {
+                  onBack={(updatedCount?: number, targetId?: string, targetContent?: string) => {
+                    if (typeof updatedCount === 'number') {
+                      let updatedOne = false;
+                      setBanterPosts(prev => prev.map(p => {
+                        if (updatedOne) return p;
+                        const isMatch = (targetId && p.id === targetId) ||
+                                        (threadPostId && p.id === threadPostId) ||
+                                        (targetContent && p.content === targetContent);
+                        if (isMatch) {
+                          updatedOne = true;
+                          return { ...p, commentCount: updatedCount, repliesCount: updatedCount };
+                        }
+                        return p;
+                      }));
+                    }
                     window.location.hash = '#/banter';
                     setThreadPostId(null);
                     sessionStorage.removeItem('active_banter_thread_id');
@@ -1243,7 +1296,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   onNavigatePost={(nextId) => {
                     sessionStorage.setItem('active_banter_thread_id', nextId);
                     setThreadPostId(nextId);
-                    window.location.hash = '#/banter/thread';
+                    window.location.hash = `#/banter/${nextId}`;
                   }}
                 />
               ) : (
@@ -1355,7 +1408,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       onOpenComments={(post) => {
                         sessionStorage.setItem('active_banter_thread_id', post.id);
                         setThreadPostId(post.id);
-                        window.location.hash = '#/banter/thread';
+                        window.location.hash = `#/banter/${post.id}`;
                       }}
                       onPickGames={() => {
                         setActiveTab('scores');
@@ -1790,8 +1843,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         />
       )}
 
-      {/* Onboarding Favourite Team Modal (Required on initial visit) */}
-      {showOnboardingFavoriteModal && (
+      {/* Onboarding Favourite Team Modal (Required on initial predictions visit) */}
+      {showOnboardingFavoriteModal && activeTab === 'scores' && (
         <FavouriteTeamModal
           teams={availableTeams}
           selectedTeam={favouriteTeam}
