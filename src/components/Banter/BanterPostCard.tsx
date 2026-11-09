@@ -194,12 +194,12 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   return (
     <article
       onClick={handlePostClick}
-      className={`group relative overflow-hidden border border-zinc-800/80 bg-gradient-to-b from-zinc-900/60 to-[#09090b] hover:from-zinc-900/90 hover:to-zinc-950 p-3.5 sm:p-4 rounded-2xl transition-all duration-200 cursor-pointer hover:border-zinc-700 shadow-md hover:shadow-xl hover:-translate-y-0.5 ${
-        isHot || post.isTrending ? 'ring-1 ring-amber-500/30' : ''
+      className={`group relative overflow-hidden px-4 py-3.5 sm:px-4 sm:py-4 transition-colors duration-150 cursor-pointer hover:bg-white/[0.02] ${
+        isHot || post.isTrending ? 'bg-amber-500/[0.02]' : ''
       }`}
     >
       {(isHot || post.isTrending) && (
-        <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
+        <div className="absolute top-0 right-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
       )}
       <div className="flex gap-3">
         {/* User Avatar Circle */}
@@ -285,7 +285,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           {/* Tweet Text Content with Maximum View Limit */}
           <p
             data-testid="banter-post-content"
-            className="mt-2 text-sm text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text"
+            className="mt-2 text-[15px] text-zinc-100 leading-relaxed break-words whitespace-pre-wrap select-text font-normal"
           >
             {renderTweetContent(
               !expanded && post.content.length > MAX_VIEW_CHARS
@@ -358,7 +358,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
           )}
 
           {/* Action & Banter Reactions Bar */}
-          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-lg">
+          <div className="mt-3 flex items-center justify-between text-xs text-zinc-500 max-w-md">
             {/* 1. Reply */}
             <button
               type="button"
@@ -366,24 +366,24 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 e.stopPropagation();
                 setIsReplyModalOpen(true);
               }}
-              className="flex items-center gap-1.5 p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 p-1.5 -ml-1.5 rounded-full hover:text-[#1d9bf0] hover:bg-[#1d9bf0]/10 transition-colors cursor-pointer group/reply"
               title="Reply"
             >
-              <MessageCircle className="h-4 w-4" />
-              <span className="font-medium text-[11px]">💬 {replyCount}</span>
+              <MessageCircle className="h-4 w-4 group-hover/reply:text-[#1d9bf0]" />
+              <span className="font-medium text-xs">💬 {replyCount}</span>
             </button>
 
             {/* 2. Repost */}
             <button
               type="button"
               onClick={handleRepost}
-              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer ${
-                hasReposted ? 'text-emerald-400' : ''
+              className={`flex items-center gap-1.5 p-1.5 rounded-full hover:text-[#00ba7c] hover:bg-[#00ba7c]/10 transition-colors cursor-pointer group/repost ${
+                hasReposted ? 'text-[#00ba7c]' : ''
               }`}
               title="Repost"
             >
-              <Repeat2 className="h-4 w-4" />
-              <span className="font-medium text-[11px]">{repostCount}</span>
+              <Repeat2 className="h-4 w-4 group-hover/repost:text-[#00ba7c]" />
+              <span className="font-medium text-xs">{repostCount}</span>
             </button>
 
             {/* 3. Consolidated Emoji Reaction Picker */}

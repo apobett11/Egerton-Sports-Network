@@ -110,36 +110,39 @@ export const BanterFeed: React.FC<BanterFeedProps> = ({
 
   return (
     <PullToRefresh onRefresh={onRefresh || (async () => {})}>
-      <div className="space-y-3 py-2">
+      <div className="py-1">
         <div ref={topRef} />
 
         {freshCount > 0 && (
-          <div className="flex justify-center">
+          <div className="sticky top-14 z-20 flex justify-center py-2">
             <button
               type="button"
               onClick={() => {
                 setFreshCount(0);
                 topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
-              className="rounded-full bg-sky-500 hover:bg-sky-400 px-4 py-1.5 text-xs font-black text-white cursor-pointer shadow-lg transition-transform active:scale-95"
+              className="rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] px-4 py-1.5 text-xs font-bold text-white cursor-pointer shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
             >
-              {freshCount} new {freshCount === 1 ? 'take' : 'takes'}
+              <span>↑</span>
+              <span>{freshCount} new {freshCount === 1 ? 'post' : 'posts'}</span>
             </button>
           </div>
         )}
 
-        {posts.map((post, index) => (
-          <div key={post.id} data-post-id={post.id}>
-            <BanterPostCard
-              post={post}
-              isHot={showHot && index === 0}
-              onToggleReaction={onToggleReaction}
-              onOpenComments={onOpenComments}
-              onSelectMatchContext={onSelectMatchContext}
-              onRepost={onRepost}
-            />
-          </div>
-        ))}
+        <div className="border border-zinc-800/80 rounded-2xl bg-black overflow-hidden divide-y divide-zinc-800/70 shadow-lg">
+          {posts.map((post, index) => (
+            <div key={post.id} data-post-id={post.id}>
+              <BanterPostCard
+                post={post}
+                isHot={showHot && index === 0}
+                onToggleReaction={onToggleReaction}
+                onOpenComments={onOpenComments}
+                onSelectMatchContext={onSelectMatchContext}
+                onRepost={onRepost}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </PullToRefresh>
   );

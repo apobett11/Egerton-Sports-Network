@@ -1196,7 +1196,7 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       data-fixtures-loaded={fixturesLoaded ? 'true' : 'false'}
     >
       {/* Main Content Area */}
-      <main className="mx-auto w-full max-w-4xl px-3 sm:px-6 flex-1 py-4">
+      <main className={`mx-auto w-full ${activeTab === 'banter' ? 'max-w-6xl' : 'max-w-4xl'} px-3 sm:px-6 flex-1 py-4`}>
         {/* ================================================================ */}
         {/* 1. LIVESCORE SECTION (Untouched Livescore match center)           */}
         {/* ================================================================ */}
@@ -1315,13 +1315,14 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                   }}
                 />
               ) : (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between gap-3 px-1 py-1">
+                <div className="animate-fadeIn pb-12">
+                  {/* Twitter/X Style Translucent Sticky Header */}
+                  <div className="sticky top-0 z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-2.5 bg-black/85 backdrop-blur-md border-b border-zinc-800/80 flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       <button
                         type="button"
                         onClick={() => setShowLeaveBanterPrompt(true)}
-                        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition-colors text-xs font-bold cursor-pointer group shadow-xs shrink-0"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/80 transition-colors text-xs font-bold cursor-pointer group shrink-0"
                         aria-label="Back"
                         data-testid="banter-back-button"
                       >
@@ -1329,20 +1330,17 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                         <span>Back</span>
                       </button>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ff0046] via-amber-500 to-orange-400 shadow-md shadow-[#ff0046]/30">
                             <Flame className="h-4 w-4 text-white animate-pulse" />
                           </span>
-                          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
+                          <h1 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
                             What's happening
                           </h1>
                           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-500/20">
                             Live Feed
                           </span>
                         </div>
-                        <p className="mt-1 text-xs text-zinc-400 font-medium truncate">
-                          Hot takes, fiery rivalries & real-time pitchside banter across the league.
-                        </p>
                       </div>
                     </div>
                     <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-sky-400">
@@ -1400,109 +1398,213 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                       </div>
                     </div>
                   )}
-                  {contextMatch && (
-                    <MatchBanterDrawer
-                      match={contextMatch}
-                      consensus={consensusMap.get(contextMatch.id)}
-                      userSelection={userPredMap.get(contextMatch.id) || null}
-                      onClose={() => setContextMatch(null)}
-                    />
-                  )}
 
-                  {/* Input / Composer preview */}
-                  <XStyleComposer
-                    onPostCreated={handleCreatePost}
-                    authorHandle={identity.publicHandle}
-                    activeTool={mobileFabTool}
-                    onClearActiveTool={() => setMobileFabTool(null)}
-                  />
+                  {/* Main Banter Responsive Grid (Center Stream + Desktop Discovery Sidebar) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    {/* Center Column: Feed Stream */}
+                    <div className="lg:col-span-8 space-y-3 min-w-0">
+                      {contextMatch && (
+                        <MatchBanterDrawer
+                          match={contextMatch}
+                          consensus={consensusMap.get(contextMatch.id)}
+                          userSelection={userPredMap.get(contextMatch.id) || null}
+                          onClose={() => setContextMatch(null)}
+                        />
+                      )}
 
-                  {/* Main section header with categories / sorts */}
-                  <div className="sticky top-0 z-20 bg-[#081018]/95 backdrop-blur-md pt-1 pb-1">
-                    <BanterTabs
-                      activeFilter={banterFilter}
-                      onSelectFilter={setBanterFilter}
-                      activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
-                      onClearMatchContext={() => setContextMatch(null)}
-                    />
+                      {/* Top-of-Feed Seamless Composer */}
+                      <XStyleComposer
+                        onPostCreated={handleCreatePost}
+                        authorHandle={identity.publicHandle}
+                        activeTool={mobileFabTool}
+                        onClearActiveTool={() => setMobileFabTool(null)}
+                      />
+
+                      {/* Tab Strip with Underline Indicators */}
+                      <div className="sticky top-11 z-20">
+                        <BanterTabs
+                          activeFilter={banterFilter}
+                          onSelectFilter={setBanterFilter}
+                          activeMatchContextName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+                          onClearMatchContext={() => setContextMatch(null)}
+                        />
+                      </div>
+
+                      {clubBanterOnly && favouriteTeam && (
+                        <p className="text-[11px] font-bold text-amber-300 px-1">
+                          Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
+                        </p>
+                      )}
+
+                      {banterFilter === 'mine' ? (
+                        <TalkDashboard
+                          handle={identity.publicHandle}
+                          deviceBound={identity.bound}
+                          myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
+                          likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
+                          repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
+                        />
+                      ) : (
+                        <BanterFeed
+                          posts={shownBanterPosts}
+                          isLoading={isLoadingBanter}
+                          onRefresh={loadBanter}
+                          onLoadMore={loadMoreBanter}
+                          showHot={banterFilter === 'trending'}
+                          emptyTitle={
+                            clubBanterOnly
+                              ? 'No takes about your club on this matchday.'
+                              : banterFilter === 'coach'
+                              ? 'No coach dispatches yet.'
+                              : banterFilter === 'analytics'
+                              ? 'No league journal articles yet.'
+                              : banterFilter === 'banter'
+                              ? 'No banter & trolls yet.'
+                              : banterFilter === 'latest'
+                              ? 'Nothing new today.'
+                              : 'The room is quiet.'
+                          }
+                          emptyBody={
+                            banterFilter === 'coach'
+                              ? 'Coaches will post squad notes and tactical breakdowns soon.'
+                              : banterFilter === 'analytics'
+                              ? 'Egerton journalists will drop match analysis and post-game reports here.'
+                              : banterFilter === 'banter'
+                              ? 'Start the banter, drop memes or troll the rivals.'
+                              : banterFilter === 'latest'
+                              ? 'Older takes are still in All.'
+                              : 'Be the first take. Your club is waiting.'
+                          }
+                          emptyActionLabel={banterFilter === 'trending' && !clubBanterOnly ? 'Post the first take' : 'See all takes'}
+                          onEmptyAction={
+                            banterFilter === 'trending' && !clubBanterOnly
+                              ? undefined
+                              : () => setBanterFilter('all')
+                          }
+                          onToggleReaction={handleToggleReaction}
+                          onOpenComments={(post) => {
+                            sessionStorage.setItem('active_banter_thread_id', post.id);
+                            setThreadPostId(post.id);
+                            window.location.hash = `#/banter/${post.id}`;
+                          }}
+                          onPickGames={() => {
+                            setActiveTab('scores');
+                            window.scrollTo({ top: 0 });
+                          }}
+                          onSelectMatchContext={(matchId) => {
+                            const found = fixtures.find(f => f.id === matchId);
+                            if (found) setContextMatch(found);
+                          }}
+                          onStartBanterClick={() => {
+                            window.scrollTo({ top: 100, behavior: 'smooth' });
+                          }}
+                          focusPostId={focusPostId}
+                          onRepost={(postId, active) => {
+                            setRepostedIds((prev) => active
+                              ? (prev.includes(postId) ? prev : [...prev, postId])
+                              : prev.filter((id) => id !== postId));
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Right Discovery Sidebar (Desktop >= 1024px) */}
+                    <aside className="hidden lg:block lg:col-span-4 space-y-4 sticky top-14">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search Banter"
+                          className="w-full bg-zinc-900/90 border border-zinc-800 rounded-full py-2.5 pl-10 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#1d9bf0] transition-colors"
+                          readOnly
+                        />
+                        <span className="absolute left-3.5 top-2.5 text-zinc-500 text-xs">
+                          🔍
+                        </span>
+                      </div>
+
+                      {/* Trending Topics Card */}
+                      <div className="rounded-2xl border border-zinc-800/80 bg-black/60 p-4 space-y-3">
+                        <h2 className="text-base font-black text-white tracking-tight flex items-center justify-between">
+                          <span>Trending in Egerton</span>
+                          <Flame className="w-4 h-4 text-amber-400" />
+                        </h2>
+
+                        <div className="space-y-3 divide-y divide-zinc-900 text-xs">
+                          <div className="pt-2">
+                            <span className="text-[10px] font-mono text-zinc-500 block">Campus Football · Trending</span>
+                            <span className="font-bold text-white block mt-0.5 hover:text-[#1d9bf0] cursor-pointer">#EgertonDerby</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">1,420 takes</span>
+                          </div>
+
+                          <div className="pt-2">
+                            <span className="text-[10px] font-mono text-zinc-500 block">Matchday 13 · Trending</span>
+                            <span className="font-bold text-white block mt-0.5 hover:text-[#1d9bf0] cursor-pointer">Super Eagles GD</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">Tactical debate</span>
+                          </div>
+
+                          <div className="pt-2">
+                            <span className="text-[10px] font-mono text-zinc-500 block">Officiating Review</span>
+                            <span className="font-bold text-white block mt-0.5 hover:text-[#1d9bf0] cursor-pointer">Referee Jark Audit</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">920 views</span>
+                          </div>
+
+                          <div className="pt-2">
+                            <span className="text-[10px] font-mono text-zinc-500 block">Campus Rivalry</span>
+                            <span className="font-bold text-white block mt-0.5 hover:text-[#1d9bf0] cursor-pointer">Law FC vs BCOM</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">310 takes</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Campus Voices / Who to Follow */}
+                      <div className="rounded-2xl border border-zinc-800/80 bg-black/60 p-4 space-y-3">
+                        <h2 className="text-sm font-black text-white tracking-tight">
+                          Campus Voices
+                        </h2>
+                        <div className="space-y-3 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-xs">
+                                ⚽
+                              </div>
+                              <div>
+                                <span className="font-bold text-white block text-xs">Egerton Football</span>
+                                <span className="text-[10px] text-zinc-500 font-mono">@egerton_football</span>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 rounded-full bg-white hover:bg-zinc-200 text-black font-bold text-[11px] cursor-pointer transition-colors">
+                              Follow
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-sky-600/30 text-sky-400 border border-sky-500/40 flex items-center justify-center font-bold text-xs">
+                                🎙️
+                              </div>
+                              <div>
+                                <span className="font-bold text-white block text-xs">Pitchside Pulse</span>
+                                <span className="text-[10px] text-zinc-500 font-mono">@pitchside_pulse</span>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 rounded-full bg-white hover:bg-zinc-200 text-black font-bold text-[11px] cursor-pointer transition-colors">
+                              Follow
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer links */}
+                      <div className="px-2 text-[11px] text-zinc-600 space-x-2">
+                        <span>Terms of Service</span>
+                        <span>·</span>
+                        <span>Privacy Policy</span>
+                        <span>·</span>
+                        <span>© 2026 EgerScore Banter</span>
+                      </div>
+                    </aside>
                   </div>
-
-                  {clubBanterOnly && favouriteTeam && (
-                    <p className="text-[11px] font-bold text-amber-300">
-                      Showing takes about {formatTeamName(favouriteTeam)}. Tap the star again to see everyone.
-                    </p>
-                  )}
-
-                  {banterFilter === 'mine' ? (
-                    <TalkDashboard
-                      handle={identity.publicHandle}
-                      deviceBound={identity.bound}
-                      myPosts={banterPosts.filter((post) => post.isMine || post.authorHandle === identity.publicHandle)}
-                      likedPosts={banterPosts.filter((post) => likedIds.includes(post.id))}
-                      repostedPosts={banterPosts.filter((post) => repostedIds.includes(post.id))}
-                    />
-                  ) : (
-                    <BanterFeed
-                      posts={shownBanterPosts}
-                      isLoading={isLoadingBanter}
-                      onRefresh={loadBanter}
-                      onLoadMore={loadMoreBanter}
-                      showHot={banterFilter === 'trending'}
-                      emptyTitle={
-                        clubBanterOnly
-                          ? 'No takes about your club on this matchday.'
-                          : banterFilter === 'coach'
-                          ? 'No coach dispatches yet.'
-                          : banterFilter === 'analytics'
-                          ? 'No league journal articles yet.'
-                          : banterFilter === 'banter'
-                          ? 'No banter & trolls yet.'
-                          : banterFilter === 'latest'
-                          ? 'Nothing new today.'
-                          : 'The room is quiet.'
-                      }
-                      emptyBody={
-                        banterFilter === 'coach'
-                          ? 'Coaches will post squad notes and tactical breakdowns soon.'
-                          : banterFilter === 'analytics'
-                          ? 'Egerton journalists will drop match analysis and post-game reports here.'
-                          : banterFilter === 'banter'
-                          ? 'Start the banter, drop memes or troll the rivals.'
-                          : banterFilter === 'latest'
-                          ? 'Older takes are still in All.'
-                          : 'Be the first take. Your club is waiting.'
-                      }
-                      emptyActionLabel={banterFilter === 'trending' && !clubBanterOnly ? 'Post the first take' : 'See all takes'}
-                      onEmptyAction={
-                        banterFilter === 'trending' && !clubBanterOnly
-                          ? undefined
-                          : () => setBanterFilter('all')
-                      }
-                      onToggleReaction={handleToggleReaction}
-                      onOpenComments={(post) => {
-                        sessionStorage.setItem('active_banter_thread_id', post.id);
-                        setThreadPostId(post.id);
-                        window.location.hash = `#/banter/${post.id}`;
-                      }}
-                      onPickGames={() => {
-                        setActiveTab('scores');
-                        window.scrollTo({ top: 0 });
-                      }}
-                      onSelectMatchContext={(matchId) => {
-                        const found = fixtures.find(f => f.id === matchId);
-                        if (found) setContextMatch(found);
-                      }}
-                      onStartBanterClick={() => {
-                        window.scrollTo({ top: 100, behavior: 'smooth' });
-                      }}
-                      focusPostId={focusPostId}
-                      onRepost={(postId, active) => {
-                        setRepostedIds((prev) => active
-                          ? (prev.includes(postId) ? prev : [...prev, postId])
-                          : prev.filter((id) => id !== postId));
-                      }}
-                    />
-                  )}
 
                   {/* Mobile Floating Action Button (FAB) */}
                   <XFloatingComposeButton

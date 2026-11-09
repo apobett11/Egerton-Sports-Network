@@ -392,9 +392,11 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
   return (
     <div
       ref={composerContainerRef}
-      className={`border border-zinc-800 bg-[#000000] rounded-2xl overflow-hidden relative ${
-        isExpanded ? 'p-3.5 sm:p-4 shadow-xl' : 'p-2 cursor-pointer hover:border-zinc-700'
-      }`}
+      className={`bg-black transition-colors ${
+        isReply
+          ? 'rounded-2xl border border-zinc-800/90 p-3.5 sm:p-4 my-2 shadow-lg'
+          : 'border-b border-zinc-800/80 p-3.5 sm:p-4'
+      } ${!isExpanded && !isReply ? 'cursor-pointer hover:bg-white/[0.015]' : ''}`}
       onClick={() => {
         if (!isExpanded) setIsExpanded(true);
       }}
@@ -455,7 +457,7 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 e.stopPropagation();
                 setIsExpanded(true);
               }}
-              className="px-3.5 py-1 rounded-full bg-sky-500 hover:bg-sky-400 text-white font-black text-xs transition-colors"
+              className="px-4 py-1.5 rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-xs transition-colors shadow-xs"
             >
               Post
             </button>
@@ -802,10 +804,10 @@ export const XStyleComposer: React.FC<XStyleComposerProps> = ({
                 type="button"
                 disabled={!canSubmit}
                 onClick={() => handleSubmit()}
-                className={`px-5 py-2 rounded-full font-black text-xs uppercase tracking-wider shadow-md ${
+                className={`px-5 py-1.5 rounded-full font-bold text-sm transition-all duration-150 ${
                   canSubmit
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white cursor-pointer'
-                    : 'bg-sky-500/40 text-white/50 cursor-not-allowed'
+                    ? 'bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white cursor-pointer shadow-xs active:scale-95'
+                    : 'bg-[#1d9bf0]/50 text-white/50 cursor-not-allowed'
                 }`}
               >
                 {isSubmitting ? (
