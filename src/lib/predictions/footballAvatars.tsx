@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, Shield } from 'lucide-react';
 import type { BanterPost } from '../../types/predictions';
+import { supabase } from './banterSupabase';
+import { peekTeamLogo, DEFAULT_TEAM_LOGO } from '../teamLogoCache';
 
 /**
  * 20 Curated, high-quality, aesthetic football/soccer images (free, uncopyrighted from Unsplash)
@@ -31,55 +33,180 @@ export const FOOTBALL_AVATARS: string[] = [
 ];
 
 /**
+ * In-memory dynamic map populated directly from the Supabase `teams` table (logo_url column and bucket files)
+ */
+export const DYNAMIC_TEAM_LOGOS = new Map<string, string>();
+let dynamicLogosInitialized = false;
+
+export async function fetchLiveTeamLogos(): Promise<void> {
+  if (dynamicLogosInitialized) return;
+  try {
+    const { data } = await supabase
+      .from('teams')
+      .select('id, name, short_name, logo_url')
+      .not('logo_url', 'is', null);
+
+    if (data && Array.isArray(data)) {
+      for (const row of data) {
+        if (!row.logo_url) continue;
+        const logoUrl = String(row.logo_url);
+        if (row.id) {
+          DYNAMIC_TEAM_LOGOS.set(String(row.id).toLowerCase(), logoUrl);
+        }
+        if (row.name) {
+          const norm = String(row.name).trim().toLowerCase();
+          DYNAMIC_TEAM_LOGOS.set(norm, logoUrl);
+          DYNAMIC_TEAM_LOGOS.set(norm.replace(/\s+fc$/, '').trim(), logoUrl);
+        }
+        if (row.short_name) {
+          DYNAMIC_TEAM_LOGOS.set(String(row.short_name).trim().toLowerCase(), logoUrl);
+        }
+      }
+      dynamicLogosInitialized = true;
+    }
+  } catch {
+    // Keep using static mappings on any network failure
+  }
+}
+
+// Background prefetch for instant reactivity
+if (typeof window !== 'undefined') {
+  void fetchLiveTeamLogos();
+}
+
+/**
  * Dedicated club crests / logos for teams.
- * Kept strictly distinct from user football rotation photos.
+ * Directly sourced from Supabase team-logos bucket and registered database logo_url.
  */
 export const TEAM_LOGOS: Record<string, string> = {
-  // EPL Teams
-  'santos': 'https://api.dicebear.com/7.x/identicon/svg?seed=SantosFC&backgroundColor=059669',
-  'santos fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=SantosFC&backgroundColor=059669',
-  'bcom': 'https://api.dicebear.com/7.x/identicon/svg?seed=BCOMFC&backgroundColor=dc2626',
-  'bcom fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=BCOMFC&backgroundColor=dc2626',
-  'blue blazers': 'https://api.dicebear.com/7.x/identicon/svg?seed=BlueBlazers&backgroundColor=2563eb',
-  'mighty blacks': 'https://api.dicebear.com/7.x/identicon/svg?seed=MightyBlacks&backgroundColor=18181b',
-  'celtics': 'https://api.dicebear.com/7.x/identicon/svg?seed=CelticsFC&backgroundColor=16a34a',
-  'celtics fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=CelticsFC&backgroundColor=16a34a',
-  'five stars': 'https://api.dicebear.com/7.x/identicon/svg?seed=FiveStars&backgroundColor=ca8a04',
-  'five stars fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=FiveStars&backgroundColor=ca8a04',
-  'giants': 'https://api.dicebear.com/7.x/identicon/svg?seed=GiantsFC&backgroundColor=7c3aed',
-  'giants fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=GiantsFC&backgroundColor=7c3aed',
-  'legends': 'https://api.dicebear.com/7.x/identicon/svg?seed=LegendsFC&backgroundColor=b91c1c',
-  'legends fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=LegendsFC&backgroundColor=b91c1c',
-  'med': 'https://api.dicebear.com/7.x/identicon/svg?seed=MedFC&backgroundColor=0d9488',
-  'med fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=MedFC&backgroundColor=0d9488',
-  'rising stars': 'https://api.dicebear.com/7.x/identicon/svg?seed=RisingStars&backgroundColor=f59e0b',
-  'super eagles': 'https://api.dicebear.com/7.x/identicon/svg?seed=SuperEagles&backgroundColor=047857',
-  'wazito': 'https://api.dicebear.com/7.x/identicon/svg?seed=WazitoFC&backgroundColor=4f46e5',
-  'wazito fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=WazitoFC&backgroundColor=4f46e5',
-  'engineering': 'https://api.dicebear.com/7.x/identicon/svg?seed=EngineeringFC&backgroundColor=0284c7',
-  'engineering fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=EngineeringFC&backgroundColor=0284c7',
-  'engineering strikers': 'https://api.dicebear.com/7.x/identicon/svg?seed=EngineeringFC&backgroundColor=0284c7',
-  'agriculture fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=AgricultureFC&backgroundColor=15803d',
-  'njoro spurs': 'https://api.dicebear.com/7.x/identicon/svg?seed=NjoroSpurs&backgroundColor=e11d48',
-  'science lions': 'https://api.dicebear.com/7.x/identicon/svg?seed=ScienceLions&backgroundColor=0369a1',
-  'tatton united': 'https://api.dicebear.com/7.x/identicon/svg?seed=TattonUnited&backgroundColor=4338ca',
-  'vet med warriors': 'https://api.dicebear.com/7.x/identicon/svg?seed=VetMedWarriors&backgroundColor=0f766e',
+  // EPL Teams (Database & Supabase Storage Bucket team-logos/logos/*)
+  '10000000-0000-4000-8000-000000000003': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000003.webp',
+  'santos': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000003.webp',
+  'santos fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000003.webp',
+  'san': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000003.webp',
 
-  // Championship Teams
-  'aged fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=AgedFC&backgroundColor=b45309',
-  'ajax fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=AjaxFC&backgroundColor=be123c',
-  'tatton fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=TattonFC&backgroundColor=6d28d9',
-  'talanta fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=TalantaFC&backgroundColor=0e7490',
-  'rangers fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=RangersFC&backgroundColor=1d4ed8',
-  'law fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=LawFC&backgroundColor=374151',
-  'fass elites': 'https://api.dicebear.com/7.x/identicon/svg?seed=FassElites&backgroundColor=9d174d',
-  'emsa fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=EmsaFC&backgroundColor=047857',
-  'young legends': 'https://api.dicebear.com/7.x/identicon/svg?seed=YoungLegends&backgroundColor=c2410c',
-  'young stars': 'https://api.dicebear.com/7.x/identicon/svg?seed=YoungStars&backgroundColor=ca8a04',
-  'education stars': 'https://api.dicebear.com/7.x/identicon/svg?seed=EducationStars&backgroundColor=ca8a04',
-  'health sciences fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=HealthSciences&backgroundColor=059669',
-  'nakuru town campus fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=NakuruCampus&backgroundColor=2563eb',
-  'veterinary academy fc': 'https://api.dicebear.com/7.x/identicon/svg?seed=VeterinaryAcademy&backgroundColor=0d9488',
+  '10000000-0000-4000-8000-000000000001': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000001_1789846156143.webp',
+  'super eagles': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000001_1789846156143.webp',
+  'super eagles fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000001_1789846156143.webp',
+  'spe': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-000000000001_1789846156143.webp',
+
+  '10000000-0000-4000-8000-00000000000a': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-00000000000a_1790461291409.webp',
+  'wazito': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-00000000000a_1790461291409.webp',
+  'wazito fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-00000000000a_1790461291409.webp',
+  'waz': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/10000000-0000-4000-8000-00000000000a_1790461291409.webp',
+
+  '10000000-0000-4000-8000-000000000004': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'bcom': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'bcom fc': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'bcm': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000005': 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80',
+  'blue blazers': 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80',
+  'blu': 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000006': 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80',
+  'mighty blacks': 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80',
+  'mbl': 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-00000000000b': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'celtics': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'celtics fc': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'cel': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000002': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'five stars': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'five stars fc': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'fsf': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000008': 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80',
+  'giants': 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80',
+  'giants fc': 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80',
+  'gnt': 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000007': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80',
+  'legends': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80',
+  'legends fc': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80',
+  'lgd': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-000000000009': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'med': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'med fc': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+
+  '10000000-0000-4000-8000-00000000000c': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+  'rising stars': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+  'rst': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+
+  'engineering': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'engineering fc': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'engineering strikers': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'agriculture fc': 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=100&auto=format&fit=crop&q=80',
+  'njoro spurs': 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=100&auto=format&fit=crop&q=80',
+  'science lions': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'tatton united': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'vet med warriors': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+
+  // Championship Teams (Database & Supabase Storage Bucket team-logos/logos/*)
+  '20000000-0000-4000-8000-000000000002': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000002.webp',
+  'ajax': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000002.webp',
+  'ajax fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000002.webp',
+  'ajx': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000002.webp',
+
+  '20000000-0000-4000-8000-000000000009': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000009.webp',
+  'rangers': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000009.webp',
+  'rangers fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000009.webp',
+  'rng': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000009.webp',
+
+  '20000000-0000-4000-8000-000000000004': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000004.png',
+  'emsa': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000004.png',
+  'emsa fc': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000004.png',
+  'ems': 'https://tdfiodqlzptaruhivapj.supabase.co/storage/v1/object/public/team-logos/logos/20000000-0000-4000-8000-000000000004.png',
+
+  '20000000-0000-4000-8000-000000000001': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'aged': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'aged fc': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'agd': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-000000000005': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'tatton': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'tatton fc': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'tat': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-000000000006': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'talanta': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'talanta fc': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'tln': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-000000000008': 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?w=100&auto=format&fit=crop&q=80',
+  'young stars': 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?w=100&auto=format&fit=crop&q=80',
+  'yst': 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-00000000000a': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+  'law': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+  'law fc': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-000000000007': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'young legends': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'ylg': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+
+  '20000000-0000-4000-8000-000000000003': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'fass elites': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'fas': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+
+  'education stars': 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?w=100&auto=format&fit=crop&q=80',
+  'health sciences fc': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+  'nakuru town campus fc': 'https://images.unsplash.com/photo-1511886929837-354d827aae26?w=100&auto=format&fit=crop&q=80',
+  'veterinary academy fc': 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=100&auto=format&fit=crop&q=80',
+
+  // Other League Teams
+  '40000000-0000-4000-8000-000000000001': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'egerton': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'egerton fc': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+  'ege': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=100&auto=format&fit=crop&q=80',
+
+  '40000000-0000-4000-8000-000000000002': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'sunking': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'sunking fc': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
+  'skg': 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=100&auto=format&fit=crop&q=80',
 };
 
 /** Official Press / Journalist fixed badge */
@@ -115,22 +242,58 @@ export function getFootballAvatar(seed: string): string {
   return FOOTBALL_AVATARS[index];
 }
 
-/** Get dedicated team logo, ensuring no team is missing one */
+/** Clean coach strings to extract target club name */
+function cleanCoachCandidate(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\[coach\]|\(coach\)|coach|head coach|official|team|#\d+/gi, '')
+    .replace(/[\[\]\(\)]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Get dedicated team logo, ensuring coaches receive real uploaded/bucket images */
 export function getTeamLogo(teamNameOrId?: string | null): string {
   if (!teamNameOrId) {
-    return 'https://api.dicebear.com/7.x/identicon/svg?seed=CampusFC&backgroundColor=1e293b';
+    return DEFAULT_TEAM_LOGO;
   }
-  const key = teamNameOrId.trim().toLowerCase();
-  if (TEAM_LOGOS[key]) return TEAM_LOGOS[key];
 
-  // Try substring match
-  for (const [tKey, url] of Object.entries(TEAM_LOGOS)) {
-    if (key.includes(tKey) || tKey.includes(key)) {
+  const raw = teamNameOrId.trim();
+  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:image')) {
+    return raw;
+  }
+
+  const cleaned = cleanCoachCandidate(raw);
+  const key = raw.toLowerCase();
+
+  // 1. Direct dynamic DB cache match (by ID, full name, short name, or cleaned candidate)
+  if (DYNAMIC_TEAM_LOGOS.has(key)) return DYNAMIC_TEAM_LOGOS.get(key)!;
+  if (DYNAMIC_TEAM_LOGOS.has(cleaned)) return DYNAMIC_TEAM_LOGOS.get(cleaned)!;
+
+  // 2. Client IndexedDB / localStorage logo cache
+  const cached = peekTeamLogo(raw) || peekTeamLogo(cleaned);
+  if (cached) return cached;
+
+  // 3. Static TEAM_LOGOS map (has uploaded bucket URLs & DB logo URLs)
+  if (TEAM_LOGOS[cleaned]) return TEAM_LOGOS[cleaned];
+  if (TEAM_LOGOS[key]) return TEAM_LOGOS[key];
+  const cleanedNoFc = cleaned.replace(/\s+fc$/, '').trim();
+  if (TEAM_LOGOS[cleanedNoFc]) return TEAM_LOGOS[cleanedNoFc];
+
+  // 4. Substring matching against known teams in DYNAMIC_TEAM_LOGOS & TEAM_LOGOS
+  for (const [tKey, url] of DYNAMIC_TEAM_LOGOS.entries()) {
+    if (tKey.length >= 3 && (cleaned.includes(tKey) || tKey.includes(cleaned) || key.includes(tKey))) {
       return url;
     }
   }
-  // Dedicated team crest fallback (never from the 20 user photos)
-  return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(key)}&backgroundColor=0f172a`;
+
+  for (const [tKey, url] of Object.entries(TEAM_LOGOS)) {
+    if (tKey.length >= 3 && (cleaned.includes(tKey) || tKey.includes(cleaned) || key.includes(tKey))) {
+      return url;
+    }
+  }
+
+  return DEFAULT_TEAM_LOGO;
 }
 
 export interface AuthorIdentityMeta {
@@ -151,6 +314,7 @@ export function getAuthorIdentityMeta(
     author_badge?: string;
     author_avatar?: string;
     tagged_team_name?: string;
+    tagged_team_id?: string;
   }
 ): AuthorIdentityMeta {
   const authorType = (post.authorType || post.author_type || '').toLowerCase();
@@ -186,7 +350,23 @@ export function getAuthorIdentityMeta(
     avatarUrl = OFFICIAL_JOURNALIST_LOGO;
     roleBadgeText = 'Official Journalist';
   } else if (isCoach) {
-    avatarUrl = getTeamLogo(team || name);
+    // Check if an explicit non-placeholder avatar was already provided
+    const directAvatar = (post.authorAvatar || post.author_avatar || '').trim();
+    if (directAvatar && !directAvatar.includes('dicebear') && directAvatar.startsWith('http')) {
+      avatarUrl = directAvatar;
+    } else {
+      const candidate =
+        post.taggedTeamId ||
+        (post as any).tagged_team_id ||
+        team ||
+        post.taggedTeamName ||
+        (post as any).tagged_team_name ||
+        post.authorBadge ||
+        post.author_badge ||
+        name ||
+        handle;
+      avatarUrl = getTeamLogo(candidate);
+    }
     roleBadgeText = coachLeague === 'championship' ? `${team || 'Club'} Coach (Championship)` : `${team || 'Club'} Coach (EPL)`;
   } else {
     // 20 randomized football images for users (deterministic by handle/id)

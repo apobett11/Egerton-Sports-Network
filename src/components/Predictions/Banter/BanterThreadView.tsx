@@ -1124,6 +1124,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                 const isOP = Boolean(rootAuthorDeviceId && replyAuthorDeviceId === rootAuthorDeviceId);
                 const isYou = Boolean(currentDeviceId && replyAuthorDeviceId === currentDeviceId);
                 const voteMatch = reply.content.match(/^\[Voted:\s*([^\]]+)\]\s*(.*)$/);
+                const replyMeta = getAuthorIdentityMeta(reply);
 
                 return (
                   <article
@@ -1134,10 +1135,20 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                       {/* Avatar & Number badge */}
                       <div className="flex flex-col items-center gap-1">
                         <div
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm border border-white/10 overflow-hidden shadow-sm"
-                          style={{ backgroundColor: reply.authorAvatar || (isYou ? profile?.avatarColor : undefined) || '#2563eb' }}
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white font-bold text-sm border border-white/10 overflow-hidden shadow-sm bg-zinc-900"
+                          style={
+                            !replyMeta.avatarUrl || !replyMeta.avatarUrl.startsWith('http')
+                              ? { backgroundColor: reply.authorAvatar || (isYou ? profile?.avatarColor : undefined) || '#2563eb' }
+                              : undefined
+                          }
                         >
-                          {reply.authorName ? reply.authorName[0] : <User className="h-4 w-4" />}
+                          {replyMeta.avatarUrl && replyMeta.avatarUrl.startsWith('http') ? (
+                            <img src={replyMeta.avatarUrl} alt={replyMeta.displayName} className="w-full h-full object-cover" />
+                          ) : reply.authorName ? (
+                            reply.authorName[0]
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
                         </div>
                         <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 px-1.5 py-0.2 rounded border border-zinc-800">
                           #{idx + 1}
@@ -1148,8 +1159,17 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-xs text-white group-hover:underline">
-                              {reply.authorName || reply.authorHandle}
+                              {replyMeta.displayName || reply.authorName || reply.authorHandle}
                             </span>
+                            {replyMeta.isCoach ? (
+                              replyMeta.coachLeague === 'championship' ? (
+                                <ChampionshipAmberCoachTick className="h-3.5 w-3.5" />
+                              ) : (
+                                <OrangeCoachTick className="h-3.5 w-3.5" />
+                              )
+                            ) : replyMeta.isJournalist ? (
+                              <InstagramBlueTick className="h-3.5 w-3.5" />
+                            ) : null}
                             {isOP && (
                               <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-sky-400 border border-sky-500/30">
                                 OP
