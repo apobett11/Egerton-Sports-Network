@@ -145,11 +145,11 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
 
   useEffect(() => {
     if (dateAlignedRef.current || playdays.length === 0) return;
-    if (playdays.some((mark) => mark.date === formattedDateStr)) {
+    if (playdays.some((mark) => mark.date === formattedDateStr && !mark.isPlayed)) {
       dateAlignedRef.current = true;
       return;
     }
-    const targetKey = playdays.find((mark) => mark.date >= formattedDateStr)?.date
+    const targetKey = playdays.find((mark) => mark.isLeague && !mark.isPlayed && mark.date >= formattedDateStr)?.date || playdays.find((mark) => mark.isLeague && !mark.isPlayed)?.date || playdays.find((mark) => mark.date >= formattedDateStr)?.date
       || playdays[playdays.length - 1].date;
     dateAlignedRef.current = true;
     if (targetKey !== formattedDateStr) setGuestMatchday(dateFromKey(targetKey));
@@ -376,6 +376,7 @@ export const GuestMatchdayFeed: React.FC<GuestMatchdayFeedProps> = ({
 
   const lastSwitchTimeRef = useRef(0);
   const handleShiftPlayday = useCallback((direction: 1 | -1) => {
+    dateAlignedRef.current = true;
     const now = Date.now();
     if (now - lastSwitchTimeRef.current < 220) return;
     const nextKey = shiftPlayday(formattedDateStr, direction, playdays);

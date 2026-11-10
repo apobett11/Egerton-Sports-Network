@@ -439,7 +439,7 @@ export const AppContent: React.FC = () => {
           if (index.length === 0) {
             const dayOfWeek = d.getDay();
             if (dayOfWeek === 0 || dayOfWeek === 6) return d;
-          } else if (index.some((mark) => mark.date === key)) {
+          } else if (index.some((mark) => mark.date === key && !mark.isPlayed)) {
             return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
           }
         }
@@ -892,27 +892,32 @@ export const AppContent: React.FC = () => {
     { autoFetchAll: false, selectedDate: selectedDateStr, competitionId: selectedCompetitionId }
   );
 
-  // Auto-sync guest fixtures to next matchday strictly once on initial mount if on a weekday
+  // Auto-sync guest fixtures to next matchday strictly once on initial mount if on a weekday or on a played date
   const hasInitialDateSyncedRef = useRef(false);
   useEffect(() => {
     if (hasInitialDateSyncedRef.current) return;
     const curKey = localDateKey(selectedDate);
     const index = readPlaydayIndex();
-    if (index.some((mark) => mark.date === curKey)) {
+    const curMark = index.find((mark) => mark.date === curKey);
+    if (curMark && !curMark.isPlayed) {
       hasInitialDateSyncedRef.current = true;
       return;
     }
     if (liveMatches && liveMatches.length > 0) {
       hasInitialDateSyncedRef.current = true;
-      const hasFixturesOnDate = liveMatches.some((f) => {
-        return fixtureDateKey(f.scheduledTime || (f as any).scheduled_time) === curKey;
-      });
-      if (!hasFixturesOnDate) {
-        const targetDate = resolveGuestMatchdayDate(liveMatches);
-        if (localDateKey(targetDate) !== curKey) {
-          setGuestMatchday(targetDate);
-          setSelectedDate(targetDate);
-        }
+      const targetDate = resolveGuestMatchdayDate(liveMatches);
+      if (localDateKey(targetDate) !== curKey) {
+        setGuestMatchday(targetDate);
+        setSelectedDate(targetDate);
+      }
+      return;
+    }
+    if (index.length > 0) {
+      hasInitialDateSyncedRef.current = true;
+      const targetDate = resolveGuestMatchdayDate();
+      if (localDateKey(targetDate) !== curKey) {
+        setGuestMatchday(targetDate);
+        setSelectedDate(targetDate);
       }
     }
   }, [liveMatches, selectedDate]);

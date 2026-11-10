@@ -2,7 +2,7 @@ import type { Match } from '../types';
 import { guestCache } from './guestCache';
 import { supabase } from './supabase';
 
-export const PLAYDAY_INDEX_KEY = 'playday_index_v6';
+export const PLAYDAY_INDEX_KEY = 'playday_index_v7';
 const EPL_COMP_ID = '11111111-1111-1111-1111-111111111111';
 const FRIENDLY_COMP_ID = '33333333-3333-3333-3333-333333333333';
 
@@ -11,6 +11,9 @@ export interface PlaydayMark {
   matchday: number;
   isFriendly: boolean;
   isLeague: boolean;
+  totalMatches?: number;
+  playedMatches?: number;
+  isPlayed?: boolean;
 }
 
 /** Calendar date the fixture was scheduled on, taken from the timestamp itself. */
@@ -55,8 +58,10 @@ export function isMatchPlayedOrActive(status?: string | null): boolean {
 
 /**
  * Determines the next unplayed (active) matchday across the leagues.
- * If less than 30% of a matchday's fixtures have been played/started,
- * the render must not advance to the next matchday and will stay on that matchday.
+ * Provided the matches have been played over 50%, the matchday is marked as played,
+ * and the render will move on. One, two, or three unplayed matches will not prevent render
+ * of the next matchday as long as the matchday is over 50% played.
+ * If a matchday has 50% or less (less than 50%) played matches, it will remain as the active matchday.
  */
 export function getNextUnplayedMatchday(fixtures?: Array<{
   matchday?: number | null;
@@ -65,11 +70,21 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
   competition_id?: string | null;
   league?: string | null;
 }> | null): number {
-  if (!fixtures || fixtures.length === 0) return 13;
+  const index = readPlaydayIndex();
+
+  if (!fixtures || fixtures.length === 0) {
+    const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
+    if (unplayedFromIndex) return unplayedFromIndex.matchday;
+    const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
+    return latestLeague?.matchday || 15;
+  }
 
   const hasStatusInfo = fixtures.some((f) => f.status !== undefined && f.status !== null);
   if (!hasStatusInfo) {
-    return 13;
+    const unplayedFromIndex = index.find((m) => m.isLeague && !m.isPlayed && m.matchday > 0);
+    if (unplayedFromIndex) return unplayedFromIndex.matchday;
+    const latestLeague = index.find((m) => m.isLeague && m.matchday > 0);
+    return latestLeague?.matchday || 15;
   }
 
   const matchdayMap = new Map<number, { total: number; played: number }>();
@@ -91,13 +106,13 @@ export function getNextUnplayedMatchday(fixtures?: Array<{
     const { total, played } = matchdayMap.get(md)!;
     if (total === 0) continue;
     const ratio = played / total;
-    if (ratio < 0.3) {
-      // Less than 30% of the fixtures have been played -> pause render at this matchday
+    if (ratio <= 0.5) {
+      // 50% or less of the fixtures have been played -> pause render at this matchday
       return md;
     }
   }
 
-  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 13;
+  return sortedMds.length > 0 ? sortedMds[sortedMds.length - 1] : 15;
 }
 
 export function buildPlaydayIndex(rows: Array<{
@@ -109,13 +124,14 @@ export function buildPlaydayIndex(rows: Array<{
   is_friendly?: boolean;
   status?: string | null;
 }>): PlaydayMark[] {
-  const map = new Map<string, PlaydayMark & { hasEpl: boolean }>();
+  const map = new Map<string, PlaydayMark & { hasEpl: boolean; total: number; played: number }>();
   rows.forEach((row) => {
     const date = fixtureDateKey(row.scheduledTime || row.scheduled_time);
     if (!date) return;
     const friendly = isFriendlyRow(row);
     const isEpl = row.competition_id === EPL_COMP_ID || (row.league || '').toLowerCase().includes('premier');
     const md = Number(row.matchday) || 0;
+    const played = isMatchPlayedOrActive(row.status);
     const prev = map.get(date);
     if (!prev) {
       map.set(date, {
@@ -124,11 +140,17 @@ export function buildPlaydayIndex(rows: Array<{
         isFriendly: friendly,
         isLeague: !friendly,
         hasEpl: isEpl && md > 0,
+        total: friendly ? 0 : 1,
+        played: friendly ? 0 : (played ? 1 : 0),
       });
       return;
     }
     prev.isFriendly = prev.isFriendly || friendly;
     prev.isLeague = prev.isLeague || !friendly;
+    if (!friendly) {
+      prev.total++;
+      if (played) prev.played++;
+    }
     if (isEpl && md > 0) {
       prev.matchday = md;
       prev.hasEpl = true;
@@ -137,7 +159,12 @@ export function buildPlaydayIndex(rows: Array<{
     }
   });
   return [...map.values()]
-    .map(({ hasEpl: _hasEpl, ...mark }) => mark)
+    .map(({ hasEpl: _hasEpl, total, played, ...mark }) => ({
+      ...mark,
+      totalMatches: total,
+      playedMatches: played,
+      isPlayed: total > 0 ? (played / total > 0.5) : false,
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -217,9 +244,11 @@ export function shiftPlayday(currentKey: string, direction: 1 | -1, index: Playd
 
 /**
  * Resolves the matchday date for the guest page.
- * Aligns strictly to the next unplayed matchday (paused at Matchday 13).
- * If less than 30% of a matchday's matches have been played, the render remains on that
- * matchday and does not advance forward to future unplayed matchdays.
+ * Aligns strictly to the latest next unplayed matchday.
+ * Provided the matches have been played over 50%, the matchday is marked as played,
+ * and the render will move on. One, two, or three unplayed matches will not prevent render
+ * of the next matchday. If we are on weekdays, the next one is Saturday. When Saturday is
+ * over (>50% played), the Sunday one is rendered.
  */
 export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
   const fixturesList =
@@ -231,9 +260,13 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
   const index = readPlaydayIndex();
 
   // 1. Look for unplayed matchday in playdays index
-  const mdMark = index.find((m) => m.matchday === unplayedMd);
+  const mdMark = index.find((m) => m.matchday === unplayedMd && m.isLeague);
   if (mdMark) {
     return dateFromKey(mdMark.date);
+  }
+  const anyMdMark = index.find((m) => m.matchday === unplayedMd);
+  if (anyMdMark) {
+    return dateFromKey(anyMdMark.date);
   }
 
   // 2. Look for fixture in provided/cached fixtures matching unplayedMd
@@ -246,8 +279,14 @@ export function resolveGuestMatchdayDate(fixtures?: Match[]): Date {
     }
   }
 
-  // 3. Default paused date for Matchday 13
-  return dateFromKey('2026-10-17');
+  // 3. Fallback from index: first unplayed league matchday date
+  const firstUnplayedMark = index.find((m) => m.isLeague && !m.isPlayed);
+  if (firstUnplayedMark) {
+    return dateFromKey(firstUnplayedMark.date);
+  }
+
+  // 4. Default active date for Matchday 15 (Saturday)
+  return dateFromKey('2026-10-24');
 }
 
 /**

@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { localDateKey, readPlaydayIndex, resolveGuestMatchdayDate } from './matchdayHelper';
 
 const STORAGE_KEY = 'esn_selected_date';
-const DATA_GENERATION = 'v9';
+const DATA_GENERATION = 'v10';
 const GENERATION_KEY = 'esn_guest_data_generation';
 
 function dropSkewedSessionDate(): void {
@@ -28,7 +28,7 @@ function readInitial(): Date {
         if (index.length === 0) {
           const day = parsed.getDay();
           if (day === 0 || day === 6) return parsed;
-        } else if (index.some((mark) => mark.date === key)) {
+        } else if (index.some((mark) => mark.date === key && !mark.isPlayed)) {
           return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 12, 0, 0);
         }
       }
