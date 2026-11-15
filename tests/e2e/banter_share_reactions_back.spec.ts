@@ -3,6 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('Banter Feed: Back Button, Exit Prompt, Consolidated Reactions & Shareable Image', () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(60000);
+    await page.addInitScript(() => {
+      sessionStorage.removeItem('active_banter_thread_id');
+      sessionStorage.removeItem('esn_current_route');
+    });
     page.on('console', (msg) => console.log('BROWSER:', msg.text()));
     page.on('pageerror', (err) => console.log('PAGE ERROR:', err));
     page.on('requestfailed', (req) => console.log('REQ FAILED:', req.url(), req.failure()?.errorText));

@@ -27,7 +27,7 @@ import { BanterPostCard } from './BanterPostCard';
 import { useBanterSession } from '../../../hooks/useBanterSession';
 import { EPL_TEAMS } from '../../../lib/predictions/eplTeams';
 import { getOrCreatePermanentDeviceId } from '../../../utils/sessionIdentity';
-import { formatRelativeTime, formatTeamTag, formatMatchTag, getCleanMessageRef } from '../../../lib/predictions/utils';
+import { formatRelativeTime, formatTeamTag, formatMatchTag, getCleanMessageRef, MENTION_AND_TAG_REGEX } from '../../../lib/predictions/utils';
 import {
   getAuthorIdentityMeta,
   InstagramBlueTick,
@@ -603,7 +603,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
 
   if (!post) {
     return (
-      <div className="w-full max-w-2xl mx-auto py-12 text-center text-white">
+      <div data-testid="banter-thread-view" className="w-full max-w-2xl mx-auto py-12 text-center text-white">
         <p className="text-base font-bold text-zinc-300">This take doesn’t exist or was removed.</p>
         <button
           type="button"
@@ -617,7 +617,7 @@ export const BanterThreadView: React.FC<BanterThreadViewProps> = ({
   }
 
   const renderContent = (text: string) => {
-    const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_\s]{2,20}(?=\s|$|[.,!?]))/g);
+    const parts = text.split(MENTION_AND_TAG_REGEX);
     return parts.map((part, idx) => {
       if (part.startsWith('#')) {
         return (

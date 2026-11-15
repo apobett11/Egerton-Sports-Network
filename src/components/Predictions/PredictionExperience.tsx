@@ -200,6 +200,17 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   // Hash routing for full-page thread view (clean link without exposing internal UID)
   const [threadPostId, setThreadPostId] = useState<string | null>(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+    const hashParams = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]) : null;
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const explicitId = hashParams?.get('id') || hashParams?.get('post') || hashParams?.get('b') || searchParams?.get('id') || searchParams?.get('post') || searchParams?.get('b');
+    if (explicitId) {
+      const realId =
+        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`banter_ref_${explicitId}`) : null) ||
+        banterService.resolvePostIdFromRef(explicitId) ||
+        explicitId;
+      sessionStorage.setItem('active_banter_thread_id', realId);
+      return realId;
+    }
     if (hash.startsWith('#/banter/thread')) {
       return sessionStorage.getItem('active_banter_thread_id');
     }
@@ -211,17 +222,6 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
         banterService.resolvePostIdFromRef(ref) ||
         (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('active_banter_thread_id') : null) ||
         ref;
-      sessionStorage.setItem('active_banter_thread_id', realId);
-      return realId;
-    }
-    const hashQuery = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]).get('post') : null;
-    const searchPost = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('post') : null;
-    const targetId = hashQuery || searchPost;
-    if (targetId) {
-      const realId =
-        (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`banter_ref_${targetId}`) : null) ||
-        banterService.resolvePostIdFromRef(targetId) ||
-        targetId;
       sessionStorage.setItem('active_banter_thread_id', realId);
       return realId;
     }
@@ -252,6 +252,17 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       if (hash.startsWith('#/banter/thread')) {
         const stored = sessionStorage.getItem('active_banter_thread_id');
         if (stored) setThreadPostId(stored);
+        return;
+      }
+      const hashParams = hash.includes('?') ? new URLSearchParams(hash.split('?')[1]) : null;
+      const explicitId = hashParams?.get('id') || hashParams?.get('post') || hashParams?.get('b');
+      if (explicitId) {
+        const realId =
+          sessionStorage.getItem(`banter_ref_${explicitId}`) ||
+          banterService.resolvePostIdFromRef(explicitId) ||
+          explicitId;
+        sessionStorage.setItem('active_banter_thread_id', realId);
+        setThreadPostId(realId);
         return;
       }
       const match = hash.match(/^#\/?(?:banter\/|b\/)([a-zA-Z0-9_-]+)/);

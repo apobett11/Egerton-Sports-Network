@@ -65,9 +65,11 @@ const DashboardLoader: React.FC = () => (
 
 const getHashRoute = (): string => {
   if (window.location.hash) {
-    return window.location.hash.replace(/^#\/?/, '').toLowerCase() || 'home';
+    const raw = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    const clean = raw.replace(/^share\//, '');
+    return clean || 'home';
   }
-  const cleanPath = window.location.pathname.replace(/^\/?/, '').toLowerCase();
+  const cleanPath = window.location.pathname.replace(/^\/?/, '').toLowerCase().replace(/^share\//, '');
   return cleanPath || 'home';
 };
 
@@ -384,9 +386,12 @@ export const AppContent: React.FC = () => {
         if (params.get('section') === 'potw' || params.get('potw_winner') === '1') {
           return 'table';
         }
+        if (params.get('b') || params.get('post') || params.get('banter') || params.get('thread') || params.get('id')) {
+          return 'news';
+        }
       }
       const initialRoute = getHashRoute();
-      if (initialRoute === 'news' || initialRoute.startsWith('news') || initialRoute === 'banter' || initialRoute.startsWith('banter') || initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
+      if (initialRoute === 'news' || initialRoute.startsWith('news') || initialRoute === 'banter' || initialRoute.startsWith('banter') || initialRoute.startsWith('b/') || initialRoute === 'predictions' || initialRoute.startsWith('predictions')) {
         return 'news';
       }
       if (initialRoute === 'potw' || initialRoute.startsWith('potw')) {
@@ -407,7 +412,7 @@ export const AppContent: React.FC = () => {
   });
   const [predictionView, setPredictionView] = useState<'banter' | 'scores' | 'analytics'>(() => {
     const route = getHashRoute();
-    if (route === 'banter' || route.startsWith('banter')) return 'banter';
+    if (route === 'banter' || route.startsWith('banter') || route.startsWith('b/')) return 'banter';
     if (route === 'predictions' || route.startsWith('predictions')) return 'scores';
     if (route === 'analytics' || route.startsWith('analytics')) return 'analytics';
     const viewParam = new URLSearchParams(window.location.search).get('view');

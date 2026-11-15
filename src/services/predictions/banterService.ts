@@ -842,6 +842,7 @@ export class BanterService {
 
     // Section Load: Resolve the active post and its complete ancestry chain
     const activePost = await this.getPostById(postId, devId);
+    const effectivePostId = activePost?.id || this.resolvePostIdFromRef(postId);
     const ancestry: BanterPost[] = [];
 
     // Traverse upwards to assemble the complete ancestry chain with continuous vertical connectors
@@ -863,13 +864,15 @@ export class BanterService {
     let replies: BanterPost[] = [];
 
     try {
-      const { data, error } = await supabase
-        .from('banter_comments')
-        .select('*')
-        .eq('post_id', postId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: true })
-        .limit(100);
+      const isUuid = /^[0-9a-f-]{36}$/i.test(effectivePostId);
+      if (isUuid) {
+        const { data, error } = await supabase
+          .from('banter_comments')
+          .select('*')
+          .eq('post_id', effectivePostId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: true })
+          .limit(100);
 
       if (!error && data && data.length > 0) {
         replies = data
@@ -910,6 +913,7 @@ export class BanterService {
               userReactions: userReactions[d.id] || {}
             };
           });
+        }
       }
     } catch {
       // offline safe

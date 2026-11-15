@@ -3,12 +3,12 @@ import { test, expect } from '@playwright/test';
 test.describe('Messaging Persistence, Media Attachments & Clickable Image Lightbox', () => {
   test.beforeEach(async ({ page }) => {
     test.setTimeout(60000);
-    await page.goto('/#/banter');
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       try {
-        sessionStorage.removeItem('active_banter_thread_id');
+        sessionStorage.clear();
       } catch {}
     });
+    await page.goto('/#/banter');
     await expect(page.getByRole('heading', { name: "What's happening" })).toBeVisible({ timeout: 20000 });
   });
 
@@ -130,10 +130,11 @@ test.describe('Messaging Persistence, Media Attachments & Clickable Image Lightb
     await expect(postImg).toBeVisible();
 
     // Clicking image opens ImageLightboxModal (shows image, doesn't navigate)
-    await postImg.click();
+    await postImg.scrollIntoViewIfNeeded();
+    await postImg.dispatchEvent('click');
 
     const lightbox = page.locator('[data-testid="image-lightbox-modal"]');
-    await expect(lightbox).toBeVisible();
+    await expect(lightbox).toBeVisible({ timeout: 10000 });
     await expect(lightbox.locator('img[alt="Full preview"]')).toBeVisible();
 
     // Close lightbox

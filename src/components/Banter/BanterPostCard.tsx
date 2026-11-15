@@ -10,7 +10,7 @@ import {
   Flame,
   Smile
 } from 'lucide-react';
-import { formatRelativeTime, formatTeamTag, getCleanMessageRef } from '../../lib/predictions/utils';
+import { formatRelativeTime, formatTeamTag, getCleanMessageRef, MENTION_AND_TAG_REGEX } from '../../lib/predictions/utils';
 import { shareBanterSnapshot } from '../../lib/shareSnapshot';
 import { BanterReplyModal } from './BanterReplyModal';
 import { XPollWidget } from '../Predictions/Banter/XPollWidget';
@@ -151,7 +151,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
     const messageRef = getCleanMessageRef(post);
     sessionStorage.setItem('active_banter_thread_id', post.id);
     sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
-    window.location.hash = `#/banter/${messageRef}`;
+    window.location.hash = `#/banter/${messageRef}?id=${post.id}`;
     if (onOpenComments) onOpenComments(post);
   };
 
@@ -192,7 +192,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   };
 
   const renderTweetContent = (text: string) => {
-    const parts = text.split(/(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_\s]{2,25}(?=\s|$|[.,!?]))/g);
+    const parts = text.split(MENTION_AND_TAG_REGEX);
     return parts.map((part, idx) => {
       if (part.startsWith('#')) {
         return (
@@ -618,6 +618,8 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
                 onClick={handleShareTake}
                 className="p-1.5 rounded-full hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
                 title="Share"
+                aria-label="Share"
+                data-testid="post-share-btn"
               >
                 <Share className="h-3.5 w-3.5" />
               </button>

@@ -10,6 +10,7 @@ export default defineConfig({
     '**/identity_and_tagging.spec.ts',
     '**/media_guard_and_gestures.spec.ts',
     '**/banter_share_reactions_back.spec.ts',
+    '**/team_tag_coloring_and_links.spec.ts',
   ],
   timeout: 30 * 1000,
   expect: {

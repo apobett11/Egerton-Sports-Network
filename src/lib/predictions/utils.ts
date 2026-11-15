@@ -50,6 +50,14 @@ export function formatRelativeTime(dateStr: string): string {
 }
 
 /**
+ * Regex for accurately parsing tags and mentions in post content.
+ * 1. Hashtags: #[a-zA-Z0-9_]+
+ * 2. Multi-word team names: only match the team name itself up to word boundary, space or punctuation.
+ * 3. Single-word team names or user handles: @[a-zA-Z0-9_]+ (never swallows subsequent words).
+ */
+export const MENTION_AND_TAG_REGEX = /(#[a-zA-Z0-9_]+|@(?:Super\s+Eagles(?:\s+FC)?|Blue\s+Blazers(?:\s+FC)?|Five\s+Stars(?:\s+FC)?|Mighty\s+Blacks|Rising\s+Stars|Engineering(?:\s+FC)?|Santos(?:\s+FC)?|Wazito(?:\s+FC)?|Celtics(?:\s+FC)?|Legends(?:\s+FC)?|Giants(?:\s+FC)?|BCOM(?:\s+FC)?|Med(?:\s+FC)?|Nakuru\s+Town\s+Campus(?:\s+FC)?|Health\s+Sciences(?:\s+FC)?)(?=\b|[\s.,!?;:]|$)|@[a-zA-Z0-9_]+)/gi;
+
+/**
  * Format team tag:
  * - Single name team (e.g. "Legends FC", "Wazito", "Santos FC") -> keep as is (e.g. "Legends FC", "Wazito")
  * - Double / multi-named team (e.g. "Super Eagles FC", "Health Sciences FC", "Nakuru Town Campus FC") -> names only, no FC!

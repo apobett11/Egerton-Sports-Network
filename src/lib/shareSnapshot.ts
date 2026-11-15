@@ -408,8 +408,10 @@ export async function renderSnapshot(card: SnapshotCard): Promise<File> {
 }
 
 function pageUrl(kind: SnapshotCard['kind']): string {
-  const path = kind === 'fixtures' ? '/share/fixtures' : kind === 'cleansheets' ? '/share/cleansheets' : '/share/table';
-  return `${window.location.origin}${path}`;
+  const isLocal = typeof window !== 'undefined' && (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1'));
+  const baseOrigin = isLocal ? window.location.origin : 'https://egerscore.com';
+  const path = kind === 'fixtures' ? '#/fixtures' : kind === 'cleansheets' ? '#/cleansheets' : '#/table';
+  return `${baseOrigin}/${path}`;
 }
 
 function openHash(kind: SnapshotCard['kind']): string {
@@ -446,13 +448,35 @@ function showPicture(
 ) {
   const objectUrl = URL.createObjectURL(file);
   const text = shareText(kind, title, subtitle);
-  const displayLink = shortLinkDisplay || shareHref.replace(/^https?:\/\//, '');
-  const finalShareUrl = shareHref.startsWith('http') ? shareHref : `https://${shareHref}`;
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text}\n${displayLink}`)}`;
-  const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(finalShareUrl)}`;
+  const isLocal = typeof window !== 'undefined' && (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1'));
+  const baseOrigin = isLocal ? window.location.origin : 'https://egerscore.com';
+  const finalShareUrl = shareHref.startsWith('http')
+    ? shareHref
+    : `${baseOrigin}/${shareHref.replace(/^\/+/, '')}`;
+  const displayLink = shortLinkDisplay || finalShareUrl.replace(/^https?:\/\//, '');
+
+  // YouTube-style share link placement:
+  // 1. Direct link at the top (starts with egerscore.com and directly opens the message/table/profile)
+  // 2. Message / banter text in the middle
+  // 3. Direct link to the chat/table/profile at the bottom
+  const shareMessageBody = `${finalShareUrl}\n\n${text}\n\n🔗 ${finalShareUrl}`;
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessageBody)}`;
+  const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(`${finalShareUrl}\n\n${text}`)}`;
 
   const sendToWhatsApp = async () => {
     (window as any).__lastSharedTarget = 'whatsapp';
+    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: title,
+          text: shareMessageBody
+        });
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
     window.open(whatsappUrl, '_blank');
   };
 
@@ -1073,9 +1097,10 @@ export async function shareBanterSnapshot(
   post: BanterPost,
   parentPost?: BanterPost | null
 ): Promise<void> {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.egerscore.com';
+  const isLocal = typeof window !== 'undefined' && (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1'));
+  const baseOrigin = isLocal ? window.location.origin : 'https://egerscore.com';
   const cleanRef = getCleanMessageRef(post);
-  const shareHref = `${origin}/#/banter/${cleanRef}`;
+  const shareHref = `${baseOrigin}/#/banter/${cleanRef}?id=${post.id}`;
   const shortLink = `egerscore.com/b/${cleanRef}`;
   const title = post.authorName || post.authorHandle || 'Fanatic';
   const snippet = post.content.length > 90 ? `"${post.content.slice(0, 90).trim()}..."` : `"${post.content}"`;
