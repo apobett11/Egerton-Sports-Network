@@ -54,35 +54,73 @@ function computePostEngagement(post: BanterPost) {
   }
   const seed = Math.abs(hash);
 
-  // Age calculation
+  // Age calculation in seconds
   const createdTs = new Date(post.createdAt || Date.now()).getTime();
-  const ageSec = Math.max(0, (Date.now() - createdTs) / 1000);
+  const now = Date.now();
+  const ageSec = Math.max(0, (now - createdTs) / 1000);
 
-  // When one immediately sends, repost, impression, replies all begin at 0, then impressions & reposts climb
-  const isImmediatelySent = post.isMine && ageSec < 60;
+  // Saturation period varies per post between 10 and 24 hours
+  const saturationHours = 10 + ((seed >> 2) % 15); // 10 to 24 hours
+  const saturationSec = saturationHours * 3600;
+
+  // Varied growth curve per post (0.80 to 1.15) for natural organic rise variance
+  const curvePow = 0.8 + ((seed % 8) * 0.05);
+
+  // Target maximum impressions
+  let targetImpressions: number;
+  let maxReposts: number;
+  let minStartImpressions: number;
+
+  if (isTrending) {
+    targetImpressions = 1550 + (seed % 1450); // 1,550 - 3,000 views
+    maxReposts = Math.max(16, Math.floor(targetImpressions / 50) + (seed % 18));
+    minStartImpressions = 75 + (seed % 45); // initial baseline for trending
+  } else {
+    targetImpressions = 320 + (seed % 680); // 320 - 1,000 views
+    maxReposts = seed % 3; // 0, 1, or 2 for normal posts
+    minStartImpressions = 18 + (seed % 22); // initial baseline for normal (never zero)
+  }
+
+  // When a user immediately sends, repost, impressions, replies all begin at 0
+  const isBrandNew = post.isMine && ageSec < 10;
+  const isEarlyMine = post.isMine && ageSec < 60;
 
   let impressions: number;
   let baseReposts: number;
 
-  if (isImmediatelySent) {
-    if (ageSec < 5) {
-      impressions = 0;
-      baseReposts = 0;
-    } else {
-      // Climb progressively with age
-      impressions = Math.min(80, Math.floor(ageSec * 1.5));
-      baseReposts = Math.floor(impressions / 60);
-    }
+  if (isBrandNew) {
+    impressions = 0;
+    baseReposts = 0;
+  } else if (isEarlyMine) {
+    // Early gradual ramp in first minute from 0 towards minStartImpressions
+    const ramp = ageSec / 60;
+    impressions = Math.max(1, Math.floor(ramp * minStartImpressions));
+    baseReposts = 0;
   } else {
-    // Numbers should never be zero: immediately add community engagement
+    // Gradual, steady rise for the next 10 - 24 hours, not all placed at once
+    const progress = Math.min(1, Math.pow(Math.min(1, ageSec / saturationSec), curvePow));
+
+    // Micro-variation so rise rate fluctuates organically across 30-min intervals
+    const timeBucket = Math.floor(ageSec / 1800);
+    const microJitter = ((seed ^ timeBucket) % 5) - 2;
+
+    impressions = Math.max(
+      minStartImpressions,
+      Math.min(targetImpressions, Math.floor(minStartImpressions + progress * (targetImpressions - minStartImpressions) + microJitter))
+    );
+
+    // Reposts climb directly proportional to impressions progress
     if (isTrending) {
-      impressions = 1550 + (seed % 1450); // 1,550 - 3,000 views
-      // Random high reposts, directly proportional to impressions
-      baseReposts = Math.max(16, Math.floor(impressions / 50) + (seed % 18));
+      baseReposts = Math.max(0, Math.floor(progress * maxReposts));
     } else {
-      impressions = 320 + (seed % 680); // 320 - 1,000 views (never zero!)
-      // Low (0, 1, or 2) for normal messages, directly proportional
-      baseReposts = seed % 3;
+      // Normal posts: 0 early on, low (1 or 2) as impressions climb
+      if (progress < 0.35) {
+        baseReposts = 0;
+      } else if (progress < 0.75) {
+        baseReposts = Math.min(1, maxReposts);
+      } else {
+        baseReposts = maxReposts;
+      }
     }
   }
 
@@ -119,13 +157,36 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
 
-  // Engagement algorithm: replies are strictly organic, impressions & reposts climb / non-zero
-  const engagement = useMemo(() => computePostEngagement(post), [post]);
+  // Live timer tick for gradual real-time impression rise over 10-24 hours
+  const [liveTick, setLiveTick] = useState(0);
+  useEffect(() => {
+    const createdTs = new Date(post.createdAt || Date.now()).getTime();
+    const ageSec = (Date.now() - createdTs) / 1000;
+    if (ageSec < 24 * 3600) {
+      // Refresh frequently for fresh messages, every 30s otherwise
+      const intervalMs = ageSec < 120 ? 3000 : ageSec < 3600 ? 15000 : 30000;
+      const timer = setInterval(() => {
+        setLiveTick((t) => t + 1);
+      }, intervalMs);
+      return () => clearInterval(timer);
+    }
+  }, [post.createdAt]);
+
+  // Engagement algorithm: replies are strictly organic, impressions & reposts climb gradually
+  const engagement = useMemo(() => computePostEngagement(post), [post, liveTick]);
   const impressions = engagement.impressions;
   const [repostCount, setRepostCount] = useState(
     post.repostCount || post.repostsCount || engagement.baseReposts
   );
   const [hasReposted, setHasReposted] = useState(false);
+
+  // Sync repost count as baseline climbs if user has not manually toggled
+  useEffect(() => {
+    if (!hasReposted && !post.repostCount && !post.repostsCount) {
+      setRepostCount(engagement.baseReposts);
+    }
+  }, [engagement.baseReposts, hasReposted, post.repostCount, post.repostsCount]);
+
   const [replyCount, setReplyCount] = useState(engagement.replies);
 
   const [expanded, setExpanded] = useState(false);
