@@ -21,13 +21,13 @@ export const XFloatingComposeButton: React.FC<XFloatingComposeButtonProps> = ({
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 z-39 bg-black/60 backdrop-blur-xs md:hidden animate-fadeIn"
+          className="fixed inset-0 z-39 bg-black/60 backdrop-blur-xs animate-fadeIn"
           data-testid="fab-backdrop"
         />
       )}
 
       {/* Floating Action Menu & Button Container */}
-      <div className="fixed bottom-20 right-4 z-40 md:hidden flex flex-col items-end gap-2.5">
+      <div className="fixed bottom-20 sm:bottom-8 right-4 sm:right-6 z-40 flex flex-col items-end gap-2.5">
         {/* Animated Micro-Sheet / Popup Menu */}
         {isOpen && (
           <div className="flex flex-col gap-2 items-end mb-1 animate-slideUp">
@@ -55,13 +55,13 @@ export const XFloatingComposeButton: React.FC<XFloatingComposeButtonProps> = ({
               </div>
             </button>
 
-            {/* Write Take */}
+            {/* Add Take */}
             <button
               type="button"
               onClick={() => handleAction('text')}
               className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-zinc-900 border border-zinc-700/80 text-white shadow-xl hover:bg-zinc-800 transition-transform active:scale-95 cursor-pointer"
             >
-              <span className="text-xs font-bold tracking-wide">Write Take</span>
+              <span className="text-xs font-bold tracking-wide">Add Take</span>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white">
                 <Feather className="h-4 w-4" />
               </div>

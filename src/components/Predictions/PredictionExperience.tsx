@@ -84,7 +84,7 @@ import type {
   Team,
   BanterMediaType,
 } from '../../types/predictions';
-import { ArrowRight, ArrowLeft, AlertCircle, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, AlertCircle, Sparkles, MessageSquare, ShieldCheck, Flame, Radio, Clock, Shield, Table, Users, Ticket, Copy, Check, X } from 'lucide-react';
 
 interface PredictionExperienceProps {
   activeTab: 'banter' | 'scores' | 'analytics';
@@ -240,6 +240,8 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
   });
   const [showLeaveBanterPrompt, setShowLeaveBanterPrompt] = useState(false);
   const [mobileFabTool, setMobileFabTool] = useState<'text' | 'media' | 'poll' | null>(null);
+  const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+  const [composeModalTool, setComposeModalTool] = useState<'text' | 'media' | 'poll' | null>(null);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -1670,11 +1672,11 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
                     </aside>
                   </div>
 
-                  {/* Mobile Floating Action Button (FAB) */}
+                  {/* Floating Action Button (FAB) */}
                   <XFloatingComposeButton
                     onSelectAction={(tool) => {
-                      setMobileFabTool(tool);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      setComposeModalTool(tool);
+                      setIsComposeModalOpen(true);
                     }}
                   />
                 </div>
@@ -2099,6 +2101,55 @@ export function PredictionExperience({ activeTab, onSelectTab }: PredictionExper
       )}
 
 
+
+      {/* Compose Take Popup Modal (All inputs intact, opened from Plus button) */}
+      {isComposeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-xs p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-150"
+          onClick={() => {
+            setIsComposeModalOpen(false);
+            setComposeModalTool(null);
+          }}
+        >
+          <div
+            className="w-full sm:max-w-xl bg-zinc-950 border border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 bg-zinc-900/60 shrink-0">
+              <span className="text-xs font-bold tracking-wide text-zinc-300 uppercase">
+                New Take
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsComposeModalOpen(false);
+                  setComposeModalTool(null);
+                }}
+                className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-4 flex-1">
+              <XStyleComposer
+                onPostCreated={async (content, mediaUrls, mediaType, poll, taggedTeam) => {
+                  await handleCreatePost(content, mediaUrls, mediaType, poll, taggedTeam);
+                  setIsComposeModalOpen(false);
+                  setComposeModalTool(null);
+                }}
+                authorHandle={identity.publicHandle}
+                activeTool={composeModalTool}
+                onClearActiveTool={() => setComposeModalTool(null)}
+                autoFocus={true}
+                isReply={false}
+                contextMatchName={contextMatch ? `${contextMatch.homeTeam.shortName} vs ${contextMatch.awayTeam.shortName}` : null}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Slip Icon & Counter at Bottom Center (constant across matchday pages) */}
       {activeTab === 'scores' && (

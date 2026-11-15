@@ -220,8 +220,7 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
         target.closest('[data-testid="poll-widget"]') ||
         target.closest('[data-testid="poll-inline-reply-container"]') ||
         target.closest('[data-action-buttons]') ||
-        target.closest('[data-testid="action-buttons-bar"]') ||
-        target.closest('[data-testid="message-impressions"]')
+        target.closest('[data-testid="action-buttons-bar"]')
       ) {
         return;
       }
@@ -542,16 +541,25 @@ export const BanterPostCard: React.FC<BanterPostCardProps> = ({
               <span className="font-medium text-xs font-mono">{repostCount}</span>
             </button>
 
-            {/* 3. Impressions (number of views per message in place of emojis) */}
-            <div
+            {/* 3. Impressions (clicking opens main message) */}
+            <button
+              type="button"
               data-testid="message-impressions"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-sky-500/10 text-zinc-500 hover:text-sky-400 transition-colors cursor-default select-none"
-              title={`${impressions.toLocaleString()} views`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const messageRef = getCleanMessageRef(post);
+                sessionStorage.setItem('active_banter_thread_id', post.id);
+                sessionStorage.setItem(`banter_ref_${messageRef}`, post.id);
+                window.location.hash = `#/banter/${messageRef}?id=${post.id}`;
+                if (onOpenComments) onOpenComments(post);
+              }}
+              className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-sky-500/10 text-zinc-500 hover:text-sky-400 transition-colors cursor-pointer select-none group"
+              title={`${impressions.toLocaleString()} views - View post`}
+              aria-label="View post"
             >
-              <BarChart2 className="h-4 w-4" />
-              <span className="font-medium text-xs font-mono">{formatTwitterMetric(impressions)}</span>
-            </div>
+              <BarChart2 className="h-4 w-4 group-hover:text-sky-400 transition-colors" />
+              <span className="font-medium text-xs font-mono group-hover:text-sky-400 transition-colors">{formatTwitterMetric(impressions)}</span>
+            </button>
 
             {/* 4. Bookmark & Share */}
             <div className="flex items-center gap-0.5">
